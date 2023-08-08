@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Npgsql.Internal;
+using Npgsql.Internal.Composites;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 using Npgsql.NameTranslation;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
@@ -81,8 +83,6 @@ sealed class UserTypeMapper
 
         var method = openMethod.MakeGenericMethod(clrType);
 
-        // TODO build a reflection based composite converter.
-
         method.Invoke(this, new object?[] { pgName, nameTranslator });
 
         return this;
@@ -146,10 +146,15 @@ sealed class UserTypeMapper
 
         internal override void Build(TypeInfoMappingCollection mappings)
         {
-            mappings.AddType<T>(PgTypeName, static (options, mapping, resolvedDataTypeName) =>
+            mappings.AddType<T>(PgTypeName, (options, mapping, _) =>
             {
-                throw new NotImplementedException();
-            });
+                var pgType = mapping.GetPgType(options);
+                if (pgType is not PostgresCompositeType compositeType)
+                    throw new InvalidOperationException("Composite mapping must be to a composite type");
+
+                return mapping.CreateInfo(options, new CompositeConverter<T>(
+                    ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, _nameTranslator, options)));
+            }, isDefault: true);
             mappings.AddArrayType<T>(PgTypeName);
         }
     }
@@ -166,10 +171,15 @@ sealed class UserTypeMapper
 
         internal override void Build(TypeInfoMappingCollection mappings)
         {
-            mappings.AddStructType<T>(PgTypeName, static (options, mapping, dataTypeNameMatch) =>
+            mappings.AddStructType<T>(PgTypeName, (options, mapping, dataTypeNameMatch) =>
             {
-                throw new NotImplementedException();
-            });
+                var pgType = mapping.GetPgType(options);
+                if (pgType is not PostgresCompositeType compositeType)
+                    throw new InvalidOperationException("Composite mapping must be to a composite type");
+
+                return mapping.CreateInfo(options, new CompositeConverter<T>(
+                    ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, _nameTranslator, options)));
+            }, isDefault: true);
             mappings.AddStructArrayType<T>(PgTypeName);
         }
     }
@@ -206,3 +216,4 @@ sealed class UserTypeMapper
         }
     }
 }
+
