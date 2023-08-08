@@ -206,7 +206,7 @@ public class PgTypeInfo
             return null;
         }
         writeState = null;
-        var context = new SizeContext(format);
+        var context = new SizeContext(format, bufferRequirements.Write);
         size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSize(context, value, ref writeState);
         return new()
         {
@@ -236,7 +236,7 @@ public class PgTypeInfo
             return null;
         }
         writeState = null;
-        var context = new SizeContext(format);
+        var context = new SizeContext(format, bufferRequirements.Write);
         size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSizeAsObject(context, value, ref writeState);
         return new()
         {

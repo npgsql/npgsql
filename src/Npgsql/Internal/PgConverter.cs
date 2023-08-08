@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -14,8 +15,15 @@ interface IResumableRead
 
 public readonly struct SizeContext
 {
-    public SizeContext(DataFormat format) => Format = format;
+    [SetsRequiredMembers]
+    public SizeContext(DataFormat format, Size bufferRequirement)
+    {
+        Format = format;
+        BufferRequirement = bufferRequirement;
+    }
+
     public DataFormat Format { get; }
+    public required Size BufferRequirement { get; init; }
 }
 
 public readonly struct BufferRequirements : IEquatable<BufferRequirements>
@@ -171,7 +179,7 @@ public abstract class PgConverter<T> : PgConverter
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
-    public abstract Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState);
+    public abstract Size GetSize(SizeContext context, T value, ref object? writeState);
     public abstract void Write(PgWriter writer, [DisallowNull] T value);
     public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
@@ -272,7 +280,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     protected abstract T ReadCore(PgReader reader);
     protected abstract void WriteCore(PgWriter writer, T value);
 
-    public override Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState) => throw new NotImplementedException();
+    public override Size GetSize(SizeContext context, T value, ref object? writeState) => throw new NotImplementedException();
 
     public sealed override T Read(PgReader reader)
     {
@@ -294,7 +302,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     public sealed override void Write(PgWriter writer, T value)
     {
         // If Kind is SizeKind.Unknown we're doing a buffering write.
-        if (writer.Current.Size is { Kind: not SizeKind.Unknown } size && writer.ShouldFlush(size))
+        if (writer.CurrentBufferRequirement is { Kind: not SizeKind.Unknown } size && writer.ShouldFlush(size))
             ThrowIORequired();
 
         WriteCore(writer, value);
@@ -310,43 +318,42 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
         => new(Read(reader)!);
 }
 
-public abstract class PgComposingConverter<T> : PgConverter<T>
-{
-    protected PgConverter EffectiveConverter { get; }
-
-    protected PgComposingConverter(PgConverter effectiveConverter)
-        : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
-        => EffectiveConverter = effectiveConverter;
-
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => EffectiveConverter.CanConvert(format, out bufferRequirements);
-
-    internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
-        => async
-            ? EffectiveConverter.ReadAsObjectAsync(reader, cancellationToken)
-            : new(EffectiveConverter.ReadAsObject(reader));
-
-    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
-    {
-        if (async)
-            return EffectiveConverter.WriteAsObjectAsync(writer, value, cancellationToken);
-
-        EffectiveConverter.WriteAsObject(writer, value);
-        return new();
-    }
-}
-
 static class ConverterExtensions
 {
-    public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, Size writeRequirement, SizeContext context, T? value, ref object? writeState)
+    public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {
         if (converter.IsDbNull(value))
             return null;
 
-        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+        if (writeRequirement is { Kind: SizeKind.Exact, Value: > 0 and var byteCount })
             return byteCount;
-        var size = converter.GetSize(context, value, ref writeState);
-        Debug.Assert(size.Kind is not SizeKind.UpperBound);
+        var size = converter.GetSize(new(format, writeRequirement), value, ref writeState);
+        if (size.Kind is SizeKind.UpperBound)
+            throw new InvalidOperationException("SizeKind.UpperBound is not a valid return value for GetSize.");
         return size;
+    }
+}
+
+class MultiWriteState
+{
+    public required ArrayPool<(Size Size, object? WriteState)>? ArrayPool { get; init; }
+    public required ArraySegment<(Size Size, object? WriteState)> Data { get; init; }
+    public required bool AnyWriteState { get; init; }
+
+    public void Dispose()
+    {
+        if (Data.Array is not { } array)
+            return;
+
+        if (AnyWriteState)
+            for (var i = Data.Offset; i < array.Length; i++)
+            {
+                ref var state = ref array[i].WriteState;
+                if (array[i].WriteState is IDisposable disposable)
+                    disposable.Dispose();
+                state = null;
+            }
+
+        ArrayPool?.Return(Data.Array!);
     }
 }

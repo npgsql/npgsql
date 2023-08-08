@@ -39,7 +39,7 @@ sealed class JsonpathConverter<T> : PgStreamingConverter<T>, IResumableRead
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, [DisallowNull] T value, ref object? writeState)
+    public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => _textConverter.GetSize(context, value, ref writeState).Combine(sizeof(byte));
 
     public override void Write(PgWriter writer, [DisallowNull]T value)
@@ -65,27 +65,25 @@ sealed class JsonpathConverter<T> : PgStreamingConverter<T>, IResumableRead
 
             // No need for a nested read, all text converters will read CurrentRemaining bytes.
             await reader.BufferData(async, readRequirement, cancellationToken);
-            return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
+            return async ? await _textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : _textConverter.Read(reader);
         }
 
-        return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
+        return async ? await _textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : _textConverter.Read(reader);
     }
 
     async ValueTask Write(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
     {
-        var size = writer.Current.Size;
         if (writer.Current.Format is DataFormat.Binary)
         {
             if (writer.ShouldFlush(sizeof(byte)))
-                await writer.Flush(async, cancellationToken);
+                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
             writer.WriteByte(JsonpathProtocolVersion);
-            size = size.Value - 1;
         }
 
         if (async)
-            await writer.NestedWriteAsync(_textConverter, value, size, writer.Current.WriteState, cancellationToken);
+            await _textConverter.WriteAsync(writer, value, cancellationToken).ConfigureAwait(false);
         else
-            writer.NestedWrite(_textConverter, value, size, writer.Current.WriteState);
+            _textConverter.Write(writer, value);
     }
 
     bool IResumableRead.Supported => _textConverter is IResumableRead { Supported: true };

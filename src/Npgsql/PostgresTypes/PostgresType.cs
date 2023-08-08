@@ -1,4 +1,5 @@
-﻿using Npgsql.Internal.Postgres;
+﻿using System;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.PostgresTypes;
 
@@ -104,7 +105,7 @@ public abstract class PostgresType
     bool _isRepresentationalType;
 
     /// Canonizes (nested) domain types to underlying types, does not handle composites.
-    internal PostgresType? GetRepresentationalType()
+    internal PostgresType GetRepresentationalType()
     {
         if (_isRepresentationalType)
             return this;
@@ -113,7 +114,7 @@ public abstract class PostgresType
         if (ReferenceEquals(type, this))
             _isRepresentationalType = true;
 
-        return type;
+        return type ?? throw new InvalidOperationException("Couldn't map type to representational type");
 
         static PostgresType? Core(PostgresType? postgresType)
             => (postgresType as PostgresDomainType)?.BaseType ?? postgresType switch

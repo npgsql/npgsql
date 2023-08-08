@@ -39,7 +39,7 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, [DisallowNull] T value, ref object? writeState)
+    public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => _textConverter.GetSize(context, value, ref writeState).Combine(sizeof(byte));
 
     public override void Write(PgWriter writer, [DisallowNull]T value)
@@ -73,19 +73,17 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
 
     async ValueTask Write(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
     {
-        var size = writer.Current.Size;
         if (writer.Current.Format is DataFormat.Binary)
         {
             if (writer.ShouldFlush(sizeof(byte)))
-                await writer.Flush(async, cancellationToken);
+                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
             writer.WriteByte(JsonbProtocolVersion);
-            size = size.Value - 1;
         }
 
         if (async)
-            await writer.NestedWriteAsync(_textConverter, value, size, writer.Current.WriteState, cancellationToken);
+            await _textConverter.WriteAsync(writer, value, cancellationToken).ConfigureAwait(false);
         else
-            writer.NestedWrite(_textConverter, value, size, writer.Current.WriteState);
+            _textConverter.Write(writer, value);
     }
 
     bool IResumableRead.Supported => _textConverter is IResumableRead { Supported: true };

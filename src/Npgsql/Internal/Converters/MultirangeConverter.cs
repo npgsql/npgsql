@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -11,7 +12,7 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     where TRange : notnull
 {
     readonly PgConverter<TRange> _rangeConverter;
-    readonly BufferRequirements _rangeBufferRequirements;
+    readonly BufferRequirements _rangeRequirements;
 
     static MultirangeConverter()
         => Debug.Assert(typeof(T).IsArray || typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>));
@@ -20,7 +21,7 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     {
         if (!rangeConverter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
-        _rangeBufferRequirements = bufferRequirements;
+        _rangeRequirements = bufferRequirements;
         _rangeConverter = rangeConverter;
     }
 
@@ -45,7 +46,7 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             Debug.Assert(length != -1);
 
             await using var _ = await reader
-                .BeginNestedRead(async, length, _rangeBufferRequirements.Read, cancellationToken).ConfigureAwait(false);
+                .BeginNestedRead(async, length, _rangeRequirements.Read, cancellationToken).ConfigureAwait(false);
             var range = async
                 ? await _rangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
                 // ReSharper disable once MethodHasAsyncOverloadWithCancellation
@@ -62,23 +63,28 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
+        var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
+        var data = arrayPool.Rent(value.Count);
+
         var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
-
-        // Debug.Assert(writeState is null or (int, object?)[]);
-        Debug.Assert(writeState is null or RangeInfo[]);
-
-        // TODO: pool?
-        var multirangeWriteState = writeState as RangeInfo[] ?? new RangeInfo[value.Count];
-
+        var anyWriteState = false;
         for (var i = 0; i < value.Count; i++)
         {
-            var rangeWriteState = multirangeWriteState[i].RangeWriteState;
-            var rangeSize = _rangeConverter.GetSize(context, value[i], ref rangeWriteState);
-            multirangeWriteState[i] = new(rangeSize.Value, rangeWriteState);
-            totalSize = totalSize.Combine(rangeSize);
+            object? innerState = null;
+            var rangeSize = _rangeConverter.GetSizeOrDbNull(context.Format, _rangeRequirements.Write, value[i], ref innerState);
+            anyWriteState = anyWriteState || innerState is not null;
+            // Ranges should never be NULL.
+            Debug.Assert(rangeSize.HasValue);
+            data[i] = new(rangeSize.Value, innerState);
+            totalSize = totalSize.Combine(rangeSize.Value);
         }
 
-        writeState = multirangeWriteState;
+        writeState = new WriteState
+        {
+            ArrayPool = arrayPool,
+            Data = new(data, 0, value.Count),
+            AnyWriteState = anyWriteState
+        };
         return totalSize;
     }
 
@@ -90,31 +96,38 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        Debug.Assert(writer.Current.WriteState is RangeInfo[]);
-
-        var writeState = (RangeInfo[])writer.Current.WriteState;
+        if (writer.Current.WriteState is not WriteState writeState)
+            throw new InvalidCastException($"Invalid state {writer.Current.WriteState?.GetType().FullName}.");
 
         if (writer.ShouldFlush(sizeof(int)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
         writer.WriteInt32(value.Count);
 
+        var data = writeState.Data;
         for (var i = 0; i < value.Count; i++)
         {
-            var (size, rangeWriteState) = writeState[i];
             if (writer.ShouldFlush(sizeof(int))) // Length
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteInt32(size);
-            if (writer.ShouldFlush(size))
-                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.Current.WriteState = rangeWriteState;
 
-            if (async)
-                await _rangeConverter.WriteAsync(writer, value[i], cancellationToken).ConfigureAwait(false);
-            else
-                // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                _rangeConverter.Write(writer, value[i]);
+            var (size, state) = data[i];
+            if (size.Kind is SizeKind.Unknown)
+                throw new NotImplementedException();
+
+            var length = size.Value;
+            writer.WriteInt32(length);
+            if (length != -1)
+            {
+                using var _ = await writer.BeginNestedWrite(async, _rangeRequirements.Write, length, state, cancellationToken).ConfigureAwait(false);;
+                if (async)
+                    await _rangeConverter.WriteAsync(writer, value[i], cancellationToken).ConfigureAwait(false);
+                else
+                    // ReSharper disable once MethodHasAsyncOverloadWithCancellation
+                    _rangeConverter.Write(writer, value[i]);
+            }
         }
     }
 
-    readonly record struct RangeInfo(int Size, object? RangeWriteState);
+    sealed class WriteState : MultiWriteState
+    {
+    }
 }

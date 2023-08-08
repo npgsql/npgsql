@@ -209,41 +209,12 @@ public class PgWriter
             var totalBytesWritten = _totalBytesWritten;
             _totalBytesWritten = 0;
             if (totalBytesWritten != expectedByteCount)
-                throw new InvalidOperationException("Bytes written and expected byte count don't match.");
+                throw new InvalidOperationException($"Bytes written ({totalBytesWritten}) and expected byte count ({expectedByteCount}) don't match.");
         }
     }
 
     public ref ValueMetadata Current => ref _current;
-
-    // TODO these should just be extension methods.
-    public async ValueTask NestedWriteAsync<T>(PgConverter<T> converter, [DisallowNull]T value, Size size, object? state, CancellationToken cancellationToken = default)
-    {
-        Debug.Assert(size != -1);
-        if (ShouldFlush(size))
-            await FlushAsync(cancellationToken).ConfigureAwait(false);
-
-        Current.Size = size;
-        // Saves a write barrier in most cases (i.e. when there is no state).
-        if (Current.WriteState is not null || state is not null)
-            Current.WriteState = state;
-
-        await converter.WriteAsync(this, value, cancellationToken).ConfigureAwait(false);
-    }
-
-    // TODO these should just be extension methods.
-    public void NestedWrite<T>(PgConverter<T> converter, [DisallowNull]T value, Size size, object? state)
-    {
-        Debug.Assert(size != -1);
-        if (ShouldFlush(size))
-            Flush();
-
-        Current.Size = size;
-        // Saves a write barrier in most cases (i.e. when there is no state).
-        if (Current.WriteState is not null || state is not null)
-            Current.WriteState = state;
-
-        converter.Write(this, value);
-    }
+    public Size CurrentBufferRequirement { get; private set; }
 
     // This method lives here to remove the chances oids will be cached on converters inadvertently when data type names should be used.
     // Such a mapping (for instance for array element oids) should be done per operation to ensure it is done in the context of a specific backend.
@@ -489,6 +460,39 @@ public class PgWriter
         return new();
     }
 
+    internal ValueTask<NestedWriteScope> BeginNestedWrite(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken)
+    {
+        Debug.Assert(bufferRequirement != -1);
+        if (ShouldFlush(bufferRequirement))
+            return Core();
+
+        CurrentBufferRequirement = bufferRequirement;
+        Current.Size = byteCount;
+        // Saves a write barrier in most cases (i.e. when there is no state).
+        if (Current.WriteState is not null || state is not null)
+            Current.WriteState = state;
+
+        return new(new NestedWriteScope());
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+        async ValueTask<NestedWriteScope> Core()
+        {
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+            Current.Size = byteCount;
+            // Saves a write barrier in most cases (i.e. when there is no state).
+            if (Current.WriteState is not null || state is not null)
+                Current.WriteState = state;
+
+            return new();
+        }
+    }
+
+    public NestedWriteScope BeginNestedWrite(Size bufferRequirement, int byteCount, object? state)
+        => BeginNestedWrite(async: false, bufferRequirement, byteCount, state, CancellationToken.None).GetAwaiter().GetResult();
+
+    public ValueTask<NestedWriteScope> BeginNestedWriteAsync(Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken = default)
+        => BeginNestedWrite(async: true, bufferRequirement, byteCount, state, cancellationToken);
+
     sealed class PgWriterStream : Stream
     {
         readonly PgWriter _writer;
@@ -549,5 +553,13 @@ public class PgWriter
         }
         public override long Seek(long offset, SeekOrigin origin)
             => throw new NotSupportedException();
+    }
+}
+
+// No-op for now.
+public struct NestedWriteScope : IDisposable
+{
+    public void Dispose()
+    {
     }
 }

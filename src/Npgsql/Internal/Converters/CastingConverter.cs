@@ -7,8 +7,6 @@ using static Npgsql.Internal.Converters.AsyncHelpers;
 
 namespace Npgsql.Internal.Converters;
 
-// We don't inherit from PgComposingConverter<T> to reduce type metadata bloat.
-
 /// A converter to map strongly typed apis onto boxed converter results to produce a strongly typed converter over T.
 sealed class CastingConverter<T> : PgConverter<T>
 {

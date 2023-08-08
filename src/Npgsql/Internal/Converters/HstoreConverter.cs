@@ -26,8 +26,9 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
         if (value.Count is 0)
             return totalSize;
 
-        var state = new WriteState(new ArraySegment<int>(ArrayPool<int>.Shared.Rent(value.Count * 2), 0, value.Count * 2));
-        var sizes = state.KvSizes.AsSpan();
+        var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
+        var data = arrayPool.Rent(value.Count * 2);
+
         var i = 0;
         foreach (var kv in value)
         {
@@ -37,11 +38,16 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
             var keySize = _encoding.GetByteCount(kv.Key);
             var valueSize = kv.Value is null ? -1 : _encoding.GetByteCount(kv.Value);
             totalSize += keySize + (valueSize is -1 ? 0 : valueSize);
-            sizes[i] = keySize;
-            sizes[i + 1] = valueSize;
+            data[i] = (keySize, null);
+            data[i + 1] = (valueSize, null);
             i += 2;
         }
-        writeState = state;
+        writeState = new WriteState
+        {
+            ArrayPool = arrayPool,
+            Data = new(data, 0, value.Count * 2),
+            AnyWriteState = false
+        };
         return totalSize;
     }
 
@@ -104,23 +110,29 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
         if (writer.Current.WriteState is not WriteState && value.Count is not 0)
-            throw new InvalidOperationException("Missing write state");
+            throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
 
         // Number of lengths (count, key length, value length).
         if (writer.ShouldFlush(sizeof(int)))
-            await writer.Flush(async, cancellationToken);
+            await writer.Flush(async, cancellationToken).ConfigureAwait(false);
         writer.WriteInt32(value.Count);
 
-        if (value.Count is 0)
+        if (value.Count is 0 || writer.Current.WriteState is not WriteState writeState)
             return;
 
-        var sizes = ((WriteState)writer.Current.WriteState!).KvSizes;
-        var i = sizes.Offset;
+        var data = writeState.Data;
+        var i = data.Offset;
         foreach (var kv in value)
         {
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteInt32(sizes.Array![i]);
+
+            var (size, _) = data.Array![i];
+            if (size.Kind is SizeKind.Unknown)
+                throw new NotImplementedException();
+
+            var length = size.Value;
+            writer.WriteInt32(length);
             if (async)
                 await writer.WriteCharsAsync(kv.Key.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
             else
@@ -128,9 +140,14 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
 
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            var valueSize = sizes.Array![i + 1];
-            writer.WriteInt32(valueSize);
-            if (valueSize is not -1)
+
+            var (valueSize, _) = data.Array![i + 1];
+            if (valueSize.Kind is SizeKind.Unknown)
+                throw new NotImplementedException();
+
+            var valueLength = valueSize.Value;
+            writer.WriteInt32(valueLength);
+            if (valueLength is not -1)
             {
                 if (async)
                     await writer.WriteCharsAsync(kv.Value.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
@@ -141,10 +158,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
         }
     }
 
-    sealed class WriteState : IDisposable
+    sealed class WriteState : MultiWriteState
     {
-        public ArraySegment<int> KvSizes { get; }
-        public WriteState(ArraySegment<int> kvSizes) => KvSizes = kvSizes;
-        public void Dispose() => ArrayPool<int>.Shared.Return(KvSizes.Array!);
     }
 }

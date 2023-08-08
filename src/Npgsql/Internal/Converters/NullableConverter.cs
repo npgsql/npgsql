@@ -1,13 +1,10 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using static Npgsql.Internal.Converters.AsyncHelpers;
 
 namespace Npgsql.Internal.Converters;
-
-// We don't inherit from PgComposingConverter<T> to reduce type metadata bloat.
 
 // NULL writing is always responsibility of the caller writing the length, so there is not much we do here.
 /// Special value converter to be able to use struct converters as System.Nullable converters, it delegates all behavior to the effective converter.
@@ -22,7 +19,15 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
         => value is null || _effectiveConverter.IsDbNull(value.GetValueOrDefault());
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => _effectiveConverter.CanConvert(format, out bufferRequirements);
+    {
+        var result = _effectiveConverter.CanConvert(format, out var reqs);
+        // We have to map exact sizes to upper bounds as values may be null (and thus have a 0 size).
+        bufferRequirements = BufferRequirements.Create(
+            reqs.Read.Kind is SizeKind.Unknown ? Size.Unknown : Size.CreateUpperBound(reqs.Read.Value),
+            reqs.Write.Kind is SizeKind.Unknown ? Size.Unknown : Size.CreateUpperBound(reqs.Write.Value)
+        );
+        return result;
+    }
 
     public override T? Read(PgReader reader)
         => _effectiveConverter.Read(reader);
@@ -47,8 +52,13 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
         }
     }
 
-    public override Size GetSize(SizeContext context, [DisallowNull] T? value, ref object? writeState)
-        => _effectiveConverter.GetSize(context, value.GetValueOrDefault(), ref writeState);
+    public override Size GetSize(SizeContext context, T? value, ref object? writeState)
+    {
+        if (context.BufferRequirement.Kind is not SizeKind.Unknown)
+            return context.BufferRequirement.Value;
+
+        return _effectiveConverter.GetSize(context, value.GetValueOrDefault(), ref writeState);
+    }
 
     public override void Write(PgWriter writer, T? value)
         => _effectiveConverter.Write(writer, value.GetValueOrDefault());
