@@ -77,7 +77,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                     // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
                     PortableTypeIds = true,
                     // Don't throw if our catalog doesn't know the datatypename.
-                    ValidatePgTypeIds = false,
+                    IntrospectionMode = true,
                     TypeInfoResolver = new TypeInfoResolverChain(resolvers)
                 };
             }
@@ -97,8 +97,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             {
                 dataTypeName = info.GetObjectResolution(value).PgTypeId.DataTypeName;
             }
-            // We swallow just this particular error, user code might try to lookup type info that we don't have.
-            catch(NotSupportedException)
+            catch
             {
                 dataTypeName = null;
             }

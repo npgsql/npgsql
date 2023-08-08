@@ -13,7 +13,7 @@ public class PgSerializerOptions
     /// Used by GetSchema to be able to attempt to resolve all type catalog types without exceptions.
     /// </summary>
     [field: ThreadStatic]
-    internal static bool IntrospectionMode { get; set; }
+    internal static bool IntrospectionCaller { get; set; }
 
     readonly Func<string>? _timeZoneProvider;
     object? _typeInfoCache;
@@ -29,7 +29,12 @@ public class PgSerializerOptions
     public PostgresType UnknownPgType { get; set; }
 
     // Used purely for type mapping, where we don't have a full set of types but resolvers might know enough.
-    internal bool ValidatePgTypeIds { get; init; } = true;
+    readonly bool _introspectionInstance;
+    internal bool IntrospectionMode
+    {
+        get => _introspectionInstance || IntrospectionCaller;
+        init => _introspectionInstance = value;
+    }
 
     /// Whether options should return a portable identifier (data type name) to prevent any generated id (oid) confusion across backends, this comes with a perf penalty.
     internal bool PortableTypeIds { get; init; }

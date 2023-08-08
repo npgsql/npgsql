@@ -53,7 +53,7 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
         }
         else
         {
-            var (rentedChars, rentedBytes) = await SystemTextJsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken);
+            var (rentedChars, rentedBytes) = await SystemTextJsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
             var result = _jsonTypeInfo is JsonTypeInfo<T> typeInfoOfT
                 ? JsonSerializer.Deserialize(rentedChars.AsSpan(), typeInfoOfT)
                 : (T?)JsonSerializer.Deserialize(rentedChars.AsSpan(), (JsonTypeInfo<TBase>)_jsonTypeInfo);
