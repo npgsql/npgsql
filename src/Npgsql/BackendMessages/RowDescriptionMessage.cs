@@ -242,7 +242,6 @@ public sealed class FieldDescription
         TypeModifier = source.TypeModifier;
         DataFormat = source.DataFormat;
         _postgresType = source.PostgresType;
-        _objectOrDefaultTypeInfo = source._objectOrDefaultTypeInfo;
         _objectOrDefaultInfo = source._objectOrDefaultInfo;
         _lastTypeInfo = source._lastTypeInfo;
         _lastInfo = source._lastInfo;
@@ -266,7 +265,6 @@ public sealed class FieldDescription
         void Reset()
         {
             _postgresType = null;
-            _objectOrDefaultTypeInfo = null;
             _objectOrDefaultInfo = default;
             _lastTypeInfo = null;
             _lastInfo = default;
@@ -331,31 +329,26 @@ public sealed class FieldDescription
         }
     }
 
-    PgTypeInfo? _objectOrDefaultTypeInfo;
     PgTypeInfo ObjectOrDefaultTypeInfo
     {
         get
         {
-            if (_objectOrDefaultTypeInfo is not null)
-                return _objectOrDefaultTypeInfo;
+            if (!_objectOrDefaultInfo.IsDefault)
+                return _objectOrDefaultInfo.TypeInfo;
 
-            (_objectOrDefaultTypeInfo, _objectOrDefaultInfo) = BindWithTextFallback(GetTypeInfo(_serializerOptions, typeof(object), PostgresType, TypeOID));
-            return _objectOrDefaultTypeInfo;
+            return (_objectOrDefaultInfo = GetInfo(null, _objectOrDefaultInfo)).TypeInfo;
         }
     }
 
     PgConverterInfo _objectOrDefaultInfo;
-
     internal PgConverterInfo ObjectOrDefaultInfo
     {
         get
         {
-            if (_objectOrDefaultTypeInfo is not null)
+            if (!_objectOrDefaultInfo.IsDefault)
                 return _objectOrDefaultInfo;
 
-            // This will populate _objectOrDefaultInfo
-            _ = ObjectOrDefaultTypeInfo;
-            return _objectOrDefaultInfo;
+            return _objectOrDefaultInfo = GetInfo(null, _objectOrDefaultInfo);
         }
     }
 
@@ -369,63 +362,49 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal PgConverterInfo GetConverterInfo(Type type, bool overwrite = true)
-    {
-        PgConverterInfo info;
-        // TODO lock/copy etc., we could race on prepared statements.
-        var lastTypeInfo = _lastTypeInfo;
-        if (ObjectOrDefaultTypeInfo.Type == type)
-            info = ObjectOrDefaultInfo;
-        else if (lastTypeInfo?.Type == type)
-            info = _lastInfo;
-        else
-        {
-            (lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID), type);
-            if (overwrite)
-            {
-                _lastTypeInfo = lastTypeInfo;
-                _lastInfo = info;
-            }
-        }
-        return info;
-    }
-
-    static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType, Oid typeOid)
-    {
-        if (postgresType.OID is 0)
-            return ThrowReadingNotSupported(type, $"unknown oid: {typeOid}");
-
-        return (typeof(object) == type ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType))
-               ?? ThrowReadingNotSupported(type, postgresType.DisplayName);
-    }
-
-    [DoesNotReturn]
-    static PgTypeInfo ThrowReadingNotSupported(Type type, string displayName)
-        => throw new NotSupportedException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for PostgreSQL type '{displayName}'");
-
-    (PgTypeInfo, PgConverterInfo) BindWithTextFallback(PgTypeInfo info, Type? expectedType = null)
+    internal PgConverterInfo GetInfo(Type? type, PgConverterInfo lastConverterInfo)
     {
         PgConverterInfo converterInfo;
-        switch (DataFormat)
+        if (type is not null && ObjectOrDefaultTypeInfo.Type == type)
+            converterInfo = ObjectOrDefaultInfo;
+        else if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeInfo.Type == type)
+            converterInfo = lastConverterInfo;
+        else
         {
-        case DataFormat.Binary:
-            // If we don't support binary we'll just throw.
-            converterInfo = info.Bind(Field, DataFormat);
-            break;
-        default:
-            // For text we'll fall back to any available text converter for the expected clr type or throw.
-            if (!info.TryBind(Field, DataFormat, out converterInfo))
+            var typeInfo = GetTypeInfo(_serializerOptions, type ?? typeof(object), PostgresType, TypeOID);
+            switch (DataFormat)
             {
-                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.UnknownPgType, TypeOID);
-                converterInfo = info.Bind(Field, DataFormat);
+            case DataFormat.Binary:
+                // If we don't support binary we'll just throw.
+                converterInfo = typeInfo.Bind(Field, DataFormat);
+                break;
+            default:
+                // For text we'll fall back to any available text converter for the expected clr type or throw.
+                if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
+                {
+                    typeInfo = GetTypeInfo(_serializerOptions, type ?? typeof(string), _serializerOptions.UnknownPgType, TypeOID);
+                    converterInfo = typeInfo.Bind(Field, DataFormat);
+                }
+                break;
             }
-            break;
+
+            if (type != typeInfo.Type && !converterInfo.AsObject)
+                converterInfo = converterInfo with { AsObject = true };
         }
+        return converterInfo;
 
-        if (expectedType != info.Type && !converterInfo.AsObject)
-            converterInfo = converterInfo with { AsObject = true };
+        static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType, Oid typeOid)
+        {
+            if (postgresType.OID is 0)
+                return ThrowReadingNotSupported(type, $"unknown oid: {typeOid}");
 
-        return (info, converterInfo);
+            return (typeof(object) == type ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType))
+                   ?? ThrowReadingNotSupported(type, postgresType.DisplayName);
+
+            [DoesNotReturn]
+            static PgTypeInfo ThrowReadingNotSupported(Type type, string displayName)
+                => throw new NotSupportedException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for PostgreSQL type '{displayName}'");
+        }
     }
 
     /// <summary>

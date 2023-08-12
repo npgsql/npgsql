@@ -163,6 +163,7 @@ public class PgTypeInfo
     PgConverterInfo CreateConverterInfo(BufferRequirements bufferRequirements, bool isRead, PgConverter converter, Type typeToConvert)
         => new()
         {
+            TypeInfo = this,
             Converter = converter,
             AsObject = Type != typeToConvert,
             BufferRequirement = isRead ? bufferRequirements.Read : bufferRequirements.Write
@@ -210,6 +211,7 @@ public class PgTypeInfo
         size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSize(context, value, ref writeState);
         return new()
         {
+            TypeInfo = this,
             Converter = converter,
             AsObject = IsBoxing,
             BufferRequirement = bufferRequirements.Write,
@@ -240,6 +242,7 @@ public class PgTypeInfo
         size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSizeAsObject(context, value, ref writeState);
         return new()
         {
+            TypeInfo = this,
             Converter = converter,
             AsObject = Type != typeof(object),
             BufferRequirement = bufferRequirements.Write,
@@ -350,6 +353,9 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
 
 public readonly struct PgConverterInfo
 {
+    public bool IsDefault => TypeInfo is null;
+
+    public required PgTypeInfo TypeInfo { get; init; }
     public required PgConverter Converter { get; init; }
     public required Size BufferRequirement { get; init; }
     // Whether Converter.TypeToConvert matches the PgTypeInfo.Type, if it doesn't object apis and a downcast should be used.
