@@ -137,7 +137,7 @@ public class PgReader
 
     public async ValueTask<string> ReadNullTerminatedStringAsync(Encoding encoding, CancellationToken cancellationToken = default)
     {
-        var result = await _buffer.ReadNullTerminatedString(encoding, async: true, cancellationToken);
+        var result = await _buffer.ReadNullTerminatedString(encoding, async: true, cancellationToken).ConfigureAwait(false);
         // Can only check after the fact.
         CheckBounds(0);
         return result;
@@ -188,7 +188,10 @@ public class PgReader
         }
 
         _preparedTextReader ??= new PreparedTextReader();
-        _preparedTextReader.Init(encoding.GetString(async ? await ReadBytesAsync(CurrentRemaining, cancellationToken) : ReadBytes(CurrentRemaining)), GetColumnStream(canSeek: false, 0));
+        _preparedTextReader.Init(
+            encoding.GetString(async
+                ? await ReadBytesAsync(CurrentRemaining, cancellationToken).ConfigureAwait(false)
+                : ReadBytes(CurrentRemaining)), GetColumnStream(canSeek: false, 0));
         return _preparedTextReader;
     }
 
@@ -196,8 +199,9 @@ public class PgReader
     {
         var count = buffer.Length;
         CheckBounds(count);
-        await using var stream = _buffer.CreateStream(count, canSeek: false);
-        await stream.ReadExactlyAsync(buffer, cancellationToken);
+        var stream = _buffer.CreateStream(count, canSeek: false);
+        await using var _ = stream.ConfigureAwait(false);
+        await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
     }
 
     public void ReadBytes(Span<byte> buffer)
@@ -262,7 +266,7 @@ public class PgReader
         }
 
         var array = RentArray(count);
-        await ReadBytesAsync(array.AsMemory(0, count), cancellationToken);
+        await ReadBytesAsync(array.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
         return new(array, 0, count);
     }
 
@@ -289,7 +293,7 @@ public class PgReader
             if (!_userActiveStream.IsDisposed)
             {
                 if (async)
-                    await _userActiveStream.DisposeAsync();
+                    await _userActiveStream.DisposeAsync().ConfigureAwait(false);
                 else
                     _userActiveStream.Dispose();
             }
@@ -411,7 +415,7 @@ public class PgReader
     {
         _readStarted = true;
         _currentBufferRequirement = bufferRequirement;
-        await BufferData(async, bufferRequirement, cancellationToken);
+        await BufferData(async, bufferRequirement, cancellationToken).ConfigureAwait(false);
     }
 
     internal void EndRead()
@@ -445,7 +449,7 @@ public class PgReader
         _currentBufferRequirement = bufferRequirement;
         _currentStartPos = Pos;
 
-        await BufferData(async, bufferRequirement, cancellationToken);
+        await BufferData(async, bufferRequirement, cancellationToken).ConfigureAwait(false);
         return new NestedReadScope(async, this, previousSize, previousStartPos, previousBufferRequirement);
     }
 
@@ -473,7 +477,7 @@ public class PgReader
 
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
         if (!_buffer.Connector.IsBroken)
-            await _buffer.Skip(remaining, async);
+            await _buffer.Skip(remaining, async).ConfigureAwait(false);
     }
 
     public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
@@ -492,14 +496,14 @@ public class PgReader
             return;
 
         // Shut down any streaming going on on the column
-        await DisposeUserActiveStream(async);
+        await DisposeUserActiveStream(async).ConfigureAwait(false);
 
         // If it was a resumable read while the next one isn't we'll consume everything.
         // If we're in a _readStarted state we'll assume we had an exception and we'll consume silently as well.
         if (Resumable || _readStarted)
         {
             if (async)
-                await ConsumeAsync();
+                await ConsumeAsync().ConfigureAwait(false);
             else
                 Consume();
         }
@@ -577,7 +581,7 @@ public class PgReader
 
         async ValueTask EnsureDataAsyncCore(int byteCount, CancellationToken cancellationToken)
         {
-            await _buffer.EnsureAsync(byteCount);
+            await _buffer.EnsureAsync(byteCount).ConfigureAwait(false);
         }
     }
 
@@ -631,7 +635,7 @@ public readonly struct NestedReadScope : IDisposable, IAsyncDisposable
 
         static async ValueTask AsyncCore(PgReader reader, int previousSize, int previousStartPos, Size previousBufferRequirement)
         {
-            await reader.ConsumeAsync();
+            await reader.ConsumeAsync().ConfigureAwait(false);
             reader.Revert(previousSize, previousStartPos, previousBufferRequirement);
         }
     }

@@ -357,7 +357,7 @@ public class PgWriter
             do
             {
                 if (ShouldFlush(minBufferSize))
-                    await FlushAsync(cancellationToken);
+                    await FlushAsync(cancellationToken).ConfigureAwait(false);
                 Ensure(minBufferSize);
                 // TODO incorrect use of flush
                 encoder.Convert(data.Span, Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
@@ -400,7 +400,7 @@ public class PgWriter
                 Advance(write);
                 buffer = buffer.Slice(write);
                 if (Remaining is 0)
-                    await FlushAsync(cancellationToken);
+                    await FlushAsync(cancellationToken).ConfigureAwait(false);
             }
         }
     }

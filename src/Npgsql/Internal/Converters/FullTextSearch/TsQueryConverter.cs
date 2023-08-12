@@ -22,7 +22,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
         => (T)Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
 
     public override async ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => (T)await Read(async: true, reader, cancellationToken);
+        => (T)await Read(async: true, reader, cancellationToken).ConfigureAwait(false);
 
     async ValueTask<NpgsqlTsQuery> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
@@ -166,7 +166,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
         if (numTokens is 0)
             return;
 
-        await WriteCore(value);
+        await WriteCore(value).ConfigureAwait(false);
 
         async Task WriteCore(NpgsqlTsQuery node)
         {
