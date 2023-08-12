@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -190,6 +189,14 @@ public class PgTypeInfo
         return success ? bufferRequirements : null;
     }
 
+    public static PgTypeInfo CreateFrom(PgTypeInfo typeInfo, PgTypeId pgTypeId)
+        => typeInfo switch
+        {
+            PgResolverTypeInfo resolverTypeInfo => new PgResolverTypeInfo(resolverTypeInfo.Options, resolverTypeInfo._converterResolver,
+                pgTypeId, resolverTypeInfo.IsBoxing ? resolverTypeInfo.Type : null),
+            _ => new PgTypeInfo(typeInfo.Options, typeInfo.Converter!, pgTypeId, typeInfo.IsBoxing ? typeInfo.Type : null)
+        };
+
     // Bind for writing.
     /// When result is null, the value was interpreted to be a SQL NULL.
     public PgConverterInfo? Bind<T>(PgConverterResolution resolution, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
@@ -249,45 +256,6 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo AsObjectTypeInfo(Type? unboxedType = null, bool supportsWriting = false)
-    {
-        // No-op in this case.
-        if (Type == unboxedType && IsBoxing)
-            return this;
-
-        if (IsResolverInfo)
-            return new PgResolverTypeInfo(Options, new CastingConverterResolver<object>((PgResolverTypeInfo)this), PgTypeId.GetValueOrDefault(), unboxedType)
-            {
-                PreferredFormat = PreferredFormat,
-                SupportsWriting = supportsWriting && SupportsWriting
-            };
-
-        return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault(), unboxedType)
-        {
-            PreferredFormat = PreferredFormat,
-            SupportsWriting = supportsWriting && SupportsWriting
-        };
-    }
-
-    internal PgTypeInfo ToComposedTypeInfo(PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
-    {
-        if (IsResolverInfo && PgTypeId is null)
-            throw new InvalidOperationException("Cannot compose a normal converter info on top of an undecided resolver based type info.");
-
-        return new(Options, converter, pgTypeId, unboxedType)
-        {
-            PreferredFormat = PreferredFormat,
-            SupportsWriting = SupportsWriting
-        };
-    }
-
-    internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null, bool supportsWriting = true)
-        => new PgResolverTypeInfo(Options, resolver, expectedPgTypeId, unboxedType)
-        {
-            PreferredFormat = PreferredFormat,
-            SupportsWriting = supportsWriting && SupportsWriting
-        };
-
     // If we don't have a converter stored we must ask the retrieved one.
     DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
     {
@@ -315,7 +283,7 @@ public class PgTypeInfo
 
 public sealed class PgResolverTypeInfo : PgTypeInfo
 {
-    readonly PgConverterResolver _converterResolver;
+    internal readonly PgConverterResolver _converterResolver;
 
     public PgResolverTypeInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
         : base(options,
