@@ -28,6 +28,7 @@ public class ReplicationValue
 
     bool _columnConsumed;
     FieldDescription _fieldDescription = null!;
+    PgConverterInfo _lastInfo;
 
     /// <summary>
     /// A stream that has been opened on a column.
@@ -94,7 +95,7 @@ public class ReplicationValue
     {
         CheckAndMarkConsumed();
 
-        var info = _fieldDescription.GetConverterInfo(typeof(T));
+        var info = _lastInfo = _fieldDescription.GetInfo(typeof(T), _lastInfo);
 
         switch (Kind)
         {
@@ -228,7 +229,7 @@ public class ReplicationValue
     /// </summary>
     public TextReader GetTextReader()
     {
-        var info = _fieldDescription.GetConverterInfo(typeof(TextReader));
+        var info = _lastInfo = _fieldDescription.GetInfo(typeof(TextReader), _lastInfo);
         var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
         Debug.Assert(info.BufferRequirement == Size.Zero);
         reader.BufferData(info.BufferRequirement);

@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -97,6 +98,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// The RowDescription message for the current resultset being processed
     /// </summary>
     internal RowDescriptionMessage? RowDescription;
+
+    /// <summary>
+    /// Stores the last converter info resolved by column, to speed up repeated reading.
+    /// </summary>
+    PgConverterInfo[]? _columnInfoCache;
 
     ulong? _recordsAffected;
 
@@ -447,7 +453,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     };
                 }
 
-                if (RowDescription == null)
+                if (RowDescription is not null)
+                {
+                    if (_columnInfoCache?.Length >= RowDescription.Count)
+                        Array.Clear(_columnInfoCache);
+                    else
+                    {
+                        if (_columnInfoCache is not null)
+                            ArrayPool<PgConverterInfo>.Shared.Return(_columnInfoCache);
+                        _columnInfoCache = ArrayPool<PgConverterInfo>.Shared.Rent(RowDescription.Count);
+                    }
+                }
+                else
                 {
                     // Statement did not generate a resultset (e.g. INSERT)
                     // Read and process its completion message and move on to the next statement
@@ -513,6 +530,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             State = ReaderState.Consumed;
             RowDescription = null;
+            if (_columnInfoCache is not null)
+                ArrayPool<PgConverterInfo>.Shared.Return(_columnInfoCache);
             return false;
         }
         catch (Exception e)
@@ -713,8 +732,24 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 }
 
                 // Found a resultset
-                if (RowDescription != null)
+                if (RowDescription is not null)
+                {
+                    if (_columnInfoCache?.Length >= RowDescription.Count)
+                        Array.Clear(_columnInfoCache);
+                    else
+                    {
+                        if (_columnInfoCache is not null)
+                            ArrayPool<PgConverterInfo>.Shared.Return(_columnInfoCache);
+                        _columnInfoCache = ArrayPool<PgConverterInfo>.Shared.Rent(RowDescription.Count);
+                    }
                     return true;
+                }
+            }
+
+			if (_columnInfoCache is not null)
+            {
+            	ArrayPool<PgConverterInfo>.Shared.Return(_columnInfoCache);
+                _columnInfoCache = null;
             }
 
             RowDescription = null;
@@ -2065,7 +2100,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     PgConverterInfo GetInfo(int ordinal, Type? type, out FieldDescription field)
     {
         field = CheckRowAndGetField(ordinal);
-        return type is null ? field.ObjectOrDefaultInfo : field.GetConverterInfo(type);
+        if (type is null)
+            return field.ObjectOrDefaultInfo;
+
+        ref var cachedInfo = ref _columnInfoCache![ordinal];
+        return cachedInfo = field.GetInfo(type, cachedInfo);
     }
 
     FieldDescription CheckRowAndGetField(int column)

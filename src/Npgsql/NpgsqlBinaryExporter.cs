@@ -34,7 +34,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// </summary>
     internal int NumColumns { get; private set; }
 
-    PgConverterInfo?[] _infoLookup;
+    PgConverterInfo[] _columnInfoCache;
 
     readonly ILogger _copyLogger;
 
@@ -61,7 +61,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _buf = connector.ReadBuffer;
         _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
         _column = -1;
-        _infoLookup = null!;
+        _columnInfoCache = null!;
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
@@ -95,7 +95,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         }
 
         NumColumns = copyOutResponse.NumColumns;
-        _infoLookup = new PgConverterInfo?[NumColumns];
+        _columnInfoCache = new PgConverterInfo[NumColumns];
         _rowsExported = 0;
         await ReadHeader(async);
     }
@@ -216,7 +216,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column == -1 || _column == NumColumns)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
-        return DoRead<T>(_infoLookup[_column] ??= CreateConverterInfo(typeof(T)), async, cancellationToken);
+        ref var cachedInfo = ref _columnInfoCache[_column];
+        return DoRead<T>(cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T)) : cachedInfo, async, cancellationToken);
     }
 
     PgConverterInfo CreateConverterInfo(Type type, NpgsqlDbType? npgsqlDbType = null)
@@ -284,7 +285,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column == -1 || _column == NumColumns)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
-        return DoRead<T>(_infoLookup[_column] ??= CreateConverterInfo(typeof(T), type), async, cancellationToken);
+        ref var cachedInfo = ref _columnInfoCache[_column];
+        return DoRead<T>(cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T), type) : cachedInfo, async, cancellationToken);
     }
 
     async ValueTask<T> DoRead<T>(PgConverterInfo info, bool async, CancellationToken cancellationToken = default)
