@@ -120,7 +120,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
 #endif
         async ValueTask Core(CompositeBuilder builder, ValueTask<T> task)
         {
-            builder.AddValue(await task);
+            builder.AddValue(await task.ConfigureAwait(false));
         }
     }
 

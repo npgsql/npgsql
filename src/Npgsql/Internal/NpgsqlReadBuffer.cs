@@ -319,7 +319,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                 {
                     var toRead = buffer.Size - buffer.FilledBytes;
                     var read = async
-                        ? await buffer.Underlying.ReadAsync(buffer.Buffer.AsMemory(buffer.FilledBytes, toRead), finalCt)
+                        ? await buffer.Underlying.ReadAsync(buffer.Buffer.AsMemory(buffer.FilledBytes, toRead), finalCt).ConfigureAwait(false)
                         : buffer.Underlying.Read(buffer.Buffer, buffer.FilledBytes, toRead);
 
                     if (read == 0)
@@ -458,11 +458,11 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             while (len > Size)
             {
                 ResetPosition();
-                await Ensure(Size, async);
+                await Ensure(Size, async).ConfigureAwait(false);
                 len -= Size;
             }
             ResetPosition();
-            await Ensure((int)len, async);
+            await Ensure((int)len, async).ConfigureAwait(false);
         }
 
         ReadPosition += (int)len;
@@ -744,7 +744,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
                 do
                 {
-                    await ReadMore(async);
+                    await ReadMore(async).ConfigureAwait(false);
                     Debug.Assert(ReadPosition == 0);
 
                     foundTerminator = false;

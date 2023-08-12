@@ -117,7 +117,7 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             writer.WriteInt32(length);
             if (length != -1)
             {
-                using var _ = await writer.BeginNestedWrite(async, _rangeRequirements.Write, length, state, cancellationToken).ConfigureAwait(false);;
+                using var _ = await writer.BeginNestedWrite(async, _rangeRequirements.Write, length, state, cancellationToken).ConfigureAwait(false);
                 if (async)
                     await _rangeConverter.WriteAsync(writer, value[i], cancellationToken).ConfigureAwait(false);
                 else

@@ -56,7 +56,7 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
             if (!reader.IsResumed)
             {
                 if (reader.ShouldBuffer(sizeof(byte)))
-                    await reader.BufferData(async, sizeof(byte), cancellationToken);
+                    await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
                 var version = reader.ReadByte();
                 if (version != JsonbProtocolVersion)
@@ -64,11 +64,11 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
             }
 
             // No need for a nested read, all text converters will read CurrentRemaining bytes.
-            await reader.BufferData(async, readRequirement, cancellationToken);
-            return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
+            await reader.BufferData(async, readRequirement, cancellationToken).ConfigureAwait(false);
+            return async ? await _textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : _textConverter.Read(reader);
         }
 
-        return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
+        return async ? await _textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : _textConverter.Read(reader);
     }
 
     async ValueTask Write(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
