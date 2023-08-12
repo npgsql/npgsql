@@ -1283,27 +1283,6 @@ $$;");
     }
 
     [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/3839")]
-    public async Task SingleThreadedSynchronizationContext_deadlock()
-    {
-        var syncContext = new SingleThreadSynchronizationContext(nameof(SingleThreadedSynchronizationContext_deadlock));
-        using (var _ = syncContext.Enter())
-        {
-            // We have to Yield, so the current thread is changed to the one used by SingleThreadSynchronizationContext
-            await Task.Yield();
-            using var connection = OpenConnection();
-
-            var data = new string('x', 5_000_000);
-            using var cmd = new NpgsqlCommand("SELECT generate_series(1, 500000); SELECT @p", connection);
-            cmd.Parameters.AddWithValue("p", NpgsqlDbType.Text, data);
-            cmd.ExecuteNonQuery();
-        }
-
-        // We have to make another Yield to change the current thread from the one used by SingleThreadSynchronizationContext
-        await Task.Yield();
-    }
-
-    [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3924")]
     public async Task Bug3924()
     {

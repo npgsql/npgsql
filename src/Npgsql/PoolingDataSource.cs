@@ -60,7 +60,8 @@ class PoolingDataSource : NpgsqlDataSource
 
     volatile int _isClearing;
 
-    static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
+    static readonly ConcurrentExclusiveSchedulerPair ConstrainedConcurrencyScheduler =
+        new(TaskScheduler.Default, Math.Max(1, Environment.ProcessorCount / 2));
 
     #endregion
 
@@ -148,26 +149,16 @@ class PoolingDataSource : NpgsqlDataSource
                 {
                     try
                     {
-                        if (async)
-                        {
-                            connector = await _idleConnectorReader.ReadAsync(finalToken);
-                            if (CheckIdleConnector(connector))
-                                return connector;
-                        }
-                        else
-                        {
-                            // Channels don't have a sync API. To avoid sync-over-async issues, we use a special single-
-                            // thread synchronization context which ensures that callbacks are executed on a dedicated
-                            // thread.
-                            // Note that AsTask isn't safe here for getting the result, since it still causes some continuation code
-                            // to get executed on the TP (which can cause deadlocks).
-                            using (SingleThreadSynchronizationContext.Enter())
-                            using (var mre = new ManualResetEventSlim())
-                            {
-                                _idleConnectorReader.WaitToReadAsync(finalToken).GetAwaiter().OnCompleted(() => mre.Set());
-                                mre.Wait(finalToken);
-                            }
-                        }
+                        var task = _idleConnectorReader.ReadAsync(finalToken);
+                        if (!async && !task.IsCompleted)
+                            await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
+
+                        connector = await task;
+                        if (CheckIdleConnector(connector))
+                            return connector;
+
+                        if (!async && TaskScheduler.Current == ConstrainedConcurrencyScheduler.ConcurrentScheduler)
+                            await new TaskSchedulerAwaitable(TaskScheduler.Default);
                     }
                     catch (OperationCanceledException)
                     {

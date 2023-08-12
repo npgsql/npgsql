@@ -136,8 +136,8 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         {
             if (async)
             {
-                await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
-                await Underlying.FlushAsync(finalCt);
+                await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt).ConfigureAwait(false);
+                await Underlying.FlushAsync(finalCt).ConfigureAwait(false);
                 if (Timeout > TimeSpan.Zero)
                     _timeoutCts.Stop();
             }
@@ -218,7 +218,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
     internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async, CancellationToken cancellationToken = default)
     {
-        await Flush(async, cancellationToken);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
 
         if (_copyMode)
         {
@@ -230,7 +230,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             WriteInt32(memory.Length + 4);
             WritePosition = 5;
             _copyMode = false;
-            await Flush(async, cancellationToken);
+            await Flush(async, cancellationToken).ConfigureAwait(false);
             _copyMode = true;
             WriteCopyDataHeader();  // And ready the buffer after the direct write completes
         }
@@ -240,7 +240,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         try
         {
             if (async)
-                await Underlying.WriteAsync(memory, cancellationToken);
+                await Underlying.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
             else
                 Underlying.Write(memory.Span);
         }
@@ -360,7 +360,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             {
                 // String can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below (which requires ToCharArray())
-                await buffer.Flush(async, cancellationToken);
+                await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
                 buffer.WriteString(s, charLen);
             }
             else
@@ -371,7 +371,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
                     buffer.WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
                     if (completed)
                         break;
-                    await buffer.Flush(async, cancellationToken);
+                    await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
                     charPos += charsUsed;
                 }
             }
@@ -462,7 +462,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             {
                 // value can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below
-                await buffer.Flush(async, cancellationToken);
+                await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
                 buffer.WriteBytes(bytes);
             }
             else
@@ -471,7 +471,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
                 do
                 {
                     if (buffer.WriteSpaceLeft == 0)
-                        await buffer.Flush(async, cancellationToken);
+                        await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
                     var writeLen = Math.Min(remaining, buffer.WriteSpaceLeft);
                     var offset = bytes.Length - remaining;
                     buffer.WriteBytes(bytes.Slice(offset, writeLen));
@@ -487,11 +487,11 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         while (count > 0)
         {
             if (WriteSpaceLeft == 0)
-                await Flush(async, cancellationToken);
+                await Flush(async, cancellationToken).ConfigureAwait(false);
             try
             {
                 var read = async
-                    ? await stream.ReadAsync(Buffer, WritePosition, Math.Min(WriteSpaceLeft, count), cancellationToken)
+                    ? await stream.ReadAsync(Buffer, WritePosition, Math.Min(WriteSpaceLeft, count), cancellationToken).ConfigureAwait(false)
                     : stream.Read(Buffer, WritePosition, Math.Min(WriteSpaceLeft, count));
                 if (read == 0)
                     throw new EndOfStreamException();
