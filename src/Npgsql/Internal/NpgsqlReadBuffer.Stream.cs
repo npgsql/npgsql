@@ -9,6 +9,9 @@ namespace Npgsql.Internal;
 sealed partial class NpgsqlReadBuffer
 {
     internal sealed class ColumnStream : Stream
+#if NETSTANDARD2_0
+        , IAsyncDisposable
+#endif
     {
         readonly NpgsqlConnector _connector;
         readonly NpgsqlReadBuffer _buf;

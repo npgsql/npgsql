@@ -456,7 +456,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 if (RowDescription is not null)
                 {
                     if (_columnInfoCache?.Length >= RowDescription.Count)
-                        Array.Clear(_columnInfoCache);
+                        Array.Clear(_columnInfoCache, 0, _columnInfoCache.Length);
                     else
                     {
                         if (_columnInfoCache is not null)
@@ -735,7 +735,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 if (RowDescription is not null)
                 {
                     if (_columnInfoCache?.Length >= RowDescription.Count)
-                        Array.Clear(_columnInfoCache);
+                        Array.Clear(_columnInfoCache, 0, _columnInfoCache.Length);
                     else
                     {
                         if (_columnInfoCache is not null)

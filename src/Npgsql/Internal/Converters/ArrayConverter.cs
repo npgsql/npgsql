@@ -540,8 +540,8 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
 
     PgSerializerOptions Options => EffectiveTypeInfo.Options;
 
-    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetMultirangeElementTypeId(pgTypeId);
-    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetMultirangeTypeId(effectivePgTypeId);
+    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
+    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
         => typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>)

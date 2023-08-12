@@ -580,7 +580,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         PgTypeId GetRepresentationalOrDefault(string dataTypeName)
         {
             var type = options.TypeCatalog.GetPostgresTypeByName(dataTypeName);
-            return options.ToCanonicalTypeId(type.GetRepresentationalType() ?? type);
+            return options.ToCanonicalTypeId(type.GetRepresentationalType());
         }
     }
 

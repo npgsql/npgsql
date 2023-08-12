@@ -478,13 +478,19 @@ public sealed class TypeInfoMappingCollection
                     _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
                     ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
                     ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                    ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, mapping, dataTypeNameMatch).ToComposedTypeInfo(
+                    ArrayNullabilityMode.PerInstance => CreateComposedPerInstance(
+                        arrayMapping.Factory(options, mapping, dataTypeNameMatch),
                         new PolymorphicArrayConverterResolver<Array>(
                             (PgResolverTypeInfo)arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                            (PgResolverTypeInfo)nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch)
-                        ), options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), supportsWriting: false),
+                            (PgResolverTypeInfo)nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch)),
+                        mapping.DataTypeName
+                    ),
                     _ => throw new ArgumentOutOfRangeException()
                 }) { MatchRequirement = MatchRequirement.DataTypeName });
+
+            PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerTypeInfo, PgConverterResolver resolver, string dataTypeName)
+                => new PgResolverTypeInfo(innerTypeInfo.Options, resolver,
+                    innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName))) { SupportsWriting = false };
         }
 
     public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
