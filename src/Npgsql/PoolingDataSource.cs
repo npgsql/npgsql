@@ -156,9 +156,6 @@ class PoolingDataSource : NpgsqlDataSource
                         connector = await task;
                         if (CheckIdleConnector(connector))
                             return connector;
-
-                        if (!async && TaskScheduler.Current == ConstrainedConcurrencyScheduler.ConcurrentScheduler)
-                            await new TaskSchedulerAwaitable(TaskScheduler.Default);
                     }
                     catch (OperationCanceledException)
                     {
