@@ -60,7 +60,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         }
         else
         {
-            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
+            mappings.AddResolverStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
                 static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                     DateTimeConverterResolver.CreateRangeResolver(options,
                         options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
@@ -81,7 +81,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         }
         else
         {
-            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
+            mappings.AddResolverStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
                 static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                     DateTimeConverterResolver.CreateRangeResolver(options,
                         options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
