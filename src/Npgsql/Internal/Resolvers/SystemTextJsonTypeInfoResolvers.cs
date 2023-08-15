@@ -47,11 +47,11 @@ class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
     {
         foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
         {
-            mappings.AddArrayType<JsonDocument>((string)dataTypeName);
-            mappings.AddArrayType<JsonNode>((string)dataTypeName);
-            mappings.AddArrayType<JsonObject>((string)dataTypeName);
-            mappings.AddArrayType<JsonArray>((string)dataTypeName);
-            mappings.AddArrayType<JsonValue>((string)dataTypeName);
+            mappings.AddArrayType<JsonDocument>(dataTypeName);
+            mappings.AddArrayType<JsonNode>(dataTypeName);
+            mappings.AddArrayType<JsonObject>(dataTypeName);
+            mappings.AddArrayType<JsonArray>(dataTypeName);
+            mappings.AddArrayType<JsonValue>(dataTypeName);
         }
     }
 
@@ -106,7 +106,7 @@ class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
             var baseType = jsonb ? null : typeof(object);
 
             // Match all types except object as long as DataTypeName (json/jsonb) is present.
-            mappings.Add(new TypeInfoMapping(typeof(object), (string)(jsonb ? DataTypeNames.Jsonb : DataTypeNames.Json),
+            mappings.Add(new TypeInfoMapping(typeof(object), jsonb ? DataTypeNames.Jsonb : DataTypeNames.Json,
                 (options, mapping, _) => mapping.CreateInfo(options, CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, serializerOptions, baseType ?? mapping.Type)))
             {
                 TypeMatchPredicate = type => type != typeof(object),
@@ -158,8 +158,8 @@ class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
             AddArrayType(mappings, jsonClrType, DataTypeNames.Json);
 
         // Fallback mappings
-        mappings.AddArrayType<object>((string)DataTypeNames.Jsonb);
-        mappings.AddArrayType<object>((string)DataTypeNames.Json);
+        mappings.AddArrayType<object>(DataTypeNames.Jsonb);
+        mappings.AddArrayType<object>(DataTypeNames.Json);
 
     }
 
@@ -170,7 +170,7 @@ class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
         => (type.IsValueType ? AddStructTypeMethodInfo : AddTypeMethodInfo).MakeGenericMethod(type)
             .Invoke(mappings, new object?[]
         {
-            dataTypeName,
+            (string)dataTypeName,
             factory,
             configureMapping
         });
@@ -183,13 +183,13 @@ class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
             });
 
     static readonly MethodInfo AddTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddType),
-        new[] { typeof(DataTypeName), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
+        new[] { typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
 
     static readonly MethodInfo AddArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
         .GetMethod(nameof(TypeInfoMappingCollection.AddArrayType), new[] { typeof(string) }) ?? throw new NullReferenceException();
 
     static readonly MethodInfo AddStructTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddStructType),
-        new[] { typeof(DataTypeName), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
+        new[] { typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
 
     static readonly MethodInfo AddStructArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
         .GetMethod(nameof(TypeInfoMappingCollection.AddStructArrayType), new[] { typeof(string) }) ?? throw new NullReferenceException();

@@ -227,89 +227,89 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // numeric ranges
-        mappings.AddStructArrayType<NpgsqlRange<int>>((string)DataTypeNames.Int4Range);
-        mappings.AddStructArrayType<NpgsqlRange<long>>((string)DataTypeNames.Int8Range);
-        mappings.AddStructArrayType<NpgsqlRange<decimal>>((string)DataTypeNames.NumRange);
-        mappings.AddStructArrayType<NpgsqlRange<BigInteger>>((string)DataTypeNames.NumRange);
+        mappings.AddStructArrayType<NpgsqlRange<int>>(DataTypeNames.Int4Range);
+        mappings.AddStructArrayType<NpgsqlRange<long>>(DataTypeNames.Int8Range);
+        mappings.AddStructArrayType<NpgsqlRange<decimal>>(DataTypeNames.NumRange);
+        mappings.AddStructArrayType<NpgsqlRange<BigInteger>>(DataTypeNames.NumRange);
 
         // daterange
-        mappings.AddStructArrayType<NpgsqlRange<DateTime>>((string)DataTypeNames.DateRange);
-        mappings.AddStructArrayType<NpgsqlRange<int>>((string)DataTypeNames.DateRange);
+        mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange);
+        mappings.AddStructArrayType<NpgsqlRange<int>>(DataTypeNames.DateRange);
 #if NET6_0_OR_GREATER
-        mappings.AddStructArrayType<NpgsqlRange<DateOnly>>((string)DataTypeNames.DateRange);
+        mappings.AddStructArrayType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange);
 #endif
 
         // tsrange
         if (Statics.LegacyTimestampBehavior)
-            mappings.AddStructArrayType<NpgsqlRange<DateTime>>((string)DataTypeNames.TsRange);
+            mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange);
         else
-            mappings.AddResolverStructArrayType<NpgsqlRange<DateTime>>((string)DataTypeNames.TsRange);
-        mappings.AddStructArrayType<NpgsqlRange<long>>((string)DataTypeNames.TsRange);
+            mappings.AddResolverStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange);
+        mappings.AddStructArrayType<NpgsqlRange<long>>(DataTypeNames.TsRange);
 
         // tstzrange
         if (Statics.LegacyTimestampBehavior)
         {
-            mappings.AddStructArrayType<NpgsqlRange<DateTime>>((string)DataTypeNames.TsTzRange);
-            mappings.AddStructArrayType<NpgsqlRange<DateTimeOffset>>((string)DataTypeNames.TsTzRange);
+            mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange);
+            mappings.AddStructArrayType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange);
         }
         else
         {
-            mappings.AddResolverStructArrayType<NpgsqlRange<DateTime>>((string)DataTypeNames.TsTzRange);
-            mappings.AddStructArrayType<NpgsqlRange<DateTimeOffset>>((string)DataTypeNames.TsTzRange);
+            mappings.AddResolverStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange);
+            mappings.AddStructArrayType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange);
         }
-        mappings.AddStructArrayType<NpgsqlRange<long>>((string)DataTypeNames.TsTzRange);
+        mappings.AddStructArrayType<NpgsqlRange<long>>(DataTypeNames.TsTzRange);
 
         // int4multirange
-        mappings.AddArrayType<NpgsqlRange<int>[]>((string)DataTypeNames.Int4Multirange);
-        mappings.AddArrayType<List<NpgsqlRange<int>>>((string)DataTypeNames.Int4Multirange);
+        mappings.AddArrayType<NpgsqlRange<int>[]>(DataTypeNames.Int4Multirange);
+        mappings.AddArrayType<List<NpgsqlRange<int>>>(DataTypeNames.Int4Multirange);
 
         // int8multirange
-        mappings.AddArrayType<NpgsqlRange<long>[]>((string)DataTypeNames.Int8Multirange);
-        mappings.AddArrayType<List<NpgsqlRange<long>>>((string)DataTypeNames.Int8Multirange);
+        mappings.AddArrayType<NpgsqlRange<long>[]>(DataTypeNames.Int8Multirange);
+        mappings.AddArrayType<List<NpgsqlRange<long>>>(DataTypeNames.Int8Multirange);
 
         // nummultirange
-        mappings.AddArrayType<NpgsqlRange<decimal>[]>((string)DataTypeNames.NumMultirange);
-        mappings.AddArrayType<List<NpgsqlRange<decimal>>>((string)DataTypeNames.NumMultirange);
+        mappings.AddArrayType<NpgsqlRange<decimal>[]>(DataTypeNames.NumMultirange);
+        mappings.AddArrayType<List<NpgsqlRange<decimal>>>(DataTypeNames.NumMultirange);
 
         // datemultirange
-        mappings.AddArrayType<NpgsqlRange<DateTime>[]>((string)DataTypeNames.DateMultirange);
-        mappings.AddArrayType<List<NpgsqlRange<DateTime>>>((string)DataTypeNames.DateMultirange);
+        mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange);
+        mappings.AddArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.DateMultirange);
 #if NET6_0_OR_GREATER
-        mappings.AddArrayType<NpgsqlRange<DateOnly>[]>((string)DataTypeNames.DateMultirange);
-        mappings.AddArrayType<List<NpgsqlRange<DateOnly>>>((string)DataTypeNames.DateMultirange);
+        mappings.AddArrayType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange);
+        mappings.AddArrayType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange);
 #endif
 
         // tsmultirange
         if (Statics.LegacyTimestampBehavior)
         {
-            mappings.AddArrayType<NpgsqlRange<DateTime>[]>((string)DataTypeNames.TsMultirange);
-            mappings.AddArrayType<List<NpgsqlRange<DateTime>>>((string)DataTypeNames.TsMultirange);
+            mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsMultirange);
+            mappings.AddArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange);
         }
         else
         {
-            mappings.AddResolverArrayType<NpgsqlRange<DateTime>[]>((string)DataTypeNames.TsMultirange);
-            mappings.AddResolverArrayType<List<NpgsqlRange<DateTime>>>((string)DataTypeNames.TsMultirange);
+            mappings.AddResolverArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsMultirange);
+            mappings.AddResolverArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange);
         }
-        mappings.AddArrayType<NpgsqlRange<long>[]>((string)DataTypeNames.TsMultirange);
-        mappings.AddArrayType<List<NpgsqlRange<long>>>((string)DataTypeNames.TsMultirange);
+        mappings.AddArrayType<NpgsqlRange<long>[]>(DataTypeNames.TsMultirange);
+        mappings.AddArrayType<List<NpgsqlRange<long>>>(DataTypeNames.TsMultirange);
 
         // tstzmultirange
         if (Statics.LegacyTimestampBehavior)
         {
-            mappings.AddArrayType<NpgsqlRange<DateTime>[]>((string)DataTypeNames.TsTzMultirange);
-            mappings.AddArrayType<List<NpgsqlRange<DateTime>>>((string)DataTypeNames.TsTzMultirange);
-            mappings.AddArrayType<NpgsqlRange<DateTime>[]>((string)DataTypeNames.TsTzMultirange);
-            mappings.AddArrayType<List<NpgsqlRange<DateTimeOffset>>>((string)DataTypeNames.TsTzMultirange);
+            mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange);
+            mappings.AddArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange);
+            mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange);
+            mappings.AddArrayType<List<NpgsqlRange<DateTimeOffset>>>(DataTypeNames.TsTzMultirange);
         }
         else
         {
-            mappings.AddResolverArrayType<NpgsqlRange<DateTime>[]>((string)DataTypeNames.TsTzMultirange);
-            mappings.AddResolverArrayType<List<NpgsqlRange<DateTime>>>((string)DataTypeNames.TsTzMultirange);
-            mappings.AddArrayType<NpgsqlRange<DateTimeOffset>[]>((string)DataTypeNames.TsTzMultirange);
-            mappings.AddArrayType<List<NpgsqlRange<DateTimeOffset>>>((string)DataTypeNames.TsTzMultirange);
+            mappings.AddResolverArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange);
+            mappings.AddResolverArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange);
+            mappings.AddArrayType<NpgsqlRange<DateTimeOffset>[]>(DataTypeNames.TsTzMultirange);
+            mappings.AddArrayType<List<NpgsqlRange<DateTimeOffset>>>(DataTypeNames.TsTzMultirange);
         }
-        mappings.AddArrayType<NpgsqlRange<long>[]>((string)DataTypeNames.TsTzMultirange);
-        mappings.AddArrayType<List<NpgsqlRange<long>>>((string)DataTypeNames.TsTzMultirange);
+        mappings.AddArrayType<NpgsqlRange<long>[]>(DataTypeNames.TsTzMultirange);
+        mappings.AddArrayType<List<NpgsqlRange<long>>>(DataTypeNames.TsTzMultirange);
     }
 
     public static void ThrowIfUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)

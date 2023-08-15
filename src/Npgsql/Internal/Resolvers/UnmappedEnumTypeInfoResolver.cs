@@ -31,7 +31,7 @@ class UnmappedEnumTypeInfoResolver : IPgTypeInfoResolver
 
     protected void CreateEnumMapping(TypeInfoMappingCollection mappings, Type type, DataTypeName dataTypeName)
         => AddStructTypeMethodInfo.MakeGenericMethod(type).Invoke(mappings, new object?[] {
-            dataTypeName,
+            (string)dataTypeName,
             new TypeInfoFactory((options, mapping, _) =>
             {
                 var enumToLabel = new Dictionary<Enum, string>();
@@ -56,7 +56,7 @@ class UnmappedEnumTypeInfoResolver : IPgTypeInfoResolver
         => (enumType = type).IsEnum || (enumType = Nullable.GetUnderlyingType(type!))?.IsEnum == true;
 
     static readonly MethodInfo AddStructTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddStructType),
-        new[] { typeof(DataTypeName), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
+        new[] { typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
 }
 
 [RequiresUnreferencedCode("Unmapped enum resolver may perform reflection on types with fields that were trimmed if not referenced directly.")]

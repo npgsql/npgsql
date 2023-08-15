@@ -172,7 +172,7 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
                 var tsOp = opStack.Pop();
                 valStack.Push((char)tsOp switch
                 {
-                    '&' => (NpgsqlTsQuery)new NpgsqlTsQueryAnd(left, right),
+                    '&' => new NpgsqlTsQueryAnd(left, right),
                     '|' => new NpgsqlTsQueryOr(left, right),
                     '<' => new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right),
                     _   => throw new FormatException("Syntax error in tsquery")
