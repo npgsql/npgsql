@@ -68,7 +68,11 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
 
     public override Size GetSize(SizeContext context, T? value, ref object? writeState)
     {
-        var stream = new MemoryStream();
+        var capacity = 0;
+        if (typeof(T) == typeof(JsonDocument))
+            capacity = ((JsonDocument?)(object?)value)?.RootElement.GetRawText().Length ?? 0;
+        var stream = new MemoryStream(capacity);
+
         // Mirroring ASP.NET Core serialization strategy https://github.com/dotnet/aspnetcore/issues/47548
         if (_objectTypeInfo is null)
             JsonSerializer.Serialize(stream, value, (JsonTypeInfo<TBase?>)_jsonTypeInfo);
