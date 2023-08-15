@@ -553,7 +553,7 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
         PgConverterResolution? resolution = null;
         if (values is null)
         {
-            resolution = EffectiveTypeInfo.GetResolution(default(TElement), expectedEffectivePgTypeId);
+            resolution = EffectiveTypeInfo.GetDefaultResolution(expectedEffectivePgTypeId);
         }
         else
         {

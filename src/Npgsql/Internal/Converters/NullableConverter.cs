@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Internal.Converters.AsyncHelpers;
 
 namespace Npgsql.Internal.Converters;
@@ -73,4 +74,19 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
         => _effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
 }
 
+sealed class NullableConverterResolver<T> : PgComposingConverterResolver<T?> where T : struct
+{
+    public NullableConverterResolver(PgResolverTypeInfo effectiveTypeInfo)
+        : base(effectiveTypeInfo.PgTypeId, effectiveTypeInfo) { }
 
+    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
+    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
+
+    protected override PgConverter<T?> CreateConverter(PgConverterResolution effectiveResolution)
+        => new NullableConverter<T>(effectiveResolution.GetConverter<T>());
+
+    protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId)
+        => value is null
+            ? EffectiveTypeInfo.GetDefaultResolution(expectedEffectivePgTypeId)
+            : EffectiveTypeInfo.GetResolution(value.GetValueOrDefault(), expectedEffectivePgTypeId);
+}

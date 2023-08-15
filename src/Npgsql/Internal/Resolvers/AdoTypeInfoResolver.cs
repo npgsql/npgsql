@@ -188,7 +188,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         }
         else
         {
-            mappings.AddStructType<DateTime>(DataTypeNames.Timestamp,
+            mappings.AddResolverStructType<DateTime>(DataTypeNames.Timestamp,
                 static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                     DateTimeConverterResolver.CreateResolver(options, options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
                         options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
@@ -207,7 +207,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         }
         else
         {
-            mappings.AddStructType<DateTime>(DataTypeNames.TimestampTz,
+            mappings.AddResolverStructType<DateTime>(DataTypeNames.TimestampTz,
                 static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                     DateTimeConverterResolver.CreateResolver(options, options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
                         options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
