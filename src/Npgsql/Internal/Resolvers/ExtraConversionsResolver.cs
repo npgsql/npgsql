@@ -108,9 +108,9 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
 
         // Alternative text types
-        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
-                    (string)DataTypeNames.Bpchar, (string)DataTypeNames.Json,
-                    (string)DataTypeNames.Xml, (string)DataTypeNames.Name, (string)DataTypeNames.RefCursor })
+        foreach(var dataTypeName in new[] { "citext", DataTypeNames.Varchar,
+                    DataTypeNames.Bpchar, DataTypeNames.Json,
+                    DataTypeNames.Xml, DataTypeNames.Name, DataTypeNames.RefCursor })
         {
             mappings.AddType<char[]>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding),
@@ -135,56 +135,56 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // Int2
-        mappings.AddStructArrayType<int>((string)DataTypeNames.Int2);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.Int2);
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int2);
-        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int2);
+        mappings.AddStructArrayType<int>(DataTypeNames.Int2);
+        mappings.AddStructArrayType<long>(DataTypeNames.Int2);
+        mappings.AddStructArrayType<byte>(DataTypeNames.Int2);
+        mappings.AddStructArrayType<sbyte>(DataTypeNames.Int2);
 
         // Int4
-        mappings.AddStructArrayType<short>((string)DataTypeNames.Int4);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.Int4);
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int4);
-        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int4);
+        mappings.AddStructArrayType<short>(DataTypeNames.Int4);
+        mappings.AddStructArrayType<long>(DataTypeNames.Int4);
+        mappings.AddStructArrayType<byte>(DataTypeNames.Int4);
+        mappings.AddStructArrayType<sbyte>(DataTypeNames.Int4);
 
         // Int8
-        mappings.AddStructArrayType<short>((string)DataTypeNames.Int8);
-        mappings.AddStructArrayType<int>((string)DataTypeNames.Int8);
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int8);
-        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int8);
+        mappings.AddStructArrayType<short>(DataTypeNames.Int8);
+        mappings.AddStructArrayType<int>(DataTypeNames.Int8);
+        mappings.AddStructArrayType<byte>(DataTypeNames.Int8);
+        mappings.AddStructArrayType<sbyte>(DataTypeNames.Int8);
 
         // Float4
-        mappings.AddStructArrayType<double>((string)DataTypeNames.Float4);
+        mappings.AddStructArrayType<double>(DataTypeNames.Float4);
 
         // Float8
-        mappings.AddStructArrayType<float>((string)DataTypeNames.Float8);
+        mappings.AddStructArrayType<float>(DataTypeNames.Float8);
 
         // Numeric
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<short>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<int>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<float>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<double>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<byte>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<short>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<int>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<long>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<float>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<double>(DataTypeNames.Numeric);
 
         // Bytea
-        mappings.AddStructArrayType<ArraySegment<byte>>((string)DataTypeNames.Bytea);
-        mappings.AddStructArrayType<Memory<byte>>((string)DataTypeNames.Bytea);
+        mappings.AddStructArrayType<ArraySegment<byte>>(DataTypeNames.Bytea);
+        mappings.AddStructArrayType<Memory<byte>>(DataTypeNames.Bytea);
 
         // Varbit
-        mappings.AddArrayType<string>((string)DataTypeNames.Varbit);
+        mappings.AddArrayType<string>(DataTypeNames.Varbit);
 
         // Bit
-        mappings.AddArrayType<string>((string)DataTypeNames.Bit);
+        mappings.AddArrayType<string>(DataTypeNames.Bit);
 
         // Text
-        mappings.AddArrayType<char[]>((string)DataTypeNames.Text);
-        mappings.AddStructArrayType<ReadOnlyMemory<char>>((string)DataTypeNames.Text);
-        mappings.AddStructArrayType<ArraySegment<char>>((string)DataTypeNames.Text);
+        mappings.AddArrayType<char[]>(DataTypeNames.Text);
+        mappings.AddStructArrayType<ReadOnlyMemory<char>>(DataTypeNames.Text);
+        mappings.AddStructArrayType<ArraySegment<char>>(DataTypeNames.Text);
 
         // Alternative text types
-        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
-                    (string)DataTypeNames.Bpchar, (string)DataTypeNames.Json,
-                    (string)DataTypeNames.Xml, (string)DataTypeNames.Name, (string)DataTypeNames.RefCursor })
+        foreach(var dataTypeName in new[] { "citext", DataTypeNames.Varchar,
+                    DataTypeNames.Bpchar, DataTypeNames.Json,
+                    DataTypeNames.Xml, DataTypeNames.Name, DataTypeNames.RefCursor })
         {
             mappings.AddArrayType<char[]>(dataTypeName);
             mappings.AddStructArrayType<ReadOnlyMemory<char>>(dataTypeName);

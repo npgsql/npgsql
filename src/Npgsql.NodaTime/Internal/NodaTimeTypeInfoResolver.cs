@@ -194,14 +194,14 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // timestamptz
-        mappings.AddStructArrayType<Instant>((string)TimestampTzDataTypeName);
-        mappings.AddStructArrayType<ZonedDateTime>((string)TimestampTzDataTypeName);
-        mappings.AddStructArrayType<OffsetDateTime>((string)TimestampTzDataTypeName);
+        mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
+        mappings.AddStructArrayType<ZonedDateTime>(TimestampTzDataTypeName);
+        mappings.AddStructArrayType<OffsetDateTime>(TimestampTzDataTypeName);
 
         // timestamp
         if (LegacyTimestampBehavior)
         {
-            mappings.AddStructArrayType<Instant>((string)TimestampDataTypeName);
+            mappings.AddStructArrayType<Instant>(TimestampDataTypeName);
 
             mappings.AddStructType<Instant>(TimestampDataTypeName,
                 static (options, mapping, _) =>
@@ -219,46 +219,46 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
                     mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
                 isDefault: true);
         }
-        mappings.AddStructArrayType<LocalDateTime>((string)TimestampDataTypeName);
+        mappings.AddStructArrayType<LocalDateTime>(TimestampDataTypeName);
 
         // other
-        mappings.AddStructArrayType<LocalDate>((string)DateDataTypeName);
-        mappings.AddStructArrayType<LocalTime>((string)TimeDataTypeName);
-        mappings.AddStructArrayType<OffsetTime>((string)TimeTzDataTypeName);
-        mappings.AddArrayType<Period>((string)IntervalDataTypeName);
-        mappings.AddStructArrayType<Duration>((string)IntervalDataTypeName);
+        mappings.AddStructArrayType<LocalDate>(DateDataTypeName);
+        mappings.AddStructArrayType<LocalTime>(TimeDataTypeName);
+        mappings.AddStructArrayType<OffsetTime>(TimeTzDataTypeName);
+        mappings.AddArrayType<Period>(IntervalDataTypeName);
+        mappings.AddStructArrayType<Duration>(IntervalDataTypeName);
 
         // daterange
-        mappings.AddArrayType<DateInterval>((string)DateRangeDataTypeName);
-        mappings.AddStructArrayType<NpgsqlRange<LocalDate>>((string)DateRangeDataTypeName);
+        mappings.AddArrayType<DateInterval>(DateRangeDataTypeName);
+        mappings.AddStructArrayType<NpgsqlRange<LocalDate>>(DateRangeDataTypeName);
 
         // datemultirange
-        mappings.AddArrayType<DateInterval[]>((string)DateMultirangeDataTypeName);
-        mappings.AddArrayType<List<DateInterval>>((string)DateMultirangeDataTypeName);
-        mappings.AddArrayType<NpgsqlRange<LocalDate>[]>((string)DateMultirangeDataTypeName);
-        mappings.AddArrayType<List<NpgsqlRange<LocalDate>>>((string)DateMultirangeDataTypeName);
+        mappings.AddArrayType<DateInterval[]>(DateMultirangeDataTypeName);
+        mappings.AddArrayType<List<DateInterval>>(DateMultirangeDataTypeName);
+        mappings.AddArrayType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName);
+        mappings.AddArrayType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName);
 
         // tstzrange
-        mappings.AddStructArrayType<Interval>((string)TimestampTzRangeDataTypeName);
-        mappings.AddStructArrayType<NpgsqlRange<Instant>>((string)TimestampTzRangeDataTypeName);
-        mappings.AddStructArrayType<NpgsqlRange<ZonedDateTime>>((string)TimestampTzRangeDataTypeName);
-        mappings.AddStructArrayType<NpgsqlRange<OffsetDateTime>>((string)TimestampTzRangeDataTypeName);
+        mappings.AddStructArrayType<Interval>(TimestampTzRangeDataTypeName);
+        mappings.AddStructArrayType<NpgsqlRange<Instant>>(TimestampTzRangeDataTypeName);
+        mappings.AddStructArrayType<NpgsqlRange<ZonedDateTime>>(TimestampTzRangeDataTypeName);
+        mappings.AddStructArrayType<NpgsqlRange<OffsetDateTime>>(TimestampTzRangeDataTypeName);
 
         // tstzmultirange
-        mappings.AddArrayType<Interval[]>((string)TimestampTzMultirangeDataTypeName);
-        mappings.AddArrayType<List<Interval>>((string)TimestampTzMultirangeDataTypeName);
-        mappings.AddArrayType<NpgsqlRange<Instant>[]>((string)TimestampTzMultirangeDataTypeName);
-        mappings.AddArrayType<List<NpgsqlRange<Instant>>>((string)TimestampTzMultirangeDataTypeName);
-        mappings.AddArrayType<NpgsqlRange<ZonedDateTime>[]>((string)TimestampTzMultirangeDataTypeName);
-        mappings.AddArrayType<List<NpgsqlRange<ZonedDateTime>>>((string)TimestampTzMultirangeDataTypeName);
-        mappings.AddArrayType<NpgsqlRange<OffsetDateTime>[]>((string)TimestampTzMultirangeDataTypeName);
-        mappings.AddArrayType<List<NpgsqlRange<OffsetDateTime>>>((string)TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<Interval[]>(TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<List<Interval>>(TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<NpgsqlRange<Instant>[]>(TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<List<NpgsqlRange<Instant>>>(TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<NpgsqlRange<ZonedDateTime>[]>(TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<List<NpgsqlRange<ZonedDateTime>>>(TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<NpgsqlRange<OffsetDateTime>[]>(TimestampTzMultirangeDataTypeName);
+        mappings.AddArrayType<List<NpgsqlRange<OffsetDateTime>>>(TimestampTzMultirangeDataTypeName);
 
         // tsrange
-        mappings.AddStructArrayType<NpgsqlRange<LocalDateTime>>((string)TimestampRangeDataTypeName);
+        mappings.AddStructArrayType<NpgsqlRange<LocalDateTime>>(TimestampRangeDataTypeName);
 
         // tsmultirange
-        mappings.AddArrayType<NpgsqlRange<LocalDateTime>[]>((string)TimestampMultirangeDataTypeName);
-        mappings.AddArrayType<List<NpgsqlRange<LocalDateTime>>>((string)TimestampMultirangeDataTypeName);
+        mappings.AddArrayType<NpgsqlRange<LocalDateTime>[]>(TimestampMultirangeDataTypeName);
+        mappings.AddArrayType<List<NpgsqlRange<LocalDateTime>>>(TimestampMultirangeDataTypeName);
     }
 }

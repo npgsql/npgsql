@@ -47,16 +47,16 @@ sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // tsvector
-        mappings.AddArrayType<NpgsqlTsVector>((string)DataTypeNames.TsVector);
+        mappings.AddArrayType<NpgsqlTsVector>(DataTypeNames.TsVector);
 
         // tsquery
-        mappings.AddArrayType<NpgsqlTsQuery>((string)DataTypeNames.TsQuery);
-        mappings.AddArrayType<NpgsqlTsQueryEmpty>((string)DataTypeNames.TsQuery);
-        mappings.AddArrayType<NpgsqlTsQueryLexeme>((string)DataTypeNames.TsQuery);
-        mappings.AddArrayType<NpgsqlTsQueryNot>((string)DataTypeNames.TsQuery);
-        mappings.AddArrayType<NpgsqlTsQueryAnd>((string)DataTypeNames.TsQuery);
-        mappings.AddArrayType<NpgsqlTsQueryOr>((string)DataTypeNames.TsQuery);
-        mappings.AddArrayType<NpgsqlTsQueryFollowedBy>((string)DataTypeNames.TsQuery);
+        mappings.AddArrayType<NpgsqlTsQuery>(DataTypeNames.TsQuery);
+        mappings.AddArrayType<NpgsqlTsQueryEmpty>(DataTypeNames.TsQuery);
+        mappings.AddArrayType<NpgsqlTsQueryLexeme>(DataTypeNames.TsQuery);
+        mappings.AddArrayType<NpgsqlTsQueryNot>(DataTypeNames.TsQuery);
+        mappings.AddArrayType<NpgsqlTsQueryAnd>(DataTypeNames.TsQuery);
+        mappings.AddArrayType<NpgsqlTsQueryOr>(DataTypeNames.TsQuery);
+        mappings.AddArrayType<NpgsqlTsQueryFollowedBy>(DataTypeNames.TsQuery);
     }
 
     public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)

@@ -61,14 +61,14 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // macaddr
-        mappings.AddArrayType<PhysicalAddress>((string)DataTypeNames.MacAddr);
-        mappings.AddArrayType<PhysicalAddress>((string)DataTypeNames.MacAddr8);
+        mappings.AddArrayType<PhysicalAddress>(DataTypeNames.MacAddr);
+        mappings.AddArrayType<PhysicalAddress>(DataTypeNames.MacAddr8);
 
         // inet
-        mappings.AddArrayType<IPAddress>((string)DataTypeNames.Inet);
-        mappings.AddStructArrayType<NpgsqlInet>((string)DataTypeNames.Inet);
+        mappings.AddArrayType<IPAddress>(DataTypeNames.Inet);
+        mappings.AddStructArrayType<NpgsqlInet>(DataTypeNames.Inet);
 
         // cidr
-        mappings.AddStructArrayType<NpgsqlCidr>((string)DataTypeNames.Cidr);
+        mappings.AddStructArrayType<NpgsqlCidr>(DataTypeNames.Cidr);
     }
 }

@@ -40,12 +40,12 @@ sealed class GeometricTypeInfoResolver : IPgTypeInfoResolver
 
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
-        mappings.AddStructArrayType<NpgsqlPoint>((string)DataTypeNames.Point);
-        mappings.AddStructArrayType<NpgsqlBox>((string)DataTypeNames.Box);
-        mappings.AddStructArrayType<NpgsqlPolygon>((string)DataTypeNames.Polygon);
-        mappings.AddStructArrayType<NpgsqlLine>((string)DataTypeNames.Line);
-        mappings.AddStructArrayType<NpgsqlLSeg>((string)DataTypeNames.LSeg);
-        mappings.AddStructArrayType<NpgsqlPath>((string)DataTypeNames.Path);
-        mappings.AddStructArrayType<NpgsqlCircle>((string)DataTypeNames.Circle);
+        mappings.AddStructArrayType<NpgsqlPoint>(DataTypeNames.Point);
+        mappings.AddStructArrayType<NpgsqlBox>(DataTypeNames.Box);
+        mappings.AddStructArrayType<NpgsqlPolygon>(DataTypeNames.Polygon);
+        mappings.AddStructArrayType<NpgsqlLine>(DataTypeNames.Line);
+        mappings.AddStructArrayType<NpgsqlLSeg>(DataTypeNames.LSeg);
+        mappings.AddStructArrayType<NpgsqlPath>(DataTypeNames.Path);
+        mappings.AddStructArrayType<NpgsqlCircle>(DataTypeNames.Circle);
     }
 }

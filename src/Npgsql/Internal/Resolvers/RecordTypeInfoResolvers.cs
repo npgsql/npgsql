@@ -21,7 +21,7 @@ class RecordTypeInfoResolver : IPgTypeInfoResolver
             MatchRequirement.DataTypeName);
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
-        => mappings.AddArrayType<object[]>((string)DataTypeNames.Record);
+        => mappings.AddArrayType<object[]>(DataTypeNames.Record);
 
     public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
@@ -79,8 +79,8 @@ class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
-        mappings.AddArrayType<Tuple<object>>((string)DataTypeNames.Record);
-        mappings.AddStructArrayType<ValueTuple<object>>((string)DataTypeNames.Record);
+        mappings.AddArrayType<Tuple<object>>(DataTypeNames.Record);
+        mappings.AddStructArrayType<ValueTuple<object>>(DataTypeNames.Record);
     }
 
     static readonly TypeInfoFactory Factory = static (options, mapping, _) =>

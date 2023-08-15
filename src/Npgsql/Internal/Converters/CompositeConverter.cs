@@ -120,7 +120,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         writer.WriteInt32(_composite.Fields.Count);
 
         var writeState = writer.Current.WriteState as WriteState;
-        var boxedInstance = writeState?.BoxedInstance ?? (object)value!;
+        var boxedInstance = writeState?.BoxedInstance ?? value!;
         var data = writeState?.Data.Array;
         for (var i = 0; i < _composite.Fields.Count; i++)
         {

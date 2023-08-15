@@ -65,7 +65,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     static string ThrowDefaultException() =>
         throw new InvalidOperationException($"This operation cannot be performed on a default instance of {nameof(DataTypeName)}.");
 
-    public static explicit operator string(DataTypeName value) => value.Value;
+    public static implicit operator string(DataTypeName value) => value.Value;
 
     public bool IsDefault => _value is null;
 
