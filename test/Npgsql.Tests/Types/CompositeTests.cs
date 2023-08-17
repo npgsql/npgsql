@@ -238,6 +238,29 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
             npgsqlDbType: null);
     }
 
+    [Test]
+    public async Task Composite_containing_array_type()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {compositeType} AS (ints int4[])");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeWithArray>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithArray { Ints = new[] { 1, 2, 3, 4 } },
+            @"(""{1,2,3,4}"")",
+            compositeType,
+            npgsqlDbType: null,
+            comparer: (actual, expected) => actual.Ints!.SequenceEqual(expected.Ints!));
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
     public async Task Table_as_composite([Values] bool enabled)
     {
@@ -401,6 +424,11 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     {
         public int X { get; set; }
         public string SomeText { get; set; }
+    }
+
+    class SomeCompositeWithArray
+    {
+        public int[]? Ints { get; set; }
     }
 
     record NameTranslationComposite

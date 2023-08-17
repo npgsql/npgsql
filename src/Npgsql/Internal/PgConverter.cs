@@ -332,6 +332,19 @@ static class ConverterExtensions
             throw new InvalidOperationException("SizeKind.UpperBound is not a valid return value for GetSize.");
         return size;
     }
+
+    public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
+    {
+        if (converter.IsDbNullAsObject(value))
+            return null;
+
+        if (writeRequirement is { Kind: SizeKind.Exact, Value: > 0 and var byteCount })
+            return byteCount;
+        var size = converter.GetSizeAsObject(new(format, writeRequirement), value, ref writeState);
+        if (size.Kind is SizeKind.UpperBound)
+            throw new InvalidOperationException("SizeKind.UpperBound is not a valid return value for GetSize.");
+        return size;
+    }
 }
 
 class MultiWriteState
