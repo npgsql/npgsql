@@ -30,16 +30,16 @@ class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
         {
             var jsonb = dataTypeName == DataTypeNames.Jsonb;
             mappings.AddType<JsonDocument>(dataTypeName, (options, mapping, _) =>
-                    new PgTypeInfo(options, new SystemTextJsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions), new DataTypeName(mapping.DataTypeName)),
+                    mapping.CreateInfo(options, new SystemTextJsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions)),
                 isDefault: true);
             mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
-                new PgTypeInfo(options, new SystemTextJsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions), new DataTypeName(mapping.DataTypeName)));
+                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
             mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
-                new PgTypeInfo(options, new SystemTextJsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions), new DataTypeName(mapping.DataTypeName)));
+                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
             mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
-                new PgTypeInfo(options, new SystemTextJsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions), new DataTypeName(mapping.DataTypeName)));
+                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
             mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
-                new PgTypeInfo(options, new SystemTextJsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions), new DataTypeName(mapping.DataTypeName)));
+                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
         }
     }
 
