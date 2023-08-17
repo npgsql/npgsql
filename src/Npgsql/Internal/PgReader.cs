@@ -467,7 +467,7 @@ public class PgReader
             Consume(offset - CurrentOffset);
     }
 
-    async ValueTask Consume(bool async, int? count = null)
+    async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
     {
         if (FieldSize <= 0)
             return;
@@ -481,7 +481,7 @@ public class PgReader
     }
 
     public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
-    public ValueTask ConsumeAsync(int? count = null) => Consume(async: true, count);
+    public ValueTask ConsumeAsync(int? count = null, CancellationToken cancellationToken = default) => Consume(async: true, count, cancellationToken);
 
     internal void ThrowIfStreamActive()
     {

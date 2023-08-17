@@ -1,6 +1,6 @@
-﻿namespace Npgsql.GeoJSON.Internal;
+﻿namespace Npgsql.GeoJSON;
 
-readonly partial struct CrsMap
+public partial class CrsMap
 {
     /// <summary>
     /// These entries came from spatial_res_sys. They are used to elide memory allocations
