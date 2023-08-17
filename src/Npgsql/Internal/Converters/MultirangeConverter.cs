@@ -45,17 +45,26 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             var length = reader.ReadInt32();
             Debug.Assert(length != -1);
 
-            await using var _ = await reader
-                .BeginNestedRead(async, length, _rangeRequirements.Read, cancellationToken).ConfigureAwait(false);
-            var range = async
-                ? await _rangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
-                // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                : _rangeConverter.Read(reader);
+            var scope = await reader.BeginNestedRead(async, length, _rangeRequirements.Read, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var range = async
+                    ? await _rangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
+                    // ReSharper disable once MethodHasAsyncOverloadWithCancellation
+                    : _rangeConverter.Read(reader);
 
-            if (typeof(T).IsArray)
-                multirange[i] = range;
-            else
-                multirange.Add(range);
+                if (typeof(T).IsArray)
+                    multirange[i] = range;
+                else
+                    multirange.Add(range);
+            }
+            finally
+            {
+                if (async)
+                    await scope.DisposeAsync().ConfigureAwait(false);
+                else
+                    scope.Dispose();
+            }
         }
 
         return multirange;

@@ -185,9 +185,18 @@ readonly struct PgArrayConverter
             var isDbNull = length == -1;
             if (!isDbNull)
             {
-                await using var _ = await reader
-                    .BeginNestedRead(async, length, _bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
-                await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
+                var scope = await reader.BeginNestedRead(async, length, _bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    if (async)
+                        await scope.DisposeAsync().ConfigureAwait(false);
+                    else
+                        scope.Dispose();
+                }
             }
             else
                 await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);

@@ -48,12 +48,21 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             // Note that we leave the CLR default for nulls
             if (length != -1)
             {
-                await using var _ = await reader
-                    .BeginNestedRead(async, length, readRequirement, cancellationToken).ConfigureAwait(false);
-                lowerBound = async
-                    ? await converter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
-                    // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                    : converter.Read(reader);
+                var scope = await reader.BeginNestedRead(async, length, _subtypeRequirements.Read, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    lowerBound = async
+                        ? await converter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
+                        // ReSharper disable once MethodHasAsyncOverloadWithCancellation
+                        : converter.Read(reader);
+                }
+                finally
+                {
+                    if (async)
+                        await scope.DisposeAsync().ConfigureAwait(false);
+                    else
+                        scope.Dispose();
+                }
             }
         }
 
@@ -66,13 +75,21 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             // Note that we leave the CLR default for nulls
             if (length != -1)
             {
-                await using var _ = await reader
-                    .BeginNestedRead(async, length, readRequirement, cancellationToken).ConfigureAwait(false);
-
-                upperBound = async
-                    ? await converter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
-                    // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                    : converter.Read(reader);
+                var scope = await reader.BeginNestedRead(async, length, _subtypeRequirements.Read, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    upperBound = async
+                        ? await converter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
+                        // ReSharper disable once MethodHasAsyncOverloadWithCancellation
+                        : converter.Read(reader);
+                }
+                finally
+                {
+                    if (async)
+                        await scope.DisposeAsync().ConfigureAwait(false);
+                    else
+                        scope.Dispose();
+                }
             }
         }
 

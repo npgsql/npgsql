@@ -67,8 +67,18 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 field.ReadDbNull(builder);
             else
             {
-                using var _ = await reader.BeginNestedRead(async, length, field.BinaryReadRequirement, cancellationToken).ConfigureAwait(false);
-                await field.Read(async, builder, reader, cancellationToken).ConfigureAwait(false);
+                var scope = await reader.BeginNestedRead(async, length, field.BinaryReadRequirement, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await field.Read(async, builder, reader, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    if (async)
+                        await scope.DisposeAsync().ConfigureAwait(false);
+                    else
+                        scope.Dispose();
+                }
             }
         }
 

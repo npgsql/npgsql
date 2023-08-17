@@ -51,9 +51,18 @@ sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
             if (typeInfo.GetBufferRequirements(resolution.Converter, DataFormat.Binary) is not { } bufferRequirements)
                 throw new NotSupportedException($"Resolved record field converter '{resolution.Converter.GetType()}' has to support the binary format to be compatible.");
 
-            await using var _ = await reader
-                .BeginNestedRead(async, length, bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
-            result[i] = await resolution.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
+            var scope = await reader.BeginNestedRead(async, length, bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                result[i] = await resolution.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (async)
+                    await scope.DisposeAsync().ConfigureAwait(false);
+                else
+                    scope.Dispose();
+            }
         }
 
         return _factory is null ? (T)(object)result : _factory(result);
