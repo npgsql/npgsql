@@ -2,25 +2,6 @@
 
 namespace Npgsql.GeoJSON.Internal;
 
-/// <summary>
-/// An entry which maps the authority to the inclusive range of SRID.
-/// </summary>
-readonly struct CrsMapEntry
-{
-    internal readonly int MinSrid;
-    internal readonly int MaxSrid;
-    internal readonly string? Authority;
-
-    internal CrsMapEntry(int minSrid, int maxSrid, string? authority)
-    {
-        MinSrid = minSrid;
-        MaxSrid = maxSrid;
-        Authority = authority != null
-            ? string.IsInterned(authority) ?? authority
-            : null;
-    }
-}
-
 struct CrsMapBuilder
 {
     CrsMapEntry[] _overrides;
@@ -69,40 +50,5 @@ struct CrsMapBuilder
             Array.Resize(ref _overrides, _overridenIndex);
 
         return new CrsMap(_overrides);
-    }
-}
-
-readonly partial struct CrsMap
-{
-    readonly CrsMapEntry[]? _overriden;
-
-    internal CrsMap(CrsMapEntry[]? overriden)
-        => _overriden = overriden;
-
-    internal string? GetAuthority(int srid)
-        => GetAuthority(_overriden, srid) ?? GetAuthority(WellKnown, srid);
-
-    static string? GetAuthority(CrsMapEntry[]? entries, int srid)
-    {
-        if (entries == null)
-            return null;
-
-        var left = 0;
-        var right = entries.Length;
-        while (left <= right)
-        {
-            var middle = left + (right - left) / 2;
-            var entry = entries[middle];
-
-            if (srid < entry.MinSrid)
-                right = middle - 1;
-            else
-            if (srid > entry.MaxSrid)
-                left = middle + 1;
-            else
-                return entry.Authority;
-        }
-
-        return null;
     }
 }

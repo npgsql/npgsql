@@ -8,7 +8,7 @@ using Npgsql.Internal;
 
 namespace Npgsql.NetTopologySuite.Internal;
 
-public class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
+sealed class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
     where T : Geometry
 {
     readonly PostGisReader _reader;
