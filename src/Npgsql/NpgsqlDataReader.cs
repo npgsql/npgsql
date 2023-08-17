@@ -1248,84 +1248,84 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override bool GetBoolean(int ordinal) => GetFieldValue<bool>(ordinal);
+    public override bool GetBoolean(int ordinal) => GetFieldValueCore<bool>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a byte.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override byte GetByte(int ordinal) => GetFieldValue<byte>(ordinal);
+    public override byte GetByte(int ordinal) => GetFieldValueCore<byte>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a single character.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override char GetChar(int ordinal) => GetFieldValue<char>(ordinal);
+    public override char GetChar(int ordinal) => GetFieldValueCore<char>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a 16-bit signed integer.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override short GetInt16(int ordinal) => GetFieldValue<short>(ordinal);
+    public override short GetInt16(int ordinal) => GetFieldValueCore<short>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a 32-bit signed integer.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override int GetInt32(int ordinal) => GetFieldValue<int>(ordinal);
+    public override int GetInt32(int ordinal) => GetFieldValueCore<int>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a 64-bit signed integer.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override long GetInt64(int ordinal) => GetFieldValue<long>(ordinal);
+    public override long GetInt64(int ordinal) => GetFieldValueCore<long>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a <see cref="DateTime"/> object.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override DateTime GetDateTime(int ordinal) => GetFieldValue<DateTime>(ordinal);
+    public override DateTime GetDateTime(int ordinal) => GetFieldValueCore<DateTime>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as an instance of <see cref="string"/>.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override string GetString(int ordinal) => GetFieldValue<string>(ordinal);
+    public override string GetString(int ordinal) => GetFieldValueCore<string>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a <see cref="decimal"/> object.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override decimal GetDecimal(int ordinal) => GetFieldValue<decimal>(ordinal);
+    public override decimal GetDecimal(int ordinal) => GetFieldValueCore<decimal>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a double-precision floating point number.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override double GetDouble(int ordinal) => GetFieldValue<double>(ordinal);
+    public override double GetDouble(int ordinal) => GetFieldValueCore<double>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a single-precision floating point number.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override float GetFloat(int ordinal) => GetFieldValue<float>(ordinal);
+    public override float GetFloat(int ordinal) => GetFieldValueCore<float>(ordinal);
 
     /// <summary>
     /// Gets the value of the specified column as a globally-unique identifier (GUID).
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public override Guid GetGuid(int ordinal) => GetFieldValue<Guid>(ordinal);
+    public override Guid GetGuid(int ordinal) => GetFieldValueCore<Guid>(ordinal);
 
     /// <summary>
     /// Populates an array of objects with the column values of the current row.
@@ -1366,7 +1366,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </remarks>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The value of the specified column.</returns>
-    public TimeSpan GetTimeSpan(int ordinal) => GetFieldValue<TimeSpan>(ordinal);
+    public TimeSpan GetTimeSpan(int ordinal) => GetFieldValueCore<TimeSpan>(ordinal);
 
     /// <inheritdoc />
     protected override DbDataReader GetDbDataReader(int ordinal) => GetData(ordinal);
@@ -1464,7 +1464,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The returned object.</returns>
     public override Stream GetStream(int ordinal)
-        => GetFieldValue<Stream>(ordinal);
+        => GetFieldValueCore<Stream>(ordinal);
 
     /// <summary>
     /// Retrieves data as a <see cref="Stream"/>.
@@ -1533,7 +1533,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The returned object.</returns>
     public override TextReader GetTextReader(int ordinal)
-        => GetFieldValue<TextReader>(ordinal);
+        => GetFieldValueCore<TextReader>(ordinal);
 
     /// <summary>
     /// Retrieves data as a <see cref="TextReader"/>.
@@ -1563,7 +1563,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         // In non-sequential, we know that the column is already buffered - no I/O will take place
         if (!_isSequential)
-            return Task.FromResult(GetFieldValue<T>(ordinal));
+            return Task.FromResult(GetFieldValueCore<T>(ordinal));
 
         using (NoSynchronizationContextScope.Enter())
             return Core(ordinal, cancellationToken).AsTask();
@@ -1602,7 +1602,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
     /// <param name="ordinal">The column to be retrieved.</param>
     /// <returns>The column to be retrieved.</returns>
-    public override T GetFieldValue<T>(int ordinal)
+    public override T GetFieldValue<T>(int ordinal) => GetFieldValueCore<T>(ordinal);
+
+    T GetFieldValueCore<T>(int ordinal)
     {
         var isStream = typeof(T) == typeof(Stream);
         var info = GetInfo(ordinal, isStream ? null : typeof(T), out var field);
