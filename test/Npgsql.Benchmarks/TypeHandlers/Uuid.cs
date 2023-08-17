@@ -1,11 +1,11 @@
 ﻿using System;
 using BenchmarkDotNet.Attributes;
-using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.Converters;
 
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
 public class Uuid : TypeHandlerBenchmarks<Guid>
 {
-    public Uuid() : base(new UuidHandler(GetPostgresType("uuid"))) { }
+    public Uuid() : base(new GuidUuidConverter()) { }
 }
