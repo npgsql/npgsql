@@ -3,6 +3,9 @@ using Npgsql.GeoJSON.Internal;
 
 namespace Npgsql.GeoJSON;
 
+/// <summary>
+/// Extensions for getting a CrsMap from a database.
+/// </summary>
 public static class CrsMapExtensions
 {
     /// <summary>
