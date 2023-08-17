@@ -199,7 +199,7 @@ public class PgTypeInfo
 
     // Bind for writing.
     /// When result is null, the value was interpreted to be a SQL NULL.
-    public PgConverterInfo? Bind<T>(PgConverterResolution resolution, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgConverterInfo? Bind<T>(PgConverterResolution resolution, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
@@ -228,7 +228,7 @@ public class PgTypeInfo
     // Bind for writing.
     // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
     /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    public PgConverterInfo? BindObject(PgConverterResolution resolution, object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgConverterInfo? BindObject(PgConverterResolution resolution, object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
@@ -319,7 +319,7 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
         => _converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
 }
 
-public readonly struct PgConverterInfo
+readonly struct PgConverterInfo
 {
     public bool IsDefault => TypeInfo is null;
 
