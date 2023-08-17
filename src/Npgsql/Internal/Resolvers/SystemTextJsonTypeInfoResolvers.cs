@@ -63,7 +63,7 @@ sealed class SystemTextJsonArrayTypeInfoResolver : SystemTextJsonTypeInfoResolve
 {
     new TypeInfoMappingCollection Mappings { get; }
 
-    public SystemTextJsonArrayTypeInfoResolver()
+    public SystemTextJsonArrayTypeInfoResolver(JsonSerializerOptions? serializerOptions = null) : base(serializerOptions)
     {
         Mappings = new TypeInfoMappingCollection(base.Mappings);
         AddArrayInfos(Mappings);
