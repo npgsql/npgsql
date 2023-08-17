@@ -272,6 +272,9 @@ public class PgReader
 
     public void Rewind(int count)
     {
+        // Shut down any streaming going on on the column
+        DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
+
         if (_buffer.ReadPosition < count)
             throw new ArgumentOutOfRangeException("Cannot rewind further than the buffer start");
 
@@ -286,21 +289,20 @@ public class PgReader
     /// </summary>
     /// <param name="async"></param>
     /// <returns>The stream length, if any</returns>
-    internal async ValueTask<int> DisposeUserActiveStream(bool async)
+    async ValueTask DisposeUserActiveStream(bool async)
     {
-        if (_userActiveStream is not null)
+        if (_userActiveStream is null)
+            return;
+
+        if (!_userActiveStream.IsDisposed)
         {
-            if (!_userActiveStream.IsDisposed)
-            {
-                if (async)
-                    await _userActiveStream.DisposeAsync().ConfigureAwait(false);
-                else
-                    _userActiveStream.Dispose();
-            }
-            return _userActiveStream.CurrentLength;
+            if (async)
+                await _userActiveStream.DisposeAsync().ConfigureAwait(false);
+            else
+                _userActiveStream.Dispose();
         }
 
-        return 0;
+        _userActiveStream = null;
     }
 
     public bool IsResumed => Resumable && CurrentSize != CurrentRemaining;
@@ -371,11 +373,6 @@ public class PgReader
         charsRead = _charsReadReader is null ? null : _charsRead;
         _charsReadOffset = dataOffset;
         _charsReadBuffer = buffer;
-    }
-
-    internal PgReader Init(ArraySegment<byte> _, int size, DataFormat format)
-    {
-        throw new NotImplementedException();
     }
 
     internal PgReader Init(int columnLength, DataFormat format, bool resumable = false)
@@ -469,6 +466,9 @@ public class PgReader
 
     async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
     {
+        // Shut down any streaming going on on the column
+        await DisposeUserActiveStream(async).ConfigureAwait(false);
+
         if (FieldSize <= 0)
             return;
 
