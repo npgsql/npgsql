@@ -55,7 +55,7 @@ static class ReflectionCompositeInfoFactory
                 throw new InvalidOperationException($"Cannot find property or field for composite field {pgFields[fieldIndex].Name}.");
 
             Debug.Assert(pgTypeInfo.PgTypeId is not null, "Should not have an undecided type info after resolving with a type id.");
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo<T>(pgField.Name, MapResolution(pgField, pgTypeInfo.GetDefaultResolution()), getter, i);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetDefaultResolution()), getter, i);
         }
 
         for (var fieldIndex = 0; fieldIndex < pgFields.Count; fieldIndex++)
@@ -88,7 +88,7 @@ static class ReflectionCompositeInfoFactory
                 throw new InvalidOperationException($"Cannot find property or field for composite field '{pgFields[fieldIndex].Name}'.");
 
             Debug.Assert(pgTypeInfo.PgTypeId is not null, "Should not have an undecided type info after resolving with a type id.");
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo<T>(pgField.Name, MapResolution(pgField, pgTypeInfo.GetDefaultResolution()), getter, setter);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetDefaultResolution()), getter, setter);
         }
 
         Debug.Assert(compositeFields.All(x => x is not null));
@@ -183,13 +183,13 @@ static class ReflectionCompositeInfoFactory
                 ), values)
             .Compile();
     }
-    static CompositeFieldInfo CreateCompositeFieldInfo<T>(string name, PgConverterResolution converterResolution, Delegate getter, int constructorParameterIndex)
+    static CompositeFieldInfo CreateCompositeFieldInfo(string name, Type type, PgConverterResolution converterResolution, Delegate getter, int constructorParameterIndex)
         => (CompositeFieldInfo)Activator.CreateInstance(
-            typeof(CompositeFieldInfo<>).MakeGenericType(converterResolution.Converter.TypeToConvert), name, converterResolution, getter, constructorParameterIndex)!;
+            typeof(CompositeFieldInfo<>).MakeGenericType(type), name, converterResolution, getter, constructorParameterIndex)!;
 
-    static CompositeFieldInfo CreateCompositeFieldInfo<T>(string name, PgConverterResolution converterResolution, Delegate getter, Delegate setter)
+    static CompositeFieldInfo CreateCompositeFieldInfo(string name, Type type, PgConverterResolution converterResolution, Delegate getter, Delegate setter)
         => (CompositeFieldInfo)Activator.CreateInstance(
-            typeof(CompositeFieldInfo<>).MakeGenericType(converterResolution.Converter.TypeToConvert), name, converterResolution, getter, setter)!;
+            typeof(CompositeFieldInfo<>).MakeGenericType(type), name, converterResolution, getter, setter)!;
 
     static Dictionary<int, PropertyInfo> MapProperties<T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
     {
