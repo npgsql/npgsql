@@ -1,14 +1,14 @@
 ﻿using BenchmarkDotNet.Attributes;
 using System.Collections.Generic;
 using System.Text;
-using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.Converters;
 
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
 public class Text : TypeHandlerBenchmarks<string>
 {
-    public Text() : base(new TextHandler(GetPostgresType("text"), Encoding.UTF8)) { }
+    public Text() : base(new StringTextConverter(Encoding.UTF8)) { }
 
     protected override IEnumerable<string> ValuesOverride()
     {
