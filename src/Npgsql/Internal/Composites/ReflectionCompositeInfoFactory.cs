@@ -54,8 +54,7 @@ static class ReflectionCompositeInfoFactory
             else
                 throw new InvalidOperationException($"Cannot find property or field for composite field {pgFields[fieldIndex].Name}.");
 
-            Debug.Assert(pgTypeInfo.PgTypeId is not null, "Should not have an undecided type info after resolving with a type id.");
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetDefaultResolution()), getter, i);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetConcreteResolution()), getter, i);
         }
 
         for (var fieldIndex = 0; fieldIndex < pgFields.Count; fieldIndex++)
@@ -87,8 +86,7 @@ static class ReflectionCompositeInfoFactory
             else
                 throw new InvalidOperationException($"Cannot find property or field for composite field '{pgFields[fieldIndex].Name}'.");
 
-            Debug.Assert(pgTypeInfo.PgTypeId is not null, "Should not have an undecided type info after resolving with a type id.");
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetDefaultResolution()), getter, setter);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetConcreteResolution()), getter, setter);
         }
 
         Debug.Assert(compositeFields.All(x => x is not null));

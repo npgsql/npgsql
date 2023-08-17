@@ -143,21 +143,19 @@ public class PgTypeInfo
 
     /// Throws if the type info is undecided in its PgTypeId.
     internal PgConverterResolution GetConcreteResolution()
-        => this switch
-        {
-            { IsResolverInfo: false } => new(Converter, PgTypeId.GetValueOrDefault()),
-            { PgTypeId: null } => throw new InvalidOperationException("PgTypeId is null."),
-            PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(),
-            _ => throw new NotSupportedException("Should not happen, please file a bug.")
-        };
+    {
+        if (PgTypeId is null)
+            throw new InvalidOperationException("PgTypeId is null.");
+        return GetDefaultResolution();
 
-    internal PgConverterResolution GetDefaultResolution()
-        => this switch
-        {
-            { IsResolverInfo: false } => new(Converter, PgTypeId.GetValueOrDefault()),
-            PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(PgTypeId),
-            _ => throw new NotSupportedException("Should not happen, please file a bug.")
-        };
+        PgConverterResolution GetDefaultResolution()
+            => this switch
+            {
+                { IsResolverInfo: false } => new(Converter, PgTypeId.GetValueOrDefault()),
+                PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(PgTypeId),
+                _ => throw new NotSupportedException("Should not happen, please file a bug.")
+            };
+    }
 
     PgConverterInfo CreateConverterInfo(BufferRequirements bufferRequirements, bool isRead, PgConverter converter, Type typeToConvert)
         => new()
