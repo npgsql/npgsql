@@ -47,14 +47,13 @@ sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
             var typeInfo = _serializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
-            var converterInfo = typeInfo.Bind(new Field("?", typeInfo.PgTypeId!.Value, -1), DataFormat.Binary);
-
-            if (typeInfo.GetBufferRequirements(converterInfo.Converter, DataFormat.Binary) is not { } bufferRequirements)
-                throw new NotSupportedException("Record field converter has to support the binary format to be compatible.");
+            var resolution = typeInfo.GetConcreteResolution();
+            if (typeInfo.GetBufferRequirements(resolution.Converter, DataFormat.Binary) is not { } bufferRequirements)
+                throw new NotSupportedException($"Resolved record field converter '{resolution.Converter.GetType()}' has to support the binary format to be compatible.");
 
             await using var _ = await reader
                 .BeginNestedRead(async, length, bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
-            result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
+            result[i] = await resolution.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
         }
 
         return _factory is null ? (T)(object)result : _factory(result);
