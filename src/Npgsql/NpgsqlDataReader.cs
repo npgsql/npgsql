@@ -137,6 +137,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         long startTimestamp = 0,
         Task? sendTask = null)
     {
+        Debug.Assert(_columnInfoCache is null);
         Command = command;
         _connection = command.InternalConnection;
         _behavior = behavior;
