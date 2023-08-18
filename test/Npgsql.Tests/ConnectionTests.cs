@@ -1176,7 +1176,7 @@ LANGUAGE 'plpgsql'");
             };
 
             Assert.That(async () => await cmd.ExecuteScalarAsync(),
-                Throws.Exception.TypeOf<NpgsqlException>()
+                Throws.Exception.TypeOf<NotSupportedException>()
                     .With.Message.EqualTo("The NpgsqlDbType 'IntegerMultirange' isn't present in your database. You may need to install an extension or upgrade to a newer version."));
         }
     }
