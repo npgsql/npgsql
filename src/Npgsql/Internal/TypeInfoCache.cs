@@ -86,40 +86,36 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
 
         PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo? Info)[]? infos, bool defaultTypeFallback)
         {
+            // We cache negatives (null info) to allow 'object or default' checks to never hit the resolvers after the first lookup.
             var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback, _validatePgTypeIds);
 
-            // We don't store negatives for unknown data types, only for unknown clr types.
-            // This is to allow user mappings to be added on the fly without having to reset the entire cache.
-            if (infos is null && info is null)
-                return null;
+            var isDefaultInfo = type is null && info is not null;
+            if (infos is null)
+            {
+                // Also add defaults by their info type to save a future resolver lookup + resize.
+                infos = isDefaultInfo
+                    ? new [] { (type, info), (info!.Type, info) }
+                    : new [] { (type, info) };
 
-            if (infos is null && _cacheByPgTypeId.TryAdd(pgTypeId, new (Type? Type, PgTypeInfo? Info)[] { (type, info) }))
-                return info;
+                if (_cacheByPgTypeId.TryAdd(pgTypeId, infos))
+                    return info;
+            }
 
-            infos ??= _cacheByPgTypeId[pgTypeId];
+            // We have to update it instead.
             while (true)
             {
-                if (FindMatch(type, infos, defaultTypeFallback) is { } newInfo)
-                    return newInfo;
+                infos = _cacheByPgTypeId[pgTypeId];
+                if (FindMatch(type, infos, defaultTypeFallback) is { } racedInfo)
+                    return racedInfo;
 
-                var oldLength = infos.Length;
+                // Also add defaults by their info type to save a future resolver lookup + resize.
                 var oldInfos = infos;
-                if (type is null && info is not null)
-                {
-                    // Also add it by its info type to save a future resolver lookup + resize.
-                    Array.Resize(ref infos, infos.Length + 2);
-                    infos[oldLength] = (type, info);
-                    infos[oldLength + 1] = (info.Type, info);
-                }
-                else
-                {
-                    Array.Resize(ref infos, infos.Length + 1);
-                    infos[oldLength] = (type, info);
-                }
+                Array.Resize(ref infos, oldInfos.Length + (isDefaultInfo ? 2 : 1));
+                infos[oldInfos.Length] = (type, info);
+                if (isDefaultInfo)
+                    infos[oldInfos.Length + 1] = (info!.Type, info);
 
-                if (!_cacheByPgTypeId.TryUpdate(pgTypeId, infos, oldInfos))
-                    infos = _cacheByPgTypeId[pgTypeId];
-                else
+                if (_cacheByPgTypeId.TryUpdate(pgTypeId, infos, oldInfos))
                     return info;
             }
         }
