@@ -567,7 +567,7 @@ public class PgReader
         if (!ShouldBuffer(byteCount))
             return;
 
-        _buffer.Ensure(byteCount);
+        _buffer.Ensure(byteCount, async: false).GetAwaiter().GetResult();
     }
 
     public ValueTask BufferDataAsync(Size bufferRequirement, CancellationToken cancellationToken)

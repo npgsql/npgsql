@@ -18,20 +18,19 @@ sealed partial class NpgsqlReadBuffer
         int _start;
         int _read;
         bool _canSeek;
-        readonly bool _commandScoped;
+        bool _commandScoped;
         /// Does not throw ODE.
         internal int CurrentLength { get; private set; }
         internal bool IsDisposed { get; private set; }
 
-        internal ColumnStream(NpgsqlConnector connector, bool commandScoped = true)
+        internal ColumnStream(NpgsqlConnector connector)
         {
             _connector = connector;
             _buf = connector.ReadBuffer;
-            _commandScoped = commandScoped;
             IsDisposed = true;
         }
 
-        internal void Init(int len, bool canSeek)
+        internal void Init(int len, bool canSeek, bool commandScoped)
         {
             Debug.Assert(!canSeek || _buf.ReadBytesLeft >= len,
                 "Seekable stream constructed but not all data is in buffer (sequential)");
@@ -39,6 +38,7 @@ sealed partial class NpgsqlReadBuffer
             CurrentLength = len;
             _read = 0;
             _canSeek = canSeek;
+            _commandScoped = commandScoped;
             IsDisposed = false;
         }
 
