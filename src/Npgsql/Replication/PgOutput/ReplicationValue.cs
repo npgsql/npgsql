@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,20 +25,12 @@ public class ReplicationValue
     /// </summary>
     public TupleDataKind Kind { get; private set; }
 
+    bool _columnActive;
     bool _columnConsumed;
     FieldDescription _fieldDescription = null!;
     PgConverterInfo _lastInfo;
 
-    /// <summary>
-    /// A stream that has been opened on a column.
-    /// </summary>
-    readonly NpgsqlReadBuffer.ColumnStream _columnStream;
-
-    internal ReplicationValue(NpgsqlConnector connector)
-    {
-        _readBuffer = connector.ReadBuffer;
-        _columnStream = new NpgsqlReadBuffer.ColumnStream(connector, commandScoped: false);
-    }
+    internal ReplicationValue(NpgsqlConnector connector) => _readBuffer = connector.ReadBuffer;
 
     internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription)
     {
@@ -95,7 +86,7 @@ public class ReplicationValue
     /// <returns></returns>
     public ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
     {
-        CheckAndMarkConsumed();
+        CheckAndMarkActive();
 
         var info = _lastInfo = _fieldDescription.GetInfo(typeof(T), _lastInfo);
 
@@ -118,36 +109,19 @@ public class ReplicationValue
         }
 
         using (NoSynchronizationContextScope.Enter())
-            return GetCore(cancellationToken);
+            return GetCore(info, _fieldDescription.DataFormat, _readBuffer, Length, cancellationToken);
 
-        async ValueTask<T> GetCore(CancellationToken cancellationToken)
+        static async ValueTask<T> GetCore(PgConverterInfo info, DataFormat format, NpgsqlReadBuffer buffer, int length, CancellationToken cancellationToken)
         {
-            using var tokenRegistration = _readBuffer.ReadBytesLeft < Length
-                ? _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken)
-                : default;
+            using var registration = buffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-            var position = _readBuffer.ReadPosition;
-
-            try
-            {
-                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
-                await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
-                return info.AsObject
-                    ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
-                    : await info.GetConverter<T>().ReadAsync(reader, cancellationToken);
-            }
-            catch
-            {
-                if (_readBuffer.Connector.State != ConnectorState.Broken)
-                {
-                    var writtenBytes = _readBuffer.ReadPosition - position;
-                    var remainingBytes = Length - writtenBytes;
-                    if (remainingBytes > 0)
-                        await _readBuffer.Skip(remainingBytes, async: true);
-                }
-
-                throw;
-            }
+            var reader = buffer.PgReader.Init(length, format);
+            await reader.StartReadAsync(info.BufferRequirement, cancellationToken);
+            var result = info.AsObject
+                ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
+                : await info.GetConverter<T>().ReadAsync(reader, cancellationToken);
+            await reader.EndReadAsync();
+            return result;
         }
     }
 
@@ -158,59 +132,14 @@ public class ReplicationValue
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns></returns>
-    public ValueTask<object> Get(CancellationToken cancellationToken = default)
-    {
-        CheckAndMarkConsumed();
-
-        var info = _fieldDescription.ObjectOrDefaultInfo;
-
-        switch (Kind)
-        {
-        case TupleDataKind.Null:
-            return new ValueTask<object>(DBNull.Value);
-
-        case TupleDataKind.UnchangedToastedValue:
-            throw new InvalidCastException(
-                $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
-        }
-
-        using (NoSynchronizationContextScope.Enter())
-            return GetCore(cancellationToken);
-
-        async ValueTask<object> GetCore(CancellationToken cancellationToken)
-        {
-            using var tokenRegistration = _readBuffer.ReadBytesLeft < Length
-                ? _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken)
-                : default;
-
-            var position = _readBuffer.ReadPosition;
-
-            try
-            {
-                await _readBuffer.PgReader.BufferDataAsync(info.BufferRequirement, cancellationToken);
-                return await info.Converter.ReadAsObjectAsync(_readBuffer.PgReader, cancellationToken);
-            }
-            catch
-            {
-                if (_readBuffer.Connector.State != ConnectorState.Broken)
-                {
-                    var writtenBytes = _readBuffer.ReadPosition - position;
-                    var remainingBytes = Length - writtenBytes;
-                    if (remainingBytes > 0)
-                        await _readBuffer.Skip(remainingBytes, async: true);
-                }
-
-                throw;
-            }
-        }
-    }
+    public ValueTask<object> Get(CancellationToken cancellationToken = default) => Get<object>(cancellationToken);
 
     /// <summary>
     /// Retrieves data as a <see cref="Stream"/>.
     /// </summary>
     public Stream GetStream()
     {
-        CheckAndMarkConsumed();
+        CheckAndMarkActive();
 
         switch (Kind)
         {
@@ -222,8 +151,8 @@ public class ReplicationValue
             throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        _columnStream.Init(Length, canSeek: false);
-        return _columnStream;
+        var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
+        return reader.GetStream(canSeek: false);
     }
 
     /// <summary>
@@ -231,38 +160,44 @@ public class ReplicationValue
     /// </summary>
     public TextReader GetTextReader()
     {
+        CheckAndMarkActive();
+
         var info = _lastInfo = _fieldDescription.GetInfo(typeof(TextReader), _lastInfo);
+
+        switch (Kind)
+        {
+        case TupleDataKind.Null:
+            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
+            break;
+
+        case TupleDataKind.UnchangedToastedValue:
+            throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
+        }
+
         var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
-        Debug.Assert(info.BufferRequirement == Size.Zero);
-        reader.BufferData(info.BufferRequirement);
-        return (TextReader)info.Converter.ReadAsObject(reader);
+        reader.StartRead(info.BufferRequirement);
+        var result = (TextReader)info.Converter.ReadAsObject(reader);
+        reader.EndRead();
+        return result;
     }
 
     internal async Task Consume(CancellationToken cancellationToken)
     {
-        if (!_columnStream.IsDisposed)
-            await _columnStream.DisposeAsync();
+        if (_columnConsumed)
+            return;
 
-        if (!_columnConsumed)
-        {
-            if (_readBuffer.ReadBytesLeft < 4)
-            {
-                using var tokenRegistration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken);
-                await _readBuffer.Skip(Length, async: true);
-            }
-            else
-            {
-                await _readBuffer.Skip(Length, async: true);
-            }
-        }
+        if (!_columnActive)
+            _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
 
+        await _readBuffer.PgReader.ConsumeAsync(null, cancellationToken);
+        await _readBuffer.PgReader.Commit(async: true, false);
         _columnConsumed = true;
     }
 
-    void CheckAndMarkConsumed()
+    void CheckAndMarkActive()
     {
-        if (_columnConsumed)
+        if (_columnActive)
             throw new InvalidOperationException("Column has already been consumed");
-        _columnConsumed = true;
+        _columnActive = true;
     }
 }

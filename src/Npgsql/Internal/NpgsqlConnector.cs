@@ -180,6 +180,9 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     volatile Exception? _breakReason;
 
+    // Used by replication to change our cancellation behaviour on ColumnStreams.
+    internal bool LongRunningConnection { get; set; }
+
     /// <summary>
     /// <para>
     /// Used by the pool to indicate that I/O is currently in progress on this connector, so that another write
@@ -1898,15 +1901,44 @@ public sealed partial class NpgsqlConnector
     /// PostgreSQL cancellation will be skipped and client-socket cancellation will occur immediately.
     /// </param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal CancellationTokenRegistration StartNestedCancellableOperation(
+    internal NestedCancellableScope StartNestedCancellableOperation(
         CancellationToken cancellationToken = default,
         bool attemptPgCancellation = true)
     {
+        var currentUserCancellationToken = UserCancellationToken;
         UserCancellationToken = cancellationToken;
+        var currentAttemptPostgresCancellation = AttemptPostgresCancellation;
         AttemptPostgresCancellation = attemptPgCancellation;
 
-        return _cancellationTokenRegistration =
-            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+        var registration = cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+
+        return new(this, registration, currentUserCancellationToken, currentAttemptPostgresCancellation);
+    }
+
+    internal readonly struct NestedCancellableScope : IDisposable
+    {
+        readonly NpgsqlConnector _connector;
+        readonly CancellationTokenRegistration _registration;
+        readonly CancellationToken _previousCancellationToken;
+        readonly bool _previousAttemptPostgresCancellation;
+
+        public NestedCancellableScope(NpgsqlConnector connector, CancellationTokenRegistration registration, CancellationToken previousCancellationToken, bool previousAttemptPostgresCancellation)
+        {
+            _connector = connector;
+            _registration = registration;
+            _previousCancellationToken = previousCancellationToken;
+            _previousAttemptPostgresCancellation = previousAttemptPostgresCancellation;
+        }
+
+        public void Dispose()
+        {
+            if (_connector is null)
+                return;
+
+            _connector.UserCancellationToken = _previousCancellationToken;
+            _connector.AttemptPostgresCancellation = _previousAttemptPostgresCancellation;
+            _registration.Dispose();
+        }
     }
 
     #endregion Cancel
@@ -2325,6 +2357,7 @@ public sealed partial class NpgsqlConnector
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void ResetReadBuffer()
     {
+        LongRunningConnection = false;
         if (_origReadBuffer != null)
         {
             Debug.Assert(_origReadBuffer.ReadBytesLeft == 0);

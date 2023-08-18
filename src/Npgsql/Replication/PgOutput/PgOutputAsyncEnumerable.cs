@@ -127,7 +127,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                 await buf.EnsureAsync(4);
                 var length = buf.ReadUInt32();
                 var data = (NpgsqlReadBuffer.ColumnStream)xLogData.Data;
-                data.Init(checked((int)length), false);
+                data.Init(checked((int)length), canSeek: false, commandScoped: false);
                 yield return _logicalDecodingMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock, transactionXid,
                     flags, messageLsn, prefix, data);
                 continue;

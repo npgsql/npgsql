@@ -241,6 +241,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         SetTimeouts(CommandTimeout, CommandTimeout);
 
+        _npgsqlConnection.Connector!.LongRunningConnection = true;
+
         ReplicationLogger = _npgsqlConnection.Connector!.LoggingConfiguration.ReplicationLogger;
     }
 
@@ -448,7 +450,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         _replicationCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        using var _ = Connector.StartUserAction(
+        using var _ = connector.StartUserAction(
             ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
 
         NpgsqlReadBuffer.ColumnStream? columnStream = null;
@@ -473,8 +475,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             var buf = connector.ReadBuffer;
 
-            // Cancellation is handled at the replication level - we don't want every ReadAsync
-            columnStream = new NpgsqlReadBuffer.ColumnStream(connector, commandScoped: false);
+            columnStream = new NpgsqlReadBuffer.ColumnStream(connector);
 
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
 
@@ -483,7 +484,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             while (true)
             {
-                msg = await Connector.ReadMessage(async: true);
+                msg = await connector.ReadMessage(async: true);
                 Expect<CopyDataMessage>(msg, Connector);
 
                 // We received some message so there's no need to forcibly request feedback
@@ -509,7 +510,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
                     // dataLen = msg.Length - (code = 1 + walStart = 8 + walEnd = 8 + serverClock = 8)
                     var dataLen = messageLength - 25;
-                    columnStream.Init(dataLen, canSeek: false);
+                    columnStream.Init(dataLen, canSeek: false, commandScoped: false);
 
                     _cachedXLogDataMessage.Populate(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn),
                         sendTime, columnStream);
