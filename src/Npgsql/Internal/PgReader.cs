@@ -511,7 +511,7 @@ public class PgReader
         if (Pos < _field.Size.Value)
         {
             throw _buffer.Connector.Break(
-                new InvalidOperationException("Trying to commit a reader over a field that hasn't been entirely consumed"));
+                new InvalidOperationException($"Trying to commit a reader over a field that hasn't been entirely consumed (pos: {Pos}, len: {_field.Size.Value})"));
         }
 
         _field = default;

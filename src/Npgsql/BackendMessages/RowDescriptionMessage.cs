@@ -336,7 +336,7 @@ public sealed class FieldDescription
             if (!_objectOrDefaultInfo.IsDefault)
                 return _objectOrDefaultInfo.TypeInfo;
 
-            return (_objectOrDefaultInfo = GetInfo(null, _objectOrDefaultInfo)).TypeInfo;
+            return (_objectOrDefaultInfo = GetInfo(null, default)).TypeInfo;
         }
     }
 
@@ -348,7 +348,7 @@ public sealed class FieldDescription
             if (!_objectOrDefaultInfo.IsDefault)
                 return _objectOrDefaultInfo;
 
-            return _objectOrDefaultInfo = GetInfo(null, _objectOrDefaultInfo);
+            return _objectOrDefaultInfo = GetInfo(null, default);
         }
     }
 
@@ -364,6 +364,9 @@ public sealed class FieldDescription
 
     internal PgConverterInfo GetInfo(Type? type, PgConverterInfo lastConverterInfo)
     {
+        Debug.Assert(lastConverterInfo.IsDefault || (
+            ReferenceEquals(_serializerOptions, lastConverterInfo.TypeInfo.Options) &&
+            lastConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
         PgConverterInfo converterInfo;
         if (type is not null && ObjectOrDefaultTypeInfo.Type == type)
             converterInfo = ObjectOrDefaultInfo;
