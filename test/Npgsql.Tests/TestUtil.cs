@@ -57,7 +57,7 @@ public static class TestUtil
         MinimumPgVersion(connection, minVersion, ignoreText);
     }
 
-    public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string? ignoreText = null)
+    public static bool MinimumPgVersion(NpgsqlConnection conn, string minVersion, string? ignoreText = null)
     {
         var min = new Version(minVersion);
         if (conn.PostgreSqlVersion < min)
@@ -66,7 +66,10 @@ public static class TestUtil
             if (ignoreText != null)
                 msg += ": " + ignoreText;
             Assert.Ignore(msg);
+            return false;
         }
+
+        return true;
     }
 
     public static void MaximumPgVersionExclusive(NpgsqlConnection conn, string maxVersion, string? ignoreText = null)
@@ -105,16 +108,24 @@ public static class TestUtil
 
     static async Task EnsureExtension(NpgsqlConnection conn, string extension, string? minVersion, bool async)
     {
-        if (minVersion != null)
-            MinimumPgVersion(conn, minVersion, $"The extension '{extension}' only works for PostgreSQL {minVersion} and higher.");
+        if (minVersion != null && !MinimumPgVersion(conn, minVersion, $"The extension '{extension}' only works for PostgreSQL {minVersion} and higher."))
+            return;
 
         if (conn.PostgreSqlVersion < MinCreateExtensionVersion)
             Assert.Ignore($"The 'CREATE EXTENSION' command only works for PostgreSQL {MinCreateExtensionVersion} and higher.");
 
-        if (async)
-            await conn.ExecuteNonQueryAsync($"CREATE EXTENSION IF NOT EXISTS {extension}");
-        else
-            conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
+        try
+        {
+            if (async)
+                await conn.ExecuteNonQueryAsync($"CREATE EXTENSION IF NOT EXISTS {extension}");
+            else
+                conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
+        }
+        catch (PostgresException ex) when (ex.ConstraintName == "pg_extension_name_index")
+        {
+            // The extension is already installed, but we can race across threads.
+            // https://stackoverflow.com/questions/63104126/create-extention-if-not-exists-doesnt-really-check-if-extention-does-not-exis
+        }
 
         conn.ReloadTypes();
     }
