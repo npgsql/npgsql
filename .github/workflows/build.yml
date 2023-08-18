@@ -315,7 +315,6 @@ jobs:
         run: |
             if [ -z "${{ matrix.pg_prerelease }}" ]; then
                 dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
-                dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.NodaTime.Tests --logger "GitHubActions;report-warnings=false"
             fi
         shell: bash
 
