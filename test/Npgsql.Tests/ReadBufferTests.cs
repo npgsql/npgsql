@@ -17,14 +17,14 @@ class ReadBufferTests
         for (byte i = 0; i < 50; i++)
             Writer.WriteByte(i);
 
-        ReadBuffer.Ensure(10);
+        ReadBuffer.Ensure(10, async: false).GetAwaiter().GetResult();
         ReadBuffer.Skip(7);
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(7));
         ReadBuffer.Skip(10);
-        ReadBuffer.Ensure(1);
+        ReadBuffer.Ensure(1, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(18));
         ReadBuffer.Skip(20);
-        ReadBuffer.Ensure(1);
+        ReadBuffer.Ensure(1, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(39));
     }
 
@@ -36,7 +36,7 @@ class ReadBufferTests
         Array.Reverse(bytes);
         Writer.Write(bytes);
 
-        ReadBuffer.Ensure(4);
+        ReadBuffer.Ensure(4, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadSingle(), Is.EqualTo(expected));
     }
 
@@ -48,7 +48,7 @@ class ReadBufferTests
         Array.Reverse(bytes);
         Writer.Write(bytes);
 
-        ReadBuffer.Ensure(8);
+        ReadBuffer.Ensure(8, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadDouble(), Is.EqualTo(expected));
     }
 
@@ -61,7 +61,7 @@ class ReadBufferTests
             .Write(PGUtil.UTF8Encoding.GetBytes(new string("bar")))
             .WriteByte(0);
 
-        ReadBuffer.Ensure(1);
+        ReadBuffer.Ensure(1, async: false);
 
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("foo"));
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("bar"));
@@ -71,7 +71,7 @@ class ReadBufferTests
     public async Task ReadNullTerminatedString_with_io()
     {
         Writer.Write(PGUtil.UTF8Encoding.GetBytes(new string("Chunked ")));
-        ReadBuffer.Ensure(1);
+        await ReadBuffer.Ensure(1, async: true);
         var task = ReadBuffer.ReadNullTerminatedString(async: true);
         Assert.That(!task.IsCompleted);
 
