@@ -580,11 +580,11 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore
 
     protected override int ValidateAndGetElementLength(bool isArray, object values, int index, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
-        Debug.Assert(isArray ? values is TElement?[] : values is List<TElement?>);
+        Debug.Assert(isArray ? values is TElement?[] : values is IList<TElement?>);
         var element =
             isArray
                 ? Unsafe.As<object, TElement?[]>(ref values)[index]
-                : Unsafe.As<object, List<TElement?>>(ref values)[index];
+                : Unsafe.As<object, IList<TElement?>>(ref values)[index];
 
         return element is null
             ? 0
@@ -596,11 +596,11 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore
     protected override async ValueTask WriteElementWithLength(bool isArray, object values, int index, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
     {
-        Debug.Assert(isArray ? values is TElement?[] : values is List<TElement?>);
+        Debug.Assert(isArray ? values is TElement?[] : values is IList<TElement?>);
         var element =
             isArray
                 ? Unsafe.As<object, TElement?[]>(ref values)[index]
-                : Unsafe.As<object, List<TElement?>>(ref values)[index];
+                : Unsafe.As<object, IList<TElement?>>(ref values)[index];
 
         if (NullableHandler<TElement>.Exists)
             await NullableHandler<TElement>.WriteAsync(_elementHandler, element!, buf, lengthCache, parameter, async, cancellationToken);

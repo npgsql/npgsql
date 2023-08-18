@@ -489,8 +489,13 @@ SELECT onedim, twodim FROM (VALUES
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
-        cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
+        cmd.Parameters.AddWithValue("p1", BuildRawEnumerable());
         Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("array or List"));
+
+        static IEnumerable<int> BuildRawEnumerable()
+        {
+            yield return 0;
+        }
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
@@ -526,6 +531,11 @@ SELECT onedim, twodim FROM (VALUES
         await AssertIListRoundtrips(conn, new[] { 1, 2, 3 });
         await AssertIListRoundtrips(conn, new IntList { 1, 2, 3 });
         await AssertIListRoundtrips(conn, new MisleadingIntList<string>() { 1, 2, 3 });
+#if NET8_0_OR_GREATER
+        await AssertIListRoundtrips(conn, Enumerable.Empty<int>());
+        await AssertIListRoundtrips(conn, Enumerable.Range(1,3));
+        await AssertIListRoundtrips(conn, Enumerable.Repeat(1,3));
+#endif
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]
