@@ -46,6 +46,8 @@ public class ReplicationValue
         Kind = kind;
         Length = length;
         _fieldDescription = fieldDescription;
+        _lastInfo = default;
+        _columnActive = false;
         _columnConsumed = false;
     }
 
