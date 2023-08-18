@@ -278,7 +278,7 @@ CREATE TYPE {compositeType} AS (ints int4[])");
             await DoAssertion();
         else
         {
-            Assert.ThrowsAsync<ArgumentException>(DoAssertion);
+            Assert.ThrowsAsync<NotSupportedException>(DoAssertion);
             // Start a transaction specifically for multiplexing (to bind a connector to the connection)
             await using var tx = await connection.BeginTransactionAsync();
             Assert.Null(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)));

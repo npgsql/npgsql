@@ -535,12 +535,15 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 builtinDataTypeName = NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDataTypeName();
             }
 
-            var pgTypeId = dataTypeName is null ? (PgTypeId?)null : builtinDataTypeName switch
-            {
-                { } name => options.GetCanonicalTypeId(name),
-                // Handle plugin types via lookup.
-                null => GetRepresentationalOrDefault(dataTypeName)
-            };
+
+
+            var pgTypeId = dataTypeName is null
+                ? (PgTypeId?)null
+                : TryGetRepresentationalOrValue(builtinDataTypeName ?? dataTypeName, out var id)
+                    ? id
+                    : throw new NotSupportedException(_npgsqlDbType is not null
+                        ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
+                        : $"The data type name '{builtinDataTypeName ?? dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
 
             // We treat object typed DBNull values as default info.
             if (valueType is null || (staticValueType == typeof(object) && valueType == typeof(DBNull)))
@@ -577,10 +580,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             PgTypeId = resolution.PgTypeId;
         }
 
-        PgTypeId GetRepresentationalOrDefault(string dataTypeName)
+        bool TryGetRepresentationalOrValue(string dataTypeName, out PgTypeId pgTypeId)
         {
-            var type = options.TypeCatalog.GetPostgresTypeByName(dataTypeName);
-            return options.ToCanonicalTypeId(type.GetRepresentationalType());
+            if (options.TypeCatalog.TryGetPostgresTypeByName(dataTypeName, out var pgType))
+            {
+                pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
+                return true;
+            }
+
+            pgTypeId = default;
+            return false;
         }
     }
 
