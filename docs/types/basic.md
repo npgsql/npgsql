@@ -106,7 +106,7 @@ json                        |                                            | strin
 jsonb                       |                                            | string, char[], char                    | Jsonb                 |
 xml                         |                                            | string, char[], char                    | Xml                   |
 uuid                        | Guid                                       |                                         | Uuid                  |
-bytea                       | byte[]                                     | ArraySegment\<byte\>                    | Bytea                 | Binary
+bytea                       | byte[]                                     | ArraySegment\<byte\>, Stream (7.0+)     | Bytea                 | Binary
 timestamp with time zone    | DateTime (Utc)<sup>1</sup>, DateTimeOffset |                                         | TimestampTz           | DateTime<sup>2</sup>, DateTimeOffset
 timestamp without time zone | DateTime (Local/Unspecified)<sup>1</sup>   |                                         | Timestamp             | DateTime2
 date                        | DateOnly (6.0+)                            | DateTime                                | Date                  | Date
