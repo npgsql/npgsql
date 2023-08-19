@@ -84,15 +84,16 @@ class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
 
     static void AddMappings(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerOptions? serializerOptions = null)
     {
-        // We do GetTypeInfo calls directly so we need a resolver.
-        if (serializerOptions is not null && serializerOptions.TypeInfoResolver is null)
-            serializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
-
 #if NET7_0_OR_GREATER
         serializerOptions ??= JsonSerializerOptions.Default;
 #else
         serializerOptions ??= new JsonSerializerOptions();
 #endif
+
+        // We do GetTypeInfo calls directly so we need a resolver.
+        if (serializerOptions.TypeInfoResolver is null)
+            serializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
+
         AddUserMappings(jsonb: true, jsonbClrTypes);
         AddUserMappings(jsonb: false, jsonClrTypes);
 
