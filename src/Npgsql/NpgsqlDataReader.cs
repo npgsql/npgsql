@@ -102,7 +102,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <summary>
     /// Stores the last converter info resolved by column, to speed up repeated reading.
     /// </summary>
-    PgConverterInfo[]? _columnInfoCache;
+    PgConverterInfo[]? ColumnInfoCache { get; set; }
 
     ulong? _recordsAffected;
 
@@ -137,7 +137,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         long startTimestamp = 0,
         Task? sendTask = null)
     {
-        Debug.Assert(_columnInfoCache is null);
+        Debug.Assert(ColumnInfoCache is null);
         Command = command;
         _connection = command.InternalConnection;
         _behavior = behavior;
@@ -456,13 +456,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 if (RowDescription is not null)
                 {
-                    if (_columnInfoCache?.Length >= RowDescription.Count)
-                        Array.Clear(_columnInfoCache, 0, _columnInfoCache.Length);
+                    if (ColumnInfoCache?.Length >= RowDescription.Count)
+                        Array.Clear(ColumnInfoCache, 0, ColumnInfoCache.Length);
                     else
                     {
-                        if (_columnInfoCache is { } cache)
+                        if (ColumnInfoCache is { } cache)
                             ArrayPool<PgConverterInfo>.Shared.Return(cache, clearArray: true);
-                        _columnInfoCache = ArrayPool<PgConverterInfo>.Shared.Rent(RowDescription.Count);
+                        ColumnInfoCache = ArrayPool<PgConverterInfo>.Shared.Rent(RowDescription.Count);
                     }
                 }
                 else
@@ -601,14 +601,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 State = ReaderState.Consumed;
             throw;
         }
-        finally
-        {
-            if (State >= ReaderState.Consumed && _columnInfoCache is { } cache)
-            {
-                _columnInfoCache = null;
-                ArrayPool<PgConverterInfo>.Shared.Return(cache, clearArray: true);
-            }
-        }
     }
 
     void PopulateOutputParameters()
@@ -741,27 +733,20 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 // Found a resultset
                 if (RowDescription is not null)
                 {
-                    if (_columnInfoCache?.Length >= RowDescription.Count)
-                        Array.Clear(_columnInfoCache, 0, _columnInfoCache.Length);
+                    if (ColumnInfoCache?.Length >= RowDescription.Count)
+                        Array.Clear(ColumnInfoCache, 0, ColumnInfoCache.Length);
                     else
                     {
-                        if (_columnInfoCache is { } cache)
+                        if (ColumnInfoCache is { } cache)
                             ArrayPool<PgConverterInfo>.Shared.Return(cache, clearArray: true);
-                        _columnInfoCache = ArrayPool<PgConverterInfo>.Shared.Rent(RowDescription.Count);
+                        ColumnInfoCache = ArrayPool<PgConverterInfo>.Shared.Rent(RowDescription.Count);
                     }
                     return true;
                 }
             }
 
-			if (_columnInfoCache is not null)
-            {
-            	ArrayPool<PgConverterInfo>.Shared.Return(_columnInfoCache);
-                _columnInfoCache = null;
-            }
-
-            RowDescription = null;
             State = ReaderState.Consumed;
-
+            RowDescription = null;
             return false;
         }
         catch (Exception e)
@@ -795,14 +780,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
 
             throw;
-        }
-        finally
-        {
-            if (State >= ReaderState.Consumed && _columnInfoCache is { } cache)
-            {
-                _columnInfoCache = null;
-                ArrayPool<PgConverterInfo>.Shared.Return(cache, clearArray: true);
-            }
         }
     }
 
@@ -1210,6 +1187,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     _commandLogger.LogDebug(e, "Exception caught while sending the request", Connector.Id);
                 }
             }
+        }
+
+        if (ColumnInfoCache is { } cache)
+        {
+            ColumnInfoCache = null;
+            ArrayPool<PgConverterInfo>.Shared.Return(cache, clearArray: true);
         }
 
         State = ReaderState.Closed;
@@ -2120,7 +2103,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (type is null)
             return field.ObjectOrDefaultInfo;
 
-        ref var cachedInfo = ref _columnInfoCache![ordinal];
+        ref var cachedInfo = ref ColumnInfoCache![ordinal];
         return cachedInfo = field.GetInfo(type, cachedInfo);
     }
 
