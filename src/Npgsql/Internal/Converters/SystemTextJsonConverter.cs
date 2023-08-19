@@ -20,6 +20,10 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
 
     public SystemTextJsonConverter(bool jsonb, Encoding textEncoding, JsonSerializerOptions serializerOptions)
     {
+        // We do GetTypeInfo calls directly so we need a resolver.
+        if (serializerOptions.TypeInfoResolver is null)
+            serializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
+
         _jsonb = jsonb;
         _textEncoding = textEncoding;
         _jsonTypeInfo = typeof(TBase) != typeof(object) && typeof(T) != typeof(TBase)
