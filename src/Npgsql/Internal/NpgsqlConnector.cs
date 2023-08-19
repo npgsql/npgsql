@@ -1245,7 +1245,7 @@ public sealed partial class NpgsqlConnector
 
                     // TODO: the exception we have here is sometimes just the result of the write loop breaking
                     // the connector, so it doesn't represent the actual root cause.
-                    pendingCommand.ExecutionCompletion.SetException(_breakReason!);
+                    pendingCommand.ExecutionCompletion.SetException(new NpgsqlException("A previous command on this connection caused an error requiring all pending commands on this connection to be aborted", _breakReason!));
                 }
             }
             catch (ChannelClosedException)
