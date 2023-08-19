@@ -21,11 +21,11 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T>
 #else
     protected override T ReadCore(PgReader reader)
     {
-        var value = reader.ReadFloat();
+        var value = reader.ReadDouble();
         if (typeof(float) == typeof(T))
             return (T)(object)value;
         if (typeof(double) == typeof(T))
-            return (T)(object)(double)value;
+            return (T)(object)value;
 
         throw new NotSupportedException();
     }
@@ -33,9 +33,9 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T>
     protected override void WriteCore(PgWriter writer, T value)
     {
         if (typeof(float) == typeof(T))
-            writer.WriteFloat((float)(object)value!);
+            writer.WriteDouble((float)(object)value!);
         else if (typeof(double) == typeof(T))
-            writer.WriteFloat((float)(double)(object)value!);
+            writer.WriteDouble((double)(object)value!);
         else
             throw new NotSupportedException();
     }
