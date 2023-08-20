@@ -128,7 +128,7 @@ public abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
 {
     readonly PgTypeId? _pgTypeId;
     public PgResolverTypeInfo EffectiveTypeInfo { get; }
-    readonly ConcurrentDictionary<PgConverter, PgConverter<T>> _converters = new(ReferenceEqualityComparer.Instance);
+    readonly ConcurrentDictionary<PgConverter, PgConverter> _converters = new(ReferenceEqualityComparer.Instance);
 
     protected PgComposingConverterResolver(PgTypeId? pgTypeId, PgResolverTypeInfo effectiveTypeInfo)
     {
@@ -179,7 +179,7 @@ public abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
     PgConverter<T> GetOrAdd(PgConverterResolution effectiveResolution)
     {
         (PgComposingConverterResolver<T> Instance, PgConverterResolution EffectiveResolution) state = (this, effectiveResolution);
-        return _converters.GetOrAdd(
+        return (PgConverter<T>)_converters.GetOrAdd(
             effectiveResolution.Converter,
             static (_, state) => state.Instance.CreateConverter(state.EffectiveResolution),
             state);
