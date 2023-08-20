@@ -39,7 +39,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
 
         static async ValueTask<BigInteger> AsyncCore(PgReader reader, CancellationToken cancellationToken)
         {
-            await reader.BufferDataAsync(PgNumeric.GetByteCount(0), cancellationToken).ConfigureAwait(false);
+            await reader.BufferAsync(PgNumeric.GetByteCount(0), cancellationToken).ConfigureAwait(false);
             var digitCount = reader.ReadInt16();
             var digits = new ArraySegment<short>(ArrayPool<short>.Shared.Rent(digitCount), 0, digitCount);
             var value = ConvertTo(await NumericConverter.ReadAsync(reader, digits, cancellationToken).ConfigureAwait(false));
@@ -195,14 +195,14 @@ static class NumericConverter
     {
         var remainingStructureSize = PgNumeric.GetByteCount(0) - sizeof(short);
         if (reader.ShouldBuffer(remainingStructureSize))
-            reader.BufferData(remainingStructureSize);
+            reader.Buffer(remainingStructureSize);
         var weight = reader.ReadInt16();
         var sign = reader.ReadInt16();
         var scale = reader.ReadInt16();
         foreach (ref var digit in digits)
         {
             if (reader.ShouldBuffer(sizeof(short)))
-                reader.BufferData(sizeof(short));
+                reader.Buffer(sizeof(short));
             digit = reader.ReadInt16();
         }
 
@@ -213,7 +213,7 @@ static class NumericConverter
     {
         var remainingStructureSize = PgNumeric.GetByteCount(0) - sizeof(short);
         if (reader.ShouldBuffer(remainingStructureSize))
-            await reader.BufferDataAsync(remainingStructureSize, cancellationToken).ConfigureAwait(false);
+            await reader.BufferAsync(remainingStructureSize, cancellationToken).ConfigureAwait(false);
         var weight = reader.ReadInt16();
         var sign = reader.ReadInt16();
         var scale = reader.ReadInt16();
@@ -221,7 +221,7 @@ static class NumericConverter
         for (var i = digits.Offset; i < array.Length; i++)
         {
             if (reader.ShouldBuffer(sizeof(short)))
-                await reader.BufferDataAsync(sizeof(short), cancellationToken).ConfigureAwait(false);
+                await reader.BufferAsync(sizeof(short), cancellationToken).ConfigureAwait(false);
             array[i] = reader.ReadInt16();
         }
 

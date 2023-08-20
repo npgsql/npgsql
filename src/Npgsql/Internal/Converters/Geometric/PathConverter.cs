@@ -17,7 +17,7 @@ sealed class PathConverter : PgStreamingConverter<NpgsqlPath>
     async ValueTask<NpgsqlPath> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(byte) + sizeof(int)))
-            await reader.BufferData(async, sizeof(byte) + sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(byte) + sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var open = reader.ReadByte() switch
         {
@@ -32,7 +32,7 @@ sealed class PathConverter : PgStreamingConverter<NpgsqlPath>
         for (var i = 0; i < numPoints; i++)
         {
             if (reader.ShouldBuffer(sizeof(double) * 2))
-                await reader.BufferData(async, sizeof(byte) + sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(byte) + sizeof(int), cancellationToken).ConfigureAwait(false);
 
             result.Add(new NpgsqlPoint(reader.ReadDouble(), reader.ReadDouble()));
         }

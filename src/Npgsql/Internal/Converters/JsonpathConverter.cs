@@ -56,7 +56,7 @@ sealed class JsonpathConverter<T> : PgStreamingConverter<T>, IResumableRead
             if (!reader.IsResumed)
             {
                 if (reader.ShouldBuffer(sizeof(byte)))
-                    await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
+                    await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
                 var version = reader.ReadByte();
                 if (version != JsonpathProtocolVersion)
@@ -64,7 +64,7 @@ sealed class JsonpathConverter<T> : PgStreamingConverter<T>, IResumableRead
             }
 
             // No need for a nested read, all text converters will read CurrentRemaining bytes.
-            await reader.BufferData(async, readRequirement, cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, readRequirement, cancellationToken).ConfigureAwait(false);
             return async ? await _textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : _textConverter.Read(reader);
         }
 

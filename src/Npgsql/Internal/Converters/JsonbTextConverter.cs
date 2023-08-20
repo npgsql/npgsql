@@ -74,7 +74,7 @@ static class JsonbTextConverter
         if (!reader.IsResumed)
         {
             if (reader.ShouldBuffer(sizeof(byte)))
-                await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
             var version = reader.ReadByte();
             if (version != JsonbProtocolVersion)
@@ -84,7 +84,7 @@ static class JsonbTextConverter
         // No need for a nested read, all text converters will read CurrentRemaining bytes.
         // We only need to buffer data if we're binary, otherwise the caller would have had to do so
         // as we directly expose the underlying text converter requirements for the text data format.
-        await reader.BufferData(async, textConverterReadRequirement, cancellationToken).ConfigureAwait(false);
+        await reader.Buffer(async, textConverterReadRequirement, cancellationToken).ConfigureAwait(false);
     }
 
     public static bool CanConvert(PgConverter textConverter, DataFormat format, out BufferRequirements textConverterRequirements, out BufferRequirements bufferRequirements)

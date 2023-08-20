@@ -46,11 +46,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         if (count != _composite.Fields.Count)
             throw new InvalidOperationException("Cannot read composite type with mismatched number of fields");
         if (reader.ShouldBuffer(sizeof(int)))
-            await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         foreach (var field in _composite.Fields)
         {
             if (reader.ShouldBuffer(sizeof(uint) + sizeof(int)))
-                await reader.BufferData(async, sizeof(uint) + sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(uint) + sizeof(int), cancellationToken).ConfigureAwait(false);
 
             var oid = reader.ReadUInt32();
             var length = reader.ReadInt32();

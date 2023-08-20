@@ -22,7 +22,7 @@ sealed class LTreeConverter : PgStreamingConverter<string>
     async ValueTask<string> Read(bool async, PgReader reader, CancellationToken cancellationToken = default)
     {
         if (reader.ShouldBuffer(sizeof(byte)))
-            await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
         var version = reader.ReadByte();
         if (version != _expectedVersionPrefix)
