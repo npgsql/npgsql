@@ -56,7 +56,6 @@ sealed class UserTypeMapper
         where TEnum : struct, Enum
         => Unmap(typeof(TEnum), out _, pgName, nameTranslator ?? DefaultNameTranslator);
 
-    // TODO these overloads will accept some form of context that houses the converter for the composite.
     public UserTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : class
     {
         Unmap(typeof(T), out var resolvedName, pgName, nameTranslator);
@@ -140,9 +139,7 @@ sealed class UserTypeMapper
 
         public CompositeMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
             : base(pgTypeName, typeof(T))
-        {
-            _nameTranslator = nameTranslator;
-        }
+            => _nameTranslator = nameTranslator;
 
         internal override void Build(TypeInfoMappingCollection mappings)
         {
@@ -155,6 +152,7 @@ sealed class UserTypeMapper
                 return mapping.CreateInfo(options, new CompositeConverter<T>(
                     ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, _nameTranslator, options)));
             }, isDefault: true);
+            // TODO this should be split out so we can enjoy EnableArray trimming.
             mappings.AddArrayType<T>(PgTypeName);
         }
     }
@@ -165,9 +163,7 @@ sealed class UserTypeMapper
 
         public StructCompositeMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
             : base(pgTypeName, typeof(T))
-        {
-            _nameTranslator = nameTranslator;
-        }
+            => _nameTranslator = nameTranslator;
 
         internal override void Build(TypeInfoMappingCollection mappings)
         {
@@ -180,6 +176,7 @@ sealed class UserTypeMapper
                 return mapping.CreateInfo(options, new CompositeConverter<T>(
                     ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, _nameTranslator, options)));
             }, isDefault: true);
+            // TODO this should be split out so we can enjoy EnableArray trimming.
             mappings.AddStructArrayType<T>(PgTypeName);
         }
     }
