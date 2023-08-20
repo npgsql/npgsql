@@ -153,6 +153,7 @@ public class SecurityTests : TestBase
             csb.SslMode = SslMode.Require;
         });
         using var conn = dataSource.OpenConnection();
+        using var tx = conn.BeginTransaction();
         using var cmd = CreateSleepCommand(conn, 10000);
         var cts = new CancellationTokenSource(1000).Token;
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(cts), Throws.Exception
@@ -386,20 +387,23 @@ public class SecurityTests : TestBase
         }
 
         await using var __ = conn;
-        var originalConnector = conn.Connector;
-
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "select pg_sleep(30)";
-        cmd.CommandTimeout = 3;
-        var ex = async
-            ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
-            : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
-        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+        await using (var tx = await conn.BeginTransactionAsync())
+        {
+            var originalConnector = conn.Connector;
 
-        await conn.CloseAsync();
-        await conn.OpenAsync();
+            cmd.CommandText = "select pg_sleep(30)";
+            cmd.CommandTimeout = 3;
+            var ex = async
+                ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+                : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
+            Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
 
-        Assert.AreSame(originalConnector, conn.Connector);
+            await conn.CloseAsync();
+            await conn.OpenAsync();
+
+            Assert.AreSame(originalConnector, conn.Connector);
+        }
 
         cmd.CommandText = "SELECT 1";
         if (async)
