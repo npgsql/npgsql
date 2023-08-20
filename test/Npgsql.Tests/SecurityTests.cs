@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
@@ -275,6 +277,13 @@ public class SecurityTests : TestBase
             });
             await using var conn = await dataSource.OpenConnectionAsync();
             Assert.IsFalse(conn.IsSecure);
+        }
+        catch (NpgsqlException ex) when (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ex.InnerException is IOException)
+        {
+            // Windows server to windows client invites races that can cause the socket to be reset before all data can be read.
+            // https://www.postgresql.org/message-id/flat/90b34057-4176-7bb0-0dbb-9822a5f6425b%40greiz-reinsdorf.de
+            // https://www.postgresql.org/message-id/flat/16678-253e48d34dc0c376@postgresql.org
+            Assert.Ignore();
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
