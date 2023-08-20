@@ -326,7 +326,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
         set
         {
-            TypeInfo = null;
+            ResetTypeInfo();
             _npgsqlDbType = value == DbType.Object
                 ? null
                 : value.ToNpgsqlDbType()
@@ -366,7 +366,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (value == NpgsqlDbType.Range)
                 throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
 
-            TypeInfo = null;
+            ResetTypeInfo();
             _npgsqlDbType = value;
         }
     }
@@ -398,8 +398,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
         set
         {
+            ResetTypeInfo();
             _dataTypeName = value;
-            TypeInfo = null;
         }
     }
 
@@ -427,11 +427,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     public new byte Precision
     {
         get => _precision;
-        set
-        {
-            _precision = value;
-            TypeInfo = null;
-        }
+        set => _precision = value;
     }
 
     /// <summary>
@@ -443,11 +439,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     public new byte Scale
     {
         get => _scale;
-        set
-        {
-            _scale = value;
-            TypeInfo = null;
-        }
+        set => _scale = value;
     }
 #pragma warning restore CS0109
 
@@ -462,8 +454,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (value < -1)
                 throw new ArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
+            ResetTypeInfo();
             _size = value;
-            TypeInfo = null;
         }
     }
 
@@ -733,12 +725,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         Converter = null;
         PgTypeId = default;
-        if (_useSubStream)
-        {
-            _useSubStream = false;
-            _subStream?.Dispose();
-            _subStream = null;
-        }
         ResetBindingInfo();
     }
 
@@ -746,6 +732,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         if (_writeState is not null)
             TypeInfo?.DisposeWriteState(_writeState);
+        if (_useSubStream)
+        {
+            _useSubStream = false;
+            _subStream?.Dispose();
+            _subStream = null;
+        }
         WriteSize = null;
         _bufferRequirement = default;
     }
