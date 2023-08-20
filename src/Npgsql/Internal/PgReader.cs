@@ -395,6 +395,7 @@ public class PgReader
             FieldStartPos = _buffer.CumulativeReadPosition;
             _currentSize = columnLength < 0 ? 0 : columnLength;
             _field = new() { Format = format, Size = columnLength };
+            _readStarted = false;
         }
 
         Resumable = resumable;
@@ -516,6 +517,7 @@ public class PgReader
 
         _field = default;
         FieldStartPos = -1;
+        _readStarted = false;
     }
 
     byte[] RentArray(int count)
@@ -577,12 +579,7 @@ public class PgReader
         if (!ShouldBuffer(byteCount))
             return new();
 
-        return EnsureDataAsyncCore(byteCount, cancellationToken);
-
-        async ValueTask EnsureDataAsyncCore(int byteCount, CancellationToken cancellationToken)
-        {
-            await _buffer.EnsureAsync(byteCount).ConfigureAwait(false);
-        }
+        return new(_buffer.EnsureAsync(byteCount));
     }
 
     internal ValueTask BufferData(bool async, Size bufferRequirement, CancellationToken cancellationToken)
