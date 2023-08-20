@@ -286,12 +286,12 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
     public PgResolverTypeInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
         : base(options,
             converterResolver.TypeToConvert,
-            // We'll always validate the default resolution, the info will be re-used so there is no real downside.
             pgTypeId is { } typeId ? ResolveDefaultId(options, converterResolver, typeId) : null,
             // We always mark resolvers with type object as boxing, as they may freely return converters for any type (see PgConverterResolver.Validate).
             unboxedType ?? (converterResolver.TypeToConvert == typeof(object) ? typeof(object) : null))
         => _converterResolver = converterResolver;
 
+    // We'll always validate the default resolution, the info will be re-used so there is no real downside.
     static PgConverterResolution ResolveDefaultId(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId typeId)
         => converterResolver.GetDefaultInternal(validate: true, options.PortableTypeIds, options.GetCanonicalTypeId(typeId));
 
