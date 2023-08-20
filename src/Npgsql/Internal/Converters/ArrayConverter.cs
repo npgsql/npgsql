@@ -642,7 +642,7 @@ sealed class PolymorphicArrayConverterResolver<TBase> : PolymorphicConverterReso
 {
     readonly PgResolverTypeInfo _effectiveInfo;
     readonly PgResolverTypeInfo _effectiveNullableInfo;
-    readonly ConcurrentDictionary<PgConverter, PgConverter<TBase>> _converterCache = new(ReferenceEqualityComparer.Instance);
+    readonly ConcurrentDictionary<PgConverter, PgConverter> _converterCache = new(ReferenceEqualityComparer.Instance);
 
     public PolymorphicArrayConverterResolver(PgResolverTypeInfo effectiveInfo, PgResolverTypeInfo effectiveNullableInfo)
         : base(effectiveInfo.PgTypeId!.Value)
