@@ -148,7 +148,7 @@ readonly struct PgArrayConverter
 
         // Make sure we can read length + lower bound N dimension times.
         if (reader.ShouldBuffer((sizeof(int) + sizeof(int)) * dimensions))
-            await reader.BufferData(async, (sizeof(int) + sizeof(int)) * dimensions, cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, (sizeof(int) + sizeof(int)) * dimensions, cancellationToken).ConfigureAwait(false);
 
         var dimLengths = new int[_expectedDimensions ?? dimensions];
         var lastDimLength = 0;
@@ -179,7 +179,7 @@ readonly struct PgArrayConverter
         do
         {
             if (reader.ShouldBuffer(sizeof(int)))
-                await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
             var length = reader.ReadInt32();
             var isDbNull = length == -1;

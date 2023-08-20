@@ -25,13 +25,13 @@ sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
-            await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var fieldCount = reader.ReadInt32();
         var result = new object[fieldCount];
         for (var i = 0; i < fieldCount; i++)
         {
             if (reader.ShouldBuffer(sizeof(uint) + sizeof(int)))
-                await reader.BufferData(async, sizeof(uint) + sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(uint) + sizeof(int), cancellationToken).ConfigureAwait(false);
 
             var typeOid = reader.ReadUInt32();
             var length = reader.ReadInt32();

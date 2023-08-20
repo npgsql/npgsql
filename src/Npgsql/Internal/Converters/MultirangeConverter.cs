@@ -34,14 +34,14 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     public async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
-            await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var numRanges = reader.ReadInt32();
         var multirange = (T)(object)(typeof(T).IsArray ? new TRange[numRanges] : new List<TRange>());
 
         for (var i = 0; i < numRanges; i++)
         {
             if (reader.ShouldBuffer(sizeof(int)))
-                await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
             var length = reader.ReadInt32();
             Debug.Assert(length != -1);
 

@@ -310,14 +310,14 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             T result;
             if (async)
             {
-                await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
+                await reader.BufferAsync(info.BufferRequirement, cancellationToken);
                 result = info.AsObject
                     ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
                     : await info.GetConverter<T>().ReadAsync(reader, cancellationToken);
             }
             else
             {
-                reader.BufferData(info.BufferRequirement);
+                reader.Buffer(info.BufferRequirement);
                 result = info.AsObject
                     ? (T)info.Converter.ReadAsObject(reader)
                     : info.GetConverter<T>().Read(reader);

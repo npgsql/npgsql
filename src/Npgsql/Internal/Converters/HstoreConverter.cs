@@ -60,7 +60,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
-            await reader.BufferData(async,sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async,sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var count = reader.ReadInt32();
 
@@ -85,7 +85,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
             for (var i = 0; i < count; i++)
             {
                 if (reader.ShouldBuffer(sizeof(int)))
-                    await reader.BufferData(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
+                    await reader.Buffer(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
                 var keySize = reader.ReadInt32();
                 var key = encoding.GetString(async
                     ? await reader.ReadBytesAsync(keySize, cancellationtoken).ConfigureAwait(false)
@@ -93,7 +93,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
                 );
 
                 if (reader.ShouldBuffer(sizeof(int)))
-                    await reader.BufferData(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
+                    await reader.Buffer(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
                 var valueSize = reader.ReadInt32();
                 string? value = null;
                 if (valueSize is not -1)

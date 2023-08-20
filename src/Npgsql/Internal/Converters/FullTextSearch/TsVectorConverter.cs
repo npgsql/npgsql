@@ -25,7 +25,7 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
     async ValueTask<NpgsqlTsVector> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
-            await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var numLexemes = reader.ReadInt32();
         var lexemes = new List<NpgsqlTsVector.Lexeme>(numLexemes);
@@ -37,7 +37,7 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
                 : reader.ReadNullTerminatedString(_encoding);
 
             if (reader.ShouldBuffer(sizeof(short)))
-                await reader.BufferData(async, sizeof(short), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(short), cancellationToken).ConfigureAwait(false);
             var numPositions = reader.ReadInt16();
 
             if (numPositions == 0)
@@ -51,7 +51,7 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
                 throw new NpgsqlException($"Got {numPositions} lexeme positions when reading tsvector");
 
             if (reader.ShouldBuffer(numPositions * sizeof(short)))
-                await reader.BufferData(async, numPositions * sizeof(short), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, numPositions * sizeof(short), cancellationToken).ConfigureAwait(false);
 
             var positions = new List<NpgsqlTsVector.Lexeme.WordEntryPos>(numPositions);
 

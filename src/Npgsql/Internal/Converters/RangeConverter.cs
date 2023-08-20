@@ -28,7 +28,7 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
     async ValueTask<NpgsqlRange<TSubtype>> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(byte)))
-            await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
         var flags = (RangeFlags)reader.ReadByte();
         if ((flags & RangeFlags.Empty) != 0)
@@ -42,7 +42,7 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if ((flags & RangeFlags.LowerBoundInfinite) == 0)
         {
             if (reader.ShouldBuffer(sizeof(int)))
-                await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
             var length = reader.ReadInt32();
 
             // Note that we leave the CLR default for nulls
@@ -69,7 +69,7 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if ((flags & RangeFlags.UpperBoundInfinite) == 0)
         {
             if (reader.ShouldBuffer(sizeof(int)))
-                await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
             var length = reader.ReadInt32();
 
             // Note that we leave the CLR default for nulls

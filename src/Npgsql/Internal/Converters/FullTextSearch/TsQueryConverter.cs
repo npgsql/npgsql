@@ -27,7 +27,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
     async ValueTask<NpgsqlTsQuery> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
-            await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var numTokens = reader.ReadInt32();
         if (numTokens == 0)
             return new NpgsqlTsQueryEmpty();
@@ -38,13 +38,13 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
         for (var i = 0; i < numTokens; i++)
         {
             if (reader.ShouldBuffer(sizeof(byte)))
-                await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
             switch (reader.ReadByte())
             {
             case 1: // lexeme
                 if (reader.ShouldBuffer(sizeof(byte) + sizeof(byte)))
-                    await reader.BufferData(async, sizeof(byte) + sizeof(byte), cancellationToken).ConfigureAwait(false);
+                    await reader.Buffer(async, sizeof(byte) + sizeof(byte), cancellationToken).ConfigureAwait(false);
                 var weight = (NpgsqlTsQueryLexeme.Weight)reader.ReadByte();
                 var prefix = reader.ReadByte() != 0;
 
@@ -56,7 +56,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
 
             case 2: // operation
                 if (reader.ShouldBuffer(sizeof(byte)))
-                    await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
+                    await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
                 var kind = (NpgsqlTsQuery.NodeKind)reader.ReadByte();
 
                 NpgsqlTsQuery node;
@@ -76,7 +76,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
                     break;
                 case Phrase:
                     if (reader.ShouldBuffer(sizeof(short)))
-                        await reader.BufferData(async, sizeof(short), cancellationToken).ConfigureAwait(false);
+                        await reader.Buffer(async, sizeof(short), cancellationToken).ConfigureAwait(false);
                     node = new NpgsqlTsQueryFollowedBy(null!, reader.ReadInt16(), null!);
                     break;
                 default:

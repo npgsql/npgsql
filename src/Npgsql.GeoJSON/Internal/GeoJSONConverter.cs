@@ -639,9 +639,9 @@ static class GeoJSONConverter
     static ValueTask BufferData(this PgReader reader, bool async, int byteCount, CancellationToken cancellationToken)
     {
         if (async)
-            return reader.BufferDataAsync(byteCount, cancellationToken);
+            return reader.BufferAsync(byteCount, cancellationToken);
 
-        reader.BufferData(byteCount);
+        reader.Buffer(byteCount);
         return new();
     }
 
