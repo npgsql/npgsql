@@ -301,6 +301,8 @@ public abstract class TestBase
         dataSource ??= DefaultDataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
+        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
+        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -333,6 +335,8 @@ public abstract class TestBase
         dataSource ??= DefaultDataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
+        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
+        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand("SELECT $1", conn)
         {
             Parameters = { new() { Value = value } }
