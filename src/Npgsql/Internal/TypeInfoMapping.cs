@@ -51,7 +51,7 @@ public readonly struct TypeInfoMapping
     public MatchRequirement MatchRequirement { get; init; }
     public Func<Type, bool>? TypeMatchPredicate { get; init; }
 
-    public bool TypeEquals(Type type) => TypeMatchPredicate is null ? Type == type : TypeMatchPredicate.Invoke(type);
+    public bool TypeEquals(Type type) => TypeMatchPredicate?.Invoke(type) ?? Type == type;
     public bool DataTypeNameEquals(string dataTypeName)
     {
         var span = DataTypeName.AsSpan();
@@ -134,7 +134,7 @@ public sealed class TypeInfoMappingCollection
     {
         foreach (var mapping in _baseCollection?._items ?? _items)
         {
-            // During mapping we just use the declared type.
+            // During mapping we just use look for the declared type, regardless of TypeMatchPredicate.
             if (mapping.Type == type && mapping.DataTypeNameEquals(dataTypeName))
             {
                 value = mapping;
@@ -398,15 +398,25 @@ public sealed class TypeInfoMappingCollection
                     _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
                     ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
                     ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                    ArrayNullabilityMode.PerInstance => new(options,
-                        new PolymorphicArrayConverter<Array>(
-                            arrayMapping.Factory(options, mapping, dataTypeNameMatch).GetConcreteResolution().GetConverter<Array>(),
-                            nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch).GetConcreteResolution().GetConverter<Array>()
-                        ),
-                        options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false },
+                    ArrayNullabilityMode.PerInstance => CreateComposedPerInstance(
+                        arrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                        nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                        mapping.DataTypeName
+                    ),
                     _ => throw new ArgumentOutOfRangeException()
                 };
             }) { MatchRequirement = MatchRequirement.DataTypeName });
+
+        PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerTypeInfo, PgTypeInfo nullableInnerTypeInfo, string dataTypeName)
+        {
+            var converter =
+                new PolymorphicArrayConverter<Array>(
+                    innerTypeInfo.GetConcreteResolution().GetConverter<Array>(),
+                    nullableInnerTypeInfo.GetConcreteResolution().GetConverter<Array>());
+
+            return new PgTypeInfo(innerTypeInfo.Options, converter,
+                innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
+        }
     }
 
     public void AddResolverStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
@@ -487,17 +497,21 @@ public sealed class TypeInfoMappingCollection
                     ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
                     ArrayNullabilityMode.PerInstance => CreateComposedPerInstance(
                         arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                        new PolymorphicArrayConverterResolver<Array>(
-                            (PgResolverTypeInfo)arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                            (PgResolverTypeInfo)nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch)),
+                        nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
                         mapping.DataTypeName
                     ),
                     _ => throw new ArgumentOutOfRangeException()
                 }) { MatchRequirement = MatchRequirement.DataTypeName });
 
-            PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerTypeInfo, PgConverterResolver resolver, string dataTypeName)
-                => new PgResolverTypeInfo(innerTypeInfo.Options, resolver,
+            PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerTypeInfo, PgTypeInfo nullableInnerTypeInfo, string dataTypeName)
+            {
+                var resolver =
+                    new PolymorphicArrayConverterResolver<Array>((PgResolverTypeInfo)innerTypeInfo,
+                        (PgResolverTypeInfo)nullableInnerTypeInfo);
+
+                return new PgResolverTypeInfo(innerTypeInfo.Options, resolver,
                     innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName))) { SupportsWriting = false };
+            }
         }
 
     public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
