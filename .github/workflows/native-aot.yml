@@ -108,6 +108,20 @@ jobs:
           path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat"
           retention-days: 3
 
+      - name: Upload codedgen dgml
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          name: npgsql.codegen.dgml.xml
+          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
+          retention-days: 3
+
+      - name: Upload scan dgml
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          name: npgsql.scan.dgml.xml
+          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"
+          retention-days: 3
+
       - name: Assert binary size
         run: |
           size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
