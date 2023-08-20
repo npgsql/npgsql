@@ -131,11 +131,9 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
-
         await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
         {
-            Parameters = { new() { Value = LocalDate.MinIsoValue + LocalTime.MinValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
+            Parameters = { new() { Value = LocalDateTime.MinIsoValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
         };
 
         if (DisableDateTimeInfinityConversions)
@@ -152,7 +150,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
 
         await using var cmd2 = new NpgsqlCommand("SELECT $1::text", conn)
         {
-            Parameters = { new() { Value = LocalDate.MaxIsoValue + LocalTime.MaxValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
+            Parameters = { new() { Value = LocalDateTime.MaxIsoValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
         };
 
         Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions
@@ -177,9 +175,8 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         }
         else
         {
-            // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
-            Assert.That(reader[0], Is.EqualTo(LocalDate.MinIsoValue + LocalTime.MinValue));
-            Assert.That(reader[1], Is.EqualTo(LocalDate.MaxIsoValue + LocalTime.MaxValue));
+            Assert.That(reader[0], Is.EqualTo(LocalDateTime.MinIsoValue));
+            Assert.That(reader[1], Is.EqualTo(LocalDateTime.MaxIsoValue));
         }
     }
 

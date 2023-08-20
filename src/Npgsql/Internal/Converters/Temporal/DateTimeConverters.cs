@@ -45,7 +45,6 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
 
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
     {
-        // TODO move back to a resolver.
         if (value.Offset != TimeSpan.Zero)
             throw new ArgumentException($"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. ", nameof(value));
 
