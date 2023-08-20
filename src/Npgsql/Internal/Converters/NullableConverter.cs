@@ -20,15 +20,7 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
         => value is null || _effectiveConverter.IsDbNull(value.GetValueOrDefault());
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        var result = _effectiveConverter.CanConvert(format, out var reqs);
-        // We have to map exact sizes to upper bounds as values may be null (and thus have a 0 size).
-        bufferRequirements = BufferRequirements.Create(
-            reqs.Read.Kind is SizeKind.Unknown ? Size.Unknown : Size.CreateUpperBound(reqs.Read.Value),
-            reqs.Write.Kind is SizeKind.Unknown ? Size.Unknown : Size.CreateUpperBound(reqs.Write.Value)
-        );
-        return result;
-    }
+        => NullableConverter.CanConvert(_effectiveConverter, format, out bufferRequirements);
 
     public override T? Read(PgReader reader)
         => _effectiveConverter.Read(reader);
@@ -53,13 +45,12 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
         }
     }
 
+    // GetSize is always called due to the value potentially being null.
+    // We need to return any fixed size or upper bounds here as the effective GetSize won't be implemented.
     public override Size GetSize(SizeContext context, T? value, ref object? writeState)
-    {
-        if (context.BufferRequirement.Kind is not SizeKind.Unknown)
-            return context.BufferRequirement.Value;
-
-        return _effectiveConverter.GetSize(context, value.GetValueOrDefault(), ref writeState);
-    }
+        => !NullableConverter.TryGetRequirementSize(_effectiveConverter, context, out var size)
+            ? _effectiveConverter.GetSize(context, value.GetValueOrDefault(), ref writeState)
+            : size;
 
     public override void Write(PgWriter writer, T? value)
         => _effectiveConverter.Write(writer, value.GetValueOrDefault());
@@ -72,6 +63,35 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
 
     internal override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
         => _effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
+}
+
+static class NullableConverter
+{
+    public static bool TryGetRequirementSize(PgConverter effectiveConverter, SizeContext context, out Size size)
+    {
+        effectiveConverter.CanConvert(context.Format, out var reqs);
+        if (reqs.Write.IsFixedSizeRequirement() || reqs.Write.IsUpperBoundRequirement())
+        {
+            size = reqs.Write.Value;
+            return true;
+        }
+
+        size = default;
+        return false;
+    }
+
+    public static bool CanConvert(PgConverter effectiveConverter, DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        var result = effectiveConverter.CanConvert(format, out var reqs);
+        // Fixed sizes have to be folded to UpperBounds due to the value potentially being null.
+        bufferRequirements = BufferRequirements.Create(
+            reqs.Read.IsFixedSizeRequirement() ? Size.CreateUpperBound(reqs.Read.Value) :
+            reqs.Read.IsStreamingRequirement() ? reqs.Read : Size.Unknown,
+            reqs.Write.IsFixedSizeRequirement() ? Size.CreateUpperBound(reqs.Write.Value) :
+            reqs.Write.IsStreamingRequirement() ? reqs.Write : Size.Unknown
+        );
+        return result;
+    }
 }
 
 sealed class NullableConverterResolver<T> : PgComposingConverterResolver<T?> where T : struct

@@ -40,7 +40,7 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public Size Read => _readRequirement.IsDefault ? ThrowDefaultException() : _readRequirement;
     public Size Write => _writeRequirement.IsDefault ? ThrowDefaultException() : _writeRequirement;
 
-    public bool IsFixedSize => Write is { Kind: SizeKind.Exact, Value : > 0 } && _readRequirement == _writeRequirement;
+    public bool IsFixedSize => Write.IsFixedSizeRequirement() && _readRequirement == _writeRequirement;
 
     /// Streaming
     public static BufferRequirements None => new(Size.Zero, Size.Zero);
@@ -74,6 +74,21 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public override int GetHashCode() => HashCode.Combine(_readRequirement, _writeRequirement);
     public static bool operator ==(BufferRequirements left, BufferRequirements right) => left.Equals(right);
     public static bool operator !=(BufferRequirements left, BufferRequirements right) => !left.Equals(right);
+}
+
+static class BufferRequirementsExtensions
+{
+    public static bool IsFixedSizeRequirement(this Size requirement)
+        => requirement is { Kind: SizeKind.Exact, Value : > 0 };
+
+    public static bool IsUpperBoundRequirement(this Size requirement)
+        => requirement.Kind is SizeKind.UpperBound;
+
+    public static bool IsStreamingRequirement(this Size requirement)
+        => requirement is { Kind: SizeKind.Exact, Value : 0 };
+
+    public static bool IsValueRequirement(this Size requirement)
+        => requirement == Size.Unknown;
 }
 
 public abstract class PgConverter
