@@ -115,17 +115,17 @@ public class PgTypeInfo
         return info;
     }
 
-    public PgConverterResolution GetResolution<T>(T? value, PgTypeId? expectedPgTypeId = null)
+    public PgConverterResolution GetResolution<T>(T? value)
     {
         // Other cases, to keep binary bloat minimal.
         if (this is not PgResolverTypeInfo resolverInfo)
             return GetObjectResolution(null);
-        var resolution = resolverInfo.GetResolution(value, expectedPgTypeId);
-        return resolution ?? resolverInfo.GetDefaultResolution(expectedPgTypeId);
+        var resolution = resolverInfo.GetResolution(value, null);
+        return resolution ?? resolverInfo.GetDefaultResolution(null);
     }
 
     // Note: this api is not called GetObjectResolution as the semantics are extended, DBNull is a NULL value for all object values.
-    public PgConverterResolution GetObjectResolution(object? value, PgTypeId? expectedPgTypeId = null)
+    public PgConverterResolution GetObjectResolution(object? value)
     {
         switch (this)
         {
@@ -134,8 +134,8 @@ public class PgTypeInfo
         case PgResolverTypeInfo resolverInfo:
             PgConverterResolution? resolution = null;
             if (value is not DBNull)
-                resolution = resolverInfo.GetResolutionAsObject(value, expectedPgTypeId);
-            return resolution ?? resolverInfo.GetDefaultResolution(expectedPgTypeId);
+                resolution = resolverInfo.GetResolutionAsObject(value, null);
+            return resolution ?? resolverInfo.GetDefaultResolution(null);
         default:
             throw new NotSupportedException("Should not happen, please file a bug.");
         }
@@ -152,7 +152,7 @@ public class PgTypeInfo
             => this switch
             {
                 { IsResolverInfo: false } => new(Converter, PgTypeId.GetValueOrDefault()),
-                PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(PgTypeId),
+                PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(null),
                 _ => throw new NotSupportedException("Should not happen, please file a bug.")
             };
     }
@@ -295,7 +295,7 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
     static PgConverterResolution ResolveDefaultId(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId typeId)
         => converterResolver.GetDefaultInternal(validate: true, options.PortableTypeIds, options.GetCanonicalTypeId(typeId));
 
-    public new PgConverterResolution? GetResolution<T>(T? value, PgTypeId? expectedPgTypeId)
+    public PgConverterResolution? GetResolution<T>(T? value, PgTypeId? expectedPgTypeId)
     {
         return _converterResolver is PgConverterResolver<T> resolverT
             ? resolverT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
