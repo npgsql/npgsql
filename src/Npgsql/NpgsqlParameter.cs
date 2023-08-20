@@ -454,7 +454,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (value < -1)
                 throw new ArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
-            ResetTypeInfo();
+            ResetBindingInfo();
             _size = value;
         }
     }
@@ -526,8 +526,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 // If we can find a match in an NpgsqlDbType we known we're dealing with a fully qualified built-in data type name.
                 builtinDataTypeName = NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDataTypeName();
             }
-
-
 
             var pgTypeId = dataTypeName is null
                 ? (PgTypeId?)null
