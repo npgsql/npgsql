@@ -1,17 +1,22 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<string, string?>
+sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<KeyValuePair<string, string?>>
 {
     readonly Encoding _encoding;
-    public HstoreConverter(Encoding encoding) => _encoding = encoding;
+    readonly Func<ICollection<KeyValuePair<string, string?>>, T>? _convert;
+
+    public HstoreConverter(Encoding encoding, Func<ICollection<KeyValuePair<string, string?>>, T>? convert = null)
+    {
+        _encoding = encoding;
+        _convert = convert;
+    }
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
@@ -64,23 +69,17 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
 
         var count = reader.ReadInt32();
 
+        var result = typeof(T) == typeof(Dictionary<string, string?>) || typeof(T) == typeof(IDictionary<string, string?>)
+            ? (ICollection<KeyValuePair<string, string?>>)new Dictionary<string, string?>(count)
+            : new List<KeyValuePair<string, string?>>(count);
+        await ReadInto(async, _encoding, result, count, reader, cancellationToken).ConfigureAwait(false);
+
         if (typeof(T) == typeof(Dictionary<string, string?>) || typeof(T) == typeof(IDictionary<string, string?>))
-        {
-            var result = new Dictionary<string, string?>(count);
-            await ReadInto(async, _encoding, result, count, reader, cancellationToken).ConfigureAwait(false);
-            return (T)(object)result;
-        }
+            return (T)result;
 
-        if (typeof(T) == typeof(ImmutableDictionary<string, string?>))
-        {
-            var builder = ImmutableDictionary.CreateBuilder<string, string?>();
-            await ReadInto(async, _encoding, builder, count, reader, cancellationToken).ConfigureAwait(false);
-            return (T)(object)builder.ToImmutableDictionary();
-        }
+        return _convert is null ? throw new NotSupportedException() : _convert(result);
 
-        throw new NotSupportedException();
-
-        static async ValueTask ReadInto(bool async, Encoding encoding, IDictionary<string, string?> result, int count, PgReader reader, CancellationToken cancellationtoken)
+        static async ValueTask ReadInto(bool async, Encoding encoding, ICollection<KeyValuePair<string, string?>> result, int count, PgReader reader, CancellationToken cancellationtoken)
         {
             for (var i = 0; i < count; i++)
             {
@@ -102,7 +101,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
                         : reader.ReadBytes(valueSize)
                     );
 
-                result[key] = value;
+                result.Add(new(key, value));
             }
         }
     }
