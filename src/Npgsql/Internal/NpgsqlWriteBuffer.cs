@@ -2,7 +2,6 @@
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -472,7 +471,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     public void WriteNullTerminatedString(string s)
     {
-        Debug.Assert(s.All(c => c < 128), "Method only supports ASCII strings");
+        AssertASCIIOnly(s);
         Debug.Assert(WriteSpaceLeft >= s.Length + 1);
         WritePosition += Encoding.ASCII.GetBytes(s, 0, s.Length, Buffer, WritePosition);
         WriteByte(0);
@@ -579,6 +578,14 @@ sealed class NpgsqlWriteBuffer : IDisposable
         var buf = new byte[WritePosition];
         Array.Copy(Buffer, buf, WritePosition);
         return buf;
+    }
+
+    [Conditional("DEBUG")]
+    internal static void AssertASCIIOnly(string s)
+    {
+        foreach (var c in s)
+            if (c >= 128)
+                Debug.Fail("Method only supports ASCII strings");
     }
 
     #endregion

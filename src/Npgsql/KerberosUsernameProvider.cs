@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -112,8 +111,15 @@ sealed class KerberosUsernameProvider
         return includeRealm ? _principalWithRealm : _principalWithoutRealm;
     }
 
-    static string? FindInPath(string name) => Environment.GetEnvironmentVariable("PATH")
-        ?.Split(Path.PathSeparator)
-        .Select(p => Path.Combine(p, name))
-        .FirstOrDefault(File.Exists);
+    static string? FindInPath(string name)
+    {
+        foreach (var p in Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? Array.Empty<string>())
+        {
+            var path = Path.Combine(p, name);
+            if (File.Exists(path))
+                return path;
+        }
+
+        return null;
+    }
 }

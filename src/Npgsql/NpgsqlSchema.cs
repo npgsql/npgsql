@@ -1,8 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -562,9 +562,12 @@ FROM pg_constraint c
         try
         {
             PgSerializerOptions.IntrospectionCaller = true;
-            foreach (var baseType in connector.DatabaseInfo.BaseTypes.Cast<PostgresType>()
-                         .Concat(connector.DatabaseInfo.EnumTypes)
-                         .Concat(connector.DatabaseInfo.CompositeTypes))
+
+            var types = new List<PostgresType>();
+            types.AddRange(connector.DatabaseInfo.BaseTypes);
+            types.AddRange(connector.DatabaseInfo.EnumTypes);
+            types.AddRange(connector.DatabaseInfo.CompositeTypes);
+            foreach (var baseType in types)
             {
                 if (connector.SerializerOptions.GetDefaultTypeInfo(baseType) is not { } info)
                     continue;

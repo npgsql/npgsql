@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -295,9 +294,24 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Returns whether this query will execute as a prepared (compiled) query.
     /// </summary>
-    public bool IsPrepared =>
-        _connectorPreparedOn == (InternalConnection?.Connector ?? _connector) &&
-        InternalBatchCommands.Any() && InternalBatchCommands.All(s => s.PreparedStatement?.IsPrepared == true);
+    public bool IsPrepared
+    {
+        get
+        {
+            return _connectorPreparedOn == (InternalConnection?.Connector ?? _connector) && AllPrepared();
+
+            bool AllPrepared()
+            {
+                if (InternalBatchCommands.Count is 0)
+                    return false;
+
+                foreach (var s in InternalBatchCommands)
+                    if (s.PreparedStatement is null || !s.PreparedStatement.IsPrepared)
+                        return false;
+                return true;
+            }
+        }
+    }
 
     #endregion Public properties
 
@@ -432,8 +446,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         using var _ = conn.StartTemporaryBindingScope(out var connector);
 
-        if (InternalBatchCommands.Any(s => s.PreparedStatement?.IsExplicit == true))
-            throw new NpgsqlException("Deriving parameters isn't supported for commands that are already prepared.");
+        foreach (var s in InternalBatchCommands)
+            if (s.PreparedStatement?.IsExplicit == true)
+                throw new NpgsqlException("Deriving parameters isn't supported for commands that are already prepared.");
 
         // Here we unprepare statements that possibly are auto-prepared
         Unprepare();
@@ -657,7 +672,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             if (logger.IsEnabled(LogLevel.Debug) && needToPrepare)
-                LogMessages.PreparingCommandExplicitly(logger, string.Join("; ", InternalBatchCommands.Select(c => c.CommandText)), connector.Id);
+                LogMessages.PreparingCommandExplicitly(logger, string.Join("; ", CommandTexts()), connector.Id);
+
+            IEnumerable<string> CommandTexts()
+            {
+                foreach (var c in InternalBatchCommands)
+                    yield return c.CommandText;
+            }
         }
         else
         {
@@ -798,7 +819,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         Debug.Assert(connection is not null);
         if (connection.Settings.Multiplexing)
             throw new NotSupportedException("Explicit preparation not supported with multiplexing");
-        if (InternalBatchCommands.All(s => !s.IsPrepared))
+
+        var forall = true;
+        foreach (var statement in InternalBatchCommands)
+            if (statement.IsPrepared)
+            {
+                forall = false;
+                break;
+            }
+        if (forall)
             return;
 
         var connector = connection.Connector!;
@@ -1160,8 +1189,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         BeginSend(connector);
 
-        foreach (var batchCommand in InternalBatchCommands.Where(s => s.IsPrepared))
+        foreach (var batchCommand in InternalBatchCommands)
         {
+            if (!batchCommand.IsPrepared)
+                continue;
             // No need to force async here since each statement takes no more than 20 bytes
             await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
             batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
@@ -1754,7 +1785,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     LogMessages.ExecutingCommandWithParameters(
                         logger,
                         singleCommand.FinalCommandText!,
-                        singleCommand.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value!).ToArray(),
+                        ParametersDbNullAsString(singleCommand),
                         connector.Id);
                 }
                 else
@@ -1762,7 +1793,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     LogMessages.CommandExecutionCompletedWithParameters(
                         logger,
                         singleCommand.FinalCommandText!,
-                        singleCommand.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value!).ToArray(),
+                        ParametersDbNullAsString(singleCommand),
                         connector.QueryLogStopWatch.ElapsedMilliseconds,
                         connector.Id);
                 }
@@ -1779,11 +1810,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (logParameters)
             {
-                var commands = InternalBatchCommands
-                    .Select(c => (
-                        c.CommandText,
-                        Parameters: (object[]?)c.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value).ToArray()!)
-                    ).ToArray();
+                var commands = new (string, object[])[InternalBatchCommands.Count];
+                for (var i = 0; i < InternalBatchCommands.Count; i++)
+                    commands[i] = (InternalBatchCommands[i].CommandText, ParametersDbNullAsString(InternalBatchCommands[i]));
 
                 if (executing)
                     LogMessages.ExecutingBatchWithParameters(logger, commands, connector.Id);
@@ -1792,13 +1821,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
             else
             {
-                var commands = InternalBatchCommands.Select(c => c.CommandText).ToArray().ToArray();
-
+                var commands = new string[InternalBatchCommands.Count];
+                for (var i = 0; i < InternalBatchCommands.Count; i++)
+                    commands[i] = InternalBatchCommands[i].CommandText;
                 if (executing)
                     LogMessages.ExecutingBatch(logger, commands, connector.Id);
                 else
                     LogMessages.BatchExecutionCompleted(logger, commands, connector.QueryLogStopWatch.ElapsedMilliseconds, connector.Id);
             }
+        }
+
+        object[] ParametersDbNullAsString(NpgsqlBatchCommand c)
+        {
+            var parameters = new object[c.PositionalParameters.Count];
+            for (var i = 0; i < c.PositionalParameters.Count; i++)
+                parameters[i] = c.PositionalParameters[i].Value == DBNull.Value ? "NULL" : c.PositionalParameters[i].Value!;
+            return parameters;
         }
     }
 

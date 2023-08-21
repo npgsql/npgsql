@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -239,7 +238,9 @@ partial class NpgsqlConnector
             var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
 
             var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
-            var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+            var cbindBytes = new byte[cbindFlagBytes.Length + certificateHash.Length];
+            cbindFlagBytes.CopyTo(cbindBytes, 0);
+            certificateHash.CopyTo(cbindBytes, cbindFlagBytes.Length);
             cbind = Convert.ToBase64String(cbindBytes);
             successfulBind = true;
             IsScramPlus = true;

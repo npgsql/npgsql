@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -109,8 +108,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
         await _buf.Ensure(headerLen, async);
 
-        if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t))
-            throw new NpgsqlException("Invalid COPY binary signature at beginning!");
+        foreach (var t in NpgsqlRawCopyStream.BinarySignature)
+            if (_buf.ReadByte() != t)
+                throw new NpgsqlException("Invalid COPY binary signature at beginning!");
 
         var flags = _buf.ReadInt32();
         if (flags != 0)
