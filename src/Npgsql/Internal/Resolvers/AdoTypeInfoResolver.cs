@@ -260,8 +260,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<Dictionary<string, string?>>(options.TextEncoding)), isDefault: true);
         mappings.AddType<IDictionary<string, string?>>("hstore",
             static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<IDictionary<string, string?>>(options.TextEncoding)));
-        mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
-            static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding)));
 
         // Unknown
         mappings.AddType<string>(DataTypeNames.Unknown,
@@ -434,7 +432,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Hstore
         mappings.AddArrayType<Dictionary<string, string?>>("hstore");
         mappings.AddArrayType<IDictionary<string, string?>>("hstore");
-        mappings.AddArrayType<ImmutableDictionary<string, string?>>("hstore");
 
         // UInt internal types
         foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, (string)DataTypeNames.RegConfig })
