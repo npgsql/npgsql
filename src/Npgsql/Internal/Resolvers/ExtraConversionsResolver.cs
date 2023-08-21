@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 
@@ -130,6 +131,10 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ReadOnlyMemory<char>>(new ReadOnlyMemoryTextConverter(options.TextEncoding))));
         mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ArraySegment<char>>(new CharArraySegmentTextConverter(options.TextEncoding))));
+
+        // Hstore
+        mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
+            static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding)));
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -190,6 +195,14 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
             mappings.AddStructArrayType<ReadOnlyMemory<char>>(dataTypeName);
             mappings.AddStructArrayType<ArraySegment<char>>(dataTypeName);
         }
+
+        // Jsonb
+        mappings.AddArrayType<char[]>(DataTypeNames.Jsonb);
+        mappings.AddStructArrayType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb);
+        mappings.AddStructArrayType<ArraySegment<char>>(DataTypeNames.Jsonb);
+
+        // Hstore
+        mappings.AddArrayType<ImmutableDictionary<string, string?>>("hstore");
     }
 }
 
