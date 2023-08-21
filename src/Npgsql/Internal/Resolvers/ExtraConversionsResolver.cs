@@ -137,7 +137,7 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
 
         // Hstore
         mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
-            static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding)));
+            static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding, result => result.ToImmutableDictionary())));
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
