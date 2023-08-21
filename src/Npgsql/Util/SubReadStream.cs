@@ -155,22 +155,21 @@ sealed class SubReadStream : Stream
     {
         ThrowIfDisposed();
         ThrowIfCantRead();
+        if (_canSeek && _superStream.Position != _positionInSuperStream)
+        {
+            _superStream.Seek(_positionInSuperStream, SeekOrigin.Begin);
+        }
+
+        if (_positionInSuperStream > _endInSuperStream - buffer.Length)
+        {
+            buffer = buffer.Slice(0, (int)(_endInSuperStream - _positionInSuperStream));
+        }
+
         return Core(buffer, cancellationToken);
 
         async ValueTask<int> Core(Memory<byte> buffer, CancellationToken cancellationToken)
         {
-            if (_canSeek && _superStream.Position != _positionInSuperStream)
-            {
-                _superStream.Seek(_positionInSuperStream, SeekOrigin.Begin);
-            }
-
-            if (_positionInSuperStream > _endInSuperStream - buffer.Length)
-            {
-                buffer = buffer.Slice(0, (int)(_endInSuperStream - _positionInSuperStream));
-            }
-
             var ret = await _superStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-
             _positionInSuperStream += ret;
             return ret;
         }
