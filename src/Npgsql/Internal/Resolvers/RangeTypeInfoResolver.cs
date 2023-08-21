@@ -379,7 +379,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             var matchingArguments =
                 new[]
                 {
-                    typeof(int), typeof(long), typeof(decimal), Type.GetType("System.Numerics.BigInteger,System.Runtime.Numerics"), typeof(DateTime),
+                    typeof(int), typeof(long), typeof(decimal), typeof(DateTime),
 # if NET6_0_OR_GREATER
                     typeof(DateOnly)
 #endif
@@ -390,6 +390,8 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                 if (argument == type)
                     return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
 
+            if  (type.AssemblyQualifiedName == "System.Numerics.BigInteger,System.Runtime.Numerics")
+                return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
         }
 
         return null;
