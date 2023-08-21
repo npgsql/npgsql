@@ -20,9 +20,9 @@ public class PgReader
     internal long FieldStartPos { get; set; }
     internal int FieldSize => _field.Size.IsDefault ? -1 : _field.Size.Value;
 
-    int _currentSize;
     int _currentStartPos;
     Size _currentBufferRequirement { get; set; }
+    int CurrentSize { get; set; }
 
     internal PgReader(NpgsqlReadBuffer buffer)
     {
@@ -31,8 +31,7 @@ public class PgReader
     }
 
     int Pos => (int)(_buffer.CumulativeReadPosition - FieldStartPos);
-    public ValueMetadata Current => new() { Size = _currentSize, Format =  _field.Format };
-    int CurrentSize => _currentSize;
+    public ValueMetadata Current => new() { Size = CurrentSize, Format =  _field.Format };
     internal int CurrentOffset => Pos - _currentStartPos;
     public Size CurrentBufferRequirement => _currentBufferRequirement;
     public int CurrentRemaining => CurrentSize - CurrentOffset;
@@ -54,7 +53,7 @@ public class PgReader
         if (startPos > Pos)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(startPos), "Can't revert forwardly");
 
-        _currentSize = size;
+        CurrentSize = size;
         _currentStartPos = startPos;
         _currentBufferRequirement = bufferRequirement;
     }
@@ -393,7 +392,7 @@ public class PgReader
             _charsReadReader = null;
             _charsRead = default;
             FieldStartPos = _buffer.CumulativeReadPosition;
-            _currentSize = columnLength < 0 ? 0 : columnLength;
+            CurrentSize = columnLength < 0 ? 0 : columnLength;
             _field = new() { Format = format, Size = columnLength };
             _readStarted = false;
         }
@@ -443,7 +442,7 @@ public class PgReader
         var previousSize = CurrentSize;
         var previousStartPos = _currentStartPos;
         var previousBufferRequirement = _currentBufferRequirement;
-        _currentSize = size;
+        CurrentSize = size;
         _currentBufferRequirement = bufferRequirement;
         _currentStartPos = Pos;
 
