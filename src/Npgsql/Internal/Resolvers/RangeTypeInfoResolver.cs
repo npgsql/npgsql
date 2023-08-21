@@ -390,7 +390,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                 if (argument == type)
                     return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
 
-            if  (type.AssemblyQualifiedName == "System.Numerics.BigInteger,System.Runtime.Numerics")
+            if (type.AssemblyQualifiedName == "System.Numerics.BigInteger,System.Runtime.Numerics")
                 return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
         }
 
