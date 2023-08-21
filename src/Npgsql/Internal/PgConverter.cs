@@ -308,16 +308,12 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     public sealed override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(Read(reader));
 
-    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
-    {
-        Write(writer, (T)value);
-        return new();
-    }
+    internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+        => new(Read(reader)!);
 
     public sealed override void Write(PgWriter writer, T value)
     {
-        // If Kind is SizeKind.Unknown we're doing a buffering write.
-        if (writer.CurrentBufferRequirement is { Kind: not SizeKind.Unknown } size && writer.ShouldFlush(size))
+        if (!writer.BufferingWrite && writer.ShouldFlush(writer.CurrentBufferRequirement))
             ThrowIORequired();
 
         WriteCore(writer, value);
@@ -329,11 +325,13 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
         return new();
     }
 
-    internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
-        => new(Read(reader)!);
+    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+    {
+        Write(writer, (T)value);
+        return new();
+    }
 }
-
-static class ConverterExtensions
+static class PgConverterExtensions
 {
     public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {

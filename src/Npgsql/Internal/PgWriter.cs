@@ -215,6 +215,9 @@ public class PgWriter
     public ref ValueMetadata Current => ref _current;
     public Size CurrentBufferRequirement { get; private set; }
 
+    // When we don't know the size during writing we're using the writer buffer as a sizing mechanism.
+    internal bool BufferingWrite => Current.Size.Kind is SizeKind.Unknown;
+
     // This method lives here to remove the chances oids will be cached on converters inadvertently when data type names should be used.
     // Such a mapping (for instance for array element oids) should be done per operation to ensure it is done in the context of a specific backend.
     public void WriteAsOid(PgTypeId pgTypeId)
