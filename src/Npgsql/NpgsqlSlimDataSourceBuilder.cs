@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -76,7 +75,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         AddTypeInfoResolver(UnsupportedTypeInfoResolver);
         AddTypeInfoResolver(new AdoTypeInfoResolver());
         // When used publicly we start off with our slim defaults.
-        foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers().Reverse())
+        var plugins = new List<IPgTypeInfoResolver>(GlobalTypeMapper.Instance.GetPluginResolvers());
+        plugins.Reverse();
+        foreach (var plugin in plugins)
             AddTypeInfoResolver(plugin);
     }
 

@@ -1,7 +1,6 @@
 ﻿using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -166,12 +165,18 @@ public static class LogicalReplicationConnectionExtensions
                 .Append(" LOGICAL ")
                 .Append(walLocation ?? slot.ConsistentPoint);
 
-            if (options?.Any() == true)
+            var opts = new List<KeyValuePair<string, string?>>(options ?? Array.Empty<KeyValuePair<string, string?>>());
+            if (opts.Count > 0)
             {
-                builder
-                    .Append(" (")
-                    .Append(string.Join(", ", options.Select(kv => @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}")))
-                    .Append(')');
+                builder.Append(" (");
+                var stringOptions = new string[opts.Count];
+                for (var i = 0; i < opts.Count; i++)
+                {
+                    var kv = opts[i];
+                    stringOptions[i] = @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}";
+                }
+                builder.Append(string.Join(", ", stringOptions));
+                builder.Append(')');
             }
 
             var command = builder.ToString();

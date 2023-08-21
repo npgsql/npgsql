@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -112,11 +111,15 @@ ORDER BY attnum";
             // and those that don't (e.g. SELECT 8). For the former we load lots of info from
             // the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
 
-            var columnFieldFilter = _rowDescription
-                .Where(f => f.TableOID != 0)  // Only column fields
-                .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
-                .Join(" OR ");
+            var filters = new List<string>();
+            foreach (var f in _rowDescription)
+            {
+                // Only column fields
+                if (f.TableOID != 0)
+                    filters.Add($"(attr.attrelid={f.TableOID} AND attr.attnum={f.ColumnAttributeNumber})");
+            }
 
+            var columnFieldFilter = string.Join(" OR ", filters);
             if (columnFieldFilter != string.Empty)
             {
                 var query = oldQueryMode

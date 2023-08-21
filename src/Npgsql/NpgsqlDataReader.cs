@@ -8,7 +8,6 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -619,7 +618,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // The first row in a stored procedure command that has output parameters needs to be traversed twice -
         // once for populating the output parameters and once for the actual result set traversal. So in this
         // case we can't be sequential.
-        Debug.Assert(Command.Parameters.Any(p => p.IsOutputDirection));
         Debug.Assert(StatementIndex == 0);
         Debug.Assert(RowDescription != null);
         Debug.Assert(State == ReaderState.BeforeResult);
@@ -645,8 +643,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // Not sure where this odd behavior comes from: all output parameters which did not get matched by
         // name now get populated with column values which weren't matched. Keeping this for backwards compat,
         // opened #2252 for investigation.
-        foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection && !taken.Contains(p)))
+        foreach (var p in (IEnumerable<NpgsqlParameter>)Command.Parameters)
         {
+            if (!p.IsOutputDirection || taken.Contains(p))
+                continue;
+
             if (pending.Count == 0)
                 break;
             p.Value = pending.Dequeue();
@@ -734,11 +735,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         throw Connector.UnexpectedMessageReceived(msg.Code);
                     }
 
-                    if (_statements.Skip(StatementIndex + 1).All(x => x.IsPrepared))
-                    {
-                        // There are no more queries, we're done. Read to the RFQ.
+                    var forall = true;
+                    for (var i = StatementIndex + 1; i < _statements.Count; i++)
+                        if (!_statements[i].IsPrepared)
+                        {
+                            forall = false;
+                            break;
+                        }
+                    // There are no more queries, we're done. Read to the RFQ.
+                    if (forall)
                         Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
-                    }
                 }
 
                 // Found a resultset
@@ -1033,7 +1039,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // by other consumers. Therefore, we only set the state fo Disposed if the exception *wasn't* a PostgresException.
             if (!(ex is PostgresException ||
                   ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
-                  aggregateException.InnerExceptions.All(e => e is PostgresException)))
+                  AllPostgresExceptions(aggregateException.InnerExceptions)))
             {
                 State = ReaderState.Disposed;
             }
@@ -1072,7 +1078,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 // by other consumers. Therefore, we only set the state fo Disposed if the exception *wasn't* a PostgresException.
                 if (!(ex is PostgresException ||
                       ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
-                      aggregateException.InnerExceptions.All(e => e is PostgresException)))
+                      AllPostgresExceptions(aggregateException.InnerExceptions)))
                 {
                     State = ReaderState.Disposed;
                 }
@@ -1084,6 +1090,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 Command.TraceCommandStop();
             }
         }
+    }
+
+    static bool AllPostgresExceptions(ReadOnlyCollection<Exception> collection)
+    {
+        foreach (var exception in collection)
+            if (exception is not PostgresException)
+                return false;
+        return true;
     }
 
     /// <summary>
@@ -1135,7 +1149,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 catch (Exception ex) when (
                     ex is PostgresException ||
                     ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
-                    aggregateException.InnerExceptions.All(e => e is PostgresException))
+                    AllPostgresExceptions(aggregateException.InnerExceptions))
                 {
                     // In the case of a PostgresException (or multiple ones, if we have error barriers), the connection is fine and consume
                     // has basically completed. Defer throwing the exception until Cleanup is complete.
@@ -1780,7 +1794,15 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         => GetColumnSchema(async: false).GetAwaiter().GetResult();
 
     ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
-        => new(GetColumnSchema().Select(c => (DbColumn)c).ToList());
+    {
+        var columns = GetColumnSchema();
+        var result = new DbColumn[columns.Count];
+        var i = 0;
+        foreach (var column in result)
+            result[i++] = column;
+
+        return new ReadOnlyCollection<DbColumn>(result);
+    }
 
     /// <summary>
     /// Asynchronously returns schema information for the columns in the current resultset.

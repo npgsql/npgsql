@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Reflection;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
@@ -25,7 +24,7 @@ class UnmappedEnumTypeInfoResolver : DynamicTypeInfoResolver
                 var labelToEnum = new Dictionary<string, Enum>();
                 foreach (var field in mapping.Type.GetFields(BindingFlags.Static | BindingFlags.Public))
                 {
-                    var attribute = (PgNameAttribute?)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
+                    var attribute = (PgNameAttribute?)field.GetCustomAttribute(typeof(PgNameAttribute), false);
                     var enumName = attribute?.PgName ?? options.DefaultNameTranslator.TranslateMemberName(field.Name);
                     var enumValue = (Enum)field.GetValue(null)!;
 

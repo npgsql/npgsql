@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -10,7 +9,7 @@ sealed class TypeInfoResolverChain : IPgTypeInfoResolver
     readonly IPgTypeInfoResolver[] _resolvers;
 
     public TypeInfoResolverChain(IEnumerable<IPgTypeInfoResolver> resolvers)
-        => _resolvers = resolvers.ToArray();
+        => _resolvers = new List<IPgTypeInfoResolver>(resolvers).ToArray();
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {

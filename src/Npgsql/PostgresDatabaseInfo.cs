@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -46,7 +45,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     List<PostgresType>? _types;
 
     /// <inheritdoc />
-    protected override IEnumerable<PostgresType> GetTypes() => _types ?? Enumerable.Empty<PostgresType>();
+    protected override IEnumerable<PostgresType> GetTypes() => _types ?? (IEnumerable<PostgresType>)Array.Empty<PostgresType>();
 
     /// <summary>
     /// The PostgreSQL version string as returned by the version() function. Populated during loading.
@@ -541,7 +540,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
         if (!isReplicationConnection)
             Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
-        return byOID.Values.ToList();
+
+        return new(byOID.Values);
 
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)
             => buffer.ReadString(buffer.ReadInt32());
