@@ -9,7 +9,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <StripSymbols>true</StripSymbols>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
-    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+    <StackTraceSupport>false</StackTraceSupport>
     <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
     <OptimizationPreference>Size</OptimizationPreference>
   </PropertyGroup>
