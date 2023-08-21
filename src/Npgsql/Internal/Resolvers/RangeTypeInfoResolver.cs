@@ -379,7 +379,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             var matchingArugments =
                 new[]
                 {
-                    typeof(int), typeof(long), typeof(decimal), typeof(BigInteger), typeof(DateTime),
+                    typeof(int), typeof(long), typeof(decimal), Type.GetType("System.Numerics.BigInteger,System.Runtime.Numerics"), typeof(DateTime),
 # if NET6_0_OR_GREATER
                     typeof(DateOnly)
 #endif

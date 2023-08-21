@@ -25,7 +25,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string) && (dataTypeName is null || dataTypeName.Value.IsArray))
             throw new NotSupportedException("Writing is not supported for IEnumerable parameters, use an array or List instead.");
 
-        //
+        // TODO bring back json help message.
         // $"Can't write CLR type {value.GetType()}. " +
         //     "You may need to use the System.Text.Json or Json.NET plugins, see the docs for more information."
 
