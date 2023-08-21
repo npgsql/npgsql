@@ -179,7 +179,7 @@ public abstract class PgConverter<T> : PgConverter
     // Object null semantics as follows, if T is a struct (so excluding nullable) report false for null values, don't throw on the cast.
     // As a result this creates symmetry with IsDbNull when we're dealing with a struct T, as it cannot be passed null at all.
     private protected override bool IsDbNullValueAsObject(object? value)
-        => (default(T) is null || value is not null) && IsDbNullValue(DownCast(value));
+        => (default(T) is null || value is not null) && IsDbNullValue(Downcast(value));
 
     public bool IsDbNull([NotNullWhen(false)] T? value)
         => DbNullPredicateKind switch
@@ -201,11 +201,11 @@ public abstract class PgConverter<T> : PgConverter
     internal sealed override Type TypeToConvert => typeof(T);
 
     internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
-        => GetSize(context, DownCast(value), ref writeState);
+        => GetSize(context, Downcast(value), ref writeState);
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     [return: NotNullIfNotNull(nameof(value))]
-    static T? DownCast(object? value) => (T?)value;
+    static T? Downcast(object? value) => (T?)value;
 }
 
 // Using a function pointer here is safe against assembly unloading as the instance reference that the static pointer method lives on is
