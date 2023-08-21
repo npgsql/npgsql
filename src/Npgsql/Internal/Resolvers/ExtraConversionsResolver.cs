@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Immutable;
+using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 
@@ -85,6 +86,8 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<float>()));
         mappings.AddStructType<double>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<double>()));
+        mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
+            static (options, mapping, _) => mapping.CreateInfo(options, new BigIntegerNumericConverter()));
 
         // Bytea
         mappings.AddStructType<ArraySegment<byte>>(DataTypeNames.Bytea,
@@ -170,6 +173,7 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<long>(DataTypeNames.Numeric);
         mappings.AddStructArrayType<float>(DataTypeNames.Numeric);
         mappings.AddStructArrayType<double>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<BigInteger>(DataTypeNames.Numeric);
 
         // Bytea
         mappings.AddStructArrayType<ArraySegment<byte>>(DataTypeNames.Bytea);
