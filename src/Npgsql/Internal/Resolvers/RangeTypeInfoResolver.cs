@@ -376,7 +376,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
         {
             type = type.GetGenericArguments()[0];
-            var matchingArugments =
+            var matchingArguments =
                 new[]
                 {
                     typeof(int), typeof(long), typeof(decimal), Type.GetType("System.Numerics.BigInteger,System.Runtime.Numerics"), typeof(DateTime),
@@ -386,7 +386,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                 };
 
             // If we don't know more than the clr type, default to a Multirange kind over Array as they share the same types.
-            foreach (var argument in matchingArugments)
+            foreach (var argument in matchingArguments)
                 if (argument == type)
                     return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
 
