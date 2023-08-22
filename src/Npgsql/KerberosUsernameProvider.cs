@@ -17,7 +17,7 @@ sealed class KerberosUsernameProvider
     static string? _principalWithRealm;
     static string? _principalWithoutRealm;
 
-    internal static ValueTask<string?> GetUsernameAsync(bool includeRealm, ILogger connectionLogger, bool async, CancellationToken cancellationToken)
+    internal static ValueTask<string?> GetUsername(bool async, bool includeRealm, ILogger connectionLogger, CancellationToken cancellationToken)
     {
         if (_performedDetection)
             return new(includeRealm ? _principalWithRealm : _principalWithoutRealm);

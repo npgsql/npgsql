@@ -57,9 +57,15 @@ namespace Npgsql.Properties {
             }
         }
         
-        internal static string EncryptionDisabled {
+        internal static string TransportSecurityDisabled {
             get {
-                return ResourceManager.GetString("EncryptionDisabled", resourceCulture);
+                return ResourceManager.GetString("TransportSecurityDisabled", resourceCulture);
+            }
+        }
+        
+        internal static string IntegratedSecurityDisabled {
+            get {
+                return ResourceManager.GetString("IntegratedSecurityDisabled", resourceCulture);
             }
         }
         

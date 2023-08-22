@@ -38,7 +38,7 @@ partial class NpgsqlConnector
 #endif
 
 #if !NET7_0_OR_GREATER
-    async Task AuthenticateGSS(bool async)
+    internal async Task AuthenticateGSS(bool async)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 
@@ -65,7 +65,7 @@ partial class NpgsqlConnector
 
         throw new NpgsqlException("NegotiateStream.AuthenticateAsClient completed unexpectedly without signaling success");
     }
-    
+
     /// <summary>
     /// This Stream is placed between NegotiateStream and the socket's NetworkStream (or SSLStream). It intercepts
     /// traffic and performs the following operations:

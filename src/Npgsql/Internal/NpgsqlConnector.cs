@@ -737,7 +737,7 @@ public sealed partial class NpgsqlConnector
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                username = await KerberosUsernameProvider.GetUsernameAsync(Settings.IncludeRealm, ConnectionLogger, async,
+                username = await KerberosUsernameProvider.GetUsername(async, Settings.IncludeRealm, ConnectionLogger,
                     cancellationToken);
 
                 if (username?.Length > 0)
@@ -788,7 +788,7 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if ((sslMode is SslMode.Prefer && DataSource.EncryptionHandler.SupportEncryption) ||
+            if ((sslMode is SslMode.Prefer && DataSource.TransportSecurityHandler.SupportEncryption) ||
                 sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
             {
                 WriteSslRequest();
@@ -807,7 +807,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.EncryptionHandler.NegotiateEncryption(this, sslMode, timeout, async, isFirstAttempt);
+                    await DataSource.TransportSecurityHandler.NegotiateEncryption(this, sslMode, timeout, async, isFirstAttempt);
                     break;
                 }
 
@@ -890,7 +890,7 @@ public sealed partial class NpgsqlConnector
                 if (Settings.RootCertificate is not null)
                     throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
 
-                if (DataSource.EncryptionHandler.RootCertificateCallback is not null)
+                if (DataSource.TransportSecurityHandler.RootCertificateCallback is not null)
                     throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback);
 
                 certificateValidationCallback = UserCertificateValidationCallback;
@@ -900,7 +900,7 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }
-            else if ((caCert = DataSource.EncryptionHandler.RootCertificateCallback?.Invoke()) is not null ||
+            else if ((caCert = DataSource.TransportSecurityHandler.RootCertificateCallback?.Invoke()) is not null ||
                      (certRootPath = Settings.RootCertificate ??
                                      PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
             {

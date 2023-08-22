@@ -6,25 +6,25 @@ using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
-class EncryptionHandler
+class TransportSecurityHandler
 {
     public virtual bool SupportEncryption => false;
 
     public virtual Func<X509Certificate2?>? RootCertificateCallback
     {
-        get => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
-        set => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
+        get => throw new NotSupportedException(string.Format(NpgsqlStrings.TransportSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableTransportSecurity)));
+        set => throw new NotSupportedException(string.Format(NpgsqlStrings.TransportSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableTransportSecurity)));
     }
 
     public virtual Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
-        => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
+        => throw new NotSupportedException(string.Format(NpgsqlStrings.TransportSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableTransportSecurity)));
 
     public virtual void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
         ref bool successfulBind)
-        => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
+        => throw new NotSupportedException(string.Format(NpgsqlStrings.TransportSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableTransportSecurity)));
 }
 
-sealed class RealEncryptionHandler : EncryptionHandler
+sealed class RealTransportSecurityHandler : TransportSecurityHandler
 {
     public override bool SupportEncryption => true;
 

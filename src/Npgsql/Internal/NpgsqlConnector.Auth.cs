@@ -42,7 +42,7 @@ partial class NpgsqlConnector
 
             case AuthenticationRequestType.AuthenticationGSS:
             case AuthenticationRequestType.AuthenticationSSPI:
-                await AuthenticateGSS(async);
+                await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSSContinue:
@@ -93,7 +93,7 @@ partial class NpgsqlConnector
         var successfulBind = false;
 
         if (clientSupportsSha256Plus)
-            DataSource.EncryptionHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
+            DataSource.TransportSecurityHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 
         if (!successfulBind && serverSupportsSha256)
         {
@@ -312,7 +312,7 @@ partial class NpgsqlConnector
     }
 
 #if NET7_0_OR_GREATER
-    async Task AuthenticateGSS(bool async)
+    internal async Task AuthenticateGSS(bool async)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 
