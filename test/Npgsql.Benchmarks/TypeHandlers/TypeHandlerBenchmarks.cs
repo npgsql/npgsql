@@ -5,9 +5,7 @@ using BenchmarkDotNet.Diagnosers;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Npgsql.Internal;
-using Npgsql.Util;
 
 #nullable disable
 
@@ -52,8 +50,8 @@ public abstract class TypeHandlerBenchmarks<T>
     {
         var stream = new EndlessStream();
         _converter = handler ?? throw new ArgumentNullException(nameof(handler));
-        _readBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.MinimumSize, Encoding.UTF8, PGUtil.RelaxedUTF8Encoding);
-        _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.MinimumSize, Encoding.UTF8);
+        _readBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
+        _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding);
         _reader = new PgReader(_readBuffer);
         _writer = new PgWriter(_writeBuffer);
         _writer.Init(new PostgresMinimalDatabaseInfo());

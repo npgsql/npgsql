@@ -1,5 +1,4 @@
 ﻿using Npgsql.Internal;
-using Npgsql.Util;
 using NUnit.Framework;
 using System;
 using System.IO;
@@ -56,9 +55,9 @@ class ReadBufferTests
     public void ReadNullTerminatedString_buffered_only()
     {
         Writer
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("foo")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("foo")))
             .WriteByte(0)
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("bar")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("bar")))
             .WriteByte(0);
 
         ReadBuffer.Ensure(1, async: false);
@@ -70,15 +69,15 @@ class ReadBufferTests
     [Test]
     public async Task ReadNullTerminatedString_with_io()
     {
-        Writer.Write(PGUtil.UTF8Encoding.GetBytes(new string("Chunked ")));
+        Writer.Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("Chunked ")));
         await ReadBuffer.Ensure(1, async: true);
         var task = ReadBuffer.ReadNullTerminatedString(async: true);
         Assert.That(!task.IsCompleted);
 
         Writer
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("string")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("string")))
             .WriteByte(0)
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("bar")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("bar")))
             .WriteByte(0);
         Assert.That(task.IsCompleted);
         Assert.That(await task, Is.EqualTo("Chunked string"));
@@ -90,7 +89,7 @@ class ReadBufferTests
     public void SetUp()
     {
         var stream = new MockStream();
-        ReadBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding, PGUtil.RelaxedUTF8Encoding);
+        ReadBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
         Writer = stream.Writer;
     }
 #pragma warning restore CS8625

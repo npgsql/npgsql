@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
@@ -383,8 +382,8 @@ partial class NpgsqlConnector
                   sizeof(byte);  // Trailing zero byte
 
         foreach (var kvp in parameters)
-            len += PGUtil.UTF8Encoding.GetByteCount(kvp.Key) + 1 +
-                   PGUtil.UTF8Encoding.GetByteCount(kvp.Value) + 1;
+            len += NpgsqlWriteBuffer.UTF8Encoding.GetByteCount(kvp.Key) + 1 +
+                   NpgsqlWriteBuffer.UTF8Encoding.GetByteCount(kvp.Value) + 1;
 
         // Should really never happen, just in case
         if (len > WriteBuffer.Size)
@@ -430,7 +429,7 @@ partial class NpgsqlConnector
     {
         var len = sizeof(byte)                                               +  // Message code
                   sizeof(int)                                                +  // Length
-                  PGUtil.UTF8Encoding.GetByteCount(mechanism) + sizeof(byte) +  // Mechanism plus null terminator
+                  NpgsqlWriteBuffer.UTF8Encoding.GetByteCount(mechanism) + sizeof(byte) +  // Mechanism plus null terminator
                   sizeof(int)                                                +  // Initial response length
                   (initialResponse?.Length ?? 0);                               // Initial response payload
 

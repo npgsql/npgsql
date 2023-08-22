@@ -773,8 +773,8 @@ public sealed partial class NpgsqlConnector
 
             if (Settings.Encoding == "UTF8")
             {
-                TextEncoding = PGUtil.UTF8Encoding;
-                RelaxedTextEncoding = PGUtil.RelaxedUTF8Encoding;
+                TextEncoding = NpgsqlWriteBuffer.UTF8Encoding;
+                RelaxedTextEncoding = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
             }
             else
             {
@@ -1306,7 +1306,7 @@ public sealed partial class NpgsqlConnector
             return ReadMessageLong(async, dataRowLoadingMode, readingNotifications: false)!;
         }
 
-        PGUtil.ValidateBackendMessageCode(messageCode);
+        ValidateBackendMessageCode(messageCode);
         var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
         if (len > ReadBuffer.ReadBytesLeft)
         {
@@ -1355,7 +1355,7 @@ public sealed partial class NpgsqlConnector
             {
                 await ReadBuffer.Ensure(5, async, readingNotifications);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                PGUtil.ValidateBackendMessageCode(messageCode);
+                ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
 
                 if ((messageCode == BackendMessageCode.DataRow &&

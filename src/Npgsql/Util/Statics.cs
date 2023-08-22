@@ -2,11 +2,8 @@ using Npgsql.Internal;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Npgsql.Util;
 
@@ -49,59 +46,6 @@ static class Statics
         => throw connector.Break(
             new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
 
-    internal static DeferDisposable Defer(Action action) => new(action);
-    internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);
-    internal static DeferDisposable<T1, T2> Defer<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2) => new(action, arg1, arg2);
-    // internal static AsyncDeferDisposable DeferAsync(Func<ValueTask> func) => new AsyncDeferDisposable(func);
-    internal static AsyncDeferDisposable DeferAsync(Func<Task> func) => new(func);
-
-    internal readonly struct DeferDisposable : IDisposable
-    {
-        readonly Action _action;
-        public DeferDisposable(Action action) => _action = action;
-        public void Dispose() => _action();
-    }
-
-    internal readonly struct DeferDisposable<T> : IDisposable
-    {
-        readonly Action<T> _action;
-        readonly T _arg;
-        public DeferDisposable(Action<T> action, T arg)
-        {
-            _action = action;
-            _arg = arg;
-        }
-        public void Dispose() => _action(_arg);
-    }
-
-    internal readonly struct DeferDisposable<T1, T2> : IDisposable
-    {
-        readonly Action<T1, T2> _action;
-        readonly T1 _arg1;
-        readonly T2 _arg2;
-        public DeferDisposable(Action<T1, T2> action, T1 arg1, T2 arg2)
-        {
-            _action = action;
-            _arg1 = arg1;
-            _arg2 = arg2;
-        }
-        public void Dispose() => _action(_arg1, _arg2);
-    }
-
-    internal readonly struct AsyncDeferDisposable : IAsyncDisposable
-    {
-        readonly Func<Task> _func;
-        public AsyncDeferDisposable(Func<Task> func) => _func = func;
-        public async ValueTask DisposeAsync() => await _func();
-    }
-}
-
-// ReSharper disable once InconsistentNaming
-static class PGUtil
-{
-    internal static readonly UTF8Encoding UTF8Encoding = new(false, true);
-    internal static readonly UTF8Encoding RelaxedUTF8Encoding = new(false, false);
-
     internal static void ValidateBackendMessageCode(BackendMessageCode code)
     {
         switch (code)
@@ -140,9 +84,6 @@ static class PGUtil
         static void ThrowUnknownMessageCode(BackendMessageCode code)
             => ThrowHelper.ThrowNpgsqlException($"Unknown message code: {code}");
     }
-
-    internal static readonly Task<bool> TrueTask = Task.FromResult(true);
-    internal static readonly Task<bool> FalseTask = Task.FromResult(false);
 }
 
 static class EnumerableExtensions
@@ -207,16 +148,4 @@ public readonly struct NpgsqlTimeout
             Check();
         return timeLeft;
     }
-}
-
-static class MethodInfos
-{
-    internal static readonly ConstructorInfo InvalidCastExceptionCtor =
-        typeof(InvalidCastException).GetConstructor(new[] { typeof(string) })!;
-
-    internal static readonly MethodInfo StringFormat =
-        typeof(string).GetMethod(nameof(string.Format), new[] { typeof(string), typeof(object) })!;
-
-    internal static readonly MethodInfo ObjectGetType =
-        typeof(object).GetMethod(nameof(GetType), new Type[0])!;
 }
