@@ -262,7 +262,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
                     if (t.IsFaulted)
                     {
-                        FailWrite(conn, t.Exception!.UnwrapAggregate());
+                        FailWrite(conn, t.Exception!.InnerException!);
                         return;
                     }
 
@@ -314,7 +314,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     var conn = (NpgsqlConnector)o!;
                     if (t.IsFaulted)
                     {
-                        FailWrite(conn, t.Exception!.UnwrapAggregate());
+                        FailWrite(conn, t.Exception!.InnerException!);
                         return;
                     }
 
