@@ -7,7 +7,6 @@ using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Replication.Internal;
 using Npgsql.Replication.PgOutput.Messages;
-using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql.Replication.PgOutput;

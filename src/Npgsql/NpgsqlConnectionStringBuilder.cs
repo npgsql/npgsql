@@ -9,7 +9,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Npgsql.Internal;
 using Npgsql.Netstandard20;
-using Npgsql.Properties;
 using Npgsql.Replication;
 
 namespace Npgsql;

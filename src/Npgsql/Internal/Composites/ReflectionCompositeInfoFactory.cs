@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using NpgsqlTypes;

@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace Npgsql.PostgresTypes;
+﻿namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL array data type, which can hold several multiple values in a single column.

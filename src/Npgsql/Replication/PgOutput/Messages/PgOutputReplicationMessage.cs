@@ -1,7 +1,4 @@
-﻿using NpgsqlTypes;
-using System;
-
-namespace Npgsql.Replication.PgOutput.Messages;
+﻿namespace Npgsql.Replication.PgOutput.Messages;
 
 /// <summary>
 /// The base class of all Logical Replication Protocol Messages

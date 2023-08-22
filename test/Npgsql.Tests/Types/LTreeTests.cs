@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
