@@ -38,7 +38,7 @@ partial class NpgsqlConnector
 #endif
 
 #if !NET7_0_OR_GREATER
-    async Task AuthenticateGSS(bool async)
+    internal async Task AuthenticateGSS(bool async)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 

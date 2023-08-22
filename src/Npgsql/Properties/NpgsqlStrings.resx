@@ -24,8 +24,11 @@
     <data name="CannotUseSslRootCertificateWithUserCallback" xml:space="preserve">
         <value>RootCertificate cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
-    <data name="EncryptionDisabled" xml:space="preserve">
-        <value>NpgsqlSlimDataSourceBuilder is being used, and encryption hasn't been enabled, call EnableEncryption() on NpgsqlSlimDataSourceBuilder to enable it.</value>
+    <data name="TransportSecurityDisabled" xml:space="preserve">
+        <value>Transport security hasn't been enabled; please call {0} on NpgsqlSlimDataSourceBuilder to enable it.</value>
+    </data>
+    <data name="IntegratedSecurityDisabled" xml:space="preserve">
+        <value>Integrated security hasn't been enabled; please call {0} on NpgsqlSlimDataSourceBuilder to enable it.</value>
     </data>
     <data name="NoMultirangeTypeFound" xml:space="preserve">
         <value>No multirange type could be found in the database for subtype {0}.</value>

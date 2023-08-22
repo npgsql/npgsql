@@ -8,10 +8,10 @@ using Npgsql.Internal;
 
 namespace Npgsql;
 
-sealed record NpgsqlDataSourceConfiguration(
-    string? Name,
+sealed record NpgsqlDataSourceConfiguration(string? Name,
     NpgsqlLoggingConfiguration LoggingConfiguration,
-    EncryptionHandler EncryptionHandler,
+    TransportSecurityHandler TransportSecurityHandler,
+    IntegratedSecurityHandler userCertificateValidationCallback,
     RemoteCertificateValidationCallback? UserCertificateValidationCallback,
     Action<X509CertificateCollection>? ClientCertificatesCallback,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,
