@@ -1,7 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using Npgsql;
+﻿using Npgsql;
 using Npgsql.Tests;
-using Npgsql.Tests.Support;
 using NUnit.Framework;
 using System;
 using System.Threading;

@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using Npgsql.GeoJSON;
+﻿using Npgsql.GeoJSON;
 using Npgsql.GeoJSON.Internal;
 using Npgsql.TypeMapping;
 

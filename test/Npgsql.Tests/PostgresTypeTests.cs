@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Internal;
-using Npgsql.TypeMapping;
 using NUnit.Framework;
 
 namespace Npgsql.Tests;

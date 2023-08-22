@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using NUnit.Framework;
-using static Npgsql.Util.Statics;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;

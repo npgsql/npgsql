@@ -13,7 +13,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
-using Npgsql.Properties;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
