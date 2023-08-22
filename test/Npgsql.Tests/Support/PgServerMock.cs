@@ -9,7 +9,6 @@ using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
 using Npgsql.TypeMapping;
-using Npgsql.Util;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Support;
@@ -20,7 +19,7 @@ class PgServerMock : IDisposable
     static uint Int4Oid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value;
     static uint TextOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Text].Value;
 
-    static readonly Encoding Encoding = PGUtil.UTF8Encoding;
+    static readonly Encoding Encoding = NpgsqlWriteBuffer.UTF8Encoding;
 
     readonly NetworkStream _stream;
     readonly NpgsqlReadBuffer _readBuffer;

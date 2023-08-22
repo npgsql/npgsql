@@ -19,7 +19,6 @@ using Npgsql.Internal;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
 using Npgsql.Schema;
-using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -33,6 +32,9 @@ namespace Npgsql;
 public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #pragma warning restore CA1010
 {
+    internal static readonly Task<bool> TrueTask = Task.FromResult(true);
+    internal static readonly Task<bool> FalseTask = Task.FromResult(false);
+
     internal NpgsqlCommand Command { get; private set; } = default!;
     internal NpgsqlConnector Connector { get; }
     NpgsqlConnection? _connection;
@@ -183,7 +185,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         var fastRead = TryFastRead();
         if (fastRead.HasValue)
-            return fastRead.Value ? PGUtil.TrueTask : PGUtil.FalseTask;
+            return fastRead.Value ? TrueTask : FalseTask;
 
         using (NoSynchronizationContextScope.Enter())
             return Read(true, cancellationToken);
@@ -1680,7 +1682,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
     {
         if (!_isSequential)
-            return IsDBNull(ordinal) ? PGUtil.TrueTask : PGUtil.FalseTask;
+            return IsDBNull(ordinal) ? TrueTask : FalseTask;
 
         using (NoSynchronizationContextScope.Enter())
             return Core(ordinal, cancellationToken);

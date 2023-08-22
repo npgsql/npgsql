@@ -22,6 +22,9 @@ sealed class NpgsqlWriteBuffer : IDisposable
 {
     #region Fields and Properties
 
+    internal static readonly UTF8Encoding UTF8Encoding = new(false, true);
+    internal static readonly UTF8Encoding RelaxedUTF8Encoding = new(false, false);
+
     internal readonly NpgsqlConnector Connector;
 
     internal Stream Underlying { private get; set; }
