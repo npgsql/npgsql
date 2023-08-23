@@ -13,7 +13,6 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.PluginTests;
 
-[Ignore("TODO handler rework")]
 public class NodaTimeTests : MultiplexingTestBase, IDisposable
 {
     #region Timestamp without time zone

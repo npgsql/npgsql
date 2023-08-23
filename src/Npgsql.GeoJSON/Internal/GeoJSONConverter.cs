@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GeoJSON.Net;
@@ -289,8 +290,12 @@ static class GeoJSONConverter
             if (HasM(type)) ReadDouble(littleEndian);
             return position;
 
-            int ReadDouble(bool littleEndian)
-                => littleEndian ? BinaryPrimitives.ReverseEndianness(reader.ReadInt32()) : reader.ReadInt32();
+            double ReadDouble(bool littleEndian)
+                => littleEndian
+                    // Netstandard is missing ReverseEndianness apis for double.
+                    ? Unsafe.As<long, double>(ref Unsafe.AsRef(
+                        BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref Unsafe.AsRef(reader.ReadDouble())))))
+                    : reader.ReadDouble();
         }
     }
 

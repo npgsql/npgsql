@@ -165,7 +165,7 @@ class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
 
     static PgConverter CreateJsonNetConverter(Type valueType, bool jsonb, Encoding textEncoding, JsonSerializerSettings settings, Type baseType)
         => (PgConverter)Activator.CreateInstance(
-                typeof(JsonNetJsonConverter<>).MakeGenericType(valueType, baseType),
+                typeof(JsonNetJsonConverter<>).MakeGenericType(valueType),
                 jsonb,
                 textEncoding,
                 settings
