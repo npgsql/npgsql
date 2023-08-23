@@ -421,19 +421,32 @@ public class PgReader
     internal void EndRead()
     {
         _readStarted = false;
+
+        if (Resumable)
+            return;
+
         // If it was upper bound we should consume.
         if (_currentBufferRequirement.Kind is SizeKind.UpperBound)
+        {
             Consume();
+            return;
+        }
+
+        ThrowIfNotConsumed();
     }
 
     internal ValueTask EndReadAsync()
     {
         _readStarted = false;
 
+        if (Resumable)
+            return new();
+
         // If it was upper bound we should consume.
         if (_currentBufferRequirement.Kind is SizeKind.UpperBound)
             return ConsumeAsync();
 
+        ThrowIfNotConsumed();
         return new();
     }
 
@@ -467,7 +480,7 @@ public class PgReader
             Consume(offset - CurrentOffset);
     }
 
-    async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
+    internal async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
     {
         // Shut down any streaming going on on the column
         await DisposeUserActiveStream(async).ConfigureAwait(false);
@@ -504,18 +517,7 @@ public class PgReader
         // If it was a resumable read while the next one isn't we'll consume everything.
         // If we're in a _readStarted state we'll assume we had an exception and we'll consume silently as well.
         if (Resumable || _readStarted)
-        {
-            if (async)
-                await ConsumeAsync().ConfigureAwait(false);
-            else
-                Consume();
-        }
-
-        if (Pos < _fieldSize.Value)
-        {
-            throw _buffer.Connector.Break(
-                new InvalidOperationException($"Trying to commit a reader over a field that hasn't been entirely consumed (pos: {Pos}, len: {_fieldSize.Value})"));
-        }
+            await Consume(async).ConfigureAwait(false);
 
         _fieldSize = default;
         _fieldFormat = default;
@@ -594,6 +596,17 @@ public class PgReader
 
         Buffer(byteCount);
         return new();
+    }
+
+    void ThrowIfNotConsumed()
+    {
+        if (Pos < _fieldSize.Value)
+            Throw();
+
+        void Throw() =>
+            throw _buffer.Connector.Break(
+                new InvalidOperationException(
+                    $"Trying to end a read over a field that hasn't been entirely consumed (pos: {Pos}, len: {_fieldSize.Value})"));
     }
 }
 

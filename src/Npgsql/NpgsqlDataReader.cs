@@ -1392,12 +1392,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             throw new InvalidCastException("GetData() not supported for type " + field.TypeDisplayName);
 
         var columnLength = SeekToColumn(async: false, ordinal, field, resumableOp: true).GetAwaiter().GetResult();
+        if (columnLength is -1)
+            ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
         if (PgReader.CurrentOffset > 0)
             PgReader.Rewind(PgReader.CurrentOffset);
-
-        if (columnLength == -1)
-            ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
         var reader = CachedFreeNestedDataReader;
         if (reader != null)
@@ -1914,7 +1913,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     /// <summary>
-    /// Seeks to the given column. The 4-byte length is read and returned/>.
+    /// Seeks to the given column. The 4-byte length is read and returned.
     /// </summary>
     ValueTask<int> SeekToColumnSequential(bool async, int ordinal, FieldDescription field, bool resumableOp = false)
     {
