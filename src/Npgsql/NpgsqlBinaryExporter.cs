@@ -24,10 +24,12 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     NpgsqlConnector _connector;
     NpgsqlReadBuffer _buf;
     bool _isConsumed, _isDisposed;
-    int _leftToReadInDataMsg, _columnLen;
+    long _endOfMessagePos;
 
     short _column;
     ulong _rowsExported;
+
+    PgReader PgReader => _buf.PgReader;
 
     /// <summary>
     /// The number of columns, as returned from the backend in the CopyInResponse.
@@ -59,7 +61,6 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     {
         _connector = connector;
         _buf = connector.ReadBuffer;
-        _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
         _column = -1;
         _columnInfoCache = null!;
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
@@ -102,7 +103,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async Task ReadHeader(bool async)
     {
-        _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
+        var msg = await _connector.ReadMessage(async);
+        _endOfMessagePos = _buf.CumulativeReadPosition + Expect<CopyDataMessage>(msg, _connector).Length;
         var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
         await _buf.Ensure(headerLen, async);
 
@@ -114,7 +116,6 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             throw new NotSupportedException("Unsupported flags in COPY operation (OID inclusion?)");
 
         _buf.ReadInt32();   // Header extensions, currently unused
-        _leftToReadInDataMsg -= headerLen;
     }
 
     #endregion
@@ -155,17 +156,15 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         // Otherwise we need to read in a new CopyData row (the docs specify that there's a CopyData
         // message per row).
         if (_column == NumColumns)
-            _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
+            Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector);
         else if (_column != -1)
             ThrowHelper.ThrowInvalidOperationException("Already in the middle of a row");
 
         await _buf.Ensure(2, async);
-        _leftToReadInDataMsg -= 2;
 
         var numColumns = _buf.ReadInt16();
         if (numColumns == -1)
         {
-            Debug.Assert(_leftToReadInDataMsg == 0);
             Expect<CopyDoneMessage>(await _connector.ReadMessage(async), _connector);
             Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
             Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
@@ -191,7 +190,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// specify the type.
     /// </typeparam>
     /// <returns>The value of the column</returns>
-    public T Read<T>() => Read<T>(false).GetAwaiter().GetResult();
+    public T Read<T>() => Read<T>(async: false).GetAwaiter().GetResult();
 
     /// <summary>
     /// Reads the current column, returns its value and moves ahead to the next column.
@@ -206,19 +205,11 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     public ValueTask<T> ReadAsync<T>(CancellationToken cancellationToken = default)
     {
         using (NoSynchronizationContextScope.Enter())
-            return Read<T>(true, cancellationToken);
+            return Read<T>(async: true, cancellationToken);
     }
 
     ValueTask<T> Read<T>(bool async, CancellationToken cancellationToken = default)
-    {
-        CheckDisposed();
-
-        if (_column == -1 || _column == NumColumns)
-            ThrowHelper.ThrowInvalidOperationException("Not reading a row");
-
-        ref var cachedInfo = ref _columnInfoCache[_column];
-        return DoRead<T>(cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T)) : cachedInfo, async, cancellationToken);
-    }
+        => Read<T>(async, null, cancellationToken);
 
     PgConverterInfo CreateConverterInfo(Type type, NpgsqlDbType? npgsqlDbType = null)
     {
@@ -255,7 +246,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
     /// <returns>The value of the column</returns>
-    public T Read<T>(NpgsqlDbType type) => Read<T>(type, false).GetAwaiter().GetResult();
+    public T Read<T>(NpgsqlDbType type) => Read<T>(async: false, type, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Reads the current column, returns its value according to <paramref name="type"/> and
@@ -276,91 +267,75 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     public ValueTask<T> ReadAsync<T>(NpgsqlDbType type, CancellationToken cancellationToken = default)
     {
         using (NoSynchronizationContextScope.Enter())
-            return Read<T>(type, true, cancellationToken);
+            return Read<T>(async: true, type, cancellationToken);
     }
 
-    ValueTask<T> Read<T>(NpgsqlDbType type, bool async, CancellationToken cancellationToken = default)
+    async ValueTask<T> Read<T>(bool async, NpgsqlDbType? type, CancellationToken cancellationToken)
     {
         CheckDisposed();
-        if (_column == -1 || _column == NumColumns)
+        if (_column == -1)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
-        ref var cachedInfo = ref _columnInfoCache[_column];
-        return DoRead<T>(cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T), type) : cachedInfo, async, cancellationToken);
-    }
+        using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-    async ValueTask<T> DoRead<T>(PgConverterInfo info, bool async, CancellationToken cancellationToken = default)
-    {
-        using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
-        var position = _buf.ReadPosition;
-        try
+        // Allow one more read if the field is a db null.
+        // We cannot allow endless rereads otherwise it becomes quite unclear when a column advance happens.
+        if (PgReader is { Resumable: true, FieldSize: -1 })
         {
-            await ReadColumnLenIfNeeded(async);
-
-            if (_columnLen == -1)
-            {
-                // When T is a Nullable<T>, we support returning null
-                if (default(T) is null && typeof(T).IsValueType)
-                    return default!;
-                throw new InvalidCastException("Column is null");
-            }
-
-            // TODO use StartRead/EndRead
-            var reader = _buf.PgReader.Init(_columnLen, DataFormat.Binary);
-            T result;
-            if (async)
-            {
-                await reader.BufferAsync(info.BufferRequirement, cancellationToken);
-                result = info.AsObject
-                    ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
-                    : await info.GetConverter<T>().ReadAsync(reader, cancellationToken);
-            }
-            else
-            {
-                reader.Buffer(info.BufferRequirement);
-                result = info.AsObject
-                    ? (T)info.Converter.ReadAsObject(reader)
-                    : info.GetConverter<T>().Read(reader);
-            }
-
-            _leftToReadInDataMsg -= _columnLen;
-            // Mark that the (next) column length hasn't been read yet
-            _columnLen = int.MinValue;
-            _column++;
-            await reader.Commit(async, resuming: false);
-            return result;
+            await Commit(async, resumableOp: false);
+            return DbNullOrThrow();
         }
-        catch (Exception)
+
+        await Commit(async, resumableOp: false);
+        var info = GetInfo();
+
+        // We need to get info after potential I/O as we don't know beforehand at what column we're at.
+        var columnLen = await ReadColumnLenIfNeeded(async, resumableOp: false);
+        if (_column == NumColumns)
+            ThrowHelper.ThrowInvalidOperationException("No more columns left in the current row");
+
+        if (columnLen is -1)
+            DbNullOrThrow();
+
+        T result;
+        if (async)
         {
-            var consumedBytes = _buf.ReadPosition - position;
-            // We don't need to skip if we can still let the user retry the read.
-            if (consumedBytes > 0 && _connector.State != ConnectorState.Broken)
-            {
-                var remainingBytes = _columnLen - consumedBytes;
-                if (remainingBytes > 0)
-                {
-                    await _buf.Skip(remainingBytes, async);
-                    // Important: position must still be updated
-                    _leftToReadInDataMsg -= _columnLen;
-                    _columnLen = int.MinValue;
-                    _column++;
-                }
-            }
-            throw;
+            await PgReader.StartReadAsync(info.BufferRequirement, cancellationToken);
+            result = info.AsObject
+                ? (T)await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken)
+                : await info.GetConverter<T>().ReadAsync(PgReader, cancellationToken);
+            await PgReader.EndReadAsync();
+        }
+        else
+        {
+            PgReader.StartRead(info.BufferRequirement);
+            result = info.AsObject
+                ? (T)info.Converter.ReadAsObject(PgReader)
+                : info.GetConverter<T>().Read(PgReader);
+            PgReader.EndRead();
+        }
+
+        return result;
+
+        PgConverterInfo GetInfo()
+        {
+            ref var cachedInfo = ref _columnInfoCache[_column];
+            return cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T), type) : cachedInfo;
+        }
+
+        T DbNullOrThrow()
+        {
+            // When T is a Nullable<T>, we support returning null
+            if (default(T) is null && typeof(T).IsValueType)
+                return default!;
+            throw new InvalidCastException("Column is null");
         }
     }
 
     /// <summary>
     /// Returns whether the current column is null.
     /// </summary>
-    public bool IsNull
-    {
-        get
-        {
-            ReadColumnLenIfNeeded(false).GetAwaiter().GetResult();
-            return _columnLen == -1;
-        }
-    }
+    public bool IsNull => ReadColumnLenIfNeeded(async: false, resumableOp: true).GetAwaiter().GetResult() is -1;
 
     /// <summary>
     /// Skips the current column without interpreting its value.
@@ -382,26 +357,32 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
 
-        await ReadColumnLenIfNeeded(async);
-        if (_columnLen != -1)
-            await _buf.Skip(_columnLen, async);
-
-        _columnLen = int.MinValue;
-        _column++;
+        await Commit(async, resumableOp: false);
+        await ReadColumnLenIfNeeded(async, resumableOp: false);
+        await PgReader.Consume(async, cancellationToken: cancellationToken);
     }
 
     #endregion
 
     #region Utilities
 
-    async Task ReadColumnLenIfNeeded(bool async)
+    ValueTask Commit(bool async, bool resumableOp)
     {
-        if (_columnLen == int.MinValue)
-        {
-            await _buf.Ensure(4, async);
-            _columnLen = _buf.ReadInt32();
-            _leftToReadInDataMsg -= 4;
-        }
+        if (!PgReader.FieldInitialized)
+            return new();
+        _column++;
+        return PgReader.Commit(async, resumableOp);
+    }
+
+    async ValueTask<int> ReadColumnLenIfNeeded(bool async, bool resumableOp)
+    {
+        if (PgReader is { Resumable: true, FieldSize: -1 })
+            return -1;
+
+        await _buf.Ensure(4, async);
+        var columnLen = _buf.ReadInt32();
+        PgReader.Init(columnLen, DataFormat.Binary, resumableOp);
+        return columnLen;
     }
 
     void CheckDisposed()
@@ -458,7 +439,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             {
                 using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
                 // Finish the current CopyData message
-                _buf.Skip(_leftToReadInDataMsg);
+                _buf.Skip(_endOfMessagePos - _buf.CumulativeReadPosition);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup
