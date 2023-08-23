@@ -31,9 +31,9 @@ public class PgReader
     }
 
     int Pos => (int)(_buffer.CumulativeReadPosition - FieldStartPos);
-    public ValueMetadata Current => new() { Size = CurrentSize, Format =  _field.Format };
+    public ValueMetadata Current => new() { Size = CurrentSize, Format =  _field.Format, BufferRequirement = _currentBufferRequirement };
     internal int CurrentOffset => Pos - _currentStartPos;
-    public Size CurrentBufferRequirement => _currentBufferRequirement;
+    internal Size CurrentBufferRequirement => _currentBufferRequirement;
     public int CurrentRemaining => CurrentSize - CurrentOffset;
 
     int BufferSize => _buffer.Size;
