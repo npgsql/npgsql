@@ -1,9 +1,9 @@
 namespace Npgsql.Internal;
 
-public struct ValueMetadata
+public readonly struct ValueMetadata
 {
-    public DataFormat Format { get; init; }
-    // TODO writer still uses the mutability of this.
-    public Size Size { get; set; }
-    public object? WriteState { get; set; }
+    public required DataFormat Format { get; init; }
+    public required Size BufferRequirement { get; init; }
+    public required Size Size { get; init; }
+    public object? WriteState { get; init; }
 }

@@ -671,22 +671,23 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken);
 
+            writer.WriteInt32(writeSize.Value);
             if (writeSize.Value is -1)
             {
-                writer.WriteInt32(-1);
                 writer.Commit(sizeof(int));
+                return;
             }
-            else
-            {
-                writer.WriteInt32(writeSize.Value);
 
-                // Set current as writer needs size to be able to resolve an Unknown buffer requirement.
-                writer.Current = new() { Format = Format, Size = writeSize, WriteState = _writeState };
-                if (writer.ShouldFlush(_bufferRequirement))
-                    await writer.Flush(async, cancellationToken);
-                await WriteValue(async, Converter!, writer, cancellationToken);
-                writer.Commit(writeSize.Value + sizeof(int));
-            }
+            var current = new ValueMetadata
+            {
+                Format = Format,
+                BufferRequirement = _bufferRequirement,
+                Size = writeSize,
+                WriteState = _writeState
+            };
+            await writer.BeginWrite(async, current, cancellationToken).ConfigureAwait(false);
+            await WriteValue(async, Converter!, writer, cancellationToken);
+            writer.Commit(writeSize.Value + sizeof(int));
         }
         finally
         {
@@ -737,6 +738,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             _subStream = null;
         }
         WriteSize = null;
+        Format = default;
         _bufferRequirement = default;
     }
 

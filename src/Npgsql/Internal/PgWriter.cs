@@ -212,8 +212,17 @@ public class PgWriter
         }
     }
 
-    public ref ValueMetadata Current => ref _current;
-    public Size CurrentBufferRequirement { get; private set; }
+    internal ValueTask BeginWrite(bool async, ValueMetadata current, CancellationToken cancellationToken)
+    {
+        _current = current;
+        if (ShouldFlush(current.BufferRequirement))
+            return Flush(async, cancellationToken);
+
+        return new();
+    }
+
+    public ValueMetadata Current => _current;
+    internal Size CurrentBufferRequirement => _current.BufferRequirement;
 
     // When we don't know the size during writing we're using the writer buffer as a sizing mechanism.
     internal bool BufferingWrite => Current.Size.Kind is SizeKind.Unknown;
@@ -466,26 +475,18 @@ public class PgWriter
     {
         Debug.Assert(bufferRequirement != -1);
         if (ShouldFlush(bufferRequirement))
-            return Core();
+            return Core(async, bufferRequirement, byteCount, state, cancellationToken);
 
-        CurrentBufferRequirement = bufferRequirement;
-        Current.Size = byteCount;
-        // Saves a write barrier in most cases (i.e. when there is no state).
-        if (Current.WriteState is not null || state is not null)
-            Current.WriteState = state;
+        _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
 
         return new(new NestedWriteScope());
 #if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
-        async ValueTask<NestedWriteScope> Core()
+        async ValueTask<NestedWriteScope> Core(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
-            Current.Size = byteCount;
-            // Saves a write barrier in most cases (i.e. when there is no state).
-            if (Current.WriteState is not null || state is not null)
-                Current.WriteState = state;
-
+            _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
             return new();
         }
     }
