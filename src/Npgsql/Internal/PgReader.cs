@@ -13,12 +13,14 @@ namespace Npgsql.Internal;
 public class PgReader
 {
     readonly NpgsqlReadBuffer _buffer;
-    ValueMetadata _field;
+    DataFormat _fieldFormat;
+    Size _fieldSize;
 
     byte[]? _pooledArray;
 
     internal long FieldStartPos { get; set; }
-    internal int FieldSize => _field.Size.IsDefault ? -1 : _field.Size.Value;
+    internal int FieldSize => _fieldSize.Value;
+    internal bool FieldInitialized => !_fieldSize.IsDefault;
 
     int _currentStartPos;
     Size _currentBufferRequirement { get; set; }
@@ -31,7 +33,7 @@ public class PgReader
     }
 
     int Pos => (int)(_buffer.CumulativeReadPosition - FieldStartPos);
-    public ValueMetadata Current => new() { Size = CurrentSize, Format =  _field.Format, BufferRequirement = _currentBufferRequirement };
+    public ValueMetadata Current => new() { Size = CurrentSize, Format = _fieldFormat, BufferRequirement = _currentBufferRequirement };
     internal int CurrentOffset => Pos - _currentStartPos;
     internal Size CurrentBufferRequirement => _currentBufferRequirement;
     public int CurrentRemaining => CurrentSize - CurrentOffset;
@@ -61,7 +63,7 @@ public class PgReader
     [Conditional("DEBUG")]
     void CheckBounds(int count)
     {
-        if (Pos + count > _field.Size.Value)
+        if (Pos + count > _fieldSize.Value)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the field.");
     }
 
@@ -376,8 +378,8 @@ public class PgReader
 
     internal PgReader Init(int columnLength, DataFormat format, bool resumable = false)
     {
-        var resumed = !_field.Size.IsDefault && resumable;
-        Debug.Assert(_field.Size.IsDefault || resumable, "Reader wasn't properly committed before next init");
+        var resumed = !_fieldSize.IsDefault && resumable;
+        Debug.Assert(_fieldSize.IsDefault || resumable, "Reader wasn't properly committed before next init");
 
         if (!resumed)
         {
@@ -393,7 +395,8 @@ public class PgReader
             _charsRead = default;
             FieldStartPos = _buffer.CumulativeReadPosition;
             CurrentSize = columnLength < 0 ? 0 : columnLength;
-            _field = new() { Format = format, Size = columnLength };
+            _fieldFormat = format;
+            _fieldSize = columnLength;
             _readStarted = false;
         }
 
@@ -489,10 +492,10 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
     }
 
-    internal bool CommitHasIO(bool resuming) => !_field.Size.IsDefault && !resuming && CurrentRemaining is not 0;
+    internal bool CommitHasIO(bool resuming) => !_fieldSize.IsDefault && !resuming && CurrentRemaining is not 0;
     internal async ValueTask Commit(bool async, bool resuming)
     {
-        if (_field.Size.IsDefault || resuming)
+        if (_fieldSize.IsDefault || resuming)
             return;
 
         // Shut down any streaming going on on the column
@@ -508,13 +511,14 @@ public class PgReader
                 Consume();
         }
 
-        if (Pos < _field.Size.Value)
+        if (Pos < _fieldSize.Value)
         {
             throw _buffer.Connector.Break(
-                new InvalidOperationException($"Trying to commit a reader over a field that hasn't been entirely consumed (pos: {Pos}, len: {_field.Size.Value})"));
+                new InvalidOperationException($"Trying to commit a reader over a field that hasn't been entirely consumed (pos: {Pos}, len: {_fieldSize.Value})"));
         }
 
-        _field = default;
+        _fieldSize = default;
+        _fieldFormat = default;
         FieldStartPos = -1;
         _readStarted = false;
     }

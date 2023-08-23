@@ -5,6 +5,7 @@ using BenchmarkDotNet.Diagnosers;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using Npgsql.Internal;
 
 #nullable disable
@@ -71,7 +72,8 @@ public abstract class TypeHandlerBenchmarks<T>
             _value = value;
             object state = null;
             var size = _elementSize = _converter.GetSizeAsObject(new(DataFormat.Binary, _binaryRequirements.Write), value, ref state);
-            _writer.Current = new() { Format = DataFormat.Binary, Size = size, WriteState = state };
+            var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = size, WriteState = state };
+            _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
             _converter.WriteAsObject(_writer, value);
             Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, size.Value);
 
@@ -95,7 +97,8 @@ public abstract class TypeHandlerBenchmarks<T>
     public void Write()
     {
         _writeBuffer.WritePosition = 0;
-        _writer.Current = new() { Format = DataFormat.Binary, Size = _elementSize, WriteState = null };
+        var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = _elementSize, WriteState = null };
+        _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
         ((PgConverter<T>)_converter).Write(_writer, _value);
     }
 }
