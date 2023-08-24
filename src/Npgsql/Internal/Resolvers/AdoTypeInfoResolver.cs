@@ -359,6 +359,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea);
 
         // Varbit
+        // Object mapping first.
         mappings.AddPolymorphicResolverArrayType(DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
@@ -368,12 +369,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             BitArrayBitStringConverter => new ArrayBasedArrayConverter<Array, BitArray>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
-        // Object mapping first.
         mappings.AddArrayType<BitArray>(DataTypeNames.Varbit);
         mappings.AddStructArrayType<bool>(DataTypeNames.Varbit);
         mappings.AddStructArrayType<BitVector32>(DataTypeNames.Varbit);
 
         // Bit
+        // Object mapping first.
         mappings.AddPolymorphicResolverArrayType(DataTypeNames.Bit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
@@ -383,7 +384,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             BitArrayBitStringConverter => new ArrayBasedArrayConverter<Array, BitArray>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
-        // Object mapping first.
         mappings.AddArrayType<BitArray>(DataTypeNames.Bit);
         mappings.AddStructArrayType<bool>(DataTypeNames.Bit);
         mappings.AddStructArrayType<BitVector32>(DataTypeNames.Bit);
