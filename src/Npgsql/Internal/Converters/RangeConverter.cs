@@ -161,14 +161,16 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if (writer.ShouldFlush(sizeof(byte)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
         writer.WriteByte((byte)flags);
-        if (value.IsEmpty)
+        var lowerBoundInfinite = flags.HasFlag(RangeFlags.LowerBoundInfinite);
+        var upperBoundInfinite = flags.HasFlag(RangeFlags.UpperBoundInfinite);
+        if (value.IsEmpty || (lowerBoundInfinite && upperBoundInfinite))
             return;
 
         // Always need write state from this point.
         if (writeState is null)
             throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
 
-        if (!flags.HasFlag(RangeFlags.LowerBoundInfinite))
+        if (!lowerBoundInfinite)
         {
             Debug.Assert(lowerBoundSize.Value != -1);
             if (lowerBoundSize.Kind is SizeKind.Unknown)
@@ -186,7 +188,7 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
                 _subtypeConverter.Write(writer, value.LowerBound!);
         }
 
-        if (!flags.HasFlag(RangeFlags.UpperBoundInfinite))
+        if (!upperBoundInfinite)
         {
             Debug.Assert(upperBoundSize.Value != -1);
             if (upperBoundSize.Kind is SizeKind.Unknown)
