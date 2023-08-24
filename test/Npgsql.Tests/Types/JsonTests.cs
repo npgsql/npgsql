@@ -184,6 +184,36 @@ public class JsonTests : MultiplexingTestBase
         Assert.That(reader.GetValue(0), Is.TypeOf<string>());
     }
 
+    [Test]
+    public Task Roundtrip_string()
+        => AssertType(
+            @"{""p"": 1}",
+            @"{""p"": 1}",
+            IsJsonb ? "json" : "jsonb",
+            IsJsonb ? NpgsqlDbType.Jsonb : NpgsqlDbType.Json,
+            isDefault: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+    [Test]
+    public Task Roundtrip_char_array()
+        => AssertType(
+            @"{""p"": 1}".ToCharArray(),
+            @"{""p"": 1}",
+            IsJsonb ? "json" : "jsonb",
+            IsJsonb ? NpgsqlDbType.Jsonb : NpgsqlDbType.Json,
+            isDefault: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+    [Test]
+    public Task Roundtrip_byte_array()
+        => AssertType(
+            Encoding.ASCII.GetBytes(@"{""p"": 1}"),
+            @"{""p"": 1}",
+            IsJsonb ? "json" : "jsonb",
+            IsJsonb ? NpgsqlDbType.Jsonb : NpgsqlDbType.Json,
+            isDefault: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
     [JsonDerivedType(typeof(ExtendedDerivedWeatherForecast), typeDiscriminator: "extended")]
     record WeatherForecast
     {

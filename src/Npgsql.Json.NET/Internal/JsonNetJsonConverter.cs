@@ -58,6 +58,7 @@ static class JsonNetJsonConverter
             await stream.CopyToAsync(mem, Math.Min((int)mem.Length, 81920), cancellationToken).ConfigureAwait(false);
         else
             stream.CopyTo(mem);
+        mem.Position = 0;
         var jsonSerializer = JsonSerializer.CreateDefault(settings);
         using var textReader = new JsonTextReader(new StreamReader(mem, encoding));
         return jsonSerializer.Deserialize(textReader, type);
