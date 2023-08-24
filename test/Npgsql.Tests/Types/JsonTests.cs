@@ -167,6 +167,23 @@ public class JsonTests : MultiplexingTestBase
             slimDataSource);
     }
 
+    [Test]
+    public async Task Poco_does_not_stomp_GetValue_string()
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        var dataSource = dataSourceBuilder.UseSystemTextJson(null, new[] {typeof(WeatherForecast)}, new[] {typeof(WeatherForecast)}).Build();
+        var sqlLiteral =
+            IsJsonb
+                ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
+                : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{(IsJsonb ? "jsonb" : "json")}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        Assert.That(reader.GetValue(0), Is.TypeOf<string>());
+    }
+
     [JsonDerivedType(typeof(ExtendedDerivedWeatherForecast), typeDiscriminator: "extended")]
     record WeatherForecast
     {

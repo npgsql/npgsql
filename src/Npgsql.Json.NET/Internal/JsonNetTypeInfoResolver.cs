@@ -92,11 +92,11 @@ class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
             // so we default to mapping.Type instead (exact types will never serialize their "$type" fields, essentially disabling the feature).
             var baseType = jsonb ? null : typeof(object);
 
-            // Match all types except object as long as DataTypeName (json/jsonb) is present.
+            // Match all types except null and object as long as DataTypeName (json/jsonb) is present.
             mappings.Add(new TypeInfoMapping(typeof(object), jsonb ? "jsonb" : "json",
                 (options, mapping, _) => mapping.CreateInfo(options, CreateJsonNetConverter(mapping.Type, jsonb, options.TextEncoding, settings, baseType ?? mapping.Type)))
             {
-                TypeMatchPredicate = type => type != typeof(object),
+                TypeMatchPredicate = type => type is not null && type != typeof(object),
                 MatchRequirement = MatchRequirement.DataTypeName,
             });
         }
@@ -112,7 +112,7 @@ class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
                     jsonb ? "jsonb" : "json",
                     factory: (options, mapping, _) => mapping.CreateInfo(options,
                         CreateJsonNetConverter(mapping.Type, jsonb, options.TextEncoding, settings, jsonType)),
-                    configureMapping: mapping => mapping with { MatchRequirement = MatchRequirement.Single }
+                    configureMapping: mapping => mapping
                 );
             }
         }
