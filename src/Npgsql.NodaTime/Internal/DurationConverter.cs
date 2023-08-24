@@ -1,3 +1,4 @@
+using System;
 using NodaTime;
 using Npgsql.Internal;
 using Npgsql.NodaTime.Properties;
@@ -19,7 +20,7 @@ sealed class DurationConverter : PgBufferedConverter<Duration>
         var totalMonths = reader.ReadInt32();
 
         if (totalMonths != 0)
-            throw new NpgsqlException(NpgsqlNodaTimeStrings.CannotReadIntervalWithMonthsAsDuration);
+            throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadIntervalWithMonthsAsDuration);
 
         return Duration.FromDays(days) + Duration.FromNanoseconds(microsecondsInDay * 1000);
     }

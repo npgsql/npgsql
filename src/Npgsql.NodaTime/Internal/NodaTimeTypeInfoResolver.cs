@@ -133,16 +133,13 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
                 mapping.CreateInfo(options, new IntervalConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
         mappings.AddStructType<NpgsqlRange<Instant>>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<Instant>(new InstantConverter(options.EnableDateTimeInfinityConversions))),
-            isDefault: true);
+                new RangeConverter<Instant>(new InstantConverter(options.EnableDateTimeInfinityConversions))));
         mappings.AddStructType<NpgsqlRange<ZonedDateTime>>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<ZonedDateTime>(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions))),
-            isDefault: true);
+                new RangeConverter<ZonedDateTime>(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions))));
         mappings.AddStructType<NpgsqlRange<OffsetDateTime>>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<OffsetDateTime>(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions))),
-            isDefault: true);
+                new RangeConverter<OffsetDateTime>(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions))));
 
         // tstzmultirange
         mappings.AddType<Interval[]>(TimestampTzMultirangeDataTypeName,
