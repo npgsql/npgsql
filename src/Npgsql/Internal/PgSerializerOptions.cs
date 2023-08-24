@@ -48,6 +48,13 @@ public class PgSerializerOptions
     public ArrayNullabilityMode ArrayNullabilityMode { get; init; } = ArrayNullabilityMode.Never;
     public INpgsqlNameTranslator DefaultNameTranslator { get; init; } = NpgsqlSnakeCaseNameTranslator.Instance;
 
+    public static Type[] WellKnownTextTypes => new[]
+    {
+        typeof(string), typeof(char[]), typeof(byte[]),
+        typeof(ArraySegment<char>), typeof(ArraySegment<char>?),
+        typeof(char), typeof(char?)
+    };
+
     // We don't verify the kind of pgTypeId we get, it'll throw if it's incorrect.
     // It's up to the caller to call GetCanonicalTypeId if they want to use an oid instead of a DataTypeName.
     // This also makes it easier to realize it should be a cached value if infos for different CLR types are requested for the same
