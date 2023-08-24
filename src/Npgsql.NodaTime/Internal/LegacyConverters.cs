@@ -1,3 +1,4 @@
+using System;
 using NodaTime;
 using Npgsql.Internal;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
@@ -24,11 +25,20 @@ sealed class LegacyTimestampTzZonedDateTimeConverter : PgBufferedConverter<Zoned
     protected override ZonedDateTime ReadCore(PgReader reader)
     {
         var instant = DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions);
+        if (_dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
+            throw new InvalidCastException("Infinity values not supported for timestamp with time zone");
+
         return instant.InZone(_dateTimeZone);
     }
 
     protected override void WriteCore(PgWriter writer, ZonedDateTime value)
-        => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
+    {
+        var instant = value.ToInstant();
+        if (_dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
+            throw new ArgumentException("Infinity values not supported for timestamp with time zone");
+
+        writer.WriteInt64(EncodeInstant(instant, _dateTimeInfinityConversions));
+    }
 }
 
 sealed class LegacyTimestampTzOffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
@@ -51,9 +61,18 @@ sealed class LegacyTimestampTzOffsetDateTimeConverter : PgBufferedConverter<Offs
     protected override OffsetDateTime ReadCore(PgReader reader)
     {
         var instant = DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions);
+        if (_dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
+            throw new InvalidCastException("Infinity values not supported for timestamp with time zone");
+
         return instant.InZone(_dateTimeZone).ToOffsetDateTime();
     }
 
     protected override void WriteCore(PgWriter writer, OffsetDateTime value)
-        => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
+    {
+        var instant = value.ToInstant();
+        if (_dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
+            throw new ArgumentException("Infinity values not supported for timestamp with time zone");
+
+        writer.WriteInt64(EncodeInstant(instant, true));
+    }
 }

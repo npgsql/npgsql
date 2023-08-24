@@ -59,12 +59,18 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
-    public Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()
-        => AssertTypeUnsupported(Instant.MaxValue.InZone(DateTimeZone.Utc), "infinity", "timestamptz");
+    public async Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()
+    {
+        await AssertTypeUnsupportedRead<OffsetDateTime, InvalidCastException>("infinity", "timestamptz");
+        await AssertTypeUnsupportedWrite<OffsetDateTime, ArgumentException>(Instant.MaxValue.WithOffset(Offset.Zero), "timestamptz");
+    }
 
     [Test]
-    public Task Timestamptz_OffsetDateTime_infinite_values_are_not_supported()
-        => AssertTypeUnsupported(Instant.MaxValue.WithOffset(Offset.Zero), "infinity", "timestamptz");
+    public async Task Timestamptz_OffsetDateTime_infinite_values_are_not_supported()
+    {
+        await AssertTypeUnsupportedRead<OffsetDateTime, InvalidCastException>("infinity", "timestamptz");
+        await AssertTypeUnsupportedWrite<OffsetDateTime, ArgumentException>(Instant.MaxValue.WithOffset(Offset.Zero), "timestamptz");
+    }
 
     #region Support
 
