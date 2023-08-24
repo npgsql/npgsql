@@ -64,16 +64,16 @@ class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
             mapping => mapping with
             {
                 MatchRequirement = MatchRequirement.DataTypeName,
-                TypeMatchPredicate = type => type is { IsConstructedGenericType: true, FullName: not null }
-                                             && type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal)
+                TypeMatchPredicate = type => type is null || (type is { IsConstructedGenericType: true, FullName: not null }
+                                             && type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal))
             });
 
         mappings.AddStructType<ValueTuple<object>>(DataTypeNames.Record, Factory,
                 mapping => mapping with
                 {
                     MatchRequirement = MatchRequirement.DataTypeName,
-                    TypeMatchPredicate = type => type is { IsConstructedGenericType: true, FullName: not null }
-                                                 && type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal)
+                    TypeMatchPredicate = type => type is null || (type is { IsConstructedGenericType: true, FullName: not null }
+                                                 && type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal))
                 });
     }
 
