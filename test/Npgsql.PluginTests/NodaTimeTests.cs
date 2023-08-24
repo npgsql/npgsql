@@ -82,7 +82,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
 
     [Test]
     public Task Timestamp_cannot_write_utc_DateTime()
-        => AssertTypeUnsupportedWrite(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
+        => AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
 
     [Test]
     public Task Tsrange_as_NpgsqlRange_of_LocalDateTime()
@@ -207,8 +207,8 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_DateTime()
     {
-        await AssertTypeUnsupportedWrite(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
-        await AssertTypeUnsupportedWrite(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
     }
 
     [Test]
@@ -649,7 +649,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     [Test]
     public async Task Interval_as_Duration_with_months_fails()
     {
-        var exception = await AssertTypeUnsupportedRead<Duration, NpgsqlException>("2 months", "interval");
+        var exception = await AssertTypeUnsupportedRead<Duration, InvalidCastException>("2 months", "interval");
         Assert.That(exception.Message, Is.EqualTo(NpgsqlNodaTimeStrings.CannotReadIntervalWithMonthsAsDuration));
     }
 

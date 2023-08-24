@@ -316,7 +316,7 @@ public abstract class TestBase
     public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
-        dataSource ??= DefaultDataSource;
+        dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
@@ -332,7 +332,7 @@ public abstract class TestBase
     public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
-        dataSource ??= DefaultDataSource;
+        dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
         // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
