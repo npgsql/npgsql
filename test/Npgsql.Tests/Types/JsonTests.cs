@@ -189,8 +189,8 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             @"{""p"": 1}",
             @"{""p"": 1}",
-            IsJsonb ? "json" : "jsonb",
-            IsJsonb ? NpgsqlDbType.Jsonb : NpgsqlDbType.Json,
+            PostgresType,
+            NpgsqlDbType,
             isDefault: false,
             isNpgsqlDbTypeInferredFromClrType: false);
 
@@ -199,8 +199,8 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
-            IsJsonb ? "json" : "jsonb",
-            IsJsonb ? NpgsqlDbType.Jsonb : NpgsqlDbType.Json,
+            PostgresType,
+            NpgsqlDbType,
             isDefault: false,
             isNpgsqlDbTypeInferredFromClrType: false);
 
@@ -209,8 +209,8 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             Encoding.ASCII.GetBytes(@"{""p"": 1}"),
             @"{""p"": 1}",
-            IsJsonb ? "json" : "jsonb",
-            IsJsonb ? NpgsqlDbType.Jsonb : NpgsqlDbType.Json,
+            PostgresType,
+            NpgsqlDbType,
             isDefault: false,
             isNpgsqlDbTypeInferredFromClrType: false);
 
@@ -314,7 +314,7 @@ public class JsonTests : MultiplexingTestBase
             isDefault: false);
     }
 
-    [Test]
+    [Test, Ignore("TODO We should not change the default type for json/jsonb, it makes little sense.")]
     public async Task Poco_default_mapping()
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -337,6 +337,7 @@ public class JsonTests : MultiplexingTestBase
                 : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
             NpgsqlDbType,
+            isDefaultForReading: false,
             isNpgsqlDbTypeInferredFromClrType: false);
     }
 
@@ -363,6 +364,7 @@ public class JsonTests : MultiplexingTestBase
             """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
             NpgsqlDbType,
+            isDefaultForReading: false,
             isNpgsqlDbTypeInferredFromClrType: false);
     }
 
@@ -394,12 +396,6 @@ public class JsonTests : MultiplexingTestBase
             PostgresType,
             NpgsqlDbType,
             isNpgsqlDbTypeInferredFromClrType: false);
-
-        // GetValue (so object based, results in resolution based off of WeatherForecast being the default)
-        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value,
-            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast),
-            fieldType: typeof(WeatherForecast));
-        await AssertTypeRead(dataSource, sql, PostgresType, value, fieldType: typeof(WeatherForecast));
 
         // GetFieldValue
         await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value,
@@ -436,6 +432,7 @@ public class JsonTests : MultiplexingTestBase
             """{"TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
             NpgsqlDbType,
+            isDefaultForReading: false,
             isNpgsqlDbTypeInferredFromClrType: false);
     }
 
