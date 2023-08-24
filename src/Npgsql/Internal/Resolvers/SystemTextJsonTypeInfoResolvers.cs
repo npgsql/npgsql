@@ -142,8 +142,7 @@ class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
 
                                     return false;
                                 }
-                                : null,
-                            MatchRequirement = MatchRequirement.Single
+                                : null
                         }
                 );
             }
