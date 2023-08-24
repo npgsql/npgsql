@@ -19,7 +19,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
     [Test] // #4715
     public async Task DateRange_with_upper_bound_infinity()
     {
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
             return;
 
         await AssertType(
@@ -33,7 +33,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
     [Test]
     public async Task Timestamptz_read_values()
     {
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
             return;
 
         await using var conn = await OpenConnectionAsync();
@@ -51,7 +51,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
     [Test]
     public async Task Timestamptz_write_values()
     {
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
             return;
 
         await using var conn = await OpenConnectionAsync();
@@ -84,7 +84,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
             Parameters = { new() { Value = Instant.MinValue, NpgsqlDbType = NpgsqlDbType.TimestampTz } }
         };
 
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
         {
             // NodaTime Instant.MinValue is outside the PG timestamp range.
             Assert.That(async () => await cmd.ExecuteScalarAsync(),
@@ -101,7 +101,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
             Parameters = { new() { Value = Instant.MaxValue, NpgsqlDbType = NpgsqlDbType.TimestampTz } }
         };
 
-        Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions ? "9999-12-31 23:59:59.999999" : "infinity"));
+        Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(Statics.DisableDateTimeInfinityConversions ? "9999-12-31 23:59:59.999999" : "infinity"));
     }
 
     [Test]
@@ -114,7 +114,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
         {
             Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
             Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
@@ -136,7 +136,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
             Parameters = { new() { Value = LocalDateTime.MinIsoValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
         };
 
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
         {
             // NodaTime LocalDateTime.MinValue is outside the PG timestamp range.
             Assert.That(async () => await cmd.ExecuteScalarAsync(),
@@ -153,7 +153,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
             Parameters = { new() { Value = LocalDateTime.MaxIsoValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
         };
 
-        Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions
+        Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(Statics.DisableDateTimeInfinityConversions
             ? "9999-12-31 23:59:59.999999"
             : "infinity"));
     }
@@ -168,7 +168,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
         {
             Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
             Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
@@ -191,7 +191,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         };
 
         // LocalDate.MinIsoValue is outside of the PostgreSQL date range
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
             Assert.That(async () => await cmd.ExecuteScalarAsync(),
                 Throws.Exception.TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.DatetimeFieldOverflow));
@@ -200,7 +200,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
 
         cmd.Parameters[0].Value = LocalDate.MaxIsoValue;
 
-        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions ? "9999-12-31" : "infinity"));
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(Statics.DisableDateTimeInfinityConversions ? "9999-12-31" : "infinity"));
     }
 
     [Test]
@@ -213,7 +213,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
         {
             Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
             Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
@@ -228,7 +228,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
     [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
     public async Task DateConvertInfinity()
     {
-        if (DisableDateTimeInfinityConversions)
+        if (Statics.DisableDateTimeInfinityConversions)
             return;
 
         await using var conn = await OpenConnectionAsync();
@@ -269,7 +269,6 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
     public NodaTimeInfinityTests(bool disableDateTimeInfinityConversions)
     {
 #if DEBUG
-        DisableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
         Statics.DisableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
 #else
         if (disableDateTimeInfinityConversions)
@@ -288,7 +287,6 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
     public void Dispose()
     {
 #if DEBUG
-        DisableDateTimeInfinityConversions = false;
         Statics.DisableDateTimeInfinityConversions = false;
 #endif
 
