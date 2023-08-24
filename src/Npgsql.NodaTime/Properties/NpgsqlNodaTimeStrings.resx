@@ -21,6 +21,9 @@
     <data name="CannotReadInfinityValue" xml:space="preserve">
         <value>Cannot read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled.</value>
     </data>
+    <data name="CannotWriteInfinityValue" xml:space="preserve">
+        <value>Cannot write infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled.</value>
+    </data>
     <data name="CannotReadIntervalWithMonthsAsDuration" xml:space="preserve">
         <value>Cannot read PostgreSQL interval with non-zero months to NodaTime Duration. Try reading as a NodaTime Period instead.</value>
     </data>

@@ -49,17 +49,11 @@ static class NodaTimeUtils
     /// </summary>
     internal static long EncodeInstant(Instant instant, bool dateTimeInfinityConversions)
     {
-        if (dateTimeInfinityConversions)
+        if (instant == Instant.MinValue || instant == Instant.MaxValue)
         {
-            if (instant == Instant.MaxValue)
-            {
-                return long.MaxValue;
-            }
-
-            if (instant == Instant.MinValue)
-            {
-                return long.MinValue;
-            }
+            if (!dateTimeInfinityConversions)
+                throw new ArgumentException(NpgsqlNodaTimeStrings.CannotWriteInfinityValue);
+            return instant == Instant.MinValue ? long.MinValue : long.MaxValue;
         }
 
         // We need to write the number of microseconds from 2000-01-01T00:00:00.
