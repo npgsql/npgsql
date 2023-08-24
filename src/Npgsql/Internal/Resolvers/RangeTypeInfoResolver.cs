@@ -38,29 +38,18 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             isDefault: true);
         mappings.AddStructType<NpgsqlRange<decimal>>(DataTypeNames.NumRange,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new RangeConverter<decimal>(new DecimalNumericConverter<decimal>())), isDefault: true);
+                mapping.CreateInfo(options, new RangeConverter<decimal>(new DecimalNumericConverter<decimal>())),
+            isDefault: true);
         mappings.AddStructType<NpgsqlRange<BigInteger>>(DataTypeNames.NumRange,
             static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<BigInteger>(new BigIntegerNumericConverter())));
-
-        // daterange
-        mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange,
-            static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions))),
-            MatchRequirement.DataTypeName);
-        mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.DateRange,
-            static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<int>(new Int4Converter<int>())));
-#if NET6_0_OR_GREATER
-        mappings.AddStructType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange,
-            static (options, mapping, _) =>
-                mapping.CreateInfo(options, new RangeConverter<DateOnly>(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions))));
-#endif
 
         // tsrange
         if (Statics.LegacyTimestampBehavior)
         {
             mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: true))), isDefault: true);
+                    new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: true))),
+                isDefault: true);
         }
         else
         {
@@ -69,7 +58,8 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                     DateTimeConverterResolver.CreateRangeResolver(options,
                         options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                         options.GetCanonicalTypeId(DataTypeNames.TsRange),
-                        options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                        options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                isDefault: true);
         }
         mappings.AddStructType<NpgsqlRange<long>>(DataTypeNames.TsRange,
             static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<long>(new Int8Converter<long>())));
@@ -79,7 +69,8 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         {
             mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: false))), matchRequirement: MatchRequirement.DataTypeName);
+                    new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: false))),
+                isDefault: true);
             mappings.AddStructType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange,
                 static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<DateTimeOffset>(new LegacyDateTimeOffsetConverter(options.EnableDateTimeInfinityConversions))));
         }
@@ -90,13 +81,27 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                     DateTimeConverterResolver.CreateRangeResolver(options,
                         options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                         options.GetCanonicalTypeId(DataTypeNames.TsRange),
-                        options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                        options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                isDefault: true);
             mappings.AddStructType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange,
                 static (options, mapping, _) => mapping.CreateInfo(options,
                     new RangeConverter<DateTimeOffset>(new DateTimeOffsetConverter(options.EnableDateTimeInfinityConversions))));
         }
         mappings.AddStructType<NpgsqlRange<long>>(DataTypeNames.TsTzRange,
             static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<long>(new Int8Converter<long>())));
+
+        // daterange
+        mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange,
+            static (options, mapping, _) => mapping.CreateInfo(options,
+                new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions))),
+            isDefault: true);
+        mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.DateRange,
+            static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<int>(new Int4Converter<int>())));
+#if NET6_0_OR_GREATER
+        mappings.AddStructType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange,
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, new RangeConverter<DateOnly>(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions))));
+#endif
 
         if (supportsMultiRange)
         {
@@ -127,31 +132,14 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<decimal>>, NpgsqlRange<decimal>>(new RangeConverter<decimal>(new DecimalNumericConverter<decimal>()))));
 
-            // datemultirange
-            mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)))),
-                MatchRequirement.DataTypeName);
-            mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.DateMultirange,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)))),
-                MatchRequirement.DataTypeName);
-    #if NET6_0_OR_GREATER
-            mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<DateOnly>[], NpgsqlRange<DateOnly>>(new RangeConverter<DateOnly>(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)))));
-            mappings.AddType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<DateOnly>>, NpgsqlRange<DateOnly>>(new RangeConverter<DateOnly>(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)))));
-    #endif
-
             // tsmultirange
             if (Statics.LegacyTimestampBehavior)
             {
                 mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsMultirange,
                     static (options, mapping, _) => mapping.CreateInfo(options,
                         new MultirangeConverter<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(
-                            new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: true)))), isDefault: true);
+                            new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: true)))),
+                    isDefault: true);
                 mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange,
                     static (options, mapping, _) => mapping.CreateInfo(options,
                         new MultirangeConverter<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(
@@ -164,13 +152,14 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                         DateTimeConverterResolver.CreateMultirangeResolver<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                    isDefault: true);
                 mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange,
                     static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch));
             }
             mappings.AddType<NpgsqlRange<long>[]>(DataTypeNames.TsMultirange,
                 static (options, mapping, _) => mapping.CreateInfo(options,
@@ -185,7 +174,8 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                 mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, _) => mapping.CreateInfo(options,
                         new MultirangeConverter<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(
-                            new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: false)))), isDefault: true);
+                            new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: false)))),
+                    isDefault: true);
                 mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, _) => mapping.CreateInfo(options,
                         new MultirangeConverter<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(
@@ -206,13 +196,14 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                         DateTimeConverterResolver.CreateMultirangeResolver<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                    isDefault: true);
                 mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch));
                 mappings.AddType<NpgsqlRange<DateTimeOffset>[]>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, _) => mapping.CreateInfo(options,
                         new MultirangeConverter<NpgsqlRange<DateTimeOffset>[], NpgsqlRange<DateTimeOffset>>(
@@ -228,6 +219,23 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddType<List<NpgsqlRange<long>>>(DataTypeNames.TsTzMultirange,
                 static (options, mapping, _) => mapping.CreateInfo(options,
                     new MultirangeConverter<List<NpgsqlRange<long>>, NpgsqlRange<long>>(new RangeConverter<long>(new Int8Converter<long>()))));
+
+            // datemultirange
+            mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange,
+                static (options, mapping, _) =>
+                    mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)))),
+                isDefault: true);
+            mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.DateMultirange,
+                static (options, mapping, _) =>
+                    mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)))));
+#if NET6_0_OR_GREATER
+            mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
+                static (options, mapping, _) =>
+                    mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<DateOnly>[], NpgsqlRange<DateOnly>>(new RangeConverter<DateOnly>(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)))));
+            mappings.AddType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange,
+                static (options, mapping, _) =>
+                    mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<DateOnly>>, NpgsqlRange<DateOnly>>(new RangeConverter<DateOnly>(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)))));
+#endif
         }
     }
 
