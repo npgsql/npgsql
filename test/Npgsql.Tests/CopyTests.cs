@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Numerics;
 using System.Text;
@@ -295,6 +296,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
             Assert.That(reader.StartRow(), Is.EqualTo(2));
             Assert.That(reader.Read<string>(), Is.EqualTo(longString));
             Assert.That(reader.IsNull, Is.True);
+            Assert.That(reader.IsNull, Is.True);
             reader.Skip();
 
             Assert.That(reader.StartRow(), Is.EqualTo(-1));
@@ -528,12 +530,21 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
 
         using (var reader = conn.BeginBinaryExport($"COPY {table} (foo1, foo2, foo3, foo4, foo5) TO STDIN BINARY"))
         {
-            for (var row = 0; row < iterations; row++)
+            int row, col = 0;
+            for (row = 0; row < iterations; row++)
             {
                 Assert.That(reader.StartRow(), Is.EqualTo(5));
-                for (var col = 0; col < 5; col++)
-                    Assert.That(reader.Read<string>().Length, Is.EqualTo(len));
+                for (col = 0; col < 5; col++)
+                {
+                    var str = reader.Read<string>();
+                    Assert.That(str.Length, Is.EqualTo(len));
+#if NET6_0_OR_GREATER
+                    Assert.True(str.AsSpan().IndexOfAnyExcept('x') is -1);
+#endif
+                }
             }
+            Assert.That(row, Is.EqualTo(100));
+            Assert.That(col, Is.EqualTo(5));
         }
     }
 

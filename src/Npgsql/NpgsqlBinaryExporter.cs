@@ -61,7 +61,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     {
         _connector = connector;
         _buf = connector.ReadBuffer;
-        _column = -1;
+        _column = -2;
         _columnInfoCache = null!;
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
@@ -98,6 +98,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         NumColumns = copyOutResponse.NumColumns;
         _columnInfoCache = new PgConverterInfo[NumColumns];
         _rowsExported = 0;
+        _endOfMessagePos = _buf.CumulativeReadPosition;
         await ReadHeader(async);
     }
 
@@ -152,12 +153,19 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
 
+        // Consume and advance any active column.
+        if (_column >= 0)
+            await Commit(async, resumableOp: false);
+
         // The very first row (i.e. _column == -1) is included in the header's CopyData message.
         // Otherwise we need to read in a new CopyData row (the docs specify that there's a CopyData
         // message per row).
         if (_column == NumColumns)
-            Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector);
-        else if (_column != -1)
+        {
+            var msg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector);
+            _endOfMessagePos = _buf.CumulativeReadPosition + msg.Length;
+        }
+        else if (_column != -2)
             ThrowHelper.ThrowInvalidOperationException("Already in the middle of a row");
 
         await _buf.Ensure(2, async);
@@ -168,14 +176,14 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             Expect<CopyDoneMessage>(await _connector.ReadMessage(async), _connector);
             Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
             Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
-            _column = -1;
+            _column = -2;
             _isConsumed = true;
             return -1;
         }
 
         Debug.Assert(numColumns == NumColumns);
 
-        _column = 0;
+        _column = -1;
         _rowsExported++;
         return NumColumns;
     }
@@ -273,7 +281,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     async ValueTask<T> Read<T>(bool async, NpgsqlDbType? type, CancellationToken cancellationToken)
     {
         CheckDisposed();
-        if (_column == -1)
+        if (_column == -2)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
@@ -286,16 +294,24 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             return DbNullOrThrow();
         }
 
-        await Commit(async, resumableOp: false);
-        var info = GetInfo();
+        // We must commit the current column before reading the next one unless it was an IsNull call.
+        PgConverterInfo info;
+        if (!PgReader.Resumable || PgReader.CurrentRemaining != PgReader.FieldSize)
+        {
+            await Commit(async, resumableOp: false);
+            info = GetInfo();
 
-        // We need to get info after potential I/O as we don't know beforehand at what column we're at.
-        var columnLen = await ReadColumnLenIfNeeded(async, resumableOp: false);
-        if (_column == NumColumns)
-            ThrowHelper.ThrowInvalidOperationException("No more columns left in the current row");
+            // We need to get info after potential I/O as we don't know beforehand at what column we're at.
+            var columnLen = await ReadColumnLenIfNeeded(async, resumableOp: false);
+            if (_column == NumColumns)
+                ThrowHelper.ThrowInvalidOperationException("No more columns left in the current row");
 
-        if (columnLen is -1)
-            DbNullOrThrow();
+            if (columnLen is -1)
+                return DbNullOrThrow();
+
+        }
+        else
+            info = GetInfo();
 
         T result;
         if (async)
@@ -335,7 +351,14 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// <summary>
     /// Returns whether the current column is null.
     /// </summary>
-    public bool IsNull => ReadColumnLenIfNeeded(async: false, resumableOp: true).GetAwaiter().GetResult() is -1;
+    public bool IsNull
+    {
+        get
+        {
+            Commit(async: false, resumableOp: true);
+            return ReadColumnLenIfNeeded(async: false, resumableOp: true).GetAwaiter().GetResult() is -1;
+        }
+    }
 
     /// <summary>
     /// Skips the current column without interpreting its value.
@@ -357,7 +380,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
 
-        await Commit(async, resumableOp: false);
+        // We allow IsNull to have been called before skip.
+        if (PgReader.Initialized && PgReader is not { Resumable: true, FieldSize: -1 })
+            await Commit(async, resumableOp: false);
         await ReadColumnLenIfNeeded(async, resumableOp: false);
         await PgReader.Consume(async, cancellationToken: cancellationToken);
     }
@@ -368,10 +393,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     ValueTask Commit(bool async, bool resumableOp)
     {
-        if (!PgReader.FieldInitialized)
-            return new();
-        _column++;
-        return PgReader.Commit(async, resumableOp);
+        var resuming = PgReader is { Initialized: true, Resumable: true } && resumableOp;
+        if (!resuming)
+            _column++;
+        return PgReader.Commit(async, resuming);
     }
 
     async ValueTask<int> ReadColumnLenIfNeeded(bool async, bool resumableOp)
@@ -382,7 +407,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         await _buf.Ensure(4, async);
         var columnLen = _buf.ReadInt32();
         PgReader.Init(columnLen, DataFormat.Binary, resumableOp);
-        return columnLen;
+        return PgReader.FieldSize;
     }
 
     void CheckDisposed()
@@ -438,8 +463,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             try
             {
                 using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+                // Be sure to commit the reader.
+                await PgReader.Commit(async, resuming: false);
                 // Finish the current CopyData message
-                _buf.Skip(_endOfMessagePos - _buf.CumulativeReadPosition);
+                await _buf.Skip(checked((int)(_endOfMessagePos - _buf.CumulativeReadPosition)), async);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup

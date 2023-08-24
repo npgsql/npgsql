@@ -25,10 +25,11 @@ public class ReplicationValue
     /// </summary>
     public TupleDataKind Kind { get; private set; }
 
-    bool _columnActive;
-    bool _columnConsumed;
     FieldDescription _fieldDescription = null!;
     PgConverterInfo _lastInfo;
+    bool _isConsumed;
+
+    PgReader PgReader => _readBuffer.PgReader;
 
     internal ReplicationValue(NpgsqlConnector connector) => _readBuffer = connector.ReadBuffer;
 
@@ -38,8 +39,7 @@ public class ReplicationValue
         Length = length;
         _fieldDescription = fieldDescription;
         _lastInfo = default;
-        _columnActive = false;
-        _columnConsumed = false;
+        _isConsumed = false;
     }
 
     // ReSharper disable once InconsistentNaming
@@ -86,7 +86,7 @@ public class ReplicationValue
     /// <returns></returns>
     public ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
     {
-        CheckAndMarkActive();
+        CheckActive();
 
         var info = _lastInfo = _fieldDescription.GetInfo(typeof(T), _lastInfo);
 
@@ -139,7 +139,7 @@ public class ReplicationValue
     /// </summary>
     public Stream GetStream()
     {
-        CheckAndMarkActive();
+        CheckActive();
 
         switch (Kind)
         {
@@ -160,7 +160,7 @@ public class ReplicationValue
     /// </summary>
     public TextReader GetTextReader()
     {
-        CheckAndMarkActive();
+        CheckActive();
 
         var info = _lastInfo = _fieldDescription.GetInfo(typeof(TextReader), _lastInfo);
 
@@ -174,7 +174,7 @@ public class ReplicationValue
             throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
+        var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
         reader.StartRead(info.BufferRequirement);
         var result = (TextReader)info.Converter.ReadAsObject(reader);
         reader.EndRead();
@@ -183,21 +183,20 @@ public class ReplicationValue
 
     internal async Task Consume(CancellationToken cancellationToken)
     {
-        if (_columnConsumed)
+        if (_isConsumed)
             return;
 
-        if (!_columnActive)
-            _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
+        if (!PgReader.Initialized)
+            PgReader.Init(Length, _fieldDescription.DataFormat);
+        await PgReader.ConsumeAsync(cancellationToken: cancellationToken);
+        await PgReader.Commit(async: true, resuming: false);
 
-        await _readBuffer.PgReader.ConsumeAsync(null, cancellationToken);
-        await _readBuffer.PgReader.Commit(async: true, false);
-        _columnConsumed = true;
+        _isConsumed = true;
     }
 
-    void CheckAndMarkActive()
+    void CheckActive()
     {
-        if (_columnActive)
+        if (PgReader.Initialized)
             throw new InvalidOperationException("Column has already been consumed");
-        _columnActive = true;
     }
 }

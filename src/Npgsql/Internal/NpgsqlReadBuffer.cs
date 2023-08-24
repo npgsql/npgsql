@@ -437,16 +437,16 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// <summary>
     /// Does not perform any I/O - assuming that the bytes to be skipped are in the memory buffer.
     /// </summary>
-    internal void Skip(long len)
+    internal void Skip(int len)
     {
         Debug.Assert(ReadBytesLeft >= len);
-        ReadPosition += (int)len;
+        ReadPosition += len;
     }
 
     /// <summary>
     /// Skip a given number of bytes.
     /// </summary>
-    public async Task Skip(long len, bool async)
+    public async Task Skip(int len, bool async)
     {
         Debug.Assert(len >= 0);
 
@@ -460,10 +460,10 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                 len -= Size;
             }
             ResetPosition();
-            await Ensure((int)len, async).ConfigureAwait(false);
+            await Ensure(len, async).ConfigureAwait(false);
         }
 
-        ReadPosition += (int)len;
+        ReadPosition += len;
     }
 
     #endregion
@@ -718,7 +718,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// </summary>
     public ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
     {
-        var index = Buffer.AsSpan(ReadPosition, FilledBytes - ReadPosition).IndexOf((byte)0);
+        var index = Span.IndexOf((byte)0);
         if (index >= 0)
         {
             var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, index));
@@ -783,7 +783,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     public ReadOnlySpan<byte> GetNullTerminatedBytes()
     {
-        var i = Buffer.AsSpan(ReadPosition).IndexOf((byte)0);
+        var i = Span.IndexOf((byte)0);
         Debug.Assert(i >= 0);
         var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i);
         ReadPosition += i + 1;

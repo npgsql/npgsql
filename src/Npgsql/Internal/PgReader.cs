@@ -20,7 +20,7 @@ public class PgReader
 
     internal long FieldStartPos { get; set; }
     internal int FieldSize => _fieldSize.Value;
-    internal bool FieldInitialized => !_fieldSize.IsDefault;
+    internal bool Initialized => !_fieldSize.IsDefault;
 
     int _currentStartPos;
     Size _currentBufferRequirement { get; set; }
@@ -378,29 +378,30 @@ public class PgReader
 
     internal PgReader Init(int columnLength, DataFormat format, bool resumable = false)
     {
-        var resumed = !_fieldSize.IsDefault && resumable;
-        Debug.Assert(_fieldSize.IsDefault || resumable, "Reader wasn't properly committed before next init");
+        if (Resumable && resumable)
+            return this;
+        if (Initialized && !resumable)
+            throw new InvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
 
-        if (!resumed)
+        Debug.Assert(!Initialized || (Resumable && resumable), "Reader wasn't properly committed before next init");
+
+        ThrowIfStreamActive();
+        if (_pooledArray is { } array)
         {
-            ThrowIfStreamActive();
-            if (_pooledArray is { } array)
-            {
-                ArrayPool.Return(array);
-                _pooledArray = null;
-            }
-
-            _charsReadReader?.Dispose();
-            _charsReadReader = null;
-            _charsRead = default;
-            FieldStartPos = _buffer.CumulativeReadPosition;
-            CurrentSize = columnLength < 0 ? 0 : columnLength;
-            _fieldFormat = format;
-            _fieldSize = columnLength;
-            _readStarted = false;
+            ArrayPool.Return(array);
+            _pooledArray = null;
         }
 
+        _charsReadReader?.Dispose();
+        _charsReadReader = null;
+        _charsRead = default;
+        FieldStartPos = _buffer.CumulativeReadPosition;
+        CurrentSize = columnLength < 0 ? 0 : columnLength;
+        _fieldFormat = format;
+        _fieldSize = columnLength;
+        _readStarted = false;
         Resumable = resumable;
+
         return this;
     }
 
@@ -508,8 +509,15 @@ public class PgReader
     internal bool CommitHasIO(bool resuming) => !_fieldSize.IsDefault && !resuming && CurrentRemaining is not 0;
     internal async ValueTask Commit(bool async, bool resuming)
     {
-        if (_fieldSize.IsDefault || resuming)
+        if (!Initialized)
             return;
+
+        if (resuming)
+        {
+            if (!Resumable)
+                throw new InvalidOperationException("Cannot resume a non-resumable read.");
+            return;
+        }
 
         // Shut down any streaming going on on the column
         await DisposeUserActiveStream(async).ConfigureAwait(false);
@@ -523,6 +531,7 @@ public class PgReader
         _fieldFormat = default;
         FieldStartPos = -1;
         _readStarted = false;
+        Resumable = false;
     }
 
     byte[] RentArray(int count)

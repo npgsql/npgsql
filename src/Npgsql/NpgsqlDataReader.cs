@@ -1893,7 +1893,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     int SeekToColumnNonSequential(int ordinal, FieldDescription field, bool resumableOp = false)
     {
-        PgReader.Commit(async: false, _column == ordinal && resumableOp).GetAwaiter().GetResult();
+        PgReader.Commit(async: false, _column == ordinal && PgReader.Resumable && resumableOp).GetAwaiter().GetResult();
 
         for (var lastColumnRead = _columns.Count; ordinal >= lastColumnRead; lastColumnRead++)
         {
