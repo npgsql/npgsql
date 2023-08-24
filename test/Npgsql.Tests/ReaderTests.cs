@@ -1211,7 +1211,13 @@ LANGUAGE plpgsql VOLATILE";
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
+        await using var tx = IsMultiplexing ? await conn.BeginTransactionAsync() : null;
         var pgMock = await postmasterMock.WaitForServerConnection();
+
+        if (IsMultiplexing)
+            pgMock
+                .WriteEmptyQueryResponse()
+                .WriteReadyForQuery(TransactionStatus.InTransactionBlock);
 
         // Write responses for the query, but break the connection before sending CommandComplete/ReadyForQuery
         await pgMock

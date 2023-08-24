@@ -237,6 +237,14 @@ class PgServerMock : IDisposable
         return this;
     }
 
+    internal PgServerMock WriteEmptyQueryResponse()
+    {
+        CheckDisposed();
+        _writeBuffer.WriteByte((byte)BackendMessageCode.EmptyQueryResponse);
+        _writeBuffer.WriteInt32(4);
+        return this;
+    }
+
     internal PgServerMock WriteDataRow(params byte[][] columnValues)
     {
         CheckDisposed();
