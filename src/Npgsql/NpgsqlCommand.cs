@@ -783,12 +783,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             foreach (var batchCommand in InternalBatchCommands)
             {
-                if (batchCommand.IsPrepared)
+                if (batchCommand.PreparedStatement?.State == PreparedState.BeingUnprepared)
                 {
                     Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
 
                     var pStatement = batchCommand.PreparedStatement;
-                    Debug.Assert(pStatement is not null);
                     pStatement.CompleteUnprepare();
 
                     if (!pStatement.IsExplicit)
@@ -1145,6 +1144,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
+            batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
             i++;
         }
 
