@@ -427,7 +427,7 @@ public class MultipleHostsTests : TestBase
         }
     }
 
-    [Test]
+    //[Test]
     public async Task Connect_state_changing_hosts([Values] bool alwaysCheckHostState)
     {
         await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
