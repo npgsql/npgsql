@@ -1822,15 +1822,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             PosInColumn += ColumnLen;
         }
 
-        // Used for Entity Framework <= 6 compability
-        var objectResultType = Command.ObjectResultTypes?[ordinal];
-        if (objectResultType != null)
-        {
-            result = objectResultType == typeof(DateTimeOffset)
-                ? new DateTimeOffset((DateTime)result)
-                : Convert.ChangeType(result, objectResultType)!;
-        }
-
         return result;
     }
 
@@ -1941,8 +1932,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The data type of the specified column.</returns>
     public override Type GetFieldType(int ordinal)
-        => Command.ObjectResultTypes?[ordinal]
-           ?? GetField(ordinal).FieldType;
+        => GetField(ordinal).FieldType;
 
     /// <summary>
     /// Returns an <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.
