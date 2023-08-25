@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 
 namespace Npgsql.PostgresTypes;
 
@@ -21,7 +22,7 @@ public class PostgresArrayType : PostgresType
     protected internal PostgresArrayType(string ns, string internalName, uint oid, PostgresType elementPostgresType)
         : base(ns, elementPostgresType.Name + "[]", internalName, oid)
     {
-        Debug.Assert(internalName == '_' + elementPostgresType.InternalName);
+        Debug.Assert(internalName == '_' + elementPostgresType.InternalName.Substring(0, Math.Min(62, elementPostgresType.InternalName.Length)));
         Element = elementPostgresType;
         Element.Array = this;
     }
