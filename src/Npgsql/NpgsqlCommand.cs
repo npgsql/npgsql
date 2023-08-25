@@ -84,8 +84,8 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     static readonly List<NpgsqlParameter> EmptyParameters = new();
 
-    static readonly ConcurrentExclusiveSchedulerPair ConstrainedConcurrencyScheduler =
-        new(TaskScheduler.Default, Math.Max(1, Environment.ProcessorCount / 2));
+    static readonly TaskScheduler ConstrainedConcurrencyScheduler =
+        new ConcurrentExclusiveSchedulerPair(TaskScheduler.Default, Math.Max(1, Environment.ProcessorCount / 2)).ConcurrentScheduler;
 
     #endregion Fields
 
@@ -993,8 +993,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
                 // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
-                if (syncCaller && ForceAsyncIfNecessary(ref async, i))
-                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
+                if (syncCaller && ShouldSchedule(ref async, i))
+                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
                 batchCommand = InternalBatchCommands[i];
                 var pStatement = batchCommand.PreparedStatement;
@@ -1052,8 +1052,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var syncCaller = !async;
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
-                if (syncCaller && ForceAsyncIfNecessary(ref async, i))
-                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
+                if (syncCaller && ShouldSchedule(ref async, i))
+                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
                 var batchCommand = InternalBatchCommands[i];
 
@@ -1082,8 +1082,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         var syncCaller = !async;
         for (var i = 0; i < InternalBatchCommands.Count; i++)
         {
-            if (syncCaller && ForceAsyncIfNecessary(ref async, i))
-                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             var batchCommand = InternalBatchCommands[i];
 
@@ -1102,8 +1102,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         var syncCaller = !async;
         for (var i = 0; i < InternalBatchCommands.Count; i++)
         {
-            if (syncCaller && ForceAsyncIfNecessary(ref async, i))
-                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             var batchCommand = InternalBatchCommands[i];
             var pStatement = batchCommand.PreparedStatement;
@@ -1128,7 +1128,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    bool ForceAsyncIfNecessary(ref bool async, int indexOfStatementInBatch)
+    bool ShouldSchedule(ref bool async, int indexOfStatementInBatch)
     {
         if (indexOfStatementInBatch <= 0)
             return false;
@@ -1137,11 +1137,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         // See long comment in Execute() above.
 
         // TODO: we can simply do all batch writing asynchronously, instead of starting with the 2nd statement.
-        // For now, writing the first statement synchronously gives us a better chance of handle and bubbling up errors correctly
+        // For now, writing the first statement synchronously gives us a better chance of handling and bubbling up errors correctly
         // (see sendTask.IsFaulted in Execute()). Once #1323 is done, that shouldn't be needed any more and entire batches should
         // be written asynchronously.
         async = true;
-        return TaskScheduler.Current != ConstrainedConcurrencyScheduler.ConcurrentScheduler;
+        return TaskScheduler.Current != ConstrainedConcurrencyScheduler;
     }
 
     async Task SendClose(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
@@ -1152,8 +1152,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         var syncCaller = !async;
         foreach (var batchCommand in InternalBatchCommands.Where(s => s.IsPrepared))
         {
-            if (syncCaller && ForceAsyncIfNecessary(ref async, i))
-                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
             batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
