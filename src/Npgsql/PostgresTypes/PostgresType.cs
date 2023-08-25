@@ -102,17 +102,16 @@ public abstract class PostgresType
     /// </summary>
     public override string ToString() => DisplayName;
 
-    bool _isRepresentationalType;
+    PostgresType? _representationalType;
 
     /// Canonizes (nested) domain types to underlying types, does not handle composites.
     internal PostgresType GetRepresentationalType()
     {
-        if (_isRepresentationalType)
-            return this;
+        if (_representationalType is not null)
+            return _representationalType;
 
         var type = Core(this);
-        if (ReferenceEquals(type, this))
-            _isRepresentationalType = true;
+        _representationalType ??= type;
 
         return type ?? throw new InvalidOperationException("Couldn't map type to representational type");
 
