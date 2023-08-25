@@ -61,7 +61,6 @@ sealed class CompositeInfo<T>
     /// Create temporary storage for all values that come before the constructor parameters can be saturated.
     /// </summary>
     /// <returns></returns>
-    /// <exception cref="UnreachableException"></exception>
     public StrongBox[] CreateTempBoxes()
     {
         var valueCache = _lastConstructorFieldIndex + 1 is 0 ? Array.Empty<StrongBox>() : new StrongBox[_lastConstructorFieldIndex + 1];
