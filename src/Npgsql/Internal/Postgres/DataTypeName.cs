@@ -28,6 +28,10 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             if (schemaEndIndex == -1)
                 throw new ArgumentException("Given value does not contain a schema.", nameof(fullyQualifiedDataTypeName));
 
+            // Friendly array syntax is the only fully qualified name quirk that's allowed by postgres (see FromDisplayName).
+            if (fullyQualifiedDataTypeName.AsSpan(schemaEndIndex).EndsWith("[]".AsSpan()))
+                fullyQualifiedDataTypeName = NormalizeName(fullyQualifiedDataTypeName);
+
             var typeNameLength = fullyQualifiedDataTypeName.Length - schemaEndIndex + 1;
             if (typeNameLength > NAMEDATALEN)
                 throw new ArgumentException(
