@@ -730,6 +730,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     default:
                         throw Connector.UnexpectedMessageReceived(msg.Code);
                     }
+
+                    if (_statements.Skip(StatementIndex + 1).All(x => x.IsPrepared))
+                    {
+                        // There are no more queries, we're done. Read to the RFQ.
+                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                    }
                 }
 
                 // Found a resultset
@@ -737,13 +743,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     return true;
             }
 
-            // There are no more queries, we're done. Read to the RFQ.
-            if (!_statements.All(s => s.IsPrepared))
-            {
-                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
-                RowDescription = null;
-                State = ReaderState.Consumed;
-            }
+            RowDescription = null;
+            State = ReaderState.Consumed;
 
             return false;
         }
