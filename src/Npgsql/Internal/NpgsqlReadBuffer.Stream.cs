@@ -65,7 +65,7 @@ public sealed partial class NpgsqlReadBuffer
             {
                 if (value < 0)
                     throw new ArgumentOutOfRangeException(nameof(value), "Non - negative number required.");
-                Seek(_start + value, SeekOrigin.Begin);
+                Seek(value, SeekOrigin.Begin);
             }
         }
 
