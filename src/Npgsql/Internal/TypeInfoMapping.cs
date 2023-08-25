@@ -39,8 +39,8 @@ public static class PgConverterFactory
     public static PgConverter<T[]> CreateArrayMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
         => new MultirangeConverter<T[], T>(rangeConverter);
 
-    public static PgConverter<T[]> CreateListMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
-        => new MultirangeConverter<T[], T>(rangeConverter);
+    public static PgConverter<List<T>> CreateListMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
+        => new MultirangeConverter<List<T>, T>(rangeConverter);
 
     public static PgConverter<NpgsqlRange<T>> CreateRangeConverter<T>(PgConverter<T> subTypeConverter, PgSerializerOptions options)
         => new RangeConverter<T>(subTypeConverter);
