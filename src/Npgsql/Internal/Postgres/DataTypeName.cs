@@ -24,20 +24,14 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     {
         if (!validated)
         {
-            var schemaEndIndex = fullyQualifiedDataTypeName.LastIndexOf('.');
+            var schemaEndIndex = fullyQualifiedDataTypeName.IndexOf('.');
             if (schemaEndIndex == -1)
                 throw new ArgumentException("Given value does not contain a schema.", nameof(fullyQualifiedDataTypeName));
 
             var typeNameLength = fullyQualifiedDataTypeName.Length - schemaEndIndex + 1;
             if (typeNameLength > NAMEDATALEN)
-            {
-                if (fullyQualifiedDataTypeName.EndsWith("[]", StringComparison.Ordinal) &&
-                    typeNameLength == NAMEDATALEN + "[]".Length - "_".Length)
-                {
-                    throw new ArgumentException(
-                        $"Name is too long and would be truncated to: {fullyQualifiedDataTypeName.Substring(0, fullyQualifiedDataTypeName.Length - typeNameLength + NAMEDATALEN)}");
-                }
-            }
+                throw new ArgumentException(
+                    $"Name is too long and would be truncated to: {fullyQualifiedDataTypeName.Substring(0, fullyQualifiedDataTypeName.Length - typeNameLength + NAMEDATALEN)}");
         }
 
         _value = fullyQualifiedDataTypeName;
