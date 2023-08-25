@@ -328,12 +328,12 @@ class PgServerMock : IDisposable
     internal PgServerMock WriteCancellationResponse()
         => WriteErrorResponse(PostgresErrorCodes.QueryCanceled, "Cancellation", "Query cancelled");
 
-    internal PgServerMock WriteCopyInResponse()
+    internal PgServerMock WriteCopyInResponse(bool isBinary = false)
     {
         CheckDisposed();
         _writeBuffer.WriteByte((byte)BackendMessageCode.CopyInResponse);
         _writeBuffer.WriteInt32(5);
-        _writeBuffer.WriteByte(0);
+        _writeBuffer.WriteByte(isBinary ? (byte)1 : (byte)0);
         _writeBuffer.WriteInt16(1);
         _writeBuffer.WriteInt16(0);
         return this;
