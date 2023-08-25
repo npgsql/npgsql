@@ -362,7 +362,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Object mapping first.
         mappings.AddPolymorphicResolverArrayType(DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
         {
-            BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
+            BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
                 () => new ArrayBasedArrayConverter<Array, bool>(resolution, typeof(Array)),
                 () => new ArrayBasedArrayConverter<Array, bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
                 options),
@@ -377,7 +377,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Object mapping first.
         mappings.AddPolymorphicResolverArrayType(DataTypeNames.Bit, static options => resolution => resolution.Converter switch
         {
-            BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
+            BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
                 () => new ArrayBasedArrayConverter<Array, bool>(resolution, typeof(Array)),
                 () => new ArrayBasedArrayConverter<Array, bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
                 options),

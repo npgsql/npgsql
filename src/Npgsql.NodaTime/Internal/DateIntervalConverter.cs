@@ -2,7 +2,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.Internal;
-using Npgsql.Internal.Converters;
 using NpgsqlTypes;
 
 namespace Npgsql.NodaTime.Internal;
@@ -10,12 +9,12 @@ namespace Npgsql.NodaTime.Internal;
 public class DateIntervalConverter : PgStreamingConverter<DateInterval>
 {
     readonly bool _dateTimeInfinityConversions;
-    readonly RangeConverter<LocalDate> _rangeConverter;
+    readonly PgConverter<NpgsqlRange<LocalDate>> _rangeConverter;
 
-    public DateIntervalConverter(bool dateTimeInfinityConversions)
+    public DateIntervalConverter(PgConverter<NpgsqlRange<LocalDate>> rangeConverter, bool dateTimeInfinityConversions)
     {
+        _rangeConverter = rangeConverter;
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        _rangeConverter = new(new LocalDateConverter(dateTimeInfinityConversions));
     }
 
     public override DateInterval Read(PgReader reader)

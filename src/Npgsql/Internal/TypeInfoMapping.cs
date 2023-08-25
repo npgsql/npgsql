@@ -8,6 +8,7 @@ using System.Text;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
+using NpgsqlTypes;
 
 namespace Npgsql.Internal;
 
@@ -30,6 +31,28 @@ public enum MatchRequirement
     Single,
     /// Match when the datatype name matches and the clr type also matches or is absent.
     DataTypeName
+}
+
+/// A factory for well-known PgConverters.
+public static class PgConverterFactory
+{
+    public static PgConverter<T[]> CreateArrayMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
+        => new MultirangeConverter<T[], T>(rangeConverter);
+
+    public static PgConverter<T[]> CreateListMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
+        => new MultirangeConverter<T[], T>(rangeConverter);
+
+    public static PgConverter<NpgsqlRange<T>> CreateRangeConverter<T>(PgConverter<T> subTypeConverter, PgSerializerOptions options)
+        => new RangeConverter<T>(subTypeConverter);
+
+    public static PgConverter<TBase> CreatePolymorphicArrayConverter<TBase>(Func<PgConverter<TBase>> arrayConverterFactory, Func<PgConverter<TBase>> nullableArrayConverterFactory, PgSerializerOptions options)
+        => options.ArrayNullabilityMode switch
+        {
+            ArrayNullabilityMode.Never => arrayConverterFactory(),
+            ArrayNullabilityMode.Always => nullableArrayConverterFactory(),
+            ArrayNullabilityMode.PerInstance => new PolymorphicArrayConverter<TBase>(arrayConverterFactory(), nullableArrayConverterFactory()),
+            _ => throw new ArgumentOutOfRangeException()
+        };
 }
 
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
@@ -149,7 +172,7 @@ public sealed class TypeInfoMappingCollection
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     TypeInfoMapping FindMapping(Type type, string dataTypeName)
-        => TryFindMapping(type, dataTypeName, out var info) ? info : throw new InvalidOperationException("Could not find mapping for " + dataTypeName);
+        => TryFindMapping(type, dataTypeName, out var info) ? info : throw new InvalidOperationException($"Could not find mapping for {type} <-> {dataTypeName}");
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgTypeInfo, PgConverter> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
@@ -540,15 +563,6 @@ public sealed class TypeInfoMappingCollection
             _items.Add(mapping);
         }
     }
-
-    public static PgConverter CreatePolymorphicArrayConverter<TBase>(Func<PgConverter<TBase>> arrayConverterFactory, Func<PgConverter<TBase>> nullableArrayConverterFactory, PgSerializerOptions options)
-        => options.ArrayNullabilityMode switch
-        {
-            ArrayNullabilityMode.Never => arrayConverterFactory(),
-            ArrayNullabilityMode.Always => nullableArrayConverterFactory(),
-            ArrayNullabilityMode.PerInstance => new PolymorphicArrayConverter<TBase>(arrayConverterFactory(), nullableArrayConverterFactory()),
-            _ => throw new ArgumentOutOfRangeException()
-        };
 
     /// Returns whether type matches any of the types we register pg arrays as.
     public static bool IsArrayType(Type type, [NotNullWhen(true)] out Type? elementType)
