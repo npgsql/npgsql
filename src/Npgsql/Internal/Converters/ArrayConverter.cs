@@ -99,8 +99,10 @@ readonly struct PgArrayConverter
     {
         var count = _elemOps.GetCollectionCount(values, out var lengths);
         var dimensions = lengths?.Length ?? 1;
-        var formatSize = Size.Create(GetFormatSize(count, dimensions));
+        if (dimensions > 8)
+            throw new ArgumentException(nameof(values), "Postgres arrays can have at most 8 dimensions.");
 
+        var formatSize = Size.Create(GetFormatSize(count, dimensions));
         if (count is 0)
             return formatSize;
 
