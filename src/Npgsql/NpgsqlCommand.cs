@@ -347,18 +347,6 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     #endregion
 
-    #region Result Types Management
-
-    /// <summary>
-    /// Marks result types to be used when using GetValue on a data reader, on a column-by-column basis.
-    /// Used for Entity Framework 5-6 compability.
-    /// Only primitive numerical types and DateTimeOffset are supported.
-    /// Set the whole array or just a value to null to use default type.
-    /// </summary>
-    internal Type[]? ObjectResultTypes { get; set; }
-
-    #endregion
-
     #region State management
 
     volatile int _state;
@@ -1814,7 +1802,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         var clone = new NpgsqlCommand(CommandText, InternalConnection, Transaction)
         {
-            CommandTimeout = CommandTimeout, CommandType = CommandType, DesignTimeVisible = DesignTimeVisible, _allResultTypesAreUnknown = _allResultTypesAreUnknown, _unknownResultTypeList = _unknownResultTypeList, ObjectResultTypes = ObjectResultTypes
+            CommandTimeout = CommandTimeout, CommandType = CommandType, DesignTimeVisible = DesignTimeVisible, _allResultTypesAreUnknown = _allResultTypesAreUnknown, _unknownResultTypeList = _unknownResultTypeList
         };
         _parameters.CloneTo(clone._parameters);
         return clone;
