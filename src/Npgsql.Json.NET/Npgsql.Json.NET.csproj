@@ -4,6 +4,7 @@
     <Description>Json.NET plugin for Npgsql, allowing transparent serialization/deserialization of JSON objects directly to and from the database.</Description>
     <PackageTags>npgsql;postgresql;json;postgres;ado;ado.net;database;sql</PackageTags>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
