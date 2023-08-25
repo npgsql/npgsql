@@ -2322,6 +2322,20 @@ public sealed partial class NpgsqlConnector
     {
         if (_origReadBuffer != null)
         {
+            Debug.Assert(_origReadBuffer.ReadBytesLeft == 0);
+            Debug.Assert(_origReadBuffer.ReadPosition == 0);
+            if (ReadBuffer.ReadBytesLeft > 0)
+            {
+                // There is still something in the buffer which we haven't read yet
+                // In most cases it's ParameterStatus which can be sent asynchronously
+                // If in some extreme case we have too much data left in the buffer to store in the original buffer
+                // we just leave the oversize buffer as is and will try again on next reset
+                if (ReadBuffer.ReadBytesLeft > _origReadBuffer.Size)
+                    return;
+
+                ReadBuffer.CopyTo(_origReadBuffer);
+            }
+
             ReadBuffer.Dispose();
             ReadBuffer = _origReadBuffer;
             _origReadBuffer = null;
