@@ -139,7 +139,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
                 throw new InvalidOperationException("A Postgres type was passed but the resolved PgTypeInfo does not have an equal PgTypeId.");
 
             if (type is not null && !info.IsBoxing && info.Type != type)
-                throw new InvalidOperationException("A CLR type was passed but the resolved PgTypeInfo does not have an equal Type.");
+                throw new InvalidOperationException($"A CLR type '{type}' was passed but the resolved PgTypeInfo does not have an equal Type: {info.Type}.");
 
             return info;
         }

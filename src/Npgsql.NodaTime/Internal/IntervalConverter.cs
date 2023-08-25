@@ -2,17 +2,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.Internal;
-using Npgsql.Internal.Converters;
 using NpgsqlTypes;
 
 namespace Npgsql.NodaTime.Internal;
 
 public class IntervalConverter : PgStreamingConverter<Interval>
 {
-    readonly RangeConverter<Instant> _rangeConverter;
+    readonly PgConverter<NpgsqlRange<Instant>> _rangeConverter;
 
-    public IntervalConverter(bool dateTimeInfinityConversions)
-        => _rangeConverter = new(new InstantConverter(dateTimeInfinityConversions));
+    public IntervalConverter(PgConverter<NpgsqlRange<Instant>> rangeConverter)
+        => _rangeConverter = rangeConverter;
 
     public override Interval Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();

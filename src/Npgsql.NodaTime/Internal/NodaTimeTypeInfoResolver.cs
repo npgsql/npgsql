@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using NodaTime;
 using Npgsql.Internal;
-using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
+using static Npgsql.Internal.PgConverterFactory;
 
 namespace Npgsql.NodaTime.Internal;
 
@@ -107,85 +107,89 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         // daterange
         mappings.AddType<DateInterval>(DateRangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new DateIntervalConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+                mapping.CreateInfo(options, new DateIntervalConverter(
+                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
+                    options.EnableDateTimeInfinityConversions)), isDefault: true);
         mappings.AddStructType<NpgsqlRange<LocalDate>>(DateRangeDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<LocalDate>(new LocalDateConverter(options.EnableDateTimeInfinityConversions))));
+                CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options)));
 
         // datemultirange
         mappings.AddType<DateInterval[]>(DateMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<DateInterval[], DateInterval>(new DateIntervalConverter(options.EnableDateTimeInfinityConversions))),
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(new DateIntervalConverter(
+                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
+                    options.EnableDateTimeInfinityConversions), options)),
             isDefault: true);
         mappings.AddType<List<DateInterval>>(DateMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<List<DateInterval>, DateInterval>(new DateIntervalConverter(options.EnableDateTimeInfinityConversions))));
+                mapping.CreateInfo(options, CreateListMultirangeConverter(new DateIntervalConverter(
+                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
+                    options.EnableDateTimeInfinityConversions), options)));
         mappings.AddType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<LocalDate>[], NpgsqlRange<LocalDate>>(new RangeConverter<LocalDate>(new LocalDateConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
         mappings.AddType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<LocalDate>>, NpgsqlRange<LocalDate>>(new RangeConverter<LocalDate>(new LocalDateConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
 
         // tstzrange
         mappings.AddStructType<Interval>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new IntervalConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+                mapping.CreateInfo(options, new IntervalConverter(CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options))), isDefault: true);
         mappings.AddStructType<NpgsqlRange<Instant>>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<Instant>(new InstantConverter(options.EnableDateTimeInfinityConversions))));
+                CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options)));
         mappings.AddStructType<NpgsqlRange<ZonedDateTime>>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<ZonedDateTime>(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions))));
+                CreateRangeConverter(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions), options)));
         mappings.AddStructType<NpgsqlRange<OffsetDateTime>>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<OffsetDateTime>(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions))));
+                CreateRangeConverter(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions), options)));
 
         // tstzmultirange
         mappings.AddType<Interval[]>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<Interval[], Interval>(new IntervalConverter(options.EnableDateTimeInfinityConversions))),
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(new IntervalConverter(
+                    CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options)), options)),
             isDefault: true);
         mappings.AddType<List<Interval>>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<List<Interval>, Interval>(new IntervalConverter(options.EnableDateTimeInfinityConversions))));
+                mapping.CreateInfo(options, CreateListMultirangeConverter(new IntervalConverter(
+                    CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options)), options)));
         mappings.AddType<NpgsqlRange<Instant>[]>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<Instant>[], NpgsqlRange<Instant>>(new RangeConverter<Instant>(new InstantConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options), options)));
         mappings.AddType<List<NpgsqlRange<Instant>>>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<Instant>>, NpgsqlRange<Instant>>(new RangeConverter<Instant>(new InstantConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options), options)));
         mappings.AddType<NpgsqlRange<ZonedDateTime>[]>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<ZonedDateTime>[], NpgsqlRange<ZonedDateTime>>(new RangeConverter<ZonedDateTime>(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(CreateRangeConverter(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions), options), options)));
         mappings.AddType<List<NpgsqlRange<ZonedDateTime>>>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<ZonedDateTime>>, NpgsqlRange<ZonedDateTime>>(new RangeConverter<ZonedDateTime>(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions), options), options)));
         mappings.AddType<NpgsqlRange<OffsetDateTime>[]>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<OffsetDateTime>[], NpgsqlRange<OffsetDateTime>>(new RangeConverter<OffsetDateTime>(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(CreateRangeConverter(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions), options), options)));
         mappings.AddType<List<NpgsqlRange<OffsetDateTime>>>(TimestampTzMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<OffsetDateTime>>, NpgsqlRange<OffsetDateTime>>(new RangeConverter<OffsetDateTime>(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions), options), options)));
 
         // tsrange
         mappings.AddStructType<NpgsqlRange<LocalDateTime>>(TimestampRangeDataTypeName,
-            static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<LocalDateTime>(new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions))),
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, CreateRangeConverter(new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions), options)),
             isDefault: true);
 
         // tsmultirange
         mappings.AddType<NpgsqlRange<LocalDateTime>[]>(TimestampMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options,
-                    new MultirangeConverter<NpgsqlRange<LocalDateTime>[], NpgsqlRange<LocalDateTime>>(
-                        new RangeConverter<LocalDateTime>(new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)))),
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(CreateRangeConverter(new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions), options), options)),
             isDefault: true);
         mappings.AddType<List<NpgsqlRange<LocalDateTime>>>(TimestampMultirangeDataTypeName,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options,
-                    new MultirangeConverter<List<NpgsqlRange<LocalDateTime>>, NpgsqlRange<LocalDateTime>>(
-                        new RangeConverter<LocalDateTime>(new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions), options), options)));
     }
 
     static void AddArrayInfos(TypeInfoMappingCollection mappings)

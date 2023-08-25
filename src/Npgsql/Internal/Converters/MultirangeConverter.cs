@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
+sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     where T : IList<TRange>
     where TRange : notnull
 {

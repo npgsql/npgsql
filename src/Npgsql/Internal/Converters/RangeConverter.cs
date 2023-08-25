@@ -6,7 +6,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Converters;
 
-public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtype>>
+sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtype>>
 {
     readonly PgConverter<TSubtype> _subtypeConverter;
     readonly BufferRequirements _subtypeRequirements;
