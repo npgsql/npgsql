@@ -777,9 +777,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         using (connector.StartUserAction(cancellationToken))
         {
-            var sendTask = SendClose(connector, async, cancellationToken);
-            if (sendTask.IsFaulted)
-                sendTask.GetAwaiter().GetResult();
+            // Just wait for SendClose to complete since each statement takes no more than 20 bytes
+            await SendClose(connector, async, cancellationToken);
 
             foreach (var batchCommand in InternalBatchCommands)
             {
@@ -798,11 +797,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-
-            if (async)
-                await sendTask.ConfigureAwait(false);
-            else
-                sendTask.GetAwaiter().GetResult();
         }
     }
 
