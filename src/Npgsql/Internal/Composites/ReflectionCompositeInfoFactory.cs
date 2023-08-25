@@ -37,8 +37,7 @@ static class ReflectionCompositeInfoFactory
                 if (property.PropertyType != parameter.ParameterType)
                     throw new InvalidOperationException($"Could not find a matching getter for constructor parameter {parameter.Name} and type {parameter.ParameterType} mapped to composite field {pgFields[fieldIndex].Name}.");
 
-                // TODO better error message.
-                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type) ?? throw new NotSupportedException("Cannot map composite field to property.");
+                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type) ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
                 getter = CreateGetter<T>(property);
             }
             else if (fieldMap.TryGetValue(fieldIndex, out var field))
@@ -46,8 +45,7 @@ static class ReflectionCompositeInfoFactory
                 if (field.FieldType != parameter.ParameterType)
                     throw new InvalidOperationException($"Could not find a matching getter for constructor parameter {parameter.Name} and type {parameter.ParameterType} mapped to composite field {pgFields[fieldIndex].Name}.");
 
-                // TODO better error message.
-                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type) ?? throw new NotSupportedException("Cannot map composite field to property.");
+                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type) ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
                 getter = CreateGetter<T>(field);
             }
             else
@@ -68,17 +66,15 @@ static class ReflectionCompositeInfoFactory
             Delegate setter;
             if (propertyMap.TryGetValue(fieldIndex, out var property))
             {
-                // TODO better error message.
                 pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type.GetRepresentationalType()!)
-                             ?? throw new NotSupportedException($"Reading isn't supported for composite field {pgFields[fieldIndex].Name}.");
+                             ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
                 getter = CreateGetter<T>(property);
                 setter = CreateSetter<T>(property);
             }
             else if (fieldMap.TryGetValue(fieldIndex, out var field))
             {
-                // TODO better error message.
                 pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type.GetRepresentationalType()!)
-                             ?? throw new NotSupportedException($"Reading isn't supported for composite field {pgFields[fieldIndex].Name}.");
+                             ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
                 getter = CreateGetter<T>(field);
                 setter = CreateSetter<T>(field);
             }
@@ -96,6 +92,9 @@ static class ReflectionCompositeInfoFactory
         // We have to map the pg type back to the composite field type, as we've resolved based on the representational pg type.
         PgConverterResolution MapResolution(PostgresCompositeType.Field field, PgConverterResolution resolution)
             => new(resolution.Converter, options.ToCanonicalTypeId(field.Type));
+
+        static NotSupportedException NotSupportedField(PostgresCompositeType composite, PostgresCompositeType.Field field, bool isField, string name, Type type)
+            => new($"No resolution could be found for ('{type.FullName}', '{field.Type.FullName}'). Mapping: CLR {(isField ? "field" : "property")} '{type.Name}.{name}' <-> Composite field '{composite.Name}.{field.Name}'");
     }
 
     static Delegate CreateGetter<T>(FieldInfo info)
