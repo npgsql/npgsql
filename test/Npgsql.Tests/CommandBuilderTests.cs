@@ -40,7 +40,7 @@ class CommandBuilderTests : TestBase
         var table = await CreateTempTable(conn, "id int, val text");
 
         var cmd = new NpgsqlCommand(
-            $@"INSERT INTO {table} VALUES(:x, 'some value');
+            $@"INSERT INTO {table} VALUES(:x, 'some value1');
                     UPDATE {table} SET val = 'changed value' WHERE id = :x::double precision;
                     SELECT val FROM {table} WHERE id = :x::numeric;",
             conn);
@@ -55,7 +55,7 @@ class CommandBuilderTests : TestBase
         var table = await CreateTempTable(conn, "id int, val text");
 
         var cmd = new NpgsqlCommand(
-            $@"INSERT INTO {table} VALUES(:x, 'some value');
+            $@"INSERT INTO {table} VALUES(:x, 'some value2');
                     UPDATE {table} SET val = 'changed value' WHERE id = @y::double precision;
                     SELECT val FROM {table} WHERE id = :z::numeric;",
             conn);

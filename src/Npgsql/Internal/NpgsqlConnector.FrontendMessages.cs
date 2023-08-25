@@ -131,7 +131,7 @@ partial class NpgsqlConnector
 
         await WriteBuffer.WriteString(sql, queryByteLen, async, cancellationToken).ConfigureAwait(false);
         WriteBuffer.queries.Add(sql);
-        if (WriteBuffer.queries.Count > 10)
+        if (WriteBuffer.queries.Count > 15)
         {
             WriteBuffer.queries.RemoveAt(0);
         }
