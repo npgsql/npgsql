@@ -2340,11 +2340,6 @@ public sealed partial class NpgsqlConnector
             ReadBuffer = _origReadBuffer;
             _origReadBuffer = null;
         }
-
-        if (ReadBuffer.ReadBytesLeft > 0)
-        {
-            throw new Exception("Non-empty buffer");
-        }
     }
 
     internal void UnprepareAll()
