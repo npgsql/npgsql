@@ -52,7 +52,7 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public static bool operator !=(BufferRequirements left, BufferRequirements right) => !left.Equals(right);
 }
 
-static class BufferRequirementsExtensions
+static class BufferRequirementsSizeExtensions
 {
     public static bool IsFixedSizeRequirement(this Size requirement)
         => requirement is { Kind: SizeKind.Exact, Value : > 0 };
