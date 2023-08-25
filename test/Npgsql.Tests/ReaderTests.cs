@@ -1505,6 +1505,11 @@ LANGUAGE plpgsql VOLATILE";
         read = stream.Read(buffer);
         Assert.That(read, Is.EqualTo(buffer.Length));
         Assert.That(Encoding.ASCII.GetString(buffer), Is.EqualTo("defg"));
+
+        stream.Position = 1;
+        read = stream.Read(buffer);
+        Assert.That(read, Is.EqualTo(buffer.Length));
+        Assert.That(Encoding.ASCII.GetString(buffer), Is.EqualTo("bcde"));
     }
 
     #endregion GetBytes / GetStream
