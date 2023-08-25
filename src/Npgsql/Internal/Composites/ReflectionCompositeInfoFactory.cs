@@ -37,7 +37,7 @@ static class ReflectionCompositeInfoFactory
                 if (property.PropertyType != parameter.ParameterType)
                     throw new InvalidOperationException($"Could not find a matching getter for constructor parameter {parameter.Name} and type {parameter.ParameterType} mapped to composite field {pgFields[fieldIndex].Name}.");
 
-                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type) ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
+                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type.GetRepresentationalType()) ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
                 getter = CreateGetter<T>(property);
             }
             else if (fieldMap.TryGetValue(fieldIndex, out var field))
@@ -45,7 +45,7 @@ static class ReflectionCompositeInfoFactory
                 if (field.FieldType != parameter.ParameterType)
                     throw new InvalidOperationException($"Could not find a matching getter for constructor parameter {parameter.Name} and type {parameter.ParameterType} mapped to composite field {pgFields[fieldIndex].Name}.");
 
-                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type) ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
+                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type.GetRepresentationalType()) ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
                 getter = CreateGetter<T>(field);
             }
             else
@@ -66,14 +66,14 @@ static class ReflectionCompositeInfoFactory
             Delegate setter;
             if (propertyMap.TryGetValue(fieldIndex, out var property))
             {
-                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type.GetRepresentationalType()!)
+                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type.GetRepresentationalType())
                              ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
                 getter = CreateGetter<T>(property);
                 setter = CreateSetter<T>(property);
             }
             else if (fieldMap.TryGetValue(fieldIndex, out var field))
             {
-                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type.GetRepresentationalType()!)
+                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type.GetRepresentationalType())
                              ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
                 getter = CreateGetter<T>(field);
                 setter = CreateSetter<T>(field);
