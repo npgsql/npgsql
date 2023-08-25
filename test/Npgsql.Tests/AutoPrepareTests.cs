@@ -542,7 +542,7 @@ SELECT COUNT(*) FROM pg_prepared_statements
         Assert.That(await conn.ExecuteScalarAsync("SELECT 3"), Is.EqualTo(3));
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4404")]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4404"), IssueLink("https://github.com/npgsql/npgsql/issues/5220")]
     public async Task SchemaOnly()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -559,6 +559,9 @@ SELECT COUNT(*) FROM pg_prepared_statements
         {
             await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
         }
+
+        // Make sure there is no protocol desync due to #5220
+        await cmd.ExecuteScalarAsync();
     }
 
     [Test]
