@@ -75,6 +75,18 @@ public class ArrayTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task Throws_too_many_dimensions()
+    {
+        await using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        cmd.Parameters.AddWithValue("p", new int[1, 1, 1, 1, 1, 1, 1, 1, 1]); // 9 dimensions
+        Assert.That(
+            () => cmd.ExecuteScalarAsync(),
+            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("values (Parameter 'Postgres arrays can have at most 8 dimensions.')"));
+    }
+
+    [Test]
     public async Task Bind_int_then_array_of_int()
     {
         await using var dataSource = CreateDataSource();
