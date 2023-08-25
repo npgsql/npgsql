@@ -64,7 +64,7 @@ namespace Npgsql
                 {
                     if (value < 0)
                         throw new ArgumentOutOfRangeException(nameof(value), "Non - negative number required.");
-                    Seek(_start + value, SeekOrigin.Begin);
+                    Seek(value, SeekOrigin.Begin);
                 }
             }
 
@@ -86,24 +86,25 @@ namespace Npgsql
                     var tempPosition = unchecked(_start + (int)offset);
                     if (offset < 0 || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
-                    _buf.ReadPosition = _start;
-                    return tempPosition;
+                    _buf.ReadPosition = tempPosition;
+                    _read = (int)offset;
+                    return _read;
                 }
                 case SeekOrigin.Current:
                 {
                     var tempPosition = unchecked(_buf.ReadPosition + (int)offset);
                     if (unchecked(_buf.ReadPosition + offset) < _start || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
-                    _buf.ReadPosition = tempPosition;
-                    return tempPosition;
+                    _read += (int)offset;
+                    return _read;
                 }
                 case SeekOrigin.End:
                 {
-                    var tempPosition = unchecked(_len + (int)offset);
-                    if (unchecked(_len + offset) < _start || tempPosition < _start)
+                    var tempPosition = unchecked(_start + _len + (int)offset);
+                    if (unchecked(_start + _len + offset) < _start || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
-                    _buf.ReadPosition = tempPosition;
-                    return tempPosition;
+                    _read = _len + (int)offset;
+                    return _read;
                 }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(origin), "Invalid seek origin.");
