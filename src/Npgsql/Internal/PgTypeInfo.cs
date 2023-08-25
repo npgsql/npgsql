@@ -317,6 +317,20 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
         => _converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
 }
 
+public readonly struct PgConverterResolution
+{
+    public PgConverterResolution(PgConverter converter, PgTypeId pgTypeId)
+    {
+        Converter = converter;
+        PgTypeId = pgTypeId;
+    }
+
+    public PgConverter Converter { get; }
+    public PgTypeId PgTypeId { get; }
+
+    public PgConverter<T> GetConverter<T>() => (PgConverter<T>)Converter;
+}
+
 readonly struct PgConverterInfo
 {
     public bool IsDefault => TypeInfo is null;
