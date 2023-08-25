@@ -1129,6 +1129,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5209")]
+    [Platform(Exclude = "MacOsX", Reason = "Write might not throw an exception")]
     public async Task RawBinaryCopy_write_nre([Values] bool async)
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
