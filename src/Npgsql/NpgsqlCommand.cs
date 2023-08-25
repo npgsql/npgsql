@@ -84,7 +84,8 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     static readonly List<NpgsqlParameter> EmptyParameters = new();
 
-    static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
+    static readonly TaskScheduler ConstrainedConcurrencyScheduler =
+        new ConcurrentExclusiveSchedulerPair(TaskScheduler.Default, Math.Max(1, Environment.ProcessorCount / 2)).ConcurrentScheduler;
 
     #endregion Fields
 
@@ -694,14 +695,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
 
-                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
-                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
-                        var msg = await connector.ReadMessage(async);
+                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                        var msg = await connector.ReadMessage(async).ConfigureAwait(false);
                         switch (msg.Code)
                         {
                         case BackendMessageCode.RowDescription:
@@ -724,10 +725,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         isFirst = false;
                     }
 
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
 
                     if (async)
-                        await sendTask;
+                        await sendTask.ConfigureAwait(false);
                     else
                         sendTask.GetAwaiter().GetResult();
                 }
@@ -796,7 +797,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 if (batchCommand.PreparedStatement?.State == PreparedState.BeingUnprepared)
                 {
-                    Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                    Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
 
                     var pStatement = batchCommand.PreparedStatement;
                     pStatement.CompleteUnprepare();
@@ -808,10 +809,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+            Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
 
             if (async)
-                await sendTask;
+                await sendTask.ConfigureAwait(false);
             else
                 sendTask.GetAwaiter().GetResult();
         }
@@ -988,10 +989,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             NpgsqlBatchCommand? batchCommand = null;
 
+            var syncCaller = !async;
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
                 // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
-                ForceAsyncIfNecessary(ref async, i);
+                if (syncCaller && ShouldSchedule(ref async, i))
+                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
                 batchCommand = InternalBatchCommands[i];
                 var pStatement = batchCommand.PreparedStatement;
@@ -1005,16 +1008,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     // We may have a prepared statement that replaces an existing statement - close the latter first.
                     if (pStatement?.StatementBeingReplaced != null)
-                        await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async, cancellationToken);
+                        await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async, cancellationToken).ConfigureAwait(false);
 
-                    await connector.WriteParse(batchCommand.FinalCommandText, batchCommand.StatementName, batchCommand.PositionalParameters, async, cancellationToken);
+                    await connector.WriteParse(batchCommand.FinalCommandText, batchCommand.StatementName, batchCommand.PositionalParameters, async, cancellationToken).ConfigureAwait(false);
 
                     await connector.WriteBind(
                         batchCommand.PositionalParameters, string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
                         i == 0 ? UnknownResultTypeList : null,
-                        async, cancellationToken);
+                        async, cancellationToken).ConfigureAwait(false);
 
-                    await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async, cancellationToken);
+                    await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1022,13 +1025,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     await connector.WriteBind(
                         batchCommand.PositionalParameters, string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
                         i == 0 ? UnknownResultTypeList : null,
-                        async, cancellationToken);
+                        async, cancellationToken).ConfigureAwait(false);
                 }
 
-                await connector.WriteExecute(0, async, cancellationToken);
+                await connector.WriteExecute(0, async, cancellationToken).ConfigureAwait(false);
 
                 if (batchCommand.AppendErrorBarrier ?? EnableErrorBarriers)
-                    await connector.WriteSync(async, cancellationToken);
+                    await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
 
                 if (pStatement != null)
                     pStatement.LastUsed = DateTime.UtcNow;
@@ -1036,35 +1039,38 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             if (batchCommand is null || !(batchCommand.AppendErrorBarrier ?? EnableErrorBarriers))
             {
-                await connector.WriteSync(async, cancellationToken);
+                await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
             }
 
             if (flush)
-                await connector.Flush(async, cancellationToken);
+                await connector.Flush(async, cancellationToken).ConfigureAwait(false);
         }
 
         async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
         {
             var wroteSomething = false;
+            var syncCaller = !async;
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
-                ForceAsyncIfNecessary(ref async, i);
+                if (syncCaller && ShouldSchedule(ref async, i))
+                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
                 var batchCommand = InternalBatchCommands[i];
 
                 if (batchCommand.PreparedStatement?.State == PreparedState.Prepared)
-                    continue;   // Prepared, we already have the RowDescription
+                    continue; // Prepared, we already have the RowDescription
 
-                await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName, batchCommand.PositionalParameters, async, cancellationToken);
-                await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken);
+                await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName,
+                    batchCommand.PositionalParameters, async, cancellationToken).ConfigureAwait(false);
+                await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
                 wroteSomething = true;
             }
 
             if (wroteSomething)
             {
-                await connector.WriteSync(async, cancellationToken);
+                await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
                 if (flush)
-                    await connector.Flush(async, cancellationToken);
+                    await connector.Flush(async, cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -1073,27 +1079,31 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         BeginSend(connector);
 
+        var syncCaller = !async;
         for (var i = 0; i < InternalBatchCommands.Count; i++)
         {
-            ForceAsyncIfNecessary(ref async, i);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             var batchCommand = InternalBatchCommands[i];
 
-            await connector.WriteParse(batchCommand.FinalCommandText!, string.Empty, EmptyParameters, async, cancellationToken);
-            await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async, cancellationToken);
+            await connector.WriteParse(batchCommand.FinalCommandText!, string.Empty, EmptyParameters, async, cancellationToken).ConfigureAwait(false);
+            await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async, cancellationToken).ConfigureAwait(false);
         }
 
-        await connector.WriteSync(async, cancellationToken);
-        await connector.Flush(async, cancellationToken);
+        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     async Task SendPrepare(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
     {
         BeginSend(connector);
 
+        var syncCaller = !async;
         for (var i = 0; i < InternalBatchCommands.Count; i++)
         {
-            ForceAsyncIfNecessary(ref async, i);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             var batchCommand = InternalBatchCommands[i];
             var pStatement = batchCommand.PreparedStatement;
@@ -1106,31 +1116,32 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // We may have a prepared statement that replaces an existing statement - close the latter first.
             var statementToClose = pStatement!.StatementBeingReplaced;
             if (statementToClose != null)
-                await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async, cancellationToken);
+                await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async, cancellationToken).ConfigureAwait(false);
 
-            await connector.WriteParse(batchCommand.FinalCommandText!, pStatement.Name!, batchCommand.PositionalParameters, async, cancellationToken);
-            await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async, cancellationToken);
+            await connector.WriteParse(batchCommand.FinalCommandText!, pStatement.Name!, batchCommand.PositionalParameters, async,
+                cancellationToken).ConfigureAwait(false);
+            await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async, cancellationToken).ConfigureAwait(false);
         }
 
-        await connector.WriteSync(async, cancellationToken);
-        await connector.Flush(async, cancellationToken);
+        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void ForceAsyncIfNecessary(ref bool async, int numberOfStatementInBatch)
+    bool ShouldSchedule(ref bool async, int indexOfStatementInBatch)
     {
-        if (!async && numberOfStatementInBatch > 0)
-        {
-            // We're synchronously sending the non-first statement in a batch - switch to async writing.
-            // See long comment in Execute() above.
+        if (indexOfStatementInBatch <= 0)
+            return false;
 
-            // TODO: we can simply do all batch writing asynchronously, instead of starting with the 2nd statement.
-            // For now, writing the first statement synchronously gives us a better chance of handle and bubbling up errors correctly
-            // (see sendTask.IsFaulted in Execute()). Once #1323 is done, that shouldn't be needed any more and entire batches should
-            // be written asynchronously.
-            async = true;
-            SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
-        }
+        // We're synchronously sending the non-first statement in a batch - switch to async writing.
+        // See long comment in Execute() above.
+
+        // TODO: we can simply do all batch writing asynchronously, instead of starting with the 2nd statement.
+        // For now, writing the first statement synchronously gives us a better chance of handling and bubbling up errors correctly
+        // (see sendTask.IsFaulted in Execute()). Once #1323 is done, that shouldn't be needed any more and entire batches should
+        // be written asynchronously.
+        async = true;
+        return TaskScheduler.Current != ConstrainedConcurrencyScheduler;
     }
 
     async Task SendClose(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
@@ -1138,17 +1149,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         BeginSend(connector);
 
         var i = 0;
+        var syncCaller = !async;
         foreach (var batchCommand in InternalBatchCommands.Where(s => s.IsPrepared))
         {
-            ForceAsyncIfNecessary(ref async, i);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
-            await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken);
+            await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
             batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
             i++;
         }
 
-        await connector.WriteSync(async, cancellationToken);
-        await connector.Flush(async, cancellationToken);
+        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -1177,17 +1190,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
     {
-        var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+        var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken).ConfigureAwait(false);
         try
         {
-            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
+            while (async ? await reader.NextResultAsync(cancellationToken).ConfigureAwait(false) : reader.NextResult()) ;
 
             return reader.RecordsAffected;
         }
         finally
         {
             if (async)
-                await reader.DisposeAsync();
+                await reader.DisposeAsync().ConfigureAwait(false);
             else
                 reader.Dispose();
         }
@@ -1226,19 +1239,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (IsWrappedByBatch || !Parameters.HasOutputParameters)
             behavior |= CommandBehavior.SequentialAccess;
 
-        var reader = await ExecuteReader(behavior, async, cancellationToken);
+        var reader = await ExecuteReader(behavior, async, cancellationToken).ConfigureAwait(false);
         try
         {
-            var read = async ? await reader.ReadAsync(cancellationToken) : reader.Read();
+            var read = async ? await reader.ReadAsync(cancellationToken).ConfigureAwait(false) : reader.Read();
             var value = read && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             // We read the whole result set to trigger any errors
-            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
+            while (async ? await reader.NextResultAsync(cancellationToken).ConfigureAwait(false) : reader.NextResult()) ;
             return value;
         }
         finally
         {
             if (async)
-                await reader.DisposeAsync();
+                await reader.DisposeAsync().ConfigureAwait(false);
             else
                 reader.Dispose();
         }
@@ -1264,7 +1277,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-        => await ExecuteReaderAsync(behavior, cancellationToken);
+        => await ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
@@ -1470,7 +1483,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 reader.Init(this, behavior, InternalBatchCommands, startTimestamp, sendTask);
                 connector.CurrentReader = reader;
                 if (async)
-                    await reader.NextResultAsync(cancellationToken);
+                    await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
                 else
                     reader.NextResult();
 
@@ -1515,14 +1528,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 ExecutionCompletion.Reset();
                 try
                 {
-                    await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken);
+                    await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken).ConfigureAwait(false);
                 }
                 catch (ChannelClosedException ex)
                 {
                     Debug.Assert(ex.InnerException is not null);
                     throw ex.InnerException;
                 }
-                connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
+                connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version).ConfigureAwait(false);
                 // TODO: Overload of StartBindingScope?
                 conn.Connector = connector;
                 connector.Connection = conn;
@@ -1531,7 +1544,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var reader = connector.DataReader;
                 reader.Init(this, behavior, InternalBatchCommands);
                 connector.CurrentReader = reader;
-                await reader.NextResultAsync(cancellationToken);
+                await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
 
                 return reader;
             }
@@ -1540,7 +1553,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var reader = connector?.CurrentReader;
             if (e is not NpgsqlOperationInProgressException && reader is not null)
-                await reader.Cleanup(async);
+                await reader.Cleanup(async).ConfigureAwait(false);
 
             TraceSetException(e);
 

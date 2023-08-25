@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
-using Microsoft.Extensions.Logging;
 
-namespace Npgsql;
+namespace Npgsql.Tests.Support;
 
 sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
 {
