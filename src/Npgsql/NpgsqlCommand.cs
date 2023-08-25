@@ -1136,16 +1136,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         BeginSend(connector);
 
-        var i = 0;
-        var syncCaller = !async;
         foreach (var batchCommand in InternalBatchCommands.Where(s => s.IsPrepared))
         {
-            if (syncCaller && ShouldSchedule(ref async, i))
-                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
-
+            // No need to force async here since each statement takes no more than 20 bytes
             await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
             batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
-            i++;
         }
 
         await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
