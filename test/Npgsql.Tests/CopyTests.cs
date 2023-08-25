@@ -6,6 +6,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -1129,6 +1130,29 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
 
             Assert.That(async () => await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
             Assert.That(async () => await conn.ExecuteScalarAsync($"SELECT foo FROM {table}"), Is.EqualTo(3));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5209")]
+        [Platform(Exclude = "MacOsX", Reason = "Write might not throw an exception")]
+        public async Task RawBinaryCopy_write_nre([Values] bool async)
+        {
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            var server = await postmasterMock.WaitForServerConnection();
+            await server
+                .WriteCopyInResponse(isBinary: true)
+                .FlushAsync();
+
+            await using var stream = conn.BeginRawBinaryCopy("COPY SomeTable (field_text, field_int4) FROM STDIN");
+            server.Close();
+            var value = Encoding.UTF8.GetBytes(new string('a', conn.Settings.WriteBufferSize * 2));
+            if (async)
+                Assert.ThrowsAsync<NpgsqlException>(async () => await stream.WriteAsync(value));
+            else
+                Assert.Throws<NpgsqlException>(() => stream.Write(value));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
         #endregion

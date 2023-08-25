@@ -138,25 +138,17 @@ namespace Npgsql
                 return;
             }
 
-            try
-            {
-                // Value is too big, flush.
-                Flush();
+            // Value is too big, flush.
+            Flush();
 
-                if (buffer.Length <= _writeBuf.WriteSpaceLeft)
-                {
-                    _writeBuf.WriteBytes(buffer);
-                    return;
-                }
-
-                // Value is too big even after a flush - bypass the buffer and write directly.
-                _writeBuf.DirectWrite(buffer);
-            }
-            catch (Exception e)
+            if (buffer.Length <= _writeBuf.WriteSpaceLeft)
             {
-                _connector.Break(e);
-                throw;
+                _writeBuf.WriteBytes(buffer);
+                return;
             }
+
+            // Value is too big even after a flush - bypass the buffer and write directly.
+            _writeBuf.DirectWrite(buffer);
         }
 
 #if NETSTANDARD2_0
@@ -183,25 +175,17 @@ namespace Npgsql
                     return;
                 }
 
-                try
-                {
-                    // Value is too big, flush.
-                    await FlushAsync(true, cancellationToken);
+                // Value is too big, flush.
+                await FlushAsync(true, cancellationToken);
 
-                    if (buffer.Length <= _writeBuf.WriteSpaceLeft)
-                    {
-                        _writeBuf.WriteBytes(buffer.Span);
-                        return;
-                    }
-
-                    // Value is too big even after a flush - bypass the buffer and write directly.
-                    await _writeBuf.DirectWrite(buffer, true, cancellationToken);
-                }
-                catch (Exception e)
+                if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                 {
-                    _connector.Break(e);
-                    throw;
+                    _writeBuf.WriteBytes(buffer.Span);
+                    return;
                 }
+
+                // Value is too big even after a flush - bypass the buffer and write directly.
+                await _writeBuf.DirectWrite(buffer, true, cancellationToken);
             }
         }
 
