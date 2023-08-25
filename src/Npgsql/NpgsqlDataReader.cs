@@ -436,15 +436,15 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 }
                 else // Non-prepared/preparing flow
                 {
-                    var pStatement = statement.PreparedStatement;
-                    if (pStatement != null)
+                    preparedStatement = statement.PreparedStatement;
+                    if (preparedStatement != null)
                     {
-                        Debug.Assert(!pStatement.IsPrepared);
-                        if (pStatement.StatementBeingReplaced != null)
+                        Debug.Assert(!preparedStatement.IsPrepared);
+                        if (preparedStatement.StatementBeingReplaced != null)
                         {
                             Expect<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
-                            pStatement.StatementBeingReplaced.CompleteUnprepare();
-                            pStatement.StatementBeingReplaced = null;
+                            preparedStatement.StatementBeingReplaced.CompleteUnprepare();
+                            preparedStatement.StatementBeingReplaced = null;
                         }
                     }
 
@@ -452,7 +452,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                     if (statement.IsPreparing)
                     {
-                        pStatement!.State = PreparedState.Prepared;
+                        preparedStatement!.State = PreparedState.Prepared;
                         Connector.PreparedStatementManager.NumPrepared++;
                         statement.IsPreparing = false;
                     }
@@ -466,7 +466,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                         // RowDescription messages are cached on the connector, but if we're auto-preparing, we need to
                         // clone our own copy which will last beyond the lifetime of this invocation.
-                        BackendMessageCode.RowDescription => pStatement == null
+                        BackendMessageCode.RowDescription => preparedStatement == null
                             ? (RowDescriptionMessage)msg
                             : ((RowDescriptionMessage)msg).Clone(),
 
