@@ -1484,6 +1484,62 @@ $$ LANGUAGE plpgsql;";
         await queryTask;
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5218")]
+    [Description("Make sure we do not lose unread messages after resetting oversize buffer")]
+    public async Task Oversize_buffer_lost_messages()
+    {
+        if (IsMultiplexing)
+            return;
+
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            NoResetOnClose = true
+        };
+        await using var mock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = NpgsqlDataSource.Create(mock.ConnectionString);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        var connector = connection.Connector!;
+
+        var server = await mock.WaitForServerConnection();
+        await server
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+            .WriteDataRowWithFlush(Encoding.ASCII.GetBytes(new string('a', connection.Settings.ReadBufferSize * 2)));
+        // Just to make sure we have enough space
+        await server.FlushAsync();
+        await server
+            .WriteDataRow(Encoding.ASCII.GetBytes("abc"))
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .WriteParameterStatus("SomeKey", "SomeValue")
+            .FlushAsync();
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT 1";
+        await using (await cmd.ExecuteReaderAsync()) { }
+
+        await connection.CloseAsync();
+        await connection.OpenAsync();
+
+        Assert.AreSame(connector, connection.Connector);
+        // We'll get new value after the next query reads ParameterStatus from the buffer
+        Assert.That(connection.PostgresParameters, Does.Not.ContainKey("SomeKey").WithValue("SomeValue"));
+
+        await server
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+            .WriteDataRow(Encoding.ASCII.GetBytes("abc"))
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        await cmd.ExecuteNonQueryAsync();
+
+        Assert.That(connection.PostgresParameters, Contains.Key("SomeKey").WithValue("SomeValue"));
+    }
+
     #region Logging
 
     [Test]
