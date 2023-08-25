@@ -529,7 +529,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             var pgTypeId = dataTypeName is null
                 ? (PgTypeId?)null
-                : TryGetRepresentationalOrValue(builtinDataTypeName ?? dataTypeName, out var id)
+                : TryGetRepresentationalTypeId(builtinDataTypeName ?? dataTypeName, out var id)
                     ? id
                     : throw new NotSupportedException(_npgsqlDbType is not null
                         ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
@@ -570,7 +570,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             PgTypeId = resolution.PgTypeId;
         }
 
-        bool TryGetRepresentationalOrValue(string dataTypeName, out PgTypeId pgTypeId)
+        bool TryGetRepresentationalTypeId(string dataTypeName, out PgTypeId pgTypeId)
         {
             if (options.TypeCatalog.TryGetPostgresTypeByName(dataTypeName, out var pgType))
             {
