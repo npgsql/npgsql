@@ -19,6 +19,7 @@ namespace Npgsql.Tests;
 public class CommandTests : MultiplexingTestBase
 {
     static uint Int4Oid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value;
+    static uint TextOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Text].Value;
 
     #region Legacy batching
 
@@ -1358,7 +1359,7 @@ FROM
         await server
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+            .WriteRowDescription(new FieldDescription(TextOid))
             .WriteDataRowWithFlush(Encoding.ASCII.GetBytes(new string('a', connection.Settings.ReadBufferSize * 2)));
         // Just to make sure we have enough space
         await server.FlushAsync();
@@ -1383,7 +1384,7 @@ FROM
         await server
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+            .WriteRowDescription(new FieldDescription(TextOid))
             .WriteDataRow(Encoding.ASCII.GetBytes("abc"))
             .WriteCommandComplete()
             .WriteReadyForQuery()
