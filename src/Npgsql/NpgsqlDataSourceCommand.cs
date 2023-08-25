@@ -21,8 +21,7 @@ sealed class NpgsqlDataSourceCommand : NpgsqlCommand
     }
 
     internal override async ValueTask<NpgsqlDataReader> ExecuteReader(
-        CommandBehavior behavior,
-        bool async,
+        bool async, CommandBehavior behavior,
         CancellationToken cancellationToken)
     {
         await InternalConnection!.Open(async, cancellationToken);
@@ -30,8 +29,8 @@ sealed class NpgsqlDataSourceCommand : NpgsqlCommand
         try
         {
             return await base.ExecuteReader(
-                    behavior | CommandBehavior.CloseConnection,
                     async,
+                    behavior | CommandBehavior.CloseConnection,
                     cancellationToken)
                 .ConfigureAwait(false);
         }

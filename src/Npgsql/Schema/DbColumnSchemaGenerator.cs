@@ -134,7 +134,7 @@ ORDER BY attnum";
                 await connection.Open(async, cancellationToken);
 
                 using var cmd = new NpgsqlCommand(query, connection);
-                var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+                var reader = await cmd.ExecuteReader(async, CommandBehavior.Default, cancellationToken);
                 try
                 {
                     while (async ? await reader.ReadAsync(cancellationToken) : reader.Read())

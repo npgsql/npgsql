@@ -148,10 +148,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #else
     public override Task CommitAsync(CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Commit(true, cancellationToken);
-    }
+        => Commit(async: true, cancellationToken);
 
     #endregion
 
@@ -187,10 +184,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #else
     public override Task RollbackAsync(CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Rollback(true, cancellationToken);
-    }
+        => Rollback(async: true, cancellationToken);
 
     #endregion
 
@@ -265,7 +259,7 @@ public sealed class NpgsqlTransaction : DbTransaction
         return Task.CompletedTask;
     }
 
-    async Task Rollback(string name, bool async, CancellationToken cancellationToken = default)
+    async Task Rollback(bool async, string name, CancellationToken cancellationToken = default)
     {
         if (name == null)
             throw new ArgumentNullException(nameof(name));
@@ -292,7 +286,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #else
     public void Rollback(string name)
 #endif
-        => Rollback(name, false).GetAwaiter().GetResult();
+        => Rollback(async: false, name).GetAwaiter().GetResult();
 
     /// <summary>
     /// Rolls back a transaction from a pending savepoint state.
@@ -306,12 +300,9 @@ public sealed class NpgsqlTransaction : DbTransaction
 #else
     public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Rollback(name, true, cancellationToken);
-    }
+        => Rollback(async: true, name, cancellationToken);
 
-    async Task Release(string name, bool async, CancellationToken cancellationToken = default)
+    async Task Release(bool async, string name, CancellationToken cancellationToken = default)
     {
         if (name == null)
             throw new ArgumentNullException(nameof(name));
@@ -334,10 +325,11 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// </summary>
     /// <param name="name">The name of the savepoint.</param>
 #if NET5_0_OR_GREATER
-    public override void Release(string name) => Release(name, false).GetAwaiter().GetResult();
+    public override void Release(string name)
 #else
-    public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
+    public void Release(string name)
 #endif
+        => Release(async: false, name).GetAwaiter().GetResult();
 
     /// <summary>
     /// Releases a transaction from a pending savepoint state.
@@ -351,10 +343,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #else
     public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Release(name, true, cancellationToken);
-    }
+        => Release(async: false, name, cancellationToken);
 
     /// <summary>
     /// Indicates whether this transaction supports database savepoints.
@@ -413,8 +402,7 @@ public sealed class NpgsqlTransaction : DbTransaction
         {
             if (!IsCompleted)
             {
-                using (NoSynchronizationContextScope.Enter())
-                    return DisposeAsyncInternal();
+                return DisposeAsyncInternal();
             }
 
             IsDisposed = true;

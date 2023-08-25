@@ -17,7 +17,7 @@ namespace Npgsql;
 /// </summary>
 static class NpgsqlSchema
 {
-    public static Task<DataTable> GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    public static Task<DataTable> GetSchema(bool async, NpgsqlConnection conn, string? collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
     {
         if (collectionName is null)
             throw new ArgumentNullException(nameof(collectionName));

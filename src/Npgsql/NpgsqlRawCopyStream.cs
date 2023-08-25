@@ -166,8 +166,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         if (!CanWrite)
             throw new InvalidOperationException("Stream not open for writing");
         cancellationToken.ThrowIfCancellationRequested();
-        using (NoSynchronizationContextScope.Enter())
-            return WriteAsyncInternal(buffer, cancellationToken);
+
+        return WriteAsyncInternal(buffer, cancellationToken);
 
         async ValueTask WriteAsyncInternal(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
@@ -194,14 +194,14 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         }
     }
 
-    public override void Flush() => FlushAsync(false).GetAwaiter().GetResult();
+    public override void Flush() => FlushAsync(async: false).GetAwaiter().GetResult();
 
     public override Task FlushAsync(CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
-        using (NoSynchronizationContextScope.Enter())
-            return FlushAsync(true, cancellationToken);
+
+        return FlushAsync(async: true, cancellationToken);
     }
 
     Task FlushAsync(bool async, CancellationToken cancellationToken = default)
@@ -252,8 +252,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         if (!CanRead)
             throw new InvalidOperationException("Stream not open for reading");
         cancellationToken.ThrowIfCancellationRequested();
-        using (NoSynchronizationContextScope.Enter())
-            return ReadAsyncInternal();
+
+        return ReadAsyncInternal();
 
         async ValueTask<int> ReadAsyncInternal()
         {
@@ -326,16 +326,12 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     /// <summary>
     /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
     /// </summary>
-    public void Cancel() => Cancel(false).GetAwaiter().GetResult();
+    public void Cancel() => Cancel(async: false).GetAwaiter().GetResult();
 
     /// <summary>
     /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
     /// </summary>
-    public Task CancelAsync()
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Cancel(true);
-    }
+    public Task CancelAsync() => Cancel(async: true);
 
     async Task Cancel(bool async)
     {
@@ -515,11 +511,7 @@ public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     /// <summary>
     /// Cancels and terminates an ongoing import. Any data already written will be discarded.
     /// </summary>
-    public Task CancelAsync()
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
-    }
+    public Task CancelAsync() => ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
 
 #if NETSTANDARD2_0
     public ValueTask DisposeAsync()
@@ -553,11 +545,7 @@ public sealed class NpgsqlCopyTextReader : StreamReader, ICancelable
     /// <summary>
     /// Asynchronously cancels and terminates an ongoing export.
     /// </summary>
-    public Task CancelAsync()
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
-    }
+    public Task CancelAsync() => ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
 
     public ValueTask DisposeAsync()
     {

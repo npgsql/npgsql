@@ -165,11 +165,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public override Task OpenAsync(CancellationToken cancellationToken)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Open(true, cancellationToken);
-    }
+    public override Task OpenAsync(CancellationToken cancellationToken) => Open(async: true, cancellationToken);
 
     void SetupDataSource()
     {
@@ -651,9 +647,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <returns>A <see cref="NpgsqlTransaction"/> object representing the new transaction.</returns>
     /// <remarks>Nested transactions are not supported.</remarks>
     public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
-        => BeginTransaction(level, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginTransaction(async: false, level, CancellationToken.None).GetAwaiter().GetResult();
 
-    async ValueTask<NpgsqlTransaction> BeginTransaction(IsolationLevel level, bool async, CancellationToken cancellationToken)
+    async ValueTask<NpgsqlTransaction> BeginTransaction(bool async, IsolationLevel level, CancellationToken cancellationToken)
     {
         if (level == IsolationLevel.Chaos)
             ThrowHelper.ThrowNotSupportedException($"Unsupported IsolationLevel: {nameof(IsolationLevel.Chaos)}");
@@ -727,10 +723,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Nested transactions are not supported.
     /// </remarks>
     public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginTransaction(level, async: true, cancellationToken);
-    }
+        => BeginTransaction(async: true, level, cancellationToken);
 #endif
 
     /// <summary>
@@ -804,10 +797,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 #else
     public override Task CloseAsync()
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Close(async: true);
-    }
+        => Close(async: true);
 
     internal bool TakeCloseLock() => Interlocked.Exchange(ref _closing, 1) == 0;
 
@@ -961,23 +951,16 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Releases all resources used by the <see cref="NpgsqlConnection"/>.
     /// </summary>
 #if NETSTANDARD2_0
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
 #else
-    public override ValueTask DisposeAsync()
+    public override async ValueTask DisposeAsync()
 #endif
     {
-        using (NoSynchronizationContextScope.Enter())
-            return DisposeAsyncCore();
+        if (_disposed)
+            return;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        async ValueTask DisposeAsyncCore()
-        {
-            if (_disposed)
-                return;
-
-            await CloseAsync();
-            _disposed = true;
-        }
+        await CloseAsync();
+        _disposed = true;
     }
 
     internal void MakeDisposed()
@@ -1161,7 +1144,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand)
-        => BeginBinaryImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginBinaryImport(async: false, copyFromCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a binary COPY FROM STDIN operation, a high-performance data import mechanism to a PostgreSQL table.
@@ -1173,12 +1156,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<NpgsqlBinaryImporter> BeginBinaryImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginBinaryImport(copyFromCommand, async: true, cancellationToken);
-    }
+        => BeginBinaryImport(async: true, copyFromCommand, cancellationToken);
 
-    async Task<NpgsqlBinaryImporter> BeginBinaryImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<NpgsqlBinaryImporter> BeginBinaryImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
     {
         if (copyFromCommand == null)
             throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1215,7 +1195,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand)
-        => BeginBinaryExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginBinaryExport(async: false, copyToCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a binary COPY TO STDOUT operation, a high-performance data export mechanism from a PostgreSQL table.
@@ -1227,12 +1207,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<NpgsqlBinaryExporter> BeginBinaryExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginBinaryExport(copyToCommand, async: true, cancellationToken);
-    }
+        => BeginBinaryExport(async: true, copyToCommand, cancellationToken);
 
-    async Task<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<NpgsqlBinaryExporter> BeginBinaryExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
     {
         if (copyToCommand == null)
             throw new ArgumentNullException(nameof(copyToCommand));
@@ -1272,7 +1249,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public TextWriter BeginTextImport(string copyFromCommand)
-        => BeginTextImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginTextImport(async: false, copyFromCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table.
@@ -1287,12 +1264,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginTextImport(copyFromCommand, async: true, cancellationToken);
-    }
+        => BeginTextImport(async: true, copyFromCommand, cancellationToken);
 
-    async Task<TextWriter> BeginTextImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<TextWriter> BeginTextImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
     {
         if (copyFromCommand == null)
             throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1333,7 +1307,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public TextReader BeginTextExport(string copyToCommand)
-        => BeginTextExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginTextExport(async: false, copyToCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a textual COPY TO STDOUT operation, a data export mechanism from a PostgreSQL table.
@@ -1348,12 +1322,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginTextExport(copyToCommand, async: true, cancellationToken);
-    }
+        => BeginTextExport(async: true, copyToCommand, cancellationToken);
 
-    async Task<TextReader> BeginTextExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<TextReader> BeginTextExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
     {
         if (copyToCommand == null)
             throw new ArgumentNullException(nameof(copyToCommand));
@@ -1394,7 +1365,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public NpgsqlRawCopyStream BeginRawBinaryCopy(string copyCommand)
-        => BeginRawBinaryCopy(copyCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginRawBinaryCopy(async: false, copyCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a raw binary COPY operation (TO STDOUT or FROM STDIN), a high-performance data export/import mechanism to a PostgreSQL table.
@@ -1409,12 +1380,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync(string copyCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginRawBinaryCopy(copyCommand, async: true, cancellationToken);
-    }
+        => BeginRawBinaryCopy(async: true, copyCommand, cancellationToken);
 
-    async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(string copyCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(bool async, string copyCommand, CancellationToken cancellationToken = default)
     {
         if (copyCommand == null)
             throw new ArgumentNullException(nameof(copyCommand));
@@ -1524,8 +1492,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
 
         LogMessages.StartingWait(_connectionLogger, timeout, Connector!.Id);
-        using (NoSynchronizationContextScope.Enter())
-            return Connector!.Wait(async: true, timeout, cancellationToken);
+        return Connector!.Wait(async: true, timeout, cancellationToken);
     }
 
     /// <summary>
@@ -1766,7 +1733,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </param>
     /// <returns>The collection specified.</returns>
     public override DataTable GetSchema(string? collectionName, string?[]? restrictions)
-        => NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: false).GetAwaiter().GetResult();
+        => NpgsqlSchema.GetSchema(async: false, this, collectionName, restrictions).GetAwaiter().GetResult();
 
     /// <summary>
     /// Asynchronously returns the supported collections.
@@ -1815,8 +1782,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #endif
     {
-        using (NoSynchronizationContextScope.Enter())
-            return NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: true, cancellationToken);
+        return NpgsqlSchema.GetSchema(async: true, this, collectionName, restrictions, cancellationToken);
     }
 
     #endregion Schema operations

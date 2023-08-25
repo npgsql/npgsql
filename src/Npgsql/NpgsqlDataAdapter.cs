@@ -152,7 +152,7 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
             if (ConnectionState.Closed == originalState)
                 await activeConnection.Open(async, cancellationToken);
 
-            var dataReader = await command.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+            var dataReader = await command.ExecuteReader(async, CommandBehavior.Default, cancellationToken);
             try
             {
                 return await Fill(dataTable, dataReader, async, cancellationToken);

@@ -251,53 +251,47 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// with freeing, releasing, or resetting its unmanaged resources asynchronously.
     /// </summary>
     /// <returns>A task that represents the asynchronous dispose operation.</returns>
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        using (NoSynchronizationContextScope.Enter())
-            return DisposeAsyncCore();
+        if (_isDisposed)
+            return;
 
-        async ValueTask DisposeAsyncCore()
+        if (_npgsqlConnection.Connector?.State == ConnectorState.Replication)
         {
-            if (_isDisposed)
-                return;
+            Debug.Assert(_currentEnumerator is not null);
+            Debug.Assert(_replicationCancellationTokenSource is not null);
 
-            if (_npgsqlConnection.Connector?.State == ConnectorState.Replication)
-            {
-                Debug.Assert(_currentEnumerator is not null);
-                Debug.Assert(_replicationCancellationTokenSource is not null);
-
-                // Replication is in progress; cancel it (soft or hard) and iterate the enumerator until we get the cancellation
-                // exception. Note: this isn't thread-safe: a user calling DisposeAsync and enumerating at the same time is violating
-                // our contract.
-                _replicationCancellationTokenSource.Cancel();
-                try
-                {
-                    while (await _currentEnumerator.MoveNextAsync())
-                    {
-                        // Do nothing with messages - simply enumerate until cancellation/termination
-                    }
-                }
-                catch
-                {
-                    // Cancellation/termination occurred
-                }
-            }
-
-            Debug.Assert(_sendFeedbackTimer is null, "Send feedback timer isn't null at replication shutdown");
-            Debug.Assert(_requestFeedbackTimer is null, "Request feedback timer isn't null at replication shutdown");
-            _feedbackSemaphore.Dispose();
-
+            // Replication is in progress; cancel it (soft or hard) and iterate the enumerator until we get the cancellation
+            // exception. Note: this isn't thread-safe: a user calling DisposeAsync and enumerating at the same time is violating
+            // our contract.
+            _replicationCancellationTokenSource.Cancel();
             try
             {
-                await _npgsqlConnection.Close(async: true);
+                while (await _currentEnumerator.MoveNextAsync())
+                {
+                    // Do nothing with messages - simply enumerate until cancellation/termination
+                }
             }
             catch
             {
-                // Dispose
+                // Cancellation/termination occurred
             }
-
-            _isDisposed = true;
         }
+
+        Debug.Assert(_sendFeedbackTimer is null, "Send feedback timer isn't null at replication shutdown");
+        Debug.Assert(_requestFeedbackTimer is null, "Request feedback timer isn't null at replication shutdown");
+        _feedbackSemaphore.Dispose();
+
+        try
+        {
+            await _npgsqlConnection.Close(async: true);
+        }
+        catch
+        {
+            // Dispose
+        }
+
+        _isDisposed = true;
     }
 
     #endregion Open / Dispose
@@ -313,19 +307,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// <returns>
     /// A <see cref="ReplicationSystemIdentification"/> containing information about the system we are connected to.
     /// </returns>
-    public Task<ReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
+    public async Task<ReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
     {
-        using (NoSynchronizationContextScope.Enter())
-            return IdentifySystemInternal(cancellationToken);
-
-        async Task<ReplicationSystemIdentification> IdentifySystemInternal(CancellationToken cancellationToken)
-        {
-            var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
-            return new ReplicationSystemIdentification(
-                (string)row[0], (uint)row[1], NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
-        }
+        var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
+        return new ReplicationSystemIdentification(
+            (string)row[0], (uint)row[1], NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
     }
-
     /// <summary>
     /// Requests the server to send the current setting of a run-time parameter.
     /// This is similar to the SQL command SHOW.
@@ -342,8 +329,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
         if (parameterName is null)
             throw new ArgumentNullException(nameof(parameterName));
 
-        using (NoSynchronizationContextScope.Enter())
-            return ShowInternal(parameterName, cancellationToken);
+        return ShowInternal(parameterName, cancellationToken);
 
         async Task<string> ShowInternal(string parameterName, CancellationToken cancellationToken)
             => (string)(await ReadSingleRow("SHOW " + parameterName, cancellationToken))[0];
@@ -357,16 +343,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The timeline history file for timeline tli</returns>
-    public Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
+    public async Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
     {
-        using (NoSynchronizationContextScope.Enter())
-            return TimelineHistoryInternal(tli, cancellationToken);
-
-        async Task<TimelineHistoryFile> TimelineHistoryInternal(uint tli, CancellationToken cancellationToken)
-        {
-            var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
-            return new TimelineHistoryFile((string)result[0], (byte[])result[1]);
-        }
+        var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
+        return new TimelineHistoryFile((string)result[0], (byte[])result[1]);
     }
 
     internal async Task<ReplicationSlotOptions> CreateReplicationSlot(string command, CancellationToken cancellationToken = default)
@@ -626,24 +606,18 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// </summary>
     /// <exception cref="InvalidOperationException">The connection currently isn't streaming</exception>
     /// <returns>A Task representing the sending of the status update (and not any PostgreSQL response).</returns>
-    public Task SendStatusUpdate(CancellationToken cancellationToken = default)
+    public async Task SendStatusUpdate(CancellationToken cancellationToken = default)
     {
-        using (NoSynchronizationContextScope.Enter())
-            return SendStatusUpdateInternal(cancellationToken);
+        CheckDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
 
-        async Task SendStatusUpdateInternal(CancellationToken cancellationToken)
-        {
-            CheckDisposed();
-            cancellationToken.ThrowIfCancellationRequested();
+        // TODO: If the user accidentally does concurrent usage of the connection, the following is vulnerable to race conditions.
+        // However, we generally aren't safe for this in Npgsql, leaving as-is for now.
+        if (Connector.State != ConnectorState.Replication)
+            throw new InvalidOperationException("Status update can only be sent during replication");
 
-            // TODO: If the user accidentally does concurrent usage of the connection, the following is vulnerable to race conditions.
-            // However, we generally aren't safe for this in Npgsql, leaving as-is for now.
-            if (Connector.State != ConnectorState.Replication)
-                throw new InvalidOperationException("Status update can only be sent during replication");
-
-            LogMessages.SendingReplicationStandbyStatusUpdate(ReplicationLogger, nameof(SendStatusUpdate) + "was called", Connector.Id);
-            await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken);
-        }
+        LogMessages.SendingReplicationStandbyStatusUpdate(ReplicationLogger, nameof(SendStatusUpdate) + "was called", Connector.Id);
+        await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken);
     }
 
     async Task SendFeedback(bool waitOnSemaphore = false, bool requestReply = false, CancellationToken cancellationToken = default)
@@ -763,13 +737,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
         if (slotName is null)
             throw new ArgumentNullException(nameof(slotName));
 
-        using (NoSynchronizationContextScope.Enter())
-            return DropReplicationSlotInternal(slotName, wait,  cancellationToken);
+        CheckDisposed();
+
+        return DropReplicationSlotInternal(slotName, wait,  cancellationToken);
 
         async Task DropReplicationSlotInternal(string slotName, bool wait, CancellationToken cancellationToken)
         {
-            CheckDisposed();
-
             using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
 
             var command = "DROP_REPLICATION_SLOT " + slotName;

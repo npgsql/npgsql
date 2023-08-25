@@ -38,8 +38,7 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
         if (_tupleEnumerable.State != RowState.Reading)
             throw new ObjectDisposedException(null);
 
-        using (NoSynchronizationContextScope.Enter())
-            return MoveNextCore();
+        return MoveNextCore();
 
         async ValueTask<bool> MoveNextCore()
         {

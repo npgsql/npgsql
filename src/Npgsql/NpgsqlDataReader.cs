@@ -186,8 +186,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (fastRead.HasValue)
             return fastRead.Value ? TrueTask : FalseTask;
 
-        using (NoSynchronizationContextScope.Enter())
-            return Read(true, cancellationToken);
+        return Read(async: true, cancellationToken);
     }
 
     bool? TryFastRead()
@@ -330,13 +329,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
     public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
-    {
-        using var _ = NoSynchronizationContextScope.Enter();
-
-        return _isSchemaOnly
+        => _isSchemaOnly
             ? NextResultSchemaOnly(async: true, cancellationToken: cancellationToken)
             : NextResult(async: true, cancellationToken: cancellationToken);
-    }
 
     /// <summary>
     /// Internal implementation of NextResult
@@ -1056,39 +1051,31 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Releases the resources used by the <see cref="NpgsqlDataReader"/>.
     /// </summary>
 #if NETSTANDARD2_0
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
 #else
-    public override ValueTask DisposeAsync()
+    public override async ValueTask DisposeAsync()
 #endif
     {
-        using (NoSynchronizationContextScope.Enter())
-            return DisposeAsyncCore();
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        async ValueTask DisposeAsyncCore()
+        try
         {
-            try
+            await Close(connectionClosing: false, async: true, isDisposing: true);
+        }
+        catch (Exception ex)
+        {
+            // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
+            // to Disposed in Close above; in multiplexing, we also unbind the connector (with its reader), and at that point it can be used
+            // by other consumers. Therefore, we only set the state to Disposed if the exception *wasn't* a PostgresException.
+            if (!(ex is PostgresException ||
+                  ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
+                  AllPostgresExceptions(aggregateException.InnerExceptions)))
             {
-                await Close(connectionClosing: false, async: true, isDisposing: true);
+                State = ReaderState.Disposed;
             }
-            catch (Exception ex)
-            {
-                // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
-                // to Disposed in Close above; in multiplexing, we also unbind the connector (with its reader), and at that point it can be used
-                // by other consumers. Therefore, we only set the state fo Disposed if the exception *wasn't* a PostgresException.
-                if (!(ex is PostgresException ||
-                      ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
-                      AllPostgresExceptions(aggregateException.InnerExceptions)))
-                {
-                    State = ReaderState.Disposed;
-                }
-
-                throw;
-            }
-            finally
-            {
-                Command.TraceCommandStop();
-            }
+            throw;
+        }
+        finally
+        {
+            Command.TraceCommandStop();
         }
     }
 
@@ -1113,12 +1100,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #else
     public override Task CloseAsync()
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Close(connectionClosing: false, async: true, isDisposing: false);
-    }
+        => Close(async: true, connectionClosing: false, isDisposing: false);
 
-    internal async Task Close(bool connectionClosing, bool async, bool isDisposing)
+    internal async Task Close(bool async, bool connectionClosing, bool isDisposing)
     {
         if (State is ReaderState.Closed or ReaderState.Disposed)
         {
@@ -1585,8 +1569,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (!_isSequential)
             return Task.FromResult(GetFieldValueCore<T>(ordinal));
 
-        using (NoSynchronizationContextScope.Enter())
-            return Core(ordinal, cancellationToken).AsTask();
+        return Core(ordinal, cancellationToken).AsTask();
 
         async ValueTask<T> Core(int ordinal, CancellationToken cancellationToken)
         {
@@ -1716,8 +1699,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (!_isSequential)
             return IsDBNull(ordinal) ? TrueTask : FalseTask;
 
-        using (NoSynchronizationContextScope.Enter())
-            return Core(ordinal, cancellationToken);
+        return Core(ordinal, cancellationToken);
 
         async Task<bool> Core(int ordinal, CancellationToken cancellationToken)
         {
@@ -1813,10 +1795,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #else
     public Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return GetColumnSchema(async: true, cancellationToken);
-    }
+        => GetColumnSchema(async: true, cancellationToken);
 
     Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
         => RowDescription == null || RowDescription.Count == 0
@@ -1846,10 +1825,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #else
     public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return GetSchemaTable(async: true, cancellationToken);
-    }
+        => GetSchemaTable(async: true, cancellationToken);
 
     [UnconditionalSuppressMessage(
         "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]

@@ -141,11 +141,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// The number of columns in the row. -1 if there are no further rows.
     /// Note: This will currently be the same value for all rows, but this may change in the future.
     /// </returns>
-    public ValueTask<int> StartRowAsync(CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return StartRow(true, cancellationToken);
-    }
+    public ValueTask<int> StartRowAsync(CancellationToken cancellationToken = default) => StartRow(true, cancellationToken);
 
     async ValueTask<int> StartRow(bool async, CancellationToken cancellationToken = default)
     {
@@ -214,10 +210,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// </typeparam>
     /// <returns>The value of the column</returns>
     public ValueTask<T> ReadAsync<T>(CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Read<T>(async: true, cancellationToken);
-    }
+        => Read<T>(async: true, cancellationToken);
 
     ValueTask<T> Read<T>(bool async, CancellationToken cancellationToken = default)
         => Read<T>(async, null, cancellationToken);
@@ -277,10 +270,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
     /// <returns>The value of the column</returns>
     public ValueTask<T> ReadAsync<T>(NpgsqlDbType type, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Read<T>(async: true, type, cancellationToken);
-    }
+        => Read<T>(async: true, type, cancellationToken);
 
     async ValueTask<T> Read<T>(bool async, NpgsqlDbType? type, CancellationToken cancellationToken)
     {
@@ -367,16 +357,13 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// <summary>
     /// Skips the current column without interpreting its value.
     /// </summary>
-    public void Skip() => Skip(false).GetAwaiter().GetResult();
+    public void Skip() => Skip(async: false).GetAwaiter().GetResult();
 
     /// <summary>
     /// Skips the current column without interpreting its value.
     /// </summary>
     public Task SkipAsync(CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Skip(true, cancellationToken);
-    }
+        => Skip(true, cancellationToken);
 
     async Task Skip(bool async, CancellationToken cancellationToken = default)
     {
@@ -441,17 +428,13 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// <summary>
     /// Completes that binary export and sets the connection back to idle state
     /// </summary>
-    public void Dispose() => DisposeAsync(false).GetAwaiter().GetResult();
+    public void Dispose() => DisposeAsync(async: false).GetAwaiter().GetResult();
 
     /// <summary>
     /// Async completes that binary export and sets the connection back to idle state
     /// </summary>
     /// <returns></returns>
-    public ValueTask DisposeAsync()
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return DisposeAsync(true);
-    }
+    public ValueTask DisposeAsync() => DisposeAsync(async: true);
 
     async ValueTask DisposeAsync(bool async)
     {

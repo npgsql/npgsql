@@ -75,13 +75,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
     }
 
     public IAsyncEnumerator<PgOutputReplicationMessage> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-        {
-            return StartReplicationInternal(
-                CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
-        }
-    }
+        => StartReplicationInternal(CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
 
     async IAsyncEnumerator<PgOutputReplicationMessage> StartReplicationInternal(CancellationToken cancellationToken)
     {
