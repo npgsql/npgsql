@@ -786,9 +786,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         using (connector.StartUserAction(cancellationToken))
         {
-            var sendTask = SendClose(connector, async, cancellationToken);
-            if (sendTask.IsFaulted)
-                sendTask.GetAwaiter().GetResult();
+            // Just wait for SendClose to complete since each statement takes no more than 20 bytes
+            await SendClose(connector, async, cancellationToken);
 
             foreach (var batchCommand in InternalBatchCommands)
             {
@@ -807,11 +806,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
-
-            if (async)
-                await sendTask;
-            else
-                sendTask.GetAwaiter().GetResult();
         }
     }
 
@@ -1134,14 +1128,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         BeginSend(connector);
 
-        var i = 0;
         foreach (var batchCommand in InternalBatchCommands.Where(s => s.IsPrepared))
         {
-            ForceAsyncIfNecessary(ref async, i);
-
+            // No need to force async here since each statement takes no more than 20 bytes
             await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken);
             batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
-            i++;
         }
 
         await connector.WriteSync(async, cancellationToken);
@@ -1357,7 +1348,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     ResetPreparation();
                                     goto case false;
                                 }
-                                
+
                                 batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
                             }
                         }
