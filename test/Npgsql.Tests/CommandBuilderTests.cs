@@ -53,7 +53,9 @@ class CommandBuilderTests : TestBase
         var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd))!;
         Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
         conn.Connector!.WriteBuffer.FlushedBytes = null;
+#if NET6_0_OR_GREATER
         Assert.That(conn.Connector!.WriteBuffer.WritePosition, Is.EqualTo(0), Convert.ToHexString(flushedBytes.ToArray()));
+#endif
         cmd.CommandText = "SELECT 1";
         cmd.ExecuteNonQuery();
     }
