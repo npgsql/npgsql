@@ -46,6 +46,8 @@ class CommandBuilderTests : TestBase
             conn);
         var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd))!;
         Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
+        cmd.CommandText = "SELECT 1";
+        cmd.ExecuteNonQuery();
     }
 
     [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) with multiple parameters")]
