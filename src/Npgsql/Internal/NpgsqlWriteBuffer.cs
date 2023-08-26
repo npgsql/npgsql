@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -25,8 +24,6 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     #region Fields and Properties
 
     internal readonly NpgsqlConnector Connector;
-
-    internal readonly List<string> queries = new();
 
     internal Stream Underlying { private get; set; }
 

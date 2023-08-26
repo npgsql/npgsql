@@ -40,12 +40,10 @@ class CommandBuilderTests : TestBase
         var table = await CreateTempTable(conn, "id int, val text");
 
         var cmd = new NpgsqlCommand(
-            "SELECT 1",
-            conn);
-        cmd.ExecuteNonQuery();
-        cmd.CommandText = $@"INSERT INTO {table} VALUES(:x, 'some value1');
+            $@"INSERT INTO {table} VALUES(:x, 'some value');
                     UPDATE {table} SET val = 'changed value' WHERE id = :x::double precision;
-                    SELECT val FROM {table} WHERE id = :x::numeric;";
+                    SELECT val FROM {table} WHERE id = :x::numeric;",
+            conn);
         var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd))!;
         Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
         Assert.That(conn.Connector!.WriteBuffer.WritePosition, Is.EqualTo(0));
@@ -60,7 +58,7 @@ class CommandBuilderTests : TestBase
         var table = await CreateTempTable(conn, "id int, val text");
 
         var cmd = new NpgsqlCommand(
-            $@"INSERT INTO {table} VALUES(:x, 'some value2');
+            $@"INSERT INTO {table} VALUES(:x, 'some value');
                     UPDATE {table} SET val = 'changed value' WHERE id = @y::double precision;
                     SELECT val FROM {table} WHERE id = :z::numeric;",
             conn);

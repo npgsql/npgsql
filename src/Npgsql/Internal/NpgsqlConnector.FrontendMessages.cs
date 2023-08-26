@@ -130,11 +130,6 @@ partial class NpgsqlConnector
         WriteBuffer.WriteNullTerminatedString(statementName);
 
         await WriteBuffer.WriteString(sql, queryByteLen, async, cancellationToken).ConfigureAwait(false);
-        WriteBuffer.queries.Add(sql);
-        if (WriteBuffer.queries.Count > 15)
-        {
-            WriteBuffer.queries.RemoveAt(0);
-        }
 
         if (WriteBuffer.WriteSpaceLeft < 1 + 2)
             await Flush(async, cancellationToken).ConfigureAwait(false);

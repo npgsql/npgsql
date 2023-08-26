@@ -48,8 +48,7 @@ static class Statics
     [DoesNotReturn]
     static void ThrowIfMsgWrongType<T>(IBackendMessage msg, NpgsqlConnector connector)
         => throw connector.Break(
-            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."
-                                + Environment.NewLine + $"Last queries: {string.Join(" :: ", connector.WriteBuffer.queries.Select(x => x))}"));
+            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
 
     internal static DeferDisposable Defer(Action action) => new(action);
     internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);
