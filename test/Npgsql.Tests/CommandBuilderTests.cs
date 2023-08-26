@@ -48,6 +48,7 @@ class CommandBuilderTests : TestBase
                     SELECT val FROM {table} WHERE id = :x::numeric;";
         var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd))!;
         Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
+        Assert.That(conn.Connector!.WriteBuffer.WritePosition, Is.EqualTo(0));
         cmd.CommandText = "SELECT 1";
         cmd.ExecuteNonQuery();
     }
