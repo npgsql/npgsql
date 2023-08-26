@@ -778,7 +778,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         using (connector.StartUserAction(cancellationToken))
         {
             // Just wait for SendClose to complete since each statement takes no more than 20 bytes
-            await SendClose(connector, async, cancellationToken);
+            await SendClose(connector, async, cancellationToken).ConfigureAwait(false);
 
             foreach (var batchCommand in InternalBatchCommands)
             {
