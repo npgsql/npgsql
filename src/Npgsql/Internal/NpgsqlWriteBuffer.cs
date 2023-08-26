@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -26,6 +27,8 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     internal readonly NpgsqlConnector Connector;
 
     internal Stream Underlying { private get; set; }
+
+    internal List<byte>? FlushedBytes { get; set; }
 
     readonly Socket? _underlyingSocket;
     readonly ResettableCancellationTokenSource _timeoutCts;
@@ -131,6 +134,11 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         var finalCt = async && Timeout > TimeSpan.Zero
             ? _timeoutCts.Start(cancellationToken)
             : cancellationToken;
+
+        if (FlushedBytes is not null)
+        {
+            FlushedBytes.AddRange(Buffer.Take(WritePosition));
+        }
 
         try
         {

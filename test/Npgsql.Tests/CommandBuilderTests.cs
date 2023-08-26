@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Text;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -39,6 +41,10 @@ class CommandBuilderTests : TestBase
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id int, val text");
 
+        Assert.That(conn.Connector!.WriteBuffer.WritePosition, Is.EqualTo(0));
+        var flushedBytes = new List<byte>();
+        conn.Connector!.WriteBuffer.FlushedBytes = flushedBytes;
+
         var cmd = new NpgsqlCommand(
             $@"INSERT INTO {table} VALUES(:x, 'some value');
                     UPDATE {table} SET val = 'changed value' WHERE id = :x::double precision;
@@ -46,7 +52,8 @@ class CommandBuilderTests : TestBase
             conn);
         var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd))!;
         Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
-        Assert.That(conn.Connector!.WriteBuffer.WritePosition, Is.EqualTo(0));
+        conn.Connector!.WriteBuffer.FlushedBytes = null;
+        Assert.That(conn.Connector!.WriteBuffer.WritePosition, Is.EqualTo(0), Convert.ToHexString(flushedBytes.ToArray()));
         cmd.CommandText = "SELECT 1";
         cmd.ExecuteNonQuery();
     }
