@@ -15,6 +15,7 @@ sealed partial class NpgsqlReadBuffer
     {
         readonly NpgsqlConnector _connector;
         readonly NpgsqlReadBuffer _buf;
+        long _startPos;
         int _start;
         int _read;
         bool _canSeek;
@@ -34,10 +35,14 @@ sealed partial class NpgsqlReadBuffer
         {
             Debug.Assert(!canSeek || _buf.ReadBytesLeft >= len,
                 "Seekable stream constructed but not all data is in buffer (sequential)");
-            _start = _buf.ReadPosition;
+            _startPos = _buf.CumulativeReadPosition;
+
+            _canSeek = canSeek;
+            _start = canSeek ? _buf.ReadPosition : 0;
+
             CurrentLength = len;
             _read = 0;
-            _canSeek = canSeek;
+
             _commandScoped = commandScoped;
             IsDisposed = false;
         }
@@ -217,9 +222,10 @@ sealed partial class NpgsqlReadBuffer
 
             if (!_connector.IsBroken)
             {
-                var leftToSkip = CurrentLength - _read;
-                if (leftToSkip > 0)
-                    await _buf.Skip(leftToSkip, async).ConfigureAwait(false);
+                var pos = _buf.CumulativeReadPosition - _startPos;
+                var remaining = checked((int)(CurrentLength - pos));
+                if (remaining > 0)
+                    await _buf.Skip(remaining, async).ConfigureAwait(false);
             }
 
             IsDisposed = true;
