@@ -15,6 +15,7 @@ public class PgReader
     readonly NpgsqlReadBuffer _buffer;
     DataFormat _fieldFormat;
     Size _fieldSize;
+    Size _fieldBufferRequirement;
 
     byte[]? _pooledArray;
 
@@ -23,7 +24,7 @@ public class PgReader
     internal bool Initialized => !_fieldSize.IsDefault;
 
     int _currentStartPos;
-    Size _currentBufferRequirement { get; set; }
+    Size _currentBufferRequirement;
     int CurrentSize { get; set; }
 
     internal PgReader(NpgsqlReadBuffer buffer)
@@ -63,7 +64,7 @@ public class PgReader
     [Conditional("DEBUG")]
     void CheckBounds(int count)
     {
-        if (Pos + count > _fieldSize.Value)
+        if (count > FieldSize - Pos)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the field.");
     }
 
@@ -292,10 +293,7 @@ public class PgReader
     /// <returns>The stream length, if any</returns>
     async ValueTask DisposeUserActiveStream(bool async)
     {
-        if (_userActiveStream is null)
-            return;
-
-        if (!_userActiveStream.IsDisposed)
+        if (_userActiveStream is { IsDisposed: false })
         {
             if (async)
                 await _userActiveStream.DisposeAsync().ConfigureAwait(false);
@@ -376,79 +374,85 @@ public class PgReader
         _charsReadBuffer = buffer;
     }
 
-    internal PgReader Init(int columnLength, DataFormat format, bool resumable = false)
+    internal PgReader Init(int fieldLength, DataFormat format, bool resumable = false)
     {
-        if (Resumable && resumable)
-            return this;
-        if (Initialized && !resumable)
-            throw new InvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
+        if (resumable)
+        {
+            if (Resumable)
+            {
+                Debug.Assert(Initialized);
+                return this;
+            }
+            Resumable = resumable;
+        }
+        else if (Initialized)
+            ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
 
         Debug.Assert(!Initialized || (Resumable && resumable), "Reader wasn't properly committed before next init");
+        Debug.Assert(!_readStarted);
 
         ThrowIfStreamActive();
-        if (_pooledArray is { } array)
-        {
-            ArrayPool.Return(array);
-            _pooledArray = null;
-        }
 
-        _charsReadReader?.Dispose();
-        _charsReadReader = null;
-        _charsRead = default;
         FieldStartPos = _buffer.CumulativeReadPosition;
-        CurrentSize = columnLength < 0 ? 0 : columnLength;
         _fieldFormat = format;
-        _fieldSize = columnLength;
-        _readStarted = false;
-        Resumable = resumable;
-
+        _fieldSize = fieldLength;
+        // We must set CurrentSize here due to tracked/resumable ops like GetStream/GetBytes
+        // directly interacting with the reader without StartRead/EndRead.
+        CurrentSize = FieldSize;
         return this;
     }
 
     bool _readStarted;
     internal void StartRead(Size bufferRequirement)
-        => StartRead(async: false, bufferRequirement, CancellationToken.None).GetAwaiter().GetResult();
+    {
+        Debug.Assert(FieldSize >= 0);
+        _readStarted = true;
+        _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
+        Buffer(bufferRequirement);
+    }
 
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
-        => StartRead(async: true, bufferRequirement, cancellationToken);
-
-    async ValueTask StartRead(bool async, Size bufferRequirement, CancellationToken cancellationToken)
     {
+        Debug.Assert(FieldSize >= 0);
         _readStarted = true;
-        _currentBufferRequirement = bufferRequirement;
-        await Buffer(async, bufferRequirement, cancellationToken).ConfigureAwait(false);
+        CurrentSize = FieldSize;
+        _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
+        return BufferAsync(bufferRequirement, cancellationToken);
     }
 
     internal void EndRead()
     {
-        _readStarted = false;
-
         if (Resumable)
+        {
+            _readStarted = false;
             return;
+        }
 
         // If it was upper bound we should consume.
-        if (_currentBufferRequirement.Kind is SizeKind.UpperBound)
+        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - Pos is var remaining and > 0)
         {
-            Consume();
+            Consume(remaining);
             return;
         }
 
         ThrowIfNotConsumed();
+        _readStarted = false;
     }
 
-    internal ValueTask EndReadAsync()
+    internal async ValueTask EndReadAsync()
     {
-        _readStarted = false;
-
         if (Resumable)
-            return new();
+        {
+            _readStarted = false;
+            return;
+        }
 
         // If it was upper bound we should consume.
-        if (_currentBufferRequirement.Kind is SizeKind.UpperBound)
-            return ConsumeAsync();
+        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - Pos is var remaining and > 0)
+            await ConsumeAsync(remaining);
 
         ThrowIfNotConsumed();
-        return new();
+        _readStarted = false;
     }
 
     internal async ValueTask<NestedReadScope> BeginNestedRead(bool async, int size, Size bufferRequirement, CancellationToken cancellationToken = default)
@@ -506,7 +510,7 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
     }
 
-    internal bool CommitHasIO(bool resuming) => !_fieldSize.IsDefault && !resuming && CurrentRemaining is not 0;
+    internal bool CommitHasIO(bool resuming) => Initialized && !resuming && FieldSize - Pos > 0;
     internal async ValueTask Commit(bool async, bool resuming)
     {
         if (!Initialized)
@@ -515,23 +519,39 @@ public class PgReader
         if (resuming)
         {
             if (!Resumable)
-                throw new InvalidOperationException("Cannot resume a non-resumable read.");
+                ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
+            _readStarted = false;
             return;
         }
 
-        // Shut down any streaming going on on the column
-        await DisposeUserActiveStream(async).ConfigureAwait(false);
+        if (_pooledArray is { } array)
+        {
+            ArrayPool.Return(array);
+            _pooledArray = null;
+        }
+
+        if (_charsReadReader is { } reader)
+        {
+            reader.Dispose();
+            _charsReadReader = null;
+            _charsRead = default;
+        }
+
+        // Shut down any streaming going on on the column.
+        if (_userActiveStream is not null)
+            await DisposeUserActiveStream(async).ConfigureAwait(false);
 
         // If it was a resumable read while the next one isn't we'll consume everything.
         // If we're in a _readStarted state we'll assume we had an exception and we'll consume silently as well.
-        if (Resumable || _readStarted)
-            await Consume(async).ConfigureAwait(false);
+        // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
+        if (FieldSize - Pos is var remaining and > 0 && (Resumable || _readStarted))
+            await Consume(async, count: remaining).ConfigureAwait(false);
 
+        Resumable = false;
         _fieldSize = default;
         _fieldFormat = default;
         FieldStartPos = -1;
         _readStarted = false;
-        Resumable = false;
     }
 
     byte[] RentArray(int count)
@@ -609,13 +629,13 @@ public class PgReader
 
     void ThrowIfNotConsumed()
     {
-        if (Pos < _fieldSize.Value)
+        if (Pos < FieldSize)
             Throw();
 
         void Throw() =>
             throw _buffer.Connector.Break(
                 new InvalidOperationException(
-                    $"Trying to end a read over a field that hasn't been entirely consumed (pos: {Pos}, len: {_fieldSize.Value})"));
+                    $"Trying to end a read over a field that hasn't been entirely consumed (pos: {Pos}, len: {FieldSize})"));
     }
 }
 
