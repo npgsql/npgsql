@@ -13,18 +13,18 @@ namespace Npgsql
         private partial int Init()
         {
             // Set the strongly-typed properties to their default values
-            {{
+            {{~
                for p in properties
                  if p.is_obsolete
                    continue
                  end
 
                  if (p.default_value != null)
-            }}
+            ~}}
             {{ p.name }} = {{ p.default_value }};
-            {{
+            {{~
                  end
-               end }}
+               end ~}}
 
             // Setting the strongly-typed properties here also set the string-based properties in the base class.
             // Clear them (default settings = empty connection string)
@@ -38,11 +38,6 @@ namespace Npgsql
             switch (keyword)
             {
             {{~ for kv in properties_by_keyword ~}}
-            {{~
-                if (!kv.value.is_main)
-                    continue
-                end
-            ~}}
             case "{{ kv.key }}":
             {{~ for alternative in kv.value.alternatives ~}}
             case "{{ alternative }}":
