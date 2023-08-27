@@ -688,53 +688,66 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (sendTask.IsFaulted)
                         sendTask.GetAwaiter().GetResult();
 
-                    // Loop over statements, skipping those that are already prepared (because they were persisted)
-                    var isFirst = true;
-                    foreach (var batchCommand in command.InternalBatchCommands)
+                    try
                     {
-                        if (!batchCommand.IsPreparing)
-                            continue;
-
-                        var pStatement = batchCommand.PreparedStatement!;
-
-                        if (pStatement.StatementBeingReplaced != null)
+                        // Loop over statements, skipping those that are already prepared (because they were persisted)
+                        var isFirst = true;
+                        foreach (var batchCommand in command.InternalBatchCommands)
                         {
-                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-                            pStatement.StatementBeingReplaced.CompleteUnprepare();
-                            pStatement.StatementBeingReplaced = null;
+                            if (!batchCommand.IsPreparing)
+                                continue;
+
+                            var pStatement = batchCommand.PreparedStatement!;
+
+                            if (pStatement.StatementBeingReplaced != null)
+                            {
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                                pStatement.StatementBeingReplaced.CompleteUnprepare();
+                                pStatement.StatementBeingReplaced = null;
+                            }
+
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                            var msg = await connector.ReadMessage(async).ConfigureAwait(false);
+                            switch (msg.Code)
+                            {
+                            case BackendMessageCode.RowDescription:
+                                // Clone the RowDescription for use with the prepared statement (the one we have is reused
+                                // by the connection)
+                                var description = ((RowDescriptionMessage)msg).Clone();
+                                command.FixupRowDescription(description, isFirst);
+                                batchCommand.Description = description;
+                                break;
+                            case BackendMessageCode.NoData:
+                                batchCommand.Description = null;
+                                break;
+                            default:
+                                throw connector.UnexpectedMessageReceived(msg.Code);
+                            }
+
+                            pStatement.State = PreparedState.Prepared;
+                            connector.PreparedStatementManager.NumPrepared++;
+                            batchCommand.IsPreparing = false;
+                            isFirst = false;
                         }
 
-                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-                        var msg = await connector.ReadMessage(async).ConfigureAwait(false);
-                        switch (msg.Code)
-                        {
-                        case BackendMessageCode.RowDescription:
-                            // Clone the RowDescription for use with the prepared statement (the one we have is reused
-                            // by the connection)
-                            var description = ((RowDescriptionMessage)msg).Clone();
-                            command.FixupRowDescription(description, isFirst);
-                            batchCommand.Description = description;
-                            break;
-                        case BackendMessageCode.NoData:
-                            batchCommand.Description = null;
-                            break;
-                        default:
-                            throw connector.UnexpectedMessageReceived(msg.Code);
-                        }
-
-                        pStatement.State = PreparedState.Prepared;
-                        connector.PreparedStatementManager.NumPrepared++;
-                        batchCommand.IsPreparing = false;
-                        isFirst = false;
+                        Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
                     }
-
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-
-                    if (async)
-                        await sendTask.ConfigureAwait(false);
-                    else
-                        sendTask.GetAwaiter().GetResult();
+                    finally
+                    {
+                        try
+                        {
+                            // Make sure sendTask is complete so we don't race against asynchronous flush
+                            if (async)
+                                await sendTask.ConfigureAwait(false);
+                            else
+                                sendTask.GetAwaiter().GetResult();
+                        }
+                        catch
+                        {
+                            // ignored
+                        }
+                    }
                 }
 
                 LogMessages.CommandPreparedExplicitly(connector.CommandLogger, connector.Id);
