@@ -38,7 +38,10 @@ sealed class PgPassFile
     {
         get
         {
-            foreach (var l in File.ReadLines(FileName))
+            var bytes = File.ReadAllBytes(FileName);
+            var mem = new MemoryStream(bytes);
+            using var reader = new StreamReader(mem);
+            while (reader.ReadLine() is { } l)
             {
                 var line = l.Trim();
                 if (line.Length > 0 && line[0] != '#')
