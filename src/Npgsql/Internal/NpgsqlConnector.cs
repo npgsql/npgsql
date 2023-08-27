@@ -735,9 +735,9 @@ public sealed partial class NpgsqlConnector
 
         async ValueTask<string> GetUsernameAsyncInternal()
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && DataSource.IntegratedSecurityHandler.IsSupported)
             {
-                username = await KerberosUsernameProvider.GetUsername(async, Settings.IncludeRealm, ConnectionLogger,
+                username = await DataSource.IntegratedSecurityHandler.GetUsername(async, Settings.IncludeRealm, ConnectionLogger,
                     cancellationToken);
 
                 if (username?.Length > 0)
