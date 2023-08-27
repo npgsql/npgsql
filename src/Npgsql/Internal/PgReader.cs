@@ -13,58 +13,71 @@ namespace Npgsql.Internal;
 public class PgReader
 {
     readonly NpgsqlReadBuffer _buffer;
-    DataFormat _fieldFormat;
-    Size _fieldSize;
-    Size _fieldBufferRequirement;
+
+    bool _resumable;
 
     byte[]? _pooledArray;
+    NpgsqlReadBuffer.ColumnStream? _userActiveStream;
+    PreparedTextReader? _preparedTextReader;
 
-    internal long FieldStartPos { get; set; }
-    internal int FieldSize => _fieldSize.Value;
-    internal bool Initialized => !_fieldSize.IsDefault;
+    long _fieldStartPos;
+    Size _fieldBufferRequirement;
+    DataFormat _fieldFormat;
+    Size _fieldSize;
 
+    // This position is relative to _fieldStartPos, which is why it can be an int.
     int _currentStartPos;
     Size _currentBufferRequirement;
-    int CurrentSize { get; set; }
+    int _currentSize;
 
-    internal PgReader(NpgsqlReadBuffer buffer)
-    {
-        _buffer = buffer;
-        _pooledArray = null;
-    }
+    // GetChars Internal state
+    TextReader? _charsReadReader;
+    int _charsRead;
 
-    int Pos => (int)(_buffer.CumulativeReadPosition - FieldStartPos);
-    public ValueMetadata Current => new() { Size = CurrentSize, Format = _fieldFormat, BufferRequirement = _currentBufferRequirement };
-    internal int CurrentOffset => Pos - _currentStartPos;
+    // GetChars User state
+    int? _charsReadOffset;
+    ArraySegment<char>? _charsReadBuffer;
+
+    internal PgReader(NpgsqlReadBuffer buffer) => _buffer = buffer;
+
+    internal long FieldStartPos => _fieldStartPos;
+    internal int FieldSize => _fieldSize.Value;
+    internal bool Initialized => !_fieldSize.IsDefault;
+    int FieldPos => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
+
+    public ValueMetadata Current => new() { Size = _currentSize, Format = _fieldFormat, BufferRequirement = _currentBufferRequirement };
+    public int CurrentRemaining => _currentSize - CurrentOffset;
     internal Size CurrentBufferRequirement => _currentBufferRequirement;
-    public int CurrentRemaining => CurrentSize - CurrentOffset;
+    internal int CurrentOffset => FieldPos - _currentStartPos;
 
     int BufferSize => _buffer.Size;
     int BufferBytesRemaining => _buffer.ReadBytesLeft;
 
-    NpgsqlReadBuffer.ColumnStream? _userActiveStream;
-    PreparedTextReader? _preparedTextReader;
-    internal bool Resumable { get; private set; }
+    internal bool Resumable => _resumable;
+    public bool IsResumed => Resumable && _currentSize != CurrentRemaining;
 
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
+
+    [MemberNotNullWhen(true, nameof(_charsReadReader))]
+    internal bool IsCharsRead => _charsReadOffset is not null;
 
     // Here for testing purposes
     internal void BreakConnection() => throw _buffer.Connector.Break(new Exception("Broken"));
 
     internal void Revert(int size, int startPos, Size bufferRequirement)
     {
-        if (startPos > Pos)
+        if (startPos > FieldPos)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(startPos), "Can't revert forwardly");
 
-        CurrentSize = size;
         _currentStartPos = startPos;
         _currentBufferRequirement = bufferRequirement;
+        _currentSize = size;
     }
 
     [Conditional("DEBUG")]
     void CheckBounds(int count)
     {
-        if (count > FieldSize - Pos)
+        if (count > FieldSize - FieldPos)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the field.");
     }
 
@@ -161,8 +174,8 @@ public class PgReader
             throw new ArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
 
         // This will cause any previously handed out StreamReaders etc to throw, as intended.
-        if (_userActiveStream is { } stream)
-            stream.Dispose();
+        if (_userActiveStream is not null)
+            DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
@@ -304,19 +317,6 @@ public class PgReader
         _userActiveStream = null;
     }
 
-    public bool IsResumed => Resumable && CurrentSize != CurrentRemaining;
-
-    // Internal state
-    TextReader? _charsReadReader;
-    int _charsRead;
-
-    // User state
-    int? _charsReadOffset;
-    ArraySegment<char>? _charsReadBuffer;
-
-    [MemberNotNullWhen(true, nameof(_charsReadReader))]
-    internal bool IsCharsRead => _charsReadOffset is not null;
-
     internal bool GetCharsReadInfo(Encoding encoding, out int charsRead, out TextReader reader, out int charsOffset, out ArraySegment<char>? buffer)
     {
         if (!IsCharsRead)
@@ -383,7 +383,7 @@ public class PgReader
                 Debug.Assert(Initialized);
                 return this;
             }
-            Resumable = resumable;
+            _resumable = resumable;
         }
         else if (Initialized)
             ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
@@ -392,12 +392,10 @@ public class PgReader
 
         ThrowIfStreamActive();
 
-        FieldStartPos = _buffer.CumulativeReadPosition;
+        _fieldStartPos = _buffer.CumulativeReadPosition;
         _fieldFormat = format;
-        _fieldSize = fieldLength;
-        // We must set CurrentSize here due to tracked/resumable ops like GetStream/GetBytes
-        // directly interacting with the reader without StartRead/EndRead.
-        CurrentSize = FieldSize;
+        _fieldSize = _currentSize = fieldLength;
+        _currentStartPos = 0;
         return this;
     }
 
@@ -411,7 +409,7 @@ public class PgReader
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        CurrentSize = FieldSize;
+        _currentSize = FieldSize;
         _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
         return BufferAsync(bufferRequirement, cancellationToken);
     }
@@ -422,7 +420,7 @@ public class PgReader
             return;
 
         // If it was upper bound we should consume.
-        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - Pos is var remaining and > 0)
+        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos is var remaining and > 0)
         {
             Consume(remaining);
             return;
@@ -437,7 +435,7 @@ public class PgReader
             return new();
 
         // If it was upper bound we should consume.
-        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - Pos is var remaining and > 0)
+        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos is var remaining and > 0)
             return ConsumeAsync(remaining);
 
         ThrowIfNotConsumed();
@@ -449,12 +447,12 @@ public class PgReader
         if (size > CurrentRemaining)
             throw new ArgumentOutOfRangeException(nameof(size), "Can't begin a read for a larger size than the current remaining size.");
 
-        var previousSize = CurrentSize;
+        var previousSize = _currentSize;
         var previousStartPos = _currentStartPos;
         var previousBufferRequirement = _currentBufferRequirement;
-        CurrentSize = size;
+        _currentSize = size;
         _currentBufferRequirement = bufferRequirement;
-        _currentStartPos = Pos;
+        _currentStartPos = FieldPos;
 
         await Buffer(async, bufferRequirement, cancellationToken).ConfigureAwait(false);
         return new NestedReadScope(async, this, previousSize, previousStartPos, previousBufferRequirement);
@@ -485,12 +483,12 @@ public class PgReader
         var remaining = count ?? CurrentRemaining;
         CheckBounds(remaining);
 
-        var origPos = Pos;
+        var origPos = FieldPos;
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
         if (!_buffer.Connector.IsBroken)
             await _buffer.Skip(remaining, async).ConfigureAwait(false);
 
-        Debug.Assert(FieldSize - Pos == FieldSize - origPos - remaining);
+        Debug.Assert(FieldSize - FieldPos == FieldSize - origPos - remaining);
     }
 
     public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
@@ -502,7 +500,7 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
     }
 
-    internal bool CommitHasIO(bool resuming) => Initialized && !resuming && FieldSize - Pos > 0;
+    internal bool CommitHasIO(bool resuming) => Initialized && !resuming && FieldSize - FieldPos > 0;
     internal async ValueTask Commit(bool async, bool resuming)
     {
         if (!Initialized)
@@ -533,13 +531,14 @@ public class PgReader
             await DisposeUserActiveStream(async).ConfigureAwait(false);
 
         // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
-        if (FieldSize - Pos is var remaining and > 0)
+        if (FieldSize - FieldPos is var remaining and > 0)
             await Consume(async, count: remaining).ConfigureAwait(false);
 
-        Resumable = false;
-        _fieldSize = default;
+        _resumable = false;
+        _fieldStartPos = -1;
+        _fieldBufferRequirement = default;
         _fieldFormat = default;
-        FieldStartPos = -1;
+        _fieldSize = default;
     }
 
     byte[] RentArray(int count)
@@ -617,13 +616,13 @@ public class PgReader
 
     void ThrowIfNotConsumed()
     {
-        if (Pos < FieldSize)
+        if (FieldPos < FieldSize)
             Throw();
 
         void Throw() =>
             throw _buffer.Connector.Break(
                 new InvalidOperationException(
-                    $"Trying to end a read over a field that hasn't been entirely consumed (pos: {Pos}, len: {FieldSize})"));
+                    $"Trying to end a read over a field that hasn't been entirely consumed (pos: {FieldPos}, len: {FieldSize})"));
     }
 }
 
