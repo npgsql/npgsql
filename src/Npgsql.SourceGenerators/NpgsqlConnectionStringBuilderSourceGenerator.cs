@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -91,8 +92,11 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
             if (property.Name != displayName)
             {
                 var propertyName = property.Name.ToUpperInvariant();
-                propertiesByKeyword[propertyName] = propertyDetails.Clone();
-                propertyDetails.Alternatives.Add(propertyName);
+                if (!propertiesByKeyword.ContainsKey(propertyName))
+                {
+                    propertiesByKeyword.Add(propertyName, propertyDetails.Clone());
+                    propertyDetails.Alternatives.Add(propertyName);
+                }
             }
 
             if (propertyAttribute.ConstructorArguments.Length == 1)
@@ -102,8 +106,11 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
                     if (synonymArg.Value is string synonym)
                     {
                         var synonymName = synonym.ToUpperInvariant();
-                        propertiesByKeyword[synonymName] = propertyDetails.Clone();
-                        propertyDetails.Alternatives.Add(synonymName);
+                        if (!propertiesByKeyword.ContainsKey(synonymName))
+                        {
+                            propertiesByKeyword.Add(synonymName, propertyDetails.Clone());
+                            propertyDetails.Alternatives.Add(synonymName);
+                        }
                     }
                 }
             }
