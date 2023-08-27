@@ -8,6 +8,8 @@ namespace Npgsql.Internal;
 
 class IntegratedSecurityHandler
 {
+    public virtual bool IsSupported => false;
+
     public virtual ValueTask<string?> GetUsername(bool async, bool includeRealm, ILogger connectionLogger, CancellationToken cancellationToken)
         => throw new NotSupportedException(string.Format(NpgsqlStrings.IntegratedSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity)));
 
@@ -17,6 +19,8 @@ class IntegratedSecurityHandler
 
 sealed class RealIntegratedSecurityHandler : IntegratedSecurityHandler
 {
+    public override bool IsSupported => true;
+
     public override ValueTask<string?> GetUsername(bool async, bool includeRealm, ILogger connectionLogger, CancellationToken cancellationToken)
         => KerberosUsernameProvider.GetUsername(async, includeRealm, connectionLogger, cancellationToken);
 

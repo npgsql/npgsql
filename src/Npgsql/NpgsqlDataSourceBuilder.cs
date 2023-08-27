@@ -93,6 +93,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         void AddDefaultFeatures()
         {
             _internalBuilder.EnableTransportSecurity();
+            _internalBuilder.EnableIntegratedSecurity();
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
             // Reverse order arrays.
             AddTypeInfoResolver(new UnmappedMultirangeArrayTypeInfoResolver());
