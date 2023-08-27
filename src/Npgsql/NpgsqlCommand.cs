@@ -536,58 +536,74 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (sendTask.IsFaulted)
                 sendTask.GetAwaiter().GetResult();
 
-            foreach (var batchCommand in InternalBatchCommands)
+            try
             {
-                Expect<ParseCompleteMessage>(
-                    connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
-                var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
-                    connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector).TypeOIDs;
-
-                if (batchCommand.PositionalParameters.Count != paramTypeOIDs.Count)
+                foreach (var batchCommand in InternalBatchCommands)
                 {
-                    connector.SkipUntil(BackendMessageCode.ReadyForQuery);
-                    Parameters.Clear();
-                    throw new NpgsqlException("There was a mismatch in the number of derived parameters between the Npgsql SQL parser and the PostgreSQL parser. Please report this as bug to the Npgsql developers (https://github.com/npgsql/npgsql/issues).");
-                }
+                    Expect<ParseCompleteMessage>(
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
+                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector).TypeOIDs;
 
-                for (var i = 0; i < paramTypeOIDs.Count; i++)
-                {
-                    try
-                    {
-                        var param = batchCommand.PositionalParameters[i];
-                        var paramOid = paramTypeOIDs[i];
-
-                        var (npgsqlDbType, postgresType) = connector.TypeMapper.GetTypeInfoByOid(paramOid);
-
-                        if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)
-                            throw new NpgsqlException("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");
-
-                        param.DataTypeName = postgresType.DisplayName;
-                        param.PostgresType = postgresType;
-                        if (npgsqlDbType.HasValue)
-                            param.NpgsqlDbType = npgsqlDbType.Value;
-                    }
-                    catch
+                    if (batchCommand.PositionalParameters.Count != paramTypeOIDs.Count)
                     {
                         connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                         Parameters.Clear();
-                        throw;
+                        throw new NpgsqlException(
+                            "There was a mismatch in the number of derived parameters between the Npgsql SQL parser and the PostgreSQL parser. Please report this as bug to the Npgsql developers (https://github.com/npgsql/npgsql/issues).");
+                    }
+
+                    for (var i = 0; i < paramTypeOIDs.Count; i++)
+                    {
+                        try
+                        {
+                            var param = batchCommand.PositionalParameters[i];
+                            var paramOid = paramTypeOIDs[i];
+
+                            var (npgsqlDbType, postgresType) = connector.TypeMapper.GetTypeInfoByOid(paramOid);
+
+                            if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)
+                                throw new NpgsqlException(
+                                    "The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");
+
+                            param.DataTypeName = postgresType.DisplayName;
+                            param.PostgresType = postgresType;
+                            if (npgsqlDbType.HasValue)
+                                param.NpgsqlDbType = npgsqlDbType.Value;
+                        }
+                        catch
+                        {
+                            connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+                            Parameters.Clear();
+                            throw;
+                        }
+                    }
+
+                    var msg = connector.ReadMessage(async: false).GetAwaiter().GetResult();
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.RowDescription:
+                    case BackendMessageCode.NoData:
+                        break;
+                    default:
+                        throw connector.UnexpectedMessageReceived(msg.Code);
                     }
                 }
 
-                var msg = connector.ReadMessage(async: false).GetAwaiter().GetResult();
-                switch (msg.Code)
+                Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
+            }
+            finally
+            {
+                try
                 {
-                case BackendMessageCode.RowDescription:
-                case BackendMessageCode.NoData:
-                    break;
-                default:
-                    throw connector.UnexpectedMessageReceived(msg.Code);
+                    // Make sure sendTask is complete so we don't race against asynchronous flush
+                    sendTask.GetAwaiter().GetResult();
+                }
+                catch
+                {
+                    // ignored
                 }
             }
-
-            Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
-            sendTask.GetAwaiter().GetResult();
         }
     }
 
@@ -672,53 +688,66 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (sendTask.IsFaulted)
                         sendTask.GetAwaiter().GetResult();
 
-                    // Loop over statements, skipping those that are already prepared (because they were persisted)
-                    var isFirst = true;
-                    foreach (var batchCommand in command.InternalBatchCommands)
+                    try
                     {
-                        if (!batchCommand.IsPreparing)
-                            continue;
-
-                        var pStatement = batchCommand.PreparedStatement!;
-
-                        if (pStatement.StatementBeingReplaced != null)
+                        // Loop over statements, skipping those that are already prepared (because they were persisted)
+                        var isFirst = true;
+                        foreach (var batchCommand in command.InternalBatchCommands)
                         {
-                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-                            pStatement.StatementBeingReplaced.CompleteUnprepare();
-                            pStatement.StatementBeingReplaced = null;
+                            if (!batchCommand.IsPreparing)
+                                continue;
+
+                            var pStatement = batchCommand.PreparedStatement!;
+
+                            if (pStatement.StatementBeingReplaced != null)
+                            {
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                                pStatement.StatementBeingReplaced.CompleteUnprepare();
+                                pStatement.StatementBeingReplaced = null;
+                            }
+
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                            var msg = await connector.ReadMessage(async).ConfigureAwait(false);
+                            switch (msg.Code)
+                            {
+                            case BackendMessageCode.RowDescription:
+                                // Clone the RowDescription for use with the prepared statement (the one we have is reused
+                                // by the connection)
+                                var description = ((RowDescriptionMessage)msg).Clone();
+                                command.FixupRowDescription(description, isFirst);
+                                batchCommand.Description = description;
+                                break;
+                            case BackendMessageCode.NoData:
+                                batchCommand.Description = null;
+                                break;
+                            default:
+                                throw connector.UnexpectedMessageReceived(msg.Code);
+                            }
+
+                            pStatement.State = PreparedState.Prepared;
+                            connector.PreparedStatementManager.NumPrepared++;
+                            batchCommand.IsPreparing = false;
+                            isFirst = false;
                         }
 
-                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-                        var msg = await connector.ReadMessage(async).ConfigureAwait(false);
-                        switch (msg.Code)
-                        {
-                        case BackendMessageCode.RowDescription:
-                            // Clone the RowDescription for use with the prepared statement (the one we have is reused
-                            // by the connection)
-                            var description = ((RowDescriptionMessage)msg).Clone();
-                            command.FixupRowDescription(description, isFirst);
-                            batchCommand.Description = description;
-                            break;
-                        case BackendMessageCode.NoData:
-                            batchCommand.Description = null;
-                            break;
-                        default:
-                            throw connector.UnexpectedMessageReceived(msg.Code);
-                        }
-
-                        pStatement.State = PreparedState.Prepared;
-                        connector.PreparedStatementManager.NumPrepared++;
-                        batchCommand.IsPreparing = false;
-                        isFirst = false;
+                        Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
                     }
-
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
-
-                    if (async)
-                        await sendTask.ConfigureAwait(false);
-                    else
-                        sendTask.GetAwaiter().GetResult();
+                    finally
+                    {
+                        try
+                        {
+                            // Make sure sendTask is complete so we don't race against asynchronous flush
+                            if (async)
+                                await sendTask.ConfigureAwait(false);
+                            else
+                                sendTask.GetAwaiter().GetResult();
+                        }
+                        catch
+                        {
+                            // ignored
+                        }
+                    }
                 }
 
                 LogMessages.CommandPreparedExplicitly(connector.CommandLogger, connector.Id);
