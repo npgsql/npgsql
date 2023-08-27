@@ -393,8 +393,9 @@ public sealed partial class NpgsqlConnector
             // Note: the in-flight channel can probably be single-writer, but that doesn't actually do anything
             // at this point. And we currently rely on being able to complete the channel at any point (from
             // Break). We may want to revisit this if an optimized, SingleWriter implementation is introduced.
-            var commandsInFlightChannel = Channel.CreateUnbounded<NpgsqlCommand>(
-                new UnboundedChannelOptions { SingleReader = true });
+            // We're using bounded just to share code.
+            var commandsInFlightChannel =
+                Channel.CreateBounded<NpgsqlCommand>(new BoundedChannelOptions(int.MaxValue) { SingleReader = true });
             CommandsInFlightReader = commandsInFlightChannel.Reader;
             CommandsInFlightWriter = commandsInFlightChannel.Writer;
 
