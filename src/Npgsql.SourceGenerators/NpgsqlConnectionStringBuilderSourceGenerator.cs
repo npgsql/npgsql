@@ -93,10 +93,7 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
             {
                 var propertyName = property.Name.ToUpperInvariant();
                 if (!propertiesByKeyword.ContainsKey(propertyName))
-                {
-                    propertiesByKeyword.Add(propertyName, propertyDetails.Clone());
                     propertyDetails.Alternatives.Add(propertyName);
-                }
             }
 
             if (propertyAttribute.ConstructorArguments.Length == 1)
@@ -107,10 +104,7 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
                     {
                         var synonymName = synonym.ToUpperInvariant();
                         if (!propertiesByKeyword.ContainsKey(synonymName))
-                        {
-                            propertiesByKeyword.Add(synonymName, propertyDetails.Clone());
                             propertyDetails.Alternatives.Add(synonymName);
-                        }
                     }
                 }
             }
@@ -138,18 +132,15 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
 
         public HashSet<string> Alternatives { get; } = new(StringComparer.Ordinal);
 
-        public bool IsMain { get; private init; } = true;
-
         public PropertyDetails Clone()
-            => new PropertyDetails
+            => new()
             {
                 Name = Name,
                 CanonicalName = CanonicalName,
                 TypeName = TypeName,
                 IsEnum = IsEnum,
                 IsObsolete = IsObsolete,
-                DefaultValue = DefaultValue,
-                IsMain = false
+                DefaultValue = DefaultValue
             };
     }
 }
