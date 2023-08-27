@@ -270,7 +270,7 @@ partial class NpgsqlConnector
         return ih.GetHashAndReset();
 #endif
     }
-
+#endif
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
     {
         var passwd = await GetPassword(username, async, cancellationToken);
