@@ -1,7 +1,10 @@
+// ReSharper disable RedundantUsingDirective
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+// ReSharper restore RedundantUsingDirective
 
+// ReSharper disable once CheckNamespace
 namespace System.Text;
 
 static class EncodingExtensions
@@ -105,9 +108,9 @@ static class EncodingExtensions
             // If the incoming sequence is multi-segment, create a stateful Decoder
             // and use it as the workhorse. On the final iteration we'll pass flush=true.
 
-            ReadOnlySequence<byte> remainingBytes = bytes;
-            int originalCharsLength = chars.Length;
-            Decoder decoder = encoding.GetDecoder();
+            var remainingBytes = bytes;
+            var originalCharsLength = chars.Length;
+            var decoder = encoding.GetDecoder();
             bool isFinalSegment;
 
             do
@@ -116,7 +119,7 @@ static class EncodingExtensions
                 var next = remainingBytes.GetPosition(firstSpan.Length);
                 isFinalSegment = remainingBytes.IsSingleSegment;
 
-                int charsWrittenJustNow = decoder.GetChars(firstSpan, chars, flush: isFinalSegment);
+                var charsWrittenJustNow = decoder.GetChars(firstSpan, chars, flush: isFinalSegment);
                 chars = chars.Slice(charsWrittenJustNow);
                 remainingBytes = remainingBytes.Slice(next);
             } while (!isFinalSegment);
