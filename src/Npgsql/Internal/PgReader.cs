@@ -389,7 +389,6 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
 
         Debug.Assert(!Initialized || (Resumable && resumable), "Reader wasn't properly committed before next init");
-        Debug.Assert(!_readStarted);
 
         ThrowIfStreamActive();
 
@@ -402,11 +401,9 @@ public class PgReader
         return this;
     }
 
-    bool _readStarted;
     internal void StartRead(Size bufferRequirement)
     {
         Debug.Assert(FieldSize >= 0);
-        _readStarted = true;
         _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
         Buffer(bufferRequirement);
     }
@@ -414,7 +411,6 @@ public class PgReader
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        _readStarted = true;
         CurrentSize = FieldSize;
         _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
         return BufferAsync(bufferRequirement, cancellationToken);
@@ -423,10 +419,7 @@ public class PgReader
     internal void EndRead()
     {
         if (Resumable)
-        {
-            _readStarted = false;
             return;
-        }
 
         // If it was upper bound we should consume.
         if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - Pos is var remaining and > 0)
@@ -436,23 +429,19 @@ public class PgReader
         }
 
         ThrowIfNotConsumed();
-        _readStarted = false;
     }
 
-    internal async ValueTask EndReadAsync()
+    internal ValueTask EndReadAsync()
     {
         if (Resumable)
-        {
-            _readStarted = false;
-            return;
-        }
+            return new();
 
         // If it was upper bound we should consume.
         if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - Pos is var remaining and > 0)
-            await ConsumeAsync(remaining);
+            return ConsumeAsync(remaining);
 
         ThrowIfNotConsumed();
-        _readStarted = false;
+        return new();
     }
 
     internal async ValueTask<NestedReadScope> BeginNestedRead(bool async, int size, Size bufferRequirement, CancellationToken cancellationToken = default)
@@ -496,9 +485,12 @@ public class PgReader
         var remaining = count ?? CurrentRemaining;
         CheckBounds(remaining);
 
+        var origPos = Pos;
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
         if (!_buffer.Connector.IsBroken)
             await _buffer.Skip(remaining, async).ConfigureAwait(false);
+
+        Debug.Assert(FieldSize - Pos == FieldSize - origPos - remaining);
     }
 
     public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
@@ -520,7 +512,6 @@ public class PgReader
         {
             if (!Resumable)
                 ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
-            _readStarted = false;
             return;
         }
 
@@ -541,17 +532,14 @@ public class PgReader
         if (_userActiveStream is not null)
             await DisposeUserActiveStream(async).ConfigureAwait(false);
 
-        // If it was a resumable read while the next one isn't we'll consume everything.
-        // If we're in a _readStarted state we'll assume we had an exception and we'll consume silently as well.
         // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
-        if (FieldSize - Pos is var remaining and > 0 && (Resumable || _readStarted))
+        if (FieldSize - Pos is var remaining and > 0)
             await Consume(async, count: remaining).ConfigureAwait(false);
 
         Resumable = false;
         _fieldSize = default;
         _fieldFormat = default;
         FieldStartPos = -1;
-        _readStarted = false;
     }
 
     byte[] RentArray(int count)
