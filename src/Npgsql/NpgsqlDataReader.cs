@@ -500,7 +500,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     continue;
                 }
 
-                if (!Command.IsWrappedByBatch && StatementIndex == 0 && Command.Parameters.HasOutputParameters)
+                if (!Command.IsWrappedByBatch && StatementIndex == 0 && Command._parameters?.HasOutputParameters == true)
                 {
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must always read it in non-sequential mode because it will be traversed twice (once

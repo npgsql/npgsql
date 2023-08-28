@@ -16,6 +16,8 @@ sealed class PreparedStatementManager
 
     readonly PreparedStatement?[] _candidates;
 
+    static readonly List<NpgsqlParameter> EmptyParameters = new();
+
     /// <summary>
     /// Total number of current prepared statements (whether explicit or automatic).
     /// </summary>
@@ -65,7 +67,7 @@ sealed class PreparedStatementManager
                 // Great, we've found an explicit prepared statement.
                 // We just need to check that the parameter types correspond, since prepared statements are
                 // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
-                return pStatement.DoParametersMatch(batchCommand.PositionalParameters!)
+                return pStatement.DoParametersMatch(batchCommand.HasParameters ? batchCommand.PositionalParameters : EmptyParameters)
                     ? pStatement
                     : null;
             }
@@ -89,7 +91,7 @@ sealed class PreparedStatementManager
         }
 
         // Statement hasn't been prepared yet
-        return BySql[sql] = PreparedStatement.CreateExplicit(this, sql, NextPreparedStatementName(), batchCommand.PositionalParameters, statementBeingReplaced);
+        return BySql[sql] = PreparedStatement.CreateExplicit(this, sql, NextPreparedStatementName(), batchCommand.HasParameters ? batchCommand.PositionalParameters : EmptyParameters, statementBeingReplaced);
     }
 
     internal PreparedStatement? TryGetAutoPrepared(NpgsqlBatchCommand batchCommand)
@@ -143,7 +145,7 @@ sealed class PreparedStatementManager
             // for preparation (earlier identical statement in the same command).
             // We just need to check that the parameter types correspond, since prepared statements are
             // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
-            if (!pStatement.DoParametersMatch(batchCommand.PositionalParameters))
+            if (!pStatement.DoParametersMatch(batchCommand.HasParameters ? batchCommand.PositionalParameters : EmptyParameters))
                 return null;
             // Prevent this statement from being replaced within this batch
             pStatement.LastUsed = DateTime.MaxValue;
@@ -247,7 +249,7 @@ sealed class PreparedStatementManager
         // Note that the parameter types are only set at the moment of preparation - in the candidate phase
         // there's no differentiation between overloaded statements, which are a pretty rare case, saving
         // allocations.
-        pStatement.SetParamTypes(batchCommand.PositionalParameters);
+        pStatement.SetParamTypes(batchCommand.HasParameters ? batchCommand.PositionalParameters : EmptyParameters);
 
         return pStatement;
     }

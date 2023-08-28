@@ -35,8 +35,9 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// <inheritdoc/>
     protected override DbParameterCollection DbParameterCollection => Parameters;
 
+    internal NpgsqlParameterCollection? _parameters;
     /// <inheritdoc cref="DbBatchCommand.Parameters"/>
-    public new NpgsqlParameterCollection Parameters { get; } = new();
+    public new NpgsqlParameterCollection Parameters => _parameters ??= new();
 
 #pragma warning disable CA1822 // Mark members as static
 
@@ -151,6 +152,8 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
         get => _inputParameters ??= _ownedInputParameters ??= new();
         set => _inputParameters = value;
     }
+
+    internal bool HasParameters => _inputParameters?.Count > 0 || _ownedInputParameters?.Count > 0;
 
     List<NpgsqlParameter>? _ownedInputParameters;
     List<NpgsqlParameter>? _inputParameters;

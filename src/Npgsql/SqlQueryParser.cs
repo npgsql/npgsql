@@ -7,6 +7,8 @@ namespace Npgsql;
 
 sealed class SqlQueryParser
 {
+    static NpgsqlParameterCollection EmptyParameters { get; } = new();
+
     readonly Dictionary<string, int> _paramIndexMap = new();
     readonly StringBuilder _rewrittenSql = new();
 
@@ -70,7 +72,7 @@ sealed class SqlQueryParser
             // Batching mode. We're processing only one batch - if we encounter a semicolon (legacy batching), that's an error.
             Debug.Assert(batchCommand is not null);
             sql = batchCommand.CommandText;
-            parameters = batchCommand.Parameters;
+            parameters = batchCommand._parameters ?? EmptyParameters;
             batchCommands = null;
         }
         else
@@ -78,7 +80,7 @@ sealed class SqlQueryParser
             // Command mode. Semicolons (legacy batching) may occur.
             Debug.Assert(batchCommand is null);
             sql = command.CommandText;
-            parameters = command.Parameters;
+            parameters = command._parameters ?? EmptyParameters;
             batchCommands = command.InternalBatchCommands;
             MoveToNextBatchCommand();
         }
