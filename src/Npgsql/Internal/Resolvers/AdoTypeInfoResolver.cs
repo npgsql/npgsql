@@ -115,33 +115,35 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         }
 
         // Jsonb
+        const byte jsonbVersion = 1;
         mappings.AddType<string>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<string>(new StringTextConverter(options.TextEncoding))), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonbVersion, new StringTextConverter(options.TextEncoding))), isDefault: true);
         mappings.AddStructType<char>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<char>(new CharTextConverter(options.TextEncoding))));
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<char>(jsonbVersion, new CharTextConverter(options.TextEncoding))));
         mappings.AddType<byte[]>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<byte[]>(new ArrayByteaConverter())),
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<byte[]>(jsonbVersion, new ArrayByteaConverter())),
             MatchRequirement.DataTypeName);
         mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ReadOnlyMemory<byte>>(new ReadOnlyMemoryByteaConverter())),
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, new ReadOnlyMemoryByteaConverter())),
             MatchRequirement.DataTypeName);
         //Special mappings, these have no corresponding array mapping.
         mappings.AddType<TextReader>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<TextReader>(new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<TextReader>(jsonbVersion, new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
         mappings.AddStructType<GetChars>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<GetChars>(new GetCharsTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<GetChars>(jsonbVersion, new GetCharsTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
 
         // Jsonpath
+        const byte jsonpathVersion = 1;
         mappings.AddType<string>(DataTypeNames.Jsonpath,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonpathConverter<string>(new StringTextConverter(options.TextEncoding))), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonpathVersion, new StringTextConverter(options.TextEncoding))), isDefault: true);
         //Special mappings, these have no corresponding array mapping.
         mappings.AddType<TextReader>(DataTypeNames.Jsonpath,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonpathConverter<TextReader>(new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<TextReader>(jsonpathVersion, new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
         mappings.AddStructType<GetChars>(DataTypeNames.Jsonpath,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonpathConverter<GetChars>(new GetCharsTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<GetChars>(jsonpathVersion, new GetCharsTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
 
         // Bytea

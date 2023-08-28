@@ -5,19 +5,23 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
+sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>, IResumableRead
 {
+    readonly byte _versionPrefix;
     readonly PgConverter<T> _textConverter;
     BufferRequirements _innerRequirements;
 
-    public JsonbTextConverter(PgConverter<T> textConverter)
+    public VersionPrefixedTextConverter(byte versionPrefix, PgConverter<T> textConverter)
         : base(textConverter.DbNullPredicateKind is DbNullPredicate.Custom)
-        => _textConverter = textConverter;
+    {
+        _versionPrefix = versionPrefix;
+        _textConverter = textConverter;
+    }
 
     protected override bool IsDbNullValue(T? value) => _textConverter.IsDbNull(value);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => JsonbTextConverter.CanConvert(_textConverter, format, out _innerRequirements, out bufferRequirements);
+        => VersionPrefixedTextConverter.CanConvert(_textConverter, format, out _innerRequirements, out bufferRequirements);
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
@@ -36,13 +40,13 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
 
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
-        await JsonbTextConverter.ReadJsonVersion(async, reader, _innerRequirements.Read, cancellationToken).ConfigureAwait(false);
+        await VersionPrefixedTextConverter.ReadVersion(async, _versionPrefix, reader, _innerRequirements.Read, cancellationToken).ConfigureAwait(false);
         return async ? await _textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : _textConverter.Read(reader);
     }
 
     async ValueTask Write(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
     {
-        await JsonbTextConverter.WriteJsonVersion(async, writer, cancellationToken).ConfigureAwait(false);
+        await VersionPrefixedTextConverter.WriteVersion(async, _versionPrefix, writer, cancellationToken).ConfigureAwait(false);
         if (async)
             await _textConverter.WriteAsync(writer, value, cancellationToken).ConfigureAwait(false);
         else
@@ -52,21 +56,19 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
     bool IResumableRead.Supported => _textConverter is IResumableRead { Supported: true };
 }
 
-static class JsonbTextConverter
+static class VersionPrefixedTextConverter
 {
-    const byte JsonbProtocolVersion = 1;
-
-    public static async ValueTask WriteJsonVersion(bool async, PgWriter writer, CancellationToken cancellationToken)
+    public static async ValueTask WriteVersion(bool async, byte version, PgWriter writer, CancellationToken cancellationToken)
     {
         if (writer.Current.Format is not DataFormat.Binary)
             return;
 
         if (writer.ShouldFlush(sizeof(byte)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-        writer.WriteByte(JsonbProtocolVersion);
+        writer.WriteByte(version);
     }
 
-    public static async ValueTask ReadJsonVersion(bool async, PgReader reader, Size textConverterReadRequirement, CancellationToken cancellationToken)
+    public static async ValueTask ReadVersion(bool async, byte expectedVersion, PgReader reader, Size textConverterReadRequirement, CancellationToken cancellationToken)
     {
         if (reader.Current.Format is not DataFormat.Binary)
             return;
@@ -76,9 +78,9 @@ static class JsonbTextConverter
             if (reader.ShouldBuffer(sizeof(byte)))
                 await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
-            var version = reader.ReadByte();
-            if (version != JsonbProtocolVersion)
-                throw new InvalidCastException($"Unknown jsonb wire format version {version}");
+            var actualVersion = reader.ReadByte();
+            if (actualVersion != expectedVersion)
+                throw new InvalidCastException($"Unknown wire format version {actualVersion}");
         }
 
         // No need for a nested read, all text converters will read CurrentRemaining bytes.
