@@ -258,10 +258,16 @@ partial class NpgsqlConnector
         return buffer1;
     }
 
-    static byte[] HMAC(byte[] data, string key)
+    static byte[] HMAC(byte[] key, string data)
     {
-        using var hmacsha256 = new HMACSHA256(data);
-        return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(key));
+        byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+#if NET7_0_OR_GREATER
+        return HMACSHA256.HashData(key, dataBytes);
+#else
+        using var ih = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, key);
+        ih.AppendData(dataBytes);
+        return ih.GetHashAndReset();
+#endif
     }
 
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
