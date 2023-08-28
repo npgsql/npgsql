@@ -53,21 +53,30 @@ sealed class ArraySegmentByteaConverter : ByteaConverters<ArraySegment<byte>>
             : throw new UnreachableException("Expected array-backed memory");
 }
 
-sealed class ArrayByteaConverter : ByteaConverters<byte[]>
+sealed class ArrayByteaConverter : PgStreamingConverter<byte[]>
 {
-    protected override Memory<byte> ConvertTo(byte[] value) => value.AsMemory();
-    protected override byte[] ConvertFrom(Memory<byte> value)
+    public override byte[] Read(PgReader reader)
     {
-        if (!MemoryMarshal.TryGetArray<byte>(value, out var segment))
-            throw new UnreachableException("Expected array-backed memory");
-
-        if (segment.Array?.Length == segment.Count)
-            return segment.Array!;
-
-        var array = new byte[segment.Count];
-        Array.Copy(segment.Array!, segment.Offset, array, 0, segment.Count);
-        return array;
+        var bytes = new byte[reader.CurrentRemaining];
+        reader.ReadBytes(bytes);
+        return bytes;
     }
+
+    public override async ValueTask<byte[]> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+    {
+        var bytes = new byte[reader.CurrentRemaining];
+        await reader.ReadBytesAsync(bytes, cancellationToken).ConfigureAwait(false);
+        return bytes;
+    }
+
+    public override Size GetSize(SizeContext context, byte[] value, ref object? writeState)
+        => value.Length;
+
+    public override void Write(PgWriter writer, byte[] value)
+        => writer.WriteBytes(value);
+
+    public override ValueTask WriteAsync(PgWriter writer, byte[] value, CancellationToken cancellationToken = default)
+        => writer.WriteBytesAsync(value, cancellationToken);
 }
 
 sealed class ReadOnlyMemoryByteaConverter : ByteaConverters<ReadOnlyMemory<byte>>
