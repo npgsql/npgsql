@@ -753,6 +753,7 @@ LANGUAGE 'plpgsql'");
         }
     }
 
+#if NET6_0_OR_GREATER // no batch reuse until 6.0
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5239")]
     public async Task Batch_dispose_reuse()
     {
@@ -785,6 +786,7 @@ LANGUAGE 'plpgsql'");
             Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(3));
         }
     }
+#endif
 
     #endregion Miscellaneous
 
