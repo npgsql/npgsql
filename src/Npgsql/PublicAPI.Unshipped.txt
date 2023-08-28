@@ -4,6 +4,7 @@ Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Disable = 0 -> Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Prefer = 1 -> Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Require = 2 -> Npgsql.ChannelBinding
+Npgsql.NpgsqlBatch.CreateBatchCommand() -> Npgsql.NpgsqlBatchCommand!
 Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.get -> Npgsql.ChannelBinding
 Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.set -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableFullTextSearch() -> Npgsql.NpgsqlSlimDataSourceBuilder!
