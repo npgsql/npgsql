@@ -38,6 +38,8 @@ public class PgReader
     int? _charsReadOffset;
     ArraySegment<char>? _charsReadBuffer;
 
+    bool _requiresCleanup;
+
     internal PgReader(NpgsqlReadBuffer buffer) => _buffer = buffer;
 
     internal long FieldStartPos => _fieldStartPos;
@@ -173,6 +175,7 @@ public class PgReader
         if (length > CurrentRemaining)
             throw new ArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
 
+        _requiresCleanup = true;
         // This will cause any previously handed out StreamReaders etc to throw, as intended.
         if (_userActiveStream is not null)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
@@ -193,6 +196,7 @@ public class PgReader
         // We don't want to add a ton of memory pressure for large strings.
         const int maxPreparedSize = 1024 * 64;
 
+        _requiresCleanup = true;
         if (CurrentRemaining > BufferBytesRemaining || CurrentRemaining > maxPreparedSize)
             return new StreamReader(GetColumnStream(), encoding, detectEncodingFromByteOrderMarks: false);
 
@@ -540,48 +544,65 @@ public class PgReader
     }
 
     internal bool CommitHasIO(bool resuming) => Initialized && !resuming && FieldSize - FieldPos > 0;
-    internal async ValueTask Commit(bool async, bool resuming)
+    internal ValueTask Commit(bool async, bool resuming)
     {
         if (!Initialized)
-            return;
+            return new();
 
         if (resuming)
         {
             if (!Resumable)
                 ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
-            return;
+            return new();
         }
-
-        if (_pooledArray is { } array)
-        {
-            ArrayPool.Return(array);
-            _pooledArray = null;
-        }
-
-        if (_charsReadReader is { } reader)
-        {
-            reader.Dispose();
-            _charsReadReader = null;
-            _charsRead = default;
-        }
-
-        // Shut down any streaming going on on the column.
-        if (_userActiveStream is not null)
-            await DisposeUserActiveStream(async).ConfigureAwait(false);
 
         // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
-        if (FieldSize - FieldPos is var remaining and > 0)
-            await Consume(async, count: remaining).ConfigureAwait(false);
+        // Also shut down any streaming, pooled arrays etc.
+        if (_requiresCleanup || FieldSize - FieldPos > 0)
+            return Slow(async);
 
-        _resumable = false;
-        _fieldStartPos = -1;
-        _fieldBufferRequirement = _currentBufferRequirement = Size.Zero;
-        _fieldFormat = default;
         _fieldSize = default;
+        _fieldStartPos = -1;
+        _resumable = false;
+        _fieldFormat = default;
+        Debug.Assert(!Initialized);
+        return new();
+
+        async ValueTask Slow(bool async)
+        {
+            // Shut down any streaming and pooling going on on the column.
+            if (_requiresCleanup)
+            {
+                if (_userActiveStream is { IsDisposed: false })
+                    await DisposeUserActiveStream(async).ConfigureAwait(false);
+
+                if (_pooledArray is not null)
+                {
+                    ArrayPool.Return(_pooledArray);
+                    _pooledArray = null;
+                }
+
+                if (_charsReadReader is not null)
+                {
+                    _charsReadReader.Dispose();
+                    _charsReadReader = null;
+                    _charsRead = default;
+                }
+                _requiresCleanup = false;
+            }
+
+            await Consume(async, count: FieldSize - FieldPos).ConfigureAwait(false);
+            _fieldSize = default;
+            _fieldStartPos = -1;
+            _resumable = false;
+            _fieldFormat = default;
+            Debug.Assert(!Initialized);
+        }
     }
 
     byte[] RentArray(int count)
     {
+        _requiresCleanup = true;
         var pooledArray = _pooledArray;
         var array = _pooledArray = ArrayPool.Rent(count);
         if (pooledArray is not null)
