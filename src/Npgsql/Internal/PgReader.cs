@@ -210,19 +210,37 @@ public class PgReader
         return _preparedTextReader;
     }
 
-    public async ValueTask ReadBytesAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    public ValueTask ReadBytesAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         var count = buffer.Length;
         CheckBounds(count);
-        var stream = _buffer.CreateStream(count, canSeek: false);
-        await using var _ = stream.ConfigureAwait(false);
-        await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
+        if (BufferBytesRemaining >= count)
+        {
+            _buffer.Buffer.AsSpan(_buffer.ReadPosition, count).CopyTo(buffer.Span);
+            _buffer.ReadPosition += count;
+            return new();
+        }
+
+        return Core();
+
+        async ValueTask Core()
+        {
+            var stream = _buffer.CreateStream(count, canSeek: false);
+            await using var _ = stream.ConfigureAwait(false);
+            await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public void ReadBytes(Span<byte> buffer)
     {
         var count = buffer.Length;
         CheckBounds(count);
+        if (BufferBytesRemaining >= count)
+        {
+            _buffer.Buffer.AsSpan(_buffer.ReadPosition, count).CopyTo(buffer);
+            _buffer.ReadPosition += count;
+            return;
+        }
         using var stream = _buffer.CreateStream(count, canSeek: false);
         stream.ReadExactly(buffer);
     }
