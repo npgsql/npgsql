@@ -221,9 +221,9 @@ public class PgReader
             return new();
         }
 
-        return Core();
+        return Slow();
 
-        async ValueTask Core()
+        async ValueTask Slow()
         {
             var stream = _buffer.CreateStream(count, canSeek: false);
             await using var _ = stream.ConfigureAwait(false);
@@ -241,8 +241,14 @@ public class PgReader
             _buffer.ReadPosition += count;
             return;
         }
-        using var stream = _buffer.CreateStream(count, canSeek: false);
-        stream.ReadExactly(buffer);
+
+        Slow(buffer);
+
+        void Slow(Span<byte> buffer)
+        {
+            using var stream = _buffer.CreateStream(count, canSeek: false);
+            stream.ReadExactly(buffer);
+        }
     }
 
     public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
@@ -420,16 +426,22 @@ public class PgReader
     internal void StartRead(Size bufferRequirement)
     {
         Debug.Assert(FieldSize >= 0);
-        _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
-        Buffer(bufferRequirement);
+        if (bufferRequirement != Size.Zero)
+        {
+            _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
+            Buffer(bufferRequirement);
+        }
     }
 
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        _currentSize = FieldSize;
-        _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
-        return BufferAsync(bufferRequirement, cancellationToken);
+        if (bufferRequirement != Size.Zero)
+        {
+            _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
+            return BufferAsync(bufferRequirement, cancellationToken);
+        }
+        return new();
     }
 
     internal void EndRead()
@@ -437,14 +449,20 @@ public class PgReader
         if (Resumable)
             return;
 
-        // If it was upper bound we should consume.
-        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos is var remaining and > 0)
+        var fieldBufferRequirement = _fieldBufferRequirement;
+        if (fieldBufferRequirement != Size.Zero)
         {
-            Consume(remaining);
-            return;
+            _fieldBufferRequirement = _currentBufferRequirement = Size.Zero;
+            // If it was upper bound we should consume.
+            if (fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos > 0)
+            {
+                Consume(FieldSize - FieldPos);
+                return;
+            }
         }
 
-        ThrowIfNotConsumed();
+        if (FieldPos < FieldSize)
+            ThrowNotConsumed();
     }
 
     internal ValueTask EndReadAsync()
@@ -452,11 +470,17 @@ public class PgReader
         if (Resumable)
             return new();
 
-        // If it was upper bound we should consume.
-        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos is var remaining and > 0)
-            return ConsumeAsync(remaining);
+        var fieldBufferRequirement = _fieldBufferRequirement;
+        if (fieldBufferRequirement != Size.Zero)
+        {
+            _fieldBufferRequirement = _currentBufferRequirement = Size.Zero;
+            // If it was upper bound we should consume.
+            if (fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos > 0)
+                return ConsumeAsync(FieldSize - FieldPos);
+        }
 
-        ThrowIfNotConsumed();
+        if (FieldPos < FieldSize)
+            ThrowNotConsumed();
         return new();
     }
 
@@ -492,10 +516,7 @@ public class PgReader
 
     internal async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
     {
-        // Shut down any streaming going on on the column
-        await DisposeUserActiveStream(async).ConfigureAwait(false);
-
-        if (FieldSize <= 0)
+        if (FieldSize < 0 || FieldSize - FieldPos == 0)
             return;
 
         var remaining = count ?? CurrentRemaining;
@@ -554,7 +575,7 @@ public class PgReader
 
         _resumable = false;
         _fieldStartPos = -1;
-        _fieldBufferRequirement = default;
+        _fieldBufferRequirement = _currentBufferRequirement = Size.Zero;
         _fieldFormat = default;
         _fieldSize = default;
     }
@@ -632,16 +653,10 @@ public class PgReader
         return new();
     }
 
-    void ThrowIfNotConsumed()
-    {
-        if (FieldPos < FieldSize)
-            Throw();
-
-        void Throw() =>
-            throw _buffer.Connector.Break(
-                new InvalidOperationException(
-                    $"Trying to end a read over a field that hasn't been entirely consumed (pos: {FieldPos}, len: {FieldSize})"));
-    }
+    void ThrowNotConsumed() =>
+        throw _buffer.Connector.Break(
+            new InvalidOperationException(
+                $"Trying to end a read over a field that hasn't been entirely consumed (pos: {FieldPos}, len: {FieldSize})"));
 }
 
 public readonly struct NestedReadScope : IDisposable, IAsyncDisposable

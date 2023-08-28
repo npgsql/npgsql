@@ -88,7 +88,8 @@ public class ReplicationValue
     {
         CheckActive();
 
-        var info = _lastInfo = _fieldDescription.GetInfo(typeof(T), _lastInfo);
+        ref var info = ref _lastInfo;
+        _fieldDescription.GetInfo(typeof(T), ref info);
 
         switch (Kind)
         {
@@ -162,7 +163,8 @@ public class ReplicationValue
     {
         CheckActive();
 
-        var info = _lastInfo = _fieldDescription.GetInfo(typeof(TextReader), _lastInfo);
+        ref var info = ref _lastInfo;
+        _fieldDescription.GetInfo(typeof(TextReader), ref info);
 
         switch (Kind)
         {

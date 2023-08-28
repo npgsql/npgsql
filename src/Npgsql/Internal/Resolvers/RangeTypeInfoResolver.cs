@@ -366,8 +366,11 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
     {
         // Only trigger on well known data type names.
         var npgsqlDbType = dataTypeName?.ToNpgsqlDbType();
-        if (type != typeof(object) && (npgsqlDbType?.HasFlag(NpgsqlDbType.Range) == true || npgsqlDbType?.HasFlag(NpgsqlDbType.Multirange) == true))
+        if (type != typeof(object))
         {
+            if (npgsqlDbType?.HasFlag(NpgsqlDbType.Range) != true && npgsqlDbType?.HasFlag(NpgsqlDbType.Multirange) != true)
+                return null;
+
             if (npgsqlDbType.Value.HasFlag(NpgsqlDbType.Range))
                 return dataTypeName?.IsArray == true
                     ? PgTypeKind.Array | PgTypeKind.Range
@@ -378,7 +381,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                 : PgTypeKind.Multirange;
         }
 
-        if (type is null || type == typeof(object))
+        if (type == typeof(object))
             return null;
 
         var isArray = false;

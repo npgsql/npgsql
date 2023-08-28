@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
@@ -105,6 +106,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 
     public FieldDescription this[int index]
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
             Debug.Assert(index < Count);
@@ -336,7 +338,9 @@ public sealed class FieldDescription
             if (!_objectOrDefaultInfo.IsDefault)
                 return _objectOrDefaultInfo.TypeInfo;
 
-            return (_objectOrDefaultInfo = GetInfo(null, default)).TypeInfo;
+            ref var info = ref _objectOrDefaultInfo;
+            GetInfo(null, ref _objectOrDefaultInfo);
+            return info.TypeInfo;
         }
     }
 
@@ -348,7 +352,9 @@ public sealed class FieldDescription
             if (!_objectOrDefaultInfo.IsDefault)
                 return _objectOrDefaultInfo;
 
-            return _objectOrDefaultInfo = GetInfo(null, default);
+            ref var info = ref _objectOrDefaultInfo;
+            GetInfo(null, ref _objectOrDefaultInfo);
+            return info;
         }
     }
 
@@ -362,18 +368,27 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal PgConverterInfo GetInfo(Type? type, PgConverterInfo lastConverterInfo)
+    internal void GetInfo(Type? type, ref PgConverterInfo lastConverterInfo)
     {
         Debug.Assert(lastConverterInfo.IsDefault || (
             ReferenceEquals(_serializerOptions, lastConverterInfo.TypeInfo.Options) &&
             lastConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
-        PgConverterInfo converterInfo;
+
+        if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeInfo.Type == type)
+            return;
+
         if (type is not null && ObjectOrDefaultTypeInfo.Type == type)
-            converterInfo = ObjectOrDefaultInfo;
-        else if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeInfo.Type == type)
-            converterInfo = lastConverterInfo;
-        else
         {
+            lastConverterInfo = ObjectOrDefaultInfo;
+            return;
+        }
+
+        GetInfoSlow(out lastConverterInfo);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void GetInfoSlow(out PgConverterInfo lastConverterInfo)
+        {
+            PgConverterInfo converterInfo;
             var typeInfo = GetTypeInfo(_serializerOptions, type ?? typeof(object), PostgresType, TypeOID);
             switch (DataFormat)
             {
@@ -393,8 +408,8 @@ public sealed class FieldDescription
 
             if (type != typeInfo.Type && !converterInfo.AsObject)
                 converterInfo = converterInfo with { AsObject = true };
+            lastConverterInfo = converterInfo;
         }
-        return converterInfo;
 
         static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType, Oid typeOid)
         {
