@@ -128,12 +128,13 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         }
 
         // Jsonb
+        const byte jsonbVersion = 1;
         mappings.AddType<char[]>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<char[]>(new CharArrayTextConverter(options.TextEncoding))));
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<char[]>(jsonbVersion, new CharArrayTextConverter(options.TextEncoding))));
         mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ReadOnlyMemory<char>>(new ReadOnlyMemoryTextConverter(options.TextEncoding))));
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, new ReadOnlyMemoryTextConverter(options.TextEncoding))));
         mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ArraySegment<char>>(new CharArraySegmentTextConverter(options.TextEncoding))));
+            static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, new CharArraySegmentTextConverter(options.TextEncoding))));
 
         // Hstore
         mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
