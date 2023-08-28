@@ -72,38 +72,34 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
         var result = typeof(T) == typeof(Dictionary<string, string?>) || typeof(T) == typeof(IDictionary<string, string?>)
             ? (ICollection<KeyValuePair<string, string?>>)new Dictionary<string, string?>(count)
             : new List<KeyValuePair<string, string?>>(count);
-        await ReadInto(async, _encoding, result, count, reader, cancellationToken).ConfigureAwait(false);
+
+        for (var i = 0; i < count; i++)
+        {
+            if (reader.ShouldBuffer(sizeof(int)))
+                await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+            var keySize = reader.ReadInt32();
+            var key = _encoding.GetString(async
+                ? await reader.ReadBytesAsync(keySize, cancellationToken).ConfigureAwait(false)
+                : reader.ReadBytes(keySize)
+            );
+
+            if (reader.ShouldBuffer(sizeof(int)))
+                await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+            var valueSize = reader.ReadInt32();
+            string? value = null;
+            if (valueSize is not -1)
+                value = _encoding.GetString(async
+                    ? await reader.ReadBytesAsync(valueSize, cancellationToken).ConfigureAwait(false)
+                    : reader.ReadBytes(valueSize)
+                );
+
+            result.Add(new(key, value));
+        }
 
         if (typeof(T) == typeof(Dictionary<string, string?>) || typeof(T) == typeof(IDictionary<string, string?>))
             return (T)result;
 
         return _convert is null ? throw new NotSupportedException() : _convert(result);
-
-        static async ValueTask ReadInto(bool async, Encoding encoding, ICollection<KeyValuePair<string, string?>> result, int count, PgReader reader, CancellationToken cancellationtoken)
-        {
-            for (var i = 0; i < count; i++)
-            {
-                if (reader.ShouldBuffer(sizeof(int)))
-                    await reader.Buffer(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
-                var keySize = reader.ReadInt32();
-                var key = encoding.GetString(async
-                    ? await reader.ReadBytesAsync(keySize, cancellationtoken).ConfigureAwait(false)
-                    : reader.ReadBytes(keySize)
-                );
-
-                if (reader.ShouldBuffer(sizeof(int)))
-                    await reader.Buffer(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
-                var valueSize = reader.ReadInt32();
-                string? value = null;
-                if (valueSize is not -1)
-                    value = encoding.GetString(async
-                        ? await reader.ReadBytesAsync(valueSize, cancellationtoken).ConfigureAwait(false)
-                        : reader.ReadBytes(valueSize)
-                    );
-
-                result.Add(new(key, value));
-            }
-        }
     }
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
