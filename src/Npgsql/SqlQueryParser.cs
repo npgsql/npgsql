@@ -486,7 +486,11 @@ sealed class SqlQueryParser
 
         Finish:
         _rewrittenSql.Append(sql, currTokenBeg, end - currTokenBeg);
-        batchCommand.FinalCommandText = _rewrittenSql.ToString();
+        if (statementIndex is 0 && _paramIndexMap.Count is 0)
+            // Single statement, no parameters, no rewriting necessary
+            batchCommand.FinalCommandText = sql;
+        else
+            batchCommand.FinalCommandText = _rewrittenSql.ToString();
         if (batchCommands is not null && batchCommands.Count > statementIndex + 1)
             batchCommands.RemoveRange(statementIndex + 1, batchCommands.Count - (statementIndex + 1));
 
