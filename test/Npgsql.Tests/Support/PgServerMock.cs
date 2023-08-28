@@ -152,7 +152,7 @@ class PgServerMock : IDisposable
         Assert.That(actualSql, Is.EqualTo(expectedSql));
     }
 
-    internal Task WaitForData() => _readBuffer.EnsureAsync(1);
+    internal Task WaitForData() => _readBuffer.EnsureAsync(1).AsTask();
 
     internal Task FlushAsync()
     {

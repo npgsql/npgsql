@@ -126,10 +126,10 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region I/O
 
-    public Task Ensure(int count, bool async)
+    public ValueTask Ensure(int count, bool async)
         => Ensure(count, async, readingNotifications: false);
 
-    public Task EnsureAsync(int count)
+    public ValueTask EnsureAsync(int count)
         => Ensure(count, async: true, readingNotifications: false);
 
     // Can't share due to Span vs Memory difference (can't make a memory out of a span).
@@ -275,11 +275,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
     /// not, reads from the socket until enough is available.
     /// </summary>
-    internal Task Ensure(int count, bool async, bool readingNotifications)
+    internal ValueTask Ensure(int count, bool async, bool readingNotifications)
     {
-        return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong(this, count, async, readingNotifications);
+        return count <= ReadBytesLeft ? new() : EnsureLong(this, count, async, readingNotifications);
 
-        static async Task EnsureLong(
+#if NET6_0_OR_GREATER
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+#endif
+        static async ValueTask EnsureLong(
             NpgsqlReadBuffer buffer,
             int count,
             bool async,
@@ -413,7 +416,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         }
     }
 
-    internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
+    internal ValueTask ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
     internal NpgsqlReadBuffer AllocateOversize(int count)
     {

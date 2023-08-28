@@ -657,7 +657,7 @@ public class PgReader
 
     public ValueTask BufferAsync(Size bufferRequirement, CancellationToken cancellationToken)
         => BufferAsync(GetBufferRequirementByteCount(bufferRequirement), cancellationToken);
-    public ValueTask BufferAsync(int byteCount, CancellationToken cancellationToken) => new(_buffer.EnsureAsync(byteCount));
+    public ValueTask BufferAsync(int byteCount, CancellationToken cancellationToken) => _buffer.EnsureAsync(byteCount);
 
     internal ValueTask Buffer(bool async, Size bufferRequirement, CancellationToken cancellationToken)
         => Buffer(async, GetBufferRequirementByteCount(bufferRequirement), cancellationToken);

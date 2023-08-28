@@ -1322,6 +1322,9 @@ public sealed partial class NpgsqlConnector
         return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false))!;
     }
 
+#if NET6_0_OR_GREATER
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+#endif
     async ValueTask<IBackendMessage?> ReadMessageLong(
         bool async,
         DataRowLoadingMode dataRowLoadingMode,
