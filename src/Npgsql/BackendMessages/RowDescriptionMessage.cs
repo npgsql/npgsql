@@ -318,18 +318,7 @@ public sealed class FieldDescription
     internal PostgresType PostgresType
         => _postgresType ??= _serializerOptions.TypeCatalog.FindPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
 
-    internal Type FieldType
-    {
-        get
-        {
-            // Object typed resolvers can return any type of converter, so we check the type of the converter instead.
-            // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
-            if (ObjectOrDefaultTypeInfo is PgResolverTypeInfo resolverTypeInfo && resolverTypeInfo.Type == typeof(object))
-                return ObjectOrDefaultInfo.Converter.TypeToConvert;
-
-            return ObjectOrDefaultTypeInfo.Type;
-        }
-    }
+    internal Type FieldType => ObjectOrDefaultInfo.TypeToConvert;
 
     PgTypeInfo ObjectOrDefaultTypeInfo
     {
@@ -377,9 +366,10 @@ public sealed class FieldDescription
         if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeInfo.Type == type)
             return;
 
-        if (type is not null && ObjectOrDefaultTypeInfo.Type == type)
+        // Have to check for null as it's a sentinel value used by ObjectOrDefaultTypeInfo init itself.
+        if (type is not null && ObjectOrDefaultTypeInfo.Type == type || typeof(object) == type)
         {
-            lastConverterInfo = ObjectOrDefaultInfo;
+            lastConverterInfo = typeof(object) == type ? ObjectOrDefaultInfo with { AsObject = true } : ObjectOrDefaultInfo;
             return;
         }
 
@@ -406,8 +396,6 @@ public sealed class FieldDescription
                 break;
             }
 
-            if (type != typeInfo.Type && !converterInfo.AsObject)
-                converterInfo = converterInfo with { AsObject = true };
             lastConverterInfo = converterInfo;
         }
 
