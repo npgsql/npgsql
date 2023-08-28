@@ -80,7 +80,7 @@ static class VersionPrefixedTextConverter
 
             var actualVersion = reader.ReadByte();
             if (actualVersion != expectedVersion)
-                throw new InvalidCastException($"Unknown wire format version {actualVersion}");
+                throw new InvalidCastException($"Unknown wire format version: {actualVersion}");
         }
 
         // No need for a nested read, all text converters will read CurrentRemaining bytes.
