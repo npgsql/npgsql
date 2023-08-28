@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Npgsql.Internal.Postgres;
+using Npgsql.Properties;
 using NpgsqlTypes;
 
 // ReSharper disable once CheckNamespace
@@ -44,9 +45,7 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
             return expectedPgTypeId == _timestamp
                 ? throw new ArgumentException(
-                    $"Cannot write DateTime with Kind=UTC to PostgreSQL type '{_options.GetDataTypeName(_timestamp).DisplayName}', " +
-                    $"consider using '{_options.GetDataTypeName(_timestampTz).DisplayName}'. " +
-                    "Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.", nameof(value))
+                    string.Format(NpgsqlStrings.TimestampNoDateTimeUtc, _options.GetDataTypeName(_timestamp).DisplayName, _options.GetDataTypeName(_timestampTz).DisplayName), nameof(value))
                 : validateOnly ? null : GetDefault(expectedPgTypeId ?? _timestampTz);
         }
 
@@ -55,8 +54,7 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
             && !(_dateTimeInfinityConversions && (value == DateTime.MinValue || value == DateTime.MaxValue)))
         {
             throw new ArgumentException(
-                $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type '{_options.GetDataTypeName(_timestampTz).DisplayName}', only UTC is supported. " +
-                "Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.", nameof(value));
+                string.Format(NpgsqlStrings.TimestampTzNoDateTimeUnspecified, value.Kind, _options.GetDataTypeName(_timestampTz).DisplayName), nameof(value));
         }
 
         // We coalesce with expectedPgTypeId to throw on unknown type ids.
@@ -108,7 +106,7 @@ sealed class DateTimeConverterResolver
         where T : IList<TElement> where TElement : notnull
     {
         if (typeof(TElement) != typeof(NpgsqlRange<DateTime>))
-            throw new NotSupportedException("Unsupported element type");
+            ThrowHelper.ThrowNotSupportedException("Unsupported element type");
 
         return new DateTimeConverterResolver<T>(options, static (resolver, value, expectedPgTypeId) =>
         {

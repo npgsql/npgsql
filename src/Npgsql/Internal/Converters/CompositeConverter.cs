@@ -61,7 +61,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 // We could remove this requirement by storing a dictionary of CompositeInfos keyed by backend.
                 throw new InvalidCastException(
                     $"Cannot read oid {oid} into composite field {field.Name} with oid {field.PgTypeId}. " +
-                    $"This could be caused by a difference between column order of table composites between backends, make sure these line up identically.");
+                    $"This could be caused by a DDL change after this DataSource loaded its types, or a difference between column order of table composites between backends make sure these line up identically.");
 
             if (length is -1)
                 field.ReadDbNull(builder);
