@@ -118,7 +118,10 @@ public class NpgsqlBatch : DbBatch
     }
 
     /// <inheritdoc />
-    protected override DbBatchCommand CreateDbBatchCommand()
+    protected override DbBatchCommand CreateDbBatchCommand() => CreateBatchCommand();
+
+    /// <inheritdoc cref="DbBatch.CreateBatchCommand"/>
+    public new NpgsqlBatchCommand CreateBatchCommand()
         => new NpgsqlBatchCommand();
 
     /// <inheritdoc />
