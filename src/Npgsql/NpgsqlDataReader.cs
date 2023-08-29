@@ -164,7 +164,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override bool Read()
     {
         CheckClosedOrDisposed();
-        return TryFastRead()?.Result ?? Read(false).GetAwaiter().GetResult();
+        return TryRead()?.Result ?? Read(false).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -177,13 +177,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override Task<bool> ReadAsync(CancellationToken cancellationToken)
     {
         CheckClosedOrDisposed();
-        return TryFastRead() ?? Read(async: true, cancellationToken);
+        return TryRead() ?? Read(async: true, cancellationToken);
 
     }
 
     // This is an optimized execution path that avoids calling any async methods for the (usual)
     // case where the next row (or CommandComplete) is already in memory.
-    Task<bool>? TryFastRead()
+    Task<bool>? TryRead()
     {
         switch (State)
         {
@@ -210,17 +210,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             return null;
         var messageCode = (BackendMessageCode)buffer.ReadByte();
         var len = buffer.ReadInt32() - sizeof(int); // Transmitted length includes itself
+        var isDataRow = messageCode is BackendMessageCode.DataRow;
         // sizeof(short) is for the number of columns
-        if (messageCode is not BackendMessageCode.DataRow || (
-                _isSequential ? bytesLeft - headerSize - sizeof(short) < 0 : bytesLeft - headerSize < len))
+        var sufficientBytes = isDataRow && _isSequential ? headerSize + sizeof(short) : headerSize + len;
+        if (bytesLeft < sufficientBytes || !isDataRow && (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers))
         {
             buffer.ReadPosition -= headerSize;
             return null;
         }
-
         var msg = Connector.ParseServerMessage(buffer, messageCode, len, false)!;
         ProcessMessage(msg);
-        return TrueTask;
+        return isDataRow ? TrueTask : FalseTask;
     }
 
     async Task<bool> Read(bool async, CancellationToken cancellationToken = default)
