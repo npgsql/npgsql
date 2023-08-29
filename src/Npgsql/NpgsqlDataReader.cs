@@ -164,11 +164,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override bool Read()
     {
         CheckClosedOrDisposed();
-
-        var fastRead = TryFastRead();
-        return fastRead.HasValue
-            ? fastRead.Value
-            : Read(false).GetAwaiter().GetResult();
+        return TryFastRead()?.Result ?? Read(false).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -181,56 +177,50 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override Task<bool> ReadAsync(CancellationToken cancellationToken)
     {
         CheckClosedOrDisposed();
+        return TryFastRead() ?? Read(async: true, cancellationToken);
 
-        var fastRead = TryFastRead();
-        if (fastRead.HasValue)
-            return fastRead.Value ? TrueTask : FalseTask;
-
-        return Read(async: true, cancellationToken);
     }
 
-    bool? TryFastRead()
+    // This is an optimized execution path that avoids calling any async methods for the (usual)
+    // case where the next row (or CommandComplete) is already in memory.
+    Task<bool>? TryFastRead()
     {
-        // This is an optimized execution path that avoids calling any async methods for the (usual)
-        // case where the next row (or CommandComplete) is already in memory.
-
-        if (_behavior.HasFlag(CommandBehavior.SingleRow))
-            return null;
-
         switch (State)
         {
         case ReaderState.BeforeResult:
             // First Read() after NextResult. Data row has already been processed.
             State = ReaderState.InResult;
-            return true;
+            return TrueTask;
         case ReaderState.InResult:
-            if (!_canConsumeRowNonSequentially)
-                return null;
-            // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
-            ConsumeRowNonSequential();
             break;
-        case ReaderState.BetweenResults:
-        case ReaderState.Consumed:
-        case ReaderState.Closed:
-        case ReaderState.Disposed:
-            return false;
+        default:
+            return FalseTask;
         }
 
-        var readBuf = Connector.ReadBuffer;
-        if (readBuf.ReadBytesLeft < 5)
+        // We have a special case path for SingleRow.
+        if (_behavior.HasFlag(CommandBehavior.SingleRow) || !_canConsumeRowNonSequentially)
             return null;
-        var messageCode = (BackendMessageCode)readBuf.ReadByte();
-        var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
-        if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
+
+        ConsumeRowNonSequential();
+
+        const int headerSize = sizeof(byte) + sizeof(int);
+        var buffer = Buffer;
+        var bytesLeft = buffer.ReadBytesLeft;
+        if (bytesLeft < headerSize)
+            return null;
+        var messageCode = (BackendMessageCode)buffer.ReadByte();
+        var len = buffer.ReadInt32() - sizeof(int); // Transmitted length includes itself
+        // sizeof(short) is for the number of columns
+        if (messageCode is not BackendMessageCode.DataRow || (
+                _isSequential ? bytesLeft - headerSize - sizeof(short) < 0 : bytesLeft - headerSize < len))
         {
-            readBuf.ReadPosition -= 5;
+            buffer.ReadPosition -= headerSize;
             return null;
         }
 
-        var msg = Connector.ParseServerMessage(readBuf, BackendMessageCode.DataRow, len, false)!;
-        Debug.Assert(msg.Code == BackendMessageCode.DataRow);
+        var msg = Connector.ParseServerMessage(buffer, messageCode, len, false)!;
         ProcessMessage(msg);
-        return true;
+        return TrueTask;
     }
 
     async Task<bool> Read(bool async, CancellationToken cancellationToken = default)
@@ -849,17 +839,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // (see #2003)
         if (!ReferenceEquals(Buffer, Connector.ReadBuffer))
             Buffer = Connector.ReadBuffer;
-
-        _hasRows = true;
-        _column = -1;
-
         // We assume that the row's number of columns is identical to the description's
-        _numColumns = Buffer.ReadInt16();
-        Debug.Assert(_numColumns == RowDescription!.Count,
-            $"Row's number of columns ({_numColumns}) differs from the row description's ({RowDescription.Count})");
+        var numColumns = Buffer.ReadInt16();
+        Debug.Assert(numColumns == RowDescription!.Count,
+            $"Row's number of columns ({numColumns}) differs from the row description's ({RowDescription.Count})");
 
-        _dataMsgEnd = Buffer.ReadPosition + msg.Length - 2;
-        _canConsumeRowNonSequentially = Buffer.ReadBytesLeft >= msg.Length - 2;
+        var readPosition = Buffer.ReadPosition;
+        var msgRemainder = msg.Length - sizeof(short);
+        _dataMsgEnd = readPosition + msgRemainder;
+        _canConsumeRowNonSequentially = msgRemainder <= Buffer.FilledBytes - readPosition;
+        _column = -1;
 
         if (!_isSequential)
         {
@@ -867,12 +856,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // Initialize our columns array with the offset and length of the first column
             _columns.Clear();
             var len = Buffer.ReadInt32();
-            _columns.Add((Buffer.ReadPosition, len));
+            _columns.Add((readPosition + sizeof(int), len));
         }
 
         switch (State)
         {
         case ReaderState.BetweenResults:
+            _numColumns = numColumns;
+            _hasRows = true;
             State = ReaderState.BeforeResult;
             break;
         case ReaderState.BeforeResult:
@@ -881,7 +872,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         case ReaderState.InResult:
             break;
         default:
-            throw Connector.UnexpectedMessageReceived(BackendMessageCode.DataRow);
+            Connector.UnexpectedMessageReceived(BackendMessageCode.DataRow);
+            break;
         }
     }
 
@@ -2072,7 +2064,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void ConsumeRowNonSequential()
     {
-        Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
+        Debug.Assert(State is ReaderState.InResult or ReaderState.BeforeResult);
         PgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
         Buffer.ReadPosition = _dataMsgEnd;
     }
@@ -2186,14 +2178,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     void CheckClosedOrDisposed()
     {
-        switch (State)
+        if (State is (ReaderState.Closed or ReaderState.Disposed) and var state)
+            Throw(state);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void Throw(ReaderState state)
         {
-        case ReaderState.Closed:
-            ThrowHelper.ThrowInvalidOperationException("The reader is closed");
-            return;
-        case ReaderState.Disposed:
-            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlDataReader));
-            return;
+            switch (state)
+            {
+            case ReaderState.Closed:
+                ThrowHelper.ThrowInvalidOperationException("The reader is closed");
+                return;
+            case ReaderState.Disposed:
+                ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlDataReader));
+                return;
+            }
         }
     }
 
