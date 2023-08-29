@@ -791,41 +791,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal void ProcessMessage(IBackendMessage msg)
     {
-        switch (msg.Code)
+        if (msg.Code is not BackendMessageCode.DataRow)
         {
-        case BackendMessageCode.DataRow:
-            ProcessDataRowMessage((DataRowMessage)msg);
-            break;
-        case BackendMessageCode.CommandComplete:
-            var completed = (CommandCompleteMessage)msg;
-            switch (completed.StatementType)
-            {
-            case StatementType.Update:
-            case StatementType.Insert:
-            case StatementType.Delete:
-            case StatementType.Copy:
-            case StatementType.Move:
-            case StatementType.Merge:
-                if (!_recordsAffected.HasValue)
-                    _recordsAffected = 0;
-                _recordsAffected += completed.Rows;
-                break;
-            }
-
-            _statements[StatementIndex].ApplyCommandComplete(completed);
-            State = ReaderState.BetweenResults;
-            break;
-        case BackendMessageCode.EmptyQueryResponse:
-            State = ReaderState.BetweenResults;
-            break;
-        default:
-            Connector.UnexpectedMessageReceived(msg.Code);
-            break;
+            HandleUncommon();
+            return;
         }
-    }
 
-    void ProcessDataRowMessage(DataRowMessage msg)
-    {
+        var dataRow = (DataRowMessage)msg;
         // The connector's buffer can actually change between DataRows:
         // If a large DataRow exceeding the connector's current read buffer arrives, and we're
         // reading in non-sequential mode, a new oversize buffer is allocated. We thus have to
@@ -840,7 +812,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             $"Row's number of columns ({numColumns}) differs from the row description's ({RowDescription.Count})");
 
         var readPosition = Buffer.ReadPosition;
-        var msgRemainder = msg.Length - sizeof(short);
+        var msgRemainder = dataRow.Length - sizeof(short);
         _dataMsgEnd = readPosition + msgRemainder;
         _canConsumeRowNonSequentially = msgRemainder <= Buffer.FilledBytes - readPosition;
         _column = -1;
@@ -869,6 +841,37 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         default:
             Connector.UnexpectedMessageReceived(BackendMessageCode.DataRow);
             break;
+        }
+
+        void HandleUncommon()
+        {
+            switch (msg.Code)
+            {
+            case BackendMessageCode.CommandComplete:
+                var completed = (CommandCompleteMessage)msg;
+                switch (completed.StatementType)
+                {
+                case StatementType.Update:
+                case StatementType.Insert:
+                case StatementType.Delete:
+                case StatementType.Copy:
+                case StatementType.Move:
+                case StatementType.Merge:
+                    _recordsAffected ??= 0;
+                    _recordsAffected += completed.Rows;
+                    break;
+                }
+
+                _statements[StatementIndex].ApplyCommandComplete(completed);
+                State = ReaderState.BetweenResults;
+                break;
+            case BackendMessageCode.EmptyQueryResponse:
+                State = ReaderState.BetweenResults;
+                break;
+            default:
+                Connector.UnexpectedMessageReceived(msg.Code);
+                break;
+            }
         }
     }
 
