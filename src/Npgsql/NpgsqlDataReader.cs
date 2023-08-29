@@ -1586,10 +1586,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     return (T)(object)PgReader.GetStream(canSeek: !_isSequential);
             }
 
+            Debug.Assert(asObject || converter is PgConverter<T>);
             await PgReader.StartReadAsync(bufferRequirement, cancellationToken);
             var result = asObject
                 ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken)
-                : await ((PgConverter<T>)converter).ReadAsync(PgReader, cancellationToken);
+                : await Unsafe.As<PgConverter<T>>(converter).ReadAsync(PgReader, cancellationToken);
             await PgReader.EndReadAsync();
             return result;
         }
@@ -1605,26 +1606,37 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     T GetFieldValueCore<T>(int ordinal)
     {
-        var isStream = typeof(T) == typeof(Stream);
-        var field = GetInfo(ordinal, isStream ? null : typeof(T), out var converter, out var bufferRequirement, out var asObject);
+        // The only statically mapped converter, it always exists.
+        if (typeof(T) == typeof(Stream))
+            return GetStream();
 
-        if (isStream || typeof(T) == typeof(TextReader))
+        var field = GetInfo(ordinal, typeof(T), out var converter, out var bufferRequirement, out var asObject);
+
+        if (typeof(T) == typeof(TextReader))
             PgReader.ThrowIfStreamActive();
 
         var columnLength = SeekToColumn(async: false, ordinal, field).GetAwaiter().GetResult();
         if (columnLength == -1)
             return DbNullValueOrThrow<T>(field);
 
-        // The only statically mapped converter, it always exists.
-        if (isStream)
-            return (T)(object)PgReader.GetStream(canSeek: !_isSequential);
-
+        Debug.Assert(asObject || converter is PgConverter<T>);
         PgReader.StartRead(bufferRequirement);
         var result = asObject
             ? (T)converter.ReadAsObject(PgReader)
-            : ((PgConverter<T>)converter).Read(PgReader);
+            : Unsafe.As<PgConverter<T>>(converter).Read(PgReader);
         PgReader.EndRead();
         return result;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        T GetStream()
+        {
+            var field = GetInfo(ordinal, null, out _, out _, out _);
+            PgReader.ThrowIfStreamActive();
+            var columnLength = SeekToColumn(async: false, ordinal, field).GetAwaiter().GetResult();
+            if (columnLength == -1)
+                return DbNullValueOrThrow<T>(field);
+            return (T)(object)PgReader.GetStream(canSeek: !_isSequential);
+        }
     }
 
     #endregion

@@ -243,7 +243,8 @@ public sealed class FieldDescription
         TypeSize = source.TypeSize;
         TypeModifier = source.TypeModifier;
         DataFormat = source.DataFormat;
-        _postgresType = source.PostgresType;
+        PostgresType = source.PostgresType;
+        Field = source.Field;
         _objectOrDefaultInfo = source._objectOrDefaultInfo;
         _lastTypeInfo = source._lastTypeInfo;
         _lastInfo = source._lastInfo;
@@ -254,7 +255,7 @@ public sealed class FieldDescription
         uint oid, short typeSize, int typeModifier, DataFormat dataFormat
     )
     {
-        Reset();
+        ResetTypeInfo();
         _serializerOptions = serializerOptions;
         Name = name;
         TableOID = tableOID;
@@ -263,10 +264,11 @@ public sealed class FieldDescription
         TypeSize = typeSize;
         TypeModifier = typeModifier;
         DataFormat = dataFormat;
+        PostgresType = _serializerOptions.TypeCatalog.FindPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
+        Field = new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
 
-        void Reset()
+        void ResetTypeInfo()
         {
-            _postgresType = null;
             _objectOrDefaultInfo = default;
             _lastTypeInfo = null;
             _lastInfo = default;
@@ -310,13 +312,11 @@ public sealed class FieldDescription
     /// </summary>
     internal DataFormat DataFormat { get; set; }
 
-    internal Field Field => new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
+    internal Field Field { get; private set; }
 
     internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
 
-    PostgresType? _postgresType;
-    internal PostgresType PostgresType
-        => _postgresType ??= _serializerOptions.TypeCatalog.FindPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
+    internal PostgresType PostgresType { get; private set; }
 
     internal Type FieldType => ObjectOrDefaultInfo.TypeToConvert;
 
@@ -363,14 +363,22 @@ public sealed class FieldDescription
             ReferenceEquals(_serializerOptions, lastConverterInfo.TypeInfo.Options) &&
             lastConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
 
-        if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeInfo.Type == type)
+        if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeToConvert == type)
             return;
 
         // Have to check for null as it's a sentinel value used by ObjectOrDefaultTypeInfo init itself.
-        if (type is not null && ObjectOrDefaultTypeInfo.Type == type || typeof(object) == type)
+        if (type is not null && ObjectOrDefaultInfo is var odfInfo)
         {
-            lastConverterInfo = typeof(object) == type ? ObjectOrDefaultInfo with { AsObject = true } : ObjectOrDefaultInfo;
-            return;
+            if (typeof(object) == type)
+            {
+                lastConverterInfo = odfInfo with { AsObject = true };
+                return;
+            }
+            if (odfInfo.TypeToConvert == type)
+            {
+                lastConverterInfo = odfInfo;
+                return;
+            }
         }
 
         GetInfoSlow(out lastConverterInfo);
@@ -379,7 +387,7 @@ public sealed class FieldDescription
         void GetInfoSlow(out PgConverterInfo lastConverterInfo)
         {
             PgConverterInfo converterInfo;
-            var typeInfo = GetTypeInfo(_serializerOptions, type ?? typeof(object), PostgresType, TypeOID);
+            var typeInfo = GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID);
             switch (DataFormat)
             {
             case DataFormat.Binary:
@@ -399,17 +407,17 @@ public sealed class FieldDescription
             lastConverterInfo = converterInfo;
         }
 
-        static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType, Oid typeOid)
+        static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type? type, PostgresType postgresType, Oid typeOid)
         {
             if (postgresType.OID is 0)
-                return ThrowReadingNotSupported(type, $"unknown oid: {typeOid}");
+                ThrowReadingNotSupported(type, $"unknown oid: {typeOid}");
 
-            return (typeof(object) == type ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType))
+            return (type is null ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType))
                    ?? ThrowReadingNotSupported(type, postgresType.DisplayName);
 
             [DoesNotReturn]
-            static PgTypeInfo ThrowReadingNotSupported(Type type, string displayName)
-                => throw new NotSupportedException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for PostgreSQL type '{displayName}'");
+            static PgTypeInfo ThrowReadingNotSupported(Type? type, string displayName)
+                => throw new NotSupportedException($"Reading{(type is null ? "" : $" as {type}")} is not supported for PostgreSQL type '{displayName}'");
         }
     }
 
