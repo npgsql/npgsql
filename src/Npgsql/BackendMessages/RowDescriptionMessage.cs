@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
@@ -20,12 +21,15 @@ namespace Npgsql.BackendMessages;
 /// </remarks>
 sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescription>
 {
+    readonly bool _connectorOwned;
     FieldDescription?[] _fields;
     readonly Dictionary<string, int> _nameIndex;
     Dictionary<string, int>? _insensitiveIndex;
+    PgConverterInfo[]? _lastConverterInfoCache;
 
-    internal RowDescriptionMessage(int numFields = 10)
+    internal RowDescriptionMessage(bool connectorOwned, int numFields = 10)
     {
+        _connectorOwned = connectorOwned;
         _fields = new FieldDescription[numFields];
         _nameIndex = new Dictionary<string, int>();
     }
@@ -78,7 +82,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
     internal static RowDescriptionMessage CreateForReplication(
         PgSerializerOptions options, uint tableOID, DataFormat dataFormat, IReadOnlyList<RelationMessage.Column> columns)
     {
-        var msg = new RowDescriptionMessage(columns.Count);
+        var msg = new RowDescriptionMessage(false, columns.Count);
         var numFields = msg.Count = columns.Count;
 
         for (var i = 0; i < numFields; ++i)
@@ -114,6 +118,20 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 
             return _fields[index]!;
         }
+    }
+
+    internal void SetConverterInfoCache(ReadOnlySpan<PgConverterInfo> values)
+    {
+        if (_connectorOwned || _lastConverterInfoCache is not null)
+            return;
+        Interlocked.CompareExchange(ref _lastConverterInfoCache, values.ToArray(), null);
+    }
+
+    internal void LoadConverterInfoCache(PgConverterInfo[] values)
+    {
+        if (_lastConverterInfoCache is not { } cache)
+            return;
+        cache.CopyTo(values.AsSpan());
     }
 
     public int Count { get; private set; }

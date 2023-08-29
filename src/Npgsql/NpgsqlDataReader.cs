@@ -369,7 +369,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     case BackendMessageCode.EmptyQueryResponse:
                         ProcessMessage(completedMsg);
 
-                        if (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers)
+                        var statement = _statements[StatementIndex];
+                        if (statement.IsPrepared && ColumnInfoCache is not null)
+                            RowDescription!.SetConverterInfoCache(new(ColumnInfoCache, 0, _numColumns));
+
+                        if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
                             Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
 
                         break;
@@ -384,8 +388,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 break;
 
             case ReaderState.BetweenResults:
+            {
+                if (StatementIndex >= 0 && _statements[StatementIndex].IsPrepared && ColumnInfoCache is not null)
+                    RowDescription!.SetConverterInfoCache(new(ColumnInfoCache, 0, _numColumns));
                 break;
-
+            }
             case ReaderState.Consumed:
             case ReaderState.Closed:
             case ReaderState.Disposed:
@@ -466,6 +473,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                             ArrayPool<PgConverterInfo>.Shared.Return(cache, clearArray: true);
                         ColumnInfoCache = ArrayPool<PgConverterInfo>.Shared.Rent(RowDescription.Count);
                     }
+                    if (statement.IsPrepared)
+                        RowDescription.LoadConverterInfoCache(ColumnInfoCache);
                 }
                 else
                 {

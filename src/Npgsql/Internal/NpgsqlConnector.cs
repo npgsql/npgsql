@@ -320,7 +320,7 @@ public sealed partial class NpgsqlConnector
     readonly ReadyForQueryMessage        _readyForQueryMessage        = new();
     readonly ParameterDescriptionMessage _parameterDescriptionMessage = new();
     readonly DataRowMessage              _dataRowMessage              = new();
-    readonly RowDescriptionMessage       _rowDescriptionMessage       = new();
+    readonly RowDescriptionMessage       _rowDescriptionMessage       = new(connectorOwned: true);
 
     // Since COPY is rarely used, allocate these lazily
     CopyInResponseMessage?  _copyInResponseMessage;
