@@ -60,7 +60,7 @@ await using (var cmd = new NpgsqlCommand("SELECT geom FROM data", conn))
 await using (var reader = await cmd.ExecuteReaderAsync())
 {
     await reader.ReadAsync();
-    var point2 = reader.GetFieldValue<Point>(0);;
+    var point2 = reader.GetFieldValue<Point>(0);
 }
 ```
 
