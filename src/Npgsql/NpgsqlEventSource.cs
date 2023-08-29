@@ -65,7 +65,6 @@ sealed class NpgsqlEventSource : EventSource
         NpgsqlSqlEventSource.Log.CommandStart(sql);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public void CommandStop()
     {
         Interlocked.Decrement(ref _currentCommands);

@@ -1,5 +1,4 @@
 using System.Diagnostics.Tracing;
-using System.Runtime.CompilerServices;
 
 namespace Npgsql;
 
@@ -22,9 +21,8 @@ sealed class NpgsqlSqlEventSource : EventSource
     // - A stop event's event id must be next one after its start event.
 
     [Event(CommandStartId, Level = EventLevel.Informational)]
-    public void CommandStart(string sql) => Log.WriteEvent(CommandStartId, sql);
+    public void CommandStart(string sql) => WriteEvent(CommandStartId, sql);
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
     [Event(CommandStopId, Level = EventLevel.Informational)]
-    public void CommandStop() => Log.WriteEvent(CommandStopId);
+    public void CommandStop() => WriteEvent(CommandStopId);
 }
