@@ -110,7 +110,7 @@ public class PgTypeInfo
     internal PgConverterInfo Bind(Field field, DataFormat format)
     {
         if (!TryBind(field, format, out var info))
-            throw new InvalidOperationException($"Resolved converter does not support {format} format.");
+            ThrowHelper.ThrowInvalidOperationException($"Resolved converter does not support {format} format.");
 
         return info;
     }

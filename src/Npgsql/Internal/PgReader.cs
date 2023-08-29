@@ -23,7 +23,7 @@ public class PgReader
     long _fieldStartPos;
     Size _fieldBufferRequirement;
     DataFormat _fieldFormat;
-    Size _fieldSize;
+    int _fieldSize;
 
     // This position is relative to _fieldStartPos, which is why it can be an int.
     int _currentStartPos;
@@ -40,16 +40,20 @@ public class PgReader
 
     bool _requiresCleanup;
 
-    internal PgReader(NpgsqlReadBuffer buffer) => _buffer = buffer;
+    internal PgReader(NpgsqlReadBuffer buffer)
+    {
+        _buffer = buffer;
+        _fieldStartPos = -1;
+    }
 
     internal long FieldStartPos => _fieldStartPos;
-    internal int FieldSize => _fieldSize.Value;
-    internal bool Initialized => !_fieldSize.IsDefault;
+    internal int FieldSize => _fieldSize;
+    internal bool Initialized => _fieldStartPos != -1;
     int FieldPos => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
 
-    public ValueMetadata Current => new() { Size = _currentSize, Format = _fieldFormat, BufferRequirement = _currentBufferRequirement };
+    public ValueMetadata Current => new() { Size = _currentSize, Format = _fieldFormat, BufferRequirement = CurrentBufferRequirement };
     public int CurrentRemaining => _currentSize - CurrentOffset;
-    internal Size CurrentBufferRequirement => _currentBufferRequirement;
+    internal Size CurrentBufferRequirement => _currentBufferRequirement.IsDefault ? _fieldBufferRequirement : _currentBufferRequirement;
     internal int CurrentOffset => FieldPos - _currentStartPos;
 
     int BufferSize => _buffer.Size;
@@ -417,52 +421,41 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
 
         Debug.Assert(!Initialized || (Resumable && resumable), "Reader wasn't properly committed before next init");
-
-        ThrowIfStreamActive();
+        Debug.Assert(!_requiresCleanup, "Should not be possible to reach");
 
         _fieldStartPos = _buffer.CumulativeReadPosition;
         _fieldFormat = format;
         _fieldSize = _currentSize = fieldLength;
         _currentStartPos = 0;
+        _currentBufferRequirement = default;
         return this;
     }
 
     internal void StartRead(Size bufferRequirement)
     {
         Debug.Assert(FieldSize >= 0);
+        _fieldBufferRequirement = bufferRequirement;
         if (bufferRequirement != Size.Zero)
-        {
-            _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
             Buffer(bufferRequirement);
-        }
     }
 
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        if (bufferRequirement != Size.Zero)
-        {
-            _fieldBufferRequirement = _currentBufferRequirement = bufferRequirement;
-            return BufferAsync(bufferRequirement, cancellationToken);
-        }
-        return new();
+        _fieldBufferRequirement = bufferRequirement;
+        return bufferRequirement != Size.Zero ? BufferAsync(bufferRequirement, cancellationToken) : new();
     }
 
     internal void EndRead()
     {
-        if (Resumable)
+        if (_resumable)
             return;
 
-        var fieldBufferRequirement = _fieldBufferRequirement;
-        if (fieldBufferRequirement != Size.Zero)
+        // If it was upper bound we should consume.
+        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound)
         {
-            _fieldBufferRequirement = _currentBufferRequirement = Size.Zero;
-            // If it was upper bound we should consume.
-            if (fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos > 0)
-            {
-                Consume(FieldSize - FieldPos);
-                return;
-            }
+            Consume(FieldSize - FieldPos);
+            return;
         }
 
         if (FieldPos < FieldSize)
@@ -471,17 +464,12 @@ public class PgReader
 
     internal ValueTask EndReadAsync()
     {
-        if (Resumable)
+        if (_resumable)
             return new();
 
-        var fieldBufferRequirement = _fieldBufferRequirement;
-        if (fieldBufferRequirement != Size.Zero)
-        {
-            _fieldBufferRequirement = _currentBufferRequirement = Size.Zero;
-            // If it was upper bound we should consume.
-            if (fieldBufferRequirement.Kind is SizeKind.UpperBound && FieldSize - FieldPos > 0)
-                return ConsumeAsync(FieldSize - FieldPos);
-        }
+        // If it was upper bound we should consume.
+        if (_fieldBufferRequirement.Kind is SizeKind.UpperBound)
+            return ConsumeAsync(FieldSize - FieldPos);
 
         if (FieldPos < FieldSize)
             ThrowNotConsumed();
@@ -520,7 +508,7 @@ public class PgReader
 
     internal async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
     {
-        if (FieldSize < 0 || FieldSize - FieldPos == 0)
+        if (count <= 0 || FieldSize < 0 || FieldSize - FieldPos == 0)
             return;
 
         var remaining = count ?? CurrentRemaining;
@@ -622,10 +610,10 @@ public class PgReader
         => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
     public bool ShouldBuffer(int byteCount)
     {
-        return BufferBytesRemaining < byteCount && Core();
+        return BufferBytesRemaining < byteCount && ShouldBufferSlow();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        bool Core()
+        bool ShouldBufferSlow()
         {
             if (byteCount > BufferSize)
                 ThrowArgumentOutOfRange();
