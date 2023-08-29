@@ -795,8 +795,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
         case BackendMessageCode.DataRow:
             ProcessDataRowMessage((DataRowMessage)msg);
-            return;
-
+            break;
         case BackendMessageCode.CommandComplete:
             var completed = (CommandCompleteMessage)msg;
             switch (completed.StatementType)
@@ -814,19 +813,15 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
 
             _statements[StatementIndex].ApplyCommandComplete(completed);
-            goto case BackendMessageCode.EmptyQueryResponse;
-
+            State = ReaderState.BetweenResults;
+            break;
         case BackendMessageCode.EmptyQueryResponse:
             State = ReaderState.BetweenResults;
-            return;
-
+            break;
         default:
-            ThrowUnexpectedBackendMessage(msg.Code);
-            return;
+            Connector.UnexpectedMessageReceived(msg.Code);
+            break;
         }
-
-        static void ThrowUnexpectedBackendMessage(BackendMessageCode code)
-            => throw new Exception("Received unexpected backend message of type " + code);
     }
 
     void ProcessDataRowMessage(DataRowMessage msg)
