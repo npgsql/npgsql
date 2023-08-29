@@ -1799,7 +1799,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 var commands = new (string, object[])[InternalBatchCommands.Count];
                 for (var i = 0; i < InternalBatchCommands.Count; i++)
-                    commands[i] = (InternalBatchCommands[i].CommandText, ParametersDbNullAsString(InternalBatchCommands[i]));
+                    commands[i] = (InternalBatchCommands[i].FinalCommandText!, ParametersDbNullAsString(InternalBatchCommands[i]));
 
                 if (executing)
                     LogMessages.ExecutingBatchWithParameters(logger, commands, connector.Id);
@@ -1810,7 +1810,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 var commands = new string[InternalBatchCommands.Count];
                 for (var i = 0; i < InternalBatchCommands.Count; i++)
-                    commands[i] = InternalBatchCommands[i].CommandText;
+                    commands[i] = InternalBatchCommands[i].FinalCommandText!;
                 if (executing)
                     LogMessages.ExecutingBatch(logger, commands, connector.Id);
                 else
