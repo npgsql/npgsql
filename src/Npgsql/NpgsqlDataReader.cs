@@ -205,7 +205,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         const int headerSize = sizeof(byte) + sizeof(int);
         var buffer = Buffer;
-        var bytesLeft = buffer.ReadBytesLeft;
+        var readPosition = buffer.ReadPosition;
+        var bytesLeft = buffer.FilledBytes - readPosition;
         if (bytesLeft < headerSize)
             return null;
         var messageCode = (BackendMessageCode)buffer.ReadByte();
@@ -215,10 +216,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var sufficientBytes = isDataRow && _isSequential ? headerSize + sizeof(short) : headerSize + len;
         if (bytesLeft < sufficientBytes || !isDataRow && (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers))
         {
-            buffer.ReadPosition -= headerSize;
+            buffer.ReadPosition = readPosition;
             return null;
         }
-        var msg = Connector.ParseServerMessage(buffer, messageCode, len, false)!;
+        var msg = Connector.ParseServerMessage(buffer, messageCode, len, false);
+        // Could be an error, let main read handle it.
+        if (msg is null)
+        {
+            buffer.ReadPosition = readPosition;
+            return null;
+        }
         ProcessMessage(msg);
         return isDataRow ? TrueTask : FalseTask;
     }
