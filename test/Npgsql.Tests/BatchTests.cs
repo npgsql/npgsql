@@ -753,6 +753,41 @@ LANGUAGE 'plpgsql'");
         }
     }
 
+#if NET6_0_OR_GREATER // no batch reuse until 6.0
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5239")]
+    public async Task Batch_dispose_reuse()
+    {
+        await using var conn = await OpenConnectionAsync();
+        NpgsqlBatch firstBatch;
+        await using (var batch = conn.CreateBatch())
+        {
+            firstBatch = batch;
+
+            batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT 1"));
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
+        await using (var batch = conn.CreateBatch())
+        {
+            Assert.That(batch, Is.SameAs(firstBatch));
+
+            batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT 2"));
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(2));
+        }
+
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        await using (var batch = conn.CreateBatch())
+        {
+            Assert.That(batch, Is.SameAs(firstBatch));
+
+            batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT 3"));
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(3));
+        }
+    }
+#endif
+
     #endregion Miscellaneous
 
     #region Logging

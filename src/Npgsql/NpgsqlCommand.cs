@@ -1646,7 +1646,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         // TODO: Statements isn't cleared/recycled, leaving this for now, since it'll be replaced by the new batching API
         _commandText = string.Empty;
         CommandType = CommandType.Text;
-        _parameters.Clear();
+        // Can be null if it's owned by batch
+        _parameters?.Clear();
         _timeout = null;
         _allResultTypesAreUnknown = false;
         EnableErrorBarriers = false;
