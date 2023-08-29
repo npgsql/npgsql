@@ -571,13 +571,15 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    T Read<T>()
+    unsafe T Read<T>() where T : unmanaged
     {
-        if (Unsafe.SizeOf<T>() > ReadBytesLeft)
+#if DEBUG
+        if (sizeof(T) > ReadBytesLeft)
             ThrowNotSpaceLeft();
+#endif
 
         var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
-        ReadPosition += Unsafe.SizeOf<T>();
+        ReadPosition += sizeof(T);
         return result;
     }
 
