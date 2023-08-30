@@ -197,7 +197,7 @@ public sealed class PgWriter
             var totalBytesWritten = _totalBytesWritten;
             _totalBytesWritten = 0;
             if (totalBytesWritten != expectedByteCount)
-                throw new InvalidOperationException($"Bytes written ({totalBytesWritten}) and expected byte count ({expectedByteCount}) don't match.");
+                ThrowHelper.ThrowInvalidOperationException($"Bytes written ({totalBytesWritten}) and expected byte count ({expectedByteCount}) don't match.");
         }
     }
 

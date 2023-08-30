@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.Postgres;
 
@@ -17,7 +18,7 @@ sealed class PreparedStatement
 
     internal string Sql { get; }
 
-    internal string? Name;
+    internal byte[]? Name;
 
     internal RowDescriptionMessage? Description;
 
@@ -58,7 +59,7 @@ sealed class PreparedStatement
     {
         var pStatement = new PreparedStatement(manager, sql, true)
         {
-            Name = name,
+            Name = Encoding.ASCII.GetBytes(name),
             StatementBeingReplaced = statementBeingReplaced
         };
         pStatement.SetParamTypes(parameters);

@@ -194,9 +194,9 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     internal bool IsPreparing;
 
     /// <summary>
-    /// Holds the server-side (prepared) statement name. Empty string for non-prepared statements.
+    /// Holds the server-side (prepared) ASCII statement name. Empty string for non-prepared statements.
     /// </summary>
-    internal string StatementName => PreparedStatement?.Name ?? "";
+    internal byte[] StatementName => PreparedStatement?.Name ?? Array.Empty<byte>();
 
     /// <summary>
     /// Whether this statement has already been prepared (including automatic preparation).

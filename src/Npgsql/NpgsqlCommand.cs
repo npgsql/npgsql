@@ -1056,7 +1056,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         i == 0 ? UnknownResultTypeList : null,
                         async, cancellationToken).ConfigureAwait(false);
 
-                    await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async, cancellationToken).ConfigureAwait(false);
+                    await connector.WriteDescribe(StatementOrPortal.Portal, Array.Empty<byte>(), async, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1128,8 +1128,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             var batchCommand = InternalBatchCommands[i];
 
-            await connector.WriteParse(batchCommand.FinalCommandText!, string.Empty, EmptyParameters, async, cancellationToken).ConfigureAwait(false);
-            await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async, cancellationToken).ConfigureAwait(false);
+            await connector.WriteParse(batchCommand.FinalCommandText!, Array.Empty<byte>(), EmptyParameters, async, cancellationToken).ConfigureAwait(false);
+            await connector.WriteDescribe(StatementOrPortal.Statement, Array.Empty<byte>(), async, cancellationToken).ConfigureAwait(false);
         }
 
         await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);

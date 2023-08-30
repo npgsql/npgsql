@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 
@@ -219,7 +220,7 @@ sealed class PreparedStatementManager
 
         if (oldPreparedStatement is null)
         {
-            pStatement.Name = "_auto" + selectedIndex;
+            pStatement.Name = Encoding.ASCII.GetBytes("_auto" + selectedIndex);
         }
         else
         {

@@ -477,6 +477,14 @@ sealed class NpgsqlWriteBuffer : IDisposable
         WriteByte(0);
     }
 
+    public void WriteNullTerminatedString(byte[] s)
+    {
+        Debug.Assert(s.All(c => c < 128), "Method only supports ASCII strings");
+        Debug.Assert(WriteSpaceLeft >= s.Length + 1);
+        WriteBytes(s);
+        WriteByte(0);
+    }
+
     #endregion
 
     #region Write Complex
