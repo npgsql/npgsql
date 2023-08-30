@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -68,16 +70,17 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo) => typeInfo.GetResolution(TypedValue);
 
-    private protected override void BindCore(bool allowNullObject = false)
+    private protected override void BindCore(bool allowNullReference = false)
     {
         if (AsObject)
         {
-            base.BindCore(_useSubStream || allowNullObject);
+            base.BindCore(_useSubStream || allowNullReference);
             return;
         }
 
         var value = TypedValue;
-        if (TypeInfo!.Bind(new(Converter!, PgTypeId), value, out var size, out _writeState, out var dataFormat) is { } info)
+        Debug.Assert(Converter is PgConverter<T>);
+        if (TypeInfo!.Bind(Unsafe.As<PgConverter<T>>(Converter), value, out var size, out _writeState, out var dataFormat) is { } info)
         {
             if (size.Kind is SizeKind.Unknown)
                 throw new NotImplementedException();
@@ -93,15 +96,16 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         Format = dataFormat;
     }
 
-    private protected override ValueTask WriteValue(bool async, PgConverter converter, PgWriter writer, CancellationToken cancellationToken)
+    private protected override ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
         if (AsObject)
-            return base.WriteValue(async, converter, writer, cancellationToken);
+            return base.WriteValue(async, writer, cancellationToken);
 
+        Debug.Assert(Converter is PgConverter<T>);
         if (async)
-            return ((PgConverter<T>)converter).WriteAsync(writer, TypedValue!, cancellationToken);
+            return Unsafe.As<PgConverter<T>>(Converter!).WriteAsync(writer, TypedValue!, cancellationToken);
 
-        ((PgConverter<T>)converter).Write(writer, TypedValue!);
+        Unsafe.As<PgConverter<T>>(Converter!).Write(writer, TypedValue!);
         return new();
     }
 

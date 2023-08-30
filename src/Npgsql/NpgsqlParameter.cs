@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
@@ -638,17 +639,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         size = WriteSize!.Value;
     }
 
-    private protected virtual void BindCore(bool allowNullObject = false)
+    private protected virtual void BindCore(bool allowNullReference = false)
     {
         // Pull from Value so we also support object typed generic params.
         var value = Value;
-        if (value is null && !allowNullObject)
+        if (value is null && !allowNullReference)
             ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
 
         if (_useSubStream && value is not null)
             value = _subStream = new SubReadStream((Stream)value, _size);
 
-        if (TypeInfo!.BindObject(new(Converter!, PgTypeId), value, out var size, out _writeState, out var dataFormat) is { } info)
+        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat) is { } info)
         {
             if (size.Kind is SizeKind.Unknown)
                 ThrowHelper.ThrowNotSupportedException("Should not end up here, yet");
@@ -695,7 +696,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 WriteState = _writeState
             };
             await writer.BeginWrite(async, current, cancellationToken).ConfigureAwait(false);
-            await WriteValue(async, Converter!, writer, cancellationToken);
+            await WriteValue(async, writer, cancellationToken);
             writer.Commit(writeSize.Value + sizeof(int));
         }
         finally
@@ -704,14 +705,14 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    private protected virtual ValueTask WriteValue(bool async, PgConverter converter, PgWriter writer, CancellationToken cancellationToken)
+    private protected virtual ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
         // Pull from Value so we also support AsObject base calls from generic parameters.
         var value = (_useSubStream ? _subStream : Value)!;
         if (async)
-            return converter.WriteAsObjectAsync(writer, value, cancellationToken);
+            return Converter!.WriteAsObjectAsync(writer, value, cancellationToken);
 
-        converter.WriteAsObject(writer, value);
+        Converter!.WriteAsObject(writer, value);
         return new();
     }
 

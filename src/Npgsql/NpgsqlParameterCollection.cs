@@ -684,9 +684,10 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         HasOutputParameters = false;
         PlaceholderType = PlaceholderType.NoParameters;
 
-        for (var i = 0; i < InternalList.Count; i++)
+        var list = InternalList;
+        for (var i = 0; i < list.Count; i++)
         {
-            var p = InternalList[i];
+            var p = list[i];
 
             switch (PlaceholderType)
             {
