@@ -1909,18 +1909,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var pgReader = PgReader;
 
         // Deals with current column commit and rereads
+        int columnLength;
         if (currentColumn >= 0)
         {
-            var reread = currentColumn == ordinal;
-            var resuming = reread && pgReader.Resumable && resumableOp;
-            if (reread && !resuming)
-                return HandleReread();
-            pgReader.Commit(async: false, resuming).GetAwaiter().GetResult();
+            if (currentColumn == ordinal)
+                return HandleReread(pgReader.Resumable && resumableOp);
+            pgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
         }
 
         // Deals with forward movement
         Debug.Assert(ordinal != currentColumn);
-        int columnLength;
         if (ordinal > currentColumn)
         {
             for (; currentColumn < ordinal - 1; currentColumn++)
@@ -1939,11 +1937,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         return columnLength;
 
-        int HandleReread()
+        int HandleReread(bool resuming)
         {
             var columnLength = pgReader.FieldSize;
-            pgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
-            if (columnLength > 0)
+            pgReader.Commit(async: false, resuming).GetAwaiter().GetResult();
+            if (!resuming && columnLength > 0)
                 buffer.ReadPosition -= columnLength;
             pgReader.Init(columnLength, field.DataFormat, resumableOp);
             return columnLength;
