@@ -330,82 +330,47 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <summary>
     /// Internal implementation of NextResult
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     async Task<bool> NextResult(bool async, bool isConsuming = false, CancellationToken cancellationToken = default)
     {
+        Debug.Assert(!_isSchemaOnly);
         CheckClosedOrDisposed();
 
-        IBackendMessage msg;
-        Debug.Assert(!_isSchemaOnly);
-
-        using var registration = isConsuming ? default : Connector.StartNestedCancellableOperation(cancellationToken);
+        if (State is ReaderState.Consumed)
+            return false;
 
         try
         {
+            using var registration = isConsuming ? default : Connector.StartNestedCancellableOperation(cancellationToken);
             // If we're in the middle of a resultset, consume it
-            switch (State)
-            {
-            case ReaderState.BeforeResult:
-            case ReaderState.InResult:
-                await ConsumeRow(async).ConfigureAwait(false);
-                while (true)
-                {
-                    var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip).ConfigureAwait(false);
-                    switch (completedMsg.Code)
-                    {
-                    case BackendMessageCode.CommandComplete:
-                    case BackendMessageCode.EmptyQueryResponse:
-                        ProcessMessage(completedMsg);
+            if (State is ReaderState.BeforeResult or ReaderState.InResult)
+                await ConsumeResultSet();
 
-                        var statement = _statements[StatementIndex];
-                        if (statement.IsPrepared && ColumnInfoCache is not null)
-                            RowDescription!.SetConverterInfoCache(new(ColumnInfoCache, 0, _numColumns));
+            Debug.Assert(State is ReaderState.BetweenResults);
 
-                        if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
-
-                        break;
-
-                    default:
-                        continue;
-                    }
-
-                    break;
-                }
-
-                break;
-
-            case ReaderState.BetweenResults:
-            {
-                if (StatementIndex >= 0 && _statements[StatementIndex].IsPrepared && ColumnInfoCache is not null)
-                    RowDescription!.SetConverterInfoCache(new(ColumnInfoCache, 0, _numColumns));
-                break;
-            }
-            case ReaderState.Consumed:
-            case ReaderState.Closed:
-            case ReaderState.Disposed:
-                return false;
-            default:
-                ThrowHelper.ThrowArgumentOutOfRangeException();
-                return false;
-            }
-
-            Debug.Assert(State == ReaderState.BetweenResults);
             _hasRows = false;
 
-            if (_behavior.HasFlag(CommandBehavior.SingleResult) && StatementIndex == 0 && !isConsuming)
+            var statements = _statements;
+            var statementIndex = StatementIndex;
+            if (statementIndex >= 0)
             {
-                await Consume(async).ConfigureAwait(false);
-                return false;
+                if (RowDescription is { } description && statements[statementIndex].IsPrepared && ColumnInfoCache is { } cache)
+                    description.SetConverterInfoCache(new(cache, 0, _numColumns));
+
+                if (statementIndex is 0 && _behavior.HasFlag(CommandBehavior.SingleResult) && !isConsuming)
+                {
+                    await Consume(async);
+                    return false;
+                }
             }
 
             // We are now at the end of the previous result set. Read up to the next result set, if any.
             // Non-prepared statements receive ParseComplete, BindComplete, DescriptionRow/NoData,
             // prepared statements receive only BindComplete
-            for (StatementIndex++; StatementIndex < _statements.Count; StatementIndex++)
+            for (var i = ++StatementIndex; i < statements.Count; i = ++StatementIndex)
             {
-                var statement = _statements[StatementIndex];
+                var statement = statements[i];
 
+                IBackendMessage msg;
                 if (statement.TryGetPrepared(out var preparedStatement))
                 {
                     Expect<BindCompleteMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
@@ -520,12 +485,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
                     return true;
                 default:
-                    throw Connector.UnexpectedMessageReceived(msg.Code);
+                    Connector.UnexpectedMessageReceived(msg.Code);
+                    break;
                 }
             }
 
             // There are no more queries, we're done. Read the RFQ.
-            if (_statements.Count == 0 || !(_statements[_statements.Count - 1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
+            if (_statements.Count is 0 || !(_statements[_statements.Count - 1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
                 Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
             State = ReaderState.Consumed;
@@ -599,6 +565,35 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (State is not ReaderState.Closed)
                 State = ReaderState.Consumed;
             throw;
+        }
+
+        async ValueTask ConsumeResultSet()
+        {
+            await ConsumeRow(async);
+            while (true)
+            {
+                var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip);
+                switch (completedMsg.Code)
+                {
+                case BackendMessageCode.CommandComplete:
+                case BackendMessageCode.EmptyQueryResponse:
+                    ProcessMessage(completedMsg);
+
+                    var statement = _statements[StatementIndex];
+                    if (statement.IsPrepared && ColumnInfoCache is not null)
+                        RowDescription!.SetConverterInfoCache(new(ColumnInfoCache, 0, _numColumns));
+
+                    if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
+                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+
+                    break;
+                default:
+                    // TODO if we hit an ErrorResponse here (PG doesn't do this *today*) we should probably throw.
+                    continue;
+                }
+
+                break;
+            }
         }
     }
 
@@ -1160,7 +1155,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // has completed, throwing any exceptions it generated. If we don't do this, there's the possibility of a race condition where the
         // user executes a new command after reader.Dispose() returns, but some additional write stuff is still finishing up from the last
         // command.
-        if (_sendTask != null)
+        if (_sendTask is { Status: not TaskStatus.RanToCompletion })
         {
             // If the connector is broken, we have no reason to wait for the sendTask to complete
             // as we're not going to send anything else over it
