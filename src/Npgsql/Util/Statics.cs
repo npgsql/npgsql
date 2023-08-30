@@ -1,6 +1,7 @@
 using Npgsql.Internal;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -45,6 +46,7 @@ static class Statics
         => throw connector.Break(
             new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
 
+    [Conditional("DEBUG")]
     internal static void ValidateBackendMessageCode(BackendMessageCode code)
     {
         switch (code)

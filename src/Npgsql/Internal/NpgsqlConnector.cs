@@ -451,6 +451,10 @@ public sealed partial class NpgsqlConnector
             var newState = (int)value;
             if (newState == _state)
                 return;
+
+            if (newState is < 0 or > (int)ConnectorState.Replication)
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(value), "Unknown state: " + value);
+
             Interlocked.Exchange(ref _state, newState);
         }
     }
@@ -458,20 +462,7 @@ public sealed partial class NpgsqlConnector
     /// <summary>
     /// Returns whether the connector is open, regardless of any task it is currently performing
     /// </summary>
-    bool IsConnected
-        => State switch
-        {
-            ConnectorState.Ready       => true,
-            ConnectorState.Executing   => true,
-            ConnectorState.Fetching    => true,
-            ConnectorState.Waiting     => true,
-            ConnectorState.Copy        => true,
-            ConnectorState.Replication => true,
-            ConnectorState.Closed      => false,
-            ConnectorState.Connecting  => false,
-            ConnectorState.Broken      => false,
-            _                          => throw new ArgumentOutOfRangeException("Unknown state: " + State)
-        };
+    bool IsConnected => State is not (ConnectorState.Closed or ConnectorState.Connecting or ConnectorState.Broken);
 
     internal bool IsReady => State == ConnectorState.Ready;
     internal bool IsClosed => State == ConnectorState.Closed;
