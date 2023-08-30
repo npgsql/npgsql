@@ -67,7 +67,7 @@ sealed class JsonNetArrayTypeInfoResolver : JsonNetTypeInfoResolver, IPgTypeInfo
 }
 
 [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
-[RequiresDynamicCode("Need to construct a generic converter for statically unknown types.")]
+[RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
 {
     protected TypeInfoMappingCollection Mappings { get; } = new();
