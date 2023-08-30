@@ -1859,25 +1859,21 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     NpgsqlConnection? CheckAndGetConnection()
     {
-        if (State == CommandState.Disposed)
+        if (State is CommandState.Disposed)
             ThrowHelper.ThrowObjectDisposedException(GetType().FullName);
-        if (InternalConnection == null)
+
+        var conn = InternalConnection;
+        if (conn is null)
         {
             if (_connector is null)
                 ThrowHelper.ThrowInvalidOperationException("Connection property has not been initialized.");
             return null;
         }
-        switch (InternalConnection.FullState)
-        {
-        case ConnectionState.Open:
-        case ConnectionState.Connecting:
-        case ConnectionState.Open | ConnectionState.Executing:
-        case ConnectionState.Open | ConnectionState.Fetching:
-            return InternalConnection;
-        default:
+
+        if (!conn.FullState.HasFlag(ConnectionState.Open))
             ThrowHelper.ThrowInvalidOperationException("Connection is not open");
-            return null;
-        }
+
+        return conn;
     }
 
     /// <summary>

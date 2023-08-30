@@ -16,8 +16,6 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     readonly bool _autoPrepare;
 
-    internal volatile bool StartupCheckPerformed;
-
     readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
     internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
 
