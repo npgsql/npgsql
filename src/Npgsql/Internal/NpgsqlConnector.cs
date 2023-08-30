@@ -1477,6 +1477,14 @@ public sealed partial class NpgsqlConnector
         }
     }
 
+    internal IBackendMessage? ParseResultSetMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len)
+        => code switch
+        {
+            BackendMessageCode.DataRow => _dataRowMessage.Load(len),
+            BackendMessageCode.CommandComplete => _commandCompleteMessage.Load(buf, len),
+            _ => ParseServerMessage(buf, code, len, false)
+        };
+
     internal IBackendMessage? ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage)
     {
         switch (code)
@@ -1552,17 +1560,15 @@ public sealed partial class NpgsqlConnector
         case BackendMessageCode.CopyDone:
             return CopyDoneMessage.Instance;
 
-        case BackendMessageCode.PortalSuspended:
-            throw new NpgsqlException("Unimplemented message: " + code);
         case BackendMessageCode.ErrorResponse:
             return null;
 
+        case BackendMessageCode.PortalSuspended:
         case BackendMessageCode.FunctionCallResponse:
             // We don't use the obsolete function call protocol
-            throw new NpgsqlException("Unexpected backend message: " + code);
-
         default:
-            throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {code} of enum {nameof(BackendMessageCode)}. Please file a bug.");
+            ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {code} of enum {nameof(BackendMessageCode)}. Please file a bug.");
+            return null;
         }
     }
 

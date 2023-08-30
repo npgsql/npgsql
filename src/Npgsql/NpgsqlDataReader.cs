@@ -214,14 +214,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var isDataRow = messageCode is BackendMessageCode.DataRow;
         // sizeof(short) is for the number of columns
         var sufficientBytes = isDataRow && _isSequential ? headerSize + sizeof(short) : headerSize + len;
-        if (bytesLeft < sufficientBytes || !isDataRow && (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers))
-        {
-            buffer.ReadPosition = readPosition;
-            return null;
-        }
-        var msg = Connector.ParseServerMessage(buffer, messageCode, len, false);
-        // Could be an error, let main read handle it.
-        if (msg is null)
+        if (bytesLeft < sufficientBytes
+            || !isDataRow && (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers)
+            // Could be an error, let main read handle it.
+            || Connector.ParseResultSetMessage(buffer, messageCode, len) is not { } msg)
         {
             buffer.ReadPosition = readPosition;
             return null;
