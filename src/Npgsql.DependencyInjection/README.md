@@ -47,7 +47,8 @@ Finally, the `AddNpgsqlDataSource` method also accepts a lambda parameter allowi
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddNpgsqlDataSource("Host=pg_server;Username=test;Password=test;Database=test",
+builder.Services.AddNpgsqlDataSource(
+    "Host=pg_server;Username=test;Password=test;Database=test",
     builder => builder
         .UseLoggerFactory(loggerFactory)
         .UseNetTopologySuite());
