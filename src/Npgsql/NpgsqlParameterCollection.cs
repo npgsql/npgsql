@@ -739,7 +739,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             if (validateValues)
             {
-                p.Bind();
+                p.Bind(out _, out _);
             }
         }
     }

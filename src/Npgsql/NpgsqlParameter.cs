@@ -43,8 +43,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal PgTypeId PgTypeId { get; set; }
     internal PgConverter? Converter { get; private set; }
 
-    internal Size? WriteSize { get; set; }
     internal DataFormat Format { get; private protected set; }
+    private protected Size? WriteSize { get; set; }
     private protected bool AsObject => TypeInfo!.IsBoxing || TypeInfo.Type != ValueType || _useSubStream;
     private protected object? _writeState;
     private protected Size _bufferRequirement;
@@ -586,17 +586,21 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo) => typeInfo.GetObjectResolution(_value);
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
-    internal void Bind()
+    internal void Bind(out DataFormat format, out Size size)
     {
         if (TypeInfo is null)
-            throw new InvalidOperationException("Missing type info.");
+            ThrowHelper.ThrowInvalidOperationException("Missing type info.");
 
         if (!TypeInfo.SupportsWriting)
-            throw new NotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.TypeCatalog.GetDataTypeName(PgTypeId).DisplayName}'.");
+            ThrowHelper.ThrowNotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.TypeCatalog.GetDataTypeName(PgTypeId).DisplayName}'.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
         if (WriteSize is not null)
+        {
+            format = Format;
+            size = WriteSize.Value;
             return;
+        }
 
         // Handle Size truncate behavior for a predetermined set of types and pg types.
         // Doesn't matter if we 'box' value, all supported types are reference types.
@@ -630,6 +634,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
 
         BindCore();
+        format = Format;
+        size = WriteSize!.Value;
     }
 
     private protected virtual void BindCore(bool allowNullObject = false)
@@ -645,7 +651,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (TypeInfo!.BindObject(new(Converter!, PgTypeId), value, out var size, out _writeState, out var dataFormat) is { } info)
         {
             if (size.Kind is SizeKind.Unknown)
-                throw new NotImplementedException();
+                ThrowHelper.ThrowNotSupportedException("Should not end up here, yet");
 
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
@@ -660,13 +666,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (TypeInfo is null || WriteSize is not { } writeSize)
-            throw new InvalidOperationException("Missing type info or binding info.");
+        if (WriteSize is not { } writeSize)
+        {
+            ThrowHelper.ThrowInvalidOperationException("Missing type info or binding info.");
+            return;
+        }
 
         try
         {
             if (writeSize.Kind is not SizeKind.Exact)
-                throw new NotImplementedException("Should not end up here, yet");
+                ThrowHelper.ThrowNotSupportedException("Should not end up here, yet");
 
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken);
