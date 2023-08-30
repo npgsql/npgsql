@@ -264,8 +264,6 @@ public sealed class FieldDescription
         PostgresType = source.PostgresType;
         Field = source.Field;
         _objectOrDefaultInfo = source._objectOrDefaultInfo;
-        _lastTypeInfo = source._lastTypeInfo;
-        _lastInfo = source._lastInfo;
     }
 
     internal void Populate(
@@ -273,7 +271,6 @@ public sealed class FieldDescription
         uint oid, short typeSize, int typeModifier, DataFormat dataFormat
     )
     {
-        ResetTypeInfo();
         _serializerOptions = serializerOptions;
         Name = name;
         TableOID = tableOID;
@@ -284,13 +281,7 @@ public sealed class FieldDescription
         DataFormat = dataFormat;
         PostgresType = _serializerOptions.TypeCatalog.FindPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
         Field = new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
-
-        void ResetTypeInfo()
-        {
-            _objectOrDefaultInfo = default;
-            _lastTypeInfo = null;
-            _lastInfo = default;
-        }
+        _objectOrDefaultInfo = default;
     }
 
     /// <summary>
@@ -338,19 +329,6 @@ public sealed class FieldDescription
 
     internal Type FieldType => ObjectOrDefaultInfo.TypeToConvert;
 
-    PgTypeInfo ObjectOrDefaultTypeInfo
-    {
-        get
-        {
-            if (!_objectOrDefaultInfo.IsDefault)
-                return _objectOrDefaultInfo.TypeInfo;
-
-            ref var info = ref _objectOrDefaultInfo;
-            GetInfo(null, ref _objectOrDefaultInfo);
-            return info.TypeInfo;
-        }
-    }
-
     PgConverterInfo _objectOrDefaultInfo;
     internal PgConverterInfo ObjectOrDefaultInfo
     {
@@ -366,8 +344,6 @@ public sealed class FieldDescription
     }
 
     PgSerializerOptions _serializerOptions;
-    PgTypeInfo? _lastTypeInfo;
-    PgConverterInfo _lastInfo;
 
     internal FieldDescription Clone()
     {
