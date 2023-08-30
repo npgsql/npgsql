@@ -42,6 +42,16 @@ app.MapGet("/", async (NpgsqlDataSource dataSource) =>
 });
 ```
 
-Finally, the `AddNpgsqlDataSource` method also accepts a lambda parameter allowing you to configure aspects of Npgsql beyond the connection string.
+Finally, the `AddNpgsqlDataSource` method also accepts a lambda parameter allowing you to configure aspects of Npgsql beyond the connection string, for example to configure `UseLoggerFactory` and `UseNetTopologySuite`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddNpgsqlDataSource("Host=pg_server;Username=test;Password=test;Database=test",
+    builder => {
+        builder.UseLoggerFactory(loggerFactory);
+        builder.UseNetTopologySuite();
+    });
+```
 
 For more information, [see the Npgsql documentation](https://www.npgsql.org/doc/index.html).
