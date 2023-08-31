@@ -539,8 +539,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // We treat object typed DBNull values as default info.
             if (valueType is null || (staticValueType == typeof(object) && valueType == typeof(DBNull)))
             {
-                // And we treat DBNull as a set value.
-                if (pgTypeId is null && valueType != typeof(DBNull))
+                if (pgTypeId is null && valueType is null)
                 {
                     var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
                     ThrowHelper.ThrowInvalidOperationException(

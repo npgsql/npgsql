@@ -59,6 +59,7 @@ public class PgTypeInfo
     // Doubles as the storage for the converter coming from a default resolution (used to confirm whether we can use cached info).
     PgConverter? Converter { get; }
     [MemberNotNullWhen(false, nameof(Converter))]
+    [MemberNotNullWhen(false, nameof(PgTypeId))]
     internal bool IsResolverInfo => GetType() == typeof(PgResolverTypeInfo);
 
     // TODO pull validate from options + internal exempt for perf?
@@ -130,7 +131,7 @@ public class PgTypeInfo
         switch (this)
         {
         case { IsResolverInfo: false }:
-            return new PgConverterResolution(Converter, PgTypeId.GetValueOrDefault());
+            return new(Converter, PgTypeId.GetValueOrDefault());
         case PgResolverTypeInfo resolverInfo:
             PgConverterResolution? resolution = null;
             if (value is not DBNull)
