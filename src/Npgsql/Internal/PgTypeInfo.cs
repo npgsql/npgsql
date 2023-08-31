@@ -59,7 +59,7 @@ public class PgTypeInfo
     // Doubles as the storage for the converter coming from a default resolution (used to confirm whether we can use cached info).
     PgConverter? Converter { get; }
     [MemberNotNullWhen(false, nameof(Converter))]
-    bool IsResolverInfo => this is PgResolverTypeInfo;
+    internal bool IsResolverInfo => GetType() == typeof(PgResolverTypeInfo);
 
     // TODO pull validate from options + internal exempt for perf?
     internal bool ValidateResolution => true;
@@ -341,7 +341,7 @@ readonly struct PgConverterInfo
         {
             // Object typed resolvers can return any type of converter, so we check the type of the converter instead.
             // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
-            if (TypeInfo is PgResolverTypeInfo resolverTypeInfo && resolverTypeInfo.Type == typeof(object))
+            if (TypeInfo.IsResolverInfo && TypeInfo.Type == typeof(object))
                 return Converter.TypeToConvert;
 
             return TypeInfo.Type;
