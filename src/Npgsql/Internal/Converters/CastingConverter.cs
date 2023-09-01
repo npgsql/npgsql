@@ -1,9 +1,6 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
-using static Npgsql.Internal.Converters.AsyncHelpers;
 
 namespace Npgsql.Internal.Converters;
 
@@ -20,25 +17,10 @@ sealed class CastingConverter<T> : PgConverter<T>
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => _effectiveConverter.CanConvert(format, out bufferRequirements);
 
-    public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader)!;
-    public override unsafe ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-    {
-        // Easy if we have all the data, just go sync and return it.
-        if (reader.ShouldBuffer(reader.CurrentRemaining))
-            return new((T)_effectiveConverter.ReadAsObject(reader));
+    public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader);
 
-        // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
-        var source = new CompletionSource<T>();
-        AwaitTask(_effectiveConverter.ReadAsObjectAsync(reader, cancellationToken).AsTask(), source, new(this, &UnboxAndComplete));
-        return source.Task;
-
-        static void UnboxAndComplete(Task task, CompletionSource completionSource)
-        {
-            Debug.Assert(task is Task<object>);
-            Debug.Assert(completionSource is CompletionSource<T>);
-            Unsafe.As<CompletionSource<T>>(completionSource).SetResult((T)new ValueTask<object>(Unsafe.As<Task<object>>(task)).Result);
-        }
-    }
+    public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => this.ComposingReadAsObjectAsync(_effectiveConverter, reader, cancellationToken);
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => _effectiveConverter.GetSizeAsObject(context, value!, ref writeState);
@@ -79,3 +61,4 @@ sealed class CastingConverterResolver<T> : PgComposingConverterResolver<T>
     protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectiveTypeId)
         => EffectiveTypeInfo.GetResolutionAsObject(value, expectedEffectiveTypeId);
 }
+

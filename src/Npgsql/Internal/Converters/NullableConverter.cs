@@ -1,9 +1,6 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
-using static Npgsql.Internal.Converters.AsyncHelpers;
 
 namespace Npgsql.Internal.Converters;
 
@@ -25,25 +22,8 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
     public override T? Read(PgReader reader)
         => _effectiveConverter.Read(reader);
 
-    public override unsafe ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-    {
-        // Easy if we have all the data.
-        var task = _effectiveConverter.ReadAsync(reader, cancellationToken);
-        if (task.IsCompletedSuccessfully)
-            return new(task.Result);
-
-        // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
-        var source = new CompletionSource<T?>();
-        AwaitTask(task.AsTask(), source, new(this, &UnboxAndComplete));
-        return source.Task;
-
-        static void UnboxAndComplete(Task task, CompletionSource completionSource)
-        {
-            Debug.Assert(task is Task<T>);
-            Debug.Assert(completionSource is CompletionSource<T?>);
-            Unsafe.As<CompletionSource<T?>>(completionSource).SetResult(new ValueTask<T>(Unsafe.As<Task<T>>(task)).Result);
-        }
-    }
+    public override ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => this.ComposingReadAsync(_effectiveConverter, reader, cancellationToken);
 
     // GetSize is always called due to the value potentially being null.
     // We need to return any fixed size or upper bounds here as the effective GetSize won't be implemented.
