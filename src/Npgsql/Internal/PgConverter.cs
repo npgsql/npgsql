@@ -183,14 +183,14 @@ class MultiWriteState
             return;
 
         if (AnyWriteState)
+        {
             for (var i = Data.Offset; i < array.Length; i++)
-            {
-                ref var state = ref array[i].WriteState;
                 if (array[i].WriteState is IDisposable disposable)
                     disposable.Dispose();
-                state = null;
-            }
 
-        ArrayPool?.Return(Data.Array!);
+            Array.Clear(Data.Array, Data.Offset, Data.Count);
+        }
+
+        ArrayPool?.Return(Data.Array);
     }
 }
