@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: NuGet Cache
         uses: actions/cache@v3
@@ -80,7 +80,7 @@ jobs:
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v3
+      #- uses: actions/checkout@v4
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 
