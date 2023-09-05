@@ -116,10 +116,7 @@ class NetworkTypeTests : MultiplexingTestBase
         if (conn.PostgreSqlVersion < new Version(10, 0))
             Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
 
-        var exception = await AssertTypeUnsupportedWrite<PhysicalAddress, PostgresException>(
-            PhysicalAddress.Parse("08-00-2B-01-02-03-04-05"), "macaddr");
-
-        Assert.That(exception.Message, Does.StartWith("22P03:").And.Contain("1"));
+        await AssertTypeUnsupportedWrite<PhysicalAddress, ArgumentException>(PhysicalAddress.Parse("08-00-2B-01-02-03-04-05"), "macaddr");
     }
 
     public NetworkTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}

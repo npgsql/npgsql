@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
 
@@ -6,8 +7,15 @@ namespace Npgsql.Internal.Converters;
 
 sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
 {
+    readonly bool _macaddr8;
+
+    public MacaddrConverter(bool macaddr8) => _macaddr8 = macaddr8;
+
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => CanConvertBufferedDefault(format, out bufferRequirements);
+    {
+        bufferRequirements = _macaddr8 ? BufferRequirements.Create(Size.CreateUpperBound(8)) : BufferRequirements.CreateFixedSize(6);
+        return format is DataFormat.Binary;
+    }
 
     public override Size GetSize(SizeContext context, PhysicalAddress value, ref object? writeState)
         => value.GetAddressBytes().Length;
@@ -25,6 +33,8 @@ sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
     protected override void WriteCore(PgWriter writer, PhysicalAddress value)
     {
         var bytes = value.GetAddressBytes();
+        if (!_macaddr8 && bytes.Length is not 6)
+            throw new ArgumentException("A macaddr value must be 6 bytes long.");
         writer.WriteBytes(bytes);
     }
 }

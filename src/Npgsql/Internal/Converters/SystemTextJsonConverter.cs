@@ -42,6 +42,9 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
 
     async ValueTask<T?> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
+        if (_jsonb && reader.ShouldBuffer(sizeof(byte)))
+            await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
+
         // We always fall back to buffers on older targets due to the absence of transcoding stream.
         if (SystemTextJsonConverter.TryReadStream(_jsonb, _textEncoding, reader, out var byteCount, out var stream))
         {
@@ -174,7 +177,11 @@ static class SystemTextJsonConverter
     public static async ValueTask Write(bool jsonb, bool async, PgWriter writer, CancellationToken cancellationToken)
     {
         if (jsonb)
+        {
+            if (writer.ShouldFlush(sizeof(byte)))
+                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
             writer.WriteByte(JsonbProtocolVersion);
+        }
 
         ArraySegment<byte> buffer;
         switch (writer.Current.WriteState)

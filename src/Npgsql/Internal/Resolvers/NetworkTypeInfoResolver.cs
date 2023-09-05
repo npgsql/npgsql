@@ -27,9 +27,9 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
     {
         // macaddr
         mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr,
-            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter(macaddr8: false)), isDefault: true);
         mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()),
+            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter(macaddr8: true)),
             mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // inet

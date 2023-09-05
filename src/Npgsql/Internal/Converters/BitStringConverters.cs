@@ -30,16 +30,22 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 {
     public override BitArray Read(PgReader reader)
     {
+        if (reader.ShouldBuffer(sizeof(int)))
+            reader.Buffer(sizeof(int));
+
         var bits = reader.ReadInt32();
         return ReadValue(reader.ReadBytes(GetByteLengthFromBits(bits)), bits);
     }
     public override async ValueTask<BitArray> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
+        if (reader.ShouldBuffer(sizeof(int)))
+            await reader.BufferAsync(sizeof(int), cancellationToken).ConfigureAwait(false);
+
         var bits = reader.ReadInt32();
         return ReadValue(await reader.ReadBytesAsync(GetByteLengthFromBits(bits), cancellationToken).ConfigureAwait(false), bits);
     }
 
-    public static BitArray ReadValue(ReadOnlySequence<byte> byteSeq, int bits)
+    internal static BitArray ReadValue(ReadOnlySequence<byte> byteSeq, int bits)
     {
         var bytes = byteSeq.ToArray();
         for (var i = 0; i < bytes.Length; i++)
@@ -166,6 +172,9 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
 
     async ValueTask<string> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
+        if (reader.ShouldBuffer(sizeof(int)))
+            await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+
         var bits = reader.ReadInt32();
         var bytes = async
             ? await reader.ReadBytesAsync(GetByteLengthFromBits(bits), cancellationToken).ConfigureAwait(false)

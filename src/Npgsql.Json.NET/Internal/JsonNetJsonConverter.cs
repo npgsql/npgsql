@@ -47,6 +47,13 @@ static class JsonNetJsonConverter
     {
         if (jsonb)
         {
+            if (reader.ShouldBuffer(sizeof(byte)))
+            {
+                if (async)
+                    await reader.BufferAsync(sizeof(byte), cancellationToken).ConfigureAwait(false);
+                else
+                    reader.Buffer(sizeof(byte));
+            }
             var version = reader.ReadByte();
             if (version != JsonbProtocolVersion)
                 throw new InvalidCastException($"Unknown jsonb wire format version {version}");
@@ -85,7 +92,16 @@ static class JsonNetJsonConverter
     public static async ValueTask Write(bool jsonb, bool async, PgWriter writer, CancellationToken cancellationToken)
     {
         if (jsonb)
+        {
+            if (writer.ShouldFlush(sizeof(byte)))
+            {
+                if (async)
+                    await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                else
+                    writer.Flush();
+            }
             writer.WriteByte(JsonbProtocolVersion);
+        }
 
         ArraySegment<byte> buffer;
         switch (writer.Current.WriteState)

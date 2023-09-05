@@ -65,7 +65,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
-            await reader.Buffer(async,sizeof(int), cancellationToken).ConfigureAwait(false);
+            await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var count = reader.ReadInt32();
 

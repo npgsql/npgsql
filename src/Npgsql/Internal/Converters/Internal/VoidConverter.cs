@@ -8,7 +8,6 @@ sealed class VoidConverter : PgBufferedConverter<object?>
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => CanConvertBufferedDefault(DataFormat.Binary, out bufferRequirements); // Text is identical
 
-    protected override void WriteCore(PgWriter writer, object? value) => throw new NotImplementedException();
-
     protected override object? ReadCore(PgReader reader) => null;
+    protected override void WriteCore(PgWriter writer, object? value) => throw new NotImplementedException();
 }
