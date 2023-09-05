@@ -50,7 +50,7 @@ static class NullableConverter
     public static bool TryGetRequirementSize(PgConverter effectiveConverter, SizeContext context, out Size size)
     {
         effectiveConverter.CanConvert(context.Format, out var reqs);
-        if (reqs.Write.IsFixedSizeRequirement() || reqs.Write.IsUpperBoundRequirement())
+        if (reqs.Write is { Kind: not SizeKind.Unknown })
         {
             size = reqs.Write.Value;
             return true;
@@ -63,14 +63,11 @@ static class NullableConverter
     public static bool CanConvert(PgConverter effectiveConverter, DataFormat format, out BufferRequirements bufferRequirements)
     {
         var result = effectiveConverter.CanConvert(format, out var reqs);
-        // Fixed sizes have to be folded to UpperBounds due to the value potentially being null.
-        bufferRequirements = BufferRequirements.Create(
-            reqs.Read.IsFixedSizeRequirement() ? Size.CreateUpperBound(reqs.Read.Value) :
-            reqs.Read.IsStreamingRequirement() ? reqs.Read : Size.Unknown,
-            reqs.Write.IsFixedSizeRequirement() ? Size.CreateUpperBound(reqs.Write.Value) :
-            reqs.Write.IsStreamingRequirement() ? reqs.Write : Size.Unknown
-        );
+        // Fixed sizes have to be mapped to UpperBounds due to the value potentially being null.
+        bufferRequirements = BufferRequirements.Create(MapExact(reqs.Read), MapExact(reqs.Write));
         return result;
+
+        Size MapExact(Size req) => req is { Kind: SizeKind.Exact } ? Size.CreateUpperBound(req.Value) : req;
     }
 }
 

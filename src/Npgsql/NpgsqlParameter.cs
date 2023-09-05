@@ -650,9 +650,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat) is { } info)
         {
-            if (size.Kind is SizeKind.Unknown)
-                ThrowHelper.ThrowNotSupportedException("Should not end up here, yet");
-
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
         }
@@ -674,9 +671,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         try
         {
-            if (writeSize.Kind is not SizeKind.Exact)
-                ThrowHelper.ThrowNotSupportedException("Should not end up here, yet");
-
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken);
 

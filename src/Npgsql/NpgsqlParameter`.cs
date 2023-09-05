@@ -82,9 +82,6 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         Debug.Assert(Converter is PgConverter<T>);
         if (TypeInfo!.Bind(Unsafe.As<PgConverter<T>>(Converter), value, out var size, out _writeState, out var dataFormat) is { } info)
         {
-            if (size.Kind is SizeKind.Unknown)
-                throw new NotImplementedException();
-
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
         }

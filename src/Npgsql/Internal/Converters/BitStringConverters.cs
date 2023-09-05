@@ -139,7 +139,7 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(MaxSize), MaxSize);
+        bufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(MaxSize), write: MaxSize);
         return format is DataFormat.Binary;
     }
 

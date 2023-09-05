@@ -131,7 +131,7 @@ static class PgConverterExtensions
         if (converter.IsDbNull(value))
             return null;
 
-        if (writeRequirement is { Kind: SizeKind.Exact, Value: > 0 and var byteCount })
+        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
         var size = converter.GetSize(new(format, writeRequirement), value, ref writeState);
         if (size.Kind is SizeKind.UpperBound)
@@ -144,7 +144,7 @@ static class PgConverterExtensions
         if (converter.IsDbNullAsObject(value))
             return null;
 
-        if (writeRequirement is { Kind: SizeKind.Exact, Value: > 0 and var byteCount })
+        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
         var size = converter.GetSizeAsObject(new(format, writeRequirement), value, ref writeState);
         if (size.Kind is SizeKind.UpperBound)

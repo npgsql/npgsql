@@ -1512,8 +1512,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (converter is not IResumableRead { Supported: true })
             throw new NotSupportedException("The GetChars method is not supported for this column type");
 
-        Debug.Assert(bufferRequirement == Size.Zero);
-
         var columnLength = SeekToColumn(async: false, ordinal, field, resumableOp: true).GetAwaiter().GetResult();
         if (columnLength == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);

@@ -16,13 +16,11 @@ public readonly struct Size : IEquatable<Size>
     readonly int _value;
     readonly SizeKind _kind;
 
-    Size(int value, SizeKind kind)
+    Size(SizeKind kind, int value)
     {
         _value = value;
         _kind = kind;
     }
-
-    public bool IsDefault => _kind == default && _value == default;
 
     public int Value
     {
@@ -34,22 +32,24 @@ public readonly struct Size : IEquatable<Size>
         }
     }
 
+    internal int GetValueOrDefault() => _value;
+
     public SizeKind Kind => _kind;
 
-    public static Size Create(int byteCount) => new(byteCount, SizeKind.Exact);
-    public static Size CreateUpperBound(int byteCount) => new(byteCount, SizeKind.UpperBound);
-    public static Size Unknown { get; } = new(-1, SizeKind.Unknown);
-    public static Size Zero { get; } = new(0, SizeKind.Exact);
+    public static Size Create(int byteCount) => new(SizeKind.Exact, byteCount);
+    public static Size CreateUpperBound(int byteCount) => new(SizeKind.UpperBound, byteCount);
+    public static Size Unknown { get; } = new(SizeKind.Unknown, 0);
+    public static Size Zero { get; } = new(SizeKind.Exact, 0);
 
     public Size Combine(Size result)
     {
         if (_kind is SizeKind.Unknown || result._kind is SizeKind.Unknown)
-            return this;
+            return Unknown;
 
         if (_kind is SizeKind.UpperBound || result._kind is SizeKind.UpperBound)
-            return CreateUpperBound(_value + result._value);
+            return CreateUpperBound((int)Math.Min((long)(_value + result._value), int.MaxValue));
 
-        return Create(_value + result._value);
+        return Create((int)Math.Min((long)(_value + result._value), int.MaxValue));
     }
 
     public static implicit operator Size(int value) => Create(value);

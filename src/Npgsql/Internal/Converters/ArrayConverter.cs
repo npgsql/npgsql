@@ -71,7 +71,7 @@ readonly struct PgArrayConverter
         return totalSize;
     }
 
-    Size GetFixedElemsSize(object values, int count, int[] indices, int[]? lengths = null)
+    Size GetFixedElemsSize(Size elemSize, object values, int count, int[] indices, int[]? lengths = null)
     {
         var nulls = 0;
         var lastLength = lengths?[lengths.Length - 1] ?? count;
@@ -85,7 +85,7 @@ readonly struct PgArrayConverter
             // We can immediately continue if we didn't reach the end of the last dimension.
             while (++lastIndex < lastLength || (indices.Length > 1 && CarryIndices(lengths!, indices)));
 
-        return (count - nulls) * _bufferRequirements.Write.Value;
+        return (count - nulls) * elemSize.Value;
     }
 
     int GetFormatSize(int count, int dimensions)
@@ -108,9 +108,9 @@ readonly struct PgArrayConverter
 
         Size elemsSize;
         var indices = new int[dimensions];
-        if (_bufferRequirements.IsFixedSize)
+        if (_bufferRequirements.Write is { Kind: SizeKind.Exact } req)
         {
-            elemsSize = GetFixedElemsSize(values, count, indices, lengths);
+            elemsSize = GetFixedElemsSize(req, values, count, indices, lengths);
             writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths, ArrayPool = null, Data = default, AnyWriteState = false };
         }
         else

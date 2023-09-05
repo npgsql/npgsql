@@ -15,15 +15,31 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
     {
         _composite = composite;
 
-        // If any of our fields has a streaming requirement our final requirement will be streaming too.
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
         foreach (var field in _composite.Fields)
         {
             req = req.Combine(
-                BufferRequirements.Create(field.BinaryReadRequirement, field.BinaryWriteRequirement));
+                // If a read is Unknown (streaming) we can map it to zero as we just want a minimum buffered size.
+                field.BinaryReadRequirement is { Kind: SizeKind.Unknown } ? Size.Zero : field.BinaryReadRequirement,
+                // For writes Unknown means our size is dependent on the value so we can't ignore it.
+                field.BinaryWriteRequirement);
         }
 
+        // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
+        req = BufferRequirements.Create(Limit(req.Read), Limit(req.Write));
+
         _bufferRequirements = req;
+
+        Size Limit(Size requirement)
+        {
+            const int maxByteCount = 1024;
+            return requirement switch
+            {
+                { Kind: SizeKind.UpperBound } => Size.CreateUpperBound(Math.Min(maxByteCount, requirement.Value)),
+                { Kind: SizeKind.Exact } => Size.Create(Math.Min(maxByteCount, requirement.Value)),
+                _ => Size.Unknown
+            };
+        }
     }
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
@@ -141,8 +157,6 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             writer.WriteAsOid(field.PgTypeId);
 
             var (size, fieldState) = data?[i] ?? (field.IsDbNull(boxedInstance) ? -1 : field.BinaryReadRequirement, null);
-            if (size.Kind is SizeKind.Unknown)
-                throw new NotImplementedException();
 
             var length = size.Value;
             writer.WriteInt32(length);

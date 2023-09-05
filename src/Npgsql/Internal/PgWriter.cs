@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -408,12 +407,11 @@ public class PgWriter
         => new PgWriterStream(this);
 
     public bool ShouldFlush(Size bufferRequirement)
-    {
-        EnsureInit();
+        => ShouldFlush(bufferRequirement is { Kind: SizeKind.UpperBound }
+            ? Math.Min(Current.Size.Value, bufferRequirement.Value)
+            : bufferRequirement.GetValueOrDefault());
 
-        return FlushMode is not FlushMode.None &&
-               Remaining < (bufferRequirement.Kind is SizeKind.Unknown ? Current.Size.Value : bufferRequirement.Value);
-    }
+    public bool ShouldFlush(int byteCount) => Remaining < byteCount && FlushMode is not FlushMode.None;
 
     public void Flush(TimeSpan timeout = default)
     {

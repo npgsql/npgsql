@@ -213,7 +213,11 @@ public class PgTypeInfo
         }
         writeState = null;
         var context = new SizeContext(format, bufferRequirements.Write);
-        size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSize(context, value, ref writeState);
+        size = bufferRequirements.Write is { Kind: SizeKind.Exact } req ? req : converter.GetSize(context, value, ref writeState);
+
+        if (size is { Kind: SizeKind.Unknown})
+            ThrowHelper.ThrowNotSupportedException($"Returning {nameof(Size.Unknown)} from {nameof(PgConverter<object>.GetSize)} is not supported yet.");
+
         return new()
         {
             TypeInfo = this,
@@ -243,7 +247,11 @@ public class PgTypeInfo
         }
         writeState = null;
         var context = new SizeContext(format, bufferRequirements.Write);
-        size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSizeAsObject(context, value, ref writeState);
+        size = bufferRequirements.Write is { Kind: SizeKind.Exact } req ? req : converter.GetSizeAsObject(context, value, ref writeState);
+
+        if (size is { Kind: SizeKind.Unknown})
+            ThrowHelper.ThrowNotSupportedException($"Returning {nameof(Size.Unknown)} from {nameof(PgConverter.GetSizeAsObject)} is not supported yet.");
+
         return new()
         {
             TypeInfo = this,
