@@ -67,6 +67,7 @@ abstract class CompositeFieldInfo
     public abstract StrongBox CreateBox();
     public abstract void Set(object instance, StrongBox value);
     public abstract int? ConstructorParameterIndex { get; }
+    public abstract bool IsDbNullable { get; }
 
     public abstract void ReadDbNull(CompositeBuilder builder);
     public abstract ValueTask Read(bool async, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default);
@@ -160,10 +161,12 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         }
     }
 
+    public override bool IsDbNullable => Converter.IsDbNullable;
+
     public override bool IsDbNull(object instance)
     {
         var value = _getter(instance);
-        return _asObject ? Converter.IsDbNullAsObject(value) : GetConverter<T>().IsDbNull(_getter(instance));
+        return _asObject ? Converter.IsDbNullAsObject(value) : GetConverter<T>().IsDbNull(value);
     }
 
     public override Size? GetSizeOrDbNull(DataFormat format, object instance, ref object? writeState)

@@ -298,7 +298,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
 
         ElemResolution = elemResolution;
         ElemTypeToConvert = elemResolution.Converter.TypeToConvert;
-        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsNullDefaultValue, expectedDimensions,
+        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsDbNullable, expectedDimensions,
             bufferRequirements, elemResolution.PgTypeId, pgLowerBound);
     }
 

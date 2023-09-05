@@ -10,14 +10,18 @@ namespace Npgsql.Internal;
 public abstract class PgConverter
 {
     internal DbNullPredicate DbNullPredicateKind { get; }
-    internal bool IsNullDefaultValue { get; }
+    public bool IsDbNullable => DbNullPredicateKind is not DbNullPredicate.None;
 
     private protected PgConverter(Type type, bool isNullDefaultValue, bool customDbNullPredicate = false)
-    {
-        IsNullDefaultValue = isNullDefaultValue;
-        DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
-    }
+        => DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
 
+    /// <summary>
+    /// Whether this converter can handle the given format and with which buffer requirements.
+    /// </summary>
+    /// <param name="format">The data format.</param>
+    /// <param name="bufferRequirements">Returns the buffer requirements.</param>
+    /// <returns>Returns true if the given data format is supported.</returns>
+    /// <remarks>The buffer requirements should not cover database NULL reads or writes, these are handled by the caller.</remarks>
     public abstract bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
 
     internal abstract Type TypeToConvert { get; }
@@ -52,7 +56,7 @@ public abstract class PgConverter
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
     internal abstract ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken);
 
-    private protected static DbNullPredicate InferDbNullPredicate(Type type, bool isNullDefaultValue)
+    static DbNullPredicate InferDbNullPredicate(Type type, bool isNullDefaultValue)
         => type == typeof(object) || type == typeof(DBNull)
             ? DbNullPredicate.PolymorphicNull
             : isNullDefaultValue
@@ -110,7 +114,7 @@ public abstract class PgConverter<T> : PgConverter
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
-    public abstract Size GetSize(SizeContext context, T value, ref object? writeState);
+    public abstract Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState);
     public abstract void Write(PgWriter writer, [DisallowNull] T value);
     public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 

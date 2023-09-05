@@ -18,11 +18,21 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
         foreach (var field in _composite.Fields)
         {
+            var readReq = field.BinaryReadRequirement;
+            var writeReq = field.BinaryWriteRequirement;
+
+            // If so we cannot depend on its buffer size being fixed.
+            if (field.IsDbNullable)
+            {
+                readReq = readReq.Combine(Size.CreateUpperBound(0));
+                writeReq = readReq.Combine(Size.CreateUpperBound(0));
+            }
+
             req = req.Combine(
                 // If a read is Unknown (streaming) we can map it to zero as we just want a minimum buffered size.
-                field.BinaryReadRequirement is { Kind: SizeKind.Unknown } ? Size.Zero : field.BinaryReadRequirement,
+                readReq is { Kind: SizeKind.Unknown } ? Size.Zero : readReq,
                 // For writes Unknown means our size is dependent on the value so we can't ignore it.
-                field.BinaryWriteRequirement);
+                writeReq);
         }
 
         // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
