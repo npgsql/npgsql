@@ -1580,7 +1580,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             var isStream = typeof(T) == typeof(Stream);
             var field = GetInfo(ordinal, isStream ? null : typeof(T), out var converter, out var bufferRequirement, out var asObject);
 
-            var columnLength = await SeekToColumnSequential(async: true, ordinal, field);
+            var columnLength = await SeekToColumn(async: true, ordinal, field);
             if (columnLength == -1)
                 return DbNullValueOrThrow<T>(field);
 
