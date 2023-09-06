@@ -390,7 +390,12 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         var resuming = PgReader is { Initialized: true, Resumable: true } && resumableOp;
         if (!resuming)
             _column++;
-        return PgReader.Commit(async, resuming);
+
+        if (async)
+            return PgReader.CommitAsync(resuming);
+
+        PgReader.Commit(resuming);
+        return new();
     }
 
     async ValueTask<int> ReadColumnLenIfNeeded(bool async, bool resumableOp)
@@ -454,7 +459,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             {
                 using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
                 // Be sure to commit the reader.
-                await PgReader.Commit(async, resuming: false).ConfigureAwait(false);
+                if (async)
+                     await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
+                else
+                    PgReader.Commit(resuming: false);
                 // Finish the current CopyData message
                 await _buf.Skip(checked((int)(_endOfMessagePos - _buf.CumulativeReadPosition)), async).ConfigureAwait(false);
                 // Read to the end

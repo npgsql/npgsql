@@ -637,7 +637,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             p.Value = pending.Dequeue();
         }
 
-        PgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
+        PgReader.Commit(resuming: false);
         State = ReaderState.BeforeResult; // Set the state back
         Buffer.ReadPosition = currentPosition; // Restore position
 
@@ -1589,7 +1589,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             var field = GetDefaultInfo(ordinal, out _, out _);
             PgReader.ThrowIfStreamActive();
 
-            var columnLength = await SeekToColumn(async: true, ordinal, field);
+            var columnLength = await SeekToColumn(async: true, ordinal, field).ConfigureAwait(false);
 
             if (columnLength == -1)
                 return DbNullValueOrThrow<T>(field);
@@ -1935,7 +1935,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             if (currentColumn == ordinal)
                 return HandleReread(pgReader.Resumable && resumableOp);
-            pgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
+            pgReader.Commit(resuming: false);
         }
 
         // Deals with forward movement
@@ -1961,7 +1961,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         int HandleReread(bool resuming)
         {
             var columnLength = pgReader.FieldSize;
-            pgReader.Commit(async: false, resuming).GetAwaiter().GetResult();
+            pgReader.Commit(resuming);
             if (!resuming && columnLength > 0)
                 buffer.ReadPosition -= columnLength;
             pgReader.Init(columnLength, field.DataFormat, resumableOp);
@@ -2008,7 +2008,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var committed = false;
         if (!PgReader.CommitHasIO(reread))
         {
-            PgReader.Commit(async: false, reread).GetAwaiter().GetResult();
+            PgReader.Commit(reread);
             committed = true;
             if (TrySeekBuffered(ordinal, out var columnLength))
             {
@@ -2035,7 +2035,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (commit)
             {
                 Debug.Assert(ordinal != _column);
-                await PgReader.Commit(async, reread).ConfigureAwait(false);
+                if (async)
+                    await PgReader.CommitAsync(reread).ConfigureAwait(false);
+                else
+                    PgReader.Commit(reread);
             }
 
             if (ordinal == _column)
@@ -2115,8 +2118,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         async Task ConsumeRowSequential(bool async)
         {
-            await PgReader.Commit(async, resuming: false).ConfigureAwait(false);
-
+            if (async)
+                await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
+            else
+                PgReader.Commit(resuming: false);
             // Skip over the remaining columns in the row
             for (; _column < _numColumns - 1; _column++)
             {
@@ -2132,7 +2137,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     void ConsumeRowNonSequential()
     {
         Debug.Assert(State is ReaderState.InResult or ReaderState.BeforeResult);
-        PgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
+        PgReader.Commit(resuming: false);
         Buffer.ReadPosition = _dataMsgEnd;
     }
 

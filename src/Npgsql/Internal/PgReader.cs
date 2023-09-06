@@ -549,22 +549,27 @@ public class PgReader
     }
 
     internal bool CommitHasIO(bool resuming) => Initialized && !resuming && FieldRemaining > 0;
-    internal ValueTask Commit(bool async, bool resuming)
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void Commit(bool resuming)
     {
         if (!Initialized)
-            return new();
+            return;
 
         if (resuming)
         {
             if (!Resumable)
                 ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
-            return new();
+            return;
         }
 
         // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
         // Also shut down any streaming, pooled arrays etc.
         if (_requiresCleanup || (!_fieldCompleted && FieldRemaining > 0))
-            return Slow(async);
+        {
+            CommitSlow();
+            return;
+        }
 
         _fieldCompleted = false;
         _fieldSize = default;
@@ -578,15 +583,15 @@ public class PgReader
             _currentSize = -1;
         }
         Debug.Assert(!Initialized);
-        return new();
 
-        async ValueTask Slow(bool async)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void CommitSlow()
         {
             // Shut down any streaming and pooling going on on the column.
             if (_requiresCleanup)
             {
                 if (_userActiveStream is { IsDisposed: false })
-                    await DisposeUserActiveStream(async).ConfigureAwait(false);
+                    DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
                 if (_pooledArray is not null)
                 {
@@ -603,7 +608,74 @@ public class PgReader
                 _requiresCleanup = false;
             }
 
-            await Consume(async, count: FieldRemaining).ConfigureAwait(false);
+            Consume(async: false, count: FieldRemaining).GetAwaiter().GetResult();
+            _fieldSize = default;
+            _fieldStartPos = -1;
+            _resumable = false;
+            _fieldFormat = default;
+            _currentStartPos = 0;
+            _currentBufferRequirement = default;
+            _currentSize = -1;
+            Debug.Assert(!Initialized);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ValueTask CommitAsync(bool resuming)
+    {
+        if (!Initialized)
+            return new();
+
+        if (resuming)
+        {
+            if (!Resumable)
+                ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
+            return new();
+        }
+
+        // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
+        // Also shut down any streaming, pooled arrays etc.
+        if (_requiresCleanup || (!_fieldCompleted && FieldRemaining > 0))
+            return CommitSlow();
+
+        _fieldCompleted = false;
+        _fieldSize = default;
+        _fieldStartPos = -1;
+        _resumable = false;
+        _fieldFormat = default;
+        if (_currentSize is not -1)
+        {
+            _currentStartPos = 0;
+            _currentBufferRequirement = default;
+            _currentSize = -1;
+        }
+        Debug.Assert(!Initialized);
+        return new();
+
+        async ValueTask CommitSlow()
+        {
+            // Shut down any streaming and pooling going on on the column.
+            if (_requiresCleanup)
+            {
+                if (_userActiveStream is { IsDisposed: false })
+                    await DisposeUserActiveStream(async: true).ConfigureAwait(false);
+
+                if (_pooledArray is not null)
+                {
+                    ArrayPool.Return(_pooledArray);
+                    _pooledArray = null;
+                }
+
+                if (_charsReadReader is not null)
+                {
+                    _charsReadReader.Dispose();
+                    _charsReadReader = null;
+                    _charsRead = default;
+                }
+                _requiresCleanup = false;
+            }
+
+            await Consume(async: true, count: FieldRemaining).ConfigureAwait(false);
             _fieldSize = default;
             _fieldStartPos = -1;
             _resumable = false;
