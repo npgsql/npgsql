@@ -75,7 +75,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     internal PgReader PgReader { get; }
 
     long _flushedBytes; // this will always fit at least one message.
-    internal long CumulativeReadPosition => unchecked(_flushedBytes + ReadPosition);
+    internal long CumulativeReadPosition
+        // Cast to uint to remove the sign extension (ReadPosition is never negative)
+        => _flushedBytes + (uint)ReadPosition;
 
     internal readonly byte[] Buffer;
     internal int FilledBytes;
