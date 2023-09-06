@@ -1073,8 +1073,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (batchCommand.AppendErrorBarrier ?? EnableErrorBarriers)
                     await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
 
-                if (pStatement != null)
-                    pStatement.LastUsed = DateTime.UtcNow;
+                pStatement?.RefreshLastUsed();
             }
 
             if (batchCommand is null || !(batchCommand.AppendErrorBarrier ?? EnableErrorBarriers))

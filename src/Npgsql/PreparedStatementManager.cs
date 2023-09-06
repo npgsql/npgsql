@@ -102,7 +102,7 @@ sealed class PreparedStatementManager
         {
             // New candidate. Find an empty candidate slot or eject a least-used one.
             int slotIndex = -1, leastUsages = int.MaxValue;
-            var lastUsed = DateTime.MaxValue;
+            var lastUsed = long.MaxValue;
             for (var i = 0; i < _candidates.Length; i++)
             {
                 var candidate = _candidates[i];
@@ -149,7 +149,7 @@ sealed class PreparedStatementManager
             if (!pStatement.DoParametersMatch(batchCommand.HasParameters ? batchCommand.PositionalParameters : EmptyParameters))
                 return null;
             // Prevent this statement from being replaced within this batch
-            pStatement.LastUsed = DateTime.MaxValue;
+            pStatement.LastUsed = long.MaxValue;
             return pStatement;
 
         case PreparedState.BeingUnprepared:
@@ -165,7 +165,7 @@ sealed class PreparedStatementManager
         {
             // Statement still hasn't passed the usage threshold, no automatic preparation.
             // Return null for unprepared execution.
-            pStatement.LastUsed = DateTime.UtcNow;
+            pStatement.RefreshLastUsed();
             return null;
         }
 
@@ -173,7 +173,7 @@ sealed class PreparedStatementManager
         LogMessages.AutoPreparingStatement(_commandLogger, sql, _connector.Id);
 
         // Look for either an empty autoprepare slot, or the least recently used prepared statement which we'll replace it.
-        var oldestTimestamp = DateTime.MaxValue;
+        var oldestLastUsed = long.MaxValue;
         var selectedIndex = -1;
         for (var i = 0; i < AutoPrepared.Length; i++)
         {
@@ -189,10 +189,10 @@ sealed class PreparedStatementManager
             switch (slot.State)
             {
             case PreparedState.Prepared:
-                if (slot.LastUsed < oldestTimestamp)
+                if (slot.LastUsed < oldestLastUsed)
                 {
                     selectedIndex = i;
-                    oldestTimestamp = slot.LastUsed;
+                    oldestLastUsed = slot.LastUsed;
                 }
                 break;
 
@@ -245,7 +245,7 @@ sealed class PreparedStatementManager
 
 
         // Make sure this statement isn't replaced by a later statement in the same batch.
-        pStatement.LastUsed = DateTime.MaxValue;
+        pStatement.LastUsed = long.MaxValue;
 
         // Note that the parameter types are only set at the moment of preparation - in the candidate phase
         // there's no differentiation between overloaded statements, which are a pretty rare case, saving
