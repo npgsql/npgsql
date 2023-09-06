@@ -39,6 +39,7 @@ public class PgReader
     ArraySegment<char>? _charsReadBuffer;
 
     bool _requiresCleanup;
+    bool _fieldCompleted;
 
     internal PgReader(NpgsqlReadBuffer buffer)
     {
@@ -469,6 +470,8 @@ public class PgReader
 
         if (FieldOffset != FieldSize)
             ThrowNotConsumedExactly();
+
+        _fieldCompleted = true;
     }
 
     internal ValueTask EndReadAsync()
@@ -482,6 +485,8 @@ public class PgReader
 
         if (FieldOffset != FieldSize)
             ThrowNotConsumedExactly();
+
+        _fieldCompleted = true;
         return new();
     }
 
@@ -558,9 +563,10 @@ public class PgReader
 
         // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
         // Also shut down any streaming, pooled arrays etc.
-        if (_requiresCleanup || FieldRemaining > 0)
+        if (_requiresCleanup || (!_fieldCompleted && FieldRemaining > 0))
             return Slow(async);
 
+        _fieldCompleted = false;
         _fieldSize = default;
         _fieldStartPos = -1;
         _resumable = false;
@@ -619,6 +625,7 @@ public class PgReader
         return array;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     int GetBufferRequirementByteCount(Size bufferRequirement)
         => bufferRequirement is { Kind: SizeKind.UpperBound }
             ? Math.Min(CurrentRemaining, bufferRequirement.Value)

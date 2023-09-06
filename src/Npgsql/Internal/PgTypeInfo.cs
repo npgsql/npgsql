@@ -309,12 +309,13 @@ readonly struct PgConverterInfo
     {
         get
         {
+            var typeInfo = TypeInfo;
             // Object typed resolvers can return any type of converter, so we check the type of the converter instead.
             // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
-            if (TypeInfo.IsResolverInfo && TypeInfo.Type == typeof(object))
+            if (typeInfo.IsResolverInfo && typeInfo.Type == typeof(object))
                 return Converter.TypeToConvert;
 
-            return TypeInfo.Type;
+            return typeInfo.Type;
         }
     }
 
