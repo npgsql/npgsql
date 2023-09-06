@@ -640,23 +640,11 @@ public class PgReader
 
     public void Buffer(Size bufferRequirement)
         => Buffer(GetBufferRequirementByteCount(bufferRequirement));
-    public void Buffer(int byteCount)
-    {
-        if (!ShouldBuffer(byteCount))
-            return;
-
-        _buffer.Ensure(byteCount, async: false).GetAwaiter().GetResult();
-    }
+    public void Buffer(int byteCount) => _buffer.Ensure(byteCount, async: false).GetAwaiter().GetResult();
 
     public ValueTask BufferAsync(Size bufferRequirement, CancellationToken cancellationToken)
         => BufferAsync(GetBufferRequirementByteCount(bufferRequirement), cancellationToken);
-    public ValueTask BufferAsync(int byteCount, CancellationToken cancellationToken)
-    {
-        if (!ShouldBuffer(byteCount))
-            return new();
-
-        return new(_buffer.EnsureAsync(byteCount));
-    }
+    public ValueTask BufferAsync(int byteCount, CancellationToken cancellationToken) => new(_buffer.EnsureAsync(byteCount));
 
     internal ValueTask Buffer(bool async, Size bufferRequirement, CancellationToken cancellationToken)
         => Buffer(async, GetBufferRequirementByteCount(bufferRequirement), cancellationToken);

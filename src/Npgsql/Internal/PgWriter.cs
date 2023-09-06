@@ -115,15 +115,6 @@ public class PgWriter
         return this;
     }
 
-    [Conditional("DEBUG")]
-    void EnsureInit()
-    {
-        if (_typeCatalog is null)
-            ThrowNotInitialized();
-
-        void ThrowNotInitialized() => throw new InvalidOperationException("PgWriter has not been initialized.");
-    }
-
     internal void Reset()
     {
         if (_pos != _offset)
@@ -160,7 +151,6 @@ public class PgWriter
     // TODO if we're working on a normal buffer writer we should use normal Ensure (so commit and get another buffer) semantics.
     void Ensure(int count = 1)
     {
-        EnsureInit();
         if (_buffer is null)
             SetBuffer();
 
@@ -414,7 +404,6 @@ public class PgWriter
         }
     }
 
-    [RequiresPreviewFeatures]
     public Stream GetStream()
         => new PgWriterStream(this);
 
@@ -428,7 +417,6 @@ public class PgWriter
 
     public void Flush(TimeSpan timeout = default)
     {
-        EnsureInit();
         if (FlushMode is FlushMode.None)
             return;
 
@@ -445,7 +433,6 @@ public class PgWriter
 
     public ValueTask FlushAsync(CancellationToken cancellationToken = default)
     {
-        EnsureInit();
         if (FlushMode is FlushMode.None)
             return new();
 
