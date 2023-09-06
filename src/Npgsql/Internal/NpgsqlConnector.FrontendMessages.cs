@@ -203,7 +203,7 @@ partial class NpgsqlConnector
         writeBuffer.WriteByte(0);  // Portal is always empty
 
         writeBuffer.WriteNullTerminatedString(asciiName);
-        writeBuffer.WriteInt16(formatCodeListLength);
+        writeBuffer.WriteInt16((short)formatCodeListLength);
 
         // 0 length implicitly means all-text, 1 means all-binary, >1 means mix-and-match
         if (formatCodeListLength == 1)
@@ -246,16 +246,16 @@ partial class NpgsqlConnector
         {
             if (writeBuffer.WriteSpaceLeft < 2 + unknownResultTypeList.Length * 2)
                 await Flush(async, cancellationToken).ConfigureAwait(false);
-            writeBuffer.WriteInt16(unknownResultTypeList.Length);
+            writeBuffer.WriteInt16((short)unknownResultTypeList.Length);
             foreach (var t in unknownResultTypeList)
-                writeBuffer.WriteInt16(t ? 0 : 1);
+                writeBuffer.WriteInt16((short)(t ? 0 : 1));
         }
         else
         {
             if (writeBuffer.WriteSpaceLeft < 4)
                 await Flush(async, cancellationToken).ConfigureAwait(false);
             writeBuffer.WriteInt16(1);
-            writeBuffer.WriteInt16(allResultTypesAreUnknown ? 0 : 1);
+            writeBuffer.WriteInt16((short)(allResultTypesAreUnknown ? 0 : 1));
         }
     }
 

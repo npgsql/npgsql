@@ -139,7 +139,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         if (_buf.WriteSpaceLeft < 2)
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
-        _buf.WriteInt16(NumColumns);
+        _buf.WriteInt16((short)NumColumns);
 
         _pgWriter.Refresh();
         _column = 0;
