@@ -183,7 +183,6 @@ sealed class NpgsqlWriteBuffer : IDisposable
         }
         NpgsqlEventSource.Log.BytesWritten(WritePosition);
         _metricsReporter?.ReportBytesWritten(WritePosition);
-        //NpgsqlEventSource.Log.RequestFailed();
 
         WritePosition = 0;
         if (_copyMode)

@@ -27,6 +27,7 @@ sealed class MetricsReporter : IDisposable
     static readonly UpDownCounter<int> PendingConnectionRequests;
     static readonly UpDownCounter<int> ConnectionTimeouts;
     static readonly Histogram<double> ConnectionCreateTime;
+    static readonly ObservableUpDownCounter<double> PreparedRatio;
 
     readonly NpgsqlDataSource _dataSource;
     readonly KeyValuePair<string, object?> _poolNameTag;
@@ -106,7 +107,7 @@ sealed class MetricsReporter : IDisposable
             unit: "{connection}",
             description: "The maximum number of open connections allowed.");
 
-        Meter.CreateObservableUpDownCounter(
+        PreparedRatio = Meter.CreateObservableUpDownCounter(
             "db.client.commands.prepared_ratio",
             GetPreparedCommandsRatio,
             description: "The ratio of prepared command executions.");
@@ -127,7 +128,8 @@ sealed class MetricsReporter : IDisposable
     internal long ReportCommandStart()
     {
         CommandsExecuting.Add(1, _poolNameTag);
-        Interlocked.Increment(ref _commandCounters.CommandsStarted);
+        if (PreparedRatio.Enabled)
+            Interlocked.Increment(ref _commandCounters.CommandsStarted);
 
         return CommandDuration.Enabled ? Stopwatch.GetTimestamp() : 0;
     }
@@ -147,7 +149,11 @@ sealed class MetricsReporter : IDisposable
         }
     }
 
-    internal void CommandStartPrepared() => Interlocked.Increment(ref _commandCounters.PreparedCommandsStarted);
+    internal void CommandStartPrepared()
+    {
+        if (PreparedRatio.Enabled)
+            Interlocked.Increment(ref _commandCounters.PreparedCommandsStarted);
+    }
 
     internal void ReportCommandFailed() => CommandsFailed.Add(1, _poolNameTag);
 
