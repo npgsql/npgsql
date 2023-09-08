@@ -32,7 +32,7 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
 
     <!-- Benchmarks -->
-    <PackageVersion Include="BenchmarkDotNet" Version="0.13.7" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.13.8" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.1.1" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.7" />
 
