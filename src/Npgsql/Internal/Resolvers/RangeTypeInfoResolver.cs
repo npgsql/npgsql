@@ -257,13 +257,6 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<NpgsqlRange<decimal>>(DataTypeNames.NumRange);
         mappings.AddStructArrayType<NpgsqlRange<BigInteger>>(DataTypeNames.NumRange);
 
-        // daterange
-        mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange);
-        mappings.AddStructArrayType<NpgsqlRange<int>>(DataTypeNames.DateRange);
-#if NET6_0_OR_GREATER
-        mappings.AddStructArrayType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange);
-#endif
-
         // tsrange
         if (Statics.LegacyTimestampBehavior)
             mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange);
@@ -284,6 +277,13 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         }
         mappings.AddStructArrayType<NpgsqlRange<long>>(DataTypeNames.TsTzRange);
 
+        // daterange
+        mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange);
+        mappings.AddStructArrayType<NpgsqlRange<int>>(DataTypeNames.DateRange);
+#if NET6_0_OR_GREATER
+        mappings.AddStructArrayType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange);
+#endif
+
         if (supportsMultiRange)
         {
             // int4multirange
@@ -297,14 +297,6 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             // nummultirange
             mappings.AddArrayType<NpgsqlRange<decimal>[]>(DataTypeNames.NumMultirange);
             mappings.AddArrayType<List<NpgsqlRange<decimal>>>(DataTypeNames.NumMultirange);
-
-            // datemultirange
-            mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange);
-            mappings.AddArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.DateMultirange);
-    #if NET6_0_OR_GREATER
-            mappings.AddArrayType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange);
-            mappings.AddArrayType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange);
-    #endif
 
             // tsmultirange
             if (Statics.LegacyTimestampBehavior)
@@ -325,7 +317,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             {
                 mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange);
                 mappings.AddArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange);
-                mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange);
+                mappings.AddArrayType<NpgsqlRange<DateTimeOffset>[]>(DataTypeNames.TsTzMultirange);
                 mappings.AddArrayType<List<NpgsqlRange<DateTimeOffset>>>(DataTypeNames.TsTzMultirange);
             }
             else
@@ -337,6 +329,14 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             }
             mappings.AddArrayType<NpgsqlRange<long>[]>(DataTypeNames.TsTzMultirange);
             mappings.AddArrayType<List<NpgsqlRange<long>>>(DataTypeNames.TsTzMultirange);
+
+            // datemultirange
+            mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange);
+            mappings.AddArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.DateMultirange);
+#if NET6_0_OR_GREATER
+            mappings.AddArrayType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange);
+            mappings.AddArrayType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange);
+#endif
         }
     }
 

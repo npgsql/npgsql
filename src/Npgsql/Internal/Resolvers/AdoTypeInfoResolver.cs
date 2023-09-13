@@ -401,14 +401,20 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         if (Statics.LegacyTimestampBehavior)
         {
             mappings.AddStructArrayType<DateTime>(DataTypeNames.TimestampTz);
-            mappings.AddStructArrayType<DateTimeOffset>(DataTypeNames.TimestampTz);
         }
         else
         {
             mappings.AddResolverStructArrayType<DateTime>(DataTypeNames.TimestampTz);
-            mappings.AddResolverStructArrayType<DateTimeOffset>(DataTypeNames.TimestampTz);
         }
+        mappings.AddStructArrayType<DateTimeOffset>(DataTypeNames.TimestampTz);
         mappings.AddStructArrayType<long>(DataTypeNames.TimestampTz);
+
+        // Date
+        mappings.AddStructArrayType<DateTime>(DataTypeNames.Date);
+        mappings.AddStructArrayType<int>(DataTypeNames.Date);
+#if NET6_0_OR_GREATER
+        mappings.AddStructArrayType<DateOnly>(DataTypeNames.Date);
+#endif
 
         // Time
         mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Time);

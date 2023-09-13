@@ -10,12 +10,16 @@ namespace Npgsql.Tests.Types;
 /// Tests on PostgreSQL types which don't fit elsewhere
 /// </summary>
 class MiscTypeTests : MultiplexingTestBase
+
 {
     [Test]
     public async Task Boolean()
     {
-        await AssertType(true, "true", "boolean", NpgsqlDbType.Boolean, DbType.Boolean);
-        await AssertType(false, "false", "boolean", NpgsqlDbType.Boolean, DbType.Boolean);
+        await AssertType(true, "true", "boolean", NpgsqlDbType.Boolean, DbType.Boolean, skipArrayCheck: true);
+        await AssertType(false, "false", "boolean", NpgsqlDbType.Boolean, DbType.Boolean, skipArrayCheck: true);
+
+        // The literal representations for bools inside array are different ({t,f} instead of true/false, so we check separately.
+        await AssertType(new[] { true, false }, "{t,f}", "boolean[]", NpgsqlDbType.Boolean | NpgsqlDbType.Array);
     }
 
     [Test]

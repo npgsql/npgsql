@@ -64,7 +64,21 @@ public class DateTimeTests : TestBase
             "[2002-03-04,2002-03-06)",
             "daterange",
             NpgsqlDbType.DateRange,
-            isDefaultForReading: false);
+            isDefaultForReading: false,
+            skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+
+    [Test]
+    public Task Daterange_array_as_NpgsqlRange_of_DateOnly_array()
+        => AssertType(
+            new[]
+            {
+                new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false),
+                new NpgsqlRange<DateOnly>(new(2002, 3, 8), true, new(2002, 3, 9), false)
+            },
+            """{"[2002-03-04,2002-03-06)","[2002-03-08,2002-03-09)"}""",
+            "daterange[]",
+            NpgsqlDbType.DateRange | NpgsqlDbType.Array,
+            isDefault: false);
 
     [Test]
     public async Task Datemultirange_as_array_of_NpgsqlRange_of_DateOnly()
@@ -181,7 +195,25 @@ public class DateTimeTests : TestBase
                 new(1998, 4, 12, 15, 26, 38, DateTimeKind.Local)),
             @"[""1998-04-12 13:26:38"",""1998-04-12 15:26:38""]",
             "tsrange",
-            NpgsqlDbType.TimestampRange);
+            NpgsqlDbType.TimestampRange,
+            skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+
+    [Test]
+    public Task Tsrange_array_as_NpgsqlRange_of_DateTime_array()
+        => AssertType(
+            new[]
+            {
+                new NpgsqlRange<DateTime>(
+                    new(1998, 4, 12, 13, 26, 38, DateTimeKind.Local),
+                    new(1998, 4, 12, 15, 26, 38, DateTimeKind.Local)),
+                new NpgsqlRange<DateTime>(
+                    new(1998, 4, 13, 13, 26, 38, DateTimeKind.Local),
+                    new(1998, 4, 13, 15, 26, 38, DateTimeKind.Local)),
+            },
+            """{"[\"1998-04-12 13:26:38\",\"1998-04-12 15:26:38\"]","[\"1998-04-13 13:26:38\",\"1998-04-13 15:26:38\"]"}""",
+            "tsrange[]",
+            NpgsqlDbType.TimestampRange | NpgsqlDbType.Array,
+            isDefault: false);
 
     [Test]
     public async Task Tsmultirange_as_array_of_NpgsqlRange_of_DateTime()
@@ -280,6 +312,24 @@ public class DateTimeTests : TestBase
             isDefault: false);
 
     [Test]
+    public async Task Timestamptz_array_as_DateTimeOffset_array()
+    {
+        var dateTimeOffsets = await AssertType(
+            new[]
+            {
+                new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.Zero),
+                new DateTimeOffset(1999, 4, 12, 13, 26, 38, TimeSpan.Zero)
+            },
+            """{"1998-04-12 15:26:38+02","1999-04-12 15:26:38+02"}""",
+            "timestamp with time zone[]",
+            NpgsqlDbType.TimestampTz | NpgsqlDbType.Array,
+            isDefaultForReading: false);
+
+        Assert.That(dateTimeOffsets[0].Offset, Is.EqualTo(TimeSpan.Zero));
+        Assert.That(dateTimeOffsets[1].Offset, Is.EqualTo(TimeSpan.Zero));
+    }
+
+    [Test]
     public Task Tstzrange_as_NpgsqlRange_of_DateTime()
         => AssertType(
             new NpgsqlRange<DateTime>(
@@ -287,7 +337,25 @@ public class DateTimeTests : TestBase
                 new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
             @"[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""]",
             "tstzrange",
-            NpgsqlDbType.TimestampTzRange);
+            NpgsqlDbType.TimestampTzRange,
+            skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+
+    [Test]
+    public Task Tstzrange_array_as_NpgsqlRange_of_DateTime_array()
+        => AssertType(
+            new[]
+            {
+                new NpgsqlRange<DateTime>(
+                    new(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                    new(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+                new NpgsqlRange<DateTime>(
+                    new(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc),
+                    new(1998, 4, 13, 15, 26, 38, DateTimeKind.Utc)),
+            },
+            """{"[\"1998-04-12 15:26:38+02\",\"1998-04-12 17:26:38+02\"]","[\"1998-04-13 15:26:38+02\",\"1998-04-13 17:26:38+02\"]"}""",
+            "tstzrange[]",
+            NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
+            isDefault: false);
 
     [Test]
     public async Task Tstzmultirange_as_array_of_NpgsqlRange_of_DateTime()

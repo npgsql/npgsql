@@ -25,13 +25,13 @@ sealed class LTreeTypeInfoResolver : IPgTypeInfoResolver
     {
         mappings.AddType<string>("ltree",
             static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
-            isDefault: true);
+            MatchRequirement.DataTypeName);
         mappings.AddType<string>("lquery",
             static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
-            isDefault: true);
+            MatchRequirement.DataTypeName);
         mappings.AddType<string>("ltxtquery",
             static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
-            isDefault: true);
+            MatchRequirement.DataTypeName);
     }
 
     static void AddArrayInfos(TypeInfoMappingCollection mappings)

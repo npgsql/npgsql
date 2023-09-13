@@ -49,25 +49,19 @@ class RangeTests : MultiplexingTestBase
             .SetName("InfiniteUpperBound")
     };
 
+    // See more test cases in DateTimeTests
     [Test, TestCaseSource(nameof(RangeTestCases))]
     public Task Range<T>(T range, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType)
-        => AssertType(range, sqlLiteral, pgTypeName, npgsqlDbType);
+        => AssertType(range, sqlLiteral, pgTypeName, npgsqlDbType,
+            // NpgsqlRange<T>[] is mapped to multirange by default, not array, so the built-in AssertType testing for arrays fails
+            // (see below)
+            skipArrayCheck: true);
 
-    [Test]
-    public Task DateRange_with_DateTime()
-        => AssertType(new NpgsqlRange<DateTime>(
-                new DateTime(2020, 1, 1, 0, 0, 0), true,
-                new DateTime(2020, 1, 3, 0, 0, 0), false),
-            "[2020-01-01,2020-01-03)", "daterange", NpgsqlDbType.DateRange,
-            isDefaultForWriting: false);
-
-#if NET6_0_OR_GREATER
-    [Test]
-    public Task DateRange_with_DateOnly()
-        => AssertType(
-            new NpgsqlRange<DateOnly>(new DateOnly(2020, 1, 1), true, new DateOnly(2020, 1, 3), false),
-            "[2020-01-01,2020-01-03)", "daterange", NpgsqlDbType.DateRange, isDefaultForReading: false);
-#endif
+    // This re-executes the same scenario as above, but with isDefaultForWriting: false and without skipArrayCheck: true.
+    // This tests coverage of range arrays (as opposed to multiranges).
+    [Test, TestCaseSource(nameof(RangeTestCases))]
+    public Task Range_array<T>(T range, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType)
+        => AssertType(range, sqlLiteral, pgTypeName, npgsqlDbType, isDefaultForWriting: false);
 
     [Test]
     public void Equality_finite()
@@ -220,7 +214,9 @@ class RangeTests : MultiplexingTestBase
         dataSourceBuilder.EnableRanges();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", NpgsqlDbType.IntegerRange);
+        await AssertType(
+            dataSource,
+            new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", NpgsqlDbType.IntegerRange, skipArrayCheck: true);
     }
 
     protected override NpgsqlConnection OpenConnection()

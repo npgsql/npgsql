@@ -813,11 +813,14 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Geometry  => "geometry",
             NpgsqlDbType.Geography => "geography",
 
-            // Unknown cannot be composed
             NpgsqlDbType.Unknown => "unknown",
-            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Unknown)
-                   && (npgsqlDbType.HasFlag(NpgsqlDbType.Array) || npgsqlDbType.HasFlag(NpgsqlDbType.Range) ||
-                       npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
+
+            // Unknown cannot be composed
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array) && (npgsqlDbType & ~NpgsqlDbType.Array) == NpgsqlDbType.Unknown
+                => "unknown",
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Range) && (npgsqlDbType & ~NpgsqlDbType.Range) == NpgsqlDbType.Unknown
+                => "unknown",
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange) && (npgsqlDbType & ~NpgsqlDbType.Multirange) == NpgsqlDbType.Unknown
                 => "unknown",
 
             _ => npgsqlDbType.HasFlag(NpgsqlDbType.Array)
@@ -913,9 +916,12 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Unknown => DataTypeNames.Unknown,
 
             // Unknown cannot be composed
-            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Unknown)
-                   && (npgsqlDbType.HasFlag(NpgsqlDbType.Array) || npgsqlDbType.HasFlag(NpgsqlDbType.Range) || npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array) && (npgsqlDbType & ~NpgsqlDbType.Array) == NpgsqlDbType.Unknown
                 => DataTypeNames.Unknown,
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Range) && (npgsqlDbType & ~NpgsqlDbType.Range) == NpgsqlDbType.Unknown
+                => DataTypeNames.Unknown,
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange) && (npgsqlDbType & ~NpgsqlDbType.Multirange) == NpgsqlDbType.Unknown
+                 => DataTypeNames.Unknown,
 
             // If both multirange and array are set we first remove array, so array is added to the outermost datatypename.
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array)

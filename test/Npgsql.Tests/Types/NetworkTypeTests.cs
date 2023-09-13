@@ -17,7 +17,17 @@ class NetworkTypeTests : MultiplexingTestBase
 {
     [Test]
     public Task Inet_v4_as_IPAddress()
-        => AssertType(IPAddress.Parse("192.168.1.1"), "192.168.1.1/32", "inet", NpgsqlDbType.Inet);
+        => AssertType(IPAddress.Parse("192.168.1.1"), "192.168.1.1/32", "inet", NpgsqlDbType.Inet, skipArrayCheck: true);
+
+    [Test]
+    public Task Inet_v4_array_as_IPAddress_array()
+        => AssertType(
+            new[]
+            {
+                IPAddress.Parse("192.168.1.1"),
+                IPAddress.Parse("192.168.1.2")
+            },
+            "{192.168.1.1,192.168.1.2}", "inet[]", NpgsqlDbType.Inet | NpgsqlDbType.Array);
 
     [Test]
     public Task Inet_v6_as_IPAddress()
@@ -25,20 +35,22 @@ class NetworkTypeTests : MultiplexingTestBase
             IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"),
             "2001:1db8:85a3:1142:1000:8a2e:1370:7334/128",
             "inet",
-            NpgsqlDbType.Inet);
+            NpgsqlDbType.Inet,
+            skipArrayCheck: true);
 
     [Test]
-    public Task Inet_v6_array_of_NpgsqlInets()
+    public Task Inet_v6_array_as_IPAddress_array()
         => AssertType(
-            new[] { new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 24) },
-            "{2001:1db8:85a3:1142:1000:8a2e:1370:7334/24}",
-            "inet[]",
-            NpgsqlDbType.Inet | NpgsqlDbType.Array,
-            isDefaultForReading: false);
+            new[]
+            {
+                IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"),
+                IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7335")
+            },
+            "{2001:1db8:85a3:1142:1000:8a2e:1370:7334,2001:1db8:85a3:1142:1000:8a2e:1370:7335}", "inet[]", NpgsqlDbType.Inet | NpgsqlDbType.Array);
 
     [Test, IssueLink("https://github.com/dotnet/corefx/issues/33373")]
     public Task IPAddress_Any()
-        => AssertTypeWrite(IPAddress.Any, "0.0.0.0/32", "inet", NpgsqlDbType.Inet);
+        => AssertTypeWrite(IPAddress.Any, "0.0.0.0/32", "inet", NpgsqlDbType.Inet, skipArrayCheck: true);
 
     [Test]
     public Task Cidr()

@@ -148,18 +148,27 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<long>(DataTypeNames.Int2);
         mappings.AddStructArrayType<byte>(DataTypeNames.Int2);
         mappings.AddStructArrayType<sbyte>(DataTypeNames.Int2);
+        mappings.AddStructArrayType<float>(DataTypeNames.Int2);
+        mappings.AddStructArrayType<double>(DataTypeNames.Int2);
+        mappings.AddStructArrayType<decimal>(DataTypeNames.Int2);
 
         // Int4
         mappings.AddStructArrayType<short>(DataTypeNames.Int4);
         mappings.AddStructArrayType<long>(DataTypeNames.Int4);
         mappings.AddStructArrayType<byte>(DataTypeNames.Int4);
         mappings.AddStructArrayType<sbyte>(DataTypeNames.Int4);
+        mappings.AddStructArrayType<float>(DataTypeNames.Int4);
+        mappings.AddStructArrayType<double>(DataTypeNames.Int4);
+        mappings.AddStructArrayType<decimal>(DataTypeNames.Int4);
 
         // Int8
         mappings.AddStructArrayType<short>(DataTypeNames.Int8);
         mappings.AddStructArrayType<int>(DataTypeNames.Int8);
         mappings.AddStructArrayType<byte>(DataTypeNames.Int8);
         mappings.AddStructArrayType<sbyte>(DataTypeNames.Int8);
+        mappings.AddStructArrayType<float>(DataTypeNames.Int8);
+        mappings.AddStructArrayType<double>(DataTypeNames.Int8);
+        mappings.AddStructArrayType<decimal>(DataTypeNames.Int8);
 
         // Float4
         mappings.AddStructArrayType<double>(DataTypeNames.Float4);

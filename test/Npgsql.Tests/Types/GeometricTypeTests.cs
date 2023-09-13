@@ -26,7 +26,20 @@ class GeometricTypeTests : MultiplexingTestBase
 
     [Test]
     public Task Box()
-        => AssertType(new NpgsqlBox(3, 4, 1, 2), "(4,3),(2,1)", "box", NpgsqlDbType.Box);
+        => AssertType(new NpgsqlBox(3, 4, 1, 2), "(4,3),(2,1)", "box", NpgsqlDbType.Box,
+            skipArrayCheck: true); // Uses semicolon instead of comma as separator
+
+    [Test]
+    public Task Box_array()
+        => AssertType(
+            new[]
+            {
+                new NpgsqlBox(3, 4, 1, 2),
+                new NpgsqlBox(5, 6, 3, 4)
+            },
+            "{(4,3),(2,1);(6,5),(4,3)}",
+            "box[]",
+            NpgsqlDbType.Box | NpgsqlDbType.Array);
 
     [Test]
     public Task Path_closed()
