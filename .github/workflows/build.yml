@@ -24,11 +24,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, windows-2019 ]
-        pg_major: [ 14, 13, 12, 11, 10 ]
+        pg_major: [ 16, 15, 14, 13, 12, 11 ]
         config: [Release]
         include:
           - os: ubuntu-20.04
-            pg_major: 14
+            pg_major: 16
             config: Debug
           - os: macos-11
             pg_major: 14
