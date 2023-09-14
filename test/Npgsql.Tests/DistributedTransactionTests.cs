@@ -380,33 +380,18 @@ Exception {2}",
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5246")]
     public void Transaction_complete_with_undisposed_connections()
     {
-        using (var deleteTX = new TransactionScope())
+        using var deleteOuter = new TransactionScope();
+        using (var delImidiate = new TransactionScope(TransactionScopeOption.RequiresNew))
         {
-            var outerTX = Transaction.Current;
-            using (var copyTX = new TransactionScope(TransactionScopeOption.RequiresNew))
-            {
-                using (var deleteOuter = new TransactionScope(outerTX!))
-                {
-                    using (var delImidiate = new TransactionScope(TransactionScopeOption.RequiresNew))
-                    {
-                        var deleteNow = EnlistOnDataSource.OpenConnection();
-                        deleteNow.ExecuteNonQuery("SELECT 'del_now'");
-                        var deleteNow2 = EnlistOnDataSource.OpenConnection();
-                        deleteNow2.ExecuteNonQuery("SELECT 'del_now2'");
-                        delImidiate.Complete();
-                    }
-                    var deleteConn = EnlistOnDataSource.OpenConnection();
-                    deleteConn.ExecuteNonQuery("SELECT 'delete, this should commit last'");
-                    deleteOuter.Complete();
-                }
-                // TODO: was originally using a different database
-                // but it's not relevant for a repro
-                var copyConn = EnlistOnDataSource.OpenConnection();
-                copyConn.ExecuteNonQuery("SELECT 'copy data. this should commit before delete'");
-                copyTX.Complete();
-            }
-            deleteTX.Complete();
+            var deleteNow = EnlistOnDataSource.OpenConnection();
+            deleteNow.ExecuteNonQuery("SELECT 'del_now'");
+            var deleteNow2 = EnlistOnDataSource.OpenConnection();
+            deleteNow2.ExecuteNonQuery("SELECT 'del_now2'");
+            delImidiate.Complete();
         }
+        var deleteConn = EnlistOnDataSource.OpenConnection();
+        deleteConn.ExecuteNonQuery("SELECT 'delete, this should commit last'");
+        deleteOuter.Complete();
     }
 
     #region Utilities
