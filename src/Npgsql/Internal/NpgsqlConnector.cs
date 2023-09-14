@@ -587,7 +587,7 @@ public sealed partial class NpgsqlConnector
             conn.WriteStartupMessage(username);
             await conn.Flush(async, cancellationToken);
 
-            var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
+            using var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
             try
             {
                 await conn.Authenticate(username, timeout, async, cancellationToken);
@@ -613,14 +613,6 @@ public sealed partial class NpgsqlConnector
 
                 return;
             }
-            catch
-            {
-                // always dispose cancellation token registration
-                cancellationRegistration.Dispose();
-                throw;
-            }
-
-            using var _ = cancellationRegistration;
 
             // We treat BackendKeyData as optional because some PostgreSQL-like database
             // don't send it (CockroachDB, CrateDB)
