@@ -121,7 +121,11 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
                 // if the user continues to use their connection after disposing the scope, and the MSDTC
                 // requests a commit at that exact time.
                 // To avoid this, we open a new connection for performing the 2nd phase.
-                using var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone();
+                var settings = _connector.Connection.Settings.Clone();
+                // Set Enlist to false because we might be in TransactionScope and we can't prepare transaction while being in an open transaction
+                // see #5246
+                settings.Enlist = false;
+                using var conn2 = _connector.Connection.CloneWith(settings.ConnectionString);
                 conn2.Open();
 
                 var connector = conn2.Connector!;
