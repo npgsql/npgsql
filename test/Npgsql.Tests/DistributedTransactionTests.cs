@@ -364,6 +364,23 @@ Exception {2}",
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5246")]
+    public void Transaction_complete_with_undisposed_connections()
+    {
+        using var deleteOuter = new TransactionScope();
+        using (var delImidiate = new TransactionScope(TransactionScopeOption.RequiresNew))
+        {
+            var deleteNow = OpenConnection(ConnectionStringEnlistOn);
+            deleteNow.ExecuteNonQuery("SELECT 'del_now'");
+            var deleteNow2 = OpenConnection(ConnectionStringEnlistOn);
+            deleteNow2.ExecuteNonQuery("SELECT 'del_now2'");
+            delImidiate.Complete();
+        }
+        var deleteConn = OpenConnection(ConnectionStringEnlistOn);
+        deleteConn.ExecuteNonQuery("SELECT 'delete, this should commit last'");
+        deleteOuter.Complete();
+    }
+
     #region Utilities
 
     // MSDTC is asynchronous, i.e. Commit/Rollback may return before the transaction has actually completed in the database;
