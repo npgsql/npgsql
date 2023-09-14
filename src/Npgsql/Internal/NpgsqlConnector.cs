@@ -613,6 +613,12 @@ public sealed partial class NpgsqlConnector
 
                 return;
             }
+            catch
+            {
+                // always dispose cancellation token registration
+                cancellationRegistration.Dispose();
+                throw;
+            }
 
             using var _ = cancellationRegistration;
 
