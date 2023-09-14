@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -95,6 +95,7 @@ namespace Npgsql
                     var tempPosition = unchecked(_buf.ReadPosition + (int)offset);
                     if (unchecked(_buf.ReadPosition + offset) < _start || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
+                    _buf.ReadPosition = tempPosition;
                     _read += (int)offset;
                     return _read;
                 }
@@ -103,6 +104,7 @@ namespace Npgsql
                     var tempPosition = unchecked(_start + _len + (int)offset);
                     if (unchecked(_start + _len + offset) < _start || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
+                    _buf.ReadPosition = tempPosition;
                     _read = _len + (int)offset;
                     return _read;
                 }
