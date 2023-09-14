@@ -255,6 +255,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
+    [Platform(Exclude = "Win", Reason = "Postgresql doesn't close connection correctly on windows which might result in missing error message")]
     public async Task Connect_with_only_non_ssl_allowed_user([Values] bool multiplexing, [Values] bool keepAlive)
     {
         if (multiplexing && keepAlive)
