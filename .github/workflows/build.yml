@@ -30,27 +30,27 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-2022]
-        pg_major: [15, 14, 13, 12, 11]
+        pg_major: [16, 15, 14, 13, 12, 11]
         config: [Release]
         test_tfm: [net8.0]
         include:
           - os: ubuntu-22.04
-            pg_major: 15
+            pg_major: 16
             config: Debug
             test_tfm: net8.0
           - os: ubuntu-22.04
-            pg_major: 15
+            pg_major: 16
             config: Release
             test_tfm: netcoreapp3.1
           - os: macos-12
             pg_major: 14
             config: Release
             test_tfm: net8.0
-          - os: ubuntu-22.04
-            pg_major: 16
-            config: Release
-            test_tfm: net8.0
-            pg_prerelease: 'PG Prerelease'
+#          - os: ubuntu-22.04
+#            pg_major: 17
+#            config: Release
+#            test_tfm: net8.0
+#            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
