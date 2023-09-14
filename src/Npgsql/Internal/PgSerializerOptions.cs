@@ -7,7 +7,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal;
 
-public class PgSerializerOptions
+public sealed class PgSerializerOptions
 {
     /// <summary>
     /// Used by GetSchema to be able to attempt to resolve all type catalog types without exceptions.

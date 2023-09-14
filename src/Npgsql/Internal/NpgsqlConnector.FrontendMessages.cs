@@ -207,7 +207,7 @@ partial class NpgsqlConnector
         {
             for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
             {
-                if (WriteBuffer.WriteSpaceLeft < 2)
+                if (WriteBuffer.WriteSpaceLeft < sizeof(short))
                     await Flush(async, cancellationToken).ConfigureAwait(false);
                 WriteBuffer.WriteInt16(parameters[paramIndex].Format.ToFormatCode());
             }

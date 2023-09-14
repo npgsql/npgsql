@@ -256,7 +256,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal void ChangeParameterName(string? value)
     {
-        if (value == null)
+        if (value is null)
             _name = TrimmedName = PositionalName;
         else if (value.Length > 0 && (value[0] == ':' || value[0] == '@'))
             TrimmedName = (_name = value).Substring(1);
@@ -277,7 +277,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         get => _value;
         set
         {
-            if (value == null || _value?.GetType() != value.GetType())
+            if (value is null || _value?.GetType() != value.GetType())
                 ResetTypeInfo();
             _value = value;
         }
@@ -497,8 +497,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal virtual Type? ValueType => _value?.GetType();
 
-    bool IsGenericParameter => _value is null && ValueType is not null;
-
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
     internal void ResolveTypeInfo(PgSerializerOptions options)
     {
@@ -507,8 +505,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             var staticValueType = typeof(object);
             var valueType = ValueType;
+            var isGenericParameter = _value is null && valueType is not null;
             // We do runtime type lookup for generic parameters if the type is object.
-            if (IsGenericParameter)
+            if (isGenericParameter)
             {
                 staticValueType = valueType; // This will contain the strongly typed T.
                 valueType = staticValueType == typeof(object) ? Value?.GetType() : staticValueType;

@@ -3,6 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql.Internal.Postgres;
 
+/// <summary>
+/// A discriminated union of <see cref="Oid" /> and <see cref="DataTypeName" />.
+/// </summary>
 public readonly struct PgTypeId: IEquatable<PgTypeId>
 {
     readonly DataTypeName _dataTypeName;

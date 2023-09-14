@@ -107,13 +107,7 @@ public abstract class PostgresType
     /// Canonizes (nested) domain types to underlying types, does not handle composites.
     internal PostgresType GetRepresentationalType()
     {
-        if (_representationalType is not null)
-            return _representationalType;
-
-        var type = Core(this);
-        _representationalType ??= type;
-
-        return type ?? throw new InvalidOperationException("Couldn't map type to representational type");
+        return _representationalType ??= Core(this) ?? throw new InvalidOperationException("Couldn't map type to representational type");
 
         static PostgresType? Core(PostgresType? postgresType)
             => (postgresType as PostgresDomainType)?.BaseType ?? postgresType switch

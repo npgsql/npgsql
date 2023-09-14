@@ -32,8 +32,8 @@ namespace Npgsql;
 public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #pragma warning restore CA1010
 {
-    internal static readonly Task<bool> TrueTask = Task.FromResult(true);
-    internal static readonly Task<bool> FalseTask = Task.FromResult(false);
+    static readonly Task<bool> TrueTask = Task.FromResult(true);
+    static readonly Task<bool> FalseTask = Task.FromResult(false);
 
     internal NpgsqlCommand Command { get; private set; } = default!;
     internal NpgsqlConnector Connector { get; }

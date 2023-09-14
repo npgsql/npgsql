@@ -30,7 +30,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         set => TypedValue = (T)value!;
     }
 
-    internal override Type? ValueType => typeof(T);
+    internal override Type ValueType => typeof(T);
 
     #region Constructors
 

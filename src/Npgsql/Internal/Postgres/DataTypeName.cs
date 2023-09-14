@@ -101,16 +101,14 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         {
             var str = unqualifiedName.Substring(0, rangeIndex) + "multirange" + unqualifiedName.Substring(rangeIndex + "range".Length);
 
-            if (unqualifiedName.Length + "multi".Length > NAMEDATALEN)
-                return new(str.Substring(0, NAMEDATALEN - "multi".Length));
-
-            return new(Schema + "." + str);
+            return new($"{Schema}." + (unqualifiedName.Length + "multi".Length > NAMEDATALEN
+                ? str.Substring(0, NAMEDATALEN - "multi".Length)
+                : str));
         }
 
-        if (unqualifiedName.Length + "_multirange".Length > NAMEDATALEN)
-            return new(Schema + "." + unqualifiedName.Substring(0, NAMEDATALEN - "_multirange".Length) + "_multirange");
-
-        return new(Schema + "." + unqualifiedName + "_multirange");
+        return new($"{Schema}." + (unqualifiedName.Length + "multi".Length > NAMEDATALEN
+            ? unqualifiedName.Substring(0, NAMEDATALEN - "_multirange".Length) + "_multirange"
+            : unqualifiedName + "_multirange"));
     }
 
     // Create a DataTypeName from a broader range of valid names.
