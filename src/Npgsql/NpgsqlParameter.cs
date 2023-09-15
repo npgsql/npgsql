@@ -46,7 +46,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal DataFormat Format { get; private protected set; }
     private protected Size? WriteSize { get; set; }
-    private protected bool AsObject => TypeInfo!.IsBoxing || TypeInfo.Type != ValueType || _useSubStream;
     private protected object? _writeState;
     private protected Size _bufferRequirement;
 
@@ -320,8 +319,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             // Infer from value but don't cache
             if (Value is not null)
-                // We pass ValueType here for the generic derived type, where we should always respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+                // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
+                return GlobalTypeMapper.Instance.TryGetDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
 
             return DbType.Object;
         }
@@ -355,8 +354,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             // Infer from value but don't cache
             if (Value is not null)
-                // We pass ValueType here for the generic derived type (NpgsqlParameter<T>) where we should always respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+                // We pass ValueType here for the generic derived type (NpgsqlParameter<T>) where we should respect T and not the runtime type.
+                return GlobalTypeMapper.Instance.TryGetDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
             return NpgsqlDbType.Unknown;
         }
@@ -392,8 +391,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             // Infer from value but don't cache
             if (Value is not null)
-                // We pass ValueType here for the generic derived type, where we should always respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.DisplayName;
+                // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
+                return GlobalTypeMapper.Instance.TryGetDataTypeName(GetValueType(StaticValueType)!, Value)?.DisplayName;
 
             return null;
         }
@@ -495,7 +494,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     #region Internals
 
-    internal virtual Type? ValueType => _value?.GetType();
+    private protected virtual Type StaticValueType => typeof(object);
+
+    Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
     internal void ResolveTypeInfo(PgSerializerOptions options)
@@ -503,15 +504,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var previouslyBound = TypeInfo?.Options == options;
         if (!previouslyBound)
         {
-            var staticValueType = typeof(object);
-            var valueType = ValueType;
-            var isGenericParameter = _value is null && valueType is not null;
-            // We do runtime type lookup for generic parameters if the type is object.
-            if (isGenericParameter)
-            {
-                staticValueType = valueType; // This will contain the strongly typed T.
-                valueType = staticValueType == typeof(object) ? Value?.GetType() : staticValueType;
-            }
+            var staticValueType = StaticValueType;
+            var valueType = GetValueType(StaticValueType);
 
             string? dataTypeName = null;
             DataTypeName? builtinDataTypeName = null;
@@ -582,6 +576,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
+    // Pull from Value so we also support object typed generic params.
     private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo) => typeInfo.GetObjectResolution(Value);
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
@@ -602,7 +597,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
 
         // Handle Size truncate behavior for a predetermined set of types and pg types.
-        // Doesn't matter if we 'box' value, all supported types are reference types.
+        // Doesn't matter if we 'box' Value, all supported types are reference types.
         if (_size > 0 && Converter!.TypeToConvert is var type &&
             (type == typeof(string) || type == typeof(char[]) || type == typeof(byte[]) || type == typeof(Stream)) &&
             Value is { } value)
@@ -699,7 +694,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     private protected virtual ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        // Pull from Value so we also support AsObject base calls from generic parameters.
+        // Pull from Value so we also support base calls from generic parameters.
         var value = (_useSubStream ? _subStream : Value)!;
         if (async)
             return Converter!.WriteAsObjectAsync(writer, value, cancellationToken);

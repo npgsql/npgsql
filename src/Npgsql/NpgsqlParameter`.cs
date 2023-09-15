@@ -30,7 +30,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         set => TypedValue = (T)value!;
     }
 
-    internal override Type ValueType => typeof(T);
+    private protected override Type StaticValueType => typeof(T);
 
     #region Constructors
 
@@ -73,7 +73,8 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     private protected override void BindCore(bool allowNullReference = false)
     {
-        if (AsObject)
+        // If we're object typed we should support DBNull, call into base BindCore.
+        if (typeof(T) == typeof(object) || _useSubStream)
         {
             base.BindCore(_useSubStream || allowNullReference);
             return;
@@ -96,7 +97,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     private protected override ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (AsObject)
+        if (TypeInfo!.IsBoxing || _useSubStream)
             return base.WriteValue(async, writer, cancellationToken);
 
         Debug.Assert(Converter is PgConverter<T>);
