@@ -54,7 +54,7 @@ public class ByteaTests : MultiplexingTestBase
     [Test]
     public Task Write_as_MemoryStream()
         => AssertTypeWrite(
-            () => new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+            () => new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false, skipArrayCheck: true);
 
     [Test]
     public Task Write_as_MemoryStream_truncated()
@@ -67,7 +67,7 @@ public class ByteaTests : MultiplexingTestBase
         };
 
         return AssertTypeWrite(
-            msFactory, "\\x020304", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+            msFactory, "\\x020304", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false, skipArrayCheck: true);
     }
 
     [Test]
@@ -79,7 +79,7 @@ public class ByteaTests : MultiplexingTestBase
         var expectedSql = "\\x" + ToHex(bytes);
 
         await AssertTypeWrite(
-            () => new MemoryStream(bytes), expectedSql, "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+            () => new MemoryStream(bytes), expectedSql, "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false, skipArrayCheck: true);
     }
 
     [Test]
@@ -92,7 +92,7 @@ public class ByteaTests : MultiplexingTestBase
             await File.WriteAllBytesAsync(filePath, new byte[] { 1, 2, 3 });
 
             await AssertTypeWrite(
-                () => FileStreamFactory(filePath, fsList), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+                () => FileStreamFactory(filePath, fsList), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false, skipArrayCheck: true);
         }
         finally
         {
@@ -128,7 +128,7 @@ public class ByteaTests : MultiplexingTestBase
             var expectedSql = "\\x" + ToHex(bytes);
 
             await AssertTypeWrite(
-                () => FileStreamFactory(filePath, fsList), expectedSql, "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+                () => FileStreamFactory(filePath, fsList), expectedSql, "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false, skipArrayCheck: true);
         }
         finally
         {

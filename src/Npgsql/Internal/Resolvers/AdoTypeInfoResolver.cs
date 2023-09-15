@@ -428,6 +428,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Interval
         mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
+        mappings.AddStructArrayType<NpgsqlInterval>(DataTypeNames.Interval);
 
         // Uuid
         mappings.AddStructArrayType<Guid>(DataTypeNames.Uuid);
@@ -480,15 +481,15 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
 
     static PgTypeInfo? GetEnumArrayTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
     {
-        if (type is not null && (!TypeInfoMappingCollection.IsArrayType(type, out var elementType) || elementType != typeof(string)))
+        if (type is not null && type != typeof(object) && (!TypeInfoMappingCollection.IsArrayType(type, out var elementType) || elementType != typeof(string)))
             return null;
 
-        if (options.TypeCatalog.GetPostgresTypeByName(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType })
+        if (options.TypeCatalog.GetPostgresTypeByName(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType enumType })
             return null;
 
         var mappings = new TypeInfoMappingCollection();
-        mappings.AddType<string>(dataTypeName, (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding)), MatchRequirement.DataTypeName);
-        mappings.AddArrayType<string>(dataTypeName);
+        mappings.AddType<string>(enumType.DataTypeName, (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding)), MatchRequirement.DataTypeName);
+        mappings.AddArrayType<string>(enumType.DataTypeName);
         return mappings.Find(type, dataTypeName, options);
     }
 }
