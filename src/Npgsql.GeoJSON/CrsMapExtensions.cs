@@ -12,7 +12,6 @@ public static class CrsMapExtensions
     /// Gets the full crs details from the database.
     /// </summary>
     /// <param name="dataSource"></param>
-    /// <returns></returns>
     public static async Task<CrsMap> GetCrsMapAsync(this NpgsqlDataSource dataSource)
     {
         var builder = new CrsMapBuilder();
@@ -29,7 +28,6 @@ public static class CrsMapExtensions
     /// Gets the full crs details from the database.
     /// </summary>
     /// <param name="dataSource"></param>
-    /// <returns></returns>
     public static CrsMap GetCrsMap(this NpgsqlDataSource dataSource)
     {
         var builder = new CrsMapBuilder();
@@ -43,10 +41,10 @@ public static class CrsMapExtensions
     }
 
     static NpgsqlCommand GetCsrCommand(NpgsqlDataSource dataSource)
-        =>  dataSource.CreateCommand("""
-                                     SELECT min(srid), max(srid), auth_name
-                                     FROM(SELECT srid, auth_name, srid - rank() OVER(PARTITION BY auth_name ORDER BY srid) AS range FROM spatial_ref_sys) AS s
-                                     GROUP BY range, auth_name
-                                     ORDER BY 1;
-                                     """);
+        => dataSource.CreateCommand("""
+        SELECT min(srid), max(srid), auth_name
+        FROM(SELECT srid, auth_name, srid - rank() OVER(PARTITION BY auth_name ORDER BY srid) AS range FROM spatial_ref_sys) AS s
+        GROUP BY range, auth_name
+        ORDER BY 1;
+        """);
 }
