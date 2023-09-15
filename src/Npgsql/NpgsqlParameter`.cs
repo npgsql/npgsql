@@ -68,7 +68,8 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo) => typeInfo.GetResolution(TypedValue);
+    private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
+        => typeInfo.IsBoxing ? base.ResolveConverter(typeInfo) : typeInfo.GetResolution(TypedValue);
 
     private protected override void BindCore(bool allowNullReference = false)
     {
