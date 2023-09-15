@@ -711,7 +711,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         ResetTypeInfo();
     }
 
-    void ResetTypeInfo()
+    private protected void ResetTypeInfo()
     {
         TypeInfo = null;
         ResetConverterResolution();

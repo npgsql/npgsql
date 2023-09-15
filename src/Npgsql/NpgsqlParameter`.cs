@@ -16,10 +16,21 @@ namespace Npgsql;
 /// <typeparam name="T">The type of the value that will be stored in the parameter.</typeparam>
 public sealed class NpgsqlParameter<T> : NpgsqlParameter
 {
+    T? _typedValue;
+
     /// <summary>
     /// Gets or sets the strongly-typed value of the parameter.
     /// </summary>
-    public T? TypedValue { get; set; }
+    public T? TypedValue
+    {
+        get => _typedValue;
+        set
+        {
+            if (typeof(T) == typeof(object) && (value is null || _typedValue?.GetType() != value.GetType()))
+                ResetTypeInfo();
+            _typedValue = value;
+        }
+    }
 
     /// <summary>
     /// Gets or sets the value of the parameter. This delegates to <see cref="TypedValue"/>.
