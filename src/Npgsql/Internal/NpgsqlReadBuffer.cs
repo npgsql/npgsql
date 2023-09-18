@@ -573,18 +573,11 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     unsafe T Read<T>() where T : unmanaged
     {
-#if DEBUG
-        if (sizeof(T) > ReadBytesLeft)
-            ThrowNotSpaceLeft();
-#endif
-
+        Debug.Assert(sizeof(T) <= ReadBytesLeft, "There is not enough space left in the buffer.");
         var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
         ReadPosition += sizeof(T);
         return result;
     }
-
-    static void ThrowNotSpaceLeft()
-        => ThrowHelper.ThrowInvalidOperationException("There is not enough space left in the buffer.");
 
     public string ReadString(int byteLen)
     {
