@@ -59,17 +59,24 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         PgTypeInfo? FindMatch(Type? type, (Type? Type, PgTypeInfo? Info)[] infos, bool defaultTypeFallback)
         {
             PgTypeInfo? defaultInfo = null;
+            var negativeExactMatch = false;
             for (var i = 0; i < infos.Length; i++)
             {
                 ref var item = ref infos[i];
                 if (item.Type == type)
-                    return item.Info;
+                {
+                    if (item.Info is not null || !defaultTypeFallback)
+                        return item.Info;
+                    negativeExactMatch = true;
+                }
 
                 if (defaultTypeFallback && item.Type is null)
                     defaultInfo = item.Info;
             }
 
-            return defaultInfo;
+            // We can only return default info if we've seen a negative match (type: typeof(object), info: null)
+            // Otherwise we might return a previously requested default while the resolvers could produce the exact match.
+            return negativeExactMatch ? defaultInfo : null;
         }
 
         PgTypeInfo? AddByType(Type type)
@@ -110,9 +117,16 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
 
                 // Also add defaults by their info type to save a future resolver lookup + resize.
                 var oldInfos = infos;
-                Array.Resize(ref infos, oldInfos.Length + (isDefaultInfo ? 2 : 1));
-                infos[oldInfos.Length] = (type, info);
+                var hasExactType = false;
                 if (isDefaultInfo)
+                {
+                    foreach (var oldInfo in oldInfos)
+                        if (oldInfo.Type == info!.Type)
+                            hasExactType = true;
+                }
+                Array.Resize(ref infos, oldInfos.Length + (isDefaultInfo && !hasExactType ? 2 : 1));
+                infos[oldInfos.Length] = (type, info);
+                if (isDefaultInfo && !hasExactType)
                     infos[oldInfos.Length + 1] = (info!.Type, info);
 
                 if (_cacheByPgTypeId.TryUpdate(pgTypeId, infos, oldInfos))
