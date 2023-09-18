@@ -36,6 +36,10 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
             NpgsqlDbType.DateRange | NpgsqlDbType.Array,
             isDefault: false, skipArrayCheck: true);
 
+        await using var conn = await OpenConnectionAsync();
+        if (conn.PostgreSqlVersion < new Version(14, 0))
+            return;
+
         await AssertType(
             new [] {new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue)},
             """{[-infinity,infinity]}""",

@@ -105,6 +105,10 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             NpgsqlDbType.TimestampRange | NpgsqlDbType.Array,
             isDefault: false, skipArrayCheck: true);
 
+        await using var conn = await OpenConnectionAsync();
+        if (conn.PostgreSqlVersion < new Version(14, 0))
+            return;
+
         await AssertType(
             new [] { new NpgsqlRange<LocalDateTime>(
                 new(1998, 4, 12, 13, 26, 38),
@@ -251,13 +255,17 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
             isDefault: false, skipArrayCheck: true);
 
-        await AssertType(
-            new [] { new Interval(
-                new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(),
-                new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()), },
-            """{["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02")}""",
-            "tstzmultirange",
-            NpgsqlDbType.TimestampTzMultirange, isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
+         await using var conn = await OpenConnectionAsync();
+         if (conn.PostgreSqlVersion < new Version(14, 0))
+             return;
+
+         await AssertType(
+             new [] { new Interval(
+                 new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(),
+                 new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()), },
+             """{["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02")}""",
+             "tstzmultirange",
+             NpgsqlDbType.TimestampTzMultirange, isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
     }
 
     [Test]
@@ -492,7 +500,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             "[2002-03-04,2002-03-07)",
             "daterange",
             NpgsqlDbType.DateRange,
-            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true); // DateInterval<T>[] is mapped to multirange by default, not array; test separately
 
         await AssertType(
             new [] {new DateInterval(new(2002, 3, 4), new(2002, 3, 6))},
@@ -500,6 +508,10 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             "daterange[]",
             NpgsqlDbType.DateRange | NpgsqlDbType.Array,
             isDefault: false, skipArrayCheck: true);
+
+        await using var conn = await OpenConnectionAsync();
+        if (conn.PostgreSqlVersion < new Version(14, 0))
+            return;
 
         await AssertType(
             new [] {new DateInterval(new(2002, 3, 4), new(2002, 3, 6))},
@@ -525,6 +537,10 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
              "daterange[]",
              NpgsqlDbType.DateRange | NpgsqlDbType.Array,
              isDefault: false, skipArrayCheck: true);
+
+         await using var conn = await OpenConnectionAsync();
+         if (conn.PostgreSqlVersion < new Version(14, 0))
+             return;
 
          await AssertType(
              new [] { new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
@@ -591,6 +607,10 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             "daterange[]",
             NpgsqlDbType.DateRange | NpgsqlDbType.Array,
             isDefault: false, skipArrayCheck: true);
+
+        await using var conn = await OpenConnectionAsync();
+        if (conn.PostgreSqlVersion < new Version(14, 0))
+            return;
 
         await AssertType(
             new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
