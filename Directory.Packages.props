@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <SystemVersion>8.0.0-preview.6.23329.7</SystemVersion>
+    <SystemVersion>8.0.0-rc.1.23419.4</SystemVersion>
     <ExtensionsVersion>$(SystemVersion)</ExtensionsVersion>
   </PropertyGroup>
   
