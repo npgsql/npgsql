@@ -46,9 +46,9 @@ class UnmappedEnumTypeInfoResolver : IPgTypeInfoResolver
                     labelToEnum[enumName] = enumValue;
                 }
 
-                return new PgTypeInfo(options, (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
+                return mapping.CreateInfo(options, (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
                     enumToLabel, labelToEnum,
-                    options.TextEncoding)!, new DataTypeName(mapping.DataTypeName));
+                    options.TextEncoding)!);
             }),
             null});
 

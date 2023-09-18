@@ -71,35 +71,20 @@ sealed class JsonNetArrayTypeInfoResolver : JsonNetTypeInfoResolver, IPgTypeInfo
 class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
 {
     protected TypeInfoMappingCollection Mappings { get; } = new();
+    protected readonly JsonSerializerSettings _serializerSettings;
 
-    public JsonNetPocoTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? settings = null)
-        => AddMappings(Mappings, jsonbClrTypes ?? Array.Empty<Type>(), jsonClrTypes ?? Array.Empty<Type>(), settings);
-
-    static void AddMappings(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerSettings? settings = null)
+    public JsonNetPocoTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? serializerSettings = null)
     {
         // Capture default settings during construction.
-        settings ??= JsonConvert.DefaultSettings?.Invoke() ?? new JsonSerializerSettings();
+        _serializerSettings = serializerSettings ??= JsonConvert.DefaultSettings?.Invoke() ?? new JsonSerializerSettings();
 
+        AddMappings(Mappings, jsonbClrTypes ?? Array.Empty<Type>(), jsonClrTypes ?? Array.Empty<Type>(), serializerSettings);
+    }
+
+    static void AddMappings(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerSettings settings)
+    {
         AddUserMappings(jsonb: true, jsonbClrTypes);
         AddUserMappings(jsonb: false, jsonClrTypes);
-
-        AddFallbackMappings(jsonb: true);
-        AddFallbackMappings(jsonb: false);
-
-        void AddFallbackMappings(bool jsonb)
-        {
-            // For jsonb we can't properly support polymorphic serialization unless we do quite some additional work
-            // so we default to mapping.Type instead (exact types will never serialize their "$type" fields, essentially disabling the feature).
-            var baseType = jsonb ? null : typeof(object);
-
-            // Match all types except null, object and text types as long as DataTypeName (json/jsonb) is present.
-            mappings.Add(new TypeInfoMapping(typeof(object), jsonb ? "jsonb" : "json",
-                (options, mapping, _) => mapping.CreateInfo(options, CreateJsonNetConverter(mapping.Type, jsonb, options.TextEncoding, settings, baseType ?? mapping.Type)))
-            {
-                TypeMatchPredicate = type => type is not null && type != typeof(object) && Array.IndexOf(PgSerializerOptions.WellKnownTextTypes, type) == -1,
-                MatchRequirement = MatchRequirement.DataTypeName,
-            });
-        }
 
         void AddUserMappings(bool jsonb, Type[] clrTypes)
         {
@@ -111,9 +96,7 @@ class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
                 AddType(mappings, jsonType,
                     jsonb ? "jsonb" : "json",
                     factory: (options, mapping, _) => mapping.CreateInfo(options,
-                        CreateJsonNetConverter(mapping.Type, jsonb, options.TextEncoding, settings, jsonType)),
-                    configureMapping: mapping => mapping
-                );
+                        CreateJsonNetConverter(mapping.Type, jsonb, options.TextEncoding, settings, jsonType)));
             }
         }
     }
@@ -125,23 +108,49 @@ class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
 
         foreach (var jsonClrType in jsonClrTypes)
             AddArrayType(mappings, jsonClrType, "json");
-
-        // Fallback mappings
-        mappings.AddArrayType<object>("jsonb");
-        mappings.AddArrayType<object>("json");
-
     }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => Mappings.Find(type, dataTypeName, options);
+    {
+        var info = Mappings.Find(type, dataTypeName, options);
+        if (info is not null)
+            return info;
 
-    static void AddType(TypeInfoMappingCollection mappings, Type type, string dataTypeName, TypeInfoFactory factory, Func<TypeInfoMapping, TypeInfoMapping> configureMapping)
+        // Match all types except null, object and text types as long as DataTypeName (json/jsonb) is present.
+        if (type is null || type == typeof(object) || Array.IndexOf(PgSerializerOptions.WellKnownTextTypes, type) != -1)
+            return null;
+
+        if (dataTypeName.GetValueOrDefault() != "pg_catalog.jsonb" && dataTypeName.GetValueOrDefault().UnqualifiedName != "pg_catalog.json")
+            return null;
+
+        // Synthesize mapping
+        var mappings = new TypeInfoMappingCollection();
+        CreatePocoMapping(mappings, type, dataTypeName.GetValueOrDefault(), _serializerSettings);
+        return mappings.Find(type, dataTypeName, options);
+    }
+
+    protected void CreatePocoMapping(TypeInfoMappingCollection mappings, Type type, string dataTypeName, JsonSerializerSettings serializerSettings)
+        => (type.IsValueType ? AddStructTypeMethodInfo : AddTypeMethodInfo).MakeGenericMethod(type).Invoke(mappings, new object?[] {
+            (string)dataTypeName,
+            new TypeInfoFactory((options, mapping, _) =>
+            {
+                var jsonb = dataTypeName == "pg_catalog.jsonb";
+
+                // For jsonb we can't properly support polymorphic serialization unless we do quite some additional work
+                // so we default to mapping.Type instead (exact types will never serialize their "$type" fields, essentially disabling the feature).
+                var baseType = jsonb ? mapping.Type : typeof(object);
+
+                return mapping.CreateInfo(options, CreateJsonNetConverter(mapping.Type, jsonb, options.TextEncoding, serializerSettings, baseType));
+            }),
+            null});
+
+    static void AddType(TypeInfoMappingCollection mappings, Type type, string dataTypeName, TypeInfoFactory factory)
         => (type.IsValueType ? AddStructTypeMethodInfo : AddTypeMethodInfo).MakeGenericMethod(type)
             .Invoke(mappings, new object?[]
         {
             dataTypeName,
             factory,
-            configureMapping
+            null
         });
 
     static void AddArrayType(TypeInfoMappingCollection mappings, Type type, string dataTypeName)
@@ -154,13 +163,13 @@ class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
     static readonly MethodInfo AddTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddType),
         new[] { typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
 
-    static readonly MethodInfo AddArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
+    protected static readonly MethodInfo AddArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
         .GetMethod(nameof(TypeInfoMappingCollection.AddArrayType), new[] { typeof(string) }) ?? throw new NullReferenceException();
 
     static readonly MethodInfo AddStructTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddStructType),
         new[] { typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
 
-    static readonly MethodInfo AddStructArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
+    protected static readonly MethodInfo AddStructArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
         .GetMethod(nameof(TypeInfoMappingCollection.AddStructArrayType), new[] { typeof(string) }) ?? throw new NullReferenceException();
 
     static PgConverter CreateJsonNetConverter(Type valueType, bool jsonb, Encoding textEncoding, JsonSerializerSettings settings, Type baseType)
@@ -176,13 +185,35 @@ sealed class JsonNetPocoArrayTypeInfoResolver : JsonNetPocoTypeInfoResolver, IPg
 {
     new TypeInfoMappingCollection Mappings { get; }
 
-    public JsonNetPocoArrayTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? settings = null)
-        : base(jsonbClrTypes, jsonClrTypes, settings)
+    public JsonNetPocoArrayTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? serializerSettings = null)
+        : base(jsonbClrTypes, jsonClrTypes, serializerSettings)
     {
         Mappings = new TypeInfoMappingCollection(base.Mappings);
         AddArrayInfos(Mappings, jsonbClrTypes ?? Array.Empty<Type>(), jsonClrTypes ?? Array.Empty<Type>());
     }
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => Mappings.Find(type, dataTypeName, options);
+    {
+        var info = Mappings.Find(type, dataTypeName, options);
+        if (info is not null)
+            return info;
+
+        // Match all types except null, object and text types as long as DataTypeName (json/jsonb) is present.
+        if (type is null || type == typeof(object) || !TypeInfoMappingCollection.IsArrayType(type, out var elementType)
+            || Array.IndexOf(PgSerializerOptions.WellKnownTextTypes, elementType) != -1)
+            return null;
+
+        if (dataTypeName != "pg_catalog._jsonb" && dataTypeName != "pg_catalog._json")
+            return null;
+
+        // Synthesize mapping
+
+        var mappings = new TypeInfoMappingCollection();
+        var elementDataTypeName = dataTypeName == "pg_catalog._jsonb" ? "pg_catalog.jsonb" : "pg_catalog.json";
+        CreatePocoMapping(mappings, elementType, elementDataTypeName, _serializerSettings);
+        (elementType.IsValueType ? AddStructArrayTypeMethodInfo : AddArrayTypeMethodInfo)
+            .MakeGenericMethod(elementType).Invoke(mappings, new []{ elementDataTypeName });
+
+        return mappings.Find(type, dataTypeName, options);
+    }
 }

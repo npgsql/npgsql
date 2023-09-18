@@ -292,6 +292,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
+        AddTypeInfoResolver(new SystemTextJsonPocoArrayTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         AddTypeInfoResolver(new SystemTextJsonPocoTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
