@@ -466,8 +466,8 @@ public class PgReader
             return;
         }
 
-        if (FieldOffset < FieldSize)
-            ThrowNotConsumed();
+        if (FieldOffset != FieldSize)
+            ThrowNotConsumedExactly();
     }
 
     internal ValueTask EndReadAsync()
@@ -479,8 +479,8 @@ public class PgReader
         if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
             return ConsumeAsync(FieldRemaining);
 
-        if (FieldOffset < FieldSize)
-            ThrowNotConsumed();
+        if (FieldOffset != FieldSize)
+            ThrowNotConsumedExactly();
         return new();
     }
 
@@ -669,10 +669,12 @@ public class PgReader
         return new();
     }
 
-    void ThrowNotConsumed() =>
+    void ThrowNotConsumedExactly() =>
         throw _buffer.Connector.Break(
             new InvalidOperationException(
-                $"Trying to end a read over a field that hasn't been entirely consumed (pos: {FieldOffset}, len: {FieldSize})"));
+                FieldOffset < FieldSize
+                    ? $"The read on this field has not consumed all of its bytes (pos: {FieldOffset}, len: {FieldSize})"
+                    : $"The read on this field has consumed all of its bytes and read into the subsequent bytes (pos: {FieldOffset}, len: {FieldSize})"));
 }
 
 public readonly struct NestedReadScope : IDisposable, IAsyncDisposable
