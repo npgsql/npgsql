@@ -104,35 +104,6 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<Duration>(IntervalDataTypeName,
             static (options, mapping, _) => mapping.CreateInfo(options, new DurationConverter()));
 
-        // daterange
-        mappings.AddType<DateInterval>(DateRangeDataTypeName,
-            static (options, mapping, _) =>
-                mapping.CreateInfo(options, new DateIntervalConverter(
-                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
-                    options.EnableDateTimeInfinityConversions)), isDefault: true);
-        mappings.AddStructType<NpgsqlRange<LocalDate>>(DateRangeDataTypeName,
-            static (options, mapping, _) => mapping.CreateInfo(options,
-                CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options)));
-
-        // datemultirange
-        mappings.AddType<DateInterval[]>(DateMultirangeDataTypeName,
-            static (options, mapping, _) =>
-                mapping.CreateInfo(options, CreateArrayMultirangeConverter(new DateIntervalConverter(
-                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
-                    options.EnableDateTimeInfinityConversions), options)),
-            isDefault: true);
-        mappings.AddType<List<DateInterval>>(DateMultirangeDataTypeName,
-            static (options, mapping, _) =>
-                mapping.CreateInfo(options, CreateListMultirangeConverter(new DateIntervalConverter(
-                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
-                    options.EnableDateTimeInfinityConversions), options)));
-        mappings.AddType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName,
-            static (options, mapping, _) =>
-                mapping.CreateInfo(options, CreateArrayMultirangeConverter(CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
-        mappings.AddType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName,
-            static (options, mapping, _) =>
-                mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
-
         // tstzrange
         mappings.AddStructType<Interval>(TimestampTzRangeDataTypeName,
             static (options, mapping, _) =>
@@ -190,6 +161,35 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<List<NpgsqlRange<LocalDateTime>>>(TimestampMultirangeDataTypeName,
             static (options, mapping, _) =>
                 mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions), options), options)));
+
+        // daterange
+        mappings.AddType<DateInterval>(DateRangeDataTypeName,
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, new DateIntervalConverter(
+                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
+                    options.EnableDateTimeInfinityConversions)), isDefault: true);
+        mappings.AddStructType<NpgsqlRange<LocalDate>>(DateRangeDataTypeName,
+            static (options, mapping, _) => mapping.CreateInfo(options,
+                CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options)));
+
+        // datemultirange
+        mappings.AddType<DateInterval[]>(DateMultirangeDataTypeName,
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(new DateIntervalConverter(
+                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
+                    options.EnableDateTimeInfinityConversions), options)),
+            isDefault: true);
+        mappings.AddType<List<DateInterval>>(DateMultirangeDataTypeName,
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, CreateListMultirangeConverter(new DateIntervalConverter(
+                    CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options),
+                    options.EnableDateTimeInfinityConversions), options)));
+        mappings.AddType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName,
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, CreateArrayMultirangeConverter(CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
+        mappings.AddType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName,
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
     }
 
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -229,16 +229,6 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<Period>(IntervalDataTypeName);
         mappings.AddStructArrayType<Duration>(IntervalDataTypeName);
 
-        // daterange
-        mappings.AddArrayType<DateInterval>(DateRangeDataTypeName);
-        mappings.AddStructArrayType<NpgsqlRange<LocalDate>>(DateRangeDataTypeName);
-
-        // datemultirange
-        mappings.AddArrayType<DateInterval[]>(DateMultirangeDataTypeName);
-        mappings.AddArrayType<List<DateInterval>>(DateMultirangeDataTypeName);
-        mappings.AddArrayType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName);
-        mappings.AddArrayType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName);
-
         // tstzrange
         mappings.AddStructArrayType<Interval>(TimestampTzRangeDataTypeName);
         mappings.AddStructArrayType<NpgsqlRange<Instant>>(TimestampTzRangeDataTypeName);
@@ -261,5 +251,15 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         // tsmultirange
         mappings.AddArrayType<NpgsqlRange<LocalDateTime>[]>(TimestampMultirangeDataTypeName);
         mappings.AddArrayType<List<NpgsqlRange<LocalDateTime>>>(TimestampMultirangeDataTypeName);
+
+        // daterange
+        mappings.AddArrayType<DateInterval>(DateRangeDataTypeName);
+        mappings.AddStructArrayType<NpgsqlRange<LocalDate>>(DateRangeDataTypeName);
+
+        // datemultirange
+        mappings.AddArrayType<DateInterval[]>(DateMultirangeDataTypeName);
+        mappings.AddArrayType<List<DateInterval>>(DateMultirangeDataTypeName);
+        mappings.AddArrayType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName);
+        mappings.AddArrayType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName);
     }
 }

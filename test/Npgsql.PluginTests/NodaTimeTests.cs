@@ -85,15 +85,34 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
 
     [Test]
-    public Task Tsrange_as_NpgsqlRange_of_LocalDateTime()
-        => AssertType(
+    public async Task Tsrange_as_NpgsqlRange_of_LocalDateTime()
+    {
+        await AssertType(
             new NpgsqlRange<LocalDateTime>(
                 new(1998, 4, 12, 13, 26, 38),
                 new(1998, 4, 12, 15, 26, 38)),
             """["1998-04-12 13:26:38","1998-04-12 15:26:38"]""",
             "tsrange",
             NpgsqlDbType.TimestampRange,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+
+        await AssertType(
+            new [] { new NpgsqlRange<LocalDateTime>(
+                new(1998, 4, 12, 13, 26, 38),
+                new(1998, 4, 12, 15, 26, 38)), },
+            """{"[\"1998-04-12 13:26:38\",\"1998-04-12 15:26:38\"]"}""",
+            "tsrange[]",
+            NpgsqlDbType.TimestampRange | NpgsqlDbType.Array,
+            isDefault: false, skipArrayCheck: true);
+
+        await AssertType(
+            new [] { new NpgsqlRange<LocalDateTime>(
+                new(1998, 4, 12, 13, 26, 38),
+                new(1998, 4, 12, 15, 26, 38)), },
+            """{["1998-04-12 13:26:38","1998-04-12 15:26:38"]}""",
+            "tsmultirange",
+            NpgsqlDbType.TimestampMultirange, isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
+    }
 
     [Test]
     public async Task Tsmultirange_as_array_of_NpgsqlRange_of_LocalDateTime()
@@ -212,15 +231,34 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     }
 
     [Test]
-    public Task Tstzrange_as_Interval()
-        => AssertType(
+    public async Task Tstzrange_as_Interval()
+    {
+         await AssertType(
             new Interval(
                 new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(),
                 new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()),
             """["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02")""",
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+
+         await AssertType(
+            new [] { new Interval(
+                new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(),
+                new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()), },
+            """{"[\"1998-04-12 15:26:38+02\",\"1998-04-12 17:26:38+02\")"}""",
+            "tstzrange[]",
+            NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
+            isDefault: false, skipArrayCheck: true);
+
+        await AssertType(
+            new [] { new Interval(
+                new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(),
+                new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()), },
+            """{["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02")}""",
+            "tstzmultirange",
+            NpgsqlDbType.TimestampTzMultirange, isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
+    }
 
     [Test]
     public Task Tstzrange_with_no_end_as_Interval()
@@ -229,7 +267,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             """["1998-04-12 15:26:38+02",)""",
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
 
     [Test]
     public Task Tstzrange_with_no_start_as_Interval()
@@ -238,7 +276,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             """(,"1998-04-12 15:26:38+02")""",
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
 
     [Test]
     public Task Tstzrange_with_no_start_or_end_as_Interval()
@@ -247,7 +285,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             """(,)""",
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
 
     [Test]
     public Task Tstzrange_as_NpgsqlRange_of_Instant()
@@ -259,7 +297,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
             isNpgsqlDbTypeInferredFromClrType: false,
-            isDefaultForReading: false);
+            isDefaultForReading: false, skipArrayCheck: true);
 
     [Test]
     public Task Tstzrange_as_NpgsqlRange_of_ZonedDateTime()
@@ -271,7 +309,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
             isNpgsqlDbTypeInferredFromClrType: false,
-            isDefaultForReading: false);
+            isDefaultForReading: false, skipArrayCheck: true);
 
     [Test]
     public Task Tstzrange_as_NpgsqlRange_of_OffsetDateTime()
@@ -283,7 +321,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
             isNpgsqlDbTypeInferredFromClrType: false,
-            isDefaultForReading: false);
+            isDefaultForReading: false, skipArrayCheck: true);
 
     [Test]
     public async Task Tstzmultirange_as_array_of_Interval()
@@ -447,23 +485,53 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(7579, "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefault: false);
 
     [Test]
-    public Task Daterange_as_DateInterval()
-        => AssertType(
+    public async Task Daterange_as_DateInterval()
+    {
+        await AssertType(
             new DateInterval(new(2002, 3, 4), new(2002, 3, 6)),
             "[2002-03-04,2002-03-07)",
             "daterange",
             NpgsqlDbType.DateRange,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+
+        await AssertType(
+            new [] {new DateInterval(new(2002, 3, 4), new(2002, 3, 6))},
+            """{"[2002-03-04,2002-03-07)"}""",
+            "daterange[]",
+            NpgsqlDbType.DateRange | NpgsqlDbType.Array,
+            isDefault: false, skipArrayCheck: true);
+
+        await AssertType(
+            new [] {new DateInterval(new(2002, 3, 4), new(2002, 3, 6))},
+            """{[2002-03-04,2002-03-07)}""",
+            "datemultirange",
+            NpgsqlDbType.DateMultirange, isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
+    }
 
     [Test]
-    public Task Daterange_as_NpgsqlRange_of_LocalDate()
-        => AssertType(
+    public async Task Daterange_as_NpgsqlRange_of_LocalDate()
+    {
+         await AssertType(
             new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false),
             "[2002-03-04,2002-03-06)",
             "daterange",
             NpgsqlDbType.DateRange,
             isNpgsqlDbTypeInferredFromClrType: false,
-            isDefaultForReading: false);
+            isDefaultForReading: false, skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+
+         await AssertType(
+             new [] { new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
+             """{"[2002-03-04,2002-03-06)"}""",
+             "daterange[]",
+             NpgsqlDbType.DateRange | NpgsqlDbType.Array,
+             isDefault: false, skipArrayCheck: true);
+
+         await AssertType(
+             new [] { new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
+             """{[2002-03-04,2002-03-06)}""",
+             "datemultirange",
+             NpgsqlDbType.DateMultirange, isDefault: false, skipArrayCheck: true);
+    }
 
     [Test]
     public async Task Datemultirange_as_array_of_DateInterval()
@@ -508,13 +576,28 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(new DateOnly(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefaultForReading: false);
 
     [Test]
-    public Task Daterange_as_NpgsqlRange_of_DateOnly()
-        => AssertType(
+    public async Task Daterange_as_NpgsqlRange_of_DateOnly()
+    {
+        await AssertType(
             new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false),
             "[2002-03-04,2002-03-06)",
             "daterange",
             NpgsqlDbType.DateRange,
-            isDefaultForReading: false);
+            isDefaultForReading: false, skipArrayCheck: true);
+
+        await AssertType(
+            new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
+            """{"[2002-03-04,2002-03-06)"}""",
+            "daterange[]",
+            NpgsqlDbType.DateRange | NpgsqlDbType.Array,
+            isDefault: false, skipArrayCheck: true);
+
+        await AssertType(
+            new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
+            """{[2002-03-04,2002-03-06)}""",
+            "datemultirange",
+            NpgsqlDbType.DateMultirange, isDefault: false, skipArrayCheck: true);
+    }
 #endif
 
     [Test]
