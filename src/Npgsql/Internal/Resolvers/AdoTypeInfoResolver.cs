@@ -392,20 +392,16 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Timestamp
         if (Statics.LegacyTimestampBehavior)
-            mappings.AddStructArrayType<DateTime>(DataTypeNames.TimestampTz);
+            mappings.AddStructArrayType<DateTime>(DataTypeNames.Timestamp);
         else
             mappings.AddResolverStructArrayType<DateTime>(DataTypeNames.Timestamp);
         mappings.AddStructArrayType<long>(DataTypeNames.Timestamp);
 
         // TimestampTz
         if (Statics.LegacyTimestampBehavior)
-        {
             mappings.AddStructArrayType<DateTime>(DataTypeNames.TimestampTz);
-        }
         else
-        {
             mappings.AddResolverStructArrayType<DateTime>(DataTypeNames.TimestampTz);
-        }
         mappings.AddStructArrayType<DateTimeOffset>(DataTypeNames.TimestampTz);
         mappings.AddStructArrayType<long>(DataTypeNames.TimestampTz);
 

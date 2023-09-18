@@ -85,9 +85,9 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     private protected override void BindCore(bool allowNullReference = false)
     {
         // If we're object typed we should support DBNull, call into base BindCore.
-        if (typeof(T) == typeof(object) || _useSubStream)
+        if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing || _useSubStream)
         {
-            base.BindCore(_useSubStream || allowNullReference);
+            base.BindCore(TypeInfo!.IsBoxing || _useSubStream || allowNullReference);
             return;
         }
 
