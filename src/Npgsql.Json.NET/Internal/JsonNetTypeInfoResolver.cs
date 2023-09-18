@@ -120,7 +120,7 @@ class JsonNetPocoTypeInfoResolver : IPgTypeInfoResolver
         if (type is null || type == typeof(object) || Array.IndexOf(PgSerializerOptions.WellKnownTextTypes, type) != -1)
             return null;
 
-        if (dataTypeName.GetValueOrDefault() != "pg_catalog.jsonb" && dataTypeName.GetValueOrDefault().UnqualifiedName != "pg_catalog.json")
+        if (dataTypeName is null || (dataTypeName.GetValueOrDefault() != "pg_catalog.jsonb" && dataTypeName.GetValueOrDefault() != "pg_catalog.json"))
             return null;
 
         // Synthesize mapping
