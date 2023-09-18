@@ -218,7 +218,7 @@ partial class NpgsqlConnector
 
         WriteBuffer.WriteUInt16((ushort)parameters.Count);
 
-        var writer = WriteBuffer.PgWriter.Init(DatabaseInfo).WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking);
+        var writer = WriteBuffer.GetWriter(DatabaseInfo, async ? FlushMode.NonBlocking : FlushMode.Blocking);
         try
         {
             for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)

@@ -104,7 +104,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         _buf.StartCopyMode();
         WriteHeader();
         // Only init after header.
-        _pgWriter = _buf.PgWriter.Init(_connector.DatabaseInfo);
+        _pgWriter = _buf.GetWriter(_connector.DatabaseInfo);
     }
 
     void WriteHeader()

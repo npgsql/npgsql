@@ -102,7 +102,7 @@ public class PgWriter
     ValueMetadata _current;
     NpgsqlDatabaseInfo? _typeCatalog;
 
-    internal PgWriter(NpgsqlWriteBuffer buffer) => _writer = new NpgsqlBufferWriter(buffer);
+    internal PgWriter(IBufferWriter<byte> writer) => _writer = writer;
 
     internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog)
     {
@@ -110,7 +110,6 @@ public class PgWriter
             throw new InvalidOperationException("Invalid concurrent use or PgWriter was not reset properly.");
 
         _typeCatalog = typeCatalog;
-        Ensure();
         return this;
     }
 
@@ -121,6 +120,7 @@ public class PgWriter
 
         _typeCatalog = null;
         FlushMode = FlushMode.None;
+        _totalBytesWritten = 0;
         ResetBuffer();
     }
 
@@ -179,7 +179,7 @@ public class PgWriter
         get
         {
             if (_buffer is null)
-                Ensure();
+                Ensure(count: 0);
             return _length - _pos;
         }
     }
@@ -415,11 +415,13 @@ public class PgWriter
 
     public void Flush(TimeSpan timeout = default)
     {
-        if (FlushMode is FlushMode.None)
+        switch (FlushMode)
+        {
+        case FlushMode.None:
             return;
-
-        if (FlushMode is FlushMode.NonBlocking)
+        case FlushMode.NonBlocking:
             throw new NotSupportedException($"Cannot call {nameof(Flush)} on a non-blocking {nameof(PgWriter)}, you might need to override {nameof(PgConverter<object>.WriteAsync)} on {nameof(PgConverter)} if you want to call flush.");
+        }
 
         if (_writer is not IStreamingWriter<byte> writer)
             throw new NotSupportedException($"Cannot call {nameof(Flush)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");
@@ -431,11 +433,13 @@ public class PgWriter
 
     public ValueTask FlushAsync(CancellationToken cancellationToken = default)
     {
-        if (FlushMode is FlushMode.None)
+        switch (FlushMode)
+        {
+        case FlushMode.None:
             return new();
-
-        if (FlushMode is FlushMode.Blocking)
+        case FlushMode.Blocking:
             throw new NotSupportedException($"Cannot call {nameof(FlushAsync)} on a blocking {nameof(PgWriter)}, call Flush instead.");
+        }
 
         if (_writer is not IStreamingWriter<byte> writer)
             throw new NotSupportedException($"Cannot call {nameof(FlushAsync)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");

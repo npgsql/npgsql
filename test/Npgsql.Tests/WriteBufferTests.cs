@@ -7,6 +7,16 @@ namespace Npgsql.Tests;
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // Parallel access to a single buffer
 class WriteBufferTests
 {
+    [Test]
+    public void GetWriter_Full_Buffer()
+    {
+        WriteBuffer.WritePosition += WriteBuffer.WriteSpaceLeft;
+        var writer = WriteBuffer.GetWriter(null!, FlushMode.Blocking);
+        Assert.That(writer.ShouldFlush(sizeof(byte)), Is.True);
+        writer.Flush();
+        Assert.That(writer.ShouldFlush(sizeof(byte)), Is.False);
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1275")]
     public void Write_zero_characters()
     {

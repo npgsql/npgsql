@@ -69,14 +69,14 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     public int WriteSpaceLeft => Size - WritePosition;
 
-    internal PgWriter PgWriter
+    internal PgWriter GetWriter(NpgsqlDatabaseInfo typeCatalog, FlushMode? flushMode = null)
     {
-        get
-        {
-            // Make sure we'll refetch from the write buffer.
-            _pgWriter.Reset();
-            return _pgWriter;
-        }
+        // Make sure we'll refetch from the write buffer.
+        _pgWriter.Reset();
+        var writer = _pgWriter.Init(typeCatalog);
+        if (flushMode is not null)
+            writer.WithFlushMode(flushMode.GetValueOrDefault());
+        return writer;
     }
 
     internal readonly byte[] Buffer;
@@ -117,7 +117,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
         TextEncoding = textEncoding;
         _textEncoder = TextEncoding.GetEncoder();
-        _pgWriter = new PgWriter(this);
+        _pgWriter = new PgWriter(new NpgsqlBufferWriter(this));
     }
 
     #endregion
