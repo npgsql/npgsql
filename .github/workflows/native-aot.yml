@@ -17,29 +17,30 @@ concurrency:
 env:
   dotnet_sdk_version: '8.0.100-rc.1.23463.5'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  nuget_config: |
-    <?xml version="1.0" encoding="utf-8"?>
-    <configuration>
-
-        <packageSources>
-            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-            <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
-        </packageSources>
-
-        <packageSourceMapping>
-            <packageSource key="nuget.org">
-                <package pattern="*" />
-            </packageSource>
-            <packageSource key="dotnet8">
-                <package pattern="runtime.*" />
-                <package pattern="Microsoft.NETCore.App.Runtime.*" />
-                <package pattern="Microsoft.AspNetCore.App.Runtime.*" />
-                <package pattern="Microsoft.NET.ILLink.Tasks" />
-                <package pattern="Microsoft.DotNet.ILCompiler" />
-            </packageSource>
-        </packageSourceMapping>
-
-    </configuration>
+  # Uncomment and edit the following to use nightly/preview builds 
+#  nuget_config: |
+#    <?xml version="1.0" encoding="utf-8"?>
+#    <configuration>
+#
+#        <packageSources>
+#            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+#            <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
+#        </packageSources>
+#
+#        <packageSourceMapping>
+#            <packageSource key="nuget.org">
+#                <package pattern="*" />
+#            </packageSource>
+#            <packageSource key="dotnet8">
+#                <package pattern="runtime.*" />
+#                <package pattern="Microsoft.NETCore.App.Runtime.*" />
+#                <package pattern="Microsoft.AspNetCore.App.Runtime.*" />
+#                <package pattern="Microsoft.NET.ILLink.Tasks" />
+#                <package pattern="Microsoft.DotNet.ILCompiler" />
+#            </packageSource>
+#        </packageSourceMapping>
+#
+#    </configuration>
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -68,8 +69,8 @@ jobs:
           dotnet-version: |
             ${{ env.dotnet_sdk_version }}
 
-      - name: Setup nuget config
-        run: echo "$nuget_config" > NuGet.config
+#      - name: Setup nuget config
+#        run: echo "$nuget_config" > NuGet.config
 
       - name: Setup Native AOT prerequisites
         run: sudo apt-get install clang zlib1g-dev
