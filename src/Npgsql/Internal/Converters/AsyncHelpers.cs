@@ -66,8 +66,9 @@ static class AsyncHelpers
     public static unsafe ValueTask<T> ComposingReadAsync<T, TEffective>(this PgConverter<T> instance, PgConverter<TEffective> effectiveConverter, PgReader reader, CancellationToken cancellationToken)
     {
         if (!typeof(T).IsValueType && !typeof(TEffective).IsValueType)
+#pragma warning disable CS9193
             return Unsafe.As<ValueTask<TEffective>, ValueTask<T>>(ref Unsafe.AsRef(effectiveConverter.ReadAsync(reader, cancellationToken)));
-
+#pragma warning restore
         // Easy if we have all the data.
         var task = effectiveConverter.ReadAsync(reader, cancellationToken);
         if (task.IsCompletedSuccessfully)
@@ -89,7 +90,9 @@ static class AsyncHelpers
     public static unsafe ValueTask<T> ComposingReadAsObjectAsync<T>(this PgConverter<T> instance, PgConverter effectiveConverter, PgReader reader, CancellationToken cancellationToken)
     {
         if (!typeof(T).IsValueType)
+#pragma warning disable CS9193
             return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref Unsafe.AsRef(effectiveConverter.ReadAsObjectAsync(reader, cancellationToken)));
+#pragma warning restore
 
         // Easy if we have all the data.
         var task = effectiveConverter.ReadAsObjectAsync(reader, cancellationToken);
