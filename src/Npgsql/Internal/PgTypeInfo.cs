@@ -188,14 +188,6 @@ public class PgTypeInfo
         return success ? bufferRequirements : null;
     }
 
-    public static PgTypeInfo CreateFrom(PgTypeInfo typeInfo, PgTypeId pgTypeId)
-        => typeInfo switch
-        {
-            PgResolverTypeInfo resolverTypeInfo => new PgResolverTypeInfo(resolverTypeInfo.Options, resolverTypeInfo._converterResolver,
-                pgTypeId, resolverTypeInfo.IsBoxing ? resolverTypeInfo.Type : null),
-            _ => new PgTypeInfo(typeInfo.Options, typeInfo.Converter!, pgTypeId, typeInfo.IsBoxing ? typeInfo.Type : null)
-        };
-
     // Bind for writing.
     /// When result is null, the value was interpreted to be a SQL NULL.
     internal PgConverterInfo? Bind<T>(PgConverter<T> converter, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)

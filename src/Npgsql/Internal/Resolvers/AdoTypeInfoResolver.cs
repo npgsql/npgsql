@@ -477,7 +477,7 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
 
     static PgTypeInfo? GetEnumArrayTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
     {
-        if (type is not null && type != typeof(object) && (!TypeInfoMappingCollection.IsArrayType(type, out var elementType) || elementType != typeof(string)))
+        if (type is not null && type != typeof(object) && (!TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) || elementType != typeof(string)))
             return null;
 
         if (options.TypeCatalog.GetPostgresTypeByName(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType enumType })

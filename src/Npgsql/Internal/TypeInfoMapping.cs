@@ -240,6 +240,8 @@ public sealed class TypeInfoMappingCollection
 
     public void Add(TypeInfoMapping mapping) => _items.Add(mapping);
 
+    public void AddRange(TypeInfoMappingCollection collection) => _items.AddRange(collection._items);
+
     Func<TypeInfoMapping, TypeInfoMapping> GetDefaultConfigure(bool isDefault)
         => GetDefaultConfigure(isDefault ? MatchRequirement.Single : MatchRequirement.All);
     Func<TypeInfoMapping, TypeInfoMapping> GetDefaultConfigure(MatchRequirement matchRequirement)
@@ -268,6 +270,18 @@ public sealed class TypeInfoMappingCollection
         var mapping = new TypeInfoMapping(typeof(T), dataTypeName, createInfo);
         _items.Add(configure?.Invoke(mapping) ?? mapping);
     }
+
+    // Aliased to AddType at this time.
+    public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
+        => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
+
+    // Aliased to AddType at this time.
+    public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : class
+        => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(matchRequirement));
+
+    // Aliased to AddType at this time.
+    public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : class
+        => AddType<T>(dataTypeName, createInfo, configure);
 
     public void AddArrayType<TElement>(string elementDataTypeName) where TElement : class
         => AddArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));
@@ -565,7 +579,7 @@ public sealed class TypeInfoMappingCollection
     }
 
     /// Returns whether type matches any of the types we register pg arrays as.
-    public static bool IsArrayType(Type type, [NotNullWhen(true)] out Type? elementType)
+    public static bool IsArrayLikeType(Type type, [NotNullWhen(true)] out Type? elementType)
     {
         elementType = type switch
         {

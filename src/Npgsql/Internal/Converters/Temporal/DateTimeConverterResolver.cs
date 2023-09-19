@@ -85,6 +85,7 @@ sealed class DateTimeConverterResolver
             PgConverterResolution? resolution = null;
             if (!value.LowerBoundInfinite)
                 resolution = resolver.Get(value.LowerBound, expectedPgTypeId);
+
             if (!value.UpperBoundInfinite)
             {
                 var result = resolver.Get(value.UpperBound, resolution?.PgTypeId ?? expectedPgTypeId, validateOnly: resolution is not null);

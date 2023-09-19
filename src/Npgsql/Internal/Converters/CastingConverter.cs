@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
@@ -62,3 +63,21 @@ sealed class CastingConverterResolver<T> : PgComposingConverterResolver<T>
         => EffectiveTypeInfo.GetResolutionAsObject(value, expectedEffectiveTypeId);
 }
 
+static class CastingTypeInfoExtensions
+{
+    internal static PgTypeInfo ToNonBoxing(this PgTypeInfo typeInfo)
+    {
+        if (!typeInfo.IsBoxing)
+            return typeInfo;
+
+        var type = typeInfo.Type;
+        if (typeInfo is PgResolverTypeInfo resolverTypeInfo)
+            return new PgResolverTypeInfo(typeInfo.Options,
+                (PgConverterResolver)Activator.CreateInstance(typeof(CastingConverterResolver<>).MakeGenericType(type),
+                    resolverTypeInfo)!, typeInfo.PgTypeId);
+
+        var resolution = typeInfo.GetConcreteResolution();
+        return new PgTypeInfo(typeInfo.Options,
+            (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), resolution.Converter)!, resolution.PgTypeId);
+    }
+}

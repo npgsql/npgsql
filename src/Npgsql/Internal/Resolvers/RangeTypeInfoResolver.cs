@@ -385,7 +385,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             return null;
 
         var isArray = false;
-        if (TypeInfoMappingCollection.IsArrayType(type, out var elementType))
+        if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType))
         {
             type = elementType;
             isArray = true;

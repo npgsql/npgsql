@@ -19,7 +19,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         if (type is null)
             return null;
 
-        if (TypeInfoMappingCollection.IsArrayType(type, out var elementType) && TypeInfoMappingCollection.IsArrayType(elementType, out _))
+        if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) && TypeInfoMappingCollection.IsArrayLikeType(elementType, out _))
             throw new NotSupportedException("Writing is not supported for jagged collections, use a multidimensional array instead.");
 
         if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string) && (dataTypeName is null || dataTypeName.Value.IsArray))

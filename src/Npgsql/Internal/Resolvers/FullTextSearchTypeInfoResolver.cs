@@ -68,7 +68,7 @@ sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
         if (type is null)
             return;
 
-        if (TypeInfoMappingCollection.IsArrayType(type, out var elementType))
+        if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType))
             type = elementType;
 
         if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(Nullable<>))
