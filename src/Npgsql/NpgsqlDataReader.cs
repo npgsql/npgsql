@@ -1938,10 +1938,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var reread = _column == ordinal;
         // Column rereading rules for sequential mode:
         // * We never allow rereading if the column didn't get initialized as resumable the previous time
-        // * If it did get initialized as resumable we only allow rereading when one of the following is true:
+        // * If it did get initialized as resumable we only allow rereading when either of the following is true:
         //  - The op is a resumable one again
-        //  - The value is a DbNull (mostly supported as a historical artifact)
-        if (ordinal < _column || (reread && (!PgReader.Resumable || (!resumableOp && PgReader.FieldSize != -1))))
+        //  - The op isn't resumable but the field is still entirely unconsumed
+        if (ordinal < _column || (reread && (!PgReader.Resumable || (!resumableOp && !PgReader.IsAtStart))))
             ThrowHelper.ThrowInvalidOperationException(
                 $"Invalid attempt to read from column ordinal '{ordinal}'. With CommandBehavior.SequentialAccess, " +
                 $"you may only read from column ordinal '{_column}' or greater.");

@@ -31,6 +31,21 @@ public class ReaderTests : MultiplexingTestBase
     static uint ByteaOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Bytea].Value;
 
     [Test]
+    public async Task Resumable_non_consumed_to_non_resumable()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand( "SELECT 'aaaaaaaa', 1", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        await reader.IsDBNullAsync(0); // resumable, no consumption
+        _ = reader.IsDBNull(0); // resumable, no consumption
+        await using var stream = await reader.GetStreamAsync(0); // non-resumable
+        if (IsSequential)
+            Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
     public async Task Seek_columns()
     {
         using var conn = await OpenConnectionAsync();

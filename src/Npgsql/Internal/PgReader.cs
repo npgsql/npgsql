@@ -67,6 +67,7 @@ public class PgReader
     int BufferSize => _buffer.Size;
     int BufferBytesRemaining => _buffer.ReadBytesLeft;
 
+    internal bool IsAtStart => FieldOffset is 0;
     internal bool Resumable => _resumable;
     public bool IsResumed => Resumable && CurrentSize != CurrentRemaining;
 
@@ -426,10 +427,14 @@ public class PgReader
             _resumable = true;
         }
         else if (Initialized)
-            ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
+        {
+            if (!IsAtStart)
+                ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
+            _resumable = false;
+        }
 
-        Debug.Assert(!Initialized || (Resumable && resumable), "Reader wasn't properly committed before next init");
-        Debug.Assert(!_requiresCleanup, "Should not be possible to reach");
+        // Debug.Assert(!Initialized || Resumable, "Reader wasn't properly committed before next init");
+        Debug.Assert(!_requiresCleanup, "Reader wasn't properly committed before next init");
 
         _readStarted = false;
         _fieldStartPos = _buffer.CumulativeReadPosition;
