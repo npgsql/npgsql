@@ -643,7 +643,6 @@ FROM pg_constraint c
                 if (connector.SerializerOptions.GetDefaultTypeInfo(representationalType) is not { } info)
                     continue;
 
-
                 var row = table.Rows.Add();
 
                 PopulateDefaultDataTypeInfo(row, representationalType);

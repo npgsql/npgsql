@@ -102,7 +102,7 @@ static class ReflectionCompositeInfoFactory
         var instance = Expression.Parameter(typeof(object), "instance");
         return Expression
             .Lambda(typeof(Func<,>).MakeGenericType(typeof(object), info.FieldType),
-                Expression.Field( UnboxAny(instance, typeof(T)), info),
+                Expression.Field(UnboxAny(instance, typeof(T)), info),
                 instance)
             .Compile();
     }

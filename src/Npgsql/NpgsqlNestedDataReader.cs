@@ -509,12 +509,16 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         return info;
     }
 
-    PgTypeInfo GetObjectOrDefaultTypeInfo(PostgresType postgresType) =>
-        SerializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
-        ?? throw new InvalidCastException($"Reading is not supported for PostgreSQL type {postgresType.DisplayName}");
+    PgTypeInfo GetObjectOrDefaultTypeInfo(PostgresType postgresType)
+    {
+        postgresType = postgresType.GetRepresentationalType();
+        return SerializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
+               ?? throw new InvalidCastException($"Reading is not supported for PostgreSQL type {postgresType.DisplayName}");
+    }
 
     PgTypeInfo GetTypeInfo(Type type, PostgresType postgresType)
     {
+        postgresType = postgresType.GetRepresentationalType();
         if ((typeof(object) == type ? SerializerOptions.GetObjectOrDefaultTypeInfo(postgresType) : SerializerOptions.GetTypeInfo(type, postgresType)) is not { } info)
             throw new InvalidCastException($"Reading as {type} is not supported for PostgreSQL type {postgresType.DisplayName}");
 
