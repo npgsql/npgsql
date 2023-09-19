@@ -1,11 +1,14 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Data;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Properties;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
@@ -159,6 +162,35 @@ class RangeTests : MultiplexingTestBase
         await reader.ReadAsync();
         var actual = reader.GetFieldValue<NpgsqlRange<DateTimeOffset>>(0);
         Assert.That(actual, Is.EqualTo(range));
+    }
+
+    [Test]
+    [NonParallelizable]
+    public async Task Unmapped_range_with_mapped_subtype()
+    {
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var typeName = await GetTempTypeName(conn);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
+        await Task.Yield(); // TODO: fix multiplexing deadlock bug
+        conn.ReloadTypes();
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+
+        var value = new NpgsqlRange<char[]>(
+            new string('a', conn.Settings.WriteBufferSize + 10).ToCharArray(),
+            new string('z', conn.Settings.WriteBufferSize + 10).ToCharArray()
+        );
+
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        cmd.Parameters.Add(new NpgsqlParameter { DataTypeName = typeName, ParameterName = "p", Value = value });
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await reader.ReadAsync();
+
+        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlRange<string>)));
+        var result = reader.GetFieldValue<NpgsqlRange<char[]>>(0);
+        Assert.That(result, Is.EqualTo(value).Using<NpgsqlRange<char[]>>((actual, expected) =>
+            actual.LowerBound!.SequenceEqual(expected.LowerBound!) && actual.UpperBound!.SequenceEqual(expected.UpperBound!)));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4441")]

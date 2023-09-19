@@ -64,6 +64,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new GeometricTypeInfoResolver(),
             new LTreeTypeInfoResolver(),
             new UnmappedEnumTypeInfoResolver(),
+            new UnmappedRangeTypeInfoResolver(),
             // Arrays
             new AdoArrayTypeInfoResolver(),
             new ExtraConversionsArrayTypeInfoResolver(),
@@ -72,7 +73,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new RangeArrayTypeInfoResolver(),
             new RecordArrayTypeInfoResolver(),
             new TupledRecordArrayTypeInfoResolver(),
-            new UnmappedEnumTypeInfoArrayResolver(),
+            new UnmappedEnumArrayTypeInfoResolver(),
+            new UnmappedRangeArrayTypeInfoResolver(),
         }, overwrite);
 
     static NpgsqlDataSourceBuilder()
@@ -91,7 +93,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             _internalBuilder.EnableEncryption();
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
             // Reverse order arrays.
-            AddTypeInfoResolver(new UnmappedEnumTypeInfoArrayResolver());
+            AddTypeInfoResolver(new UnmappedRangeArrayTypeInfoResolver());
+            AddTypeInfoResolver(new UnmappedEnumArrayTypeInfoResolver());
             AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
             AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
             AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
@@ -100,6 +103,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
             AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
             // Reverse order.
+            AddTypeInfoResolver(new UnmappedRangeTypeInfoResolver());
             AddTypeInfoResolver(new UnmappedEnumTypeInfoResolver());
             AddTypeInfoResolver(new LTreeTypeInfoResolver());
             AddTypeInfoResolver(new GeometricTypeInfoResolver());
