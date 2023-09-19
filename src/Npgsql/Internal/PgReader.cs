@@ -52,16 +52,17 @@ public class PgReader
     internal long FieldStartPos => _fieldStartPos;
     internal int FieldSize => _fieldSize;
     internal bool Initialized => _fieldStartPos is not -1;
-    int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
-    int FieldRemaining => FieldSize - FieldOffset;
+    internal int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
+    internal int FieldRemaining => FieldSize - FieldOffset;
 
     bool HasCurrent => _currentSize >= 0;
     int CurrentSize => HasCurrent ? _currentSize : _fieldSize;
 
     public ValueMetadata Current => new() { Size = CurrentSize, Format = _fieldFormat, BufferRequirement = CurrentBufferRequirement };
     public int CurrentRemaining => HasCurrent ? _currentSize - CurrentOffset : FieldRemaining;
-    internal Size CurrentBufferRequirement => HasCurrent ? _currentBufferRequirement : _fieldBufferRequirement;
-    internal int CurrentOffset => FieldOffset - _currentStartPos;
+
+    Size CurrentBufferRequirement => HasCurrent ? _currentBufferRequirement : _fieldBufferRequirement;
+    int CurrentOffset => FieldOffset - _currentStartPos;
 
     int BufferSize => _buffer.Size;
     int BufferBytesRemaining => _buffer.ReadBytesLeft;
@@ -624,6 +625,8 @@ public class PgReader
             : bufferRequirement.GetValueOrDefault();
 
     internal bool IsFieldStart => FieldOffset is 0 && _readStarted;
+
+    internal bool ShouldBufferCurrent() => ShouldBuffer(CurrentBufferRequirement);
 
     public bool ShouldBuffer(Size bufferRequirement)
         => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));

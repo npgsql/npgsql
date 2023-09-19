@@ -1404,8 +1404,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (columnLength is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
-        if (PgReader.CurrentOffset > 0)
-            PgReader.Rewind(PgReader.CurrentOffset);
+        if (PgReader.FieldOffset > 0)
+            PgReader.Rewind(PgReader.FieldOffset);
 
         var reader = CachedFreeNestedDataReader;
         if (reader != null)
@@ -1455,13 +1455,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             return columnLength;
 
         // Move to offset
-        if (_isSequential && PgReader.CurrentOffset > dataOffset)
+        if (_isSequential && PgReader.FieldOffset > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
         PgReader.Seek((int)dataOffset);
 
         // At offset, read into buffer.
-        length = Math.Min(length, PgReader.CurrentRemaining);
+        length = Math.Min(length, PgReader.FieldRemaining);
         PgReader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
         return length;
     }

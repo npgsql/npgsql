@@ -107,13 +107,13 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (_numRows > 0)
             PgReader.ReadInt32(); // Length of first row
 
-        _nextRowBufferPos = PgReader.CurrentOffset;
+        _nextRowBufferPos = PgReader.FieldOffset;
     }
 
     internal void InitSingleRow()
     {
         _numRows = 1;
-        _nextRowBufferPos = PgReader.CurrentOffset;
+        _nextRowBufferPos = PgReader.FieldOffset;
     }
 
     /// <inheritdoc />
@@ -205,10 +205,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         using var _ = PgReader.BeginNestedRead(columnLen, Size.Zero);
 
         // Move to offset
-        if (PgReader.CurrentOffset > dataOffset)
-            PgReader.Rewind(PgReader.CurrentOffset - (int)dataOffset);
-        else if (PgReader.CurrentOffset < dataOffset)
-            PgReader.Consume((int)dataOffset - PgReader.CurrentOffset);
+        PgReader.Seek((int)dataOffset);
 
         // At offset, read into buffer.
         length = Math.Min(length, PgReader.CurrentRemaining);
@@ -383,7 +380,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         for (var i = 0; i < numColumns; i++)
         {
             var typeOid = PgReader.ReadUInt32();
-            var bufferPos = PgReader.CurrentOffset;
+            var bufferPos = PgReader.FieldOffset;
             if (i >= _columns.Count)
             {
                 var pgType = SerializerOptions.TypeCatalog.GetPgType((Oid)typeOid);
@@ -403,7 +400,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         }
         _columns.RemoveRange(numColumns, _columns.Count - numColumns);
 
-        _nextRowBufferPos = PgReader.CurrentOffset;
+        _nextRowBufferPos = PgReader.FieldOffset;
 
         _readerState = ReaderState.OnRow;
         return true;
