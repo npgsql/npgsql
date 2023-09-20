@@ -1,5 +1,4 @@
 using System;
-using Npgsql.Internal.Converters.Types;
 
 namespace Npgsql.Internal.Converters;
 

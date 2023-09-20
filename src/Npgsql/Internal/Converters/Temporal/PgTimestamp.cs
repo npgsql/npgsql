@@ -1,6 +1,6 @@
 using System;
 
-namespace Npgsql.Internal.Converters.Types;
+namespace Npgsql.Internal.Converters;
 
 static class PgTimestamp
 {
@@ -26,12 +26,12 @@ static class PgTimestamp
         {
             return value switch
             {
-                long.MaxValue => !dateTimeInfinityConversions
-                    ? throw new InvalidCastException("Cannot read infinity value since DisableDateTimeInfinityConversions is true.")
-                    : DateTime.MaxValue,
-                long.MinValue => !dateTimeInfinityConversions
-                    ? throw new InvalidCastException("Cannot read infinity value since DisableDateTimeInfinityConversions is true.")
-                    : DateTime.MinValue,
+                long.MaxValue => dateTimeInfinityConversions
+                    ? DateTime.MaxValue
+                    : throw new InvalidCastException("Cannot read infinity value since DisableDateTimeInfinityConversions is true."),
+                long.MinValue => dateTimeInfinityConversions
+                    ? DateTime.MinValue
+                    : throw new InvalidCastException("Cannot read infinity value since DisableDateTimeInfinityConversions is true."),
                 _ => new(value * 10 + PostgresTimestampOffsetTicks, kind)
             };
         }

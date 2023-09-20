@@ -1,6 +1,5 @@
 using System;
 using System.Numerics;
-using Npgsql.Internal.Converters.Types;
 
 namespace Npgsql.Internal.Converters;
 

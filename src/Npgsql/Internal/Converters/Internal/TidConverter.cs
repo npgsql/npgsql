@@ -7,7 +7,7 @@ sealed class TidConverter : PgBufferedConverter<NpgsqlTid>
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(short) + sizeof(int));
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(uint) + sizeof(ushort));
         return format is DataFormat.Binary;
     }
     protected override NpgsqlTid ReadCore(PgReader reader) => new(reader.ReadUInt32(), reader.ReadUInt16());

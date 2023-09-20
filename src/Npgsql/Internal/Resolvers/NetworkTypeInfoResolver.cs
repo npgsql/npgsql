@@ -45,7 +45,7 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
                 var derivedType = resolvedMapping.Type != typeof(IPAddress);
                 PgConverter converter = new IPAddressConverter();
                 if (derivedType)
-                    // There is not much more we can do, the deriving type IPAdress+ReadOnlyIPAdress isn't public.
+                    // There is not much more we can do, the deriving type IPAddress+ReadOnlyIPAddress isn't public.
                     converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(resolvedMapping.Type), converter)!;
 
                 return resolvedMapping.CreateInfo(options, converter);

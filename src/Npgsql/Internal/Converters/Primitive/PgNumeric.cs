@@ -4,9 +4,9 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using static Npgsql.Internal.Converters.Types.PgNumeric.Builder;
+using static Npgsql.Internal.Converters.PgNumeric.Builder;
 
-namespace Npgsql.Internal.Converters.Types;
+namespace Npgsql.Internal.Converters;
 
 readonly struct PgNumeric
 {

@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace Npgsql.Internal.Converters.Types;
+namespace Npgsql.Internal.Converters;
 
 readonly struct PgMoney
 {

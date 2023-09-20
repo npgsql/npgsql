@@ -1,5 +1,4 @@
 using System;
-using Npgsql.Internal.Converters.Types;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;

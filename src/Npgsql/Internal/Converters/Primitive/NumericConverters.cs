@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal.Converters.Types;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;

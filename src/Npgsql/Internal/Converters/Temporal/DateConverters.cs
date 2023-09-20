@@ -22,12 +22,12 @@ sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
     protected override DateTime ReadCore(PgReader reader)
         => reader.ReadInt32() switch
         {
-            int.MaxValue => !_dateTimeInfinityConversions
-                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
-                : DateTime.MaxValue,
-            int.MinValue => !_dateTimeInfinityConversions
-                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
-                : DateTime.MinValue,
+            int.MaxValue => _dateTimeInfinityConversions
+                ? DateTime.MaxValue
+                : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
+            int.MinValue => _dateTimeInfinityConversions
+                ? DateTime.MinValue
+                : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
             var value => BaseValue + TimeSpan.FromDays(value)
         };
 
@@ -71,12 +71,12 @@ sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
     protected override DateOnly ReadCore(PgReader reader)
         => reader.ReadInt32() switch
         {
-            int.MaxValue => !_dateTimeInfinityConversions
-                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
-                : DateOnly.MaxValue,
-            int.MinValue => !_dateTimeInfinityConversions
-                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
-                : DateOnly.MinValue,
+            int.MaxValue => _dateTimeInfinityConversions
+                ? DateOnly.MaxValue
+                : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
+            int.MinValue => _dateTimeInfinityConversions
+                ? DateOnly.MinValue
+                : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
             var value => BaseValue.AddDays(value)
         };
 
