@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -61,6 +62,8 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
     /// </summary>
     /// <param name="selectCommandText"></param>
     /// <param name="selectConnectionString"></param>
+    [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlDataAdapter(string selectCommandText, string selectConnectionString)
         : this(selectCommandText, new NpgsqlConnection(selectConnectionString)) {}
 
@@ -140,6 +143,7 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
     }
 
     // Temporary implementation, waiting for official support in System.Data via https://github.com/dotnet/runtime/issues/22109
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     internal async Task<int> Fill(DataTable dataTable, bool async, CancellationToken cancellationToken = default)
     {
         var command = SelectCommand;
@@ -172,6 +176,7 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
         }
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     async Task<int> Fill(DataTable dataTable, NpgsqlDataReader dataReader, bool async, CancellationToken cancellationToken = default)
     {
         dataTable.BeginLoadData();

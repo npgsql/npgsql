@@ -39,23 +39,26 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
         // We do so by wrapping our converter in a casting converter constructed over the derived type.
         // Finally we add a custom predicate to be able to match any type which values are assignable to IPAddress.
         mappings.AddType<IPAddress>(DataTypeNames.Inet,
-            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "MakeGenericType is safe because the target will only ever be a reference type.")]
-            static (options, resolvedMapping, _) =>
-            {
-                var derivedType = resolvedMapping.Type != typeof(IPAddress);
-                PgConverter converter = new IPAddressConverter();
-                if (derivedType)
-                    // There is not much more we can do, the deriving type IPAddress+ReadOnlyIPAddress isn't public.
-                    converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(resolvedMapping.Type), converter)!;
-
-                return resolvedMapping.CreateInfo(options, converter);
-            }, mapping => mapping with { MatchRequirement = MatchRequirement.Single, TypeMatchPredicate = type => type is null || typeof(IPAddress).IsAssignableFrom(type) });
+            CreateInfo, mapping => mapping with { MatchRequirement = MatchRequirement.Single, TypeMatchPredicate = type => type is null || typeof(IPAddress).IsAssignableFrom(type) });
         mappings.AddStructType<NpgsqlInet>(DataTypeNames.Inet,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlInetConverter()));
 
         // cidr
         mappings.AddStructType<NpgsqlCidr>(DataTypeNames.Cidr,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlCidrConverter()), isDefault: true);
+
+        // Code is split out to a local method as suppression attributes on lambdas aren't properly handled by the ILLink analyzer yet.
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050", Justification = "MakeGenericType is safe because the target will only ever be a reference type.")]
+        static PgTypeInfo CreateInfo(PgSerializerOptions options, TypeInfoMapping resolvedMapping, bool _)
+        {
+            var derivedType = resolvedMapping.Type != typeof(IPAddress);
+            PgConverter converter = new IPAddressConverter();
+            if (derivedType)
+                // There is not much more we can do, the deriving type IPAddress+ReadOnlyIPAddress isn't public.
+                converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(resolvedMapping.Type), converter)!;
+
+            return resolvedMapping.CreateInfo(options, converter);
+        }
     }
 
     static void AddArrayInfos(TypeInfoMappingCollection mappings)

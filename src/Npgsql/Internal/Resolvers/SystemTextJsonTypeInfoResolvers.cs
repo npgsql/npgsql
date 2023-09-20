@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 
@@ -13,12 +15,18 @@ class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
     public SystemTextJsonTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
         => AddTypeInfos(Mappings, serializerOptions);
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only used to request rooted and statically known types (JsonDocument,JsonElement etc).")]
+    [UnconditionalSuppressMessage("Aot", "IL3050", Justification = "Only used to request rooted and statically known types  (JsonDocument,JsonElement etc).")]
     static void AddTypeInfos(TypeInfoMappingCollection mappings, JsonSerializerOptions? serializerOptions = null)
     {
 #if NET7_0_OR_GREATER
         serializerOptions ??= JsonSerializerOptions.Default;
 #else
-        serializerOptions ??= new JsonSerializerOptions();
+        if (serializerOptions is null)
+        {
+            serializerOptions = new JsonSerializerOptions();
+            serializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
+        }
 #endif
 
         // Jsonb is the first default for JsonDocument

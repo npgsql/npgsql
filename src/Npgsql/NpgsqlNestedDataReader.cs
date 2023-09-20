@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -293,10 +294,11 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     }
 
     /// <inheritdoc />
+    [UnconditionalSuppressMessage("ILLink", "IL2093", Justification = "No members are dynamically accessed by Npgsql via NpgsqlNestedDataReader.GetFieldType.")]
     public override Type GetFieldType(int ordinal)
     {
         var column = CheckRowAndColumn(ordinal);
-        return column.ObjectOrDefaultTypeInfo.Type;
+        return column.ObjectOrDefaultInfo.TypeToConvert;
     }
 
     /// <inheritdoc />

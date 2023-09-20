@@ -260,7 +260,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = GlobalTypeMapper.Instance.DefaultNameTranslator;
 
     /// <inheritdoc />
-    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
     {
         _userTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
@@ -268,34 +268,34 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
         => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+        string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _userTypeMapper.MapComposite(typeof(T), pgName, nameTranslator);
         return this;
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
-    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+        string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
         return this;
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
-    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
 
     /// <summary>
@@ -373,6 +373,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
     /// </param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlSlimDataSourceBuilder UseSystemTextJson(
         JsonSerializerOptions? serializerOptions = null,
         Type[]? jsonbClrTypes = null,

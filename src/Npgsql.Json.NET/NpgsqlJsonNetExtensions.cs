@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using Newtonsoft.Json;
@@ -23,6 +24,8 @@ public static class NpgsqlJsonNetExtensions
     /// <param name="jsonClrTypes">
     /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
     /// </param>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static INpgsqlTypeMapper UseJsonNet(
         this INpgsqlTypeMapper mapper,
         JsonSerializerSettings? settings = null,

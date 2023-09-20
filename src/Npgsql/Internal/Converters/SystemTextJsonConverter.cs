@@ -20,9 +20,8 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
 
     public SystemTextJsonConverter(bool jsonb, Encoding textEncoding, JsonSerializerOptions serializerOptions)
     {
-        // We do GetTypeInfo calls directly so we need a resolver.
         if (serializerOptions.TypeInfoResolver is null)
-            serializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
+            throw new InvalidOperationException("System.Text.Json serialization requires a type info resolver, make sure to set-it up beforehand.");
 
         _jsonb = jsonb;
         _textEncoding = textEncoding;

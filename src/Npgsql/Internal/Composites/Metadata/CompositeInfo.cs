@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Npgsql.Util;
 
 namespace Npgsql.Internal.Composites;
@@ -10,7 +9,7 @@ sealed class CompositeInfo<T>
     readonly int _lastConstructorFieldIndex;
     readonly CompositeFieldInfo[] _fields;
 
-    public CompositeInfo(CompositeFieldInfo[] fields, int? constructorParameters, Func<StrongBox[], T>? constructor)
+    public CompositeInfo(CompositeFieldInfo[] fields, int constructorParameters, Func<StrongBox[], T> constructor)
     {
         _lastConstructorFieldIndex = -1;
         for (var i = fields.Length - 1; i >= 0; i--)
@@ -21,7 +20,7 @@ sealed class CompositeInfo<T>
             }
 
         var parameterSum = 0;
-        for(var i = constructorParameters - 1 ?? 0; i > 0; i--)
+        for(var i = constructorParameters - 1; i > 0; i--)
             parameterSum += i;
 
         var argumentsSum = 0;
@@ -36,20 +35,14 @@ sealed class CompositeInfo<T>
             throw new InvalidOperationException($"Missing composite fields to map to the required {constructorParameters} constructor parameters.");
 
         _fields = fields;
-        if (constructor is null)
-            Constructor = _ => Activator.CreateInstance<T>();
-        else
+        var arguments = constructorParameters is 0 ? Array.Empty<CompositeFieldInfo>() : new CompositeFieldInfo[constructorParameters];
+        foreach (var field in fields)
         {
-            var arguments = new CompositeFieldInfo[constructorParameters.GetValueOrDefault()];
-            foreach (var field in fields)
-            {
-                if (field.ConstructorParameterIndex is { } index)
-                    arguments[index] = field;
-            }
-            Constructor = constructor;
+            if (field.ConstructorParameterIndex is { } index)
+                arguments[index] = field;
         }
-
-        ConstructorParameters = constructorParameters ?? 0;
+        Constructor = constructor;
+        ConstructorParameters = constructorParameters;
     }
 
     public IReadOnlyList<CompositeFieldInfo> Fields => _fields;
