@@ -41,7 +41,7 @@ sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
                 continue;
 
             var postgresType =
-                _serializerOptions.TypeCatalog.GetPgType((Oid)typeOid).GetRepresentationalType()
+                _serializerOptions.DatabaseInfo.GetPgType((Oid)typeOid).GetRepresentationalType()
                 ?? throw new NotSupportedException($"Reading isn't supported for record field {i} (unknown type OID {typeOid}");
 
             var typeInfo = _serializerOptions.GetObjectOrDefaultTypeInfo(postgresType)

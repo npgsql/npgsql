@@ -18,11 +18,11 @@ public sealed class PgSerializerOptions
     readonly Func<string>? _timeZoneProvider;
     readonly object _typeInfoCache;
 
-    internal PgSerializerOptions(NpgsqlDatabaseInfo typeCatalog, Func<string>? timeZoneProvider = null)
+    internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, Func<string>? timeZoneProvider = null)
     {
         _timeZoneProvider = timeZoneProvider;
-        TypeCatalog = typeCatalog;
-        UnknownPgType = typeCatalog.GetPostgresTypeByName("unknown");
+        DatabaseInfo = databaseInfo;
+        UnknownPgType = databaseInfo.GetPostgresTypeByName("unknown");
         _typeInfoCache = PortableTypeIds ? new TypeInfoCache<DataTypeName>(this) : new TypeInfoCache<Oid>(this);
     }
 
@@ -39,7 +39,7 @@ public sealed class PgSerializerOptions
 
     /// Whether options should return a portable identifier (data type name) to prevent any generated id (oid) confusion across backends, this comes with a perf penalty.
     internal bool PortableTypeIds { get; init; }
-    internal NpgsqlDatabaseInfo TypeCatalog { get; }
+    internal NpgsqlDatabaseInfo DatabaseInfo { get; }
 
     public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
     public Encoding TextEncoding { get; init; } = Encoding.UTF8;
@@ -86,7 +86,7 @@ public sealed class PgSerializerOptions
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
     internal PgTypeId GetCanonicalTypeId(PgTypeId pgTypeId)
-        => PortableTypeIds ? TypeCatalog.GetDataTypeName(pgTypeId) : TypeCatalog.GetOid(pgTypeId);
+        => PortableTypeIds ? DatabaseInfo.GetDataTypeName(pgTypeId) : DatabaseInfo.GetOid(pgTypeId);
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
     internal PgTypeId ToCanonicalTypeId(PostgresType pgType)
@@ -98,7 +98,7 @@ public sealed class PgSerializerOptions
         if (PortableTypeIds && elementTypeId.IsDataTypeName)
             return elementTypeId.DataTypeName.ToArrayName();
 
-        return ToCanonicalTypeId(TypeCatalog.GetPgType(elementTypeId).Array
+        return ToCanonicalTypeId(DatabaseInfo.GetPgType(elementTypeId).Array
                                  ?? throw new NotSupportedException("Cannot resolve array type id"));
     }
 
@@ -108,29 +108,29 @@ public sealed class PgSerializerOptions
         if (PortableTypeIds && arrayTypeId.IsDataTypeName && arrayTypeId.DataTypeName.UnqualifiedNameSpan.StartsWith("_".AsSpan(), StringComparison.Ordinal))
             return new DataTypeName(arrayTypeId.DataTypeName.Schema + arrayTypeId.DataTypeName.UnqualifiedNameSpan.Slice(1).ToString());
 
-        return ToCanonicalTypeId((TypeCatalog.GetPgType(arrayTypeId) as PostgresArrayType)?.Element
+        return ToCanonicalTypeId((DatabaseInfo.GetPgType(arrayTypeId) as PostgresArrayType)?.Element
                                  ?? throw new NotSupportedException("Cannot resolve array element type id"));
     }
 
     public PgTypeId GetRangeTypeId(PgTypeId subtypeTypeId) =>
-        ToCanonicalTypeId(TypeCatalog.GetPgType(subtypeTypeId).Range
+        ToCanonicalTypeId(DatabaseInfo.GetPgType(subtypeTypeId).Range
                           ?? throw new NotSupportedException("Cannot resolve range type id"));
 
     public PgTypeId GetRangeSubtypeTypeId(PgTypeId rangeTypeId) =>
-        ToCanonicalTypeId((TypeCatalog.GetPgType(rangeTypeId) as PostgresRangeType)?.Subtype
+        ToCanonicalTypeId((DatabaseInfo.GetPgType(rangeTypeId) as PostgresRangeType)?.Subtype
                           ?? throw new NotSupportedException("Cannot resolve range subtype type id"));
 
     public PgTypeId GetMultirangeTypeId(PgTypeId rangeTypeId) =>
-        ToCanonicalTypeId((TypeCatalog.GetPgType(rangeTypeId) as PostgresRangeType)?.Multirange
+        ToCanonicalTypeId((DatabaseInfo.GetPgType(rangeTypeId) as PostgresRangeType)?.Multirange
                           ?? throw new NotSupportedException("Cannot resolve multirange type id"));
 
     public PgTypeId GetMultirangeElementTypeId(PgTypeId multirangeTypeId) =>
-        ToCanonicalTypeId((TypeCatalog.GetPgType(multirangeTypeId) as PostgresMultirangeType)?.Subrange
+        ToCanonicalTypeId((DatabaseInfo.GetPgType(multirangeTypeId) as PostgresMultirangeType)?.Subrange
                           ?? throw new NotSupportedException("Cannot resolve multirange element type id"));
 
     public bool TryGetDataTypeName(PgTypeId pgTypeId, out DataTypeName dataTypeName)
     {
-        if (TypeCatalog.FindPgType(pgTypeId) is { } pgType)
+        if (DatabaseInfo.FindPgType(pgTypeId) is { } pgType)
         {
             dataTypeName = pgType.DataTypeName;
             return true;

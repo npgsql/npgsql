@@ -39,7 +39,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         if (type is not null && type != typeof(string))
             return null;
 
-        if (options.TypeCatalog.GetPostgresTypeByName(dataTypeName) is not PostgresEnumType)
+        if (options.DatabaseInfo.GetPostgresTypeByName(dataTypeName) is not PostgresEnumType)
             return null;
 
         return new PgTypeInfo(options, new StringTextConverter(options.TextEncoding), dataTypeName);
@@ -480,7 +480,7 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
         if (type is not null && type != typeof(object) && (!TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) || elementType != typeof(string)))
             return null;
 
-        if (options.TypeCatalog.GetPostgresTypeByName(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType enumType })
+        if (options.DatabaseInfo.GetPostgresTypeByName(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType enumType })
             return null;
 
         var mappings = new TypeInfoMappingCollection();

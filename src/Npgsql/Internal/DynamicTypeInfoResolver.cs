@@ -31,7 +31,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 
     protected static bool IsArrayDataTypeName(DataTypeName dataTypeName, PgSerializerOptions options, out DataTypeName elementDataTypeName)
     {
-        if (options.TypeCatalog.GetPgType(dataTypeName) is PostgresArrayType arrayType)
+        if (options.DatabaseInfo.GetPgType(dataTypeName) is PostgresArrayType arrayType)
         {
             elementDataTypeName = arrayType.Element.DataTypeName;
             return true;

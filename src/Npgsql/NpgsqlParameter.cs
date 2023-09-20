@@ -565,7 +565,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         bool TryGetRepresentationalTypeId(string dataTypeName, out PgTypeId pgTypeId)
         {
-            if (options.TypeCatalog.TryGetPostgresTypeByName(dataTypeName, out var pgType))
+            if (options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
             {
                 pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
                 return true;
@@ -586,7 +586,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
         if (!TypeInfo.SupportsWriting)
-            ThrowHelper.ThrowNotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.TypeCatalog.GetDataTypeName(PgTypeId).DisplayName}'.");
+            ThrowHelper.ThrowNotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.DatabaseInfo.GetDataTypeName(PgTypeId).DisplayName}'.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
         if (WriteSize is not null)

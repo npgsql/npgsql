@@ -26,7 +26,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
     }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => (options.TypeCatalog.SupportsMultirangeTypes ? MappingsWithMultiRanges : Mappings).Find(type, dataTypeName, options);
+        => (options.DatabaseInfo.SupportsMultirangeTypes ? MappingsWithMultiRanges : Mappings).Find(type, dataTypeName, options);
 
     static void AddInfos(TypeInfoMappingCollection mappings, bool supportsMultiRange)
     {
@@ -433,5 +433,5 @@ sealed class RangeArrayTypeInfoResolver : RangeTypeInfoResolver, IPgTypeInfoReso
     }
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => (options.TypeCatalog.SupportsMultirangeTypes ? MappingsWithMultiRanges : Mappings).Find(type, dataTypeName, options);
+        => (options.DatabaseInfo.SupportsMultirangeTypes ? MappingsWithMultiRanges : Mappings).Find(type, dataTypeName, options);
 }

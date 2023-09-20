@@ -16,7 +16,7 @@ class UnmappedRangeTypeInfoResolver : DynamicTypeInfoResolver
         var matchedType = type;
         if (type is not null && !IsTypeOrNullableOfType(type,
                 static type => type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>), out matchedType)
-            || options.TypeCatalog.GetPgType(dataTypeName) is not PostgresRangeType rangeType)
+            || options.DatabaseInfo.GetPgType(dataTypeName) is not PostgresRangeType rangeType)
             return null;
 
         var subInfo =
