@@ -82,6 +82,7 @@ public interface INpgsqlTypeMapper
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     /// <typeparam name="T">The .NET type to be mapped</typeparam>
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
@@ -97,6 +98,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
     /// </param>
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
@@ -120,6 +122,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     INpgsqlTypeMapper MapComposite(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  Type clrType,
         string? pgName = null,
@@ -137,6 +140,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     bool UnmapComposite(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type clrType,
         string? pgName = null,

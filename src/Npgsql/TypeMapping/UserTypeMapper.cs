@@ -57,6 +57,7 @@ sealed class UserTypeMapper
         where TEnum : struct, Enum
         => Unmap(typeof(TEnum), out _, pgName, nameTranslator ?? DefaultNameTranslator);
 
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     public UserTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : class
     {
@@ -65,6 +66,7 @@ sealed class UserTypeMapper
         return this;
     }
 
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     public UserTypeMapper MapStructComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : struct
     {
@@ -74,6 +76,7 @@ sealed class UserTypeMapper
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "MapStructComposite and MapComposite have identical DAM annotations to clrType.")]
+    [RequiresDynamicCode("MapComposite switches between MapStructComposite and MapComposite at runtime based on clr type. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public UserTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
@@ -137,6 +140,7 @@ sealed class UserTypeMapper
             => _mappings.Find(type, dataTypeName, options);
     }
 
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     sealed class CompositeMapping<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T> : UserTypeMapping where T : class
     {
         readonly INpgsqlNameTranslator _nameTranslator;
@@ -161,6 +165,7 @@ sealed class UserTypeMapper
         }
     }
 
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     sealed class StructCompositeMapping<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T> : UserTypeMapping where T : struct
     {
         readonly INpgsqlNameTranslator _nameTranslator;

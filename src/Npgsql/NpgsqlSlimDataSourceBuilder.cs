@@ -273,6 +273,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
@@ -281,11 +282,13 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
@@ -294,6 +297,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);

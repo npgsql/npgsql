@@ -380,9 +380,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         get => _userFacingConnectionString;
 
-        [RequiresUnreferencedCode("NpgsqlConnection uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-        [RequiresDynamicCode("NpgsqlConnection uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC and RDC to DbConnection.")]
+        [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+        [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to DbConnection.")]
+        [UnconditionalSuppressMessage("Aot", "IL3051", Justification = "At the Npgsql level we cannot add RDC to DbConnection.")]
         set
         {
             CheckClosed();

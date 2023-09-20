@@ -17,8 +17,8 @@ namespace Npgsql;
 /// <summary>
 /// Provides a simple API for configuring and creating an <see cref="NpgsqlDataSource" />, from which database connections can be obtained.
 /// </summary>
-[RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-[RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+[RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+[RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 {
     static UnsupportedTypeInfoResolver<NpgsqlDataSourceBuilder> UnsupportedTypeInfoResolver { get; } = new();
