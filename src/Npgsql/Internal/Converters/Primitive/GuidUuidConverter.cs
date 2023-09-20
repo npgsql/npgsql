@@ -12,25 +12,37 @@ sealed class GuidUuidConverter : PgBufferedConverter<Guid>
         return format is DataFormat.Binary;
     }
     protected override Guid ReadCore(PgReader reader)
-        => new GuidRaw
+    {
+#if NET8_0_OR_GREATER
+        return new Guid(reader.ReadBytes(16).FirstSpan, bigEndian: true);
+#else
+        return new GuidRaw
         {
             Data1 = reader.ReadInt32(),
             Data2 = reader.ReadInt16(),
             Data3 = reader.ReadInt16(),
             Data4 = BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(reader.ReadInt64()) : reader.ReadInt64()
         }.Value;
+#endif
+    }
 
     protected override void WriteCore(PgWriter writer, Guid value)
     {
+#if NET8_0_OR_GREATER
+        Span<byte> bytes = stackalloc byte[16];
+        value.TryWriteBytes(bytes, bigEndian: true, out _);
+        writer.WriteBytes(bytes);
+#else
         var raw = new GuidRaw(value);
 
         writer.WriteInt32(raw.Data1);
         writer.WriteInt16(raw.Data2);
         writer.WriteInt16(raw.Data3);
         writer.WriteInt64(BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(raw.Data4) : raw.Data4);
+#endif
     }
 
-    // TODO ifdef once https://github.com/dotnet/runtime/issues/86798 gets merged (ideally before 8.0)
+#if !NET8_0_OR_GREATER
     // The following table shows .NET GUID vs Postgres UUID (RFC 4122) layouts.
     //
     // Note that the first fields are converted from/to native endianness (handled by the Read*
@@ -54,4 +66,5 @@ sealed class GuidUuidConverter : PgBufferedConverter<Guid>
         [FieldOffset(8)] public long Data4;
         public GuidRaw(Guid value) : this() => Value = value;
     }
+#endif
 }
