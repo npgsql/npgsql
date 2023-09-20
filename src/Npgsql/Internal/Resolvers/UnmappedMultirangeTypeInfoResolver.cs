@@ -22,7 +22,7 @@ class UnmappedMultirangeTypeInfoResolver : DynamicTypeInfoResolver
 
         var subInfo =
             elementType is null
-                ? options.GetObjectOrDefaultTypeInfo(multirangeType.Subrange)
+                ? options.GetDefaultTypeInfo(multirangeType.Subrange)
                 : options.GetTypeInfo(elementType, multirangeType.Subrange);
 
         // We have no generic MultirangeConverterResolver so we would not know how to compose a range mapping for such infos.

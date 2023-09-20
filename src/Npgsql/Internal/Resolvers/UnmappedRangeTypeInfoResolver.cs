@@ -21,7 +21,7 @@ class UnmappedRangeTypeInfoResolver : DynamicTypeInfoResolver
 
         var subInfo =
             matchedType is null
-                ? options.GetObjectOrDefaultTypeInfo(rangeType.Subtype)
+                ? options.GetDefaultTypeInfo(rangeType.Subtype)
                 // Input matchedType here as we don't want an NpgsqlRange over Nullable<T> (it has its own nullability tracking, for better or worse)
                 : options.GetTypeInfo(matchedType.GetGenericArguments()[0], rangeType.Subtype);
 
