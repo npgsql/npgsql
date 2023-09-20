@@ -9,34 +9,34 @@ namespace Npgsql.Internal.Resolvers;
 
 [RequiresUnreferencedCode("A dynamic type info resolver may perform reflection on types that were trimmed if not referenced directly.")]
 [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-class UnmappedRangeTypeInfoResolver : DynamicTypeInfoResolver
+class UnmappedMultirangeTypeInfoResolver : DynamicTypeInfoResolver
 {
     protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
     {
-        var matchedType = type;
-        if (type is not null && !IsTypeOrNullableOfType(type,
-                static type => type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>), out matchedType)
-            || options.TypeCatalog.GetPgType(dataTypeName) is not PostgresRangeType rangeType)
+        Type? elementType = null;
+        if (type is not null && !IsArrayLikeType(type, out elementType)
+            || elementType is not null && !IsTypeOrNullableOfType(elementType,
+                static type => type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>), out _)
+            || options.TypeCatalog.GetPgType(dataTypeName) is not PostgresMultirangeType multirangeType)
             return null;
 
         var subInfo =
-            matchedType is null
-                ? options.GetObjectOrDefaultTypeInfo(rangeType.Subtype)
-                // Input matchedType here as we don't want an NpgsqlRange over Nullable<T> (it has its own nullability tracking, for better or worse)
-                : options.GetTypeInfo(matchedType.GetGenericArguments()[0], rangeType.Subtype);
+            elementType is null
+                ? options.GetObjectOrDefaultTypeInfo(multirangeType.Subrange)
+                : options.GetTypeInfo(elementType, multirangeType.Subrange);
 
-        // We have no generic RangeConverterResolver so we would not know how to compose a range mapping for such infos.
+        // We have no generic MultirangeConverterResolver so we would not know how to compose a range mapping for such infos.
         // See https://github.com/npgsql/npgsql/issues/5268
         if (subInfo is not { IsResolverInfo: false })
             return null;
 
         subInfo = subInfo.ToNonBoxing();
 
-        matchedType ??= typeof(NpgsqlRange<>).MakeGenericType(subInfo.Type);
+        type ??= subInfo.Type.MakeArrayType();
 
-        return CreateCollection().AddMapping(matchedType, dataTypeName,
+        return CreateCollection().AddMapping(type, dataTypeName,
             (options, mapping, _) => mapping.CreateInfo(options,
-                (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type), subInfo.GetConcreteResolution().Converter)!,
+                (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(type, subInfo.Type), subInfo.GetConcreteResolution().Converter)!,
                 preferredFormat: subInfo.PreferredFormat, supportsWriting: subInfo.SupportsWriting),
             mapping => mapping with { MatchRequirement = MatchRequirement.Single });
     }
@@ -44,7 +44,7 @@ class UnmappedRangeTypeInfoResolver : DynamicTypeInfoResolver
 
 [RequiresUnreferencedCode("A dynamic type info resolver may perform reflection on types that were trimmed if not referenced directly.")]
 [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-sealed class UnmappedRangeArrayTypeInfoResolver : UnmappedRangeTypeInfoResolver
+sealed class UnmappedMultirangeArrayTypeInfoResolver : UnmappedMultirangeTypeInfoResolver
 {
     protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
     {

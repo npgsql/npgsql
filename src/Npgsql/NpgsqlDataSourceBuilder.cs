@@ -65,6 +65,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new LTreeTypeInfoResolver(),
             new UnmappedEnumTypeInfoResolver(),
             new UnmappedRangeTypeInfoResolver(),
+            new UnmappedMultirangeTypeInfoResolver(),
             // Arrays
             new AdoArrayTypeInfoResolver(),
             new ExtraConversionsArrayTypeInfoResolver(),
@@ -75,6 +76,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new TupledRecordArrayTypeInfoResolver(),
             new UnmappedEnumArrayTypeInfoResolver(),
             new UnmappedRangeArrayTypeInfoResolver(),
+            new UnmappedMultirangeArrayTypeInfoResolver(),
         }, overwrite);
 
     static NpgsqlDataSourceBuilder()
@@ -93,6 +95,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             _internalBuilder.EnableEncryption();
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
             // Reverse order arrays.
+            AddTypeInfoResolver(new UnmappedMultirangeArrayTypeInfoResolver());
             AddTypeInfoResolver(new UnmappedRangeArrayTypeInfoResolver());
             AddTypeInfoResolver(new UnmappedEnumArrayTypeInfoResolver());
             AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
@@ -103,6 +106,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
             AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
             // Reverse order.
+            AddTypeInfoResolver(new UnmappedMultirangeTypeInfoResolver());
             AddTypeInfoResolver(new UnmappedRangeTypeInfoResolver());
             AddTypeInfoResolver(new UnmappedEnumTypeInfoResolver());
             AddTypeInfoResolver(new LTreeTypeInfoResolver());

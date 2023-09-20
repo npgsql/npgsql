@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -97,6 +99,35 @@ public class MultirangeTests : TestBase
         => AssertType(
             new List<TRange>(multirangeAsArray),
             sqlLiteral, pgTypeName, npgsqlDbType, isDefaultForReading: false, isDefaultForWriting: isDefaultForWriting);
+
+    [Test]
+    [NonParallelizable]
+    public async Task Unmapped_multirange_with_mapped_subtype()
+    {
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var typeName = await GetTempTypeName(conn);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
+        await Task.Yield(); // TODO: fix multiplexing deadlock bug
+        conn.ReloadTypes();
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+
+        var value = new[] {new NpgsqlRange<char[]>(
+            new string('a', conn.Settings.WriteBufferSize + 10).ToCharArray(),
+            new string('z', conn.Settings.WriteBufferSize + 10).ToCharArray()
+        )};
+
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        cmd.Parameters.Add(new NpgsqlParameter { DataTypeName = typeName + "_multirange", ParameterName = "p", Value = value });
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await reader.ReadAsync();
+
+        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlRange<string>[])));
+        var result = reader.GetFieldValue<NpgsqlRange<char[]>[]>(0);
+        Assert.That(result, Is.EqualTo(value).Using<NpgsqlRange<char[]>[]>((actual, expected) =>
+            actual[0].LowerBound!.SequenceEqual(expected[0].LowerBound!) && actual[0].UpperBound!.SequenceEqual(expected[0].UpperBound!)));
+    }
 
     protected override NpgsqlDataSource DataSource { get; }
 
