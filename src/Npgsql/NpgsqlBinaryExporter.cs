@@ -18,6 +18,8 @@ namespace Npgsql;
 /// </summary>
 public sealed class NpgsqlBinaryExporter : ICancelable
 {
+    const int BeforeRow = -2;
+    const int BeforeColumn = -1;
 
     #region Fields and Properties
 
@@ -147,6 +149,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async ValueTask<int> StartRow(bool async, CancellationToken cancellationToken = default)
     {
+
         CheckDisposed();
         if (_isConsumed)
             return -1;
@@ -165,7 +168,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             var msg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector);
             _endOfMessagePos = _buf.CumulativeReadPosition + msg.Length;
         }
-        else if (_column != -2)
+        else if (_column != BeforeRow)
             ThrowHelper.ThrowInvalidOperationException("Already in the middle of a row");
 
         await _buf.Ensure(2, async);
@@ -176,14 +179,14 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             Expect<CopyDoneMessage>(await _connector.ReadMessage(async), _connector);
             Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
             Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
-            _column = -2;
+            _column = BeforeRow;
             _isConsumed = true;
             return -1;
         }
 
         Debug.Assert(numColumns == NumColumns);
 
-        _column = -1;
+        _column = BeforeColumn;
         _rowsExported++;
         return NumColumns;
     }
