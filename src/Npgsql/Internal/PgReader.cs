@@ -30,8 +30,6 @@ public class PgReader
     Size _currentBufferRequirement;
     int _currentSize;
 
-    bool _readStarted;
-
     // GetChars Internal state
     TextReader? _charsReadReader;
     int _charsRead;
@@ -436,7 +434,6 @@ public class PgReader
         // Debug.Assert(!Initialized || Resumable, "Reader wasn't properly committed before next init");
         Debug.Assert(!_requiresCleanup, "Reader wasn't properly committed before next init");
 
-        _readStarted = false;
         _fieldStartPos = _buffer.CumulativeReadPosition;
         _fieldFormat = format;
         _fieldSize = fieldLength;
@@ -446,18 +443,16 @@ public class PgReader
     internal void StartRead(Size bufferRequirement)
     {
         Debug.Assert(FieldSize >= 0);
-        _readStarted = true;
         _fieldBufferRequirement = bufferRequirement;
-        if (bufferRequirement.GetValueOrDefault() is not 0)
+        if (ShouldBuffer(bufferRequirement))
             Buffer(bufferRequirement);
     }
 
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        _readStarted = true;
         _fieldBufferRequirement = bufferRequirement;
-        return bufferRequirement.GetValueOrDefault() is not 0 ? BufferAsync(bufferRequirement, cancellationToken) : new();
+        return ShouldBuffer(bufferRequirement) ? BufferAsync(bufferRequirement, cancellationToken) : new();
     }
 
     internal void EndRead()
@@ -628,8 +623,6 @@ public class PgReader
         => bufferRequirement is { Kind: SizeKind.UpperBound }
             ? Math.Min(CurrentRemaining, bufferRequirement.Value)
             : bufferRequirement.GetValueOrDefault();
-
-    internal bool IsFieldStart => FieldOffset is 0 && _readStarted;
 
     internal bool ShouldBufferCurrent() => ShouldBuffer(CurrentBufferRequirement);
 

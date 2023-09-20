@@ -16,8 +16,8 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
 
     public sealed override T Read(PgReader reader)
     {
-        // We check IsFieldStart first to speed up primitive reads.
-        if (!reader.IsFieldStart && reader.ShouldBufferCurrent())
+        // We check IsAtStart first to speed up primitive reads.
+        if (!reader.IsAtStart && reader.ShouldBufferCurrent())
             ThrowIORequired();
 
         return ReadCore(reader);
