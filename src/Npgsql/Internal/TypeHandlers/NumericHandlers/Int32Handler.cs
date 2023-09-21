@@ -1,4 +1,5 @@
-﻿using Npgsql.BackendMessages;
+﻿using System;
+using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 
@@ -16,7 +17,8 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers;
 /// </remarks>
 public partial class Int32Handler : NpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<int>,
     INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<long>,
-    INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>
+    INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>,
+    INpgsqlSimpleTypeHandler<Enum>
 {
     public Int32Handler(PostgresType pgType) : base(pgType) {}
 
@@ -43,6 +45,9 @@ public partial class Int32Handler : NpgsqlSimpleTypeHandler<int>, INpgsqlSimpleT
     decimal INpgsqlSimpleTypeHandler<decimal>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         => Read(buf, len, fieldDescription);
 
+    Enum INpgsqlSimpleTypeHandler<Enum>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+        => throw new NotSupportedException("Only writing Enum to PostgreSQL integer is supported, no reading.");
+
     #endregion Read
 
     #region Write
@@ -55,6 +60,8 @@ public partial class Int32Handler : NpgsqlSimpleTypeHandler<int>, INpgsqlSimpleT
     public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)         => 4;
     /// <inheritdoc />
     public int ValidateAndGetLength(decimal value, NpgsqlParameter? parameter)      => 4;
+    /// <inheritdoc />
+    public int ValidateAndGetLength(Enum value, NpgsqlParameter? parameter)         => 4;
 
     /// <inheritdoc />
     public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)
@@ -91,6 +98,8 @@ public partial class Int32Handler : NpgsqlSimpleTypeHandler<int>, INpgsqlSimpleT
     public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)       => buf.WriteInt32((int)value);
     /// <inheritdoc />
     public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)      => buf.WriteInt32((int)value);
+    /// <inheritdoc />
+    public void Write(Enum value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)         => buf.WriteInt32(Convert.ToInt32(value));
 
     #endregion Write
 }

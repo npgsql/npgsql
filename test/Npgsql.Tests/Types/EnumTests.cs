@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
@@ -116,6 +117,54 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
 
         await AssertType(connection, "happy", "happy", type, npgsqlDbType: null, isDefaultForWriting: false);
     }
+
+    [Test]
+    public async Task Unmapped_unknown_enum_as_int()
+    {
+        await AssertTypeWrite(UnmappedIntEnum.Happy, "2", "integer", NpgsqlDbType.Integer, DbType.Int32, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedIntEnum>("2", "integer");
+    }
+
+    [Test]
+    public async Task Unmapped_unknown_int_enum_as_string()
+    {
+        await AssertTypeWrite(UnmappedIntEnum.Happy, "Happy", "text", NpgsqlDbType.Text, DbType.String, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedIntEnum>("Happy", "text");
+    }
+
+    [Test]
+    public async Task Unmapped_unknown_enum_as_short()
+    {
+        await AssertTypeWrite(UnmappedShortEnum.Happy, "2", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedShortEnum>("2", "smallint");
+    }
+
+    [Test]
+    public async Task Unmapped_unknown_short_enum_as_string()
+    {
+        await AssertTypeWrite(UnmappedShortEnum.Happy, "Happy", "text", NpgsqlDbType.Text, DbType.String, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedShortEnum>("Happy", "text");
+    }
+
+    [Test]
+    public async Task Unmapped_unknown_enum_as_long()
+    {
+        await AssertTypeWrite(UnmappedLongEnum.Happy, "2", "bigint", NpgsqlDbType.Bigint, DbType.Int64, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedLongEnum>("2", "bigint");
+    }
+
+    [Test]
+    public async Task Unmapped_unknown_long_enum_as_string()
+    {
+        await AssertTypeWrite(UnmappedLongEnum.Happy, "Happy", "text", NpgsqlDbType.Text, DbType.String, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedLongEnum>("Happy", "text");
+    }
+
+    enum UnmappedIntEnum { Sad, Ok, Happy }
+
+    enum UnmappedShortEnum : short { Sad, Ok, Happy }
+
+    enum UnmappedLongEnum : long { Sad, Ok, Happy }
 
     enum NameTranslationEnum
     {
