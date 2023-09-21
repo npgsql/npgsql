@@ -94,7 +94,7 @@ public abstract class PgConverter<T> : PgConverter
     private protected PgConverter(bool customDbNullPredicate)
         : base(typeof(T), default(T) is null, customDbNullPredicate) { }
 
-    protected virtual bool IsDbNullValue(T? value) => throw new NotImplementedException();
+    protected virtual bool IsDbNullValue(T? value) => throw new NotSupportedException();
 
     // Object null semantics as follows, if T is a struct (so excluding nullable) report false for null values, don't throw on the cast.
     // As a result this creates symmetry with IsDbNull when we're dealing with a struct T, as it cannot be passed null at all.
@@ -102,14 +102,19 @@ public abstract class PgConverter<T> : PgConverter
         => (default(T) is null || value is not null) && IsDbNullValue(Downcast(value));
 
     public bool IsDbNull([NotNullWhen(false)] T? value)
-        => DbNullPredicateKind switch
+    {
+        return DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
-            _ => IsDbNullValue(value) || (value is null && ThrowInvalidNullValue())
+            DbNullPredicate.Custom => IsDbNullValue(value) || (value is null && ThrowInvalidNullValue()),
+            _ => ThrowOutOfRange()
         };
+
+        bool ThrowOutOfRange() => throw new ArgumentOutOfRangeException(nameof(DbNullPredicateKind), "Unknown case", DbNullPredicateKind.ToString());
+    }
 
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);

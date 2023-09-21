@@ -34,7 +34,9 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
             reader.Buffer(sizeof(int));
 
         var bits = reader.ReadInt32();
-        return ReadValue(reader.ReadBytes(GetByteLengthFromBits(bits)), bits);
+        var bytes = new byte[GetByteLengthFromBits(bits)];
+        reader.ReadBytes(bytes);
+        return ReadValue(bytes, bits);
     }
     public override async ValueTask<BitArray> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
@@ -42,12 +44,13 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
             await reader.BufferAsync(sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var bits = reader.ReadInt32();
-        return ReadValue(await reader.ReadBytesAsync(GetByteLengthFromBits(bits), cancellationToken).ConfigureAwait(false), bits);
+        var bytes = new byte[GetByteLengthFromBits(bits)];
+        await reader.ReadBytesAsync(bytes, cancellationToken).ConfigureAwait(false);
+        return ReadValue(bytes, bits);
     }
 
-    internal static BitArray ReadValue(ReadOnlySequence<byte> byteSeq, int bits)
+    internal static BitArray ReadValue(byte[] bytes, int bits)
     {
-        var bytes = byteSeq.ToArray();
         for (var i = 0; i < bytes.Length; i++)
         {
             ref var b = ref bytes[i];
@@ -176,9 +179,11 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var bits = reader.ReadInt32();
-        var bytes = async
-            ? await reader.ReadBytesAsync(GetByteLengthFromBits(bits), cancellationToken).ConfigureAwait(false)
-            : reader.ReadBytes(GetByteLengthFromBits(bits));
+        var bytes = new byte[GetByteLengthFromBits(bits)];
+        if (async)
+            await reader.ReadBytesAsync(bytes, cancellationToken).ConfigureAwait(false);
+        else
+            reader.ReadBytes(bytes);
 
         var bitArray = BitArrayBitStringConverter.ReadValue(bytes, bits);
         var sb = new StringBuilder(bits);

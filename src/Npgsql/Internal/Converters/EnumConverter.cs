@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Npgsql.Internal.Converters;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
 sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : struct, Enum
 {
     readonly Dictionary<TEnum, string> _enumToLabel;

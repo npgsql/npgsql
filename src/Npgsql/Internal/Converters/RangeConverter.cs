@@ -37,7 +37,6 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         var lowerBound = default(TSubtype);
         var upperBound = default(TSubtype);
 
-        var readRequirement = _subtypeRequirements.Read;
         var converter = _subtypeConverter;
         if ((flags & RangeFlags.LowerBoundInfinite) == 0)
         {

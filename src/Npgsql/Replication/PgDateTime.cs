@@ -1,6 +1,6 @@
 using System;
 
-namespace NpgsqlTypes;
+namespace Npgsql.Replication;
 
 static class PgDateTime
 {

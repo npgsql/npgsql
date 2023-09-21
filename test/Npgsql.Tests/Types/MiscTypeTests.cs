@@ -10,7 +10,6 @@ namespace Npgsql.Tests.Types;
 /// Tests on PostgreSQL types which don't fit elsewhere
 /// </summary>
 class MiscTypeTests : MultiplexingTestBase
-
 {
     [Test]
     public async Task Boolean()
