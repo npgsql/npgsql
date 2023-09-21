@@ -63,7 +63,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     {
         _connector = connector;
         _buf = connector.ReadBuffer;
-        _column = -2;
+        _column = BeforeRow;
         _columnInfoCache = null!;
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
@@ -285,7 +285,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     async ValueTask<T> Read<T>(bool async, NpgsqlDbType? type, CancellationToken cancellationToken)
     {
         CheckDisposed();
-        if (_column == -2)
+        if (_column is BeforeRow)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
