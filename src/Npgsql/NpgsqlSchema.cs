@@ -36,6 +36,7 @@ static class NpgsqlSchema
             "TABLES"                => GetTables(conn, restrictions, async, cancellationToken),
             "COLUMNS"               => GetColumns(conn, restrictions, async, cancellationToken),
             "VIEWS"                 => GetViews(conn, restrictions, async, cancellationToken),
+            "MATERIALIZEDVIEWS"     => GetMaterializedViews(conn, restrictions, async, cancellationToken),
             "USERS"                 => GetUsers(conn, restrictions, async, cancellationToken),
             "INDEXES"               => GetIndexes(conn, restrictions, async, cancellationToken),
             "INDEXCOLUMNS"          => GetIndexColumns(conn, restrictions, async, cancellationToken),
@@ -289,6 +290,25 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
         return views;
     }
 
+    static async Task<DataTable> GetMaterializedViews(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    {
+        var materializedViews = new DataTable("MaterializedViews") { Locale = CultureInfo.InvariantCulture };
+
+        materializedViews.Columns.AddRange(new[] {
+            new DataColumn("schemaname"), new DataColumn("matviewname"), new DataColumn("matviewowner"),
+            new DataColumn("tablespace"), new DataColumn("hasindexes"), new DataColumn("ispopulated")
+        });
+
+        var getMaterializedViews = new StringBuilder();
+        getMaterializedViews.Append(@"SELECT schemaname, matviewname, matviewowner, tablespace, hasindexes, ispopulated FROM pg_matviews");
+
+        using var command = BuildCommand(conn, getMaterializedViews, restrictions, "schemaname", "matviewname", "matviewowner", "tablespace");
+        using var adapter = new NpgsqlDataAdapter(command);
+        await adapter.Fill(materializedViews, async, cancellationToken);
+
+        return materializedViews;
+    }
+
     static async Task<DataTable> GetUsers(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
@@ -296,7 +316,6 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
         users.Columns.AddRange(new[] { new DataColumn("user_name"), new DataColumn("user_sysid", typeof(uint)) });
 
         var getUsers = new StringBuilder();
-
         getUsers.Append("SELECT usename as user_name, usesysid as user_sysid FROM pg_catalog.pg_user");
 
         using var command = BuildCommand(conn, getUsers, restrictions, "usename");

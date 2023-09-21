@@ -330,6 +330,19 @@ CREATE DOMAIN {domainType} AS TEXT");
     }
 
     [Test]
+    public async Task GetSchema_materialized_views_with_restrictions()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var viewName = await GetTempMaterializedViewName(conn);
+
+        await conn.ExecuteNonQueryAsync($"CREATE MATERIALIZED VIEW {viewName} AS SELECT 8 AS foo");
+
+        var dt = await GetSchema(conn, "MaterializedViews", new[] { null, viewName, null, null });
+        foreach (var row in dt.Rows.OfType<DataRow>())
+            Assert.That(row["matviewname"], Is.EqualTo(viewName));
+    }
+
+    [Test]
     public async Task Primary_key()
     {
         await using var conn = await OpenConnectionAsync();

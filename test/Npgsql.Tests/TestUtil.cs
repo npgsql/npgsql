@@ -243,6 +243,17 @@ CREATE TABLE {tableName} ({columns});");
     }
 
     /// <summary>
+    /// Generates a unique materialized view name, usable for a single test, and drops it if it already exists.
+    /// Actual creation of the materialized view is the responsibility of the caller.
+    /// </summary>
+    internal static async Task<string> GetTempMaterializedViewName(NpgsqlConnection conn)
+    {
+        var viewName = "temp_materialized_view" + Interlocked.Increment(ref _tempViewCounter);
+        await conn.ExecuteNonQueryAsync($"DROP MATERIALIZED VIEW IF EXISTS {viewName} CASCADE");
+        return viewName;
+    }
+
+    /// <summary>
     /// Generates a unique function name, usable for a single test.
     /// Actual creation of the function is the responsibility of the caller.
     /// </summary>
