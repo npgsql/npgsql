@@ -300,7 +300,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
         });
 
         var getMaterializedViews = new StringBuilder();
-        getMaterializedViews.Append(@"SELECT schemaname, matviewname, matviewowner, tablespace, hasindexes, ispopulated FROM pg_matviews");
+        getMaterializedViews.Append(@"SELECT schemaname, matviewname, matviewowner, tablespace, hasindexes, ispopulated FROM pg_catalog.pg_matviews");
 
         using var command = BuildCommand(conn, getMaterializedViews, restrictions, "schemaname", "matviewname", "matviewowner", "tablespace");
         using var adapter = new NpgsqlDataAdapter(command);
