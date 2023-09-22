@@ -175,7 +175,7 @@ public readonly struct SizeContext
     public required Size BufferRequirement { get; init; }
 }
 
-class MultiWriteState
+class MultiWriteState : IDisposable
 {
     public required ArrayPool<(Size Size, object? WriteState)>? ArrayPool { get; init; }
     public required ArraySegment<(Size Size, object? WriteState)> Data { get; init; }
