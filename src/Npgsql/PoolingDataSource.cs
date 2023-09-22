@@ -439,10 +439,9 @@ class PoolingDataSource : NpgsqlDataSource
                connector != null)
         {
             if (pool.CheckIdleConnector(connector))
-            {
                 pool.CloseConnector(connector);
-                toPrune--;
-            }
+
+            toPrune--;
         }
     }
 
