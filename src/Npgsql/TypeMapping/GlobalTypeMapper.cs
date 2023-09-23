@@ -126,7 +126,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
             // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapper.UseNodaTime,
             // we replace an existing resolver of the same CLR type.
-            if (_pluginResolvers[0].GetType() == type)
+            if (_pluginResolvers.Count > 0 && _pluginResolvers[0].GetType() == type)
                 _pluginResolvers[0] = resolver;
             for (var i = 0; i < _pluginResolvers.Count; i++)
             {
