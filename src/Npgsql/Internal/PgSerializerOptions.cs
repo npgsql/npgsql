@@ -26,8 +26,8 @@ public sealed class PgSerializerOptions
         _typeInfoCache = PortableTypeIds ? new TypeInfoCache<DataTypeName>(this) : new TypeInfoCache<Oid>(this);
     }
 
-    // Represents postgres unknown type, which can be used for reading and writing arbitrary text values.
-    public PostgresType UnknownPgType { get; set; }
+    // Represents the 'unknown' type, which can be used for reading and writing arbitrary text values.
+    public PostgresType UnknownPgType { get; }
 
     // Used purely for type mapping, where we don't have a full set of types but resolvers might know enough.
     readonly bool _introspectionInstance;
@@ -49,8 +49,7 @@ public sealed class PgSerializerOptions
     public ArrayNullabilityMode ArrayNullabilityMode { get; init; } = ArrayNullabilityMode.Never;
     public INpgsqlNameTranslator DefaultNameTranslator { get; init; } = NpgsqlSnakeCaseNameTranslator.Instance;
 
-    public static Type[] WellKnownTextTypes => new[]
-    {
+    public static Type[] WellKnownTextTypes { get; } = {
         typeof(string), typeof(char[]), typeof(byte[]),
         typeof(ArraySegment<char>), typeof(ArraySegment<char>?),
         typeof(char), typeof(char?)

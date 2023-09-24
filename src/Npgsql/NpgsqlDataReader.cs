@@ -1949,9 +1949,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var committed = false;
         if (!PgReader.CommitHasIO(reread))
         {
-            var task = PgReader.Commit(async, reread);
-            task.GetAwaiter().GetResult();
-            Debug.Assert(task.IsCompleted);
+            PgReader.Commit(async: false, reread).GetAwaiter().GetResult();
             committed = true;
             if (TrySeekBuffered(ordinal, out var columnLength))
             {

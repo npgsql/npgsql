@@ -88,7 +88,7 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
         => new(_buffer.Flush(async: true, cancellationToken));
 }
 
-public class PgWriter
+public sealed class PgWriter
 {
     readonly IBufferWriter<byte> _writer;
 
@@ -492,14 +492,14 @@ public class PgWriter
             => _writer = writer;
 
         public override void Write(byte[] buffer, int offset, int count)
-            => Write(async: false, buffer: buffer, offset: offset, count: count).GetAwaiter().GetResult();
+            => Write(async: false, buffer: buffer, offset: offset, count: count, CancellationToken.None).GetAwaiter().GetResult();
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => Write(async: true, buffer: buffer, offset: offset, count: count, cancellationToken: cancellationToken);
 
-        Task Write(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        Task Write(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            if (buffer == null)
+            if (buffer is null)
                 throw new ArgumentNullException(nameof(buffer));
             if (offset < 0)
                 throw new ArgumentNullException(nameof(offset));
@@ -507,15 +507,30 @@ public class PgWriter
                 throw new ArgumentNullException(nameof(count));
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
 
             if (async)
-                return _writer.WriteBytesAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    return Task.FromCanceled(cancellationToken);
+
+                return _writer.WriteBytesAsync(buffer, cancellationToken).AsTask();
+            }
 
             _writer.WriteBytes(new Span<byte>(buffer, offset, count));
             return Task.CompletedTask;
         }
+
+#if !NETSTANDARD2_0
+        public override void Write(ReadOnlySpan<byte> buffer) => _writer.WriteBytes(buffer);
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new(Task.FromCanceled(cancellationToken));
+
+            return _writer.WriteBytesAsync(buffer, cancellationToken);
+        }
+#endif
 
         public override void Flush()
             => _writer.Flush();
