@@ -692,11 +692,11 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Varchar => DbType.String,
             NpgsqlDbType.Char => DbType.String,
             NpgsqlDbType.Name => DbType.String,
-            NpgsqlDbType.Refcursor => DbType.String,
             NpgsqlDbType.Citext => DbType.String,
+            NpgsqlDbType.Refcursor => DbType.Object,
             NpgsqlDbType.Jsonb => DbType.Object,
             NpgsqlDbType.Json => DbType.Object,
-            NpgsqlDbType.JsonPath => DbType.String,
+            NpgsqlDbType.JsonPath => DbType.Object,
 
             // Date/time types
             NpgsqlDbType.Timestamp => LegacyTimestampBehavior ? DbType.DateTime : DbType.DateTime2,

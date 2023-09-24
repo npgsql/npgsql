@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Data;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -15,6 +16,14 @@ public class JsonPathTests : MultiplexingTestBase
         new object[] { "'$'", "$" },
         new object[] { "'$\"varname\"'", "$\"varname\"" },
     };
+
+    [Test]
+    [TestCase("$")]
+    [TestCase("$\"varname\"")]
+    public Task JsonPath(string jsonPath)
+        => AssertType(
+            jsonPath, jsonPath, "jsonpath", NpgsqlDbType.JsonPath, isDefaultForWriting: false, isNpgsqlDbTypeInferredFromClrType: false,
+            inferredDbType: DbType.Object);
 
     [Test]
     [TestCaseSource(nameof(ReadWriteCases))]
