@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
@@ -215,7 +214,11 @@ public abstract class NpgsqlDatabaseInfo
             if (ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
                 return true;
 
-            var ambiguousTypes = ByFullName.Keys.Where(n => n.EndsWith($".{pgName}", StringComparison.Ordinal));
+            var ambiguousTypes = new List<string>();
+            foreach (var key in ByFullName.Keys)
+                if (key.EndsWith($".{pgName}", StringComparison.Ordinal))
+                    ambiguousTypes.Add(key);
+
             throw new ArgumentException($"More than one PostgreSQL type was found with the name {pgName}, " +
                                         $"please specify a full name including schema: {string.Join(", ", ambiguousTypes)}");
         }

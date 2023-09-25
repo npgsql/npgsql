@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -53,12 +52,15 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 : new UnpooledDataSource(poolSettings, dataSourceConfig);
         }
 
-        var targetSessionAttributeValues = Enum.GetValues(typeof(TargetSessionAttributes)).Cast<TargetSessionAttributes>().ToArray();
-        _wrappers = new MultiHostDataSourceWrapper[targetSessionAttributeValues.Max(t => (int)t) + 1];
+        var targetSessionAttributeValues = (TargetSessionAttributes[])Enum.GetValues(typeof(TargetSessionAttributes));
+        var highestValue = 0;
+        foreach (var value in targetSessionAttributeValues)
+            if ((int)value > highestValue)
+                highestValue = (int)value;
+
+        _wrappers = new MultiHostDataSourceWrapper[highestValue + 1];
         foreach (var targetSessionAttribute in targetSessionAttributeValues)
-        {
             _wrappers[(int)targetSessionAttribute] = new(this, targetSessionAttribute);
-        }
     }
 
     /// <summary>
@@ -311,13 +313,22 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
     }
 
     static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
-        => exceptions.Count == 0
+    {
+        return exceptions.Count == 0
             ? new NpgsqlException("No suitable host was found.")
-            : exceptions[0] is PostgresException firstException &&
-              exceptions.All(x => x is PostgresException ex && ex.SqlState == firstException.SqlState)
+            : exceptions[0] is PostgresException firstException && AllEqual(firstException, exceptions)
                 ? firstException
                 : new NpgsqlException("Unable to connect to a suitable host. Check inner exception for more details.",
                     new AggregateException(exceptions));
+
+        static bool AllEqual(PostgresException first, IList<Exception> exceptions)
+        {
+            foreach (var x in exceptions)
+                if (x is not PostgresException ex || ex.SqlState != first.SqlState)
+                    return false;
+            return true;
+        }
+    }
 
     int GetRoundRobinIndex()
     {

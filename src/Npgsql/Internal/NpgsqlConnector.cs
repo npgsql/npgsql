@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -958,7 +957,7 @@ public sealed partial class NpgsqlConnector
         // Note that there aren't any timeout-able or cancellable DNS methods
         var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
             ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
-            : Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
+            : IPAddressesToEndpoints(Dns.GetHostAddresses(Host), Port);
         timeout.Check();
 
         // Give each endpoint an equal share of the remaining time
@@ -997,7 +996,7 @@ public sealed partial class NpgsqlConnector
                 var errorCode = (int) socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error)!;
                 if (errorCode != 0)
                     throw new SocketException(errorCode);
-                if (!write.Any())
+                if (write.Count is 0)
                     throw new TimeoutException("Timeout during connection attempt");
                 socket.Blocking = true;
                 SetSocketOptions(socket);
@@ -1035,8 +1034,8 @@ public sealed partial class NpgsqlConnector
         // and raises the exception, while the actual task may be left running.
         var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
             ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
-            : (await TaskTimeoutAndCancellation.ExecuteAsync(GetHostAddressesAsync, timeout, cancellationToken))
-            .Select(a => new IPEndPoint(a, Port)).ToArray();
+            : IPAddressesToEndpoints(await TaskTimeoutAndCancellation.ExecuteAsync(GetHostAddressesAsync, timeout, cancellationToken),
+                Port);
 
         // Give each IP an equal share of the remaining time
         var perIpTimespan = default(TimeSpan);
@@ -1101,6 +1100,14 @@ public sealed partial class NpgsqlConnector
 #endif
             return TaskTimeoutAndCancellation.ExecuteAsync(ConnectAsync, perIpTimeout, cancellationToken);
         }
+    }
+
+    IPEndPoint[] IPAddressesToEndpoints(IPAddress[] ipAddresses, int port)
+    {
+        var result = new IPEndPoint[ipAddresses.Length];
+        for (var i = 0; i < ipAddresses.Length; i++)
+            result[i] = new IPEndPoint(ipAddresses[i], port);
+        return result;
     }
 
     void SetSocketOptions(Socket socket)

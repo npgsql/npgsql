@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 
 namespace Npgsql.NameTranslation;
@@ -59,8 +59,17 @@ public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
             throw new ArgumentNullException(nameof(clrName));
 
         return LegacyMode
-            ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower(_culture)
+            ? string.Concat(LegacyModeMap(clrName)).ToLower(_culture)
             : ConvertToSnakeCase(clrName, _culture);
+
+        IEnumerable<string> LegacyModeMap(string clrName)
+        {
+            for (var i = 0; i < clrName.Length; i++)
+            {
+                var c = clrName[i];
+                yield return i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString();
+            }
+        }
     }
 
     /// <summary>

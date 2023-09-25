@@ -1,7 +1,6 @@
 ﻿#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 using System;
-using System.Linq;
 
 namespace Npgsql;
 
@@ -478,6 +477,12 @@ public static class PostgresErrorCodes
     };
 
     internal static bool IsCriticalFailure(PostgresException e, bool clusterError = true)
-        => CriticalFailureCodes.Any(x => e.SqlState.StartsWith(x, StringComparison.Ordinal)) ||
-           !clusterError && e.SqlState == ProtocolViolation; // We only treat ProtocolViolation as critical for connection
+    {
+        foreach (var x in CriticalFailureCodes)
+            if (e.SqlState.StartsWith(x, StringComparison.Ordinal))
+                return true;
+
+        // We only treat ProtocolViolation as critical for connection
+        return !clusterError && e.SqlState == ProtocolViolation;
+    }
 }

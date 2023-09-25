@@ -1,8 +1,7 @@
-﻿using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Text;
 using Npgsql.Internal;
+using Npgsql.Util;
 
 namespace Npgsql;
 
@@ -27,7 +26,7 @@ static class PregeneratedMessages
 
     internal static byte[] Generate(NpgsqlWriteBuffer buf, string query)
     {
-        Debug.Assert(query.All(c => c < 128));
+        NpgsqlWriteBuffer.AssertASCIIOnly(query);
 
         var queryByteLen = Encoding.ASCII.GetByteCount(query);
 

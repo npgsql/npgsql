@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -68,7 +67,13 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
     }
 
     public override Size GetSize(SizeContext context, NpgsqlTsVector value, ref object? writeState)
-        => 4 + value.Sum(l => _encoding.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
+    {
+        var size = 4;
+        foreach (var l in value)
+            size += _encoding.GetByteCount(l.Text) + 1 + 2 + l.Count * 2;
+
+        return size;
+    }
 
     public override void Write(PgWriter writer, NpgsqlTsVector value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
