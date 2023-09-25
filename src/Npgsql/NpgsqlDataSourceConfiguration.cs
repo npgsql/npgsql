@@ -18,6 +18,7 @@ sealed record NpgsqlDataSourceConfiguration(
     TimeSpan PeriodicPasswordSuccessRefreshInterval,
     TimeSpan PeriodicPasswordFailureRefreshInterval,
     IEnumerable<IPgTypeInfoResolver> ResolverChain,
+    List<HackyEnumTypeMapping> HackyEnumMappings,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
     Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);

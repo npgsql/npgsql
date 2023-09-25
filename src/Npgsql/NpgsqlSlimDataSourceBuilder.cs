@@ -517,6 +517,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
             Resolvers(),
+            HackyEnumMappings(),
             DefaultNameTranslator,
             _syncConnectionInitializer,
             _asyncConnectionInitializer);
@@ -534,6 +535,21 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             resolvers.AddRange(_resolverChain);
 
             return resolvers;
+        }
+
+        List<HackyEnumTypeMapping> HackyEnumMappings()
+        {
+            var mappings = new List<HackyEnumTypeMapping>();
+
+            if (_userTypeMapper.Items.Count > 0)
+                foreach (var userTypeMapping in _userTypeMapper.Items)
+                    if (userTypeMapping is UserTypeMapper.EnumMapping enumMapping)
+                        mappings.Add(new(enumMapping.ClrType, enumMapping.PgTypeName, enumMapping.NameTranslator));
+
+            if (GlobalTypeMapper.Instance.HackyEnumTypeMappings.Count > 0)
+                mappings.AddRange(GlobalTypeMapper.Instance.HackyEnumTypeMappings);
+
+            return mappings;
         }
     }
 
