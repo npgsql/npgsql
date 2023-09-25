@@ -178,19 +178,19 @@ public abstract class NpgsqlDatabaseInfo
         Version = ParseServerVersion(serverVersion);
     }
 
-    internal PostgresType GetPostgresTypeByOid(Oid oid) => GetPostgresTypeByOid(oid.Value);
+    internal PostgresType GetPostgresType(Oid oid) => GetPostgresType(oid.Value);
 
-    public PostgresType GetPostgresTypeByOid(uint oid)
+    public PostgresType GetPostgresType(uint oid)
         => ByOID.TryGetValue(oid, out var pgType)
             ? pgType
             : throw new ArgumentException($"A PostgreSQL type with the oid '{oid}' was not found in the current database info");
 
-    internal PostgresType GetPostgresTypeByName(DataTypeName dataTypeName)
+    internal PostgresType GetPostgresType(DataTypeName dataTypeName)
         => ByFullName.TryGetValue(dataTypeName.Value, out var value)
             ? value
             : throw new ArgumentException($"A PostgreSQL type with the name '{dataTypeName}' was not found in the current database info");
 
-    public PostgresType GetPostgresTypeByName(string pgName)
+    public PostgresType GetPostgresType(string pgName)
         => TryGetPostgresTypeByName(pgName, out var pgType)
             ? pgType
             : throw new ArgumentException($"A PostgreSQL type with the name '{pgName}' was not found in the current database info");
@@ -340,20 +340,20 @@ public abstract class NpgsqlDatabaseInfo
 
     internal Oid GetOid(PgTypeId pgTypeId, bool validate = false)
         => pgTypeId.IsOid
-            ? validate ? GetPostgresTypeByOid(pgTypeId.Oid).OID : pgTypeId.Oid
-            : GetPostgresTypeByName(pgTypeId.DataTypeName).OID;
+            ? validate ? GetPostgresType(pgTypeId.Oid).OID : pgTypeId.Oid
+            : GetPostgresType(pgTypeId.DataTypeName).OID;
 
     internal DataTypeName GetDataTypeName(PgTypeId pgTypeId, bool validate = false)
         => pgTypeId.IsDataTypeName
-            ? validate ? GetPostgresTypeByName(pgTypeId.DataTypeName).DataTypeName : pgTypeId.DataTypeName
-            : GetPostgresTypeByOid(pgTypeId.Oid).DataTypeName;
+            ? validate ? GetPostgresType(pgTypeId.DataTypeName).DataTypeName : pgTypeId.DataTypeName
+            : GetPostgresType(pgTypeId.Oid).DataTypeName;
 
-    internal PostgresType GetPgType(PgTypeId pgTypeId)
+    internal PostgresType GetPostgresType(PgTypeId pgTypeId)
         => pgTypeId.IsOid
-            ? GetPostgresTypeByOid(pgTypeId.Oid.Value)
-            : GetPostgresTypeByName(pgTypeId.DataTypeName.Value);
+            ? GetPostgresType(pgTypeId.Oid.Value)
+            : GetPostgresType(pgTypeId.DataTypeName.Value);
 
-    internal PostgresType? FindPgType(PgTypeId pgTypeId)
+    internal PostgresType? FindPostgresType(PgTypeId pgTypeId)
         => pgTypeId.IsOid
             ? ByOID.TryGetValue(pgTypeId.Oid.Value, out var pgType) ? pgType : null
             : TryGetPostgresTypeByName(pgTypeId.DataTypeName.Value, out pgType) ? pgType : null;

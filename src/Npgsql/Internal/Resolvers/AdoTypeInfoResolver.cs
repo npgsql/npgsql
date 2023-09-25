@@ -30,7 +30,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
     {
         var info = Mappings.Find(type, dataTypeName, options);
         if (info is null && dataTypeName is not null)
-            return GetEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+            info = GetEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
         return info;
     }
 
@@ -39,7 +39,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         if (type is not null && type != typeof(string))
             return null;
 
-        if (options.DatabaseInfo.GetPostgresTypeByName(dataTypeName) is not PostgresEnumType)
+        if (options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
             return null;
 
         return new PgTypeInfo(options, new StringTextConverter(options.TextEncoding), dataTypeName);
@@ -471,7 +471,7 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
     {
         var info = Mappings.Find(type, dataTypeName, options);
         if (info is null && dataTypeName is not null)
-            return GetEnumArrayTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+            info = GetEnumArrayTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
         return info;
     }
 
@@ -480,7 +480,7 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
         if (type is not null && type != typeof(object) && (!TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) || elementType != typeof(string)))
             return null;
 
-        if (options.DatabaseInfo.GetPostgresTypeByName(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType enumType })
+        if (options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType enumType })
             return null;
 
         var mappings = new TypeInfoMappingCollection();

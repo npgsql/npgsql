@@ -16,7 +16,7 @@ class UnmappedEnumTypeInfoResolver : DynamicTypeInfoResolver
 {
     protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
     {
-        if (type is null || !IsTypeOrNullableOfType(type, static type => type.IsEnum, out var matchedType) || options.DatabaseInfo.GetPostgresTypeByName(dataTypeName) is not PostgresEnumType)
+        if (type is null || !IsTypeOrNullableOfType(type, static type => type.IsEnum, out var matchedType) || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
             return null;
 
         return CreateCollection().AddMapping(matchedType, dataTypeName, static (options, mapping, _) =>

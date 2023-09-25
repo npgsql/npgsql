@@ -240,7 +240,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         PgTypeId GetRepresentationalOrDefault(string dataTypeName)
         {
-            var type = options.DatabaseInfo.GetPostgresTypeByName(dataTypeName);
+            var type = options.DatabaseInfo.GetPostgresType(dataTypeName);
             return options.ToCanonicalTypeId(type.GetRepresentationalType());
         }
     }

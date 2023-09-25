@@ -490,7 +490,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var param = new NpgsqlParameter();
 
-            var postgresType = serializerOptions.DatabaseInfo.GetPgType((Oid)types[i]);
+            var postgresType = serializerOptions.DatabaseInfo.GetPostgresType(types[i]);
             var npgsqlDbType = postgresType.DataTypeName.ToNpgsqlDbType();
             param.DataTypeName = postgresType.DisplayName;
             param.PostgresType = postgresType;
@@ -561,7 +561,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             var param = batchCommand.PositionalParameters[i];
                             var paramOid = paramTypeOIDs[i];
 
-                            var postgresType = connector.SerializerOptions.DatabaseInfo.GetPgType((Oid)paramOid);
+                            var postgresType = connector.SerializerOptions.DatabaseInfo.GetPostgresType(paramOid);
                             // We want to keep any domain types visible on the parameter, it will internally do a representational lookup again if necessary.
                             var npgsqlDbType = postgresType.GetRepresentationalType().DataTypeName.ToNpgsqlDbType();
                             if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)

@@ -17,7 +17,7 @@ class UnmappedMultirangeTypeInfoResolver : DynamicTypeInfoResolver
         if (type is not null && !IsArrayLikeType(type, out elementType)
             || elementType is not null && !IsTypeOrNullableOfType(elementType,
                 static type => type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>), out _)
-            || options.DatabaseInfo.GetPgType(dataTypeName) is not PostgresMultirangeType multirangeType)
+            || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresMultirangeType multirangeType)
             return null;
 
         var subInfo =

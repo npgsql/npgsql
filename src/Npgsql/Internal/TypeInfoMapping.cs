@@ -641,13 +641,13 @@ public static class TypeInfoMappingHelpers
 {
     internal static PgTypeId ResolveFullyQualifiedName(PgSerializerOptions options, string dataTypeName)
         => !DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
-            ? options.ToCanonicalTypeId(options.DatabaseInfo.GetPostgresTypeByName(dataTypeName))
+            ? options.ToCanonicalTypeId(options.DatabaseInfo.GetPostgresType(dataTypeName))
             : new(new DataTypeName(dataTypeName));
 
     internal static PostgresType GetPgType(this TypeInfoMapping mapping, PgSerializerOptions options)
         => !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? options.DatabaseInfo.GetPostgresTypeByName(mapping.DataTypeName)
-            : options.DatabaseInfo.GetPgType(new DataTypeName(mapping.DataTypeName));
+            ? options.DatabaseInfo.GetPostgresType(mapping.DataTypeName)
+            : options.DatabaseInfo.GetPostgresType(new DataTypeName(mapping.DataTypeName));
 
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new(options, converter, ResolveFullyQualifiedName(options, mapping.DataTypeName))

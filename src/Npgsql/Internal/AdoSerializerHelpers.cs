@@ -47,7 +47,7 @@ static class AdoSerializerHelpers
             pgTypeString:
                 pgTypeId is null ? "no NpgsqlDbType or DataTypeName. Try setting one of these values to the expected database type." :
                 npgsqlDbType is null
-                ? $"DataTypeName '{options.DatabaseInfo.FindPgType(pgTypeId.GetValueOrDefault())?.DisplayName ?? "unknown"}'"
+                ? $"DataTypeName '{options.DatabaseInfo.FindPostgresType(pgTypeId.GetValueOrDefault())?.DisplayName ?? "unknown"}'"
                 : $"NpgsqlDbType '{npgsqlDbType}'", inner);
 
         // InvalidCastException thrown to align with ADO.NET convention.

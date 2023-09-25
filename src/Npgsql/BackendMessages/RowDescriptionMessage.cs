@@ -278,7 +278,7 @@ public sealed class FieldDescription
         TypeSize = typeSize;
         TypeModifier = typeModifier;
         DataFormat = dataFormat;
-        PostgresType = _serializerOptions.DatabaseInfo.FindPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
+        PostgresType = _serializerOptions.DatabaseInfo.FindPostgresType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
         Field = new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
         _objectOrDefaultInfo = default;
     }
