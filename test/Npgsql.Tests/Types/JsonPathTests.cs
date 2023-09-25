@@ -20,10 +20,14 @@ public class JsonPathTests : MultiplexingTestBase
     [Test]
     [TestCase("$")]
     [TestCase("$\"varname\"")]
-    public Task JsonPath(string jsonPath)
-        => AssertType(
+    public async Task JsonPath(string jsonPath)
+    {
+        using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
+        await AssertType(
             jsonPath, jsonPath, "jsonpath", NpgsqlDbType.JsonPath, isDefaultForWriting: false, isNpgsqlDbTypeInferredFromClrType: false,
             inferredDbType: DbType.Object);
+    }
 
     [Test]
     [TestCaseSource(nameof(ReadWriteCases))]
