@@ -26,7 +26,7 @@ static class AdoSerializerHelpers
         // InvalidCastException thrown to align with ADO.NET convention.
         [DoesNotReturn]
         static PgTypeInfo ThrowReadingNotSupported(Type? type, string displayName, Exception? inner = null)
-            => throw new InvalidCastException($"Reading{(type is null ? "" : $" as '{type.FullName}'")} is not supported for field having DataTypeName '{displayName}'", inner);
+            => throw new InvalidCastException($"Reading{(type is null ? "" : $" as '{type.FullName}'")} is not supported for fields having DataTypeName '{displayName}'", inner);
     }
 
     public static PgTypeInfo GetTypeInfoForWriting(Type? type, PgTypeId? pgTypeId, PgSerializerOptions options, NpgsqlDbType? npgsqlDbType = null)
@@ -53,6 +53,6 @@ static class AdoSerializerHelpers
         // InvalidCastException thrown to align with ADO.NET convention.
         [DoesNotReturn]
         static PgTypeInfo ThrowWritingNotSupported(Type? type, string pgTypeString, Exception? inner = null)
-            => throw new InvalidCastException($"Writing{(type is null ? "" : $" values of '{type.FullName}'")} is not supported for parameter having {pgTypeString}.", inner);
+            => throw new InvalidCastException($"Writing{(type is null ? "" : $" values of '{type.FullName}'")} is not supported for parameters having {pgTypeString}.", inner);
     }
 }
