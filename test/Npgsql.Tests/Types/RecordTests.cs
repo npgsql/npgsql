@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.Properties;
 using NUnit.Framework;
@@ -80,18 +81,9 @@ public class RecordTests : MultiplexingTestBase
     }
 
     [Test]
-    public async Task Records_supported_only_with_EnableRecords([Values] bool withMappings)
+    public async Task Records_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
     {
-        Func<IResolveConstraint> assertExpr = () => withMappings
-            ? Throws.Nothing
-            : Throws.Exception
-                .TypeOf<InvalidCastException>()
-                .With.Property("InnerException").Property("Message")
-                .EqualTo(string.Format(NpgsqlStrings.RecordsNotEnabled, "EnableRecords", "NpgsqlSlimDataSourceBuilder"));
-
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        if (withMappings)
-            dataSourceBuilder.EnableRecords();
         await using var dataSource = dataSourceBuilder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = conn.CreateCommand();
@@ -101,8 +93,36 @@ public class RecordTests : MultiplexingTestBase
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        Assert.That(() => reader.GetValue(0), assertExpr());
-        Assert.That(() => reader.GetFieldValue<object[]>(0), assertExpr());
+        var errorMessage = string.Format(
+            NpgsqlStrings.RecordsNotEnabled,
+            nameof(NpgsqlSlimDataSourceBuilder.EnableRecords),
+            nameof(NpgsqlSlimDataSourceBuilder));
+
+        var exception = Assert.Throws<InvalidCastException>(() => reader.GetValue(0))!;
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+
+        exception = Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<object[]>(0))!;
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+    }
+
+    [Test]
+    public async Task NpgsqlSlimSourceBuilder_EnableRecords()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.EnableRecords();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+
+        // RecordHandler doesn't support writing, so we only check for reading
+        cmd.CommandText = "SELECT ('one'::text, 2)";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        Assert.That(() => reader.GetValue(0), Throws.Nothing);
+        Assert.That(() => reader.GetFieldValue<object[]>(0), Throws.Nothing);
     }
 
     public RecordTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
