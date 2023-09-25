@@ -1,5 +1,4 @@
 ﻿using Npgsql.Internal;
-using Npgsql.Util;
 using NUnit.Framework;
 using System;
 using System.IO;
@@ -17,14 +16,14 @@ class ReadBufferTests
         for (byte i = 0; i < 50; i++)
             Writer.WriteByte(i);
 
-        ReadBuffer.Ensure(10);
+        ReadBuffer.Ensure(10, async: false).GetAwaiter().GetResult();
         ReadBuffer.Skip(7);
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(7));
         ReadBuffer.Skip(10);
-        ReadBuffer.Ensure(1);
+        ReadBuffer.Ensure(1, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(18));
         ReadBuffer.Skip(20);
-        ReadBuffer.Ensure(1);
+        ReadBuffer.Ensure(1, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(39));
     }
 
@@ -36,7 +35,7 @@ class ReadBufferTests
         Array.Reverse(bytes);
         Writer.Write(bytes);
 
-        ReadBuffer.Ensure(4);
+        ReadBuffer.Ensure(4, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadSingle(), Is.EqualTo(expected));
     }
 
@@ -48,7 +47,7 @@ class ReadBufferTests
         Array.Reverse(bytes);
         Writer.Write(bytes);
 
-        ReadBuffer.Ensure(8);
+        ReadBuffer.Ensure(8, async: false).GetAwaiter().GetResult();
         Assert.That(ReadBuffer.ReadDouble(), Is.EqualTo(expected));
     }
 
@@ -56,12 +55,12 @@ class ReadBufferTests
     public void ReadNullTerminatedString_buffered_only()
     {
         Writer
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("foo")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("foo")))
             .WriteByte(0)
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("bar")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("bar")))
             .WriteByte(0);
 
-        ReadBuffer.Ensure(1);
+        ReadBuffer.Ensure(1, async: false);
 
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("foo"));
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("bar"));
@@ -70,15 +69,15 @@ class ReadBufferTests
     [Test]
     public async Task ReadNullTerminatedString_with_io()
     {
-        Writer.Write(PGUtil.UTF8Encoding.GetBytes(new string("Chunked ")));
-        ReadBuffer.Ensure(1);
+        Writer.Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("Chunked ")));
+        await ReadBuffer.Ensure(1, async: true);
         var task = ReadBuffer.ReadNullTerminatedString(async: true);
         Assert.That(!task.IsCompleted);
 
         Writer
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("string")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("string")))
             .WriteByte(0)
-            .Write(PGUtil.UTF8Encoding.GetBytes(new string("bar")))
+            .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("bar")))
             .WriteByte(0);
         Assert.That(task.IsCompleted);
         Assert.That(await task, Is.EqualTo("Chunked string"));
@@ -90,7 +89,7 @@ class ReadBufferTests
     public void SetUp()
     {
         var stream = new MockStream();
-        ReadBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding, PGUtil.RelaxedUTF8Encoding);
+        ReadBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
         Writer = stream.Writer;
     }
 #pragma warning restore CS8625

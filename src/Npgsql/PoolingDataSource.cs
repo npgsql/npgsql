@@ -230,9 +230,9 @@ class PoolingDataSource : NpgsqlDataSource
 
         // The connector directly references the data source type mapper into the connector, to protect it against changes by a concurrent
         // ReloadTypes. We update them here before returning the connector from the pool.
-        Debug.Assert(TypeMapper is not null);
+        Debug.Assert(SerializerOptions is not null);
         Debug.Assert(DatabaseInfo is not null);
-        connector.TypeMapper = TypeMapper;
+        connector.SerializerOptions = SerializerOptions;
         connector.DatabaseInfo = DatabaseInfo;
 
         Debug.Assert(connector.State == ConnectorState.Ready,

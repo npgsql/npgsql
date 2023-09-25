@@ -957,7 +957,7 @@ public class MultipleHostsTests : TestBase
     [NonParallelizable] // Disables sql rewriting
     public async Task Multiple_hosts_with_disabled_sql_rewriting()
     {
-        using var _ = DisableSqlRewriting();
+        using var _ = DisableSqlRewriting(ClearDataSources);
 
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString)
         {

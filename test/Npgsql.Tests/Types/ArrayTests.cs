@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.Converters;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -73,6 +72,18 @@ public class ArrayTests : MultiplexingTestBase
             Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
             Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(new[] { 1, 3 }));
         }
+    }
+
+    [Test]
+    public async Task Throws_too_many_dimensions()
+    {
+        await using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        cmd.Parameters.AddWithValue("p", new int[1, 1, 1, 1, 1, 1, 1, 1, 1]); // 9 dimensions
+        Assert.That(
+            () => cmd.ExecuteScalarAsync(),
+            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("values (Parameter 'Postgres arrays can have at most 8 dimensions.')"));
     }
 
     [Test]
@@ -150,9 +161,9 @@ public class ArrayTests : MultiplexingTestBase
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
-        Assert.That(() => reader.GetFieldValue<int[]>(0), Throws.Exception.TypeOf<InvalidOperationException>());
-        Assert.That(() => reader.GetFieldValue<List<int>>(0), Throws.Exception.TypeOf<InvalidOperationException>());
-        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidOperationException>());
+        Assert.That(() => reader.GetFieldValue<int[]>(0), Throws.Exception.TypeOf<InvalidCastException>());
+        Assert.That(() => reader.GetFieldValue<List<int>>(0), Throws.Exception.TypeOf<InvalidCastException>());
+        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
     }
 
     [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
@@ -184,9 +195,9 @@ SELECT onedim, twodim FROM (VALUES
             Assert.That(reader.GetValue(1), Is.EqualTo(new [,]{{1, 2}, {3, 4}}));
             reader.Read();
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
             Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
-            Assert.That(() => reader.GetValue(1), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => reader.GetValue(1), Throws.Exception.TypeOf<InvalidCastException>());
             break;
         case ArrayNullabilityMode.Always:
             reader.Read();
@@ -271,8 +282,8 @@ SELECT onedim, twodim FROM (VALUES
         var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
-        var ex = Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int[]>(0))!;
-        Assert.That(ex.Message, Is.EqualTo("Cannot read an array with 1 dimension(s) from an array with 2 dimension(s)"));
+        var ex = Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<int[]>(0))!;
+        Assert.That(ex.Message, Does.StartWith("Cannot read an array value with 2 dimensions into a collection type with 1 dimension"));
     }
 
     [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as array of a non-nullable type fails.")]
@@ -289,8 +300,8 @@ SELECT onedim, twodim FROM (VALUES
 
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
-            Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandlerCore.ReadNonNullableCollectionWithNullsExceptionMessage));
+            Throws.Exception.TypeOf<InvalidCastException>()
+                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
 
@@ -308,8 +319,8 @@ SELECT onedim, twodim FROM (VALUES
 
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
-            Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandlerCore.ReadNonNullableCollectionWithNullsExceptionMessage));
+            Throws.Exception.TypeOf<InvalidCastException>()
+                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
     [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
@@ -435,19 +446,6 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
     }
 
-
-    [Test, Description("Roundtrips a non-generic IList as an array")]
-    // ReSharper disable once InconsistentNaming
-    public async Task IList_non_generic()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        var expected = new ArrayList(new[] { 1, 2, 3 });
-        var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = expected };
-        cmd.Parameters.Add(p);
-        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(expected.ToArray()));
-    }
-
     [Test, Description("Roundtrips a generic List as an array")]
     // ReSharper disable once InconsistentNaming
     public async Task IList_generic()
@@ -477,11 +475,11 @@ SELECT onedim, twodim FROM (VALUES
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-        var exception = Assert.Throws<NotSupportedException>(() =>
+        var exception = Assert.Throws<InvalidCastException>(() =>
         {
             reader.GetFieldValue<List<int>>(0);
         })!;
-        Assert.That(exception.Message, Is.EqualTo("Can't read multidimensional array as List<Int32>"));
+        Assert.That(exception.Message, Does.StartWith("Cannot read an array value with 2 dimensions"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/844")]
@@ -490,19 +488,7 @@ SELECT onedim, twodim FROM (VALUES
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
-        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("array or List"));
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
-    public async Task Mixed_element_types()
-    {
-        var mixedList = new ArrayList { 1, "yo" };
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
-        cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, mixedList);
-        Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
-            .TypeOf<Exception>()
-            .With.Message.Contains("mix"));
+        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidCastException>().With.Property("InnerException").Message.Contains("array or List"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
@@ -515,17 +501,8 @@ SELECT onedim, twodim FROM (VALUES
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, jagged);
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
-            .TypeOf<Exception>()
-            .With.Message.Contains("jagged"));
-    }
-
-    [Test, Description("Checks that IList<T>s are properly serialized as arrays of their underlying types")]
-    public async Task List_type_resolution()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await AssertIListRoundtrips(conn, new[] { 1, 2, 3 });
-        await AssertIListRoundtrips(conn, new IntList { 1, 2, 3 });
-        await AssertIListRoundtrips(conn, new MisleadingIntList<string>() { 1, 2, 3 });
+            .TypeOf<InvalidCastException>()
+            .With.Property("InnerException").Message.Contains("jagged"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]
@@ -616,17 +593,6 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
         // Unlike T[], List<T> is mutable so we should not return the same instance
         Assert.AreNotSame(reader.GetFieldValue<List<int>>(0), reader.GetFieldValue<List<int>>(1));
-    }
-
-    async Task AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
-    {
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
-        Assert.That(reader[0], Is.EqualTo(value.ToArray()));
     }
 
     class IntList : List<int> { }

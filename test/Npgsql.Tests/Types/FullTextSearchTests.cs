@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Types;
 
@@ -78,15 +77,15 @@ public class FullTextSearchTests : MultiplexingTestBase
         }
         else
         {
-            var exception = await AssertTypeUnsupportedRead<NpgsqlTsQuery, NotSupportedException>("a", "tsquery", dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
-            exception = await AssertTypeUnsupportedWrite<NpgsqlTsQuery, NotSupportedException>(new NpgsqlTsQueryLexeme("a"), pgTypeName: null, dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
+            var exception = await AssertTypeUnsupportedRead<NpgsqlTsQuery>("a", "tsquery", dataSource);
+            Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+            exception = await AssertTypeUnsupportedWrite<NpgsqlTsQuery>(new NpgsqlTsQueryLexeme("a"), pgTypeName: null, dataSource);
+            Assert.AreEqual(errorMessage, exception.InnerException!.Message);
 
-            exception = await AssertTypeUnsupportedRead<NpgsqlTsVector, NotSupportedException>("1", "tsvector", dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
-            exception = await AssertTypeUnsupportedWrite<NpgsqlTsVector, NotSupportedException>(NpgsqlTsVector.Parse("'1'"), pgTypeName: null, dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
+            exception = await AssertTypeUnsupportedRead<NpgsqlTsVector>("1", "tsvector", dataSource);
+            Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+            exception = await AssertTypeUnsupportedWrite<NpgsqlTsVector>(NpgsqlTsVector.Parse("'1'"), pgTypeName: null, dataSource);
+            Assert.AreEqual(errorMessage, exception.InnerException!.Message);
         }
     }
 }

@@ -5,9 +5,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using Npgsql.Internal.TypeMapping;
-using Npgsql.TypeMapping;
+using Npgsql.Internal;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -38,7 +36,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <summary>
     /// Initializes a new instance of the NpgsqlParameterCollection class.
     /// </summary>
-    internal NpgsqlParameterCollection() {}
+    internal NpgsqlParameterCollection() { }
 
     bool LookupEnabled => InternalList.Count >= LookupThreshold;
 
@@ -681,14 +679,15 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         }
     }
 
-    internal void ProcessParameters(TypeMapper typeMapper, bool validateValues, CommandType commandType)
+    internal void ProcessParameters(PgSerializerOptions options, bool validateValues, CommandType commandType)
     {
         HasOutputParameters = false;
         PlaceholderType = PlaceholderType.NoParameters;
 
-        for (var i = 0; i < InternalList.Count; i++)
+        var list = InternalList;
+        for (var i = 0; i < list.Count; i++)
         {
-            var p = InternalList[i];
+            var p = list[i];
 
             switch (PlaceholderType)
             {
@@ -737,12 +736,11 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 break;
             }
 
-            p.Bind(typeMapper);
+            p.ResolveTypeInfo(options);
 
             if (validateValues)
             {
-                p.LengthCache?.Clear();
-                p.ValidateAndGetLength();
+                p.Bind(out _, out _);
             }
         }
     }

@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.Internal;
-using Npgsql.Util;
 
 namespace Npgsql.Tests.Support;
 
@@ -18,8 +17,8 @@ class PgPostmasterMock : IAsyncDisposable
     const int CancelRequestCode = 1234 << 16 | 5678;
     const int SslRequest = 80877103;
 
-    static readonly Encoding Encoding = PGUtil.UTF8Encoding;
-    static readonly Encoding RelaxedEncoding = PGUtil.RelaxedUTF8Encoding;
+    static readonly Encoding Encoding = NpgsqlWriteBuffer.UTF8Encoding;
+    static readonly Encoding RelaxedEncoding = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
 
     readonly Socket _socket;
     readonly List<PgServerMock> _allServers = new();

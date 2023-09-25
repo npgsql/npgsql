@@ -79,6 +79,7 @@ public class TextTests : MultiplexingTestBase
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2.Substring(0, 4)));
 
         // NpgsqlParameter.Size larger than the value size should mean the value size, as well as 0 and -1
+        p.Value = data2;
         p.Size = data2.Length + 10;
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
         p.Size = 0;

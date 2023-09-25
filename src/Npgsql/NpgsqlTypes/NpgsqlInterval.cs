@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Text;
-using Npgsql;
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes;

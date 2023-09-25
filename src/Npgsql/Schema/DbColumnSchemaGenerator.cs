@@ -8,9 +8,10 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandlers.CompositeHandlers;
+using Npgsql.Internal.Postgres;
+using Npgsql.PostgresTypes;
 using Npgsql.Util;
+using NpgsqlTypes;
 
 namespace Npgsql.Schema;
 
@@ -115,18 +116,18 @@ ORDER BY attnum";
                 .Where(f => f.TableOID != 0)  // Only column fields
                 .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
                 .Join(" OR ");
-				
+
             if (columnFieldFilter != string.Empty)
             {
                 var query = oldQueryMode
                     ? GenerateOldColumnsQuery(columnFieldFilter)
                     : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
-	
+
                 using var scope = new TransactionScope(
                     TransactionScopeOption.Suppress,
                     async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
-	
+
                 await connection.Open(async, cancellationToken);
 
                 using var cmd = new NpgsqlCommand(query, connection);
@@ -135,7 +136,7 @@ ORDER BY attnum";
                 {
                     while (async ? await reader.ReadAsync(cancellationToken) : reader.Read())
                     {
-                        var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
+                        var column = LoadColumnDefinition(reader, _connection.Connector!.DatabaseInfo, oldQueryMode);
                         for (var ordinal = 0; ordinal < numFields; ordinal++)
                         {
                             var field = _rowDescription[ordinal];
@@ -253,19 +254,16 @@ ORDER BY attnum";
     /// </summary>
     void ColumnPostConfig(NpgsqlDbColumn column, int typeModifier)
     {
-        var typeMapper = _connection.Connector!.TypeMapper;
+        var serializerOptions = _connection.Connector!.SerializerOptions;
 
-        column.NpgsqlDbType = typeMapper.GetTypeInfoByOid(column.TypeOID).npgsqlDbType;
-        column.DataType = typeMapper.TryResolveByOID(column.TypeOID, out var handler)
-            ? handler.GetFieldType()
-            : null;
-
-        if (column.DataType != null)
+        column.NpgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
+        if (serializerOptions.GetObjectOrDefaultTypeInfo(column.PostgresType) is { } typeInfo)
         {
-            column.IsLong = handler is ByteaHandler;
+            column.DataType = typeInfo.Type;
+            column.IsLong = column.PostgresType.DataTypeName == DataTypeNames.Bytea;
 
-            if (handler is ICompositeHandler)
-                column.UdtAssemblyQualifiedName = column.DataType.AssemblyQualifiedName;
+            if (column.PostgresType is PostgresCompositeType)
+                column.UdtAssemblyQualifiedName = typeInfo.Type.AssemblyQualifiedName;
         }
 
         var facets = column.PostgresType.GetFacets(typeModifier);

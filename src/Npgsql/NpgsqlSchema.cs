@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
@@ -556,106 +557,110 @@ FROM pg_constraint c
         // Npgsql-specific
         table.Columns.Add("OID", typeof(uint));
 
+
         // TODO: Support type name restriction
-
-        foreach (var baseType in connector.DatabaseInfo.BaseTypes.Cast<PostgresType>()
-                     .Concat(connector.DatabaseInfo.EnumTypes)
-                     .Concat(connector.DatabaseInfo.CompositeTypes))
+        try
         {
-            if (!connector.TypeMapper.TryGetMapping(baseType, out var mapping))
-                continue;
+            PgSerializerOptions.IntrospectionCaller = true;
+            foreach (var baseType in connector.DatabaseInfo.BaseTypes.Cast<PostgresType>()
+                         .Concat(connector.DatabaseInfo.EnumTypes)
+                         .Concat(connector.DatabaseInfo.CompositeTypes))
+            {
+                if (connector.SerializerOptions.GetDefaultTypeInfo(baseType) is not { } info)
+                    continue;
 
-            var row = table.Rows.Add();
+                var row = table.Rows.Add();
 
-            PopulateDefaultDataTypeInfo(row, baseType);
-            PopulateHardcodedDataTypeInfo(row, baseType);
+                PopulateDefaultDataTypeInfo(row, baseType);
+                PopulateHardcodedDataTypeInfo(row, baseType);
 
-            if (mapping.ClrTypes.Length > 0)
-                row["DataType"] = mapping.ClrTypes[0].FullName;
-            if (mapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)mapping.NpgsqlDbType.Value;
+                row["DataType"] = info.Type.FullName;
+                if (baseType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
+            {
+                if (connector.SerializerOptions.GetDefaultTypeInfo(arrayType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, arrayType.Element);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, arrayType.Element);
+
+                row["TypeName"] = arrayType.DisplayName;
+                row["OID"] = arrayType.OID;
+                row["CreateFormat"] += "[]";
+                row["DataType"] = info.Type.FullName;
+                if (arrayType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
+            {
+                if (connector.SerializerOptions.GetDefaultTypeInfo(rangeType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, rangeType.Subtype);
+                // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, rangeType.Subtype);
+
+                row["TypeName"] = rangeType.DisplayName;
+                row["OID"] = rangeType.OID;
+                row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
+                row["DataType"] = info.Type.FullName;
+                if (rangeType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
+            {
+                var subtypeType = multirangeType.Subrange.Subtype;
+                if (connector.SerializerOptions.GetDefaultTypeInfo(multirangeType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, subtypeType);
+                // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, subtypeType);
+
+                row["TypeName"] = multirangeType.DisplayName;
+                row["OID"] = multirangeType.OID;
+                row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
+                row["DataType"] = info.Type.FullName;
+                if (multirangeType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var domainType in connector.DatabaseInfo.DomainTypes)
+            {
+                var representationalType = domainType.GetRepresentationalType();
+                if (connector.SerializerOptions.GetDefaultTypeInfo(representationalType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, representationalType);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, representationalType);
+                row["TypeName"] = domainType.DisplayName;
+                row["OID"] = domainType.OID;
+                // A domain is never the best match, since its underlying base type is
+                row["IsBestMatch"] = false;
+
+                row["DataType"] = info.Type.FullName;
+                if (representationalType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
         }
-
-        foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
+        finally
         {
-            if (!connector.TypeMapper.TryGetMapping(arrayType.Element, out var elementMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, arrayType.Element);
-            // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, arrayType.Element);
-
-            row["TypeName"] = arrayType.DisplayName;
-            row["OID"] = arrayType.OID;
-            row["CreateFormat"] += "[]";
-            if (elementMapping.ClrTypes.Length > 0)
-                row["DataType"] = elementMapping.ClrTypes[0].MakeArrayType().FullName;
-            if (elementMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Array);
-        }
-
-        foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
-        {
-            if (!connector.TypeMapper.TryGetMapping(rangeType.Subtype, out var subtypeMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, rangeType.Subtype);
-            // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, rangeType.Subtype);
-
-            row["TypeName"] = rangeType.DisplayName;
-            row["OID"] = rangeType.OID;
-            row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
-            if (subtypeMapping.ClrTypes.Length > 0)
-                row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
-        }
-
-        foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
-        {
-            var subtypeType = multirangeType.Subrange.Subtype;
-            if (!connector.TypeMapper.TryGetMapping(subtypeType, out var subtypeMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, subtypeType);
-            // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, subtypeType);
-
-            row["TypeName"] = multirangeType.DisplayName;
-            row["OID"] = multirangeType.OID;
-            row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
-            if (subtypeMapping.ClrTypes.Length > 0)
-                row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
-        }
-
-        foreach (var domainType in connector.DatabaseInfo.DomainTypes)
-        {
-            if (!connector.TypeMapper.TryGetMapping(domainType, out var baseMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, domainType.BaseType);
-            // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, domainType.BaseType);
-            row["TypeName"] = domainType.DisplayName;
-            row["OID"] = domainType.OID;
-            // A domain is never the best match, since its underlying base type is
-            row["IsBestMatch"] = false;
-
-            if (baseMapping.ClrTypes.Length > 0)
-                row["DataType"] = baseMapping.ClrTypes[0].FullName;
-            if (baseMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)baseMapping.NpgsqlDbType.Value;
+            PgSerializerOptions.IntrospectionCaller = false;
         }
 
         return table;

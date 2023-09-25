@@ -2,7 +2,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -12,15 +11,13 @@ using System.Threading.Tasks;
 using Npgsql.Util;
 using static System.Threading.Timeout;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
 namespace Npgsql.Internal;
 
 /// <summary>
 /// A buffer used by Npgsql to read data from the socket efficiently.
 /// Provides methods which decode different values types and tracks the current position.
 /// </summary>
-public sealed partial class NpgsqlReadBuffer : IDisposable
+sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
 
@@ -74,13 +71,15 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     internal int ReadPosition { get; set; }
     internal int ReadBytesLeft => FilledBytes - ReadPosition;
+    internal PgReader PgReader { get; }
+
+    long _flushedBytes; // this will always fit at least one message.
+    internal long CumulativeReadPosition => unchecked(_flushedBytes + ReadPosition);
 
     internal readonly byte[] Buffer;
     internal int FilledBytes;
 
-    ColumnStream? _columnStream;
-
-    PreparedTextReader? _preparedTextReader;
+    internal ReadOnlySpan<byte> Span => Buffer.AsSpan(ReadPosition, ReadBytesLeft);
 
     readonly bool _usePool;
     bool _disposed;
@@ -120,19 +119,162 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
         TextEncoding = textEncoding;
         RelaxedTextEncoding = relaxedTextEncoding;
+        PgReader = new PgReader(this);
     }
 
     #endregion
 
     #region I/O
 
-    internal void Ensure(int count) => Ensure(count, false).GetAwaiter().GetResult();
-
     public Task Ensure(int count, bool async)
         => Ensure(count, async, readingNotifications: false);
 
     public Task EnsureAsync(int count)
         => Ensure(count, async: true, readingNotifications: false);
+
+    // Can't share due to Span vs Memory difference (can't make a memory out of a span).
+    int ReadWithTimeout(Span<byte> buffer)
+    {
+        while (true)
+        {
+            try
+            {
+                var read = Underlying.Read(buffer);
+                _flushedBytes = unchecked(_flushedBytes + read);
+                NpgsqlEventSource.Log.BytesRead(read);
+                return read;
+            }
+            catch (Exception ex)
+            {
+                var connector = Connector;
+                switch (ex)
+                {
+                // Note that mono throws SocketException with the wrong error (see #1330)
+                case IOException e when (e.InnerException as SocketException)?.SocketErrorCode ==
+                                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                {
+                    var isStreamBroken = false;
+#if NETSTANDARD2_0
+                    // SslStream on .NET Framework treats any IOException (including timeouts) as fatal and may
+                    // return garbage if reused. To prevent this, we flow down and break the connection immediately.
+                    // See #4305.
+                    isStreamBroken = connector.IsSecure && ex is IOException;
+#endif
+
+                    if (!isStreamBroken)
+                    {
+                        // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
+                        // TODO: As an optimization, we can still attempt to send a cancellation request, but after
+                        // that immediately break the connection
+                        if (connector.AttemptPostgresCancellation &&
+                            !connector.PostgresCancellationPerformed &&
+                            connector.PerformPostgresCancellation())
+                        {
+                            // Note that if the cancellation timeout is negative, we flow down and break the
+                            // connection immediately.
+                            var cancellationTimeout = connector.Settings.CancellationTimeout;
+                            if (cancellationTimeout >= 0)
+                            {
+                                if (cancellationTimeout > 0)
+                                    Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+
+                                continue;
+                            }
+                        }
+                    }
+
+                    // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
+                    // Break the connection, bubbling up the correct exception type (cancellation or timeout)
+                    throw connector.Break(CreateCancelException(connector));
+                }
+                default:
+                    throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
+                }
+            }
+        }
+    }
+
+    async ValueTask<int> ReadWithTimeoutAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var finalCt = Timeout != TimeSpan.Zero
+            ? Cts.Start(cancellationToken)
+            : Cts.Reset();
+
+        while (true)
+        {
+            try
+            {
+                var read = await Underlying.ReadAsync(buffer, finalCt).ConfigureAwait(false);
+                _flushedBytes = unchecked(_flushedBytes + read);
+                Cts.Stop();
+                NpgsqlEventSource.Log.BytesRead(read);
+                return read;
+            }
+            catch (Exception ex)
+            {
+                var connector = Connector;
+                Cts.Stop();
+                switch (ex)
+                {
+                // Read timeout
+                case OperationCanceledException:
+                // Note that mono throws SocketException with the wrong error (see #1330)
+                case IOException e when (e.InnerException as SocketException)?.SocketErrorCode ==
+                                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                {
+                    Debug.Assert(ex is OperationCanceledException);
+                    var isStreamBroken = false;
+#if NETSTANDARD2_0
+                    // SslStream on .NET Framework treats any IOException (including timeouts) as fatal and may
+                    // return garbage if reused. To prevent this, we flow down and break the connection immediately.
+                    // See #4305.
+                    isStreamBroken = connector.IsSecure && ex is IOException;
+#endif
+
+                    if (!isStreamBroken)
+                    {
+                        // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
+                        // TODO: As an optimization, we can still attempt to send a cancellation request, but after
+                        // that immediately break the connection
+                        if (connector.AttemptPostgresCancellation &&
+                            !connector.PostgresCancellationPerformed &&
+                            connector.PerformPostgresCancellation())
+                        {
+                            // Note that if the cancellation timeout is negative, we flow down and break the
+                            // connection immediately.
+                            var cancellationTimeout = connector.Settings.CancellationTimeout;
+                            if (cancellationTimeout >= 0)
+                            {
+                                if (cancellationTimeout > 0)
+                                    Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+
+                                finalCt = Cts.Start(cancellationToken);
+                                continue;
+                            }
+                        }
+                    }
+
+                    // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
+                    // Break the connection, bubbling up the correct exception type (cancellation or timeout)
+                    throw connector.Break(CreateCancelException(connector));
+                }
+                default:
+                    throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
+                }
+            }
+        }
+    }
+
+    static Exception CreateCancelException(NpgsqlConnector connector)
+        => !connector.UserCancellationRequested
+            ? NpgsqlTimeoutException()
+            : connector.PostgresCancellationPerformed
+                ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
+                : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken);
+
+    static Exception NpgsqlTimeoutException() => new NpgsqlException("Exception while reading from stream", TimeoutException());
+
+    static Exception TimeoutException() => new TimeoutException("Timeout during reading attempt");
 
     /// <summary>
     /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
@@ -154,12 +296,13 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
             if (buffer.ReadPosition == buffer.FilledBytes)
             {
-                buffer.Clear();
+                buffer.ResetPosition();
             }
             else if (count > buffer.Size - buffer.FilledBytes)
             {
                 Array.Copy(buffer.Buffer, buffer.ReadPosition, buffer.Buffer, 0, buffer.ReadBytesLeft);
                 buffer.FilledBytes = buffer.ReadBytesLeft;
+                buffer._flushedBytes = unchecked(buffer._flushedBytes + buffer.ReadPosition);
                 buffer.ReadPosition = 0;
             }
 
@@ -174,7 +317,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                 {
                     var toRead = buffer.Size - buffer.FilledBytes;
                     var read = async
-                        ? await buffer.Underlying.ReadAsync(buffer.Buffer.AsMemory(buffer.FilledBytes, toRead), finalCt)
+                        ? await buffer.Underlying.ReadAsync(buffer.Buffer.AsMemory(buffer.FilledBytes, toRead), finalCt).ConfigureAwait(false)
                         : buffer.Underlying.Read(buffer.Buffer, buffer.FilledBytes, toRead);
 
                     if (read == 0)
@@ -287,23 +430,23 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
         if (_underlyingSocket != null)
             tempBuf.Timeout = Timeout;
         CopyTo(tempBuf);
-        Clear();
+        ResetPosition();
         return tempBuf;
     }
 
     /// <summary>
     /// Does not perform any I/O - assuming that the bytes to be skipped are in the memory buffer.
     /// </summary>
-    internal void Skip(long len)
+    internal void Skip(int len)
     {
         Debug.Assert(ReadBytesLeft >= len);
-        ReadPosition += (int)len;
+        ReadPosition += len;
     }
 
     /// <summary>
     /// Skip a given number of bytes.
     /// </summary>
-    public async Task Skip(long len, bool async)
+    public async Task Skip(int len, bool async)
     {
         Debug.Assert(len >= 0);
 
@@ -312,15 +455,15 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
             len -= ReadBytesLeft;
             while (len > Size)
             {
-                Clear();
-                await Ensure(Size, async);
+                ResetPosition();
+                await Ensure(Size, async).ConfigureAwait(false);
                 len -= Size;
             }
-            Clear();
-            await Ensure((int)len, async);
+            ResetPosition();
+            await Ensure(len, async).ConfigureAwait(false);
         }
 
-        ReadPosition += (int)len;
+        ReadPosition += len;
     }
 
     #endregion
@@ -428,31 +571,18 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    T Read<T>()
+    unsafe T Read<T>() where T : unmanaged
     {
-        if (Unsafe.SizeOf<T>() > ReadBytesLeft)
-            ThrowNotSpaceLeft();
-
+        Debug.Assert(sizeof(T) <= ReadBytesLeft, "There is not enough space left in the buffer.");
         var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
-        ReadPosition += Unsafe.SizeOf<T>();
+        ReadPosition += sizeof(T);
         return result;
     }
-
-    static void ThrowNotSpaceLeft()
-        => ThrowHelper.ThrowInvalidOperationException("There is not enough space left in the buffer.");
 
     public string ReadString(int byteLen)
     {
         Debug.Assert(byteLen <= ReadBytesLeft);
         var result = TextEncoding.GetString(Buffer, ReadPosition, byteLen);
-        ReadPosition += byteLen;
-        return result;
-    }
-
-    public char[] ReadChars(int byteLen)
-    {
-        Debug.Assert(byteLen <= ReadBytesLeft);
-        var result = TextEncoding.GetChars(Buffer, ReadPosition, byteLen);
         ReadPosition += byteLen;
         return result;
     }
@@ -467,14 +597,6 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     public void ReadBytes(byte[] output, int outputOffset, int len)
         => ReadBytes(new Span<byte>(output, outputOffset, len));
 
-    public ReadOnlySpan<byte> ReadSpan(int len)
-    {
-        Debug.Assert(len <= ReadBytesLeft);
-        var span = new ReadOnlySpan<byte>(Buffer, ReadPosition, len);
-        ReadPosition += len;
-        return span;
-    }
-
     public ReadOnlyMemory<byte> ReadMemory(int len)
     {
         Debug.Assert(len <= ReadBytesLeft);
@@ -487,26 +609,31 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region Read Complex
 
-    public int Read(Span<byte> output)
+    public int Read(bool commandScoped, Span<byte> output)
     {
         var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
         if (readFromBuffer > 0)
         {
-            new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output);
+            Buffer.AsSpan(ReadPosition, readFromBuffer).CopyTo(output);
             ReadPosition += readFromBuffer;
             return readFromBuffer;
         }
 
-        if (output.Length == 0)
-            return 0;
+        // Only reset if we'll be able to read data, this is to support zero-byte reads.
+        if (output.Length > 0)
+        {
+            Debug.Assert(ReadBytesLeft == 0);
+            ResetPosition();
+        }
 
-        Debug.Assert(ReadBytesLeft == 0);
-        Clear();
+        if (commandScoped)
+            return ReadWithTimeout(output);
+
         try
         {
             var read = Underlying.Read(output);
-            if (read == 0)
-                throw new EndOfStreamException();
+            _flushedBytes = unchecked(_flushedBytes + read);
+            NpgsqlEventSource.Log.BytesRead(read);
             return read;
         }
         catch (Exception e)
@@ -515,30 +642,35 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
         }
     }
 
-    public ValueTask<int> ReadAsync(Memory<byte> output, CancellationToken cancellationToken = default)
+    public ValueTask<int> ReadAsync(bool commandScoped, Memory<byte> output, CancellationToken cancellationToken = default)
     {
         var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
         if (readFromBuffer > 0)
         {
-            new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output.Span);
+            Buffer.AsSpan(ReadPosition, readFromBuffer).CopyTo(output.Span);
             ReadPosition += readFromBuffer;
             return new ValueTask<int>(readFromBuffer);
         }
 
-        if (output.Length == 0)
-            return new ValueTask<int>(0);
+        return ReadAsyncLong(this, commandScoped, output, cancellationToken);
 
-        return ReadAsyncLong(this, output, cancellationToken);
-
-        static async ValueTask<int> ReadAsyncLong(NpgsqlReadBuffer buffer, Memory<byte> output, CancellationToken cancellationToken)
+        static async ValueTask<int> ReadAsyncLong(NpgsqlReadBuffer buffer, bool commandScoped, Memory<byte> output, CancellationToken cancellationToken)
         {
-            Debug.Assert(buffer.ReadBytesLeft == 0);
-            buffer.Clear();
+            // Only reset if we'll be able to read data, this is to support zero-byte reads.
+            if (output.Length > 0)
+            {
+                Debug.Assert(buffer.ReadBytesLeft == 0);
+                buffer.ResetPosition();
+            }
+
+            if (commandScoped)
+                return await buffer.ReadWithTimeoutAsync(output, cancellationToken).ConfigureAwait(false);
+
             try
             {
-                var read = await buffer.Underlying.ReadAsync(output, cancellationToken);
-                if (read == 0)
-                    throw new EndOfStreamException();
+                var read = await buffer.Underlying.ReadAsync(output, cancellationToken).ConfigureAwait(false);
+                buffer._flushedBytes = unchecked(buffer._flushedBytes + read);
+                NpgsqlEventSource.Log.BytesRead(read);
                 return read;
             }
             catch (Exception e)
@@ -548,22 +680,13 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
         }
     }
 
-    public Stream GetStream(int len, bool canSeek)
+    ColumnStream? _lastStream;
+    public ColumnStream CreateStream(int len, bool canSeek)
     {
-        if (_columnStream == null)
-            _columnStream = new ColumnStream(Connector);
-
-        _columnStream.Init(len, canSeek);
-        return _columnStream;
-    }
-
-    public TextReader GetPreparedTextReader(string str, Stream stream)
-    {
-        if (_preparedTextReader is not { IsDisposed: true })
-            _preparedTextReader = new PreparedTextReader();
-
-        _preparedTextReader.Init(str, (ColumnStream)stream);
-        return _preparedTextReader;
+        if (_lastStream is not { IsDisposed: true })
+            _lastStream = new ColumnStream(Connector);
+        _lastStream.Init(len, canSeek, !Connector.LongRunningConnection);
+        return _lastStream;
     }
 
     /// <summary>
@@ -588,9 +711,9 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     /// Seeks the first null terminator (\0) and returns the string up to it. Reads additional data from the network if a null
     /// terminator isn't found in the buffered data.
     /// </summary>
-    ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
+    public ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
     {
-        var index = Buffer.AsSpan(ReadPosition, FilledBytes - ReadPosition).IndexOf((byte)0);
+        var index = Span.IndexOf((byte)0);
         if (index >= 0)
         {
             var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, index));
@@ -614,7 +737,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
                 do
                 {
-                    await ReadMore(async);
+                    await ReadMore(async).ConfigureAwait(false);
                     Debug.Assert(ReadPosition == 0);
 
                     foundTerminator = false;
@@ -655,7 +778,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     public ReadOnlySpan<byte> GetNullTerminatedBytes()
     {
-        var i = Buffer.AsSpan(ReadPosition).IndexOf((byte)0);
+        var i = Span.IndexOf((byte)0);
         Debug.Assert(i >= 0);
         var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i);
         ReadPosition += i + 1;
@@ -682,11 +805,14 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region Misc
 
-    internal void Clear()
+    void ResetPosition()
     {
+        _flushedBytes = unchecked(_flushedBytes + FilledBytes);
         ReadPosition = 0;
         FilledBytes = 0;
     }
+
+    internal void ResetFlushedBytes() => _flushedBytes = 0;
 
     internal void CopyTo(NpgsqlReadBuffer other)
     {

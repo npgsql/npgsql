@@ -11,6 +11,8 @@ namespace Npgsql.NameTranslation;
 /// </summary>
 public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
 {
+    internal static NpgsqlSnakeCaseNameTranslator Instance { get; } = new();
+
     readonly CultureInfo _culture;
 
     /// <summary>

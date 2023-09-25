@@ -4,8 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Util;
-// ReSharper disable VariableHidesOuterVariable
 
 namespace Npgsql.Internal;
 
@@ -141,7 +139,7 @@ partial class NpgsqlConnector
             if (WriteBuffer.WriteSpaceLeft < 4)
                 await Flush(async, cancellationToken).ConfigureAwait(false);
 
-            WriteBuffer.WriteInt32((int)p.Handler!.PostgresType.OID);
+            WriteBuffer.WriteUInt32(DatabaseInfo.GetOid(p.PgTypeId).Value);
         }
     }
 
@@ -175,9 +173,9 @@ partial class NpgsqlConnector
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            formatCodesSum += (int)param.FormatCode;
-            param.LengthCache?.Rewind();
-            paramsLength += param.ValidateAndGetLength();
+            param.Bind(out var format, out var size);
+            paramsLength += size.Value > 0 ? size.Value : 0;
+            formatCodesSum += format.ToFormatCode();
         }
 
         var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == parameters.Count ? 1 : parameters.Count;
@@ -201,30 +199,38 @@ partial class NpgsqlConnector
         // 0 length implicitly means all-text, 1 means all-binary, >1 means mix-and-match
         if (formatCodeListLength == 1)
         {
-            if (WriteBuffer.WriteSpaceLeft < 2)
+            if (WriteBuffer.WriteSpaceLeft < sizeof(short))
                 await Flush(async, cancellationToken).ConfigureAwait(false);
-            WriteBuffer.WriteInt16((short)FormatCode.Binary);
+            WriteBuffer.WriteInt16(DataFormat.Binary.ToFormatCode());
         }
         else if (formatCodeListLength > 1)
         {
             for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
             {
-                if (WriteBuffer.WriteSpaceLeft < 2)
+                if (WriteBuffer.WriteSpaceLeft < sizeof(short))
                     await Flush(async, cancellationToken).ConfigureAwait(false);
-                WriteBuffer.WriteInt16((short)parameters[paramIndex].FormatCode);
+                WriteBuffer.WriteInt16(parameters[paramIndex].Format.ToFormatCode());
             }
         }
 
-        if (WriteBuffer.WriteSpaceLeft < 2)
+        if (WriteBuffer.WriteSpaceLeft < sizeof(ushort))
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
         WriteBuffer.WriteUInt16((ushort)parameters.Count);
 
-        for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
+        var writer = WriteBuffer.GetWriter(DatabaseInfo, async ? FlushMode.NonBlocking : FlushMode.Blocking);
+        try
         {
-            var param = parameters[paramIndex];
-            param.LengthCache?.Rewind();
-            await param.WriteWithLength(WriteBuffer, async, cancellationToken).ConfigureAwait(false);
+            for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
+            {
+                var param = parameters[paramIndex];
+                await param.Write(async, writer, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch(Exception ex)
+        {
+            Break(ex);
+            throw;
         }
 
         if (unknownResultTypeList != null)
@@ -375,8 +381,8 @@ partial class NpgsqlConnector
                   sizeof(byte);  // Trailing zero byte
 
         foreach (var kvp in parameters)
-            len += PGUtil.UTF8Encoding.GetByteCount(kvp.Key) + 1 +
-                   PGUtil.UTF8Encoding.GetByteCount(kvp.Value) + 1;
+            len += NpgsqlWriteBuffer.UTF8Encoding.GetByteCount(kvp.Key) + 1 +
+                   NpgsqlWriteBuffer.UTF8Encoding.GetByteCount(kvp.Value) + 1;
 
         // Should really never happen, just in case
         if (len > WriteBuffer.Size)
@@ -422,7 +428,7 @@ partial class NpgsqlConnector
     {
         var len = sizeof(byte)                                               +  // Message code
                   sizeof(int)                                                +  // Length
-                  PGUtil.UTF8Encoding.GetByteCount(mechanism) + sizeof(byte) +  // Mechanism plus null terminator
+                  NpgsqlWriteBuffer.UTF8Encoding.GetByteCount(mechanism) + sizeof(byte) +  // Mechanism plus null terminator
                   sizeof(int)                                                +  // Initial response length
                   (initialResponse?.Length ?? 0);                               // Initial response payload
 

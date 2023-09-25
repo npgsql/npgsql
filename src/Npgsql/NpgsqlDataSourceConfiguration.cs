@@ -5,8 +5,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
 
 namespace Npgsql;
 
@@ -19,8 +17,7 @@ sealed record NpgsqlDataSourceConfiguration(
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,
     TimeSpan PeriodicPasswordSuccessRefreshInterval,
     TimeSpan PeriodicPasswordFailureRefreshInterval,
-    List<TypeHandlerResolverFactory> ResolverFactories,
-    Dictionary<string, IUserTypeMapping> UserTypeMappings,
+    IEnumerable<IPgTypeInfoResolver> ResolverChain,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
     Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);

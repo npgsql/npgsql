@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;

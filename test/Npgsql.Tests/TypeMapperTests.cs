@@ -1,87 +1,15 @@
 ﻿using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
-using Npgsql.Internal.TypeMapping;
+using Npgsql.Internal.Converters;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
 public class TypeMapperTests : TestBase
 {
-#pragma warning disable CS0618 // GlobalTypeMapper is obsolete
-    [Test, NonParallelizable]
-    public async Task Global_mapping()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>(type);
-
-        try
-        {
-            await using var dataSource1 = CreateDataSource();
-
-            await using (var connection = await dataSource1.OpenConnectionAsync())
-            {
-                await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-                await connection.ReloadTypesAsync();
-
-                await AssertType(connection, Mood.Happy, "happy", type, npgsqlDbType: null);
-            }
-
-            NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>(type);
-
-            // Global mapping changes have no effect on already-built data sources
-            await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
-
-            // But they do affect on new data sources
-            await using var dataSource2 = CreateDataSource();
-            Assert.ThrowsAsync<NotSupportedException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
-        }
-        finally
-        {
-            NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>(type);
-        }
-    }
-
-    [Test, NonParallelizable]
-    public async Task Global_mapping_reset()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>(type);
-
-        try
-        {
-            await using var dataSource1 = CreateDataSource();
-
-            await using (var connection = await dataSource1.OpenConnectionAsync())
-            {
-                await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-                await connection.ReloadTypesAsync();
-            }
-
-            // A global mapping change has no effects on data sources which have already been built
-            NpgsqlConnection.GlobalTypeMapper.Reset();
-
-            // Global mapping changes have no effect on already-built data sources
-            await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
-
-            // But they do affect on new data sources
-            await using var dataSource2 = CreateDataSource();
-            Assert.ThrowsAsync<NotSupportedException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
-        }
-        finally
-        {
-            NpgsqlConnection.GlobalTypeMapper.Reset();
-        }
-    }
-#pragma warning restore CS0618 // GlobalTypeMapper is obsolete
-
     [Test]
     public async Task ReloadTypes_across_connections_in_data_source()
     {
@@ -91,7 +19,7 @@ public class TypeMapperTests : TestBase
         // via the data source.
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<Mood>();
+        dataSourceBuilder.MapEnum<Mood>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection1 = await dataSource.OpenConnectionAsync();
         await using var connection2 = await dataSource.OpenConnectionAsync();
@@ -101,8 +29,8 @@ public class TypeMapperTests : TestBase
 
         // The data source type mapper has been replaced and connection1 should have the new mapper, but connection2 should retain the older
         // type mapper - where there's no mapping - as long as it's still open
+        Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
         Assert.DoesNotThrowAsync(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
-        Assert.ThrowsAsync<NotSupportedException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
 
         // Close connection2 and reopen to make sure it picks up the new type and mapping from the data source
         var connId = connection2.ProcessID;
@@ -121,7 +49,7 @@ public class TypeMapperTests : TestBase
         await EnsureExtensionAsync(adminConnection, "citext");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.AddTypeResolverFactory(new CitextToStringTypeHandlerResolverFactory());
+        dataSourceBuilder.AddTypeInfoResolver(new CitextToStringTypeHandlerResolverFactory());
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -162,25 +90,15 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
 
     #region Support
 
-    class CitextToStringTypeHandlerResolverFactory : TypeHandlerResolverFactory
+    class CitextToStringTypeHandlerResolverFactory : IPgTypeInfoResolver
     {
-        public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
-            => new CitextToStringTypeHandlerResolver(connector);
-
-        class CitextToStringTypeHandlerResolver : TypeHandlerResolver
+        public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
-            readonly NpgsqlConnector _connector;
-            readonly PostgresType _pgCitextType;
+            if (type == typeof(string) || dataTypeName?.UnqualifiedName == "citext")
+                if (options.DatabaseInfo.TryGetPostgresTypeByName("citext", out var pgType))
+                    return new(options, new StringTextConverter(options.TextEncoding), options.ToCanonicalTypeId(pgType));
 
-            public CitextToStringTypeHandlerResolver(NpgsqlConnector connector)
-            {
-                _connector = connector;
-                _pgCitextType = connector.DatabaseInfo.GetPostgresTypeByName("citext");
-            }
-
-            public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-                => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
-            public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
+            return null;
         }
     }
 

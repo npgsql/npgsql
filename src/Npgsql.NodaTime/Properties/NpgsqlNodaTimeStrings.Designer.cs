@@ -50,5 +50,11 @@ namespace Npgsql.NodaTime.Properties {
                 return ResourceManager.GetString("CannotReadInfinityValue", resourceCulture);
             }
         }
+        
+        internal static string CannotReadIntervalWithMonthsAsDuration {
+            get {
+                return ResourceManager.GetString("CannotReadIntervalWithMonthsAsDuration", resourceCulture);
+            }
+        }
     }
 }

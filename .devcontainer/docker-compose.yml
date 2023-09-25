@@ -3,7 +3,7 @@ version: '3'
 services:
   npgsql-dev:
     # Source for tags: https://mcr.microsoft.com/v2/dotnet/sdk/tags/list
-    image: mcr.microsoft.com/dotnet/sdk:8.0.100-preview.6
+    image: mcr.microsoft.com/dotnet/sdk:8.0.100-preview.7
     volumes:
       - ..:/workspace:cached
     tty: true

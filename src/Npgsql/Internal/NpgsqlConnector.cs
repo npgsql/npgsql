@@ -18,12 +18,10 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
-using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
 
 namespace Npgsql.Internal;
@@ -115,12 +113,12 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     internal int Id => BackendProcessId;
 
+    internal PgSerializerOptions SerializerOptions { get; set; } = default!;
+
     /// <summary>
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
     /// </summary>
     public NpgsqlDatabaseInfo DatabaseInfo { get; internal set; } = default!;
-
-    internal TypeMapper TypeMapper { get; set; } = default!;
 
     /// <summary>
     /// The current transaction status for this connector.
@@ -181,6 +179,9 @@ public sealed partial class NpgsqlConnector
     /// If this connector was broken, this contains the exception that caused the break.
     /// </summary>
     volatile Exception? _breakReason;
+
+    // Used by replication to change our cancellation behaviour on ColumnStreams.
+    internal bool LongRunningConnection { get; set; }
 
     /// <summary>
     /// <para>
@@ -319,7 +320,7 @@ public sealed partial class NpgsqlConnector
     readonly ReadyForQueryMessage        _readyForQueryMessage        = new();
     readonly ParameterDescriptionMessage _parameterDescriptionMessage = new();
     readonly DataRowMessage              _dataRowMessage              = new();
-    readonly RowDescriptionMessage       _rowDescriptionMessage       = new();
+    readonly RowDescriptionMessage       _rowDescriptionMessage       = new(connectorOwned: true);
 
     // Since COPY is rarely used, allocate these lazily
     CopyInResponseMessage?  _copyInResponseMessage;
@@ -500,9 +501,9 @@ public sealed partial class NpgsqlConnector
 
             await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken);
 
-            Debug.Assert(DataSource.TypeMapper is not null);
+            Debug.Assert(DataSource.SerializerOptions is not null);
             Debug.Assert(DataSource.DatabaseInfo is not null);
-            TypeMapper = DataSource.TypeMapper;
+            SerializerOptions = DataSource.SerializerOptions;
             DatabaseInfo = DataSource.DatabaseInfo;
 
             if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
@@ -770,8 +771,8 @@ public sealed partial class NpgsqlConnector
 
             if (Settings.Encoding == "UTF8")
             {
-                TextEncoding = PGUtil.UTF8Encoding;
-                RelaxedTextEncoding = PGUtil.RelaxedUTF8Encoding;
+                TextEncoding = NpgsqlWriteBuffer.UTF8Encoding;
+                RelaxedTextEncoding = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
             }
             else
             {
@@ -1242,7 +1243,7 @@ public sealed partial class NpgsqlConnector
 
                     // TODO: the exception we have here is sometimes just the result of the write loop breaking
                     // the connector, so it doesn't represent the actual root cause.
-                    pendingCommand.ExecutionCompletion.SetException(_breakReason!);
+                    pendingCommand.ExecutionCompletion.SetException(new NpgsqlException("A previous command on this connection caused an error requiring all pending commands on this connection to be aborted", _breakReason!));
                 }
             }
             catch (ChannelClosedException)
@@ -1303,7 +1304,7 @@ public sealed partial class NpgsqlConnector
             return ReadMessageLong(async, dataRowLoadingMode, readingNotifications: false)!;
         }
 
-        PGUtil.ValidateBackendMessageCode(messageCode);
+        ValidateBackendMessageCode(messageCode);
         var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
         if (len > ReadBuffer.ReadBytesLeft)
         {
@@ -1337,7 +1338,8 @@ public sealed partial class NpgsqlConnector
             {
                 // Prepended queries should never fail.
                 // If they do, we're not even going to attempt to salvage the connector.
-                throw Break(e);
+                Break(e);
+                throw;
             }
         }
 
@@ -1351,7 +1353,7 @@ public sealed partial class NpgsqlConnector
             {
                 await ReadBuffer.Ensure(5, async, readingNotifications);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                PGUtil.ValidateBackendMessageCode(messageCode);
+                ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
 
                 if ((messageCode == BackendMessageCode.DataRow &&
@@ -1432,6 +1434,12 @@ public sealed partial class NpgsqlConnector
                 }
 
                 Debug.Assert(msg != null, "Message is null for code: " + messageCode);
+
+                // Reset flushed bytes after any RFQ or in between potentially long running operations.
+                // Just in case we'll hit that 15 exbibyte limit of a signed long...
+                if (messageCode is BackendMessageCode.ReadyForQuery or BackendMessageCode.CopyData or BackendMessageCode.NotificationResponse)
+                    ReadBuffer.ResetFlushedBytes();
+
                 return msg;
             }
         }
@@ -1464,7 +1472,7 @@ public sealed partial class NpgsqlConnector
         switch (code)
         {
         case BackendMessageCode.RowDescription:
-            return _rowDescriptionMessage.Load(buf, TypeMapper);
+            return _rowDescriptionMessage.Load(buf, SerializerOptions);
         case BackendMessageCode.DataRow:
             return _dataRowMessage.Load(len);
         case BackendMessageCode.CommandComplete:
@@ -1891,15 +1899,44 @@ public sealed partial class NpgsqlConnector
     /// PostgreSQL cancellation will be skipped and client-socket cancellation will occur immediately.
     /// </param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal CancellationTokenRegistration StartNestedCancellableOperation(
+    internal NestedCancellableScope StartNestedCancellableOperation(
         CancellationToken cancellationToken = default,
         bool attemptPgCancellation = true)
     {
+        var currentUserCancellationToken = UserCancellationToken;
         UserCancellationToken = cancellationToken;
+        var currentAttemptPostgresCancellation = AttemptPostgresCancellation;
         AttemptPostgresCancellation = attemptPgCancellation;
 
-        return _cancellationTokenRegistration =
-            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+        var registration = cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+
+        return new(this, registration, currentUserCancellationToken, currentAttemptPostgresCancellation);
+    }
+
+    internal readonly struct NestedCancellableScope : IDisposable
+    {
+        readonly NpgsqlConnector _connector;
+        readonly CancellationTokenRegistration _registration;
+        readonly CancellationToken _previousCancellationToken;
+        readonly bool _previousAttemptPostgresCancellation;
+
+        public NestedCancellableScope(NpgsqlConnector connector, CancellationTokenRegistration registration, CancellationToken previousCancellationToken, bool previousAttemptPostgresCancellation)
+        {
+            _connector = connector;
+            _registration = registration;
+            _previousCancellationToken = previousCancellationToken;
+            _previousAttemptPostgresCancellation = previousAttemptPostgresCancellation;
+        }
+
+        public void Dispose()
+        {
+            if (_connector is null)
+                return;
+
+            _connector.UserCancellationToken = _previousCancellationToken;
+            _connector.AttemptPostgresCancellation = _previousAttemptPostgresCancellation;
+            _registration.Dispose();
+        }
     }
 
     #endregion Cancel
@@ -2318,6 +2355,7 @@ public sealed partial class NpgsqlConnector
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void ResetReadBuffer()
     {
+        LongRunningConnection = false;
         if (_origReadBuffer != null)
         {
             Debug.Assert(_origReadBuffer.ReadBytesLeft == 0);
@@ -2615,7 +2653,8 @@ public sealed partial class NpgsqlConnector
                 {
                     // We're somewhere in the middle of a reading keepalive messages
                     // Breaking the connection, as we've lost protocol sync
-                    throw Break(e);
+                    Break(e);
+                    throw;
                 }
 
                 if (msg == null)

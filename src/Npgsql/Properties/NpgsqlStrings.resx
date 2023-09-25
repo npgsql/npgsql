@@ -69,4 +69,25 @@
     <data name="FullTextSearchNotEnabled" xml:space="preserve">
         <value>Full-text search isn't enabled; please call {0} on {1} to enable full-text search.</value>
     </data>
+    <data name="LTreeNotEnabled" xml:space="preserve">
+        <value>Ltree isn't enabled; please call {0} on {1} to enable LTree.</value>
+    </data>
+    <data name="RangesNotEnabled" xml:space="preserve">
+        <value>Ranges aren't enabled; please call {0} on {1} to enable ranges.</value>
+    </data>
+    <data name="RangeArraysNotEnabled" xml:space="preserve">
+        <value>Range arrays aren't enabled; please call {0} on {1} to enable arrays for ranges.</value>
+    </data>
+    <data name="MultirangesNotEnabled" xml:space="preserve">
+        <value>Multiranges aren't enabled; please call {0} on {1} to enable multiranges.</value>
+    </data>
+    <data name="MultirangeArraysNotEnabled" xml:space="preserve">
+        <value>Multirange arrays aren't enabled; please call {0} on {1} to enable arrays for multiranges.</value>
+    </data>
+    <data name="TimestampTzNoDateTimeUnspecified" xml:space="preserve">
+        <value>Cannot write DateTime with Kind={0} to PostgreSQL type '{1}', only UTC is supported. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
+    </data>
+    <data name="TimestampNoDateTimeUtc" xml:space="preserve">
+        <value>Cannot write DateTime with Kind=UTC to PostgreSQL type '{0}', consider using '{1}'. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
+    </data>
 </root>

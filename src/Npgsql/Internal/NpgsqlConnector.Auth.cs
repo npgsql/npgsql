@@ -121,7 +121,7 @@ partial class NpgsqlConnector
         // Assumption: the write buffer is big enough to contain all our outgoing messages
         var clientNonce = GetNonce();
 
-        await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken);
+        await WriteSASLInitialResponse(mechanism, NpgsqlWriteBuffer.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken);
         await Flush(async, cancellationToken);
 
         var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
@@ -280,8 +280,8 @@ partial class NpgsqlConnector
         using (var md5 = MD5.Create())
         {
             // First phase
-            var passwordBytes = PGUtil.UTF8Encoding.GetBytes(passwd);
-            var usernameBytes = PGUtil.UTF8Encoding.GetBytes(username);
+            var passwordBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(passwd);
+            var usernameBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(username);
             var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
             passwordBytes.CopyTo(cryptBuf, 0);
             usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
@@ -293,7 +293,7 @@ partial class NpgsqlConnector
 
             var prehash = sb.ToString();
 
-            var prehashbytes = PGUtil.UTF8Encoding.GetBytes(prehash);
+            var prehashbytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(prehash);
             cryptBuf = new byte[prehashbytes.Length + 4];
 
             Array.Copy(salt, 0, cryptBuf, prehashbytes.Length, 4);

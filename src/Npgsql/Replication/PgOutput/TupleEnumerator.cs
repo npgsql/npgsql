@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.Replication.PgOutput;
 
@@ -64,11 +63,7 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
                 break;
             case TupleDataKind.TextValue:
             case TupleDataKind.BinaryValue:
-                if (_readBuffer.ReadBytesLeft < 4)
-                {
-                    using var tokenRegistration = _readBuffer.Connector.StartNestedCancellableOperation(_cancellationToken);
-                    await _readBuffer.Ensure(4, async: true);
-                }
+                await _readBuffer.Ensure(4, async: true);
                 len = _readBuffer.ReadInt32();
                 break;
             default:

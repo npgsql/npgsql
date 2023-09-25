@@ -33,7 +33,6 @@ namespace Npgsql.Tests.Replication;
 // [TestFixture(ProtocolVersion.V3, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
 // [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 // [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
-[Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
 [NonParallelizable] // These tests aren't designed to be parallelizable
 public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {

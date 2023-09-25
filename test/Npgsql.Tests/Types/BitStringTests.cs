@@ -51,7 +51,7 @@ public class BitStringTests : MultiplexingTestBase
 
     [Test]
     public Task BitVector32_too_long()
-        => AssertTypeUnsupportedRead<BitVector32>(new string('0', 34), "bit varying");
+        => AssertTypeUnsupportedRead<BitVector32, InvalidCastException>(new string('0', 34), "bit varying");
 
     [Test]
     public Task Bool()
@@ -60,8 +60,8 @@ public class BitStringTests : MultiplexingTestBase
     [Test]
     public async Task Bitstring_with_multiple_bits_as_bool_throws()
     {
-        await AssertTypeUnsupportedRead<bool>("01", "varbit");
-        await AssertTypeUnsupportedRead<bool>("01", "bit(2)");
+        await AssertTypeUnsupportedRead<bool, InvalidCastException>("01", "varbit");
+        await AssertTypeUnsupportedRead<bool, InvalidCastException>("01", "bit(2)");
     }
 
     [Test]
@@ -117,16 +117,12 @@ public class BitStringTests : MultiplexingTestBase
     }
 
     [Test]
-    public Task Write_as_string()
-        => AssertTypeWrite("010101", "010101", "bit varying", NpgsqlDbType.Varbit, isDefault: false);
+    public Task As_string()
+        => AssertType("010101", "010101", "bit varying", NpgsqlDbType.Varbit, isDefault: false);
 
     [Test]
     public Task Write_as_string_validation()
-        => AssertTypeUnsupportedWrite<string, FormatException>("001q0", "bit varying");
-
-    [Test]
-    public Task Read_as_string_is_not_supported()
-        => AssertTypeUnsupportedRead<string, NotSupportedException>("010101", "bit varying");
+        => AssertTypeUnsupportedWrite<string, ArgumentException>("001q0", "bit varying");
 
     public BitStringTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

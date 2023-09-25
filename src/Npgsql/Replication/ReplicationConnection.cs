@@ -11,7 +11,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using static Npgsql.Util.Statics;
 using Npgsql.Util;
 
@@ -242,6 +241,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         SetTimeouts(CommandTimeout, CommandTimeout);
 
+        _npgsqlConnection.Connector!.LongRunningConnection = true;
+
         ReplicationLogger = _npgsqlConnection.Connector!.LoggingConfiguration.ReplicationLogger;
     }
 
@@ -449,7 +450,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         _replicationCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        using var _ = Connector.StartUserAction(
+        using var _ = connector.StartUserAction(
             ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
 
         NpgsqlReadBuffer.ColumnStream? columnStream = null;
@@ -474,8 +475,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             var buf = connector.ReadBuffer;
 
-            // Cancellation is handled at the replication level - we don't want every ReadAsync
-            columnStream = new NpgsqlReadBuffer.ColumnStream(connector, startCancellableOperations: false);
+            columnStream = new NpgsqlReadBuffer.ColumnStream(connector);
 
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
 
@@ -484,7 +484,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             while (true)
             {
-                msg = await Connector.ReadMessage(async: true);
+                msg = await connector.ReadMessage(async: true);
                 Expect<CopyDataMessage>(msg, Connector);
 
                 // We received some message so there's no need to forcibly request feedback
@@ -501,7 +501,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     await buf.EnsureAsync(24);
                     var startLsn = buf.ReadUInt64();
                     var endLsn = buf.ReadUInt64();
-                    var sendTime = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
+                    var sendTime = PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
 
                     if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
                         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
@@ -510,7 +510,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
                     // dataLen = msg.Length - (code = 1 + walStart = 8 + walEnd = 8 + serverClock = 8)
                     var dataLen = messageLength - 25;
-                    columnStream.Init(dataLen, canSeek: false);
+                    columnStream.Init(dataLen, canSeek: false, commandScoped: false);
 
                     _cachedXLogDataMessage.Populate(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn),
                         sendTime, columnStream);
@@ -519,7 +519,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     // Our consumer may not have read the stream to the end, but it might as well have been us
                     // ourselves bypassing the stream and reading directly from the buffer in StartReplication()
                     if (!columnStream.IsDisposed && columnStream.Position < columnStream.Length && !bypassingStream)
-                        await buf.Skip(columnStream.Length - columnStream.Position, true);
+                        await buf.Skip(checked((int)(columnStream.Length - columnStream.Position)), true);
 
                     continue;
                 }
@@ -532,7 +532,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     if (ReplicationLogger.IsEnabled(LogLevel.Trace))
                     {
                         var endLsn = new NpgsqlLogSequenceNumber(end);
-                        var timestamp = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
+                        var timestamp = PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
                         LogMessages.ReceivedReplicationPrimaryKeepalive(ReplicationLogger, endLsn, timestamp, Connector.Id);
                     }
                     else
@@ -679,7 +679,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             buf.WriteInt64(lastReceivedLsn);
             buf.WriteInt64(lastFlushedLsn);
             buf.WriteInt64(lastAppliedLsn);
-            buf.WriteInt64(DateTimeUtils.EncodeTimestamp(timestamp));
+            buf.WriteInt64(PgDateTime.EncodeTimestamp(timestamp));
             buf.WriteByte(requestReply ? (byte)1 : (byte)0);
 
             await connector.Flush(async: true, cancellationToken);

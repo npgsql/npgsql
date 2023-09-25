@@ -1,43 +1,43 @@
 ﻿using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
-using Npgsql.Internal.TypeHandlers.NumericHandlers;
+using Npgsql.Internal.Converters;
 
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
 public class Int16 : TypeHandlerBenchmarks<short>
 {
-    public Int16() : base(new Int16Handler(GetPostgresType("smallint"))) { }
+    public Int16() : base(new Int2Converter<short>()) { }
 }
 
 [Config(typeof(Config))]
 public class Int32 : TypeHandlerBenchmarks<int>
 {
-    public Int32() : base(new Int32Handler(GetPostgresType("integer"))) { }
+    public Int32() : base(new Int4Converter<int>()) { }
 }
 
 [Config(typeof(Config))]
 public class Int64 : TypeHandlerBenchmarks<long>
 {
-    public Int64() : base(new Int64Handler(GetPostgresType("bigint"))) { }
+    public Int64() : base(new Int8Converter<long>()) { }
 }
 
 [Config(typeof(Config))]
 public class Single : TypeHandlerBenchmarks<float>
 {
-    public Single() : base(new SingleHandler(GetPostgresType("real"))) { }
+    public Single() : base(new RealConverter<float>()) { }
 }
 
 [Config(typeof(Config))]
 public class Double : TypeHandlerBenchmarks<double>
 {
-    public Double() : base(new DoubleHandler(GetPostgresType("double precision"))) { }
+    public Double() : base(new DoubleConverter<double>()) { }
 }
 
 [Config(typeof(Config))]
 public class Numeric : TypeHandlerBenchmarks<decimal>
 {
-    public Numeric() : base(new NumericHandler(GetPostgresType("numeric"))) { }
+    public Numeric() : base(new DecimalNumericConverter<decimal>()) { }
 
     protected override IEnumerable<decimal> ValuesOverride() => new[]
     {
@@ -62,5 +62,5 @@ public class Numeric : TypeHandlerBenchmarks<decimal>
 [Config(typeof(Config))]
 public class Money : TypeHandlerBenchmarks<decimal>
 {
-    public Money() : base(new MoneyHandler(GetPostgresType("money"))) { }
+    public Money() : base(new MoneyConverter<decimal>()) { }
 }

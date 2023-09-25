@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Data;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -15,6 +16,18 @@ public class JsonPathTests : MultiplexingTestBase
         new object[] { "'$'", "$" },
         new object[] { "'$\"varname\"'", "$\"varname\"" },
     };
+
+    [Test]
+    [TestCase("$")]
+    [TestCase("$\"varname\"")]
+    public async Task JsonPath(string jsonPath)
+    {
+        using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
+        await AssertType(
+            jsonPath, jsonPath, "jsonpath", NpgsqlDbType.JsonPath, isDefaultForWriting: false, isNpgsqlDbTypeInferredFromClrType: false,
+            inferredDbType: DbType.Object);
+    }
 
     [Test]
     [TestCaseSource(nameof(ReadWriteCases))]

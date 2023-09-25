@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -43,6 +41,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     NpgsqlParameter?[] _params;
 
     readonly ILogger _copyLogger;
+    PgWriter _pgWriter = null!; // Setup in Init
 
     /// <summary>
     /// Current timeout
@@ -82,7 +81,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         switch (msg.Code)
         {
         case BackendMessageCode.CopyInResponse:
-            copyInResponse = (CopyInResponseMessage) msg;
+            copyInResponse = (CopyInResponseMessage)msg;
             if (!copyInResponse.IsBinary)
             {
                 throw _connector.Break(
@@ -104,6 +103,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         _rowsImported = 0;
         _buf.StartCopyMode();
         WriteHeader();
+        // Only init after header.
+        _pgWriter = _buf.GetWriter(_connector.DatabaseInfo);
     }
 
     void WriteHeader()
@@ -144,6 +145,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             await _buf.Flush(async, cancellationToken);
         _buf.WriteInt16(NumColumns);
 
+        _pgWriter.Refresh();
         _column = 0;
         _rowsImported++;
     }
@@ -239,7 +241,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (p == null)
         {
             // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object)
+            _params[_column] = p = typeof(T) == typeof(object) || typeof(T) == typeof(DBNull)
                 ? new NpgsqlParameter()
                 : new NpgsqlParameter<T>();
             p.NpgsqlDbType = npgsqlDbType;
@@ -309,14 +311,14 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (_column == -1)
             throw new InvalidOperationException("A row hasn't been started");
 
-        if (value == null || value is DBNull)
+        if (typeof(T) == typeof(object) || typeof(T) == typeof(DBNull))
         {
-            await WriteNull(async, cancellationToken);
-            return;
-        }
-
-        if (typeof(T) == typeof(object))
-        {
+            if (param.GetType() != typeof(NpgsqlParameter))
+            {
+                var newParam = _params[_column] = new NpgsqlParameter();
+                newParam.NpgsqlDbType = param.NpgsqlDbType;
+                param = newParam;
+            }
             param.Value = value;
         }
         else
@@ -329,11 +331,17 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             }
             typedParam.TypedValue = value;
         }
-        param.ResolveHandler(_connector.TypeMapper);
-        param.ValidateAndGetLength();
-        param.LengthCache?.Rewind();
-        await param.WriteWithLength(_buf, async, cancellationToken);
-        param.LengthCache?.Clear();
+        param.ResolveTypeInfo(_connector.SerializerOptions);
+        param.Bind(out _, out _);
+        try
+        {
+            await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _connector.Break(ex);
+            throw;
+        }
         _column++;
     }
 
@@ -363,6 +371,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             await _buf.Flush(async, cancellationToken);
 
         _buf.WriteInt32(-1);
+        _pgWriter.Refresh();
         _column++;
     }
 
@@ -465,8 +474,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="Complete()" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public void Dispose() => Close();
 
@@ -476,8 +485,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="CompleteAsync" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public ValueTask DisposeAsync()
     {
@@ -513,8 +522,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="Complete()" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public void Close() => CloseAsync(false).GetAwaiter().GetResult();
 
@@ -524,8 +533,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="CompleteAsync" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {

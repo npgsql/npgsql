@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 
@@ -80,6 +79,10 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
         : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
         => _connectionLogger = conn.LoggingConfiguration.ConnectionLogger;
 
+    private protected PostgresDatabaseInfo(string host, int port, string databaseName, string serverVersion)
+        : base(host, port, databaseName, serverVersion)
+        => _connectionLogger = NullLogger.Instance;
+
     /// <summary>
     /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
     /// </summary>
@@ -142,7 +145,7 @@ JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
     typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
-    (typtype = 'p' AND typname IN ('record', 'void')) OR -- Some special supported pseudo-types
+    (typtype = 'p' AND typname IN ('record', 'void', 'unknown')) OR -- Some special supported pseudo-types
     (typtype = 'a' AND (  -- Array of...
         elemtyptype IN ('b', 'r', 'm', 'e', 'd') OR -- Array of base, range, multirange, enum, domain
         (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
