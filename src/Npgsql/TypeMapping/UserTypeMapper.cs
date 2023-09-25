@@ -181,14 +181,23 @@ sealed class UserTypeMapper
         }
     }
 
-    sealed class EnumMapping<TEnum> : UserTypeMapping
+    internal abstract class EnumMapping : UserTypeMapping
+    {
+        internal INpgsqlNameTranslator NameTranslator { get; }
+
+        public EnumMapping(string pgTypeName, Type enumClrType, INpgsqlNameTranslator nameTranslator)
+            : base(pgTypeName, enumClrType)
+            => NameTranslator = nameTranslator;
+    }
+
+    sealed class EnumMapping<TEnum> : EnumMapping
         where TEnum : struct, Enum
     {
         readonly Dictionary<TEnum, string> _enumToLabel = new();
         readonly Dictionary<string, TEnum> _labelToEnum = new();
 
         public EnumMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
-            : base(pgTypeName, typeof(TEnum))
+            : base(pgTypeName, typeof(TEnum), nameTranslator)
         {
             foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {

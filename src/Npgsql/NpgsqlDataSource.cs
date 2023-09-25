@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -79,6 +80,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
 
+    internal List<HackyEnumTypeMapping>? _hackyEnumTypeMappings;
+
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
         NpgsqlDataSourceConfiguration dataSourceConfig)
@@ -99,6 +102,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
                 var resolverChain,
+                _hackyEnumTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)
