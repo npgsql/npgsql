@@ -125,7 +125,7 @@ public class PgTypeInfo
         return resolution ?? resolverInfo.GetDefaultResolution(null);
     }
 
-    // Note: this api is not called GetObjectResolution as the semantics are extended, DBNull is a NULL value for all object values.
+    // Note: this api is not called GetResolutionAsObject as the semantics are extended, DBNull is a NULL value for all object values.
     public PgConverterResolution GetObjectResolution(object? value)
     {
         switch (this)
@@ -138,24 +138,29 @@ public class PgTypeInfo
                 resolution = resolverInfo.GetResolutionAsObject(value, null);
             return resolution ?? resolverInfo.GetDefaultResolution(null);
         default:
-            throw new NotSupportedException("Should not happen, please file a bug.");
+            return ThrowNotSupported();
         }
+
+        static PgConverterResolution ThrowNotSupported()
+            => throw new NotSupportedException("Should not happen, please file a bug.");
     }
 
     /// Throws if the type info is undecided in its PgTypeId.
     internal PgConverterResolution GetConcreteResolution()
     {
-        if (PgTypeId is null)
-            throw new InvalidOperationException("PgTypeId is null.");
-        return GetDefaultResolution();
+        var pgTypeId = PgTypeId;
+        if (pgTypeId is null)
+            ThrowHelper.ThrowInvalidOperationException("PgTypeId is null.");
 
-        PgConverterResolution GetDefaultResolution()
-            => this switch
-            {
-                { IsResolverInfo: false } => new(Converter, PgTypeId.GetValueOrDefault()),
-                PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(null),
-                _ => throw new NotSupportedException("Should not happen, please file a bug.")
-            };
+        return this switch
+        {
+            { IsResolverInfo: false } => new(Converter, pgTypeId.GetValueOrDefault()),
+            PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(null),
+            _ => ThrowNotSupported()
+        };
+
+        static PgConverterResolution ThrowNotSupported()
+            => throw new NotSupportedException("Should not happen, please file a bug.");
     }
 
     PgConverterInfo CreateConverterInfo(BufferRequirements bufferRequirements, bool isRead, PgConverter converter, Type typeToConvert)
