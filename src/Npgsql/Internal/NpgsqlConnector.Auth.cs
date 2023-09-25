@@ -135,9 +135,12 @@ partial class NpgsqlConnector
 
         var clientKey = HMAC(saltedPassword, "Client Key");
         byte[] storedKey;
+#if NET7_0_OR_GREATER
+        storedKey = SHA256.HashData(clientKey);
+#else
         using (var sha256 = SHA256.Create())
             storedKey = sha256.ComputeHash(clientKey);
-
+#endif
         var clientFirstMessageBare = $"n=*,r={clientNonce}";
         var serverFirstMessage = $"r={firstServerMsg.Nonce},s={firstServerMsg.Salt},i={firstServerMsg.Iteration}";
         var clientFinalMessageWithoutProof = $"c={cbind},r={firstServerMsg.Nonce}";
@@ -261,7 +264,7 @@ partial class NpgsqlConnector
 
     static byte[] HMAC(byte[] key, string data)
     {
-        byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+        var dataBytes = Encoding.UTF8.GetBytes(data);
 #if NET7_0_OR_GREATER
         return HMACSHA256.HashData(key, dataBytes);
 #else
@@ -278,7 +281,9 @@ partial class NpgsqlConnector
             throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
         byte[] result;
+#if !NET7_0_OR_GREATER
         using (var md5 = MD5.Create())
+#endif
         {
             // First phase
             var passwordBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(passwd);
@@ -288,7 +293,11 @@ partial class NpgsqlConnector
             usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
 
             var sb = new StringBuilder();
+#if NET7_0_OR_GREATER
+            var hashResult = MD5.HashData(cryptBuf);
+#else
             var hashResult = md5.ComputeHash(cryptBuf);
+#endif
             foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
 
@@ -303,7 +312,11 @@ partial class NpgsqlConnector
             prehashbytes.CopyTo(cryptBuf, 0);
 
             sb = new StringBuilder("md5");
+#if NET7_0_OR_GREATER
+            hashResult = MD5.HashData(cryptBuf);
+#else
             hashResult = md5.ComputeHash(cryptBuf);
+#endif
             foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
 
