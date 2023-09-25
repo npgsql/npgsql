@@ -16,9 +16,9 @@ public static class CrsMapExtensions
     {
         var builder = new CrsMapBuilder();
         using var cmd = GetCsrCommand(dataSource);
-        await using var reader = await cmd.ExecuteReaderAsync();
+        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
 
-        while (await reader.ReadAsync())
+        while (await reader.ReadAsync().ConfigureAwait(false))
             builder.Add(new CrsMapEntry(reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2)));
 
         return builder.Build();

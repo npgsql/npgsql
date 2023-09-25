@@ -132,7 +132,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 
         using (_connector.StartUserAction(cancellationToken))
         {
-            await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
+            await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken).ConfigureAwait(false);
             LogMessages.CommittedTransaction(_transactionLogger, _connector.Id);
         }
     }
@@ -168,7 +168,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 
         using (_connector.StartUserAction(cancellationToken))
         {
-            await _connector.Rollback(async, cancellationToken);
+            await _connector.Rollback(async, cancellationToken).ConfigureAwait(false);
             LogMessages.RolledBackTransaction(_transactionLogger, _connector.Id);
         }
     }
@@ -272,7 +272,7 @@ public sealed class NpgsqlTransaction : DbTransaction
         using (_connector.StartUserAction(cancellationToken))
         {
             var quotedName = RequiresQuoting(name) ? $"\"{name.Replace("\"", "\"\"")}\"" : name;
-            await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {quotedName}", async, cancellationToken);
+            await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {quotedName}", async, cancellationToken).ConfigureAwait(false);
             LogMessages.RolledBackToSavepoint(_transactionLogger, name, _connector.Id);
         }
     }
@@ -315,7 +315,7 @@ public sealed class NpgsqlTransaction : DbTransaction
         using (_connector.StartUserAction(cancellationToken))
         {
             var quotedName = RequiresQuoting(name) ? $"\"{name.Replace("\"", "\"\"")}\"" : name;
-            await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {quotedName}", async, cancellationToken);
+            await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {quotedName}", async, cancellationToken).ConfigureAwait(false);
             LogMessages.ReleasedSavepoint(_transactionLogger, name, _connector.Id);
         }
     }
@@ -415,8 +415,8 @@ public sealed class NpgsqlTransaction : DbTransaction
             // We're disposing, so no cancellation token
             try
             {
-                await _connector.CloseOngoingOperations(async: true);
-                await Rollback(async: true);
+                await _connector.CloseOngoingOperations(async: true).ConfigureAwait(false);
+                await Rollback(async: true).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

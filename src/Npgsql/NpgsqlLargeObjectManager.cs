@@ -50,7 +50,7 @@ public class NpgsqlLargeObjectManager
         stringBuilder.Append(')');
         command.CommandText = stringBuilder.ToString();
 
-        return (T)(async ? await command.ExecuteScalarAsync(cancellationToken) : command.ExecuteScalar())!;
+        return (T)(async ? await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) : command.ExecuteScalar())!;
     }
 
     /// <summary>
@@ -75,12 +75,12 @@ public class NpgsqlLargeObjectManager
         command.CommandText = stringBuilder.ToString();
 
         var reader = async
-            ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken)
+            ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken).ConfigureAwait(false)
             : command.ExecuteReader(CommandBehavior.SequentialAccess);
         try
         {
             if (async)
-                await reader.ReadAsync(cancellationToken);
+                await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             else
                 reader.Read();
 
@@ -89,7 +89,7 @@ public class NpgsqlLargeObjectManager
         finally
         {
             if (async)
-                await reader.DisposeAsync();
+                await reader.DisposeAsync().ConfigureAwait(false);
             else
                 reader.Dispose();
         }
@@ -146,7 +146,7 @@ public class NpgsqlLargeObjectManager
 
     async Task<NpgsqlLargeObjectStream> OpenRead(bool async, uint oid, CancellationToken cancellationToken = default)
     {
-        var fd = await ExecuteFunction<int>(async, "lo_open", cancellationToken, (int)oid, InvRead);
+        var fd = await ExecuteFunction<int>(async, "lo_open", cancellationToken, (int)oid, InvRead).ConfigureAwait(false);
         return new NpgsqlLargeObjectStream(this, fd, false);
     }
 
@@ -173,7 +173,7 @@ public class NpgsqlLargeObjectManager
 
     async Task<NpgsqlLargeObjectStream> OpenReadWrite(bool async, uint oid, CancellationToken cancellationToken = default)
     {
-        var fd = await ExecuteFunction<int>(async, "lo_open", cancellationToken, (int)oid, InvRead | InvWrite);
+        var fd = await ExecuteFunction<int>(async, "lo_open", cancellationToken, (int)oid, InvRead | InvWrite).ConfigureAwait(false);
         return new NpgsqlLargeObjectStream(this, fd, true);
     }
 

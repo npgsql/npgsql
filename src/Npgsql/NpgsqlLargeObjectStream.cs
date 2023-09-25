@@ -80,7 +80,7 @@ public sealed class NpgsqlLargeObjectStream : Stream
         while (read < count)
         {
             var bytesRead = await _manager.ExecuteFunctionGetBytes(
-                async, "loread", buffer, offset + read, count - read, cancellationToken, _fd, chunkCount);
+                async, "loread", buffer, offset + read, count - read, cancellationToken, _fd, chunkCount).ConfigureAwait(false);
             _pos += bytesRead;
             read += bytesRead;
             if (bytesRead < chunkCount)
@@ -133,7 +133,7 @@ public sealed class NpgsqlLargeObjectStream : Stream
         while (totalWritten < count)
         {
             var chunkSize = Math.Min(count - totalWritten, _manager.MaxTransferBlockSize);
-            var bytesWritten = await _manager.ExecuteFunction<int>(async, "lowrite", cancellationToken, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize));
+            var bytesWritten = await _manager.ExecuteFunction<int>(async, "lowrite", cancellationToken, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize)).ConfigureAwait(false);
             totalWritten += bytesWritten;
 
             if (bytesWritten != chunkSize)
@@ -193,9 +193,9 @@ public sealed class NpgsqlLargeObjectStream : Stream
     {
         CheckDisposed();
         var old = _pos;
-        var retval = await Seek(async, 0, SeekOrigin.End);
+        var retval = await Seek(async, 0, SeekOrigin.End).ConfigureAwait(false);
         if (retval != old)
-            await Seek(async, old, SeekOrigin.Begin);
+            await Seek(async, old, SeekOrigin.Begin).ConfigureAwait(false);
         return retval;
     }
 
@@ -229,8 +229,8 @@ public sealed class NpgsqlLargeObjectStream : Stream
         CheckDisposed();
 
         return _manager.Has64BitSupport
-            ? _pos = await _manager.ExecuteFunction<long>(async, "lo_lseek64", cancellationToken, _fd, offset, (int)origin)
-            : _pos = await _manager.ExecuteFunction<int>(async, "lo_lseek", cancellationToken, _fd, (int)offset, (int)origin);
+            ? _pos = await _manager.ExecuteFunction<long>(async, "lo_lseek64", cancellationToken, _fd, offset, (int)origin).ConfigureAwait(false)
+            : _pos = await _manager.ExecuteFunction<int>(async, "lo_lseek", cancellationToken, _fd, (int)offset, (int)origin).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -272,9 +272,9 @@ public sealed class NpgsqlLargeObjectStream : Stream
             throw new NotSupportedException("SetLength cannot be called on a stream opened with no write permissions");
 
         if (_manager.Has64BitSupport)
-            await _manager.ExecuteFunction<int>(async, "lo_truncate64", cancellationToken, _fd, value);
+            await _manager.ExecuteFunction<int>(async, "lo_truncate64", cancellationToken, _fd, value).ConfigureAwait(false);
         else
-            await _manager.ExecuteFunction<int>(async, "lo_truncate", cancellationToken, _fd, (int)value);
+            await _manager.ExecuteFunction<int>(async, "lo_truncate", cancellationToken, _fd, (int)value).ConfigureAwait(false);
     }
 
     /// <summary>

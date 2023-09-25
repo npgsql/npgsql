@@ -21,28 +21,28 @@ partial class NpgsqlConnector
         while (true)
         {
             timeout.CheckAndApply(this);
-            var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
+            var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
             switch (msg.AuthRequestType)
             {
             case AuthenticationRequestType.AuthenticationOk:
                 return;
 
             case AuthenticationRequestType.AuthenticationCleartextPassword:
-                await AuthenticateCleartext(username, async, cancellationToken);
+                await AuthenticateCleartext(username, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.AuthenticationMD5Password:
-                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
+                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.AuthenticationSASL:
                 await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.AuthenticationGSS:
             case AuthenticationRequestType.AuthenticationSSPI:
-                await AuthenticateGSS(async);
+                await AuthenticateGSS(async).ConfigureAwait(false);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSSContinue:
@@ -56,15 +56,15 @@ partial class NpgsqlConnector
 
     async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
     {
-        var passwd = await GetPassword(username, async, cancellationToken);
+        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
         if (passwd == null)
             throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
         var encoded = new byte[Encoding.UTF8.GetByteCount(passwd) + 1];
         Encoding.UTF8.GetBytes(passwd, 0, passwd.Length, encoded, 0);
 
-        await WritePassword(encoded, async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WritePassword(encoded, async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
@@ -114,16 +114,16 @@ partial class NpgsqlConnector
             throw new NpgsqlException("Unable to bind to SCRAM-SHA-256-PLUS, check logs for more information");
         }
 
-        var passwd = await GetPassword(username, async, cancellationToken) ??
+        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false) ??
                      throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
         // Assumption: the write buffer is big enough to contain all our outgoing messages
         var clientNonce = GetNonce();
 
-        await WriteSASLInitialResponse(mechanism, NpgsqlWriteBuffer.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WriteSASLInitialResponse(mechanism, NpgsqlWriteBuffer.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
 
-        var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
+        var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async).ConfigureAwait(false), this);
         if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
             throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
         var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload, ConnectionLogger);
@@ -156,10 +156,10 @@ partial class NpgsqlConnector
 
         var messageStr = $"{clientFinalMessageWithoutProof},p={clientProof}";
 
-        await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
 
-        var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
+        var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async).ConfigureAwait(false), this);
         if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
             throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
 
@@ -276,7 +276,7 @@ partial class NpgsqlConnector
 
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
     {
-        var passwd = await GetPassword(username, async, cancellationToken);
+        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
         if (passwd == null)
             throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
@@ -326,8 +326,8 @@ partial class NpgsqlConnector
             result[result.Length - 1] = 0;
         }
 
-        await WritePassword(result, async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WritePassword(result, async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
 #if NET7_0_OR_GREATER
@@ -338,11 +338,11 @@ partial class NpgsqlConnector
         using var authContext = new NegotiateAuthentication(new NegotiateAuthenticationClientOptions{ TargetName = targetName});
         var data = authContext.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
         Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
-        await WritePassword(data, 0, data.Length, async, UserCancellationToken);
-        await Flush(async, UserCancellationToken);
+        await WritePassword(data, 0, data.Length, async, UserCancellationToken).ConfigureAwait(false);
+        await Flush(async, UserCancellationToken).ConfigureAwait(false);
         while (true)
         {
-            var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
+            var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
             if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                 break;
             if (response is not AuthenticationGSSContinueMessage gssMsg)
@@ -354,15 +354,15 @@ partial class NpgsqlConnector
             // This can happen if it's the first cycle, in which case we have to send that data to complete handshake (#4888)
             if (data is null)
                 continue;
-            await WritePassword(data, 0, data.Length, async, UserCancellationToken);
-            await Flush(async, UserCancellationToken);
+            await WritePassword(data, 0, data.Length, async, UserCancellationToken).ConfigureAwait(false);
+            await Flush(async, UserCancellationToken).ConfigureAwait(false);
         }
     }
 #endif
 
     async ValueTask<string?> GetPassword(string username, bool async, CancellationToken cancellationToken = default)
     {
-        var password = await DataSource.GetPassword(async, cancellationToken);
+        var password = await DataSource.GetPassword(async, cancellationToken).ConfigureAwait(false);
 
         if (password is not null)
             return password;

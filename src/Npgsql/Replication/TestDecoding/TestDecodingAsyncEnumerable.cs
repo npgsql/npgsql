@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.Replication.Internal;
 using NpgsqlTypes;
 
@@ -46,7 +47,7 @@ sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
 
             try
             {
-                await foreach (var msg in stream)
+                await foreach (var msg in stream.ConfigureAwait(false))
                 {
                     var len = (int)msg.Data.Length;
                     Debug.Assert(msg.Data.Position == 0);
@@ -59,7 +60,7 @@ sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
                     var offset = 0;
                     while (offset < len)
                     {
-                        var read = await msg.Data.ReadAsync(buffer, offset, len - offset, CancellationToken.None);
+                        var read = await msg.Data.ReadAsync(buffer, offset, len - offset, CancellationToken.None).ConfigureAwait(false);
                         if (read == 0)
                             throw new EndOfStreamException();
                         offset += read;

@@ -150,17 +150,17 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
         {
             originalState = activeConnection.State;
             if (ConnectionState.Closed == originalState)
-                await activeConnection.Open(async, cancellationToken);
+                await activeConnection.Open(async, cancellationToken).ConfigureAwait(false);
 
-            var dataReader = await command.ExecuteReader(async, CommandBehavior.Default, cancellationToken);
+            var dataReader = await command.ExecuteReader(async, CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
             try
             {
-                return await Fill(dataTable, dataReader, async, cancellationToken);
+                return await Fill(dataTable, dataReader, async, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
                 if (async)
-                    await dataReader.DisposeAsync();
+                    await dataReader.DisposeAsync().ConfigureAwait(false);
                 else
                     dataReader.Dispose();
             }
@@ -193,7 +193,7 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
 
             var values = new object[count];
 
-            while (async ? await dataReader.ReadAsync(cancellationToken) : dataReader.Read())
+            while (async ? await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false) : dataReader.Read())
             {
                 dataReader.GetValues(values);
                 dataTable.LoadDataRow(values, true);

@@ -184,7 +184,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 {
                     if (databaseState == DatabaseState.Unknown)
                     {
-                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                         Debug.Assert(databaseState != DatabaseState.Unknown);
                         if (!stateValidator(databaseState, preferredType))
                         {
@@ -197,7 +197,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 }
                 else
                 {
-                    connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                    connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                     if (connector is not null)
                     {
                         if (databaseState == DatabaseState.Unknown)
@@ -205,7 +205,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                             // While opening a new connector we might have refreshed the database state, check again
                             databaseState = pool.GetDatabaseState();
                             if (databaseState == DatabaseState.Unknown)
-                                databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                                databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                             Debug.Assert(databaseState != DatabaseState.Unknown);
                             if (!stateValidator(databaseState, preferredType))
                             {
@@ -255,13 +255,13 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
             try
             {
-                connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                 if (databaseState == DatabaseState.Unknown)
                 {
                     // Get might have opened a new physical connection and refreshed the database state, check again
                     databaseState = pool.GetDatabaseState();
                     if (databaseState == DatabaseState.Unknown)
-                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
 
                     Debug.Assert(databaseState != DatabaseState.Unknown);
                     if (!stateValidator(databaseState, preferredType))
@@ -300,13 +300,13 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         var preferredType = GetTargetSessionAttributes(conn);
         var checkUnpreferred = preferredType is TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby;
 
-        var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
+        var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
                         (checkUnpreferred ?
-                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
+                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken).ConfigureAwait(false)
                             : null) ??
-                        await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
+                        await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
                         (checkUnpreferred ?
-                            await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
+                            await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken).ConfigureAwait(false)
                             : null);
 
         return connector ?? throw NoSuitableHostsException(exceptions);

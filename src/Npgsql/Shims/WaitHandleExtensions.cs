@@ -23,7 +23,7 @@ namespace System.Threading
                     state: tcs,
                     millisecondsTimeout,
                     executeOnlyOnce: true);
-                return await tcs.Task;
+                return await tcs.Task.ConfigureAwait(false);
             }
             finally
             {

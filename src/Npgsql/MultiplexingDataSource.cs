@@ -88,7 +88,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             {
                 // Get a first command out.
                 if (!_multiplexCommandReader.TryRead(out command))
-                    command = await _multiplexCommandReader.ReadAsync();
+                    command = await _multiplexCommandReader.ReadAsync().ConfigureAwait(false);
             }
             catch (ChannelClosedException)
             {
@@ -112,7 +112,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
                         command.InternalConnection!,
                         new NpgsqlTimeout(TimeSpan.FromSeconds(Settings.Timeout)),
                         async: true,
-                        CancellationToken.None);
+                        CancellationToken.None).ConfigureAwait(false);
 
                     if (connector != null)
                     {
@@ -370,8 +370,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
     protected override async ValueTask DisposeAsyncBase()
     {
         MultiplexCommandWriter.Complete(new ObjectDisposedException(nameof(MultiplexingDataSource)));
-        await _multiplexWriteLoop;
-        await base.DisposeAsyncBase();
+        await _multiplexWriteLoop.ConfigureAwait(false);
+        await base.DisposeAsyncBase().ConfigureAwait(false);
     }
 
     struct MultiplexingStats

@@ -305,7 +305,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     enlistToTransaction = null;
                 }
                 else
-                    connector = await _dataSource.Get(this, timeout, async, cancellationToken);
+                    connector = await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
 
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
@@ -343,7 +343,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             {
                 var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
-                _ = await StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
+                _ = await StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken).ConfigureAwait(false);
                 EndBindingScope(ConnectorBindingScope.Connection);
 
                 LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
@@ -661,7 +661,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // There was a committed/rolled back transaction, but it was not disposed
         var connector = ConnectorBindingScope == ConnectorBindingScope.Transaction
             ? Connector
-            : await StartBindingScope(ConnectorBindingScope.Transaction, NpgsqlTimeout.Infinite, async, cancellationToken);
+            : await StartBindingScope(ConnectorBindingScope.Transaction, NpgsqlTimeout.Infinite, async, cancellationToken).ConfigureAwait(false);
 
         Debug.Assert(connector != null);
 
@@ -695,7 +695,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Nested transactions are not supported.
     /// </remarks>
     protected override async ValueTask<DbTransaction> BeginDbTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
-        => await BeginTransactionAsync(isolationLevel, cancellationToken);
+        => await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Asynchronously begins a database transaction.
@@ -861,7 +861,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
             {
                 // This method could re-enter connection.Close() due to an underlying connection failure.
-                await connector.CloseOngoingOperations(async);
+                await connector.CloseOngoingOperations(async).ConfigureAwait(false);
 
                 if (ConnectorBindingScope == ConnectorBindingScope.None)
                 {
@@ -899,7 +899,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
                     // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
                     // Note that we're doing this only for pooled connections
-                    await connector.Reset(async);
+                    await connector.Reset(async).ConfigureAwait(false);
                 }
                 else
                 {
@@ -959,7 +959,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (_disposed)
             return;
 
-        await CloseAsync();
+        await CloseAsync().ConfigureAwait(false);
         _disposed = true;
     }
 
@@ -1174,7 +1174,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var importer = new NpgsqlBinaryImporter(connector);
-            await importer.Init(copyFromCommand, async, cancellationToken);
+            await importer.Init(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
             connector.CurrentCopyOperation = importer;
             return importer;
         }
@@ -1225,7 +1225,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var exporter = new NpgsqlBinaryExporter(connector);
-            await exporter.Init(copyToCommand, async, cancellationToken);
+            await exporter.Init(copyToCommand, async, cancellationToken).ConfigureAwait(false);
             connector.CurrentCopyOperation = exporter;
             return exporter;
         }
@@ -1282,7 +1282,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var copyStream = new NpgsqlRawCopyStream(connector);
-            await copyStream.Init(copyFromCommand, async, cancellationToken);
+            await copyStream.Init(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
             var writer = new NpgsqlCopyTextWriter(connector, copyStream);
             connector.CurrentCopyOperation = writer;
             return writer;
@@ -1340,7 +1340,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var copyStream = new NpgsqlRawCopyStream(connector);
-            await copyStream.Init(copyToCommand, async, cancellationToken);
+            await copyStream.Init(copyToCommand, async, cancellationToken).ConfigureAwait(false);
             var reader = new NpgsqlCopyTextReader(connector, copyStream);
             connector.CurrentCopyOperation = reader;
             return reader;
@@ -1398,7 +1398,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var stream = new NpgsqlRawCopyStream(connector);
-            await stream.Init(copyCommand, async, cancellationToken);
+            await stream.Init(copyCommand, async, cancellationToken).ConfigureAwait(false);
             if (!stream.IsBinary)
             {
                 // TODO: Stop the COPY operation gracefully, no breaking
@@ -1643,7 +1643,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 Debug.Assert(Settings.Multiplexing);
                 Debug.Assert(_dataSource != null);
 
-                var connector = await _dataSource.Get(this, timeout, async, cancellationToken);
+                var connector = await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
                 Connector = connector;
                 connector.Connection = this;
                 ConnectorBindingScope = scope;
@@ -1930,11 +1930,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         using var scope = StartTemporaryBindingScope(out var connector);
 
         await _dataSource!.Bootstrap(
-                connector,
-                NpgsqlTimeout.Infinite,
-                forceReload: true,
-                async: true,
-                CancellationToken.None);
+            connector,
+            NpgsqlTimeout.Infinite,
+            forceReload: true,
+            async: true,
+            CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>

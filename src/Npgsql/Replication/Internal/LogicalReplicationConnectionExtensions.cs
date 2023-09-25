@@ -177,7 +177,7 @@ public static class LogicalReplicationConnectionExtensions
             LogMessages.StartingLogicalReplication(connection.ReplicationLogger, slot.Name, command, connection.Connector.Id);
 
             var enumerator = connection.StartReplicationInternalWrapper(command, bypassingStream, cancellationToken);
-            while (await enumerator.MoveNextAsync())
+            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 yield return enumerator.Current;
         }
     }

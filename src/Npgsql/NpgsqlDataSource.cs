@@ -174,7 +174,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     /// <inheritdoc />
     protected override async ValueTask<DbConnection> OpenDbConnectionAsync(CancellationToken cancellationToken = default)
-        => await OpenConnectionAsync(cancellationToken);
+        => await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     protected override DbConnection CreateDbConnection()
@@ -224,7 +224,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             return;
 
         var hasSemaphore = async
-            ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+            ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken).ConfigureAwait(false)
             : _setupMappingsSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
 
         if (!hasSemaphore)
@@ -247,7 +247,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             NpgsqlDatabaseInfo databaseInfo;
 
             using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
-                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
+                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async).ConfigureAwait(false);
 
             connector.DatabaseInfo = DatabaseInfo = databaseInfo;
             connector.SerializerOptions = SerializerOptions =
@@ -304,7 +304,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         if (_password is null && _periodicPasswordProvider is not null)
         {
             if (async)
-                await _passwordRefreshTask;
+                await _passwordRefreshTask.ConfigureAwait(false);
             else
                 _passwordRefreshTask.GetAwaiter().GetResult();
 
@@ -318,7 +318,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         try
         {
-            _password = await _periodicPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token);
+            _password = await _periodicPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token).ConfigureAwait(false);
 
             _passwordProviderTimer!.Change(_periodicPasswordSuccessRefreshInterval, Timeout.InfiniteTimeSpan);
         }
@@ -475,7 +475,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         if (_passwordProviderTimer is not null)
         {
 #if NET5_0_OR_GREATER
-            await _passwordProviderTimer.DisposeAsync();
+            await _passwordProviderTimer.DisposeAsync().ConfigureAwait(false);
 #else
             _passwordProviderTimer.Dispose();
 #endif

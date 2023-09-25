@@ -50,7 +50,7 @@ sealed class KerberosUsernameProvider
         {
 #if NET5_0_OR_GREATER
             if (async)
-                await process.WaitForExitAsync(cancellationToken);
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
             else
                 // ReSharper disable once MethodHasAsyncOverloadWithCancellation
                 process.WaitForExit();
@@ -69,9 +69,9 @@ sealed class KerberosUsernameProvider
             for (var i = 0; i < 2; i++)
                 // ReSharper disable once MethodHasAsyncOverload
 #if NET7_0_OR_GREATER
-                if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken) : process.StandardOutput.ReadLine()) == null)
+                if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false) : process.StandardOutput.ReadLine()) == null)
 #elif NET5_0_OR_GREATER
-                if ((line = async ? await process.StandardOutput.ReadLineAsync() : process.StandardOutput.ReadLine()) == null)
+                if ((line = async ? await process.StandardOutput.ReadLineAsync().ConfigureAwait(false) : process.StandardOutput.ReadLine()) == null)
 #else
                 if ((line = process.StandardOutput.ReadLine()) == null)
 #endif

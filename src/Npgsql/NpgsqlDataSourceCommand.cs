@@ -24,7 +24,7 @@ sealed class NpgsqlDataSourceCommand : NpgsqlCommand
         bool async, CommandBehavior behavior,
         CancellationToken cancellationToken)
     {
-        await InternalConnection!.Open(async, cancellationToken);
+        await InternalConnection!.Open(async, cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -38,7 +38,7 @@ sealed class NpgsqlDataSourceCommand : NpgsqlCommand
         {
             try
             {
-                await InternalConnection.Close(async);
+                await InternalConnection.Close(async).ConfigureAwait(false);
             }
             catch
             {

@@ -24,8 +24,8 @@ static class TaskTimeoutAndCancellation
     internal static async Task<TResult> ExecuteAsync<TResult>(Func<CancellationToken, Task<TResult>> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
         Task<TResult>? task = default;
-        await ExecuteAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken);
-        return await task!;
+        await ExecuteAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken).ConfigureAwait(false);
+        return await task!.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -46,7 +46,7 @@ static class TaskTimeoutAndCancellation
         {
             try
             {
-                await task.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken);
+                await task.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken).ConfigureAwait(false);
             }
             catch (TimeoutException) when (!task!.IsCompleted)
             {

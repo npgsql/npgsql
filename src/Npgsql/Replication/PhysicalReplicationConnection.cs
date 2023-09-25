@@ -66,7 +66,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
 
         LogMessages.CreatingReplicationSlot(ReplicationLogger, slotName, command, Connector.Id);
 
-        var slotOptions = await CreateReplicationSlot(builder.ToString(), cancellationToken);
+        var slotOptions = await CreateReplicationSlot(builder.ToString(), cancellationToken).ConfigureAwait(false);
 
         return new PhysicalReplicationSlot(slotOptions.SlotName);
     }
@@ -132,7 +132,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
             LogMessages.StartingPhysicalReplication(ReplicationLogger, slot?.Name, command, Connector.Id);
 
             var enumerator = StartReplicationInternalWrapper(command, bypassingStream: false, cancellationToken);
-            while (await enumerator.MoveNextAsync())
+            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 yield return enumerator.Current;
         }
     }

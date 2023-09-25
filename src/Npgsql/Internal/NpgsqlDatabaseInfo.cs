@@ -319,7 +319,7 @@ public abstract class NpgsqlDatabaseInfo
     {
         foreach (var factory in Factories)
         {
-            var dbInfo = await factory.Load(conn, timeout, async);
+            var dbInfo = await factory.Load(conn, timeout, async).ConfigureAwait(false);
             if (dbInfo != null)
             {
                 dbInfo.ProcessTypes();

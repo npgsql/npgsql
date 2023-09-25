@@ -246,11 +246,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 return true;
 
             case ReaderState.InResult:
-                await ConsumeRow(async);
+                await ConsumeRow(async).ConfigureAwait(false);
                 if (_behavior.HasFlag(CommandBehavior.SingleRow))
                 {
                     // TODO: See optimization proposal in #410
-                    await Consume(async);
+                    await Consume(async).ConfigureAwait(false);
                     return false;
                 }
                 break;
@@ -265,7 +265,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 return false;
             }
 
-            var msg = await ReadMessage(async);
+            var msg = await ReadMessage(async).ConfigureAwait(false);
 
             switch (msg.Code)
             {
@@ -277,7 +277,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             case BackendMessageCode.EmptyQueryResponse:
                 ProcessMessage(msg);
                 if (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                    Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                    Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
                 return false;
 
             default:
@@ -299,11 +299,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         static async ValueTask<IBackendMessage> ReadMessageSequential(NpgsqlConnector connector, bool async)
         {
-            var msg = await connector.ReadMessage(async, DataRowLoadingMode.Sequential);
+            var msg = await connector.ReadMessage(async, DataRowLoadingMode.Sequential).ConfigureAwait(false);
             if (msg.Code == BackendMessageCode.DataRow)
             {
                 // Make sure that the datarow's column count is already buffered
-                await connector.ReadBuffer.Ensure(2, async);
+                await connector.ReadBuffer.Ensure(2, async).ConfigureAwait(false);
                 return msg;
             }
             return msg;
@@ -353,10 +353,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             {
             case ReaderState.BeforeResult:
             case ReaderState.InResult:
-                await ConsumeRow(async);
+                await ConsumeRow(async).ConfigureAwait(false);
                 while (true)
                 {
-                    var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip);
+                    var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip).ConfigureAwait(false);
                     switch (completedMsg.Code)
                     {
                     case BackendMessageCode.CommandComplete:
@@ -368,7 +368,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                             RowDescription!.SetConverterInfoCache(new(ColumnInfoCache, 0, _numColumns));
 
                         if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
                         break;
 
@@ -401,7 +401,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             if (_behavior.HasFlag(CommandBehavior.SingleResult) && StatementIndex == 0 && !isConsuming)
             {
-                await Consume(async);
+                await Consume(async).ConfigureAwait(false);
                 return false;
             }
 
@@ -414,7 +414,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 if (statement.TryGetPrepared(out var preparedStatement))
                 {
-                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
+                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
                     RowDescription = preparedStatement.Description;
                 }
                 else // Non-prepared/preparing flow
@@ -425,13 +425,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         Debug.Assert(!preparedStatement.IsPrepared);
                         if (preparedStatement.StatementBeingReplaced != null)
                         {
-                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
+                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
                             preparedStatement.StatementBeingReplaced.CompleteUnprepare();
                             preparedStatement.StatementBeingReplaced = null;
                         }
                     }
 
-                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
+                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
                     if (statement.IsPreparing)
                     {
@@ -440,8 +440,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         statement.IsPreparing = false;
                     }
 
-                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
-                    msg = await Connector.ReadMessage(async);
+                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
+                    msg = await Connector.ReadMessage(async).ConfigureAwait(false);
 
                     RowDescription = statement.Description = msg.Code switch
                     {
@@ -475,7 +475,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     // Statement did not generate a resultset (e.g. INSERT)
                     // Read and process its completion message and move on to the next statement
                     // No need to read sequentially as it's not a DataRow
-                    msg = await Connector.ReadMessage(async);
+                    msg = await Connector.ReadMessage(async).ConfigureAwait(false);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.CommandComplete:
@@ -495,7 +495,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     ProcessMessage(msg);
 
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
                     continue;
                 }
@@ -505,14 +505,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must always read it in non-sequential mode because it will be traversed twice (once
                     // here for the parameters, then as a regular row).
-                    msg = await Connector.ReadMessage(async);
+                    msg = await Connector.ReadMessage(async).ConfigureAwait(false);
                     ProcessMessage(msg);
                     if (msg.Code == BackendMessageCode.DataRow)
                         PopulateOutputParameters();
                 }
                 else
                 {
-                    msg = await ReadMessage(async);
+                    msg = await ReadMessage(async).ConfigureAwait(false);
                     ProcessMessage(msg);
                 }
 
@@ -523,7 +523,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     return true;
                 case BackendMessageCode.CommandComplete:
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
                     return true;
                 default:
                     throw Connector.UnexpectedMessageReceived(msg.Code);
@@ -532,7 +532,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             // There are no more queries, we're done. Read the RFQ.
             if (_statements.Count == 0 || !(_statements[_statements.Count - 1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
-                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
             State = ReaderState.Consumed;
             RowDescription = null;
@@ -595,7 +595,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         // We provide Consume with the first exception which we've just caught.
                         // If it encounters other exceptions while consuming the rest of the result set, it will raise an AggregateException,
                         // otherwise it will rethrow this first exception.
-                        await Consume(async, firstException: e);
+                        await Consume(async, firstException: e).ConfigureAwait(false);
                         break; // Never reached, Consume always throws above
                     }
                 }
@@ -699,13 +699,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         Debug.Assert(!pStatement.IsPrepared);
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
+                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
                     }
 
-                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
+                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
                     if (statement.IsPreparing)
                     {
@@ -714,8 +714,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         statement.IsPreparing = false;
                     }
 
-                    Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async), Connector);
-                    var msg = await Connector.ReadMessage(async);
+                    Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
+                    var msg = await Connector.ReadMessage(async).ConfigureAwait(false);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.NoData:
@@ -739,7 +739,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         }
                     // There are no more queries, we're done. Read to the RFQ.
                     if (forall)
-                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
                 }
 
                 // Found a resultset
@@ -989,8 +989,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             try
             {
                 if (!(_isSchemaOnly
-                        ? await NextResultSchemaOnly(async, isConsuming: true)
-                        : await NextResult(async, isConsuming: true)))
+                        ? await NextResultSchemaOnly(async, isConsuming: true).ConfigureAwait(false)
+                        : await NextResult(async, isConsuming: true).ConfigureAwait(false)))
                 {
                     break;
                 }
@@ -1058,7 +1058,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         try
         {
-            await Close(connectionClosing: false, async: true, isDisposing: true);
+            await Close(connectionClosing: false, async: true, isDisposing: true).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -1124,7 +1124,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             {
                 try
                 {
-                    await Consume(async);
+                    await Consume(async).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex is OperationCanceledException or NpgsqlException { InnerException: TimeoutException })
                 {
@@ -1137,7 +1137,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 {
                     // In the case of a PostgresException (or multiple ones, if we have error barriers), the connection is fine and consume
                     // has basically completed. Defer throwing the exception until Cleanup is complete.
-                    await Cleanup(async, connectionClosing, isDisposing);
+                    await Cleanup(async, connectionClosing, isDisposing).ConfigureAwait(false);
                     throw;
                 }
                 catch
@@ -1159,7 +1159,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             throw new ArgumentOutOfRangeException();
         }
 
-        await Cleanup(async, connectionClosing, isDisposing);
+        await Cleanup(async, connectionClosing, isDisposing).ConfigureAwait(false);
     }
 
     internal async Task Cleanup(bool async, bool connectionClosing = false, bool isDisposing = false)
@@ -1577,7 +1577,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             var isStream = typeof(T) == typeof(Stream);
             var field = GetInfo(ordinal, isStream ? null : typeof(T), out var converter, out var bufferRequirement, out var asObject);
 
-            var columnLength = await SeekToColumn(async: true, ordinal, field);
+            var columnLength = await SeekToColumn(async: true, ordinal, field).ConfigureAwait(false);
             if (columnLength == -1)
                 return DbNullValueOrThrow<T>(field);
 
@@ -1591,11 +1591,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
 
             Debug.Assert(asObject || converter is PgConverter<T>);
-            await PgReader.StartReadAsync(bufferRequirement, cancellationToken);
+            await PgReader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
             var result = asObject
-                ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken)
-                : await Unsafe.As<PgConverter<T>>(converter).ReadAsync(PgReader, cancellationToken);
-            await PgReader.EndReadAsync();
+                ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
+                : await Unsafe.As<PgConverter<T>>(converter).ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
+            await PgReader.EndReadAsync().ConfigureAwait(false);
             return result;
         }
     }
@@ -1704,7 +1704,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         async Task<bool> Core(int ordinal, CancellationToken cancellationToken)
         {
             using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-            return await SeekToColumn(async: true, ordinal, CheckRowAndGetField(ordinal), resumableOp: true) is -1;
+            return await SeekToColumn(async: true, ordinal, CheckRowAndGetField(ordinal), resumableOp: true).ConfigureAwait(false) is -1;
         }
     }
 
@@ -1864,7 +1864,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         table.Columns.Add("ProviderSpecificDataType", typeof(Type));
         table.Columns.Add("DataTypeName", typeof(string));
 
-        foreach (var column in await GetColumnSchema(async, cancellationToken))
+        foreach (var column in await GetColumnSchema(async, cancellationToken).ConfigureAwait(false))
         {
             var row = table.NewRow();
 
@@ -1974,7 +1974,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (commit)
             {
                 Debug.Assert(ordinal != _column);
-                await PgReader.Commit(async, reread);
+                await PgReader.Commit(async, reread).ConfigureAwait(false);
             }
 
             if (ordinal == _column)
@@ -1987,13 +1987,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             var buffer = Buffer;
             for (; _column < ordinal - 1; _column++)
             {
-                await buffer.Ensure(4, async);
+                await buffer.Ensure(4, async).ConfigureAwait(false);
                 var len = buffer.ReadInt32();
                 if (len != -1)
-                    await buffer.Skip(len, async);
+                    await buffer.Skip(len, async).ConfigureAwait(false);
             }
 
-            await buffer.Ensure(4, async);
+            await buffer.Ensure(4, async).ConfigureAwait(false);
             var columnLength = buffer.ReadInt32();
             _column = ordinal;
 
@@ -2054,15 +2054,15 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         async Task ConsumeRowSequential(bool async)
         {
-            await PgReader.Commit(async, resuming: false);
+            await PgReader.Commit(async, resuming: false).ConfigureAwait(false);
 
             // Skip over the remaining columns in the row
             for (; _column < _numColumns - 1; _column++)
             {
-                await Buffer.Ensure(4, async);
+                await Buffer.Ensure(4, async).ConfigureAwait(false);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                    await Buffer.Skip(len, async);
+                    await Buffer.Skip(len, async).ConfigureAwait(false);
             }
         }
     }
