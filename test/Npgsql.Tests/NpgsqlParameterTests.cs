@@ -47,7 +47,7 @@ public class NpgsqlParameterTest : TestBase
         // Purposefully try to send int as string, which should fail. This makes sure
         // the above doesn't work simply because of type inference from the CLR type.
         p1.DataTypeName = "text";
-        Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<NotSupportedException>());
+        Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
 
         cmd.Parameters.Clear();
 
@@ -57,7 +57,7 @@ public class NpgsqlParameterTest : TestBase
         // Purposefully try to send int as string, which should fail. This makes sure
         // the above doesn't work simply because of type inference from the CLR type.
         p2.DataTypeName = "text";
-        Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<NotSupportedException>());
+        Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
     }
 
     [Test]

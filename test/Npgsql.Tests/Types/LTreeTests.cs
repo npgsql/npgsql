@@ -30,9 +30,9 @@ public class LTreeTests : MultiplexingTestBase
 
         var exception =
             await AssertTypeUnsupportedRead<NpgsqlRange<int>>("Top.Science.Astronomy", "ltree", dataSource);
-        Assert.That(exception.Message, Is.EqualTo(errorMessage));
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
         exception = await AssertTypeUnsupportedWrite<string>("Top.Science.Astronomy", "ltree", dataSource);
-        Assert.That(exception.Message, Is.EqualTo(errorMessage));
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]

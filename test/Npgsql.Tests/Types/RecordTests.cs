@@ -85,8 +85,8 @@ public class RecordTests : MultiplexingTestBase
         Func<IResolveConstraint> assertExpr = () => withMappings
             ? Throws.Nothing
             : Throws.Exception
-                .TypeOf<NotSupportedException>()
-                .With.Property("Message")
+                .TypeOf<InvalidCastException>()
+                .With.Property("InnerException").Property("Message")
                 .EqualTo(string.Format(NpgsqlStrings.RecordsNotEnabled, "EnableRecords", "NpgsqlSlimDataSourceBuilder"));
 
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);

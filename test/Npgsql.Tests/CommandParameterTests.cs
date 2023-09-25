@@ -189,7 +189,7 @@ public class CommandParameterTests : MultiplexingTestBase
         Assert.That(async () => await cmd.ExecuteReaderAsync(),
             Throws.Exception
                 .TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo("Parameter 'p1' must have either its NpgsqlDbType or its DataTypeName or its Value set"));
+                .With.Message.EqualTo("Parameter 'p1' must have either its NpgsqlDbType or its DataTypeName or its Value set."));
     }
 
     [Test]

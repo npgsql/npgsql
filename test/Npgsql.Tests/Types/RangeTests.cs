@@ -232,11 +232,11 @@ class RangeTests : MultiplexingTestBase
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
         await using var dataSource = dataSourceBuilder.Build();
 
-        var exception = await AssertTypeUnsupportedRead<NpgsqlRange<int>, NotSupportedException>("[1,10)", "int4range", dataSource);
-        Assert.That(exception.Message, Is.EqualTo(errorMessage));
-        exception = await AssertTypeUnsupportedWrite<NpgsqlRange<int>, NotSupportedException>(
+        var exception = await AssertTypeUnsupportedRead<NpgsqlRange<int>>("[1,10)", "int4range", dataSource);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+        exception = await AssertTypeUnsupportedWrite<NpgsqlRange<int>>(
             new NpgsqlRange<int>(1, true, 10, false), "int4range", dataSource);
-        Assert.That(exception.Message, Is.EqualTo(errorMessage));
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]

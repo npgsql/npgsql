@@ -38,7 +38,6 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         readonly DataFormat _format;
         public PostgresType PostgresType { get; }
         public int BufferPos { get; }
-        public Type? LastConverterInfoType { get; private set; }
         public PgConverterInfo LastConverterInfo { get; private set; }
 
         public PgTypeInfo ObjectOrDefaultTypeInfo { get; }
@@ -46,10 +45,9 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
         Field Field => new("?", ObjectOrDefaultTypeInfo.Options.PortableTypeIds ? PostgresType.DataTypeName : (Oid)PostgresType.OID, -1);
 
-        public ColumnInfo SetConverterInfo(PgTypeInfo typeInfo) =>
-            this with
+        public ColumnInfo SetConverterInfo(PgTypeInfo typeInfo)
+            => this with
             {
-                LastConverterInfoType = typeInfo.Type,
                 LastConverterInfo = typeInfo.Bind(Field, _format)
             };
 
@@ -384,14 +382,14 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             if (i >= _columns.Count)
             {
                 var pgType = SerializerOptions.DatabaseInfo.GetPgType((Oid)typeOid);
-                _columns.Add(new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType), Format));
+                _columns.Add(new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgType, SerializerOptions), Format));
             }
             else
             {
                 var pgType = _columns[i].PostgresType.OID == typeOid
                     ? _columns[i].PostgresType
                     : SerializerOptions.DatabaseInfo.GetPgType((Oid)typeOid);
-                _columns[i] = new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType), Format);
+                _columns[i] = new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgType, SerializerOptions), Format);
             }
 
             var columnLen = PgReader.ReadInt32();
@@ -495,30 +493,14 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     PgConverterInfo GetOrAddConverterInfo(Type type, ColumnInfo column, int ordinal)
     {
         PgConverterInfo info;
-        if (column.LastConverterInfoType == type)
+        if (!column.LastConverterInfo.IsDefault && column.LastConverterInfo.TypeToConvert == type)
             info = column.LastConverterInfo;
         else
         {
-            var columnInfo = column.SetConverterInfo(GetTypeInfo(type, column.PostgresType));
+            var columnInfo = column.SetConverterInfo(AdoSerializerHelpers.GetTypeInfoForReading(type, column.PostgresType, SerializerOptions));
             _columns[ordinal] = columnInfo;
             info = columnInfo.LastConverterInfo;
         }
-        return info;
-    }
-
-    PgTypeInfo GetObjectOrDefaultTypeInfo(PostgresType postgresType)
-    {
-        postgresType = postgresType.GetRepresentationalType();
-        return SerializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
-               ?? throw new InvalidCastException($"Reading is not supported for PostgreSQL type {postgresType.DisplayName}");
-    }
-
-    PgTypeInfo GetTypeInfo(Type type, PostgresType postgresType)
-    {
-        postgresType = postgresType.GetRepresentationalType();
-        if ((typeof(object) == type ? SerializerOptions.GetObjectOrDefaultTypeInfo(postgresType) : SerializerOptions.GetTypeInfo(type, postgresType)) is not { } info)
-            throw new InvalidCastException($"Reading as {type} is not supported for PostgreSQL type {postgresType.DisplayName}");
-
         return info;
     }
 

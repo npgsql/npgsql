@@ -219,13 +219,13 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
 
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_ZonedDateTime()
-        => await AssertTypeUnsupportedWrite(
+        => await AssertTypeUnsupportedWrite<ZonedDateTime, ArgumentException>(
             new LocalDateTime().InUtc().ToInstant().InZone(DateTimeZoneProviders.Tzdb["Europe/Berlin"]),
             "timestamp with time zone");
 
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_OffsetDateTime()
-        => await AssertTypeUnsupportedWrite(new LocalDateTime().WithOffset(Offset.FromHours(2)), "timestamp with time zone");
+        => await AssertTypeUnsupportedWrite<OffsetDateTime, ArgumentException>(new LocalDateTime().WithOffset(Offset.FromHours(2)), "timestamp with time zone");
 
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_DateTime()

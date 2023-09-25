@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
@@ -529,27 +528,25 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                         ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
                         : $"The data type name '{builtinDataTypeName ?? dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
 
-            // We treat object typed DBNull values as default info.
-            if (valueType is null || (staticValueType == typeof(object) && valueType == typeof(DBNull)))
+            if (staticValueType == typeof(object))
             {
-                if (pgTypeId is null && valueType is null)
+                if (valueType == null && pgTypeId is null)
                 {
                     var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
                     ThrowHelper.ThrowInvalidOperationException(
-                        $"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
+                        $"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
                     return;
                 }
 
-                TypeInfo = options.GetDefaultTypeInfo(pgTypeId ?? options.ToCanonicalTypeId(options.UnknownPgType))
-                           ?? throw new NotSupportedException($"No configured writer was found for parameter with {
-                               (_npgsqlDbType is not null ? $"NpgsqlDbType '{_npgsqlDbType}'" : $" DataTypeName '{_dataTypeName}'")}.");
+                // We treat object typed DBNull values as default info.
+                if (valueType == typeof(DBNull))
+                {
+                    valueType = null;
+                    pgTypeId ??= options.ToCanonicalTypeId(options.UnknownPgType);
+                }
             }
-            else
-            {
-                TypeInfo = options.GetTypeInfo(valueType, pgTypeId)
-                           ?? throw new NotSupportedException($"No configured writer was found for parameter of type {valueType}{(_npgsqlDbType is not null
-                                   ? $" and NpgsqlDbType '{_npgsqlDbType}'" : pgTypeId is not null ? $" and DataTypeName '{_dataTypeName}'" : "")}.");
-            }
+
+            TypeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.

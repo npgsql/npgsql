@@ -45,7 +45,7 @@ sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
     {
         if (value.Zone != DateTimeZone.Utc && !LegacyTimestampBehavior)
         {
-            throw new NotSupportedException(
+            throw new ArgumentException(
                 $"Cannot write ZonedDateTime with Zone={value.Zone} to PostgreSQL type 'timestamp with time zone', " +
                 "only UTC is supported. " +
                 "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
@@ -75,7 +75,7 @@ sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
     {
         if (value.Offset != Offset.Zero && !LegacyTimestampBehavior)
         {
-            throw new NotSupportedException(
+            throw new ArgumentException(
                 $"Cannot write OffsetDateTime with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', " +
                 "only offset 0 (UTC) is supported. " +
                 "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");

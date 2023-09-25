@@ -488,7 +488,7 @@ SELECT onedim, twodim FROM (VALUES
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
-        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("array or List"));
+        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidCastException>().With.Property("InnerException").Message.Contains("array or List"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
@@ -501,8 +501,8 @@ SELECT onedim, twodim FROM (VALUES
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, jagged);
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
-            .TypeOf<NotSupportedException>()
-            .With.Message.Contains("jagged"));
+            .TypeOf<InvalidCastException>()
+            .With.Property("InnerException").Message.Contains("jagged"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]

@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -316,7 +315,7 @@ public sealed class FieldDescription
 
     /// <summary>
     /// The format code being used for the field.
-    /// Currently will be zero (text) or one (binary).
+    /// Currently will be text or binary.
     /// In a RowDescription returned from the statement variant of Describe, the format code is not yet known and will always be zero.
     /// </summary>
     internal DataFormat DataFormat { get; set; }
@@ -381,7 +380,7 @@ public sealed class FieldDescription
         void GetInfoSlow(out PgConverterInfo lastConverterInfo)
         {
             PgConverterInfo converterInfo;
-            var typeInfo = GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID);
+            var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
             switch (DataFormat)
             {
             case DataFormat.Binary:
@@ -392,26 +391,13 @@ public sealed class FieldDescription
                 // For text we'll fall back to any available text converter for the expected clr type or throw.
                 if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
                 {
-                    typeInfo = GetTypeInfo(_serializerOptions, type ?? typeof(string), _serializerOptions.UnknownPgType, TypeOID);
+                    typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.UnknownPgType, _serializerOptions);
                     converterInfo = typeInfo.Bind(Field, DataFormat);
                 }
                 break;
             }
 
             lastConverterInfo = converterInfo;
-        }
-
-        static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type? type, PostgresType postgresType, Oid typeOid)
-        {
-            if (postgresType.OID is 0)
-                ThrowReadingNotSupported(type, $"unknown oid: {typeOid}");
-
-            return (type is null ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType))
-                   ?? ThrowReadingNotSupported(type, postgresType.DisplayName);
-
-            [DoesNotReturn]
-            static PgTypeInfo ThrowReadingNotSupported(Type? type, string displayName)
-                => throw new NotSupportedException($"Reading{(type is null ? "" : $" as {type}")} is not supported for PostgreSQL type '{displayName}'");
         }
     }
 
