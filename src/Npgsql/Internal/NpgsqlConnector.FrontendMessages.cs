@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,7 +11,7 @@ partial class NpgsqlConnector
 {
     internal Task WriteDescribe(StatementOrPortal statementOrPortal, byte[] asciiName, bool async, CancellationToken cancellationToken = default)
     {
-        NpgsqlWriteBuffer.AssertASCIIOnly(name);
+        NpgsqlWriteBuffer.AssertASCIIOnly(asciiName);
 
         var len = sizeof(byte) +       // Message code
                   sizeof(int)  +       // Length
@@ -103,7 +104,7 @@ partial class NpgsqlConnector
 
     internal async Task WriteParse(string sql, byte[] asciiName, List<NpgsqlParameter> inputParameters, bool async, CancellationToken cancellationToken = default)
     {
-        NpgsqlWriteBuffer.AssertASCIIOnly(statementName);
+        NpgsqlWriteBuffer.AssertASCIIOnly(asciiName);
 
         int queryByteLen;
         try
@@ -159,7 +160,7 @@ partial class NpgsqlConnector
         bool async,
         CancellationToken cancellationToken = default)
     {
-        NpgsqlWriteBuffer.AssertASCIIOnly(statement);
+        NpgsqlWriteBuffer.AssertASCIIOnly(asciiName);
         NpgsqlWriteBuffer.AssertASCIIOnly(portal);
 
         var headerLength =

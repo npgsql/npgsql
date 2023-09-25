@@ -479,7 +479,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     public void WriteNullTerminatedString(byte[] s)
     {
-        Debug.Assert(s.All(c => c < 128), "Method only supports ASCII strings");
+        AssertASCIIOnly(s);
         Debug.Assert(WriteSpaceLeft >= s.Length + 1);
         WriteBytes(s);
         WriteByte(0);
@@ -590,6 +590,14 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     [Conditional("DEBUG")]
     internal static void AssertASCIIOnly(string s)
+    {
+        foreach (var c in s)
+            if (c >= 128)
+                Debug.Fail("Method only supports ASCII strings");
+    }
+
+    [Conditional("DEBUG")]
+    internal static void AssertASCIIOnly(byte[] s)
     {
         foreach (var c in s)
             if (c >= 128)

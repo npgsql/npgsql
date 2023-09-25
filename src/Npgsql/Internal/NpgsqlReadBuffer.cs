@@ -546,9 +546,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     public float ReadSingle()
     {
         CheckBounds<float>();
-        var result = BitConverter.IsLittleEndian
-            ? Unsafe.As<int, float>(ref Unsafe.AsRef(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]))))
-            : Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
+        float result;
+        if (BitConverter.IsLittleEndian)
+        {
+            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]));
+            result = Unsafe.As<int, float>(ref value);
+        }
+        else
+            result = Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
         ReadPosition += sizeof(float);
         return result;
     }
@@ -557,9 +562,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     public double ReadDouble()
     {
         CheckBounds<double>();
-        var result = BitConverter.IsLittleEndian
-            ? Unsafe.As<long, double>(ref Unsafe.AsRef(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]))))
-            : Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
+        double result;
+        if (BitConverter.IsLittleEndian)
+        {
+            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]));
+            result = Unsafe.As<long, double>(ref value);
+        }
+        else
+            result = Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
         ReadPosition += sizeof(double);
         return result;
     }
