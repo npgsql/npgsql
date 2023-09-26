@@ -47,7 +47,7 @@ sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
             var typeInfo = _serializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
-            var resolution = typeInfo.GetConcreteResolution();
+            var resolution = typeInfo.GetResolution();
             if (typeInfo.GetBufferRequirements(resolution.Converter, DataFormat.Binary) is not { } bufferRequirements)
                 throw new NotSupportedException($"Resolved record field converter '{resolution.Converter.GetType()}' has to support the binary format to be compatible.");
 

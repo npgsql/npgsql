@@ -51,7 +51,7 @@ static class ReflectionCompositeInfoFactory
             else
                 throw new InvalidOperationException($"Cannot find property or field for composite field {pgFields[fieldIndex].Name}.");
 
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetConcreteResolution()), getter, i);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetResolution()), getter, i);
         }
 
         for (var fieldIndex = 0; fieldIndex < pgFields.Count; fieldIndex++)
@@ -81,7 +81,7 @@ static class ReflectionCompositeInfoFactory
             else
                 throw new InvalidOperationException($"Cannot find property or field for composite field '{pgFields[fieldIndex].Name}'.");
 
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetConcreteResolution()), getter, setter);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetResolution()), getter, setter);
         }
 
         Debug.Assert(compositeFields.All(x => x is not null));

@@ -106,22 +106,12 @@ public class PgTypeInfo
             => throw new NotSupportedException("Should not happen, please file a bug.");
     }
 
-    /// Throws if the type info is undecided in its PgTypeId.
-    internal PgConverterResolution GetConcreteResolution()
+    /// Throws if the instance is a PgResolverTypeInfo.
+    internal PgConverterResolution GetResolution()
     {
-        var pgTypeId = PgTypeId;
-        if (pgTypeId is null)
-            ThrowHelper.ThrowInvalidOperationException("PgTypeId is null.");
-
-        return this switch
-        {
-            { IsResolverInfo: false } => new(Converter, pgTypeId.GetValueOrDefault()),
-            PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(null),
-            _ => ThrowNotSupported()
-        };
-
-        static PgConverterResolution ThrowNotSupported()
-            => throw new NotSupportedException("Should not happen, please file a bug.");
+        if (IsResolverInfo)
+            ThrowHelper.ThrowInvalidOperationException("Instance is a PgResolverTypeInfo.");
+        return new(Converter, PgTypeId.GetValueOrDefault());
     }
 
     bool CachedCanConvert(DataFormat format, out BufferRequirements bufferRequirements)

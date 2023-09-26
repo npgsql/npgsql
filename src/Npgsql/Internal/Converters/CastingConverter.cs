@@ -76,7 +76,7 @@ static class CastingTypeInfoExtensions
                 (PgConverterResolver)Activator.CreateInstance(typeof(CastingConverterResolver<>).MakeGenericType(type),
                     resolverTypeInfo)!, typeInfo.PgTypeId);
 
-        var resolution = typeInfo.GetConcreteResolution();
+        var resolution = typeInfo.GetResolution();
         return new PgTypeInfo(typeInfo.Options,
             (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), resolution.Converter)!, resolution.PgTypeId);
     }
