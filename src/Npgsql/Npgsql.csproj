@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Authors>Shay Rojansky;Nikita Kazmin;Brar Piening;Yoh Deadfall;;Austin Drenski;Emil Lenngren;Francisco Figueiredo Jr.;Kenji Uno</Authors>
+    <Authors>Shay Rojansky;Nikita Kazmin;Brar Piening;Nino Floris;Yoh Deadfall;;Austin Drenski;Emil Lenngren;Francisco Figueiredo Jr.;Kenji Uno</Authors>
     <Description>Npgsql is the open source .NET data provider for PostgreSQL.</Description>
     <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
