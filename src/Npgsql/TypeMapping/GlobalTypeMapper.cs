@@ -93,20 +93,19 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
     internal DataTypeName? TryGetDataTypeName(Type type, object value)
     {
-        var typeInfo = TypeMappingOptions.GetTypeInfo(type);
         DataTypeName? dataTypeName;
-        if (typeInfo is PgResolverTypeInfo info)
-            try
-            {
+        try
+        {
+            var typeInfo = TypeMappingOptions.GetTypeInfo(type);
+            if (typeInfo is PgResolverTypeInfo info)
                 dataTypeName = info.GetObjectResolution(value).PgTypeId.DataTypeName;
-            }
-            catch
-            {
-                dataTypeName = null;
-            }
-        else
-            dataTypeName = typeInfo?.GetConcreteResolution().PgTypeId.DataTypeName;
-
+            else
+                dataTypeName = typeInfo?.GetConcreteResolution().PgTypeId.DataTypeName;
+        }
+        catch
+        {
+            dataTypeName = null;
+        }
         return dataTypeName;
     }
 
@@ -184,6 +183,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             if (_userTypeMapper.Items.FirstOrDefault(i => i.ClrType == typeof(TEnum)) is UserTypeMapping userTypeMapping)
                 HackyEnumTypeMappings.Add(new(typeof(TEnum), userTypeMapping.PgTypeName, nameTranslator ?? DefaultNameTranslator));
 
+            ResetTypeMappingCache();
+
             return this;
         }
         finally
@@ -203,6 +204,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             // Temporary hack for EFCore.PG enum mapping compat
             if (removed && ((List<UserTypeMapping>)_userTypeMapper.Items).FindIndex(m => m.ClrType == typeof(TEnum)) is > -1 and var index)
                 HackyEnumTypeMappings.RemoveAt(index);
+
+            ResetTypeMappingCache();
 
             return removed;
         }
@@ -230,6 +233,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
+            ResetTypeMappingCache();
             return this;
         }
         finally
@@ -245,7 +249,9 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         _lock.EnterWriteLock();
         try
         {
-            return _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
+            var result = _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
+            ResetTypeMappingCache();
+            return result;
         }
         finally
         {

@@ -265,6 +265,8 @@ public abstract class TestBase
         if (npgsqlDbType is null)
             isNpgsqlDbTypeInferredFromClrType = false;
 
+        inferredDbType ??= isNpgsqlDbTypeInferredFromClrType ? dbType ?? DbType.Object : DbType.Object;
+
         // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
         // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
         // connection.TypeMapper.Reset();
@@ -318,15 +320,13 @@ public abstract class TestBase
             p = new NpgsqlParameter { Value = valueFactory() };
             cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
-            if (isNpgsqlDbTypeInferredFromClrType)
-                CheckInference();
+            CheckInference(valueOnlyInference: true);
 
             // With (generic) value only
             p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
             cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
-            if (isNpgsqlDbTypeInferredFromClrType)
-                CheckInference();
+            CheckInference(valueOnlyInference: true);
         }
 
         Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
@@ -343,19 +343,20 @@ public abstract class TestBase
             Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
         }
 
-        void CheckInference()
+        void CheckInference(bool valueOnlyInference = false)
         {
-            if (npgsqlDbType is not null)
+            if (isNpgsqlDbTypeInferredFromClrType && npgsqlDbType is not null)
             {
                 Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType),
                     () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
             }
 
-            Assert.That(p.DbType, Is.EqualTo(inferredDbType ?? dbType ?? DbType.Object),
+            Assert.That(p.DbType, Is.EqualTo(valueOnlyInference ? inferredDbType : isNpgsqlDbTypeInferredFromClrType ? inferredDbType : dbType ?? DbType.Object),
                 () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
 
-            Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacets),
-                () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
+            if (isNpgsqlDbTypeInferredFromClrType)
+                Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacets),
+                    () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
         }
     }
 
