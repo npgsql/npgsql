@@ -33,49 +33,46 @@ sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
         _walLocation = walLocation;
     }
 
-    public IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
-        return StartReplicationInternal(CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
+        cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token;
 
-        async IAsyncEnumerator<TestDecodingData> StartReplicationInternal(CancellationToken cancellationToken)
+        var stream = _connection.StartLogicalReplication(
+            _slot, cancellationToken, _walLocation, _options.GetOptionPairs());
+        var encoding = _connection.Encoding!;
+
+        var buffer = ArrayPool<byte>.Shared.Rent(4096);
+
+        try
         {
-            var stream = _connection.StartLogicalReplication(
-                _slot, cancellationToken, _walLocation, _options.GetOptionPairs());
-            var encoding = _connection.Encoding!;
-
-            var buffer = ArrayPool<byte>.Shared.Rent(4096);
-
-            try
+            await foreach (var msg in stream.ConfigureAwait(false))
             {
-                await foreach (var msg in stream.ConfigureAwait(false))
+                var len = (int)msg.Data.Length;
+                Debug.Assert(msg.Data.Position == 0);
+                if (len > buffer.Length)
                 {
-                    var len = (int)msg.Data.Length;
-                    Debug.Assert(msg.Data.Position == 0);
-                    if (len > buffer.Length)
-                    {
-                        ArrayPool<byte>.Shared.Return(buffer);
-                        buffer = ArrayPool<byte>.Shared.Rent(len);
-                    }
-
-                    var offset = 0;
-                    while (offset < len)
-                    {
-                        var read = await msg.Data.ReadAsync(buffer, offset, len - offset, CancellationToken.None).ConfigureAwait(false);
-                        if (read == 0)
-                            throw new EndOfStreamException();
-                        offset += read;
-                    }
-
-                    Debug.Assert(offset == len);
-                    var data = encoding.GetString(buffer, 0, len);
-
-                    yield return _cachedMessage.Populate(msg.WalStart, msg.WalEnd, msg.ServerClock, data);
+                    ArrayPool<byte>.Shared.Return(buffer);
+                    buffer = ArrayPool<byte>.Shared.Rent(len);
                 }
+
+                var offset = 0;
+                while (offset < len)
+                {
+                    var read = await msg.Data.ReadAsync(buffer, offset, len - offset, CancellationToken.None).ConfigureAwait(false);
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    offset += read;
+                }
+
+                Debug.Assert(offset == len);
+                var data = encoding.GetString(buffer, 0, len);
+
+                yield return _cachedMessage.Populate(msg.WalStart, msg.WalEnd, msg.ServerClock, data);
             }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 }

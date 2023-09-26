@@ -173,7 +173,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     Task Write<T>(bool async, T value, CancellationToken cancellationToken = default)
     {
         CheckColumnIndex();
-        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled(cancellationToken);
 
         var p = _params[_column];
         if (p == null)
