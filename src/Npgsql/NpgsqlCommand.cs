@@ -646,10 +646,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 #else
     public override Task PrepareAsync(CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Prepare(true, cancellationToken);
-    }
+        => Prepare(async: true, cancellationToken);
 
     Task Prepare(bool async, CancellationToken cancellationToken = default)
     {
@@ -809,10 +806,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     public Task UnprepareAsync(CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Unprepare(true, cancellationToken);
-    }
+        => Unprepare(async: true, cancellationToken);
 
     async Task Unprepare(bool async, CancellationToken cancellationToken = default)
     {
@@ -1221,15 +1215,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </param>
     /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
     public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ExecuteNonQuery(true, cancellationToken);
-    }
+        => ExecuteNonQuery(async: true, cancellationToken);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
     {
-        var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken).ConfigureAwait(false);
+        var reader = await ExecuteReader(async, CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
         try
         {
             while (async ? await reader.NextResultAsync(cancellationToken).ConfigureAwait(false) : reader.NextResult()) ;
@@ -1266,10 +1257,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <returns>A task representing the asynchronous operation, with the first column of the
     /// first row in the result set, or a null reference if the result set is empty.</returns>
     public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ExecuteScalar(true, cancellationToken).AsTask();
-    }
+        => ExecuteScalar(async: true, cancellationToken).AsTask();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)
@@ -1278,7 +1266,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (IsWrappedByBatch || !Parameters.HasOutputParameters)
             behavior |= CommandBehavior.SequentialAccess;
 
-        var reader = await ExecuteReader(behavior, async, cancellationToken).ConfigureAwait(false);
+        var reader = await ExecuteReader(async, behavior, cancellationToken).ConfigureAwait(false);
         try
         {
             var read = async ? await reader.ReadAsync(cancellationToken).ConfigureAwait(false) : reader.Read();
@@ -1322,7 +1310,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <returns>A task representing the operation.</returns>
     public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
-        => ExecuteReader(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => ExecuteReader(async: false, behavior, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// An asynchronous version of <see cref="ExecuteReader(CommandBehavior)"/>, which executes
@@ -1347,16 +1335,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ExecuteReader(behavior, async: true, cancellationToken).AsTask();
-    }
+        => ExecuteReader(async: true, behavior, cancellationToken).AsTask();
 
     // TODO: Maybe pool these?
     internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
         = new();
 
-    internal virtual async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+    internal virtual async ValueTask<NpgsqlDataReader> ExecuteReader(bool async, CommandBehavior behavior, CancellationToken cancellationToken)
     {
         var conn = CheckAndGetConnection();
         _behavior = behavior;

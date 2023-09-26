@@ -58,7 +58,7 @@ namespace System.IO
             var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
-                var result = await stream.ReadAsync(sharedBuffer, 0, buffer.Length, cancellationToken);
+                var result = await stream.ReadAsync(sharedBuffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
                 new Span<byte>(sharedBuffer, 0, result).CopyTo(buffer.Span);
                 return result;
             }
@@ -88,7 +88,7 @@ namespace System.IO
             buffer.Span.CopyTo(sharedBuffer);
             try
             {
-                await stream.WriteAsync(sharedBuffer, 0, buffer.Length, cancellationToken);
+                await stream.WriteAsync(sharedBuffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
             }
             finally
             {

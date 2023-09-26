@@ -17,7 +17,7 @@ namespace Npgsql;
 /// </summary>
 static class NpgsqlSchema
 {
-    public static Task<DataTable> GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    public static Task<DataTable> GetSchema(bool async, NpgsqlConnection conn, string? collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
     {
         if (collectionName is null)
             throw new ArgumentNullException(nameof(collectionName));
@@ -170,7 +170,7 @@ static class NpgsqlSchema
 
         using var command = BuildCommand(conn, getDatabases, restrictions, "datname");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(databases, async, cancellationToken);
+        await adapter.Fill(databases, async, cancellationToken).ConfigureAwait(false);
 
         return databases;
     }
@@ -196,7 +196,7 @@ SELECT * FROM (
 
         using var command = BuildCommand(conn, getSchemata, restrictions, "catalog_name", "schema_name", "schema_owner");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(schemata, async, cancellationToken);
+        await adapter.Fill(schemata, async, cancellationToken).ConfigureAwait(false);
 
         return schemata;
     }
@@ -224,7 +224,7 @@ WHERE
 
         using var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(tables, async, cancellationToken);
+        await adapter.Fill(tables, async, cancellationToken).ConfigureAwait(false);
 
         return tables;
     }
@@ -264,7 +264,7 @@ JOIN pg_type AS typ ON typnamespace = ns.oid AND typname = udt_name");
 
         using var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(columns, async, cancellationToken);
+        await adapter.Fill(columns, async, cancellationToken).ConfigureAwait(false);
 
         return columns;
     }
@@ -285,7 +285,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
         using var command = BuildCommand(conn, getViews, restrictions, false, "table_catalog", "table_schema", "table_name");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(views, async, cancellationToken);
+        await adapter.Fill(views, async, cancellationToken).ConfigureAwait(false);
 
         return views;
     }
@@ -302,7 +302,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
         using var command = BuildCommand(conn, getUsers, restrictions, "usename");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(users, async, cancellationToken);
+        await adapter.Fill(users, async, cancellationToken).ConfigureAwait(false);
 
         return users;
     }
@@ -335,7 +335,7 @@ WHERE
 
         using var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(indexes, async, cancellationToken);
+        await adapter.Fill(indexes, async, cancellationToken).ConfigureAwait(false);
 
         return indexes;
     }
@@ -375,7 +375,7 @@ WHERE
 
         using var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "t_ns.nspname", "t.relname", "ix_cls.relname", "a.attname");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(indexColumns, async, cancellationToken);
+        await adapter.Fill(indexColumns, async, cancellationToken).ConfigureAwait(false);
 
         return indexColumns;
     }
@@ -418,7 +418,7 @@ FROM
         using var adapter = new NpgsqlDataAdapter(command);
         var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
 
-        await adapter.Fill(table, async, cancellationToken);
+        await adapter.Fill(table, async, cancellationToken).ConfigureAwait(false);
 
         return table;
     }
@@ -453,7 +453,7 @@ FROM pg_constraint c
         using var adapter = new NpgsqlDataAdapter(command);
         var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
 
-        await adapter.Fill(table, async, cancellationToken);
+        await adapter.Fill(table, async, cancellationToken).ConfigureAwait(false);
 
         return table;
     }

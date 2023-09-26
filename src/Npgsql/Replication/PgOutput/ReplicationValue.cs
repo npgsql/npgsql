@@ -84,12 +84,12 @@ public class ReplicationValue
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns></returns>
-    public ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
+    public async ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
     {
         CheckActive();
 
-        ref var info = ref _lastInfo;
-        _fieldDescription.GetInfo(typeof(T), ref info);
+        _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
+        var info = _lastInfo;
 
         switch (Kind)
         {
@@ -99,7 +99,7 @@ public class ReplicationValue
                 return default!;
 
             if (typeof(T) == typeof(object))
-                return new ValueTask<T>((T)(object)DBNull.Value);
+                return (T)(object)DBNull.Value;
 
             ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
             break;
@@ -109,21 +109,15 @@ public class ReplicationValue
                 $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        using (NoSynchronizationContextScope.Enter())
-            return GetCore(info, _fieldDescription.DataFormat, _readBuffer, Length, cancellationToken);
+        using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-        static async ValueTask<T> GetCore(PgConverterInfo info, DataFormat format, NpgsqlReadBuffer buffer, int length, CancellationToken cancellationToken)
-        {
-            using var registration = buffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-            var reader = buffer.PgReader.Init(length, format);
-            await reader.StartReadAsync(info.BufferRequirement, cancellationToken);
-            var result = info.AsObject
-                ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
-                : await info.GetConverter<T>().ReadAsync(reader, cancellationToken);
-            await reader.EndReadAsync();
-            return result;
-        }
+        var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
+        await reader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
+        var result = info.AsObject
+            ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+            : await info.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+        await reader.EndReadAsync().ConfigureAwait(false);
+        return result;
     }
 
     /// <summary>
@@ -190,8 +184,8 @@ public class ReplicationValue
 
         if (!PgReader.Initialized)
             PgReader.Init(Length, _fieldDescription.DataFormat);
-        await PgReader.ConsumeAsync(cancellationToken: cancellationToken);
-        await PgReader.Commit(async: true, resuming: false);
+        await PgReader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await PgReader.Commit(async: true, resuming: false).ConfigureAwait(false);
 
         _isConsumed = true;
     }

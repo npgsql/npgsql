@@ -663,7 +663,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         try
         {
             if (writer.ShouldFlush(sizeof(int)))
-                await writer.Flush(async, cancellationToken);
+                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
             writer.WriteInt32(writeSize.Value);
             if (writeSize.Value is -1)
@@ -680,7 +680,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 WriteState = _writeState
             };
             await writer.BeginWrite(async, current, cancellationToken).ConfigureAwait(false);
-            await WriteValue(async, writer, cancellationToken);
+            await WriteValue(async, writer, cancellationToken).ConfigureAwait(false);
             writer.Commit(writeSize.Value + sizeof(int));
         }
         finally

@@ -71,13 +71,13 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     internal async Task Init(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
     {
-        await _connector.WriteQuery(copyFromCommand, async, cancellationToken);
-        await _connector.Flush(async, cancellationToken);
+        await _connector.WriteQuery(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
+        await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
         CopyInResponseMessage copyInResponse;
-        var msg = await _connector.ReadMessage(async);
+        var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
         switch (msg.Code)
         {
         case BackendMessageCode.CopyInResponse:
@@ -126,23 +126,18 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// <summary>
     /// Starts writing a single row, must be invoked before writing any columns.
     /// </summary>
-    public Task StartRowAsync(CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-        using (NoSynchronizationContextScope.Enter())
-            return StartRow(true, cancellationToken);
-    }
+    public Task StartRowAsync(CancellationToken cancellationToken = default) => StartRow(async: true, cancellationToken);
 
     async Task StartRow(bool async, CancellationToken cancellationToken = default)
     {
         CheckReady();
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (_column != -1 && _column != NumColumns)
             ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
 
         if (_buf.WriteSpaceLeft < 2)
-            await _buf.Flush(async, cancellationToken);
+            await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
         _buf.WriteInt16(NumColumns);
 
         _pgWriter.Refresh();
@@ -159,7 +154,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
     /// specify the type.
     /// </typeparam>
-    public void Write<T>(T value) => Write(value, false).GetAwaiter().GetResult();
+    public void Write<T>(T value) => Write(async: false, value).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes a single column in the current row.
@@ -173,17 +168,13 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
     /// specify the type.
     /// </typeparam>
-    public Task WriteAsync<T>(T value, CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-        using (NoSynchronizationContextScope.Enter())
-            return Write(value, true, cancellationToken);
-    }
+    public Task WriteAsync<T>(T value, CancellationToken cancellationToken = default) => Write(async: true, value, cancellationToken);
 
-    Task Write<T>(T value, bool async, CancellationToken cancellationToken = default)
+    Task Write<T>(bool async, T value, CancellationToken cancellationToken = default)
     {
         CheckColumnIndex();
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled(cancellationToken);
 
         var p = _params[_column];
         if (p == null)
@@ -209,7 +200,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public void Write<T>(T value, NpgsqlDbType npgsqlDbType) =>
-        Write(value, npgsqlDbType, false).GetAwaiter().GetResult();
+        Write(async: false, value, npgsqlDbType).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
@@ -226,16 +217,12 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public Task WriteAsync<T>(T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-        using (NoSynchronizationContextScope.Enter())
-            return Write(value, npgsqlDbType, true, cancellationToken);
-    }
+        => Write(async: true, value, npgsqlDbType, cancellationToken);
 
-    Task Write<T>(T value, NpgsqlDbType npgsqlDbType, bool async, CancellationToken cancellationToken = default)
+    Task Write<T>(bool async, T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
     {
         CheckColumnIndex();
+        cancellationToken.ThrowIfCancellationRequested();
 
         var p = _params[_column];
         if (p == null)
@@ -263,7 +250,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public void Write<T>(T value, string dataTypeName) =>
-        Write(value, dataTypeName, false).GetAwaiter().GetResult();
+        Write(async: false, value, dataTypeName).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes a single column in the current row as type <paramref name="dataTypeName"/>.
@@ -278,16 +265,12 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public Task WriteAsync<T>(T value, string dataTypeName, CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-        using (NoSynchronizationContextScope.Enter())
-            return Write(value, dataTypeName, true, cancellationToken);
-    }
+        => Write(async: true, value, dataTypeName, cancellationToken);
 
-    Task Write<T>(T value, string dataTypeName, bool async, CancellationToken cancellationToken = default)
+    Task Write<T>(bool async, T value, string dataTypeName, CancellationToken cancellationToken = default)
     {
         CheckColumnIndex();
+        cancellationToken.ThrowIfCancellationRequested();
 
         var p = _params[_column];
         if (p == null)
@@ -335,7 +318,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         param.Bind(out _, out _);
         try
         {
-            await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken);
+            await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -353,22 +336,17 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// <summary>
     /// Writes a single null column value.
     /// </summary>
-    public Task WriteNullAsync(CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-        using (NoSynchronizationContextScope.Enter())
-            return WriteNull(true, cancellationToken);
-    }
+    public Task WriteNullAsync(CancellationToken cancellationToken = default) => WriteNull(async: true, cancellationToken);
 
     async Task WriteNull(bool async, CancellationToken cancellationToken = default)
     {
         CheckReady();
+        cancellationToken.ThrowIfCancellationRequested();
         if (_column == -1)
             throw new InvalidOperationException("A row hasn't been started");
 
         if (_buf.WriteSpaceLeft < 4)
-            await _buf.Flush(async, cancellationToken);
+            await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
 
         _buf.WriteInt32(-1);
         _pgWriter.Refresh();
@@ -393,18 +371,13 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <param name="values">An array of column values to be written as a single row</param>
     public Task WriteRowAsync(CancellationToken cancellationToken = default, params object?[] values)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-        using (NoSynchronizationContextScope.Enter())
-            return WriteRow(true, cancellationToken, values);
-    }
+        => WriteRow(async: true, cancellationToken, values);
 
     async Task WriteRow(bool async, CancellationToken cancellationToken = default, params object?[] values)
     {
-        await StartRow(async, cancellationToken);
+        await StartRow(async, cancellationToken).ConfigureAwait(false);
         foreach (var value in values)
-            await Write(value, async, cancellationToken);
+            await Write(async, value, cancellationToken).ConfigureAwait(false);
     }
 
     void CheckColumnIndex()
@@ -425,13 +398,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// <summary>
     /// Completes the import operation. The writer is unusable after this operation.
     /// </summary>
-    public ValueTask<ulong> CompleteAsync(CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return new ValueTask<ulong>(Task.FromCanceled<ulong>(cancellationToken));
-        using (NoSynchronizationContextScope.Enter())
-            return Complete(true, cancellationToken);
-    }
+    public ValueTask<ulong> CompleteAsync(CancellationToken cancellationToken = default) => Complete(async: true, cancellationToken);
 
     async ValueTask<ulong> Complete(bool async, CancellationToken cancellationToken = default)
     {
@@ -441,19 +408,19 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         if (InMiddleOfRow)
         {
-            await Cancel(async, cancellationToken);
+            await Cancel(async, cancellationToken).ConfigureAwait(false);
             throw new InvalidOperationException("Binary importer closed in the middle of a row, cancelling import.");
         }
 
         try
         {
-            await WriteTrailer(async, cancellationToken);
-            await _buf.Flush(async, cancellationToken);
+            await WriteTrailer(async, cancellationToken).ConfigureAwait(false);
+            await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
             _buf.EndCopyMode();
-            await _connector.WriteCopyDone(async, cancellationToken);
-            await _connector.Flush(async, cancellationToken);
-            var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+            await _connector.WriteCopyDone(async, cancellationToken).ConfigureAwait(false);
+            await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
+            var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
             _state = ImporterState.Committed;
             return cmdComplete.Rows;
         }
@@ -466,7 +433,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     void ICancelable.Cancel() => Close();
 
-    async Task ICancelable.CancelAsync() => await CloseAsync();
+    async Task ICancelable.CancelAsync() => await CloseAsync().ConfigureAwait(false);
 
     /// <summary>
     /// <para>
@@ -488,23 +455,19 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// be reverted.
     /// </para>
     /// </summary>
-    public ValueTask DisposeAsync()
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return CloseAsync(true);
-    }
+    public ValueTask DisposeAsync() => CloseAsync(true);
 
     async Task Cancel(bool async, CancellationToken cancellationToken = default)
     {
         _state = ImporterState.Cancelled;
         _buf.Clear();
         _buf.EndCopyMode();
-        await _connector.WriteCopyFail(async, cancellationToken);
-        await _connector.Flush(async, cancellationToken);
+        await _connector.WriteCopyFail(async, cancellationToken).ConfigureAwait(false);
+        await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
         try
         {
             using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-            var msg = await _connector.ReadMessage(async);
+            var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
             // The CopyFail should immediately trigger an exception from the read above.
             throw _connector.Break(
                 new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
@@ -525,7 +488,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// be reverted.
     /// </para>
     /// </summary>
-    public void Close() => CloseAsync(false).GetAwaiter().GetResult();
+    public void Close() => CloseAsync(async: false).GetAwaiter().GetResult();
 
     /// <summary>
     /// <para>
@@ -536,22 +499,17 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// be reverted.
     /// </para>
     /// </summary>
-    public ValueTask CloseAsync(CancellationToken cancellationToken = default)
-    {
-        if (cancellationToken.IsCancellationRequested)
-            return new ValueTask(Task.FromCanceled(cancellationToken));
-        using (NoSynchronizationContextScope.Enter())
-            return CloseAsync(true, cancellationToken);
-    }
+    public ValueTask CloseAsync(CancellationToken cancellationToken = default) => CloseAsync(async: true, cancellationToken);
 
     async ValueTask CloseAsync(bool async, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         switch (_state)
         {
         case ImporterState.Disposed:
             return;
         case ImporterState.Ready:
-            await Cancel(async, cancellationToken);
+            await Cancel(async, cancellationToken).ConfigureAwait(false);
             break;
         case ImporterState.Cancelled:
         case ImporterState.Committed:
@@ -588,7 +546,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     async Task WriteTrailer(bool async, CancellationToken cancellationToken = default)
     {
         if (_buf.WriteSpaceLeft < 2)
-            await _buf.Flush(async, cancellationToken);
+            await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
         _buf.WriteInt16(-1);
     }
 

@@ -38,21 +38,20 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
         if (_tupleEnumerable.State != RowState.Reading)
             throw new ObjectDisposedException(null);
 
-        using (NoSynchronizationContextScope.Enter())
-            return MoveNextCore();
+        return MoveNextCore();
 
         async ValueTask<bool> MoveNextCore()
         {
             // Consume the previous column
             if (_pos != -1)
-                await _value.Consume(_cancellationToken);
+                await _value.Consume(_cancellationToken).ConfigureAwait(false);
 
             if (_pos + 1 == _numColumns)
                 return false;
             _pos++;
 
             // Read the next column
-            await _readBuffer.Ensure(1, async: true);
+            await _readBuffer.Ensure(1, async: true).ConfigureAwait(false);
             var kind = (TupleDataKind)_readBuffer.ReadByte();
             int len;
             switch (kind)
@@ -63,7 +62,7 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
                 break;
             case TupleDataKind.TextValue:
             case TupleDataKind.BinaryValue:
-                await _readBuffer.Ensure(4, async: true);
+                await _readBuffer.Ensure(4, async: true).ConfigureAwait(false);
                 len = _readBuffer.ReadInt32();
                 break;
             default:
@@ -87,7 +86,7 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
     public async ValueTask DisposeAsync()
     {
         if (_tupleEnumerable.State == RowState.Reading)
-            while (await MoveNextAsync()) { /* Do nothing, just iterate the enumerator */ }
+            while (await MoveNextAsync().ConfigureAwait(false)) { /* Do nothing, just iterate the enumerator */ }
 
         _tupleEnumerable.State = RowState.Consumed;
     }

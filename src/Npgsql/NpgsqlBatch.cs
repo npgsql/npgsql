@@ -140,7 +140,7 @@ public class NpgsqlBatch : DbBatch
     protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(
         CommandBehavior behavior,
         CancellationToken cancellationToken)
-        => await ExecuteReaderAsync(behavior, cancellationToken);
+        => await ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc cref="DbBatch.ExecuteReaderAsync(CancellationToken)"/>
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)

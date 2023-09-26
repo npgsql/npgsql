@@ -496,9 +496,9 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            await OpenCore(this, Settings.SslMode, timeout, async, cancellationToken);
+            await OpenCore(this, Settings.SslMode, timeout, async, cancellationToken).ConfigureAwait(false);
 
-            await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken);
+            await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken).ConfigureAwait(false);
 
             Debug.Assert(DataSource.SerializerOptions is not null);
             Debug.Assert(DataSource.DatabaseInfo is not null);
@@ -548,7 +548,7 @@ public sealed partial class NpgsqlConnector
                 try
                 {
                     if (async)
-                        await DataSource.ConnectionInitializerAsync(tempConnection);
+                        await DataSource.ConnectionInitializerAsync(tempConnection).ConfigureAwait(false);
                     else if (!async)
                         DataSource.ConnectionInitializer(tempConnection);
                 }
@@ -579,18 +579,18 @@ public sealed partial class NpgsqlConnector
             CancellationToken cancellationToken,
             bool isFirstAttempt = true)
         {
-            await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt);
+            await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt).ConfigureAwait(false);
 
-            var username = await conn.GetUsernameAsync(async, cancellationToken);
+            var username = await conn.GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
-            await conn.Flush(async, cancellationToken);
+            await conn.Flush(async, cancellationToken).ConfigureAwait(false);
 
             using var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
             try
             {
-                await conn.Authenticate(username, timeout, async, cancellationToken);
+                await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
             }
             catch (PostgresException e)
                 when (e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification &&
@@ -609,20 +609,20 @@ public sealed partial class NpgsqlConnector
                     timeout,
                     async,
                     cancellationToken,
-                    isFirstAttempt: false);
+                    isFirstAttempt: false).ConfigureAwait(false);
 
                 return;
             }
 
             // We treat BackendKeyData as optional because some PostgreSQL-like database
             // don't send it (CockroachDB, CrateDB)
-            var msg = await conn.ReadMessage(async);
+            var msg = await conn.ReadMessage(async).ConfigureAwait(false);
             if (msg.Code == BackendMessageCode.BackendKeyData)
             {
                 var keyDataMsg = (BackendKeyDataMessage)msg;
                 conn.BackendProcessId = keyDataMsg.BackendProcessId;
                 conn._backendSecretKey = keyDataMsg.BackendSecretKey;
-                msg = await conn.ReadMessage(async);
+                msg = await conn.ReadMessage(async).ConfigureAwait(false);
             }
 
             if (msg.Code != BackendMessageCode.ReadyForQuery)
@@ -640,15 +640,15 @@ public sealed partial class NpgsqlConnector
         batch.BatchCommands.Add(new NpgsqlBatchCommand("SHOW default_transaction_read_only"));
         batch.Timeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
-        var reader = async ? await batch.ExecuteReaderAsync(cancellationToken) : batch.ExecuteReader();
+        var reader = async ? await batch.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false) : batch.ExecuteReader();
         try
         {
             if (async)
             {
-                await reader.ReadAsync(cancellationToken);
+                await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
                 _isHotStandBy = reader.GetBoolean(0);
-                await reader.NextResultAsync(cancellationToken);
-                await reader.ReadAsync(cancellationToken);
+                await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
+                await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -667,7 +667,7 @@ public sealed partial class NpgsqlConnector
         finally
         {
             if (async)
-                await reader.DisposeAsync();
+                await reader.DisposeAsync().ConfigureAwait(false);
             else
                 reader.Dispose();
         }
@@ -736,7 +736,7 @@ public sealed partial class NpgsqlConnector
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 username = await KerberosUsernameProvider.GetUsernameAsync(Settings.IncludeRealm, ConnectionLogger, async,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
 
                 if (username?.Length > 0)
                 {
@@ -761,7 +761,7 @@ public sealed partial class NpgsqlConnector
         try
         {
             if (async)
-                await ConnectAsync(timeout, cancellationToken);
+                await ConnectAsync(timeout, cancellationToken).ConfigureAwait(false);
             else
                 Connect(timeout);
 
@@ -790,9 +790,9 @@ public sealed partial class NpgsqlConnector
                 sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
             {
                 WriteSslRequest();
-                await Flush(async, cancellationToken);
+                await Flush(async, cancellationToken).ConfigureAwait(false);
 
-                await ReadBuffer.Ensure(1, async);
+                await ReadBuffer.Ensure(1, async).ConfigureAwait(false);
                 var response = (char)ReadBuffer.ReadByte();
                 timeout.CheckAndApply(this);
 
@@ -805,7 +805,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.EncryptionHandler.NegotiateEncryption(this, sslMode, timeout, async, isFirstAttempt);
+                    await DataSource.EncryptionHandler.NegotiateEncryption(this, sslMode, timeout, async, isFirstAttempt).ConfigureAwait(false);
                     break;
                 }
 
@@ -927,7 +927,7 @@ public sealed partial class NpgsqlConnector
 #endif
 
                 if (async)
-                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
+                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, sslProtocols, checkCertificateRevocation).ConfigureAwait(false);
                 else
                     sslStream.AuthenticateAsClient(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
 
@@ -1034,7 +1034,7 @@ public sealed partial class NpgsqlConnector
         // and raises the exception, while the actual task may be left running.
         var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
             ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
-            : IPAddressesToEndpoints(await TaskTimeoutAndCancellation.ExecuteAsync(GetHostAddressesAsync, timeout, cancellationToken),
+            : IPAddressesToEndpoints(await TaskTimeoutAndCancellation.ExecuteAsync(GetHostAddressesAsync, timeout, cancellationToken).ConfigureAwait(false),
                 Port);
 
         // Give each IP an equal share of the remaining time
@@ -1058,7 +1058,7 @@ public sealed partial class NpgsqlConnector
             var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
             try
             {
-                await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken);
+                await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken).ConfigureAwait(false);
                 SetSocketOptions(socket);
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
@@ -1183,7 +1183,7 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            while (await CommandsInFlightReader.WaitToReadAsync())
+            while (await CommandsInFlightReader.WaitToReadAsync().ConfigureAwait(false))
             {
                 commandsRead = 0;
                 Debug.Assert(!InTransaction);
@@ -1192,7 +1192,7 @@ public sealed partial class NpgsqlConnector
                 {
                     commandsRead++;
 
-                    await ReadBuffer.Ensure(5, true);
+                    await ReadBuffer.Ensure(5, true).ConfigureAwait(false);
 
                     // We have a resultset for the command - hand back control to the command (which will
                     // return it to the user)
@@ -1204,7 +1204,7 @@ public sealed partial class NpgsqlConnector
                     // true, so that the user code calling NpgsqlDataReader.Dispose will not continue executing
                     // synchronously here. The prevents issues if the code after the next command's execution
                     // completion blocks.
-                    await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
+                    await new ValueTask(ReaderCompleted, ReaderCompleted.Version).ConfigureAwait(false);
                     Debug.Assert(!InTransaction);
                 }
 
@@ -1246,7 +1246,7 @@ public sealed partial class NpgsqlConnector
             {
                 while (true)
                 {
-                    var pendingCommand = await CommandsInFlightReader.ReadAsync();
+                    var pendingCommand = await CommandsInFlightReader.ReadAsync().ConfigureAwait(false);
 
                     // TODO: the exception we have here is sometimes just the result of the write loop breaking
                     // the connector, so it doesn't represent the actual root cause.
@@ -1336,7 +1336,7 @@ public sealed partial class NpgsqlConnector
                 // TODO: There could be room for optimization here, rather than the async call(s)
                 ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
                 for (; PendingPrependedResponses > 0; PendingPrependedResponses--)
-                    await ReadMessageLong(async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true);
+                    await ReadMessageLong(async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true).ConfigureAwait(false);
                 // We've read all the prepended response.
                 // Allow cancellation to proceed.
                 ReadingPrependedMessagesMRE.Set();
@@ -1358,7 +1358,7 @@ public sealed partial class NpgsqlConnector
 
             while (true)
             {
-                await ReadBuffer.Ensure(5, async, readingNotifications);
+                await ReadBuffer.Ensure(5, async, readingNotifications).ConfigureAwait(false);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                 ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1369,7 +1369,7 @@ public sealed partial class NpgsqlConnector
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
-                        await ReadBuffer.Skip(len, async);
+                        await ReadBuffer.Skip(len, async).ConfigureAwait(false);
                         continue;
                     }
                 }
@@ -1387,7 +1387,7 @@ public sealed partial class NpgsqlConnector
                         ReadBuffer = oversizeBuffer;
                     }
 
-                    await ReadBuffer.Ensure(len, async);
+                    await ReadBuffer.Ensure(len, async).ConfigureAwait(false);
                 }
 
                 var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
@@ -1960,7 +1960,7 @@ public sealed partial class NpgsqlConnector
         var copyOperation = CurrentCopyOperation;
 
         if (reader != null)
-            await reader.Close(connectionClosing: true, async, isDisposing: false);
+            await reader.Close(async, connectionClosing: true, isDisposing: false).ConfigureAwait(false);
         else if (copyOperation != null)
         {
             // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
@@ -1975,7 +1975,7 @@ public sealed partial class NpgsqlConnector
                 try
                 {
                     if (async)
-                        await copyOperation.CancelAsync();
+                        await copyOperation.CancelAsync().ConfigureAwait(false);
                     else
                         copyOperation.Cancel();
                 }
@@ -1988,7 +1988,7 @@ public sealed partial class NpgsqlConnector
             try
             {
                 if (async)
-                    await copyOperation.DisposeAsync();
+                    await copyOperation.DisposeAsync().ConfigureAwait(false);
                 else
                     copyOperation.Dispose();
             }
@@ -2319,7 +2319,7 @@ public sealed partial class NpgsqlConnector
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
-                await Rollback(async);
+                await Rollback(async).ConfigureAwait(false);
                 ClearTransaction();
                 endBindingScope = true;
                 break;
@@ -2614,7 +2614,7 @@ public sealed partial class NpgsqlConnector
         using var _ = StartUserAction(ConnectorState.Waiting, cancellationToken: cancellationToken, attemptPgCancellation: false);
 
         // We may have prepended messages in the connection's write buffer - these need to be flushed now.
-        await Flush(async, cancellationToken);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
 
         var keepaliveMs = Settings.KeepAlive * 1000;
         while (true)
@@ -2625,7 +2625,7 @@ public sealed partial class NpgsqlConnector
             UserTimeout = timeoutForKeepalive ? keepaliveMs : timeout;
             try
             {
-                var msg = await ReadMessageWithNotifications(async);
+                var msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
                 if (msg != null)
                 {
                     throw Break(
@@ -2642,8 +2642,8 @@ public sealed partial class NpgsqlConnector
             LogMessages.SendingKeepalive(ConnectionLogger, Id);
 
             var keepaliveTime = Stopwatch.StartNew();
-            await WriteSync(async, cancellationToken);
-            await Flush(async, cancellationToken);
+            await WriteSync(async, cancellationToken).ConfigureAwait(false);
+            await Flush(async, cancellationToken).ConfigureAwait(false);
 
             var receivedNotification = false;
             var expectedMessageCode = BackendMessageCode.RowDescription;
@@ -2654,7 +2654,7 @@ public sealed partial class NpgsqlConnector
 
                 try
                 {
-                    msg = await ReadMessageWithNotifications(async);
+                    msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is OperationCanceledException || e is NpgsqlException npgEx && npgEx.InnerException is TimeoutException)
                 {
@@ -2712,20 +2712,20 @@ public sealed partial class NpgsqlConnector
     {
         LogMessages.ExecutingInternalCommand(CommandLogger, query, Id);
 
-        await WriteQuery(query, async, cancellationToken);
-        await Flush(async, cancellationToken);
-        Expect<CommandCompleteMessage>(await ReadMessage(async), this);
-        Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
+        await WriteQuery(query, async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
+        Expect<CommandCompleteMessage>(await ReadMessage(async).ConfigureAwait(false), this);
+        Expect<ReadyForQueryMessage>(await ReadMessage(async).ConfigureAwait(false), this);
     }
 
     internal async Task ExecuteInternalCommand(byte[] data, bool async, CancellationToken cancellationToken = default)
     {
         Debug.Assert(State != ConnectorState.Ready, "Forgot to start a user action...");
 
-        await WritePregenerated(data, async, cancellationToken);
-        await Flush(async, cancellationToken);
-        Expect<CommandCompleteMessage>(await ReadMessage(async), this);
-        Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
+        await WritePregenerated(data, async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
+        Expect<CommandCompleteMessage>(await ReadMessage(async).ConfigureAwait(false), this);
+        Expect<ReadyForQueryMessage>(await ReadMessage(async).ConfigureAwait(false), this);
     }
 
     #endregion
