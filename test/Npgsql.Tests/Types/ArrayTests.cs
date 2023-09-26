@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
-using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -374,13 +373,13 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
     }
 
     [Test]
-    public async Task NpgsqlSlimSourceBuilder_EnableRanges()
+    public async Task NpgsqlSlimSourceBuilder_EnableArrays()
     {
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        dataSourceBuilder.EnableRanges();
+        dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+        await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
     }
 
     class IntList : List<int> { }
