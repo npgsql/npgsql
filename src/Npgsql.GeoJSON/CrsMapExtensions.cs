@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Npgsql.GeoJSON.Internal;
 
@@ -16,7 +17,7 @@ public static class CrsMapExtensions
     {
         var builder = new CrsMapBuilder();
         using var cmd = GetCsrCommand(dataSource);
-        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
 
         while (await reader.ReadAsync().ConfigureAwait(false))
             builder.Add(new CrsMapEntry(reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2)));

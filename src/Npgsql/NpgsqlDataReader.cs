@@ -1186,7 +1186,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 try
                 {
                     if (async)
-                        await _sendTask;
+                        await _sendTask.ConfigureAwait(false);
                     else
                         _sendTask.GetAwaiter().GetResult();
                 }
