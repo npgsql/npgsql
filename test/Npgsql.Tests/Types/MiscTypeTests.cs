@@ -153,6 +153,20 @@ class MiscTypeTests : MultiplexingTestBase
 
     #endregion
 
+
+    [Test]
+    public async Task ObjectArray()
+    {
+        await AssertTypeWrite(new object?[] { (short)4, null, (long)5, 6 }, "{4,NULL,5,6}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefault: false);
+        await AssertTypeWrite(new object?[] { "text", null, DBNull.Value, "chars".ToCharArray(), 'c' }, "{text,NULL,NULL,chars,c}", "text[]", NpgsqlDbType.Text | NpgsqlDbType.Array, isDefault: false);
+        await AssertTypeWrite(new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]", NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false);
+        Assert.ThrowsAsync<ArgumentException>(() => AssertTypeWrite(new object?[]
+            {
+                DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
+            }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
+            NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false));
+    }
+
     [Test]
     public Task Int2Vector()
         => AssertType(new short[] { 4, 5, 6 }, "4 5 6", "int2vector", NpgsqlDbType.Int2Vector, isDefault: false);

@@ -31,6 +31,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         var info = Mappings.Find(type, dataTypeName, options);
         if (info is null && dataTypeName is not null)
             info = GetEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+
         return info;
     }
 
@@ -470,21 +471,44 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
         var info = Mappings.Find(type, dataTypeName, options);
-        if (info is null && dataTypeName is not null)
-            info = GetEnumArrayTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+
+        Type? elementType = null;
+        if (info is null && dataTypeName is not null &&
+            (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType))
+            && options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresArrayType { Element: var pgElementType })
+        {
+            info = GetEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
+                   GetObjectArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options);
+        }
         return info;
     }
 
-    static PgTypeInfo? GetEnumArrayTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+    static PgTypeInfo? GetObjectArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName,
+        PgSerializerOptions options)
     {
-        if (type is not null && type != typeof(object) && (!TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) || elementType != typeof(string)))
+        if (elementType != typeof(object))
             return null;
 
-        if (options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType enumType })
+        // Probe if there is any mapping at all for this element type.
+        var elementId = options.ToCanonicalTypeId(pgElementType);
+        if (options.GetDefaultTypeInfo(elementId) is null)
             return null;
 
         var mappings = new TypeInfoMappingCollection();
-        mappings.AddType<string>(enumType.DataTypeName, (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding)), MatchRequirement.DataTypeName);
+        mappings.AddType<object>(pgElementType.DataTypeName,
+            (options, mapping, _) => mapping.CreateInfo(options, new ObjectConverter(options, elementId)), MatchRequirement.DataTypeName);
+        mappings.AddArrayType<object>(pgElementType.DataTypeName);
+        return mappings.Find(type, dataTypeName, options);
+    }
+
+    static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+    {
+        if ((type != typeof(object) && elementType is not null && elementType != typeof(string)) || pgElementType is not PostgresEnumType enumType)
+            return null;
+
+        var mappings = new TypeInfoMappingCollection();
+        mappings.AddType<string>(enumType.DataTypeName,
+            (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding)), MatchRequirement.DataTypeName);
         mappings.AddArrayType<string>(enumType.DataTypeName);
         return mappings.Find(type, dataTypeName, options);
     }
