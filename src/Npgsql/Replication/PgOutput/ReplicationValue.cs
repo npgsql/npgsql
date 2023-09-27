@@ -88,7 +88,7 @@ public class ReplicationValue
     {
         CheckActive();
 
-        _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
+        _fieldDescription.GetInfo(typeof(T), ref _lastInfo, out var asObject);
         var info = _lastInfo;
 
         switch (Kind)
@@ -113,7 +113,7 @@ public class ReplicationValue
 
         var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
         await reader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
-        var result = info.AsObject
+        var result = asObject
             ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
             : await info.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
         await reader.EndReadAsync().ConfigureAwait(false);
@@ -158,7 +158,7 @@ public class ReplicationValue
         CheckActive();
 
         ref var info = ref _lastInfo;
-        _fieldDescription.GetInfo(typeof(TextReader), ref info);
+        _fieldDescription.GetInfo(typeof(TextReader), ref info, out _);
 
         switch (Kind)
         {
