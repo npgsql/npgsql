@@ -120,7 +120,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
 
         var command = new NpgsqlCommand($"SELECT id, int2 FROM {view}", conn);
 
-        using var dr = command.ExecuteReader(CommandBehavior.SchemaOnly |CommandBehavior.KeyInfo);
+        using var dr = command.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var metadata = await GetSchemaTable(dr);
 
         var idRow = metadata!.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "id");
