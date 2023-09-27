@@ -29,9 +29,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
 
-    EncryptionHandler _encryptionHandler = new();
+    TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
+
+    IntegratedSecurityHandler _integratedSecurityHandler = new();
 
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
@@ -202,9 +204,10 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// and might change during the lifetime of the application.
     /// When that's not the case, use the overload which directly accepts the certificate.
     /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder UseRootCertificateCallback(Func<X509Certificate2>? rootCertificateCallback)
     {
-        _encryptionHandler.RootCertificateCallback = rootCertificateCallback;
+        _transportSecurityHandler.RootCertificateCallback = rootCertificateCallback;
 
         return this;
     }
@@ -229,6 +232,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// token fetching, do so within the provided callback.
     /// </para>
     /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder UsePeriodicPasswordProvider(
         Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? passwordProvider,
         TimeSpan successRefreshInterval,
@@ -329,6 +333,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>array</c> types.
     /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableArrays()
     {
         AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
@@ -340,6 +345,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>range</c> types.
     /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableRanges()
     {
         AddTypeInfoResolver(new RangeTypeInfoResolver());
@@ -349,6 +355,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>multirange</c> types.
     /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableMultiranges()
     {
         AddTypeInfoResolver(new RangeTypeInfoResolver());
@@ -365,6 +372,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <param name="jsonClrTypes">
     /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
     /// </param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder UseSystemTextJson(
         JsonSerializerOptions? serializerOptions = null,
         Type[]? jsonbClrTypes = null,
@@ -377,6 +385,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>record</c> type.
     /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableRecords()
     {
         AddTypeInfoResolver(new RecordTypeInfoResolver());
@@ -386,6 +395,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>tsquery</c> and <c>tsvector</c> types.
     /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableFullTextSearch()
     {
         AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
@@ -395,6 +405,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>ltree</c> extension types.
     /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableLTree()
     {
         AddTypeInfoResolver(new LTreeTypeInfoResolver());
@@ -404,6 +415,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for extra conversions from PostgreSQL to .NET types.
     /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableExtraConversions()
     {
         AddTypeInfoResolver(new ExtraConversionsResolver());
@@ -414,10 +426,21 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// Enables the possibility to use TLS/SSl encryption for connections to PostgreSQL. This does not guarantee that encryption will
     /// actually be used; see <see href="https://www.npgsql.org/doc/security.html"/> for more details.
     /// </summary>
-    public NpgsqlSlimDataSourceBuilder EnableEncryption()
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder EnableTransportSecurity()
     {
-        _encryptionHandler = new RealEncryptionHandler();
+        _transportSecurityHandler = new RealTransportSecurityHandler();
+        return this;
+    }
 
+    /// <summary>
+    /// Enables the possibility to use GSS/SSPI authentication for connections to PostgreSQL. This does not guarantee that it will
+    /// actually be used; see <see href="https://www.npgsql.org/doc/security.html"/> for more details.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder EnableIntegratedSecurity()
+    {
+        _integratedSecurityHandler = new RealIntegratedSecurityHandler();
         return this;
     }
 
@@ -495,9 +518,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     {
         ConnectionStringBuilder.PostProcessAndValidate();
 
-        if (!_encryptionHandler.SupportEncryption && (_userCertificateValidationCallback is not null || _clientCertificatesCallback is not null))
+        if (!_transportSecurityHandler.SupportEncryption && (_userCertificateValidationCallback is not null || _clientCertificatesCallback is not null))
         {
-            throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
+            throw new InvalidOperationException(NpgsqlStrings.TransportSecurityDisabled);
         }
 
         if (_periodicPasswordProvider is not null &&
@@ -511,7 +534,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _loggerFactory is null
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
-            _encryptionHandler,
+            _transportSecurityHandler,
+            _integratedSecurityHandler,
             _userCertificateValidationCallback,
             _clientCertificatesCallback,
             _periodicPasswordProvider,
