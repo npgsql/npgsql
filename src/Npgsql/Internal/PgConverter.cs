@@ -143,8 +143,18 @@ static class PgConverterExtensions
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
         var size = converter.GetSize(new(format, writeRequirement), value, ref writeState);
-        if (size.Kind is SizeKind.UpperBound)
-            throw new InvalidOperationException("SizeKind.UpperBound is not a valid return value for GetSize.");
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            // Not valid yet.
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
         return size;
     }
 
@@ -156,8 +166,18 @@ static class PgConverterExtensions
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
         var size = converter.GetSizeAsObject(new(format, writeRequirement), value, ref writeState);
-        if (size.Kind is SizeKind.UpperBound)
-            throw new InvalidOperationException("SizeKind.UpperBound is not a valid return value for GetSize.");
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            // Not valid yet.
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
         return size;
     }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -51,7 +52,7 @@ static class ReflectionCompositeInfoFactory
             else
                 throw new InvalidOperationException($"Cannot find property or field for composite field {pgFields[fieldIndex].Name}.");
 
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetResolution()), getter, i);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, pgTypeInfo, options.ToCanonicalTypeId(pgField.Type), getter, i);
         }
 
         for (var fieldIndex = 0; fieldIndex < pgFields.Count; fieldIndex++)
@@ -81,17 +82,13 @@ static class ReflectionCompositeInfoFactory
             else
                 throw new InvalidOperationException($"Cannot find property or field for composite field '{pgFields[fieldIndex].Name}'.");
 
-            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, MapResolution(pgField, pgTypeInfo.GetResolution()), getter, setter);
+            compositeFields[fieldIndex] = CreateCompositeFieldInfo(pgField.Name, pgTypeInfo.Type, pgTypeInfo, options.ToCanonicalTypeId(pgField.Type), getter, setter);
         }
 
         Debug.Assert(compositeFields.All(x => x is not null));
 
         var constructor = constructorInfo is null ? null : CreateStrongBoxConstructor<T>(constructorInfo);
         return new CompositeInfo<T>(compositeFields!, constructorInfo is null ? null : constructorParameters.Length, constructor);
-
-        // We have to map the pg type back to the composite field type, as we've resolved based on the representational pg type.
-        PgConverterResolution MapResolution(PostgresCompositeType.Field field, PgConverterResolution resolution)
-            => new(resolution.Converter, options.ToCanonicalTypeId(field.Type));
 
         static NotSupportedException NotSupportedField(PostgresCompositeType composite, PostgresCompositeType.Field field, bool isField, string name, Type type)
             => new($"No resolution could be found for ('{type.FullName}', '{field.Type.FullName}'). Mapping: CLR {(isField ? "field" : "property")} '{type.Name}.{name}' <-> Composite field '{composite.Name}.{field.Name}'");
@@ -179,13 +176,13 @@ static class ReflectionCompositeInfoFactory
                 ), values)
             .Compile();
     }
-    static CompositeFieldInfo CreateCompositeFieldInfo(string name, Type type, PgConverterResolution converterResolution, Delegate getter, int constructorParameterIndex)
+    static CompositeFieldInfo CreateCompositeFieldInfo(string name, Type type, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Delegate getter, int constructorParameterIndex)
         => (CompositeFieldInfo)Activator.CreateInstance(
-            typeof(CompositeFieldInfo<>).MakeGenericType(type), name, converterResolution, getter, constructorParameterIndex)!;
+            typeof(CompositeFieldInfo<>).MakeGenericType(type), name, typeInfo, nominalPgTypeId, getter, constructorParameterIndex)!;
 
-    static CompositeFieldInfo CreateCompositeFieldInfo(string name, Type type, PgConverterResolution converterResolution, Delegate getter, Delegate setter)
+    static CompositeFieldInfo CreateCompositeFieldInfo(string name, Type type, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Delegate getter, Delegate setter)
         => (CompositeFieldInfo)Activator.CreateInstance(
-            typeof(CompositeFieldInfo<>).MakeGenericType(type), name, converterResolution, getter, setter)!;
+            typeof(CompositeFieldInfo<>).MakeGenericType(type), name, typeInfo, nominalPgTypeId, getter, setter)!;
 
     static Dictionary<int, PropertyInfo> MapProperties<T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
     {

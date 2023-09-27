@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Npgsql.Util;
 
 namespace Npgsql.Internal.Composites;
