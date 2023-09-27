@@ -2169,6 +2169,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             row["IsRowVersion"] = false;
             row["IsHidden"] = column.IsHidden == true;
             row["IsLong"] = column.IsLong == true;
+            row["IsReadOnly"] = column.IsReadOnly == true;
             row["DataTypeName"] = column.DataTypeName;
 
             table.Rows.Add(row);
