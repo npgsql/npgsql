@@ -234,8 +234,7 @@ class RangeTests : MultiplexingTestBase
 
         var exception = await AssertTypeUnsupportedRead<NpgsqlRange<int>>("[1,10)", "int4range", dataSource);
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
-        exception = await AssertTypeUnsupportedWrite<NpgsqlRange<int>>(
-            new NpgsqlRange<int>(1, true, 10, false), "int4range", dataSource);
+        exception = await AssertTypeUnsupportedWrite(new NpgsqlRange<int>(1, true, 10, false), "int4range", dataSource);
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 

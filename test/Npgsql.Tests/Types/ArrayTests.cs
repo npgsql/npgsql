@@ -21,58 +21,38 @@ namespace Npgsql.Tests.Types;
 /// </remarks>
 public class ArrayTests : MultiplexingTestBase
 {
-    [Test, Description("Resolves an array type handler via the different pathways")]
-    public async Task Array_resolution()
+    static readonly TestCaseData[] ArrayTestCases =
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
+        new TestCaseData(new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+            .SetName("Integer_array"),
+        new TestCaseData(Array.Empty<int>(), "{}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+            .SetName("Empty_array"),
+        new TestCaseData(new[,] { { 1, 2, 3 }, { 7, 8, 9 } }, "{{1,2,3},{7,8,9}}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+            .SetName("Two_dimensional_array"),
+        new TestCaseData(new[] { new byte[] { 1, 2 }, new byte[] { 3, 4 } }, """{"\\x0102","\\x0304"}""", "bytea[]", NpgsqlDbType.Bytea | NpgsqlDbType.Array)
+            .SetName("Bytea_array")
+    };
 
-        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
-        await using var conn = await dataSource.OpenConnectionAsync();
+    [Test, TestCaseSource(nameof(ArrayTestCases))]
+    public Task Arrays<T>(T array, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType)
+        => AssertType(array, sqlLiteral, pgTypeName, npgsqlDbType);
 
-        // Resolve type by NpgsqlDbType
-        await using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+    [Test]
+    public async Task NullableInts()
+    {
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            cmd.Parameters.AddWithValue("p", NpgsqlDbType.Array | NpgsqlDbType.Integer, DBNull.Value);
-            await using var reader = await cmd.ExecuteReaderAsync();
+            ArrayNullabilityMode = ArrayNullabilityMode.Always
+        };
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionStringBuilder.ToString());
+        await using var dataSource = dataSourceBuilder.Build();
 
-            reader.Read();
-            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
-        }
-
-        // Resolve type by ClrType (type inference)
-        await conn.ReloadTypesAsync();
-        await using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-        {
-            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = Array.Empty<int>() });
-            await using var reader = await cmd.ExecuteReaderAsync();
-
-            reader.Read();
-            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
-        }
-
-        // Resolve type by DataTypeName
-        await conn.ReloadTypesAsync();
-        await using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-        {
-            cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DataTypeName = "integer[]", Value = DBNull.Value });
-            await using (var reader = await cmd.ExecuteReaderAsync())
-            {
-                reader.Read();
-                Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
-            }
-        }
-
-        // Resolve type by OID (read)
-        await conn.ReloadTypesAsync();
-        await using (var cmd = new NpgsqlCommand("SELECT '{1, 3}'::INTEGER[]", conn))
-        await using (var reader = await cmd.ExecuteReaderAsync())
-        {
-            reader.Read();
-            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
-            Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(new[] { 1, 3 }));
-        }
+        await AssertType(dataSource, new int?[] { 1, 2, null, 3 }, "{1,2,NULL,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
     }
+
+    [Test, Description("Checks that PG arrays containing nulls can't be read as CLR arrays of non-nullable value types (the default).")]
+    public async Task Nullable_ints_cannot_be_read_as_non_nullable()
+        => await AssertTypeUnsupportedRead<InvalidOperationException>("{1,NULL,2}", "int[]");
 
     [Test]
     public async Task Throws_too_many_dimensions()
@@ -84,86 +64,6 @@ public class ArrayTests : MultiplexingTestBase
         Assert.That(
             () => cmd.ExecuteScalarAsync(),
             Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("values (Parameter 'Postgres arrays can have at most 8 dimensions.')"));
-    }
-
-    [Test]
-    public async Task Bind_int_then_array_of_int()
-    {
-        await using var dataSource = CreateDataSource();
-        await using var conn = await dataSource.OpenConnectionAsync();
-
-        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
-        _ = await cmd.ExecuteScalarAsync();
-
-        cmd.CommandText = "SELECT ARRAY[1,2]";
-        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new[] { 1, 2 }));
-    }
-
-    [Test, Description("Roundtrips a simple, one-dimensional array of ints")]
-    public async Task Ints()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
-
-        var expected = new[] { 1, 5, 9 };
-        var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
-        var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-        var p3 = new NpgsqlParameter<int[]>("p3", expected);
-        cmd.Parameters.Add(p1);
-        cmd.Parameters.Add(p2);
-        cmd.Parameters.Add(p3);
-        p1.Value = expected;
-        var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        for (var i = 0; i < cmd.Parameters.Count; i++)
-        {
-            Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(i), Is.TypeOf<int[]>());
-            Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<int[]>(i), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
-            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(Array)));
-        }
-    }
-
-    [Test, Description("Roundtrips a simple, one-dimensional array of int? values")]
-    public async Task Nullable_ints()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
-
-        var expected = new int?[] { 1, 5, null, 9 };
-        var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
-        var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-        var p3 = new NpgsqlParameter<int?[]>("p3", expected);
-        cmd.Parameters.Add(p1);
-        cmd.Parameters.Add(p2);
-        cmd.Parameters.Add(p3);
-        p1.Value = expected;
-        var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        for (var i = 0; i < cmd.Parameters.Count; i++)
-        {
-            Assert.That(reader.GetFieldValue<int?[]>(i), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<List<int?>>(i), Is.EqualTo(expected.ToList()));
-            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
-            Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(Array)));
-        }
-    }
-
-    [Test, Description("Checks that PG arrays containing nulls can't be read as CLR arrays of non-nullable value types.")]
-    public async Task Nullable_ints_cannot_be_read_as_non_nullable()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT '{1, NULL, 2}'::integer[]", conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        Assert.That(() => reader.GetFieldValue<int[]>(0), Throws.Exception.TypeOf<InvalidCastException>());
-        Assert.That(() => reader.GetFieldValue<List<int>>(0), Throws.Exception.TypeOf<InvalidCastException>());
-        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
     }
 
     [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
@@ -244,34 +144,15 @@ SELECT onedim, twodim FROM (VALUES
         }
     }
 
+    // Note that PG normalizes empty multidimensional arrays to single-dimensional, e.g. ARRAY[[], []]::integer[] returns {}.
     [Test]
-    public async Task Empty_array()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+    public async Task Write_empty_multidimensional_array()
+        => await AssertTypeWrite(new int[0, 0], "{}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
 
-        cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = Array.Empty<int>() });
-        var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        Assert.That(reader.GetFieldValue<int[]>(0), Is.SameAs(Array.Empty<int>()));
-        Assert.That(reader.GetFieldValue<int?[]>(0), Is.SameAs(Array.Empty<int?>()));
-    }
-
-    [Test, Description("Roundtrips an empty multi-dimensional array.")]
-    public async Task Empty_multidimensional_array()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-
-        var expected = new int[0, 0];
-        cmd.Parameters.AddWithValue("p", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
-
-        var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        Assert.That(reader.GetFieldValue<int[,]>(0), Is.EqualTo(expected));
-    }
+    [Test]
+    public async Task Generic_List()
+        => await AssertType(
+            new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefaultForReading: false);
 
     [Test, Description("Verifies that an InvalidOperationException is thrown when the returned array has a different number of dimensions from what was requested.")]
     public async Task Wrong_array_dimensions_throws()
@@ -359,6 +240,14 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(reader[0], Is.EqualTo(expected));
     }
 
+    [Test, Description("Reads an one-dimensional array with lower bound != 0")]
+    public Task Read_non_zero_lower_bounded()
+        => AssertTypeRead("[2:3]={ 8, 9 }", "integer[]", new[] { 8, 9 });
+
+    [Test, Description("Reads an one-dimensional array with lower bound != 0")]
+    public Task Read_non_zero_lower_bounded_multidimensional()
+        => AssertTypeRead("[2:3][2:3]={ {8,9}, {1,2} }", "integer[]", new[,] { { 8, 9 }, { 1, 2 }});
+
     [Test, Description("Roundtrips a long, one-dimensional array of strings, including a null")]
     public async Task Strings_with_null()
     {
@@ -374,116 +263,8 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(reader.GetFieldValue<string[]>(0), Is.EqualTo(expected));
     }
 
-    [Test, Description("Roundtrips a zero-dimensional array of ints, should return empty one-dimensional")]
-    public async Task Zero_dimensional()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        var expected = Array.Empty<int>();
-        var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = expected };
-        cmd.Parameters.Add(p);
-        var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-        Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
-        Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(expected));
-        cmd.Dispose();
-    }
-
-    [Test, Description("Roundtrips a two-dimensional array of ints")]
-    public async Task Two_dimensional_ints()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-        var expected = new[,] { { 1, 2, 3 }, { 7, 8, 9 } };
-        var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
-        var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-        cmd.Parameters.Add(p1);
-        cmd.Parameters.Add(p2);
-        p1.Value = expected;
-        var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-        Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
-        Assert.That(reader.GetFieldValue<int[,]>(0), Is.EqualTo(expected));
-    }
-
-    [Test, Description("Reads an one-dimensional array with lower bound != 0")]
-    public async Task Read_non_zero_lower_bounded()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using (var cmd = new NpgsqlCommand("SELECT '[2:3]={ 8, 9 }'::INT[]", conn))
-        await using (var reader = await cmd.ExecuteReaderAsync())
-        {
-            reader.Read();
-            Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(new[] {8, 9}));
-        }
-
-        await using (var cmd = new NpgsqlCommand("SELECT '[2:3][2:3]={ {8,9}, {1,2} }'::INT[][]", conn))
-        await using (var reader = await cmd.ExecuteReaderAsync())
-        {
-            reader.Read();
-            Assert.That(reader.GetFieldValue<int[,]>(0), Is.EqualTo(new[,] {{8, 9}, {1, 2}}));
-        }
-    }
-
-    [Test, Description("Roundtrips a one-dimensional array of bytea values")]
-    public async Task Array_of_byte_arrays()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-        var expected = new[] { new byte[] { 1, 2 }, new byte[] { 3, 4, } };
-        var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Bytea);
-        var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-        cmd.Parameters.Add(p1);
-        cmd.Parameters.Add(p2);
-        p1.Value = expected;
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-        Assert.That(reader.GetFieldValue<byte[][]>(0), Is.EqualTo(expected));
-        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-        Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
-    }
-
-    [Test, Description("Roundtrips a generic List as an array")]
-    // ReSharper disable once InconsistentNaming
-    public async Task IList_generic()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-        var expected = new[] { 1, 2, 3 }.ToList();
-        var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
-        var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-        cmd.Parameters.Add(p1);
-        cmd.Parameters.Add(p2);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-        Assert.That(reader.GetFieldValue<List<int>>(1), Is.EqualTo(expected));
-    }
-
-    [Test, Description("Tests for failure when reading a generic IList from a multidimensional array")]
-    // ReSharper disable once InconsistentNaming
-    public async Task IList_generic_fails_for_multidimensional_array()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
-        var expected = new[,] { { 1, 2 }, { 3, 4 } };
-        var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
-        cmd.Parameters.Add(p1);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-        var exception = Assert.Throws<InvalidCastException>(() =>
-        {
-            reader.GetFieldValue<List<int>>(0);
-        })!;
-        Assert.That(exception.Message, Does.StartWith("Cannot read an array value with 2 dimensions"));
-    }
-
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/844")]
-    public async Task IEnumerable_throws_friendly_exception()
+    public async Task Writing_IEnumerable_is_not_supported()
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
@@ -494,26 +275,12 @@ SELECT onedim, twodim FROM (VALUES
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
     public async Task Jagged_arrays_not_supported()
     {
-        var jagged = new int[2][];
-        jagged[0] = new[] { 8 };
-        jagged[1] = new[] { 8, 10 };
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
-        cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, jagged);
+        cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, new[] { new[] { 8 }, new[] { 8, 10 } });
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
             .TypeOf<InvalidCastException>()
             .With.Property("InnerException").Message.Contains("jagged"));
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]
-    public void Generic_List_get_NpgsqlDbType()
-    {
-        var p = new NpgsqlParameter
-        {
-            ParameterName = "p1",
-            Value = new List<int> { 1, 2, 3 }
-        };
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));
     }
 
     [Test, Description("Roundtrips one-dimensional and two-dimensional arrays of a PostgreSQL domain.")]
@@ -593,6 +360,26 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
         // Unlike T[], List<T> is mutable so we should not return the same instance
         Assert.AreNotSame(reader.GetFieldValue<List<int>>(0), reader.GetFieldValue<List<int>>(1));
+    }
+
+    [Test]
+    public async Task Arrays_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertTypeUnsupportedRead<int[], InvalidCastException>("{1,2,3}", "integer[]", dataSource);
+        await AssertTypeUnsupportedWrite<int[], InvalidCastException>(new[] { 1, 2, 3 }, "integer[]", dataSource);
+    }
+
+    [Test]
+    public async Task NpgsqlSlimSourceBuilder_EnableArrays()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.EnableArrays();
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
     }
 
     class IntList : List<int> { }
