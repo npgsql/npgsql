@@ -2119,17 +2119,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         if (type is null)
         {
-            converter = field.ObjectOrDefaultInfo.Converter;
-            bufferRequirement = field.ObjectOrDefaultInfo.BufferRequirement;
-            asObject = field.ObjectOrDefaultInfo.AsObject;
+            var odfInfo = field.ObjectOrDefaultInfo;
+            converter = odfInfo.Converter;
+            bufferRequirement = odfInfo.BufferRequirement;
+            asObject = odfInfo.IsBoxingConverter;
             return field;
         }
 
         ref var info = ref ColumnInfoCache![ordinal];
-        field.GetInfo(type, ref info);
+        field.GetInfo(type, ref info, out asObject);
         converter = info.Converter;
         bufferRequirement = info.BufferRequirement;
-        asObject = info.AsObject;
         return field;
     }
 
