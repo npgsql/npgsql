@@ -41,7 +41,7 @@ public interface INpgsqlTypeMapper
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-    INpgsqlTypeMapper MapEnum<TEnum>(
+    INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum;
@@ -57,7 +57,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
-    bool UnmapEnum<TEnum>(
+    bool UnmapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum;
@@ -82,8 +82,8 @@ public interface INpgsqlTypeMapper
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     /// <typeparam name="T">The .NET type to be mapped</typeparam>
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    INpgsqlTypeMapper MapComposite<T>(
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
 
@@ -98,8 +98,8 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
     /// </param>
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    bool UnmapComposite<T>(
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
 
@@ -122,9 +122,9 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     INpgsqlTypeMapper MapComposite(
-        Type clrType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  Type clrType,
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
 
@@ -140,9 +140,9 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
     bool UnmapComposite(
-        Type clrType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type clrType,
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
 

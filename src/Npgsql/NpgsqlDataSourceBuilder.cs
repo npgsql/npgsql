@@ -17,6 +17,8 @@ namespace Npgsql;
 /// <summary>
 /// Provides a simple API for configuring and creating an <see cref="NpgsqlDataSource" />, from which database connections can be obtained.
 /// </summary>
+[RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+[RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 {
     static UnsupportedTypeInfoResolver<NpgsqlDataSourceBuilder> UnsupportedTypeInfoResolver { get; } = new();
@@ -298,6 +300,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// <param name="jsonClrTypes">
     /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
     /// </param>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlDataSourceBuilder UseSystemTextJson(
         JsonSerializerOptions? serializerOptions = null,
         Type[]? jsonbClrTypes = null,
@@ -309,7 +313,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
     {
         _internalBuilder.MapEnum<TEnum>(pgName, nameTranslator);
@@ -317,34 +321,34 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
         => _internalBuilder.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+        string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _internalBuilder.MapComposite<T>(pgName, nameTranslator);
         return this;
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _internalBuilder.MapComposite(clrType, pgName, nameTranslator);
         return this;
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+        string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _internalBuilder.UnmapComposite<T>(pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _internalBuilder.UnmapComposite(clrType, pgName, nameTranslator);
 
     #endregion Type mapping

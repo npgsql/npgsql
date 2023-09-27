@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -17,6 +18,7 @@ namespace Npgsql;
 /// </summary>
 static class NpgsqlSchema
 {
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     public static Task<DataTable> GetSchema(bool async, NpgsqlConnection conn, string? collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
     {
         if (collectionName is null)
@@ -154,6 +156,7 @@ static class NpgsqlSchema
     static string RemoveSpecialChars(string paramName)
         => paramName.Replace("(", "").Replace(")", "").Replace(".", "");
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetDatabases(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var databases = new DataTable("Databases") { Locale = CultureInfo.InvariantCulture };
@@ -175,6 +178,7 @@ static class NpgsqlSchema
         return databases;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetSchemata(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var schemata = new DataTable("Schemata") { Locale = CultureInfo.InvariantCulture };
@@ -201,7 +205,7 @@ SELECT * FROM (
         return schemata;
     }
 
-
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetTables(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var tables = new DataTable("Tables") { Locale = CultureInfo.InvariantCulture };
@@ -229,6 +233,7 @@ WHERE
         return tables;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
@@ -269,6 +274,7 @@ JOIN pg_type AS typ ON typnamespace = ns.oid AND typname = udt_name");
         return columns;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetViews(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var views = new DataTable("Views") { Locale = CultureInfo.InvariantCulture };
@@ -290,6 +296,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
         return views;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetUsers(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
@@ -307,6 +314,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
         return users;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetIndexes(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var indexes = new DataTable("Indexes") { Locale = CultureInfo.InvariantCulture };
@@ -340,6 +348,7 @@ WHERE
         return indexes;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetIndexColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var indexColumns = new DataTable("IndexColumns") { Locale = CultureInfo.InvariantCulture };
@@ -380,6 +389,7 @@ WHERE
         return indexColumns;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType, bool async, CancellationToken cancellationToken = default)
     {
         var getConstraints = new StringBuilder(@"
@@ -423,6 +433,7 @@ FROM
         return table;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var getConstraintColumns = new StringBuilder(@"

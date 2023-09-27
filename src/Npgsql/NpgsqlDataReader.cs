@@ -1757,7 +1757,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The data type of the specified column.</returns>
-    [UnconditionalSuppressMessage("ILLink", "IL2093", Justification = "No members are dynamically accessed by Npgsql via GetFieldType")]
+    [UnconditionalSuppressMessage("ILLink", "IL2093",
+        Justification = "Members are only dynamically accessed by Npgsql via GetFieldType by GetSchema, and only in certain cases. " +
+                        "Holding PublicFields and PublicProperties metadata on all our mapped types just for that case is the wrong tradeoff.")]
     public override Type GetFieldType(int ordinal)
         => GetField(ordinal).FieldType;
 
@@ -1827,8 +1829,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #endif
         => GetSchemaTable(async: true, cancellationToken);
 
-    [UnconditionalSuppressMessage(
-        "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
+     [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "typeof(Type).TypeInitializer is not used.")]
     async Task<DataTable?> GetSchemaTable(bool async, CancellationToken cancellationToken = default)
     {
         if (FieldCount == 0) // No resultset

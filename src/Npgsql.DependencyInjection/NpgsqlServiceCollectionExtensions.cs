@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -29,6 +30,8 @@ public static class NpgsqlServiceCollectionExtensions
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static IServiceCollection AddNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
@@ -51,6 +54,8 @@ public static class NpgsqlServiceCollectionExtensions
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static IServiceCollection AddNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
@@ -76,6 +81,8 @@ public static class NpgsqlServiceCollectionExtensions
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static IServiceCollection AddMultiHostNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
@@ -100,6 +107,8 @@ public static class NpgsqlServiceCollectionExtensions
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static IServiceCollection AddMultiHostNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
@@ -108,6 +117,8 @@ public static class NpgsqlServiceCollectionExtensions
         => AddNpgsqlMultiHostDataSourceCore(
             serviceCollection, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     static IServiceCollection AddNpgsqlDataSourceCore(
         this IServiceCollection serviceCollection,
         string connectionString,
@@ -132,6 +143,8 @@ public static class NpgsqlServiceCollectionExtensions
         return serviceCollection;
     }
 
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     static IServiceCollection AddNpgsqlMultiHostDataSourceCore(
         this IServiceCollection serviceCollection,
         string connectionString,

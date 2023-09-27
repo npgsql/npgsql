@@ -6,7 +6,6 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal;
 
-[RequiresUnreferencedCode("A dynamic type info resolver may perform reflection on types that were trimmed if not referenced directly.")]
 [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
 public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 {
@@ -43,6 +42,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 
     protected abstract DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options);
 
+    [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
     protected class DynamicMappingCollection
     {
         TypeInfoMappingCollection? _mappings;

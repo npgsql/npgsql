@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
@@ -65,6 +66,7 @@ sealed class CastingConverterResolver<T> : PgComposingConverterResolver<T>
 
 static class CastingTypeInfoExtensions
 {
+    [RequiresDynamicCode("Changing boxing converters to their non-boxing counterpart can require creating new generic types or methods, which requires creating code at runtime. This may not be AOT  when AOT compiling")]
     internal static PgTypeInfo ToNonBoxing(this PgTypeInfo typeInfo)
     {
         if (!typeInfo.IsBoxing)

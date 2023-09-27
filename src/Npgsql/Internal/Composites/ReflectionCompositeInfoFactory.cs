@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -10,9 +11,11 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Composites;
 
+[RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
 static class ReflectionCompositeInfoFactory
 {
-    public static CompositeInfo<T> CreateCompositeInfo<T>(PostgresCompositeType pgType, INpgsqlNameTranslator nameTranslator, PgSerializerOptions options)
+    public static CompositeInfo<T> CreateCompositeInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(
+        PostgresCompositeType pgType, INpgsqlNameTranslator nameTranslator, PgSerializerOptions options)
     {
         var pgFields = pgType.Fields;
         var propertyMap = MapProperties<T>(pgFields, nameTranslator);
@@ -86,8 +89,8 @@ static class ReflectionCompositeInfoFactory
 
         Debug.Assert(compositeFields.All(x => x is not null));
 
-        var constructor = constructorInfo is null ? null : CreateStrongBoxConstructor<T>(constructorInfo);
-        return new CompositeInfo<T>(compositeFields!, constructorInfo is null ? null : constructorParameters.Length, constructor);
+        var constructor = constructorInfo is null ? _ => Activator.CreateInstance<T>() : CreateStrongBoxConstructor<T>(constructorInfo);
+        return new CompositeInfo<T>(compositeFields!, constructorInfo is null ? 0 : constructorParameters.Length, constructor);
 
         // We have to map the pg type back to the composite field type, as we've resolved based on the representational pg type.
         PgConverterResolution MapResolution(PostgresCompositeType.Field field, PgConverterResolution resolution)
@@ -151,6 +154,11 @@ static class ReflectionCompositeInfoFactory
     static Expression UnboxAny(Expression expression, Type type)
         => type.IsValueType ? Expression.Unbox(expression, type) : Expression.Convert(expression, type, null);
 
+#if !NETSTANDARD
+    [DynamicDependency("TypedValue", typeof(StrongBox<>))]
+    [DynamicDependency("Length", typeof(StrongBox[]))]
+#endif
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "DynamicDependencies in place for the System.Linq.Expression.Property calls")]
     static Func<StrongBox[], T> CreateStrongBoxConstructor<T>(ConstructorInfo constructorInfo)
     {
         var values = Expression.Parameter(typeof(StrongBox[]), "values");
@@ -187,7 +195,7 @@ static class ReflectionCompositeInfoFactory
         => (CompositeFieldInfo)Activator.CreateInstance(
             typeof(CompositeFieldInfo<>).MakeGenericType(type), name, converterResolution, getter, setter)!;
 
-    static Dictionary<int, PropertyInfo> MapProperties<T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
+    static Dictionary<int, PropertyInfo> MapProperties<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
     {
         var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
         var propertiesAndNames = properties.Select(x =>
@@ -215,7 +223,7 @@ static class ReflectionCompositeInfoFactory
         return result;
     }
 
-    static Dictionary<int, FieldInfo> MapFields<T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
+    static Dictionary<int, FieldInfo> MapFields<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
     {
         var clrFields = typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance);
         var clrFieldsAndNames = clrFields.Select(x =>
@@ -243,7 +251,7 @@ static class ReflectionCompositeInfoFactory
         return result;
     }
 
-    static (ConstructorInfo? ConstructorInfo, int[] ParameterFieldMap) MapBestMatchingConstructor<T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
+    static (ConstructorInfo? ConstructorInfo, int[] ParameterFieldMap) MapBestMatchingConstructor<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
     {
         ConstructorInfo? clrDefaultConstructor = null;
         foreach (var constructor in typeof(T).GetConstructors().OrderByDescending(x => x.GetParameters().Length))

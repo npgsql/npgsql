@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -52,7 +53,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 : new UnpooledDataSource(poolSettings, dataSourceConfig);
         }
 
-        var targetSessionAttributeValues = (TargetSessionAttributes[])Enum.GetValues(typeof(TargetSessionAttributes));
+#if NETSTANDARD
+        var targetSessionAttributeValues = Enum.GetValues(typeof(TargetSessionAttributes)).Cast<TargetSessionAttributes>().ToArray();
+#else
+        var targetSessionAttributeValues = Enum.GetValues<TargetSessionAttributes>().ToArray();
+#endif
         var highestValue = 0;
         foreach (var value in targetSessionAttributeValues)
             if ((int)value > highestValue)

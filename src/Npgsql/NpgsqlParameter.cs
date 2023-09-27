@@ -342,7 +342,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     [DbProviderSpecificTypeProperty(true)]
     public NpgsqlDbType NpgsqlDbType
     {
-        [RequiresUnreferencedCode("The NpgsqlDbType getter isn't trimming-safe")]
         get
         {
             if (_npgsqlDbType.HasValue)

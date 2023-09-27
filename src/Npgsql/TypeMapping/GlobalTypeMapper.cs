@@ -172,7 +172,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
+    public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
     {
         _lock.EnterWriteLock();
         try
@@ -194,7 +194,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
+    public bool UnmapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
     {
         _lock.EnterWriteLock();
         try
@@ -216,18 +216,19 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => MapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _lock.EnterWriteLock();
         try
@@ -243,8 +244,9 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _lock.EnterWriteLock();
         try
