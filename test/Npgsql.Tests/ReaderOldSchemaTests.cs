@@ -118,32 +118,18 @@ CREATE TABLE {table} (
 CREATE TABLE {table} (id SERIAL PRIMARY KEY, int2 SMALLINT);
 CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM {table}");
 
-        var command = new NpgsqlCommand($"SELECT * FROM {view}", conn);
+        var command = new NpgsqlCommand($"SELECT id, int2 FROM {view}", conn);
 
-        using var dr = command.ExecuteReader();
+        using var dr = command.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var metadata = await GetSchemaTable(dr);
 
-        foreach (var r in metadata!.Rows.OfType<DataRow>())
-        {
-            switch ((string)r["ColumnName"])
-            {
-            case "field_pk":
-                if (conn.PostgreSqlVersion < new Version("9.4"))
-                {
-                    // 9.3 and earlier: IsUpdatable = False
-                    Assert.IsTrue((bool)r["IsReadonly"], "field_pk");
-                }
-                else
-                {
-                    // 9.4: IsUpdatable = True
-                    Assert.IsFalse((bool)r["IsReadonly"], "field_pk");
-                }
-                break;
-            case "field_int2":
-                Assert.IsTrue((bool)r["IsReadonly"]);
-                break;
-            }
-        }
+        var idRow = metadata!.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "id");
+        Assert.IsNotNull(idRow, "Unable to find metadata for id column");
+        var int2Row = metadata.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "int2");
+        Assert.IsNotNull(int2Row, "Unable to find metadata for int2 column");
+
+        Assert.IsFalse((bool)idRow!["IsReadonly"]);
+        Assert.IsTrue((bool)int2Row!["IsReadonly"]);
     }
 
     // ReSharper disable once InconsistentNaming
@@ -156,19 +142,14 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
         using var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         using var metadata = await GetSchemaTable(reader);
-        foreach (var row in metadata!.Rows.OfType<DataRow>())
-        {
-            var isNullable = (bool)row["AllowDBNull"];
-            switch ((string)row["ColumnName"])
-            {
-            case "nullable":
-                Assert.IsTrue(isNullable);
-                continue;
-            case "non_nullable":
-                Assert.IsFalse(isNullable);
-                continue;
-            }
-        }
+
+        var nullableRow = metadata!.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "nullable");
+        Assert.IsNotNull(nullableRow, "Unable to find metadata for nullable column");
+        var nonNullableRow = metadata.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "non_nullable");
+        Assert.IsNotNull(nonNullableRow, "Unable to find metadata for non_nullable column");
+
+        Assert.IsTrue((bool)nullableRow!["AllowDBNull"]);
+        Assert.IsFalse((bool)nonNullableRow!["AllowDBNull"]);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
