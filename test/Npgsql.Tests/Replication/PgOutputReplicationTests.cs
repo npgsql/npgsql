@@ -640,6 +640,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await NextMessage<BeginMessage>(messages);
             }, nameof(Dispose_while_replicating));
 
+    [Platform(Exclude = "MacOsX", Reason = "Test is flaky in CI on Mac, see https://github.com/npgsql/npgsql/issues/5294")]
     [TestCase(true)]
     [TestCase(false)]
     [Test(Description = "Tests whether logical decoding messages get replicated as Logical Replication Protocol Messages on PostgreSQL 14 and above")]
