@@ -6,7 +6,7 @@
     <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net7.0;net8.0</TargetFrameworks>
-    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
+    <TargetFrameworks Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFrameworks>
     <NoWarn>$(NoWarn);CA2017</NoWarn>
   </PropertyGroup>
 
