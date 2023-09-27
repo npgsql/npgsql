@@ -20,7 +20,7 @@ sealed class CompositeInfo<T>
             }
 
         var parameterSum = 0;
-        for(var i = constructorParameters - 1; i > 0; i--)
+        for (var i = constructorParameters - 1; i > 0; i--)
             parameterSum += i;
 
         var argumentsSum = 0;

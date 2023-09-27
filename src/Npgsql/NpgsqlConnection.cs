@@ -1721,8 +1721,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// Returns the supported collections
     /// </summary>
-    [UnconditionalSuppressMessage(
-        "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchema.")]
     public override DataTable GetSchema()
         => GetSchema("MetaDataCollections", null);
 
@@ -1731,6 +1731,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     /// <param name="collectionName">The collection name.</param>
     /// <returns>The collection specified.</returns>
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchema.")]
     public override DataTable GetSchema(string? collectionName) => GetSchema(collectionName, null);
 
     /// <summary>

@@ -1829,10 +1829,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #endif
         => GetSchemaTable(async: true, cancellationToken);
 
-#if NET8_0_OR_GREATER
-    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties, typeof(Type))]
-#endif
-    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "DynamicDependency on Type in place.")]
+     [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "typeof(Type).TypeInitializer is not used.")]
     async Task<DataTable?> GetSchemaTable(bool async, CancellationToken cancellationToken = default)
     {
         if (FieldCount == 0) // No resultset

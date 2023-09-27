@@ -154,7 +154,7 @@ static class ReflectionCompositeInfoFactory
     static Expression UnboxAny(Expression expression, Type type)
         => type.IsValueType ? Expression.Unbox(expression, type) : Expression.Convert(expression, type, null);
 
-#if NET8_0_OR_GREATER
+#if !NETSTANDARD
     [DynamicDependency("TypedValue", typeof(StrongBox<>))]
     [DynamicDependency("Length", typeof(StrongBox[]))]
 #endif
