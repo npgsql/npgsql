@@ -11,7 +11,10 @@ class IntegratedSecurityHandler
     public virtual bool IsSupported => false;
 
     public virtual ValueTask<string?> GetUsername(bool async, bool includeRealm, ILogger connectionLogger, CancellationToken cancellationToken)
-        => throw new NotSupportedException(string.Format(NpgsqlStrings.IntegratedSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity)));
+    {
+        connectionLogger.LogDebug(string.Format(NpgsqlStrings.IntegratedSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity)));
+        return new();
+    }
 
     public virtual ValueTask NegotiateAuthentication(bool async, NpgsqlConnector connector)
         => throw new NotSupportedException(string.Format(NpgsqlStrings.IntegratedSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity)));

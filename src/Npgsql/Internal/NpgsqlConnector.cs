@@ -733,7 +733,7 @@ public sealed partial class NpgsqlConnector
 
         async ValueTask<string> GetUsernameAsyncInternal()
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && DataSource.IntegratedSecurityHandler.IsSupported)
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 username = await DataSource.IntegratedSecurityHandler.GetUsername(async, Settings.IncludeRealm, ConnectionLogger,
                     cancellationToken).ConfigureAwait(false);
@@ -805,7 +805,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.TransportSecurityHandler.NegotiateEncryption(this, sslMode, timeout, async, isFirstAttempt).ConfigureAwait(false);
+                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, isFirstAttempt).ConfigureAwait(false);
                     break;
                 }
 
