@@ -4,9 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.Replication.PgOutput;
 
@@ -27,26 +25,21 @@ public class ReplicationValue
     /// </summary>
     public TupleDataKind Kind { get; private set; }
 
-    bool _columnConsumed;
     FieldDescription _fieldDescription = null!;
+    PgConverterInfo _lastInfo;
+    bool _isConsumed;
 
-    /// <summary>
-    /// A stream that has been opened on a column.
-    /// </summary>
-    readonly NpgsqlReadBuffer.ColumnStream _columnStream;
+    PgReader PgReader => _readBuffer.PgReader;
 
-    internal ReplicationValue(NpgsqlConnector connector)
-    {
-        _readBuffer = connector.ReadBuffer;
-        _columnStream = new NpgsqlReadBuffer.ColumnStream(connector, startCancellableOperations: false);
-    }
+    internal ReplicationValue(NpgsqlConnector connector) => _readBuffer = connector.ReadBuffer;
 
     internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription)
     {
         Kind = kind;
         Length = length;
         _fieldDescription = fieldDescription;
-        _columnConsumed = false;
+        _lastInfo = default;
+        _isConsumed = false;
     }
 
     // ReSharper disable once InconsistentNaming
@@ -91,19 +84,22 @@ public class ReplicationValue
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns></returns>
-    public ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
+    public async ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
     {
-        CheckAndMarkConsumed();
+        CheckActive();
+
+        _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
+        var info = _lastInfo;
 
         switch (Kind)
         {
         case TupleDataKind.Null:
             // When T is a Nullable<T> (and only in that case), we support returning null
-            if (NullableHandler<T>.Exists)
+            if (default(T) is null && typeof(T).IsValueType)
                 return default!;
 
             if (typeof(T) == typeof(object))
-                return new ValueTask<T>((T)(object)DBNull.Value);
+                return (T)(object)DBNull.Value;
 
             ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
             break;
@@ -113,38 +109,15 @@ public class ReplicationValue
                 $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        using (NoSynchronizationContextScope.Enter())
-            return GetCore(cancellationToken);
+        using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-        async ValueTask<T> GetCore(CancellationToken cancellationToken)
-        {
-            using var tokenRegistration = _readBuffer.ReadBytesLeft < Length
-                ? _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken)
-                : default;
-
-            var position = _readBuffer.ReadPosition;
-
-            try
-            {
-                return NullableHandler<T>.Exists
-                    ? await NullableHandler<T>.ReadAsync(_fieldDescription.Handler, _readBuffer, Length, async: true, _fieldDescription)
-                    : typeof(T) == typeof(object)
-                        ? (T)await _fieldDescription.Handler.ReadAsObject(_readBuffer, Length, async: true, _fieldDescription)
-                        : await _fieldDescription.Handler.Read<T>(_readBuffer, Length, async: true, _fieldDescription);
-            }
-            catch
-            {
-                if (_readBuffer.Connector.State != ConnectorState.Broken)
-                {
-                    var writtenBytes = _readBuffer.ReadPosition - position;
-                    var remainingBytes = Length - writtenBytes;
-                    if (remainingBytes > 0)
-                        _readBuffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-                }
-
-                throw;
-            }
-        }
+        var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
+        await reader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
+        var result = info.AsObject
+            ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+            : await info.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+        await reader.EndReadAsync().ConfigureAwait(false);
+        return result;
     }
 
     /// <summary>
@@ -154,56 +127,14 @@ public class ReplicationValue
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns></returns>
-    public ValueTask<object> Get(CancellationToken cancellationToken = default)
-    {
-        CheckAndMarkConsumed();
-
-        switch (Kind)
-        {
-        case TupleDataKind.Null:
-            return new ValueTask<object>(DBNull.Value);
-
-        case TupleDataKind.UnchangedToastedValue:
-            throw new InvalidCastException(
-                $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
-        }
-
-        using (NoSynchronizationContextScope.Enter())
-            return GetCore(cancellationToken);
-
-        async ValueTask<object> GetCore(CancellationToken cancellationToken)
-        {
-            using var tokenRegistration = _readBuffer.ReadBytesLeft < Length
-                ? _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken)
-                : default;
-
-            var position = _readBuffer.ReadPosition;
-
-            try
-            {
-                return await _fieldDescription.Handler.ReadAsObject(_readBuffer, Length, async: true, _fieldDescription);
-            }
-            catch
-            {
-                if (_readBuffer.Connector.State != ConnectorState.Broken)
-                {
-                    var writtenBytes = _readBuffer.ReadPosition - position;
-                    var remainingBytes = Length - writtenBytes;
-                    if (remainingBytes > 0)
-                        _readBuffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-                }
-
-                throw;
-            }
-        }
-    }
+    public ValueTask<object> Get(CancellationToken cancellationToken = default) => Get<object>(cancellationToken);
 
     /// <summary>
     /// Retrieves data as a <see cref="Stream"/>.
     /// </summary>
     public Stream GetStream()
     {
-        CheckAndMarkConsumed();
+        CheckActive();
 
         switch (Kind)
         {
@@ -215,44 +146,53 @@ public class ReplicationValue
             throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        _columnStream.Init(Length, canSeek: false);
-        return _columnStream;
+        var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
+        return reader.GetStream(canSeek: false);
     }
 
     /// <summary>
     /// Retrieves data as a <see cref="TextReader"/>.
     /// </summary>
     public TextReader GetTextReader()
-        => _fieldDescription.Handler is ITextReaderHandler handler
-            ? handler.GetTextReader(GetStream(), _readBuffer)
-            : throw new InvalidCastException(
-                $"The GetTextReader method is not supported for type {_fieldDescription.Handler.PgDisplayName}");
+    {
+        CheckActive();
+
+        ref var info = ref _lastInfo;
+        _fieldDescription.GetInfo(typeof(TextReader), ref info);
+
+        switch (Kind)
+        {
+        case TupleDataKind.Null:
+            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
+            break;
+
+        case TupleDataKind.UnchangedToastedValue:
+            throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
+        }
+
+        var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
+        reader.StartRead(info.BufferRequirement);
+        var result = (TextReader)info.Converter.ReadAsObject(reader);
+        reader.EndRead();
+        return result;
+    }
 
     internal async Task Consume(CancellationToken cancellationToken)
     {
-        if (!_columnStream.IsDisposed)
-            await _columnStream.DisposeAsync();
+        if (_isConsumed)
+            return;
 
-        if (!_columnConsumed)
-        {
-            if (_readBuffer.ReadBytesLeft < 4)
-            {
-                using var tokenRegistration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken);
-                await _readBuffer.Skip(Length, async: true);
-            }
-            else
-            {
-                await _readBuffer.Skip(Length, async: true);
-            }
-        }
+        if (!PgReader.Initialized)
+            PgReader.Init(Length, _fieldDescription.DataFormat);
+        await PgReader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await PgReader.Commit(async: true, resuming: false).ConfigureAwait(false);
 
-        _columnConsumed = true;
+        _isConsumed = true;
     }
 
-    void CheckAndMarkConsumed()
+    void CheckActive()
     {
-        if (_columnConsumed)
+        if (PgReader.Initialized)
             throw new InvalidOperationException("Column has already been consumed");
-        _columnConsumed = true;
     }
 }

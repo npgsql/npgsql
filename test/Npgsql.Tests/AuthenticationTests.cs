@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Npgsql.Properties;
 using Npgsql.Tests.Support;
 using NUnit.Framework;
-using static Npgsql.Util.Statics;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -292,6 +291,15 @@ public class AuthenticationTests : MultiplexingTestBase
 
             Assert.That(() => dataSource4.OpenConnection(), Throws.Nothing);
         }
+
+        static DeferDisposable Defer(Action action) => new(action);
+    }
+
+    readonly struct DeferDisposable : IDisposable
+    {
+        readonly Action _action;
+        public DeferDisposable(Action action) => _action = action;
+        public void Dispose() => _action();
     }
 
     [Test, Description("Connects with a bad password to ensure the proper error is thrown")]

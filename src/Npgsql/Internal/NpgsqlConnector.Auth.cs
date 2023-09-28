@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -22,28 +21,28 @@ partial class NpgsqlConnector
         while (true)
         {
             timeout.CheckAndApply(this);
-            var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
+            var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
             switch (msg.AuthRequestType)
             {
             case AuthenticationRequestType.AuthenticationOk:
                 return;
 
             case AuthenticationRequestType.AuthenticationCleartextPassword:
-                await AuthenticateCleartext(username, async, cancellationToken);
+                await AuthenticateCleartext(username, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.AuthenticationMD5Password:
-                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
+                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.AuthenticationSASL:
                 await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.AuthenticationGSS:
             case AuthenticationRequestType.AuthenticationSSPI:
-                await AuthenticateGSS(async);
+                await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this).ConfigureAwait(false);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSSContinue:
@@ -57,15 +56,15 @@ partial class NpgsqlConnector
 
     async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
     {
-        var passwd = await GetPassword(username, async, cancellationToken);
+        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
         if (passwd == null)
             throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
         var encoded = new byte[Encoding.UTF8.GetByteCount(passwd) + 1];
         Encoding.UTF8.GetBytes(passwd, 0, passwd.Length, encoded, 0);
 
-        await WritePassword(encoded, async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WritePassword(encoded, async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
@@ -94,7 +93,7 @@ partial class NpgsqlConnector
         var successfulBind = false;
 
         if (clientSupportsSha256Plus)
-            DataSource.EncryptionHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
+            DataSource.TransportSecurityHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 
         if (!successfulBind && serverSupportsSha256)
         {
@@ -115,16 +114,16 @@ partial class NpgsqlConnector
             throw new NpgsqlException("Unable to bind to SCRAM-SHA-256-PLUS, check logs for more information");
         }
 
-        var passwd = await GetPassword(username, async, cancellationToken) ??
+        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false) ??
                      throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
         // Assumption: the write buffer is big enough to contain all our outgoing messages
         var clientNonce = GetNonce();
 
-        await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WriteSASLInitialResponse(mechanism, NpgsqlWriteBuffer.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
 
-        var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
+        var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async).ConfigureAwait(false), this);
         if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
             throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
         var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload, ConnectionLogger);
@@ -136,9 +135,12 @@ partial class NpgsqlConnector
 
         var clientKey = HMAC(saltedPassword, "Client Key");
         byte[] storedKey;
+#if NET7_0_OR_GREATER
+        storedKey = SHA256.HashData(clientKey);
+#else
         using (var sha256 = SHA256.Create())
             storedKey = sha256.ComputeHash(clientKey);
-
+#endif
         var clientFirstMessageBare = $"n=*,r={clientNonce}";
         var serverFirstMessage = $"r={firstServerMsg.Nonce},s={firstServerMsg.Salt},i={firstServerMsg.Iteration}";
         var clientFinalMessageWithoutProof = $"c={cbind},r={firstServerMsg.Nonce}";
@@ -154,10 +156,10 @@ partial class NpgsqlConnector
 
         var messageStr = $"{clientFinalMessageWithoutProof},p={clientProof}";
 
-        await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
 
-        var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
+        var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async).ConfigureAwait(false), this);
         if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
             throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
 
@@ -239,7 +241,9 @@ partial class NpgsqlConnector
             var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
 
             var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
-            var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+            var cbindBytes = new byte[cbindFlagBytes.Length + certificateHash.Length];
+            cbindFlagBytes.CopyTo(cbindBytes, 0);
+            certificateHash.CopyTo(cbindBytes, cbindFlagBytes.Length);
             cbind = Convert.ToBase64String(cbindBytes);
             successfulBind = true;
             IsScramPlus = true;
@@ -260,7 +264,7 @@ partial class NpgsqlConnector
 
     static byte[] HMAC(byte[] key, string data)
     {
-        byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+        var dataBytes = Encoding.UTF8.GetBytes(data);
 #if NET7_0_OR_GREATER
         return HMACSHA256.HashData(key, dataBytes);
 #else
@@ -272,28 +276,34 @@ partial class NpgsqlConnector
 
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
     {
-        var passwd = await GetPassword(username, async, cancellationToken);
+        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
         if (passwd == null)
             throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
         byte[] result;
+#if !NET7_0_OR_GREATER
         using (var md5 = MD5.Create())
+#endif
         {
             // First phase
-            var passwordBytes = PGUtil.UTF8Encoding.GetBytes(passwd);
-            var usernameBytes = PGUtil.UTF8Encoding.GetBytes(username);
+            var passwordBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(passwd);
+            var usernameBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(username);
             var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
             passwordBytes.CopyTo(cryptBuf, 0);
             usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
 
             var sb = new StringBuilder();
+#if NET7_0_OR_GREATER
+            var hashResult = MD5.HashData(cryptBuf);
+#else
             var hashResult = md5.ComputeHash(cryptBuf);
+#endif
             foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
 
             var prehash = sb.ToString();
 
-            var prehashbytes = PGUtil.UTF8Encoding.GetBytes(prehash);
+            var prehashbytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(prehash);
             cryptBuf = new byte[prehashbytes.Length + 4];
 
             Array.Copy(salt, 0, cryptBuf, prehashbytes.Length, 4);
@@ -302,7 +312,11 @@ partial class NpgsqlConnector
             prehashbytes.CopyTo(cryptBuf, 0);
 
             sb = new StringBuilder("md5");
+#if NET7_0_OR_GREATER
+            hashResult = MD5.HashData(cryptBuf);
+#else
             hashResult = md5.ComputeHash(cryptBuf);
+#endif
             foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
 
@@ -312,23 +326,23 @@ partial class NpgsqlConnector
             result[result.Length - 1] = 0;
         }
 
-        await WritePassword(result, async, cancellationToken);
-        await Flush(async, cancellationToken);
+        await WritePassword(result, async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
 #if NET7_0_OR_GREATER
-    async Task AuthenticateGSS(bool async)
+    internal async Task AuthenticateGSS(bool async)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 
         using var authContext = new NegotiateAuthentication(new NegotiateAuthenticationClientOptions{ TargetName = targetName});
         var data = authContext.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
         Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
-        await WritePassword(data, 0, data.Length, async, UserCancellationToken);
-        await Flush(async, UserCancellationToken);
+        await WritePassword(data, 0, data.Length, async, UserCancellationToken).ConfigureAwait(false);
+        await Flush(async, UserCancellationToken).ConfigureAwait(false);
         while (true)
         {
-            var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
+            var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
             if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                 break;
             if (response is not AuthenticationGSSContinueMessage gssMsg)
@@ -340,15 +354,15 @@ partial class NpgsqlConnector
             // This can happen if it's the first cycle, in which case we have to send that data to complete handshake (#4888)
             if (data is null)
                 continue;
-            await WritePassword(data, 0, data.Length, async, UserCancellationToken);
-            await Flush(async, UserCancellationToken);
+            await WritePassword(data, 0, data.Length, async, UserCancellationToken).ConfigureAwait(false);
+            await Flush(async, UserCancellationToken).ConfigureAwait(false);
         }
     }
 #endif
 
     async ValueTask<string?> GetPassword(string username, bool async, CancellationToken cancellationToken = default)
     {
-        var password = await DataSource.GetPassword(async, cancellationToken);
+        var password = await DataSource.GetPassword(async, cancellationToken).ConfigureAwait(false);
 
         if (password is not null)
             return password;

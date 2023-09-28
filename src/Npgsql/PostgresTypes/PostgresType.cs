@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.PostgresTypes;
 
@@ -22,23 +22,11 @@ public abstract class PostgresType
     /// <param name="ns">The data type's namespace (or schema).</param>
     /// <param name="name">The data type's name.</param>
     /// <param name="oid">The data type's OID.</param>
-    protected PostgresType(string ns, string name, uint oid)
-        : this(ns, name, name, oid) {}
-
-    /// <summary>
-    /// Constructs a representation of a PostgreSQL data type.
-    /// </summary>
-    /// <param name="ns">The data type's namespace (or schema).</param>
-    /// <param name="name">The data type's name.</param>
-    /// <param name="internalName">The data type's internal name (e.g. _int4 for integer[]).</param>
-    /// <param name="oid">The data type's OID.</param>
-    protected PostgresType(string ns, string name, string internalName, uint oid)
+    private protected PostgresType(string ns, string name, uint oid)
     {
-        Namespace = ns;
-        Name = name;
-        FullName = Namespace + '.' + Name;
-        InternalName = internalName;
+        DataTypeName = DataTypeName.FromDisplayName(name, ns);
         OID = oid;
+        FullName = Namespace + "." + Name;
     }
 
     #endregion
@@ -53,7 +41,7 @@ public abstract class PostgresType
     /// <summary>
     /// The data type's namespace (or schema).
     /// </summary>
-    public string Namespace { get; }
+    public string Namespace => DataTypeName.Schema;
 
     /// <summary>
     /// The data type's name.
@@ -62,24 +50,26 @@ public abstract class PostgresType
     /// Note that this is the standard, user-displayable type name (e.g. integer[]) rather than the internal
     /// PostgreSQL name as it is in pg_type (_int4). See <see cref="InternalName"/> for the latter.
     /// </remarks>
-    public string Name { get; }
+    public string Name => DataTypeName.UnqualifiedDisplayName;
 
     /// <summary>
     /// The full name of the backend type, including its namespace.
     /// </summary>
     public string FullName { get; }
 
+    internal DataTypeName DataTypeName { get; }
+
     /// <summary>
     /// A display name for this backend type, including the namespace unless it is pg_catalog (the namespace
     /// for all built-in types).
     /// </summary>
-    public string DisplayName => Namespace == "pg_catalog" ? Name : FullName;
+    public string DisplayName => DataTypeName.DisplayName;
 
     /// <summary>
     /// The data type's internal PostgreSQL name (e.g. <c>_int4</c> not <c>integer[]</c>).
     /// See <see cref="Name"/> for a more user-friendly name.
     /// </summary>
-    public string InternalName { get; }
+    public string InternalName => DataTypeName.UnqualifiedName;
 
     /// <summary>
     /// If a PostgreSQL array type exists for this type, it will be referenced here.
@@ -111,4 +101,21 @@ public abstract class PostgresType
     /// Returns a string that represents the current object.
     /// </summary>
     public override string ToString() => DisplayName;
+
+    PostgresType? _representationalType;
+
+    /// Canonizes (nested) domain types to underlying types, does not handle composites.
+    internal PostgresType GetRepresentationalType()
+    {
+        return _representationalType ??= Core(this) ?? throw new InvalidOperationException("Couldn't map type to representational type");
+
+        static PostgresType? Core(PostgresType? postgresType)
+            => (postgresType as PostgresDomainType)?.BaseType ?? postgresType switch
+            {
+                PostgresArrayType { Element: PostgresDomainType domain } => Core(domain.BaseType)?.Array,
+                PostgresMultirangeType { Subrange.Subtype: PostgresDomainType domain } => domain.BaseType.Range?.Multirange,
+                PostgresRangeType { Subtype: PostgresDomainType domain } => domain.Range,
+                var type => type
+            };
+    }
 }

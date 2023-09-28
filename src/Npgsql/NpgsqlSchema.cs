@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
@@ -16,7 +18,8 @@ namespace Npgsql;
 /// </summary>
 static class NpgsqlSchema
 {
-    public static Task<DataTable> GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
+    public static Task<DataTable> GetSchema(bool async, NpgsqlConnection conn, string? collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
     {
         if (collectionName is null)
             throw new ArgumentNullException(nameof(collectionName));
@@ -154,6 +157,7 @@ static class NpgsqlSchema
     static string RemoveSpecialChars(string paramName)
         => paramName.Replace("(", "").Replace(")", "").Replace(".", "");
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetDatabases(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var databases = new DataTable("Databases") { Locale = CultureInfo.InvariantCulture };
@@ -170,11 +174,12 @@ static class NpgsqlSchema
 
         using var command = BuildCommand(conn, getDatabases, restrictions, "datname");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(databases, async, cancellationToken);
+        await adapter.Fill(databases, async, cancellationToken).ConfigureAwait(false);
 
         return databases;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetSchemata(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var schemata = new DataTable("Schemata") { Locale = CultureInfo.InvariantCulture };
@@ -196,12 +201,12 @@ SELECT * FROM (
 
         using var command = BuildCommand(conn, getSchemata, restrictions, "catalog_name", "schema_name", "schema_owner");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(schemata, async, cancellationToken);
+        await adapter.Fill(schemata, async, cancellationToken).ConfigureAwait(false);
 
         return schemata;
     }
 
-
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetTables(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var tables = new DataTable("Tables") { Locale = CultureInfo.InvariantCulture };
@@ -224,11 +229,12 @@ WHERE
 
         using var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(tables, async, cancellationToken);
+        await adapter.Fill(tables, async, cancellationToken).ConfigureAwait(false);
 
         return tables;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
@@ -264,11 +270,12 @@ JOIN pg_type AS typ ON typnamespace = ns.oid AND typname = udt_name");
 
         using var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(columns, async, cancellationToken);
+        await adapter.Fill(columns, async, cancellationToken).ConfigureAwait(false);
 
         return columns;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetViews(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var views = new DataTable("Views") { Locale = CultureInfo.InvariantCulture };
@@ -285,11 +292,12 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
         using var command = BuildCommand(conn, getViews, restrictions, false, "table_catalog", "table_schema", "table_name");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(views, async, cancellationToken);
+        await adapter.Fill(views, async, cancellationToken).ConfigureAwait(false);
 
         return views;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetMaterializedViews(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var materializedViews = new DataTable("MaterializedViews") { Locale = CultureInfo.InvariantCulture };
@@ -304,11 +312,12 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
         using var command = BuildCommand(conn, getMaterializedViews, restrictions, "schemaname", "matviewname", "matviewowner", "tablespace");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(materializedViews, async, cancellationToken);
+        await adapter.Fill(materializedViews, async, cancellationToken).ConfigureAwait(false);
 
         return materializedViews;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetUsers(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
@@ -320,11 +329,12 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
         using var command = BuildCommand(conn, getUsers, restrictions, "usename");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(users, async, cancellationToken);
+        await adapter.Fill(users, async, cancellationToken).ConfigureAwait(false);
 
         return users;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetIndexes(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var indexes = new DataTable("Indexes") { Locale = CultureInfo.InvariantCulture };
@@ -353,11 +363,12 @@ WHERE
 
         using var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(indexes, async, cancellationToken);
+        await adapter.Fill(indexes, async, cancellationToken).ConfigureAwait(false);
 
         return indexes;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetIndexColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var indexColumns = new DataTable("IndexColumns") { Locale = CultureInfo.InvariantCulture };
@@ -393,11 +404,12 @@ WHERE
 
         using var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "t_ns.nspname", "t.relname", "ix_cls.relname", "a.attname");
         using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(indexColumns, async, cancellationToken);
+        await adapter.Fill(indexColumns, async, cancellationToken).ConfigureAwait(false);
 
         return indexColumns;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType, bool async, CancellationToken cancellationToken = default)
     {
         var getConstraints = new StringBuilder(@"
@@ -436,11 +448,12 @@ FROM
         using var adapter = new NpgsqlDataAdapter(command);
         var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
 
-        await adapter.Fill(table, async, cancellationToken);
+        await adapter.Fill(table, async, cancellationToken).ConfigureAwait(false);
 
         return table;
     }
 
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     static async Task<DataTable> GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
         var getConstraintColumns = new StringBuilder(@"
@@ -471,7 +484,7 @@ FROM pg_constraint c
         using var adapter = new NpgsqlDataAdapter(command);
         var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
 
-        await adapter.Fill(table, async, cancellationToken);
+        await adapter.Fill(table, async, cancellationToken).ConfigureAwait(false);
 
         return table;
     }
@@ -575,106 +588,113 @@ FROM pg_constraint c
         // Npgsql-specific
         table.Columns.Add("OID", typeof(uint));
 
+
         // TODO: Support type name restriction
-
-        foreach (var baseType in connector.DatabaseInfo.BaseTypes.Cast<PostgresType>()
-                     .Concat(connector.DatabaseInfo.EnumTypes)
-                     .Concat(connector.DatabaseInfo.CompositeTypes))
+        try
         {
-            if (!connector.TypeMapper.TryGetMapping(baseType, out var mapping))
-                continue;
+            PgSerializerOptions.IntrospectionCaller = true;
 
-            var row = table.Rows.Add();
+            var types = new List<PostgresType>();
+            types.AddRange(connector.DatabaseInfo.BaseTypes);
+            types.AddRange(connector.DatabaseInfo.EnumTypes);
+            types.AddRange(connector.DatabaseInfo.CompositeTypes);
+            foreach (var baseType in types)
+            {
+                if (connector.SerializerOptions.GetDefaultTypeInfo(baseType) is not { } info)
+                    continue;
 
-            PopulateDefaultDataTypeInfo(row, baseType);
-            PopulateHardcodedDataTypeInfo(row, baseType);
+                var row = table.Rows.Add();
 
-            if (mapping.ClrTypes.Length > 0)
-                row["DataType"] = mapping.ClrTypes[0].FullName;
-            if (mapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)mapping.NpgsqlDbType.Value;
+                PopulateDefaultDataTypeInfo(row, baseType);
+                PopulateHardcodedDataTypeInfo(row, baseType);
+
+                row["DataType"] = info.Type.FullName;
+                if (baseType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
+            {
+                if (connector.SerializerOptions.GetDefaultTypeInfo(arrayType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, arrayType.Element);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, arrayType.Element);
+
+                row["TypeName"] = arrayType.DisplayName;
+                row["OID"] = arrayType.OID;
+                row["CreateFormat"] += "[]";
+                row["DataType"] = info.Type.FullName;
+                if (arrayType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
+            {
+                if (connector.SerializerOptions.GetDefaultTypeInfo(rangeType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, rangeType.Subtype);
+                // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, rangeType.Subtype);
+
+                row["TypeName"] = rangeType.DisplayName;
+                row["OID"] = rangeType.OID;
+                row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
+                row["DataType"] = info.Type.FullName;
+                if (rangeType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
+            {
+                var subtypeType = multirangeType.Subrange.Subtype;
+                if (connector.SerializerOptions.GetDefaultTypeInfo(multirangeType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, subtypeType);
+                // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, subtypeType);
+
+                row["TypeName"] = multirangeType.DisplayName;
+                row["OID"] = multirangeType.OID;
+                row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
+                row["DataType"] = info.Type.FullName;
+                if (multirangeType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
+
+            foreach (var domainType in connector.DatabaseInfo.DomainTypes)
+            {
+                var representationalType = domainType.GetRepresentationalType();
+                if (connector.SerializerOptions.GetDefaultTypeInfo(representationalType) is not { } info)
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, representationalType);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, representationalType);
+                row["TypeName"] = domainType.DisplayName;
+                row["OID"] = domainType.OID;
+                // A domain is never the best match, since its underlying base type is
+                row["IsBestMatch"] = false;
+
+                row["DataType"] = info.Type.FullName;
+                if (representationalType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                    row["ProviderDbType"] = (int)npgsqlDbType;
+            }
         }
-
-        foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
+        finally
         {
-            if (!connector.TypeMapper.TryGetMapping(arrayType.Element, out var elementMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, arrayType.Element);
-            // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, arrayType.Element);
-
-            row["TypeName"] = arrayType.DisplayName;
-            row["OID"] = arrayType.OID;
-            row["CreateFormat"] += "[]";
-            if (elementMapping.ClrTypes.Length > 0)
-                row["DataType"] = elementMapping.ClrTypes[0].MakeArrayType().FullName;
-            if (elementMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Array);
-        }
-
-        foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
-        {
-            if (!connector.TypeMapper.TryGetMapping(rangeType.Subtype, out var subtypeMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, rangeType.Subtype);
-            // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, rangeType.Subtype);
-
-            row["TypeName"] = rangeType.DisplayName;
-            row["OID"] = rangeType.OID;
-            row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
-            if (subtypeMapping.ClrTypes.Length > 0)
-                row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
-        }
-
-        foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
-        {
-            var subtypeType = multirangeType.Subrange.Subtype;
-            if (!connector.TypeMapper.TryGetMapping(subtypeType, out var subtypeMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, subtypeType);
-            // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, subtypeType);
-
-            row["TypeName"] = multirangeType.DisplayName;
-            row["OID"] = multirangeType.OID;
-            row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
-            if (subtypeMapping.ClrTypes.Length > 0)
-                row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
-        }
-
-        foreach (var domainType in connector.DatabaseInfo.DomainTypes)
-        {
-            if (!connector.TypeMapper.TryGetMapping(domainType, out var baseMapping))
-                continue;
-
-            var row = table.Rows.Add();
-
-            PopulateDefaultDataTypeInfo(row, domainType.BaseType);
-            // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
-            PopulateHardcodedDataTypeInfo(row, domainType.BaseType);
-            row["TypeName"] = domainType.DisplayName;
-            row["OID"] = domainType.OID;
-            // A domain is never the best match, since its underlying base type is
-            row["IsBestMatch"] = false;
-
-            if (baseMapping.ClrTypes.Length > 0)
-                row["DataType"] = baseMapping.ClrTypes[0].FullName;
-            if (baseMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)baseMapping.NpgsqlDbType.Value;
+            PgSerializerOptions.IntrospectionCaller = false;
         }
 
         return table;

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -18,7 +17,7 @@ sealed class KerberosUsernameProvider
     static string? _principalWithRealm;
     static string? _principalWithoutRealm;
 
-    internal static ValueTask<string?> GetUsernameAsync(bool includeRealm, ILogger connectionLogger, bool async, CancellationToken cancellationToken)
+    internal static ValueTask<string?> GetUsername(bool async, bool includeRealm, ILogger connectionLogger, CancellationToken cancellationToken)
     {
         if (_performedDetection)
             return new(includeRealm ? _principalWithRealm : _principalWithoutRealm);
@@ -51,7 +50,7 @@ sealed class KerberosUsernameProvider
         {
 #if NET5_0_OR_GREATER
             if (async)
-                await process.WaitForExitAsync(cancellationToken);
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
             else
                 // ReSharper disable once MethodHasAsyncOverloadWithCancellation
                 process.WaitForExit();
@@ -70,9 +69,9 @@ sealed class KerberosUsernameProvider
             for (var i = 0; i < 2; i++)
                 // ReSharper disable once MethodHasAsyncOverload
 #if NET7_0_OR_GREATER
-                if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken) : process.StandardOutput.ReadLine()) == null)
+                if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false) : process.StandardOutput.ReadLine()) == null)
 #elif NET5_0_OR_GREATER
-                if ((line = async ? await process.StandardOutput.ReadLineAsync() : process.StandardOutput.ReadLine()) == null)
+                if ((line = async ? await process.StandardOutput.ReadLineAsync().ConfigureAwait(false) : process.StandardOutput.ReadLine()) == null)
 #else
                 if ((line = process.StandardOutput.ReadLine()) == null)
 #endif
@@ -112,8 +111,15 @@ sealed class KerberosUsernameProvider
         return includeRealm ? _principalWithRealm : _principalWithoutRealm;
     }
 
-    static string? FindInPath(string name) => Environment.GetEnvironmentVariable("PATH")
-        ?.Split(Path.PathSeparator)
-        .Select(p => Path.Combine(p, name))
-        .FirstOrDefault(File.Exists);
+    static string? FindInPath(string name)
+    {
+        foreach (var p in Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? Array.Empty<string>())
+        {
+            var path = Path.Combine(p, name);
+            if (File.Exists(path))
+                return path;
+        }
+
+        return null;
+    }
 }

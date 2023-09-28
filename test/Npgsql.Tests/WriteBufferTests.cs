@@ -1,6 +1,5 @@
 ﻿using System.IO;
 using Npgsql.Internal;
-using Npgsql.Util;
 using NUnit.Framework;
 
 namespace Npgsql.Tests;
@@ -8,6 +7,16 @@ namespace Npgsql.Tests;
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // Parallel access to a single buffer
 class WriteBufferTests
 {
+    [Test]
+    public void GetWriter_Full_Buffer()
+    {
+        WriteBuffer.WritePosition += WriteBuffer.WriteSpaceLeft;
+        var writer = WriteBuffer.GetWriter(null!, FlushMode.Blocking);
+        Assert.That(writer.ShouldFlush(sizeof(byte)), Is.True);
+        writer.Flush();
+        Assert.That(writer.ShouldFlush(sizeof(byte)), Is.False);
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1275")]
     public void Write_zero_characters()
     {
@@ -88,7 +97,7 @@ class WriteBufferTests
     public void SetUp()
     {
         Underlying = new MemoryStream();
-        WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, null, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
+        WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding);
     }
 #pragma warning restore CS8625
 

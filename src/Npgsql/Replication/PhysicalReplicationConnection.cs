@@ -50,31 +50,25 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <returns>A <see cref="Task{T}"/> representing a <see cref="PhysicalReplicationSlot"/> that represents the
     /// newly-created replication slot.
     /// </returns>
-    public Task<PhysicalReplicationSlot> CreateReplicationSlot(
+    public async Task<PhysicalReplicationSlot> CreateReplicationSlot(
         string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
     {
         CheckDisposed();
 
-        using var _ = NoSynchronizationContextScope.Enter();
-        return CreatePhysicalReplicationSlot(slotName, isTemporary, reserveWal, cancellationToken);
+        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
+        if (isTemporary)
+            builder.Append(" TEMPORARY");
+        builder.Append(" PHYSICAL");
+        if (reserveWal)
+            builder.Append(PostgreSqlVersion.Major >= 15 ? " (RESERVE_WAL)" : " RESERVE_WAL");
 
-        async Task<PhysicalReplicationSlot> CreatePhysicalReplicationSlot(string slotName, bool isTemporary, bool reserveWal, CancellationToken cancellationToken)
-        {
-            var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
-            if (isTemporary)
-                builder.Append(" TEMPORARY");
-            builder.Append(" PHYSICAL");
-            if (reserveWal)
-                builder.Append(PostgreSqlVersion.Major >= 15 ? " (RESERVE_WAL)" : " RESERVE_WAL");
+        var command = builder.ToString();
 
-            var command = builder.ToString();
+        LogMessages.CreatingReplicationSlot(ReplicationLogger, slotName, command, Connector.Id);
 
-            LogMessages.CreatingReplicationSlot(ReplicationLogger, slotName, command, Connector.Id);
+        var slotOptions = await CreateReplicationSlot(builder.ToString(), cancellationToken).ConfigureAwait(false);
 
-            var slotOptions = await CreateReplicationSlot(builder.ToString(), cancellationToken);
-
-            return new PhysicalReplicationSlot(slotOptions.SlotName);
-        }
+        return new PhysicalReplicationSlot(slotOptions.SlotName);
     }
 
     /// <summary>
@@ -92,10 +86,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <returns>A <see cref="Task{T}"/> representing a <see cref="PhysicalReplicationSlot"/> or <see langword="null"/>
     /// if the replication slot does not exist.</returns>
     public Task<PhysicalReplicationSlot?> ReadReplicationSlot(string slotName, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ReadReplicationSlotInternal(slotName, cancellationToken);
-    }
+        => ReadReplicationSlotInternal(slotName, cancellationToken);
 
     /// <summary>
     /// Instructs the server to start streaming the WAL for physical replication, starting at WAL location
@@ -121,9 +112,9 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
         CancellationToken cancellationToken,
         uint timeline = default)
     {
-        using (NoSynchronizationContextScope.Enter())
-            return StartPhysicalReplication(slot, walLocation, cancellationToken, timeline);
+        return StartPhysicalReplication(slot, walLocation, cancellationToken, timeline);
 
+        // Local method to avoid having to add the EnumeratorCancellation attribute to the public signature.
         async IAsyncEnumerable<XLogDataMessage> StartPhysicalReplication(PhysicalReplicationSlot? slot,
             NpgsqlLogSequenceNumber walLocation,
             [EnumeratorCancellation] CancellationToken cancellationToken,
@@ -141,7 +132,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
             LogMessages.StartingPhysicalReplication(ReplicationLogger, slot?.Name, command, Connector.Id);
 
             var enumerator = StartReplicationInternalWrapper(command, bypassingStream: false, cancellationToken);
-            while (await enumerator.MoveNextAsync())
+            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 yield return enumerator.Current;
         }
     }

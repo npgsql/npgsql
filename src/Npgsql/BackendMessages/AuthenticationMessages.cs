@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Util;
 
 namespace Npgsql.BackendMessages;
 
@@ -136,7 +135,7 @@ sealed class AuthenticationSCRAMServerFirstMessage
 
     internal static AuthenticationSCRAMServerFirstMessage Load(byte[] bytes, ILogger connectionLogger)
     {
-        var data = PGUtil.UTF8Encoding.GetString(bytes);
+        var data = NpgsqlWriteBuffer.UTF8Encoding.GetString(bytes);
         string? nonce = null, salt = null;
         var iteration = -1;
 
@@ -188,7 +187,7 @@ sealed class AuthenticationSCRAMServerFinalMessage
 
     internal static AuthenticationSCRAMServerFinalMessage Load(byte[] bytes, ILogger connectionLogger)
     {
-        var data = PGUtil.UTF8Encoding.GetString(bytes);
+        var data = NpgsqlWriteBuffer.UTF8Encoding.GetString(bytes);
         string? serverSignature = null;
 
         foreach (var part in data.Split(','))

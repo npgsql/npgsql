@@ -1,7 +1,6 @@
 using System;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 
 namespace Npgsql;
 
@@ -9,6 +8,8 @@ namespace Npgsql;
 /// A factory to create instances of various Npgsql objects.
 /// </summary>
 [Serializable]
+[RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+[RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
 {
     /// <summary>

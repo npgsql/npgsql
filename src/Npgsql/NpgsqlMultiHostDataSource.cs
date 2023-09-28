@@ -53,12 +53,19 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 : new UnpooledDataSource(poolSettings, dataSourceConfig);
         }
 
+#if NETSTANDARD
         var targetSessionAttributeValues = Enum.GetValues(typeof(TargetSessionAttributes)).Cast<TargetSessionAttributes>().ToArray();
-        _wrappers = new MultiHostDataSourceWrapper[targetSessionAttributeValues.Max(t => (int)t) + 1];
+#else
+        var targetSessionAttributeValues = Enum.GetValues<TargetSessionAttributes>().ToArray();
+#endif
+        var highestValue = 0;
+        foreach (var value in targetSessionAttributeValues)
+            if ((int)value > highestValue)
+                highestValue = (int)value;
+
+        _wrappers = new MultiHostDataSourceWrapper[highestValue + 1];
         foreach (var targetSessionAttribute in targetSessionAttributeValues)
-        {
             _wrappers[(int)targetSessionAttribute] = new(this, targetSessionAttribute);
-        }
     }
 
     /// <summary>
@@ -182,7 +189,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 {
                     if (databaseState == DatabaseState.Unknown)
                     {
-                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                         Debug.Assert(databaseState != DatabaseState.Unknown);
                         if (!stateValidator(databaseState, preferredType))
                         {
@@ -195,7 +202,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 }
                 else
                 {
-                    connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                    connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                     if (connector is not null)
                     {
                         if (databaseState == DatabaseState.Unknown)
@@ -203,7 +210,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                             // While opening a new connector we might have refreshed the database state, check again
                             databaseState = pool.GetDatabaseState();
                             if (databaseState == DatabaseState.Unknown)
-                                databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                                databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                             Debug.Assert(databaseState != DatabaseState.Unknown);
                             if (!stateValidator(databaseState, preferredType))
                             {
@@ -253,13 +260,13 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
             try
             {
-                connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                 if (databaseState == DatabaseState.Unknown)
                 {
                     // Get might have opened a new physical connection and refreshed the database state, check again
                     databaseState = pool.GetDatabaseState();
                     if (databaseState == DatabaseState.Unknown)
-                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
 
                     Debug.Assert(databaseState != DatabaseState.Unknown);
                     if (!stateValidator(databaseState, preferredType))
@@ -298,26 +305,35 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         var preferredType = GetTargetSessionAttributes(conn);
         var checkUnpreferred = preferredType is TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby;
 
-        var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
+        var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
                         (checkUnpreferred ?
-                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
+                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken).ConfigureAwait(false)
                             : null) ??
-                        await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
+                        await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
                         (checkUnpreferred ?
-                            await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
+                            await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken).ConfigureAwait(false)
                             : null);
 
         return connector ?? throw NoSuitableHostsException(exceptions);
     }
 
     static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
-        => exceptions.Count == 0
+    {
+        return exceptions.Count == 0
             ? new NpgsqlException("No suitable host was found.")
-            : exceptions[0] is PostgresException firstException &&
-              exceptions.All(x => x is PostgresException ex && ex.SqlState == firstException.SqlState)
+            : exceptions[0] is PostgresException firstException && AllEqual(firstException, exceptions)
                 ? firstException
                 : new NpgsqlException("Unable to connect to a suitable host. Check inner exception for more details.",
                     new AggregateException(exceptions));
+
+        static bool AllEqual(PostgresException first, IList<Exception> exceptions)
+        {
+            foreach (var x in exceptions)
+                if (x is not PostgresException ex || ex.SqlState != first.SqlState)
+                    return false;
+            return true;
+        }
+    }
 
     int GetRoundRobinIndex()
     {

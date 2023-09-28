@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Types;
 
@@ -62,31 +61,41 @@ public class FullTextSearchTests : MultiplexingTestBase
         => AssertType(query, sqlLiteral, "tsquery", NpgsqlDbType.TsQuery);
 
     [Test]
-    public async Task Full_text_search_supported_only_with_EnableFullTextSearch([Values] bool enableFullTextSearch)
+    public async Task Full_text_search_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
     {
-        var errorMessage = string.Format(NpgsqlStrings.FullTextSearchNotEnabled, "EnableFullTextSearch", "NpgsqlSlimDataSourceBuilder");
+        var errorMessage = string.Format(
+            NpgsqlStrings.FullTextSearchNotEnabled,
+            nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch),
+            nameof(NpgsqlSlimDataSourceBuilder));
 
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        if (enableFullTextSearch)
-            dataSourceBuilder.EnableFullTextSearch();
         await using var dataSource = dataSourceBuilder.Build();
 
-        if (enableFullTextSearch)
-        {
-            await AssertType<NpgsqlTsQuery>(new NpgsqlTsQueryLexeme("a"), "'a'", "tsquery", NpgsqlDbType.TsQuery);
-            await AssertType(NpgsqlTsVector.Parse("'1'"), "'1'", "tsvector", NpgsqlDbType.TsVector);
-        }
-        else
-        {
-            var exception = await AssertTypeUnsupportedRead<NpgsqlTsQuery, NotSupportedException>("a", "tsquery", dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
-            exception = await AssertTypeUnsupportedWrite<NpgsqlTsQuery, NotSupportedException>(new NpgsqlTsQueryLexeme("a"), pgTypeName: null, dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
+        var exception = await AssertTypeUnsupportedRead<NpgsqlTsQuery, InvalidCastException>("a", "tsquery", dataSource);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
 
-            exception = await AssertTypeUnsupportedRead<NpgsqlTsVector, NotSupportedException>("1", "tsvector", dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
-            exception = await AssertTypeUnsupportedWrite<NpgsqlTsVector, NotSupportedException>(NpgsqlTsVector.Parse("'1'"), pgTypeName: null, dataSource);
-            Assert.AreEqual(errorMessage, exception.Message);
-        }
+        exception = await AssertTypeUnsupportedWrite<NpgsqlTsQuery, InvalidCastException>(new NpgsqlTsQueryLexeme("a"), pgTypeName: null, dataSource);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+
+        exception = await AssertTypeUnsupportedRead<NpgsqlTsVector, InvalidCastException>("1", "tsvector", dataSource);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+
+        exception = await AssertTypeUnsupportedWrite<NpgsqlTsVector, InvalidCastException>(NpgsqlTsVector.Parse("'1'"), pgTypeName: null, dataSource);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+    }
+
+    [Test]
+    public async Task NpgsqlSlimSourceBuilder_EnableFullTextSearch()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.EnableFullTextSearch();
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertType<NpgsqlTsQuery>(new NpgsqlTsQueryLexeme("a"), "'a'", "tsquery", NpgsqlDbType.TsQuery);
+        await AssertType(NpgsqlTsVector.Parse("'1'"), "'1'", "tsvector", NpgsqlDbType.TsVector);
     }
 }

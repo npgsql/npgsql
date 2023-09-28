@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -9,189 +11,130 @@ namespace Npgsql.Tests.Types;
 
 public class MultirangeTests : TestBase
 {
-    [Test]
-    public async Task Read()
+    static readonly TestCaseData[] MultirangeTestCases =
     {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT '{[3,7), (8,]}'::int4multirange", conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
+        // int4multirange
+        new TestCaseData(
+                new NpgsqlRange<int>[]
+                {
+                    new(3, true, false, 7, false, false),
+                    new(9, true, false, 0, false, true)
+                },
+                "{[3,7),[9,)}", "int4multirange", NpgsqlDbType.IntegerMultirange, true, true, default(NpgsqlRange<int>))
+            .SetName("Int"),
 
-        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4multirange"));
+        // int8multirange
+        new TestCaseData(
+                new NpgsqlRange<long>[]
+                {
+                    new(3, true, false, 7, false, false),
+                    new(9, true, false, 0, false, true)
+                },
+                "{[3,7),[9,)}", "int8multirange", NpgsqlDbType.BigIntMultirange, true, true, default(NpgsqlRange<long>))
+            .SetName("Long"),
 
-        var multirangeArray = (NpgsqlRange<int>[])reader[0];
-        Assert.That(multirangeArray.Length, Is.EqualTo(2));
-        Assert.That(multirangeArray[0], Is.EqualTo(new NpgsqlRange<int>(3, true, false, 7, false, false)));
-        Assert.That(multirangeArray[1], Is.EqualTo(new NpgsqlRange<int>(9, true, false, 0, false, true)));
+        // nummultirange
+        // numeric is non-discrete so doesn't undergo normalization, use that to test bound scenarios which otherwise get normalized
+        new TestCaseData(
+                new NpgsqlRange<decimal>[]
+                {
+                    new(3, true, false, 7, true, false),
+                    new(9, false, false, 0, false, true)
+                },
+                "{[3,7],(9,)}", "nummultirange", NpgsqlDbType.NumericMultirange, true, true, default(NpgsqlRange<decimal>))
+            .SetName("Decimal"),
 
-        var multirangeList = reader.GetFieldValue<List<NpgsqlRange<int>>>(0);
-        Assert.That(multirangeList.Count, Is.EqualTo(2));
-        Assert.That(multirangeList[0], Is.EqualTo(new NpgsqlRange<int>(3, true, false, 7, false, false)));
-        Assert.That(multirangeList[1], Is.EqualTo(new NpgsqlRange<int>(9, true, false, 0, false, true)));
-    }
+        // daterange
+        new TestCaseData(
+                new NpgsqlRange<DateTime>[]
+                {
+                    new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
+                    new(new(2020, 1, 10), true, false, default, false, true)
+                },
+                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", NpgsqlDbType.DateMultirange, true, false, default(NpgsqlRange<DateTime>))
+            .SetName("DateTime DateMultirange"),
 
-    [Test]
-    public async Task Write()
-    {
-        var multirangeArray = new NpgsqlRange<int>[]
-        {
-            new(3, true, false, 7, false, false),
-            new(8, false, false, 0, false, true)
-        };
+        // tsmultirange
+        new TestCaseData(
+                new NpgsqlRange<DateTime>[]
+                {
+                    new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
+                    new(new(2020, 1, 10), true, false, default, false, true)
+                },
+                """{["2020-01-01 00:00:00","2020-01-05 00:00:00"),["2020-01-10 00:00:00",)}""", "tsmultirange", NpgsqlDbType.TimestampMultirange, true, true, default(NpgsqlRange<DateTime>))
+            .SetName("DateTime TimestampMultirange"),
 
-        var multirangeList = new List<NpgsqlRange<int>>(multirangeArray);
-
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
-
-        await WriteInternal(multirangeArray);
-        await WriteInternal(multirangeList);
-
-        async Task WriteInternal(IList<NpgsqlRange<int>> multirange)
-        {
-            await conn.ReloadTypesAsync();
-            cmd.Parameters.Add(new() { Value = multirange });
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
-
-            await conn.ReloadTypesAsync();
-            cmd.Parameters[0] = new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.IntegerMultirange };
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
-
-            await conn.ReloadTypesAsync();
-            cmd.Parameters[0] = new() { Value = multirange, DataTypeName = "int4multirange" };
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
-        }
-    }
-
-    [Test]
-    public async Task Write_nummultirange()
-    {
-        var multirangeArray = new NpgsqlRange<decimal>[]
-        {
-            new(3, true, false, 7, false, false),
-            new(8, false, false, 0, false, true)
-        };
-
-        var multirangeList = new List<NpgsqlRange<decimal>>(multirangeArray);
-
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
-
-        await WriteInternal(multirangeArray);
-        await WriteInternal(multirangeList);
-
-        async Task WriteInternal(IList<NpgsqlRange<decimal>> multirange)
-        {
-            conn.ReloadTypes();
-            cmd.Parameters.Add(new() { Value = multirange });
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),(8,)}"));
-
-            conn.ReloadTypes();
-            cmd.Parameters[0] = new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.NumericMultirange };
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),(8,)}"));
-
-            conn.ReloadTypes();
-            cmd.Parameters[0] = new() { Value = multirange, DataTypeName = "nummultirange" };
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),(8,)}"));
-        }
-    }
-
-    [Test]
-    public async Task Read_Datemultirange()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT '{[2020-01-01,2020-01-05), (2020-01-10,]}'::datemultirange", conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
-
-        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("datemultirange"));
-
-        var multirangeDateTimeArray = (NpgsqlRange<DateTime>[])reader[0];
-        Assert.That(multirangeDateTimeArray.Length, Is.EqualTo(2));
-        Assert.That(multirangeDateTimeArray[0], Is.EqualTo(new NpgsqlRange<DateTime>(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false)));
-        Assert.That(multirangeDateTimeArray[1], Is.EqualTo(new NpgsqlRange<DateTime>(new(2020, 1, 11), true, false, default, false, true)));
-
-        var multirangeDateTimeList = reader.GetFieldValue<List<NpgsqlRange<DateTime>>>(0);
-        Assert.That(multirangeDateTimeList.Count, Is.EqualTo(2));
-        Assert.That(multirangeDateTimeList[0], Is.EqualTo(new NpgsqlRange<DateTime>(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false)));
-        Assert.That(multirangeDateTimeList[1], Is.EqualTo(new NpgsqlRange<DateTime>(new(2020, 1, 11), true, false, default, false, true)));
+        // tstzmultirange
+        new TestCaseData(
+                new NpgsqlRange<DateTime>[]
+                {
+                    new(new(2020, 1, 1, 0, 0, 0, kind: DateTimeKind.Utc), true, false, new(2020, 1, 5, 0, 0, 0, kind: DateTimeKind.Utc), false, false),
+                    new(new(2020, 1, 10, 0, 0, 0, kind: DateTimeKind.Utc), true, false, default, false, true)
+                },
+                """{["2020-01-01 01:00:00+01","2020-01-05 01:00:00+01"),["2020-01-10 01:00:00+01",)}""", "tstzmultirange", NpgsqlDbType.TimestampTzMultirange, true, true, default(NpgsqlRange<DateTime>))
+            .SetName("DateTime TimestampTzMultirange"),
 
 #if NET6_0_OR_GREATER
-        var multirangeDateOnlyArray = reader.GetFieldValue<NpgsqlRange<DateOnly>[]>(0);
-        Assert.That(multirangeDateOnlyArray.Length, Is.EqualTo(2));
-        Assert.That(multirangeDateOnlyArray[0], Is.EqualTo(new NpgsqlRange<DateOnly>(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false)));
-        Assert.That(multirangeDateOnlyArray[1], Is.EqualTo(new NpgsqlRange<DateOnly>(new(2020, 1, 11), true, false, default, false, true)));
-
-        var multirangeDateOnlyList = reader.GetFieldValue<List<NpgsqlRange<DateOnly>>>(0);
-        Assert.That(multirangeDateOnlyList.Count, Is.EqualTo(2));
-        Assert.That(multirangeDateOnlyList[0], Is.EqualTo(new NpgsqlRange<DateOnly>(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false)));
-        Assert.That(multirangeDateOnlyList[1], Is.EqualTo(new NpgsqlRange<DateOnly>(new(2020, 1, 11), true, false, default, false, true)));
+        new TestCaseData(
+                new NpgsqlRange<DateOnly>[]
+                {
+                    new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
+                    new(new(2020, 1, 10), true, false, default, false, true)
+                },
+                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", NpgsqlDbType.DateMultirange, false, false, default(NpgsqlRange<DateOnly>))
+            .SetName("DateOnly"),
 #endif
-    }
+    };
 
-#if NET6_0_OR_GREATER
-    [Test]
-    public async Task Write_Datemultirange_DateOnly()
-    {
-        var multirangeArray = new NpgsqlRange<DateOnly>[]
-        {
-            new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
-            new(new(2020, 1, 10), false, false, default, false, true)
-        };
+    [Test, TestCaseSource(nameof(MultirangeTestCases))]
+    public Task Multirange_as_array<T, TRange>(
+        T multirangeAsArray, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType, bool isDefaultForReading, bool isDefaultForWriting, TRange _)
+        => AssertType(multirangeAsArray, sqlLiteral, pgTypeName, npgsqlDbType, isDefaultForReading: isDefaultForReading,
+            isDefaultForWriting: isDefaultForWriting);
 
-        var multirangeList = new List<NpgsqlRange<DateOnly>>(multirangeArray);
-
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
-
-        await WriteInternal(multirangeArray);
-        await WriteInternal(multirangeList);
-
-        async Task WriteInternal(IList<NpgsqlRange<DateOnly>> multirange)
-        {
-            conn.ReloadTypes();
-            cmd.Parameters.Add(new() { Value = multirange });
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[2020-01-01,2020-01-05),[2020-01-11,)}"));
-
-            conn.ReloadTypes();
-            cmd.Parameters[0] = new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.DateMultirange };
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[2020-01-01,2020-01-05),[2020-01-11,)}"));
-
-            conn.ReloadTypes();
-            cmd.Parameters[0] = new() { Value = multirange, DataTypeName = "datemultirange" };
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[2020-01-01,2020-01-05),[2020-01-11,)}"));
-        }
-    }
-#endif
+    [Test, TestCaseSource(nameof(MultirangeTestCases))]
+    public Task Multirange_as_list<T, TRange>(
+        T multirangeAsArray, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType, bool isDefaultForReading, bool isDefaultForWriting, TRange _)
+        where T : IList<TRange>
+        => AssertType(
+            new List<TRange>(multirangeAsArray),
+            sqlLiteral, pgTypeName, npgsqlDbType, isDefaultForReading: false, isDefaultForWriting: isDefaultForWriting);
 
     [Test]
-    public async Task Write_Datemultirange_DateTime()
+    [NonParallelizable]
+    public async Task Unmapped_multirange_with_mapped_subtype()
     {
-        var multirangeArray = new NpgsqlRange<DateTime>[]
-        {
-            new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
-            new(new(2020, 1, 10), false, false, default, false, true)
-        };
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
-        var multirangeList = new List<NpgsqlRange<DateTime>>(multirangeArray);
+        var typeName = await GetTempTypeName(conn);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
+        await Task.Yield(); // TODO: fix multiplexing deadlock bug
+        conn.ReloadTypes();
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
+        var value = new[] {new NpgsqlRange<char[]>(
+            new string('a', conn.Settings.WriteBufferSize + 10).ToCharArray(),
+            new string('z', conn.Settings.WriteBufferSize + 10).ToCharArray()
+        )};
 
-        await WriteInternal(multirangeArray);
-        await WriteInternal(multirangeList);
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        cmd.Parameters.Add(new NpgsqlParameter { DataTypeName = typeName + "_multirange", ParameterName = "p", Value = value });
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await reader.ReadAsync();
 
-        async Task WriteInternal(IList<NpgsqlRange<DateTime>> multirange)
-        {
-            conn.ReloadTypes();
-            cmd.Parameters.Add(new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.DateMultirange });
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[2020-01-01,2020-01-05),[2020-01-11,)}"));
-
-            conn.ReloadTypes();
-            cmd.Parameters[0] = new() { Value = multirange, DataTypeName = "datemultirange" };
-            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[2020-01-01,2020-01-05),[2020-01-11,)}"));
-        }
+        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlRange<string>[])));
+        var result = reader.GetFieldValue<NpgsqlRange<char[]>[]>(0);
+        Assert.That(result, Is.EqualTo(value).Using<NpgsqlRange<char[]>[]>((actual, expected) =>
+            actual[0].LowerBound!.SequenceEqual(expected[0].LowerBound!) && actual[0].UpperBound!.SequenceEqual(expected[0].UpperBound!)));
     }
+
+    protected override NpgsqlDataSource DataSource { get; }
+
+    public MultirangeTests() => DataSource = CreateDataSource(builder =>
+        {
+            builder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
+        });
 
     [OneTimeSetUp]
     public async Task Setup()
@@ -199,7 +142,4 @@ public class MultirangeTests : TestBase
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
     }
-
-    protected override NpgsqlConnection OpenConnection()
-        => throw new NotSupportedException();
 }

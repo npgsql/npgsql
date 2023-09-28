@@ -131,7 +131,7 @@ class PoolingDataSource : NpgsqlDataSource
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             // First, try to open a new physical connector. This will fail if we're at max capacity.
-            var connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
+            var connector = await OpenNewConnector(conn, timeout, async, cancellationToken).ConfigureAwait(false);
             if (connector != null)
                 return connector;
 
@@ -153,7 +153,7 @@ class PoolingDataSource : NpgsqlDataSource
                         if (!async && !task.IsCompleted)
                             await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
 
-                        connector = await task;
+                        connector = await task.ConfigureAwait(false);
                         if (CheckIdleConnector(connector))
                             return connector;
                     }
@@ -180,7 +180,7 @@ class PoolingDataSource : NpgsqlDataSource
 
                     // We might have closed a connector in the meantime and no longer be at max capacity
                     // so try to open a new connector and if that fails, loop again.
-                    connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
+                    connector = await OpenNewConnector(conn, timeout, async, cancellationToken).ConfigureAwait(false);
                     if (connector != null)
                         return connector;
                 }
@@ -230,9 +230,9 @@ class PoolingDataSource : NpgsqlDataSource
 
         // The connector directly references the data source type mapper into the connector, to protect it against changes by a concurrent
         // ReloadTypes. We update them here before returning the connector from the pool.
-        Debug.Assert(TypeMapper is not null);
+        Debug.Assert(SerializerOptions is not null);
         Debug.Assert(DatabaseInfo is not null);
-        connector.TypeMapper = TypeMapper;
+        connector.SerializerOptions = SerializerOptions;
         connector.DatabaseInfo = DatabaseInfo;
 
         Debug.Assert(connector.State == ConnectorState.Ready,
@@ -262,7 +262,7 @@ class PoolingDataSource : NpgsqlDataSource
                 var startTime = Stopwatch.GetTimestamp();
 #endif
                 var connector = new NpgsqlConnector(this, conn) { ClearCounter = _clearCounter };
-                await connector.Open(timeout, async, cancellationToken);
+                await connector.Open(timeout, async, cancellationToken).ConfigureAwait(false);
 #if NET7_0_OR_GREATER
                 MetricsReporter.ReportConnectionCreateTime(Stopwatch.GetElapsedTime(startTime));
 #endif
@@ -444,10 +444,9 @@ class PoolingDataSource : NpgsqlDataSource
                connector != null)
         {
             if (pool.CheckIdleConnector(connector))
-            {
                 pool.CloseConnector(connector);
-                toPrune--;
-            }
+
+            toPrune--;
         }
     }
 

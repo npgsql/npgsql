@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
@@ -6,7 +7,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal;
+using Npgsql.Internal.Resolvers;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -15,8 +17,12 @@ namespace Npgsql;
 /// <summary>
 /// Provides a simple API for configuring and creating an <see cref="NpgsqlDataSource" />, from which database connections can be obtained.
 /// </summary>
+[RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+[RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 {
+    static UnsupportedTypeInfoResolver<NpgsqlDataSourceBuilder> UnsupportedTypeInfoResolver { get; } = new();
+
     readonly NpgsqlSlimDataSourceBuilder _internalBuilder;
 
     /// <summary>
@@ -45,14 +51,83 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public string ConnectionString => _internalBuilder.ConnectionString;
 
+    internal static void ResetGlobalMappings(bool overwrite)
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new IPgTypeInfoResolver[]
+        {
+            overwrite ? new AdoTypeInfoResolver() : AdoTypeInfoResolver.Instance,
+            new ExtraConversionsResolver(),
+            new SystemTextJsonTypeInfoResolver(),
+            new SystemTextJsonPocoTypeInfoResolver(),
+            new RangeTypeInfoResolver(),
+            new RecordTypeInfoResolver(),
+            new TupledRecordTypeInfoResolver(),
+            new FullTextSearchTypeInfoResolver(),
+            new NetworkTypeInfoResolver(),
+            new GeometricTypeInfoResolver(),
+            new LTreeTypeInfoResolver(),
+            new UnmappedEnumTypeInfoResolver(),
+            new UnmappedRangeTypeInfoResolver(),
+            new UnmappedMultirangeTypeInfoResolver(),
+            // Arrays
+            new AdoArrayTypeInfoResolver(),
+            new ExtraConversionsArrayTypeInfoResolver(),
+            new SystemTextJsonArrayTypeInfoResolver(),
+            new SystemTextJsonPocoArrayTypeInfoResolver(),
+            new RangeArrayTypeInfoResolver(),
+            new RecordArrayTypeInfoResolver(),
+            new TupledRecordArrayTypeInfoResolver(),
+            new UnmappedEnumArrayTypeInfoResolver(),
+            new UnmappedRangeArrayTypeInfoResolver(),
+            new UnmappedMultirangeArrayTypeInfoResolver(),
+        }, overwrite);
+
+    static NpgsqlDataSourceBuilder()
+        => ResetGlobalMappings(overwrite: false);
+
     /// <summary>
     /// Constructs a new <see cref="NpgsqlDataSourceBuilder" />, optionally starting out from the given <paramref name="connectionString"/>.
     /// </summary>
     public NpgsqlDataSourceBuilder(string? connectionString = null)
     {
-        _internalBuilder = new(connectionString);
-
+        _internalBuilder = new(new NpgsqlConnectionStringBuilder(connectionString));
         AddDefaultFeatures();
+
+        void AddDefaultFeatures()
+        {
+            _internalBuilder.EnableTransportSecurity();
+            _internalBuilder.EnableIntegratedSecurity();
+            AddTypeInfoResolver(UnsupportedTypeInfoResolver);
+            // Reverse order arrays.
+            AddTypeInfoResolver(new UnmappedMultirangeArrayTypeInfoResolver());
+            AddTypeInfoResolver(new UnmappedRangeArrayTypeInfoResolver());
+            AddTypeInfoResolver(new UnmappedEnumArrayTypeInfoResolver());
+            AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
+            AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
+            AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonPocoArrayTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonArrayTypeInfoResolver());
+            AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
+            AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
+            // Reverse order.
+            AddTypeInfoResolver(new UnmappedMultirangeTypeInfoResolver());
+            AddTypeInfoResolver(new UnmappedRangeTypeInfoResolver());
+            AddTypeInfoResolver(new UnmappedEnumTypeInfoResolver());
+            AddTypeInfoResolver(new LTreeTypeInfoResolver());
+            AddTypeInfoResolver(new GeometricTypeInfoResolver());
+            AddTypeInfoResolver(new NetworkTypeInfoResolver());
+            AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
+            AddTypeInfoResolver(new TupledRecordTypeInfoResolver());
+            AddTypeInfoResolver(new RecordTypeInfoResolver());
+            AddTypeInfoResolver(new RangeTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonPocoTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
+            AddTypeInfoResolver(new ExtraConversionsResolver());
+            AddTypeInfoResolver(AdoTypeInfoResolver.Instance);
+            var plugins = new List<IPgTypeInfoResolver>(GlobalTypeMapper.Instance.GetPluginResolvers());
+            plugins.Reverse();
+            foreach (var plugin in plugins)
+                AddTypeInfoResolver(plugin);
+        }
     }
 
     /// <summary>
@@ -208,8 +283,12 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     #region Type mapping
 
     /// <inheritdoc />
-    public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
-        => _internalBuilder.AddTypeResolverFactory(resolverFactory);
+    public void AddTypeInfoResolver(IPgTypeInfoResolver resolver)
+        => _internalBuilder.AddTypeInfoResolver(resolver);
+
+    /// <inheritdoc />
+    void INpgsqlTypeMapper.Reset()
+        => _internalBuilder.ResetTypeMappings();
 
     /// <summary>
     /// Sets up System.Text.Json mappings for the PostgreSQL <c>json</c> and <c>jsonb</c> types.
@@ -221,17 +300,20 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// <param name="jsonClrTypes">
     /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
     /// </param>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlDataSourceBuilder UseSystemTextJson(
         JsonSerializerOptions? serializerOptions = null,
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeInfoResolver(new SystemTextJsonPocoArrayTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeInfoResolver(new SystemTextJsonPocoTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 
     /// <inheritdoc />
-    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
     {
         _internalBuilder.MapEnum<TEnum>(pgName, nameTranslator);
@@ -239,42 +321,35 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
         => _internalBuilder.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+        string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _internalBuilder.MapComposite<T>(pgName, nameTranslator);
         return this;
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _internalBuilder.MapComposite(clrType, pgName, nameTranslator);
         return this;
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+        string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _internalBuilder.UnmapComposite<T>(pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _internalBuilder.UnmapComposite(clrType, pgName, nameTranslator);
-
-    void INpgsqlTypeMapper.Reset()
-    {
-        ((INpgsqlTypeMapper)_internalBuilder).Reset();
-
-        AddDefaultFeatures();
-    }
 
     #endregion Type mapping
 
@@ -318,13 +393,4 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
         => _internalBuilder.BuildMultiHost();
-
-    void AddDefaultFeatures()
-    {
-        _internalBuilder.EnableEncryption();
-        _internalBuilder.AddDefaultTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory());
-        _internalBuilder.AddDefaultTypeResolverFactory(new RangeTypeHandlerResolverFactory());
-        _internalBuilder.AddDefaultTypeResolverFactory(new RecordTypeHandlerResolverFactory());
-        _internalBuilder.AddDefaultTypeResolverFactory(new FullTextSearchTypeHandlerResolverFactory());
-    }
 }

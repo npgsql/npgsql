@@ -1,5 +1,5 @@
 using System;
-using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
@@ -96,6 +96,8 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
         }
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Changing Enlist to be false does not affect potentially trimmed out functionality.")]
+    [UnconditionalSuppressMessage("Aot", "IL3050", Justification = "Changing Enlist to be false does not cause dynamic codegen.")]
     public void Commit(Enlistment enlistment)
     {
         CheckDisposed();

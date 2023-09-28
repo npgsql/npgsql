@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Transactions;
 using Npgsql.Internal;
 using Npgsql.Util;
 
@@ -26,7 +25,7 @@ sealed class UnpooledDataSource : NpgsqlDataSource
         CheckDisposed();
 
         var connector = new NpgsqlConnector(this, conn);
-        await connector.Open(timeout, async, cancellationToken);
+        await connector.Open(timeout, async, cancellationToken).ConfigureAwait(false);
         Interlocked.Increment(ref _numConnectors);
         return connector;
     }

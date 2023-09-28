@@ -27,9 +27,7 @@ public static class NpgsqlNetTopologySuiteExtensions
         Ordinates handleOrdinates = Ordinates.None,
         bool geographyAsDefault = false)
     {
-        mapper.AddTypeResolverFactory(
-            new NetTopologySuiteTypeHandlerResolverFactory(
-                coordinateSequenceFactory, precisionModel, handleOrdinates, geographyAsDefault));
+        mapper.AddTypeInfoResolver(new NetTopologySuiteTypeInfoResolver(coordinateSequenceFactory, precisionModel, handleOrdinates, geographyAsDefault));
         return mapper;
     }
 }

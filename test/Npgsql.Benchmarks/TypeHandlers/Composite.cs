@@ -1,9 +1,4 @@
-﻿using System.Collections.Generic;
-using BenchmarkDotNet.Attributes;
-using Npgsql.NameTranslation;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using Npgsql.Util;
+﻿
 
 /* Disabling for now: unmapped composite support is probably going away, and there's a good chance this
  * class can be simplified to a certain extent

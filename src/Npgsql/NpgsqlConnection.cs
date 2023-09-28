@@ -127,6 +127,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
     /// </summary>
     /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
+
+    [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlConnection(string? connectionString) : this()
         => ConnectionString = connectionString;
 
@@ -165,12 +168,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public override Task OpenAsync(CancellationToken cancellationToken)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Open(true, cancellationToken);
-    }
+    public override Task OpenAsync(CancellationToken cancellationToken) => Open(async: true, cancellationToken);
 
+    [RequiresUnreferencedCode("NpgsqlConnection uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlConnection uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     void SetupDataSource()
     {
         // Fast path: a pool already corresponds to this exact version of the connection string.
@@ -309,7 +310,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     enlistToTransaction = null;
                 }
                 else
-                    connector = await _dataSource.Get(this, timeout, async, cancellationToken);
+                    connector = await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
 
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
@@ -347,7 +348,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             {
                 var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
-                _ = await StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
+                _ = await StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken).ConfigureAwait(false);
                 EndBindingScope(ConnectorBindingScope.Connection);
 
                 LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
@@ -378,6 +379,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public override string ConnectionString
     {
         get => _userFacingConnectionString;
+
+        [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+        [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to DbConnection.")]
+        [UnconditionalSuppressMessage("Aot", "IL3051", Justification = "At the Npgsql level we cannot add RDC to DbConnection.")]
         set
         {
             CheckClosed();
@@ -651,9 +657,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <returns>A <see cref="NpgsqlTransaction"/> object representing the new transaction.</returns>
     /// <remarks>Nested transactions are not supported.</remarks>
     public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
-        => BeginTransaction(level, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginTransaction(async: false, level, CancellationToken.None).GetAwaiter().GetResult();
 
-    async ValueTask<NpgsqlTransaction> BeginTransaction(IsolationLevel level, bool async, CancellationToken cancellationToken)
+    async ValueTask<NpgsqlTransaction> BeginTransaction(bool async, IsolationLevel level, CancellationToken cancellationToken)
     {
         if (level == IsolationLevel.Chaos)
             ThrowHelper.ThrowNotSupportedException($"Unsupported IsolationLevel: {nameof(IsolationLevel.Chaos)}");
@@ -665,7 +671,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // There was a committed/rolled back transaction, but it was not disposed
         var connector = ConnectorBindingScope == ConnectorBindingScope.Transaction
             ? Connector
-            : await StartBindingScope(ConnectorBindingScope.Transaction, NpgsqlTimeout.Infinite, async, cancellationToken);
+            : await StartBindingScope(ConnectorBindingScope.Transaction, NpgsqlTimeout.Infinite, async, cancellationToken).ConfigureAwait(false);
 
         Debug.Assert(connector != null);
 
@@ -699,7 +705,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Nested transactions are not supported.
     /// </remarks>
     protected override async ValueTask<DbTransaction> BeginDbTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
-        => await BeginTransactionAsync(isolationLevel, cancellationToken);
+        => await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Asynchronously begins a database transaction.
@@ -727,10 +733,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Nested transactions are not supported.
     /// </remarks>
     public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginTransaction(level, async: true, cancellationToken);
-    }
+        => BeginTransaction(async: true, level, cancellationToken);
 #endif
 
     /// <summary>
@@ -804,10 +807,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 #else
     public override Task CloseAsync()
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Close(async: true);
-    }
+        => Close(async: true);
 
     internal bool TakeCloseLock() => Interlocked.Exchange(ref _closing, 1) == 0;
 
@@ -871,7 +871,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
             {
                 // This method could re-enter connection.Close() due to an underlying connection failure.
-                await connector.CloseOngoingOperations(async);
+                await connector.CloseOngoingOperations(async).ConfigureAwait(false);
 
                 if (ConnectorBindingScope == ConnectorBindingScope.None)
                 {
@@ -884,7 +884,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 }
             }
 
-            Debug.Assert(connector.IsReady || connector.IsBroken);
+            Debug.Assert(connector.IsReady || connector.IsBroken, $"Connector is not ready or broken during close, it's {connector.State}");
             Debug.Assert(connector.CurrentReader == null);
             Debug.Assert(connector.CurrentCopyOperation == null);
 
@@ -909,7 +909,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
                     // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
                     // Note that we're doing this only for pooled connections
-                    await connector.Reset(async);
+                    await connector.Reset(async).ConfigureAwait(false);
                 }
                 else
                 {
@@ -961,23 +961,16 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Releases all resources used by the <see cref="NpgsqlConnection"/>.
     /// </summary>
 #if NETSTANDARD2_0
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
 #else
-    public override ValueTask DisposeAsync()
+    public override async ValueTask DisposeAsync()
 #endif
     {
-        using (NoSynchronizationContextScope.Enter())
-            return DisposeAsyncCore();
+        if (_disposed)
+            return;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        async ValueTask DisposeAsyncCore()
-        {
-            if (_disposed)
-                return;
-
-            await CloseAsync();
-            _disposed = true;
-        }
+        await CloseAsync().ConfigureAwait(false);
+        _disposed = true;
     }
 
     internal void MakeDisposed()
@@ -1161,7 +1154,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand)
-        => BeginBinaryImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginBinaryImport(async: false, copyFromCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a binary COPY FROM STDIN operation, a high-performance data import mechanism to a PostgreSQL table.
@@ -1173,12 +1166,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<NpgsqlBinaryImporter> BeginBinaryImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginBinaryImport(copyFromCommand, async: true, cancellationToken);
-    }
+        => BeginBinaryImport(async: true, copyFromCommand, cancellationToken);
 
-    async Task<NpgsqlBinaryImporter> BeginBinaryImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<NpgsqlBinaryImporter> BeginBinaryImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
     {
         if (copyFromCommand == null)
             throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1194,7 +1184,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var importer = new NpgsqlBinaryImporter(connector);
-            await importer.Init(copyFromCommand, async, cancellationToken);
+            await importer.Init(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
             connector.CurrentCopyOperation = importer;
             return importer;
         }
@@ -1215,7 +1205,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand)
-        => BeginBinaryExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginBinaryExport(async: false, copyToCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a binary COPY TO STDOUT operation, a high-performance data export mechanism from a PostgreSQL table.
@@ -1227,12 +1217,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<NpgsqlBinaryExporter> BeginBinaryExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginBinaryExport(copyToCommand, async: true, cancellationToken);
-    }
+        => BeginBinaryExport(async: true, copyToCommand, cancellationToken);
 
-    async Task<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<NpgsqlBinaryExporter> BeginBinaryExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
     {
         if (copyToCommand == null)
             throw new ArgumentNullException(nameof(copyToCommand));
@@ -1248,7 +1235,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var exporter = new NpgsqlBinaryExporter(connector);
-            await exporter.Init(copyToCommand, async, cancellationToken);
+            await exporter.Init(copyToCommand, async, cancellationToken).ConfigureAwait(false);
             connector.CurrentCopyOperation = exporter;
             return exporter;
         }
@@ -1272,7 +1259,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public TextWriter BeginTextImport(string copyFromCommand)
-        => BeginTextImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginTextImport(async: false, copyFromCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table.
@@ -1287,12 +1274,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginTextImport(copyFromCommand, async: true, cancellationToken);
-    }
+        => BeginTextImport(async: true, copyFromCommand, cancellationToken);
 
-    async Task<TextWriter> BeginTextImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<TextWriter> BeginTextImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
     {
         if (copyFromCommand == null)
             throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1308,7 +1292,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var copyStream = new NpgsqlRawCopyStream(connector);
-            await copyStream.Init(copyFromCommand, async, cancellationToken);
+            await copyStream.Init(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
             var writer = new NpgsqlCopyTextWriter(connector, copyStream);
             connector.CurrentCopyOperation = writer;
             return writer;
@@ -1333,7 +1317,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public TextReader BeginTextExport(string copyToCommand)
-        => BeginTextExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginTextExport(async: false, copyToCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a textual COPY TO STDOUT operation, a data export mechanism from a PostgreSQL table.
@@ -1348,12 +1332,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginTextExport(copyToCommand, async: true, cancellationToken);
-    }
+        => BeginTextExport(async: true, copyToCommand, cancellationToken);
 
-    async Task<TextReader> BeginTextExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<TextReader> BeginTextExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
     {
         if (copyToCommand == null)
             throw new ArgumentNullException(nameof(copyToCommand));
@@ -1369,7 +1350,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var copyStream = new NpgsqlRawCopyStream(connector);
-            await copyStream.Init(copyToCommand, async, cancellationToken);
+            await copyStream.Init(copyToCommand, async, cancellationToken).ConfigureAwait(false);
             var reader = new NpgsqlCopyTextReader(connector, copyStream);
             connector.CurrentCopyOperation = reader;
             return reader;
@@ -1394,7 +1375,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public NpgsqlRawCopyStream BeginRawBinaryCopy(string copyCommand)
-        => BeginRawBinaryCopy(copyCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginRawBinaryCopy(async: false, copyCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Begins a raw binary COPY operation (TO STDOUT or FROM STDIN), a high-performance data export/import mechanism to a PostgreSQL table.
@@ -1409,12 +1390,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public Task<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync(string copyCommand, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return BeginRawBinaryCopy(copyCommand, async: true, cancellationToken);
-    }
+        => BeginRawBinaryCopy(async: true, copyCommand, cancellationToken);
 
-    async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(string copyCommand, bool async, CancellationToken cancellationToken = default)
+    async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(bool async, string copyCommand, CancellationToken cancellationToken = default)
     {
         if (copyCommand == null)
             throw new ArgumentNullException(nameof(copyCommand));
@@ -1430,7 +1408,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var stream = new NpgsqlRawCopyStream(connector);
-            await stream.Init(copyCommand, async, cancellationToken);
+            await stream.Init(copyCommand, async, cancellationToken).ConfigureAwait(false);
             if (!stream.IsBinary)
             {
                 // TODO: Stop the COPY operation gracefully, no breaking
@@ -1524,8 +1502,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
 
         LogMessages.StartingWait(_connectionLogger, timeout, Connector!.Id);
-        using (NoSynchronizationContextScope.Enter())
-            return Connector!.Wait(async: true, timeout, cancellationToken);
+        return Connector!.Wait(async: true, timeout, cancellationToken);
     }
 
     /// <summary>
@@ -1676,7 +1653,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 Debug.Assert(Settings.Multiplexing);
                 Debug.Assert(_dataSource != null);
 
-                var connector = await _dataSource.Get(this, timeout, async, cancellationToken);
+                var connector = await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
                 Connector = connector;
                 connector.Connection = this;
                 ConnectorBindingScope = scope;
@@ -1744,8 +1721,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// Returns the supported collections
     /// </summary>
-    [UnconditionalSuppressMessage(
-        "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchema.")]
     public override DataTable GetSchema()
         => GetSchema("MetaDataCollections", null);
 
@@ -1754,6 +1731,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     /// <param name="collectionName">The collection name.</param>
     /// <returns>The collection specified.</returns>
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchema.")]
     public override DataTable GetSchema(string? collectionName) => GetSchema(collectionName, null);
 
     /// <summary>
@@ -1765,8 +1744,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// in the Restrictions collection.
     /// </param>
     /// <returns>The collection specified.</returns>
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchemaAsync.")]
     public override DataTable GetSchema(string? collectionName, string?[]? restrictions)
-        => NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: false).GetAwaiter().GetResult();
+        => NpgsqlSchema.GetSchema(async: false, this, collectionName, restrictions).GetAwaiter().GetResult();
 
     /// <summary>
     /// Asynchronously returns the supported collections.
@@ -1775,7 +1756,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The collection specified.</returns>
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
 #if NET5_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchemaAsync.")]
     public override Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 #else
     public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
@@ -1790,7 +1773,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The collection specified.</returns>
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
 #if NET5_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchemaAsync.")]
     public override Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
 #else
     public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
@@ -1809,14 +1794,15 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The collection specified.</returns>
+    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
 #if NET5_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to GetSchemaAsync.")]
     public override Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #else
     public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #endif
     {
-        using (NoSynchronizationContextScope.Enter())
-            return NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: true, cancellationToken);
+        return NpgsqlSchema.GetSchema(async: true, this, collectionName, restrictions, cancellationToken);
     }
 
     #endregion Schema operations
@@ -1856,6 +1842,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// (password, SSL callbacks) while changing other connection parameters (e.g.
     /// database or pooling)
     /// </summary>
+    [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlConnection CloneWith(string connectionString)
     {
         CheckDisposed();
@@ -1904,7 +1892,14 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// DB provider factory.
     /// </summary>
-    protected override DbProviderFactory DbProviderFactory => NpgsqlFactory.Instance;
+    protected override DbProviderFactory DbProviderFactory
+    {
+        [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+        [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to DbProviderFactory.")]
+        [UnconditionalSuppressMessage("Aot", "IL3051", Justification = "At the Npgsql level we cannot add RDC to DbProviderFactory.")]
+        get => NpgsqlFactory.Instance;
+    }
 
     /// <summary>
     /// Clears the connection pool. All idle physical connections in the pool of the given connection are
@@ -1964,11 +1959,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         using var scope = StartTemporaryBindingScope(out var connector);
 
         await _dataSource!.Bootstrap(
-                connector,
-                NpgsqlTimeout.Infinite,
-                forceReload: true,
-                async: true,
-                CancellationToken.None);
+            connector,
+            NpgsqlTimeout.Infinite,
+            forceReload: true,
+            async: true,
+            CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>

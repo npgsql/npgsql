@@ -5,11 +5,8 @@ using BenchmarkDotNet.Diagnosers;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Threading;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.Util;
 
 #nullable disable
 
@@ -40,27 +37,26 @@ public abstract class TypeHandlerBenchmarks<T>
         public override void Write(byte[] buffer, int offset, int count) { }
     }
 
-    readonly EndlessStream _stream;
-    readonly NpgsqlTypeHandler _handler;
-    readonly NpgsqlReadBuffer _readBuffer;
+    readonly PgConverter _converter;
+    readonly PgReader _reader;
+    readonly PgWriter _writer;
     readonly NpgsqlWriteBuffer _writeBuffer;
+    readonly NpgsqlReadBuffer _readBuffer;
+    readonly BufferRequirements _binaryRequirements;
+
     T _value;
-    int _elementSize;
+    Size _elementSize;
 
-    protected TypeHandlerBenchmarks(NpgsqlTypeHandler handler)
+    protected TypeHandlerBenchmarks(PgConverter handler)
     {
-        _stream = new EndlessStream();
-        _handler = handler ?? throw new ArgumentNullException(nameof(handler));
-        _readBuffer = new NpgsqlReadBuffer(null, _stream, null, NpgsqlReadBuffer.MinimumSize, Encoding.UTF8, PGUtil.RelaxedUTF8Encoding);
-        _writeBuffer = new NpgsqlWriteBuffer(null, _stream, null, NpgsqlWriteBuffer.MinimumSize, Encoding.UTF8);
-    }
-
-    protected static PostgresType GetPostgresType(string pgType)
-    {
-        using (var conn = BenchmarkEnvironment.OpenConnection())
-        using (var cmd = new NpgsqlCommand($"SELECT NULL::{pgType}", conn))
-        using (var reader = cmd.ExecuteReader())
-            return reader.GetPostgresType(0);
+        var stream = new EndlessStream();
+        _converter = handler ?? throw new ArgumentNullException(nameof(handler));
+        _readBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
+        _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding);
+        _reader = new PgReader(_readBuffer);
+        _writer = new PgWriter(new NpgsqlBufferWriter(_writeBuffer));
+        _writer.Init(new PostgresMinimalDatabaseInfo());
+        _converter.CanConvert(DataFormat.Binary, out _binaryRequirements);
     }
 
     public IEnumerable<T> Values() => ValuesOverride();
@@ -73,17 +69,16 @@ public abstract class TypeHandlerBenchmarks<T>
         get => _value;
         set
         {
-            NpgsqlLengthCache cache = null;
-
             _value = value;
-            _elementSize = _handler.ValidateAndGetLength(value, ref cache, null);
+            object state = null;
+            var size = _elementSize = _converter.GetSizeAsObject(new(DataFormat.Binary, _binaryRequirements.Write), value, ref state);
+            var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = size, WriteState = state };
+            _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
+            _converter.WriteAsObject(_writer, value);
+            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, size.Value);
 
-            cache.Rewind();
-
-            _handler.WriteWithLength(_value, _writeBuffer, cache, null, false);
-            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _elementSize);
-
-            _readBuffer.FilledBytes = _elementSize;
+            _writer.Commit(size.Value);
+            _readBuffer.FilledBytes = size.Value;
             _writeBuffer.WritePosition = 0;
         }
     }
@@ -92,13 +87,18 @@ public abstract class TypeHandlerBenchmarks<T>
     public T Read()
     {
         _readBuffer.ReadPosition = sizeof(int);
-        return _handler.Read<T>(_readBuffer, _elementSize);
+        _reader.StartRead(_binaryRequirements.Read);
+        var value = ((PgConverter<T>)_converter).Read(_reader);
+        _reader.EndRead();
+        return value;
     }
 
     [Benchmark]
     public void Write()
     {
         _writeBuffer.WritePosition = 0;
-        _handler.WriteWithLength(_value, _writeBuffer, null, null, false);
+        var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = _elementSize, WriteState = null };
+        _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
+        ((PgConverter<T>)_converter).Write(_writer, _value);
     }
 }

@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -19,9 +17,12 @@ namespace Npgsql.Internal;
 /// A buffer used by Npgsql to write data to the socket efficiently.
 /// Provides methods which encode different values types and tracks the current position.
 /// </summary>
-public sealed partial class NpgsqlWriteBuffer : IDisposable
+sealed class NpgsqlWriteBuffer : IDisposable
 {
     #region Fields and Properties
+
+    internal static readonly UTF8Encoding UTF8Encoding = new(false, true);
+    internal static readonly UTF8Encoding RelaxedUTF8Encoding = new(false, false);
 
     internal readonly NpgsqlConnector Connector;
 
@@ -67,14 +68,23 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
     public int WriteSpaceLeft => Size - WritePosition;
 
+    internal PgWriter GetWriter(NpgsqlDatabaseInfo typeCatalog, FlushMode? flushMode = null)
+    {
+        // Make sure we'll refetch from the write buffer.
+        _pgWriter.Reset();
+        var writer = _pgWriter.Init(typeCatalog);
+        if (flushMode is not null)
+            writer.WithFlushMode(flushMode.GetValueOrDefault());
+        return writer;
+    }
+
     internal readonly byte[] Buffer;
     readonly Encoder _textEncoder;
 
     internal int WritePosition;
 
-    ParameterStream? _parameterStream;
-
     bool _disposed;
+    readonly PgWriter _pgWriter;
 
     /// <summary>
     /// The minimum buffer size possible.
@@ -106,6 +116,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
         TextEncoding = textEncoding;
         _textEncoder = TextEncoding.GetEncoder();
+        _pgWriter = new PgWriter(new NpgsqlBufferWriter(this));
     }
 
     #endregion
@@ -378,58 +389,10 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         }
     }
 
-    internal Task WriteChars(char[] chars, int offset, int charLen, int byteLen, bool async, CancellationToken cancellationToken = default)
-    {
-        if (byteLen <= WriteSpaceLeft)
-        {
-            WriteChars(chars, offset, charLen);
-            return Task.CompletedTask;
-        }
-        return WriteCharsLong(this, async, chars, offset, charLen, byteLen, cancellationToken);
-
-        static async Task WriteCharsLong(NpgsqlWriteBuffer buffer, bool async, char[] chars, int offset, int charLen, int byteLen, CancellationToken cancellationToken)
-        {
-            Debug.Assert(byteLen > buffer.WriteSpaceLeft);
-            if (byteLen <= buffer.Size)
-            {
-                // String can fit entirely in an empty buffer. Flush and retry rather than
-                // going into the partial writing flow below (which requires ToCharArray())
-                await buffer.Flush(async, cancellationToken);
-                buffer.WriteChars(chars, offset, charLen);
-            }
-            else
-            {
-                var charPos = 0;
-
-                while (true)
-                {
-                    buffer.WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out var charsUsed, out var completed);
-                    if (completed)
-                        break;
-                    await buffer.Flush(async, cancellationToken);
-                    charPos += charsUsed;
-                }
-            }
-        }
-    }
-
     public void WriteString(string s, int len = 0)
     {
         Debug.Assert(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
         WritePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, Buffer, WritePosition);
-    }
-
-    internal void WriteChars(char[] chars, int offset, int len)
-    {
-        var charCount = len == 0 ? chars.Length : len;
-        Debug.Assert(TextEncoding.GetByteCount(chars, 0, charCount) <= WriteSpaceLeft);
-        WritePosition += TextEncoding.GetBytes(chars, offset, charCount, Buffer, WritePosition);
-    }
-
-    internal void WriteChars(ReadOnlySpan<char> chars)
-    {
-        Debug.Assert(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
-        WritePosition += TextEncoding.GetBytes(chars, Buffer.AsSpan(WritePosition));
     }
 
     public void WriteBytes(ReadOnlySpan<byte> buf)
@@ -508,7 +471,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
     public void WriteNullTerminatedString(string s)
     {
-        Debug.Assert(s.All(c => c < 128), "Method only supports ASCII strings");
+        AssertASCIIOnly(s);
         Debug.Assert(WriteSpaceLeft >= s.Length + 1);
         WritePosition += Encoding.ASCII.GetBytes(s, 0, s.Length, Buffer, WritePosition);
         WriteByte(0);
@@ -517,15 +480,6 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     #endregion
 
     #region Write Complex
-
-    public Stream GetStream()
-    {
-        if (_parameterStream == null)
-            _parameterStream = new ParameterStream(this);
-
-        _parameterStream.Init();
-        return _parameterStream;
-    }
 
     internal void WriteStringChunked(char[] chars, int charIndex, int charCount,
         bool flush, out int charsUsed, out bool completed)
@@ -624,6 +578,14 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         var buf = new byte[WritePosition];
         Array.Copy(Buffer, buf, WritePosition);
         return buf;
+    }
+
+    [Conditional("DEBUG")]
+    internal static void AssertASCIIOnly(string s)
+    {
+        foreach (var c in s)
+            if (c >= 128)
+                Debug.Fail("Method only supports ASCII strings");
     }
 
     #endregion

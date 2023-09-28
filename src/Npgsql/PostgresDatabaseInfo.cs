@@ -2,15 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 
@@ -28,7 +26,7 @@ sealed class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
         var db = new PostgresDatabaseInfo(conn);
-        await db.LoadPostgresInfo(conn, timeout, async);
+        await db.LoadPostgresInfo(conn, timeout, async).ConfigureAwait(false);
         Debug.Assert(db.LongVersion != null);
         return db;
     }
@@ -47,7 +45,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     List<PostgresType>? _types;
 
     /// <inheritdoc />
-    protected override IEnumerable<PostgresType> GetTypes() => _types ?? Enumerable.Empty<PostgresType>();
+    protected override IEnumerable<PostgresType> GetTypes() => _types ?? (IEnumerable<PostgresType>)Array.Empty<PostgresType>();
 
     /// <summary>
     /// The PostgreSQL version string as returned by the version() function. Populated during loading.
@@ -80,6 +78,10 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
         : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
         => _connectionLogger = conn.LoggingConfiguration.ConnectionLogger;
 
+    private protected PostgresDatabaseInfo(string host, int port, string databaseName, string serverVersion)
+        : base(host, port, databaseName, serverVersion)
+        => _connectionLogger = NullLogger.Instance;
+
     /// <summary>
     /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
     /// </summary>
@@ -96,7 +98,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
             intDateTimes == "on";
 
         IsRedshift = conn.Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
-        _types = await LoadBackendTypes(conn, timeout, async);
+        _types = await LoadBackendTypes(conn, timeout, async).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -142,7 +144,7 @@ JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
     typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
-    (typtype = 'p' AND typname IN ('record', 'void')) OR -- Some special supported pseudo-types
+    (typtype = 'p' AND typname IN ('record', 'void', 'unknown')) OR -- Some special supported pseudo-types
     (typtype = 'a' AND (  -- Array of...
         elemtyptype IN ('b', 'r', 'm', 'e', 'd') OR -- Array of base, range, multirange, enum, domain
         (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
@@ -215,11 +217,11 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var isReplicationConnection = conn.Settings.ReplicationMode != ReplicationMode.Off;
         if (isReplicationConnection)
         {
-            await conn.WriteQuery(versionQuery, async);
-            await conn.WriteQuery(SanitizeForReplicationConnection(loadTypesQuery), async);
-            await conn.WriteQuery(SanitizeForReplicationConnection(loadCompositeTypesQuery), async);
+            await conn.WriteQuery(versionQuery, async).ConfigureAwait(false);
+            await conn.WriteQuery(SanitizeForReplicationConnection(loadTypesQuery), async).ConfigureAwait(false);
+            await conn.WriteQuery(SanitizeForReplicationConnection(loadCompositeTypesQuery), async).ConfigureAwait(false);
             if (SupportsEnumTypes)
-                await conn.WriteQuery(SanitizeForReplicationConnection(loadEnumFieldsQuery), async);
+                await conn.WriteQuery(SanitizeForReplicationConnection(loadEnumFieldsQuery), async).ConfigureAwait(false);
 
             static string SanitizeForReplicationConnection(string str)
             {
@@ -295,31 +297,31 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             if (SupportsEnumTypes)
                 batchQuery.AppendLine(loadEnumFieldsQuery);
-            await conn.WriteQuery(batchQuery.ToString(), async);
+            await conn.WriteQuery(batchQuery.ToString(), async).ConfigureAwait(false);
         }
-        await conn.Flush(async);
+        await conn.Flush(async).ConfigureAwait(false);
         var byOID = new Dictionary<uint, PostgresType>();
 
         // First read the PostgreSQL version
-        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
 
         // We read the message in non-sequential mode which buffers the whole message.
         // There is no need to ensure data within the message boundaries
-        Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
+        Expect<DataRowMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
         // Note that here and below we don't assign ReadBuffer to a variable
         // because we might allocate oversize buffer
         conn.ReadBuffer.Skip(2); // Column count
         LongVersion = ReadNonNullableString(conn.ReadBuffer);
-        Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+        Expect<CommandCompleteMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
         if (isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
 
         // Then load the types
-        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
         IBackendMessage msg;
         while (true)
         {
-            msg = await conn.ReadMessage(async);
+            msg = await conn.ReadMessage(async).ConfigureAwait(false);
             if (msg is not DataRowMessage)
                 break;
 
@@ -422,10 +424,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         }
         Expect<CommandCompleteMessage>(msg, conn);
         if (isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
 
         // Then load the composite type fields
-        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
 
         var currentOID = uint.MaxValue;
         PostgresCompositeType? currentComposite = null;
@@ -433,7 +435,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
         while (true)
         {
-            msg = await conn.ReadMessage(async);
+            msg = await conn.ReadMessage(async).ConfigureAwait(false);
             if (msg is not DataRowMessage)
                 break;
 
@@ -482,12 +484,12 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         }
         Expect<CommandCompleteMessage>(msg, conn);
         if (isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
 
         if (SupportsEnumTypes)
         {
             // Then load the enum fields
-            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+            Expect<RowDescriptionMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
 
             currentOID = uint.MaxValue;
             PostgresEnumType? currentEnum = null;
@@ -495,7 +497,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             while (true)
             {
-                msg = await conn.ReadMessage(async);
+                msg = await conn.ReadMessage(async).ConfigureAwait(false);
                 if (msg is not DataRowMessage)
                     break;
 
@@ -533,12 +535,13 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             }
             Expect<CommandCompleteMessage>(msg, conn);
             if (isReplicationConnection)
-                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
         }
 
         if (!isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
-        return byOID.Values.ToList();
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
+
+        return new(byOID.Values);
 
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)
             => buffer.ReadString(buffer.ReadInt32());

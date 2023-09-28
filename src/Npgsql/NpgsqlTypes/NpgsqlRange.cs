@@ -80,7 +80,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <summary>
     /// The <see cref="TypeConverter"/> used by <see cref="Parse"/> to convert <see cref="string"/> bounds into <typeparamref name="T"/>.
     /// </summary>
-    static readonly TypeConverter BoundConverter = TypeDescriptor.GetConverter(typeof(T));
+    static TypeConverter? BoundConverter;
 
     /// <summary>
     /// True if <typeparamref name="T"/> implements <see cref="IEquatable{T}"/>; otherwise, false.
@@ -375,6 +375,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <remarks>
     /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
+    [RequiresUnreferencedCode("Parse implementations for certain types of T may require members that have been trimmed.")]
     public static NpgsqlRange<T> Parse(string value)
     {
         if (value is null)
@@ -429,6 +430,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
             string.Equals(upperSegment, NullLiteral, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(upperSegment, UpperInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
+        BoundConverter ??= TypeDescriptor.GetConverter(typeof(T));
         var lower = lowerInfinite ? default : (T?)BoundConverter.ConvertFromString(lowerSegment);
         var upper = upperInfinite ? default : (T?)BoundConverter.ConvertFromString(upperSegment);
 
@@ -438,6 +440,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <summary>
     /// Represents a type converter for <see cref="NpgsqlRange{T}" />.
     /// </summary>
+    [RequiresUnreferencedCode("ConvertFrom implementations for certain types of T may require members that have been trimmed.")]
     public class RangeTypeConverter : TypeConverter
     {
         /// <summary>

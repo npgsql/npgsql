@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace Npgsql;
@@ -35,10 +34,21 @@ sealed class PgPassFile
     /// Parses file content and gets all credentials from the file
     /// </summary>
     /// <returns><see cref="IEnumerable{PgPassEntry}"/> corresponding to all lines in the .pgpass file</returns>
-    internal IEnumerable<Entry> Entries => File.ReadLines(FileName)
-        .Select(line => line.Trim())
-        .Where(line => line.Any() && line[0] != '#')
-        .Select(Entry.Parse);
+    internal IEnumerable<Entry> Entries
+    {
+        get
+        {
+            var bytes = File.ReadAllBytes(FileName);
+            var mem = new MemoryStream(bytes);
+            using var reader = new StreamReader(mem);
+            while (reader.ReadLine() is { } l)
+            {
+                var line = l.Trim();
+                if (line.Length > 0 && line[0] != '#')
+                    yield return Entry.Parse(line);
+            }
+        }
+    }
 
     /// <summary>
     /// Searches queries loaded from .PGPASS file to find first entry matching the provided parameters.
@@ -49,7 +59,12 @@ sealed class PgPassFile
     /// <param name="username">User name to query. Use null to match any.</param>
     /// <returns>Matching <see cref="Entry"/> if match was found. Otherwise, returns null.</returns>
     internal Entry? GetFirstMatchingEntry(string? host = null, int? port = null, string? database = null, string? username = null)
-        => Entries.FirstOrDefault(entry => entry.IsMatch(host, port, database, username));
+    {
+        foreach (var entry in Entries)
+            if (entry.IsMatch(host, port, database, username))
+                return entry;
+        return null;
+    }
 
     /// <summary>
     /// Represents a hostname, port, database, username, and password combination that has been retrieved from a .pgpass file

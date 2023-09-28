@@ -6,10 +6,8 @@ using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Npgsql.Internal;
 using Npgsql.Netstandard20;
-using Npgsql.Properties;
 using Npgsql.Replication;
 
 namespace Npgsql;
@@ -28,7 +26,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     string? _dataSourceCached;
 
     internal string? DataSourceCached
-        => _dataSourceCached ??= _host is null || _host.Contains(',')
+        => _dataSourceCached ??= _host is null || _host.Contains(",")
             ? null
             : IsUnixSocket(_host, _port, out var socketPath, replaceForAbstract: false)
                 ? socketPath
@@ -145,7 +143,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     public override void Clear()
     {
         Debug.Assert(Keys != null);
-        foreach (var k in Keys.ToArray())
+        foreach (var k in (string[])Keys)
             Remove(k);
     }
 
@@ -1585,7 +1583,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
 
-        if (!Host.Contains(','))
+        if (!Host.Contains(","))
         {
             if (TargetSessionAttributesParsed is not null &&
                 TargetSessionAttributesParsed != Npgsql.TargetSessionAttributes.Any)
@@ -1685,12 +1683,32 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// <summary>
     /// Gets an <see cref="ICollection" /> containing the keys of the <see cref="NpgsqlConnectionStringBuilder"/>.
     /// </summary>
-    public new ICollection<string> Keys => base.Keys.Cast<string>().ToArray()!;
+    public new ICollection<string> Keys
+    {
+        get
+        {
+            var result = new string[base.Keys.Count];
+            var i = 0;
+            foreach (var key in base.Keys)
+                result[i++] = (string)key;
+            return result;
+        }
+    }
 
     /// <summary>
     /// Gets an <see cref="ICollection" /> containing the values in the <see cref="NpgsqlConnectionStringBuilder"/>.
     /// </summary>
-    public new ICollection<object?> Values => base.Values.Cast<object?>().ToArray();
+    public new ICollection<object?> Values
+    {
+        get
+        {
+            var result = new object?[base.Keys.Count];
+            var i = 0;
+            foreach (var key in base.Values)
+                result[i++] = (object?)key;
+            return result;
+        }
+    }
 
     /// <summary>
     /// Copies the elements of the <see cref="NpgsqlConnectionStringBuilder"/> to an Array, starting at a particular Array index.
@@ -1730,13 +1748,15 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         // provider, for example.
         base.GetProperties(propertyDescriptors);
 
-        var toRemove = propertyDescriptors.Values
-            .Cast<PropertyDescriptor>()
-            .Where(d =>
-                !d.Attributes.Cast<Attribute>().Any(a => a is NpgsqlConnectionStringPropertyAttribute) ||
-                d.Attributes.Cast<Attribute>().Any(a => a is ObsoleteAttribute)
-            )
-            .ToList();
+        var toRemove = new List<PropertyDescriptor>();
+        foreach (var value in propertyDescriptors.Values)
+        {
+            var d = (PropertyDescriptor)value;
+            foreach (var attribute in d.Attributes)
+                if (attribute is NpgsqlConnectionStringPropertyAttribute or ObsoleteAttribute)
+                    toRemove.Add(d);
+        }
+
         foreach (var o in toRemove)
             propertyDescriptors.Remove(o.DisplayName);
     }

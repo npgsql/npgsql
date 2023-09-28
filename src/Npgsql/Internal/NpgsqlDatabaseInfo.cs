@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 
@@ -17,8 +16,7 @@ public abstract class NpgsqlDatabaseInfo
 {
     #region Fields
 
-    static volatile INpgsqlDatabaseInfoFactory[] Factories = new INpgsqlDatabaseInfoFactory[]
-    {
+    static volatile INpgsqlDatabaseInfoFactory[] Factories = {
         new PostgresMinimalDatabaseInfoFactory(),
         new PostgresDatabaseInfoFactory()
     };
@@ -138,7 +136,7 @@ public abstract class NpgsqlDatabaseInfo
     internal Dictionary<uint, PostgresType> ByOID { get; } = new();
 
     /// <summary>
-    /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
+    /// Indexes backend types by their PostgreSQL internal name, including namespace (e.g. pg_catalog.int4).
     /// Only used for enums and composites.
     /// </summary>
     internal Dictionary<string, PostgresType> ByFullName { get; } = new();
@@ -179,10 +177,22 @@ public abstract class NpgsqlDatabaseInfo
         Version = ParseServerVersion(serverVersion);
     }
 
-    public PostgresType GetPostgresTypeByName(string pgName)
+    internal PostgresType GetPostgresType(Oid oid) => GetPostgresType(oid.Value);
+
+    public PostgresType GetPostgresType(uint oid)
+        => ByOID.TryGetValue(oid, out var pgType)
+            ? pgType
+            : throw new ArgumentException($"A PostgreSQL type with the oid '{oid}' was not found in the current database info");
+
+    internal PostgresType GetPostgresType(DataTypeName dataTypeName)
+        => ByFullName.TryGetValue(dataTypeName.Value, out var value)
+            ? value
+            : throw new ArgumentException($"A PostgreSQL type with the name '{dataTypeName}' was not found in the current database info");
+
+    public PostgresType GetPostgresType(string pgName)
         => TryGetPostgresTypeByName(pgName, out var pgType)
             ? pgType
-            : throw new ArgumentException($"A PostgreSQL type with the name '{pgName}' was not found in the database");
+            : throw new ArgumentException($"A PostgreSQL type with the name '{pgName}' was not found in the current database info");
 
     public bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType)
     {
@@ -204,7 +214,11 @@ public abstract class NpgsqlDatabaseInfo
             if (ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
                 return true;
 
-            var ambiguousTypes = ByFullName.Keys.Where(n => n.EndsWith($".{pgName}", StringComparison.Ordinal));
+            var ambiguousTypes = new List<string>();
+            foreach (var key in ByFullName.Keys)
+                if (key.EndsWith($".{pgName}", StringComparison.Ordinal))
+                    ambiguousTypes.Add(key);
+
             throw new ArgumentException($"More than one PostgreSQL type was found with the name {pgName}, " +
                                         $"please specify a full name including schema: {string.Join(", ", ambiguousTypes)}");
         }
@@ -217,10 +231,10 @@ public abstract class NpgsqlDatabaseInfo
         foreach (var type in GetTypes())
         {
             ByOID[type.OID] = type;
-            ByFullName[type.FullName] = type;
+            ByFullName[type.DataTypeName.Value] = type;
             // If more than one type exists with the same partial name, we place a null value.
             // This allows us to detect this case later and force the user to use full names only.
-            ByName[type.Name] = ByName.ContainsKey(type.Name)
+            ByName[type.InternalName] = ByName.ContainsKey(type.InternalName)
                 ? null
                 : type;
 
@@ -305,7 +319,7 @@ public abstract class NpgsqlDatabaseInfo
     {
         foreach (var factory in Factories)
         {
-            var dbInfo = await factory.Load(conn, timeout, async);
+            var dbInfo = await factory.Load(conn, timeout, async).ConfigureAwait(false);
             if (dbInfo != null)
             {
                 dbInfo.ProcessTypes();
@@ -326,4 +340,24 @@ public abstract class NpgsqlDatabaseInfo
         };
 
     #endregion Factory management
+
+    internal Oid GetOid(PgTypeId pgTypeId, bool validate = false)
+        => pgTypeId.IsOid
+            ? validate ? GetPostgresType(pgTypeId.Oid).OID : pgTypeId.Oid
+            : GetPostgresType(pgTypeId.DataTypeName).OID;
+
+    internal DataTypeName GetDataTypeName(PgTypeId pgTypeId, bool validate = false)
+        => pgTypeId.IsDataTypeName
+            ? validate ? GetPostgresType(pgTypeId.DataTypeName).DataTypeName : pgTypeId.DataTypeName
+            : GetPostgresType(pgTypeId.Oid).DataTypeName;
+
+    internal PostgresType GetPostgresType(PgTypeId pgTypeId)
+        => pgTypeId.IsOid
+            ? GetPostgresType(pgTypeId.Oid.Value)
+            : GetPostgresType(pgTypeId.DataTypeName.Value);
+
+    internal PostgresType? FindPostgresType(PgTypeId pgTypeId)
+        => pgTypeId.IsOid
+            ? ByOID.TryGetValue(pgTypeId.Oid.Value, out var pgType) ? pgType : null
+            : TryGetPostgresTypeByName(pgTypeId.DataTypeName.Value, out pgType) ? pgType : null;
 }

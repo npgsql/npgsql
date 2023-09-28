@@ -15,7 +15,7 @@ public static class NpgsqlNodaTimeExtensions
     /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
     public static INpgsqlTypeMapper UseNodaTime(this INpgsqlTypeMapper mapper)
     {
-        mapper.AddTypeResolverFactory(new NodaTimeTypeHandlerResolverFactory());
+        mapper.AddTypeInfoResolver(new NodaTimeTypeInfoResolver());
         return mapper;
     }
 }
