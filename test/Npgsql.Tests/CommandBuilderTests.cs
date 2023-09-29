@@ -794,16 +794,7 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
     public async Task Get_update_command_with_column_aliases()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
-
-        await conn.ExecuteNonQueryAsync($@"
-CREATE TEMP TABLE {table} (
-    Cod varchar(5) NOT NULL,
-    Descr varchar(40),
-    Data date,
-    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
-)");
-
+        await using var _ = await CreateTempTable(conn, "Cod varchar(5) PRIMARY KEY, Descr varchar(40), Data date", out var table);
         using var cmd = new NpgsqlCommand($"SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM {table}", conn);
         using var daDataAdapter = new NpgsqlDataAdapter(cmd);
         using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
