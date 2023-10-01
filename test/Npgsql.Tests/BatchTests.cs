@@ -289,16 +289,10 @@ public class BatchTests : MultiplexingTestBase
     }
 
     [Test]
-    public void CanCreateParameter()
-    {
-        Assert.True(new NpgsqlBatchCommand().CanCreateParameter);
-    }
+    public void CanCreateParameter() => Assert.True(new NpgsqlBatchCommand().CanCreateParameter);
 
     [Test]
-    public void CreateParameter()
-    {
-        Assert.IsInstanceOf<NpgsqlParameter>(new NpgsqlBatchCommand().CreateParameter());
-    }
+    public void CreateParameter() => Assert.IsInstanceOf<NpgsqlParameter>(new NpgsqlBatchCommand().CreateParameter());
 
     #endregion NpgsqlBatchCommand
 
