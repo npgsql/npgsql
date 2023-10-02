@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -171,7 +170,12 @@ static class NpgsqlSchema
 
         var sql = new StringBuilder();
 
-        sql.Append("SELECT d.datname AS database_name, u.usename AS owner, pg_catalog.pg_encoding_to_char(d.encoding) AS encoding FROM pg_catalog.pg_database d LEFT JOIN pg_catalog.pg_user u ON d.datdba = u.usesysid");
+        sql.Append(
+            """
+SELECT d.datname, u.usename, pg_catalog.pg_encoding_to_char(d.encoding)
+FROM pg_catalog.pg_database d
+LEFT JOIN pg_catalog.pg_user u ON d.datdba = u.usesysid
+""");
 
         return ParseResults(
             async,
@@ -201,7 +205,7 @@ static class NpgsqlSchema
         var sql = new StringBuilder(
             """
 SELECT * FROM (
-    SELECT current_database() AS catalog_name, nspname AS schema_name, r.rolname AS schema_owner
+    SELECT current_database(), nspname, r.rolname
     FROM pg_catalog.pg_namespace
     LEFT JOIN pg_catalog.pg_roles r ON r.oid = nspowner
 ) tmp
@@ -288,15 +292,23 @@ WHERE
         var sql = new StringBuilder(
             """
 SELECT
-    table_catalog, table_schema, table_name, column_name,
+    table_catalog,
+    table_schema,
+    table_name,
+    column_name,
     ordinal_position,
     column_default,
     is_nullable,
-    CASE WHEN udt_schema is NULL THEN udt_name ELSE format_type(typ.oid, NULL) END AS data_type,
-    character_maximum_length, character_octet_length,
-    numeric_precision, numeric_precision_radix, numeric_scale,
+    CASE WHEN udt_schema is NULL THEN udt_name ELSE format_type(typ.oid, NULL) END,
+    character_maximum_length,
+    character_octet_length,
+    numeric_precision,
+    numeric_precision_radix,
+    numeric_scale,
     datetime_precision,
-    character_set_catalog, character_set_schema, character_set_name,
+    character_set_catalog,
+    character_set_schema,
+    character_set_name,
     collation_catalog
 FROM information_schema.columns
 JOIN pg_namespace AS ns ON ns.nspname = udt_schema
@@ -380,7 +392,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 
         var sql = new StringBuilder();
 
-        sql.Append("SELECT usename as user_name, usesysid as user_sysid FROM pg_catalog.pg_user");
+        sql.Append("SELECT usename, usesysid FROM pg_catalog.pg_user");
 
         return ParseResults(
             async,
@@ -410,11 +422,11 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 
         var sql = new StringBuilder(
             """
-SELECT current_database() AS table_catalog,
-    n.nspname AS table_schema,
-    t.relname AS table_name,
-    i.relname AS index_name,
-    '' AS type_desc
+SELECT current_database(),
+    n.nspname,
+    t.relname,
+    i.relname,
+    ''
 FROM
     pg_catalog.pg_class i
     JOIN pg_catalog.pg_index ix ON ix.indexrelid = i.oid
@@ -462,14 +474,14 @@ WHERE
         var sql = new StringBuilder(
             """
 SELECT
-    current_database() AS constraint_catalog,
-    t_ns.nspname AS constraint_schema,
-    ix_cls.relname AS constraint_name,
-    current_database() AS table_catalog,
-    ix_ns.nspname AS table_schema,
-    t.relname AS table_name,
-    a.attname AS column_name,
-    ix_cls.relname AS index_name
+    current_database(),
+    t_ns.nspname,
+    ix_cls.relname,
+    current_database(),
+    ix_ns.nspname,
+    t.relname,
+    a.attname,
+    ix_cls.relname
 FROM
     pg_class t
     JOIN pg_index ix ON t.oid = ix.indrelid
@@ -506,26 +518,26 @@ WHERE
         var sql = new StringBuilder(
             """
 SELECT
-    current_database() AS "CONSTRAINT_CATALOG",
-    pgn.nspname AS "CONSTRAINT_SCHEMA",
-    pgc.conname AS "CONSTRAINT_NAME",
-    current_database() AS "TABLE_CATALOG",
-    pgtn.nspname AS "TABLE_SCHEMA",
-    pgt.relname AS "TABLE_NAME",
-    "CONSTRAINT_TYPE",
-    pgc.condeferrable AS "IS_DEFERRABLE",
-    pgc.condeferred AS "INITIALLY_DEFERRED"
+    current_database(),
+    pgn.nspname,
+    pgc.conname,
+    current_database(),
+    pgtn.nspname,
+    pgt.relname,
+    constraint_type,
+    pgc.condeferrable,
+    pgc.condeferred
 FROM
     pg_catalog.pg_constraint pgc
     JOIN pg_catalog.pg_namespace pgn ON pgc.connamespace = pgn.oid
     JOIN pg_catalog.pg_class pgt ON pgc.conrelid = pgt.oid
     JOIN pg_catalog.pg_namespace pgtn ON pgt.relnamespace = pgtn.oid
     JOIN (
-        SELECT 'PRIMARY KEY' AS "CONSTRAINT_TYPE", 'p' AS contype
+        SELECT 'PRIMARY KEY' AS constraint_type, 'p' AS contype
         UNION ALL
-        SELECT 'FOREIGN KEY' AS "CONSTRAINT_TYPE", 'f' AS contype
+        SELECT 'FOREIGN KEY' AS constraint_type, 'f' AS contype
         UNION ALL
-        SELECT 'UNIQUE KEY' AS "CONSTRAINT_TYPE", 'u' AS contype
+        SELECT 'UNIQUE KEY' AS constraint_type, 'u' AS contype
 ) mapping_table ON mapping_table.contype = pgc.contype
 """);
 
@@ -584,14 +596,14 @@ FROM
     {
         var sql = new StringBuilder(
             """
-SELECT current_database() AS constraint_catalog,
-    n.nspname AS constraint_schema,
-    c.conname AS constraint_name,
-    current_database() AS table_catalog,
-    n.nspname AS table_schema,
-    t.relname AS table_name,
-    a.attname AS column_name,
-    a.attnum AS ordinal_number,
+SELECT current_database(),
+    n.nspname,
+    c.conname,
+    current_database(),
+    n.nspname,
+    t.relname,
+    a.attname,
+    a.attnum,
     mapping_table.constraint_type
 FROM pg_constraint c
     JOIN pg_namespace n on n.oid = c.connamespace
