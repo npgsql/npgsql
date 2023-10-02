@@ -57,7 +57,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             overwrite ? new AdoTypeInfoResolver() : AdoTypeInfoResolver.Instance,
             new ExtraConversionsResolver(),
             new SystemTextJsonTypeInfoResolver(),
-            new SystemTextJsonPocoTypeInfoResolver(),
+            new SystemTextJsonDynamicTypeInfoResolver(),
             new RangeTypeInfoResolver(),
             new RecordTypeInfoResolver(),
             new TupledRecordTypeInfoResolver(),
@@ -72,7 +72,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new AdoArrayTypeInfoResolver(),
             new ExtraConversionsArrayTypeInfoResolver(),
             new SystemTextJsonArrayTypeInfoResolver(),
-            new SystemTextJsonPocoArrayTypeInfoResolver(),
+            new SystemTextJsonDynamicArrayTypeInfoResolver(),
             new RangeArrayTypeInfoResolver(),
             new RecordArrayTypeInfoResolver(),
             new TupledRecordArrayTypeInfoResolver(),
@@ -104,7 +104,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
             AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
             AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
-            AddTypeInfoResolver(new SystemTextJsonPocoArrayTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonDynamicArrayTypeInfoResolver());
             AddTypeInfoResolver(new SystemTextJsonArrayTypeInfoResolver());
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
             AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
@@ -119,7 +119,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(new TupledRecordTypeInfoResolver());
             AddTypeInfoResolver(new RecordTypeInfoResolver());
             AddTypeInfoResolver(new RangeTypeInfoResolver());
-            AddTypeInfoResolver(new SystemTextJsonPocoTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonDynamicTypeInfoResolver());
             AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
             AddTypeInfoResolver(new ExtraConversionsResolver());
             AddTypeInfoResolver(AdoTypeInfoResolver.Instance);
@@ -307,8 +307,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeInfoResolver(new SystemTextJsonPocoArrayTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
-        AddTypeInfoResolver(new SystemTextJsonPocoTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeInfoResolver(new SystemTextJsonDynamicArrayTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeInfoResolver(new SystemTextJsonDynamicTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 
