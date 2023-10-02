@@ -33,8 +33,10 @@ public class RecordTests : MultiplexingTestBase
     [Test]
     public async Task Read_Record_as_ValueTuple()
     {
+        await using var dataSource = CreateDataSource(b => b.EnableRecordsAsTuples());
+        await using var conn = await dataSource.OpenConnectionAsync();
+
         var recordLiteral = "(1,'foo'::text)::record";
-        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
@@ -52,8 +54,10 @@ public class RecordTests : MultiplexingTestBase
     [Test]
     public async Task Read_Record_as_Tuple()
     {
+        await using var dataSource = CreateDataSource(b => b.EnableRecordsAsTuples());
+        await using var conn = await dataSource.OpenConnectionAsync();
+
         var recordLiteral = "(1,'foo'::text)::record";
-        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();

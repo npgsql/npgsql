@@ -12,7 +12,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Composites;
 
-[RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+[RequiresDynamicCode("Serializing arbitrary types can require creating new generic types or methods. This may not work when AOT compiling.")]
 static class ReflectionCompositeInfoFactory
 {
     public static CompositeInfo<T> CreateCompositeInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(

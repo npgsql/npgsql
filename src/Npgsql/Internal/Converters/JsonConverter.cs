@@ -11,14 +11,14 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
+sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
 {
     readonly bool _jsonb;
     readonly Encoding _textEncoding;
     readonly JsonTypeInfo _jsonTypeInfo;
     readonly JsonTypeInfo<object?>? _objectTypeInfo;
 
-    public SystemTextJsonConverter(bool jsonb, Encoding textEncoding, JsonSerializerOptions serializerOptions)
+    public JsonConverter(bool jsonb, Encoding textEncoding, JsonSerializerOptions serializerOptions)
     {
         if (serializerOptions.TypeInfoResolver is null)
             throw new InvalidOperationException("System.Text.Json serialization requires a type info resolver, make sure to set-it up beforehand.");
@@ -45,7 +45,7 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
             await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
         // We always fall back to buffers on older targets due to the absence of transcoding stream.
-        if (SystemTextJsonConverter.TryReadStream(_jsonb, _textEncoding, reader, out var byteCount, out var stream))
+        if (JsonConverter.TryReadStream(_jsonb, _textEncoding, reader, out var byteCount, out var stream))
         {
             using var _ = stream;
             if (_jsonTypeInfo is JsonTypeInfo<T> typeInfoOfT)
@@ -59,7 +59,7 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
         }
         else
         {
-            var (rentedChars, rentedBytes) = await SystemTextJsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
+            var (rentedChars, rentedBytes) = await JsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
             var result = _jsonTypeInfo is JsonTypeInfo<T> typeInfoOfT
                 ? JsonSerializer.Deserialize(rentedChars.AsSpan(), typeInfoOfT)
                 : (T?)JsonSerializer.Deserialize(rentedChars.AsSpan(), (JsonTypeInfo<TBase?>)_jsonTypeInfo);
@@ -85,18 +85,18 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
         else
             JsonSerializer.Serialize(stream, value, _objectTypeInfo);
 
-        return SystemTextJsonConverter.GetSizeCore(_jsonb, stream, _textEncoding, ref writeState);
+        return JsonConverter.GetSizeCore(_jsonb, stream, _textEncoding, ref writeState);
     }
 
     public override void Write(PgWriter writer, T? value)
-        => SystemTextJsonConverter.Write(_jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();
+        => JsonConverter.Write(_jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();
 
     public override ValueTask WriteAsync(PgWriter writer, T? value, CancellationToken cancellationToken = default)
-        => SystemTextJsonConverter.Write(_jsonb, async: true, writer, cancellationToken);
+        => JsonConverter.Write(_jsonb, async: true, writer, cancellationToken);
 }
 
-// Split out to avoid unneccesary code duplication.
-static class SystemTextJsonConverter
+// Split out to avoid unnecessary code duplication.
+static class JsonConverter
 {
     public const byte JsonbProtocolVersion = 1;
     // We pick a value that is the largest multiple of 4096 that is still smaller than the large object heap threshold (85K).

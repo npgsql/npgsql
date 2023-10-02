@@ -194,5 +194,11 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("TimestampNoDateTimeUtc", resourceCulture);
             }
         }
+        
+        internal static string DynamicJsonNotEnabled {
+            get {
+                return ResourceManager.GetString("DynamicJsonNotEnabled", resourceCulture);
+            }
+        }
     }
 }

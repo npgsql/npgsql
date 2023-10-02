@@ -94,7 +94,8 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     [Test]
     public async Task Unmapped_enum_as_clr_enum()
     {
-        await using var connection = await OpenConnectionAsync();
+        await using var dataSource = CreateDataSource(b => b.EnableUnmappedTypes());
+        await using var connection = await dataSource.OpenConnectionAsync();
         var type1 = await GetTempTypeName(connection);
         var type2 = await GetTempTypeName(connection);
         await connection.ExecuteNonQueryAsync(@$"

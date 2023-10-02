@@ -207,16 +207,12 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// <summary>
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionString" />.
     /// </summary>
-    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static NpgsqlDataSource Create(string connectionString)
         => new NpgsqlDataSourceBuilder(connectionString).Build();
 
     /// <summary>
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionStringBuilder" />.
     /// </summary>
-    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
         => Create(connectionStringBuilder.ToString());
 

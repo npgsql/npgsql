@@ -7,11 +7,11 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Resolvers;
 
-class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
+class JsonTypeInfoResolver : IPgTypeInfoResolver
 {
     protected TypeInfoMappingCollection Mappings { get; } = new();
 
-    public SystemTextJsonTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
+    public JsonTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
         => AddTypeInfos(Mappings, serializerOptions);
 
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only used to request rooted and statically known types (JsonDocument,JsonElement etc).")]
@@ -33,10 +33,10 @@ class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
         {
             var jsonb = dataTypeName == DataTypeNames.Jsonb;
             mappings.AddType<JsonDocument>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new SystemTextJsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions)),
+                    mapping.CreateInfo(options, new JsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions)),
                 isDefault: true);
             mappings.AddStructType<JsonElement>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new SystemTextJsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
+                    mapping.CreateInfo(options, new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
         }
     }
 
@@ -53,11 +53,11 @@ class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
         => Mappings.Find(type, dataTypeName, options);
 }
 
-sealed class SystemTextJsonArrayTypeInfoResolver : SystemTextJsonTypeInfoResolver, IPgTypeInfoResolver
+sealed class JsonArrayTypeInfoResolver : JsonTypeInfoResolver, IPgTypeInfoResolver
 {
     new TypeInfoMappingCollection Mappings { get; }
 
-    public SystemTextJsonArrayTypeInfoResolver(JsonSerializerOptions? serializerOptions = null) : base(serializerOptions)
+    public JsonArrayTypeInfoResolver(JsonSerializerOptions? serializerOptions = null) : base(serializerOptions)
     {
         Mappings = new TypeInfoMappingCollection(base.Mappings);
         AddArrayInfos(Mappings);

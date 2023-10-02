@@ -93,4 +93,7 @@
     <data name="TimestampNoDateTimeUtc" xml:space="preserve">
         <value>Cannot write DateTime with Kind=UTC to PostgreSQL type '{0}', consider using '{1}'. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
     </data>
+    <data name="DynamicJsonNotEnabled" xml:space="preserve">
+        <value>Type '{0}' required dynamic JSON serialization, which requires an explicit opt-in; call EnableDynamicJsonMappings() on NpgsqlDataSourceBuilder or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/release-notes/8.0.html) for more details. Alternatively, if you meant to use Newtonsoft JSON.NET instead of System.Text.Json, call UseJsonNet() instead.</value>
+    </data>
 </root>

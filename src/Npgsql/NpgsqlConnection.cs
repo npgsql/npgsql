@@ -128,8 +128,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
 
-    [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-    [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlConnection(string? connectionString) : this()
         => ConnectionString = connectionString;
 
@@ -170,8 +168,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <returns>A task representing the asynchronous operation.</returns>
     public override Task OpenAsync(CancellationToken cancellationToken) => Open(async: true, cancellationToken);
 
-    [RequiresUnreferencedCode("NpgsqlConnection uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-    [RequiresDynamicCode("NpgsqlConnection uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     void SetupDataSource()
     {
         // Fast path: a pool already corresponds to this exact version of the connection string.
@@ -379,11 +375,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public override string ConnectionString
     {
         get => _userFacingConnectionString;
-
-        [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-        [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to DbConnection.")]
-        [UnconditionalSuppressMessage("Aot", "IL3051", Justification = "At the Npgsql level we cannot add RDC to DbConnection.")]
         set
         {
             CheckClosed();
@@ -1830,8 +1821,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// (password, SSL callbacks) while changing other connection parameters (e.g.
     /// database or pooling)
     /// </summary>
-    [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-    [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlConnection CloneWith(string connectionString)
     {
         CheckDisposed();
@@ -1880,14 +1869,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// DB provider factory.
     /// </summary>
-    protected override DbProviderFactory DbProviderFactory
-    {
-        [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-        [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2046", Justification = "At the Npgsql level we cannot add RUC to DbProviderFactory.")]
-        [UnconditionalSuppressMessage("Aot", "IL3051", Justification = "At the Npgsql level we cannot add RDC to DbProviderFactory.")]
-        get => NpgsqlFactory.Instance;
-    }
+    protected override DbProviderFactory DbProviderFactory => NpgsqlFactory.Instance;
 
     /// <summary>
     /// Clears the connection pool. All idle physical connections in the pool of the given connection are
