@@ -80,6 +80,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
             MatchRequirement.DataTypeName);
+        mappings.AddType<Stream>(DataTypeNames.Text,
+            static (options, mapping, _) => new PgTypeInfo(options, new StreamByteaConverter(), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
         //Special mappings, these have no corresponding array mapping.
         mappings.AddType<TextReader>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
@@ -106,6 +109,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructType<ReadOnlyMemory<byte>>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
                 MatchRequirement.DataTypeName);
+            mappings.AddType<Stream>(dataTypeName,
+                static (options, mapping, _) => new PgTypeInfo(options, new StreamByteaConverter(), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
@@ -127,6 +133,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Jsonb,
             static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, new ReadOnlyMemoryByteaConverter())),
             MatchRequirement.DataTypeName);
+        mappings.AddType<Stream>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => new PgTypeInfo(options, new VersionPrefixedTextConverter<Stream>(jsonbVersion, new StreamByteaConverter()), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
         //Special mappings, these have no corresponding array mapping.
         mappings.AddType<TextReader>(DataTypeNames.Jsonb,
             static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<TextReader>(jsonbVersion, new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
@@ -153,7 +162,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea,
             static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
         mappings.AddType<Stream>(DataTypeNames.Bytea,
-            static (options, mapping, _) => new PgTypeInfo(options, new StreamByteaConverter(), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type),
+            static (options, mapping, _) => new PgTypeInfo(options, new StreamByteaConverter(), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
             mapping => mapping with { TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
 
         // Varbit
@@ -336,6 +345,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<char>(DataTypeNames.Text);
         mappings.AddArrayType<byte[]>(DataTypeNames.Text);
         mappings.AddStructArrayType<ReadOnlyMemory<byte>>(DataTypeNames.Text);
+        mappings.AddArrayType<Stream>(DataTypeNames.Text);
 
         // Alternative text types
         foreach(var dataTypeName in new[] { "citext", DataTypeNames.Varchar,
@@ -346,6 +356,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructArrayType<char>(dataTypeName);
             mappings.AddArrayType<byte[]>(dataTypeName);
             mappings.AddStructArrayType<ReadOnlyMemory<byte>>(dataTypeName);
+            mappings.AddArrayType<Stream>(dataTypeName);
         }
 
         // Jsonb
@@ -353,6 +364,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<char>(DataTypeNames.Jsonb);
         mappings.AddArrayType<byte[]>(DataTypeNames.Jsonb);
         mappings.AddStructArrayType<ReadOnlyMemory<byte>>(DataTypeNames.Jsonb);
+        mappings.AddArrayType<Stream>(DataTypeNames.Jsonb);
 
         // Jsonpath
         mappings.AddArrayType<string>(DataTypeNames.Jsonpath);
@@ -360,6 +372,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Bytea
         mappings.AddArrayType<byte[]>(DataTypeNames.Bytea);
         mappings.AddStructArrayType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea);
+        mappings.AddArrayType<Stream>(DataTypeNames.Bytea);
 
         // Varbit
         // Object mapping first.
