@@ -5,6 +5,7 @@ var connectionString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB")
                        ?? "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
 
 var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(connectionString);
+dataSourceBuilder.EnableArrays();
 await using var dataSource = dataSourceBuilder.Build();
 
 await using var conn = dataSource.CreateConnection();

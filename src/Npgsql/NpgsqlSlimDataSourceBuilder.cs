@@ -340,8 +340,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableArrays()
     {
-        AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
-        AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
+        // AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
+        // AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
         AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
         return this;
     }
