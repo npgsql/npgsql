@@ -315,7 +315,6 @@ public readonly struct PgConverterResolution
 
 readonly struct PgConverterInfo
 {
-    [SetsRequiredMembers]
     public PgConverterInfo(PgTypeInfo pgTypeInfo, PgConverter converter, Size bufferRequirement)
     {
         TypeInfo = pgTypeInfo;
@@ -338,9 +337,9 @@ readonly struct PgConverterInfo
         }
     }
 
-    public required PgTypeInfo TypeInfo { get; init; }
-    public required PgConverter Converter { get; init; }
-    public required Size BufferRequirement { get; init; }
+    public PgTypeInfo TypeInfo { get; }
+    public PgConverter Converter { get; }
+    public Size BufferRequirement { get; }
 
     /// Whether Converter.TypeToConvert matches PgTypeInfo.Type, if it doesn't object apis should be used.
     public bool IsBoxingConverter => TypeInfo.IsBoxing;
