@@ -34,23 +34,19 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     DataFormat Format => DataFormat.Binary;
 
-    struct ColumnInfo
+    readonly struct ColumnInfo
     {
         readonly DataFormat _format;
         public PostgresType PostgresType { get; }
         public int BufferPos { get; }
-        public PgConverterInfo LastConverterInfo { get; private set; }
+        public PgConverterInfo LastConverterInfo { get; init; }
 
         public PgTypeInfo ObjectOrDefaultTypeInfo { get; }
-        public PgConverterInfo ObjectOrDefaultInfo => ObjectOrDefaultTypeInfo.Bind(Field, _format);
+        public PgConverterInfo GetObjectOrDefaultInfo() => ObjectOrDefaultTypeInfo.Bind(Field, _format);
 
         Field Field => new("?", ObjectOrDefaultTypeInfo.Options.PortableTypeIds ? PostgresType.DataTypeName : (Oid)PostgresType.OID, -1);
 
-        public ColumnInfo SetConverterInfo(PgTypeInfo typeInfo)
-            => this with
-            {
-                LastConverterInfo = typeInfo.Bind(Field, _format)
-            };
+        public PgConverterInfo Bind(PgTypeInfo typeInfo) => typeInfo.Bind(Field, _format);
 
         public ColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectOrDefaultTypeInfo, DataFormat format)
         {
@@ -298,14 +294,14 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     public override Type GetFieldType(int ordinal)
     {
         var column = CheckRowAndColumn(ordinal);
-        return column.ObjectOrDefaultInfo.TypeToConvert;
+        return column.GetObjectOrDefaultInfo().TypeToConvert;
     }
 
     /// <inheritdoc />
     public override object GetValue(int ordinal)
     {
         var columnLength = CheckRowAndColumnAndSeek(ordinal, out var column);
-        var info = column.ObjectOrDefaultInfo;
+        var info = column.GetObjectOrDefaultInfo();
         if (columnLength == -1)
             return DBNull.Value;
 
@@ -340,7 +336,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             return (T)(object)GetTextReader(ordinal);
 
         var columnLength = CheckRowAndColumnAndSeek(ordinal, out var column);
-        var info = GetOrAddConverterInfo(typeof(T), column, ordinal);
+        var info = GetOrAddConverterInfo(typeof(T), column, ordinal, out var asObject);
 
         if (columnLength == -1)
         {
@@ -355,7 +351,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         }
 
         using var _ = PgReader.BeginNestedRead(columnLength, info.BufferRequirement);
-        return info.AsObject
+        return asObject
             ? (T)info.Converter.ReadAsObject(PgReader)!
             : info.GetConverter<T>().Read(PgReader);
     }
@@ -492,18 +488,33 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         return PgReader.ReadInt32();
     }
 
-    PgConverterInfo GetOrAddConverterInfo(Type type, ColumnInfo column, int ordinal)
+    PgConverterInfo GetOrAddConverterInfo(Type type, ColumnInfo column, int ordinal, out bool asObject)
     {
-        PgConverterInfo info;
-        if (!column.LastConverterInfo.IsDefault && column.LastConverterInfo.TypeToConvert == type)
-            info = column.LastConverterInfo;
-        else
+        if (column.LastConverterInfo is { IsDefault: false } lastInfo && lastInfo.TypeToConvert == type)
         {
-            var columnInfo = column.SetConverterInfo(AdoSerializerHelpers.GetTypeInfoForReading(type, column.PostgresType, SerializerOptions));
-            _columns[ordinal] = columnInfo;
-            info = columnInfo.LastConverterInfo;
+            asObject = lastInfo.IsBoxingConverter;
+            return lastInfo;
         }
-        return info;
+
+        if (column.GetObjectOrDefaultInfo() is { IsDefault: false } odfInfo)
+        {
+            if (typeof(object) == type)
+            {
+                asObject = true;
+                return odfInfo;
+            }
+
+            if (odfInfo.TypeToConvert == type)
+            {
+                asObject = odfInfo.IsBoxingConverter;
+                return odfInfo;
+            }
+        }
+
+        var converterInfo = column.Bind(AdoSerializerHelpers.GetTypeInfoForReading(type, column.PostgresType, SerializerOptions));
+        _columns[ordinal] = column with { LastConverterInfo = converterInfo };
+        asObject = converterInfo.IsBoxingConverter;
+        return converterInfo;
     }
 
     enum ReaderState

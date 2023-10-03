@@ -337,7 +337,7 @@ public sealed class FieldDescription
                 return _objectOrDefaultInfo;
 
             ref var info = ref _objectOrDefaultInfo;
-            GetInfo(null, ref _objectOrDefaultInfo);
+            GetInfo(null, ref _objectOrDefaultInfo, out _);
             return info;
         }
     }
@@ -350,34 +350,39 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal void GetInfo(Type? type, ref PgConverterInfo lastConverterInfo)
+    internal void GetInfo(Type? type, ref PgConverterInfo lastConverterInfo, out bool asObject)
     {
         Debug.Assert(lastConverterInfo.IsDefault || (
             ReferenceEquals(_serializerOptions, lastConverterInfo.TypeInfo.Options) &&
             lastConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
 
         if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeToConvert == type)
+        {
+            asObject = lastConverterInfo.IsBoxingConverter;
             return;
+        }
 
         // Have to check for null as it's a sentinel value used by ObjectOrDefaultTypeInfo init itself.
         if (type is not null && ObjectOrDefaultInfo is var odfInfo)
         {
             if (typeof(object) == type)
             {
-                lastConverterInfo = odfInfo with { AsObject = true };
+                lastConverterInfo = odfInfo;
+                asObject = true;
                 return;
             }
             if (odfInfo.TypeToConvert == type)
             {
                 lastConverterInfo = odfInfo;
+                asObject = lastConverterInfo.IsBoxingConverter;
                 return;
             }
         }
 
-        GetInfoSlow(out lastConverterInfo);
+        GetInfoSlow(out lastConverterInfo, out asObject);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void GetInfoSlow(out PgConverterInfo lastConverterInfo)
+        void GetInfoSlow(out PgConverterInfo lastConverterInfo, out bool asObject)
         {
             PgConverterInfo converterInfo;
             var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
@@ -398,6 +403,7 @@ public sealed class FieldDescription
             }
 
             lastConverterInfo = converterInfo;
+            asObject = converterInfo.IsBoxingConverter;
         }
     }
 
