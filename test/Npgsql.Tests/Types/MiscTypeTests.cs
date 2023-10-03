@@ -160,11 +160,9 @@ class MiscTypeTests : MultiplexingTestBase
         await AssertTypeWrite(new object?[] { (short)4, null, (long)5, 6 }, "{4,NULL,5,6}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefault: false);
         await AssertTypeWrite(new object?[] { "text", null, DBNull.Value, "chars".ToCharArray(), 'c' }, "{text,NULL,NULL,chars,c}", "text[]", NpgsqlDbType.Text | NpgsqlDbType.Array, isDefault: false);
 
-        var builder = CreateDataSourceBuilder();
-        builder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
-        var datasource = builder.Build();
-        await AssertTypeWrite(datasource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]", NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false);
-        Assert.ThrowsAsync<ArgumentException>(() => AssertTypeWrite(datasource, new object?[]
+        await using var dataSource = CreateDataSource(b => b.ConnectionStringBuilder.Timezone = "Europe/Berlin");
+        await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]", NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false);
+        Assert.ThrowsAsync<ArgumentException>(() => AssertTypeWrite(dataSource, new object?[]
             {
                 DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
             }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
