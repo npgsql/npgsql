@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -18,7 +17,6 @@ namespace Npgsql;
 /// </summary>
 static class NpgsqlSchema
 {
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
     public static Task<DataTable> GetSchema(bool async, NpgsqlConnection conn, string? collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
     {
         if (collectionName is null)
@@ -127,7 +125,7 @@ static class NpgsqlSchema
         {
             for (var i = 0; i < restrictions.Length && i < names.Length; ++i)
             {
-                if (restrictions[i] is string restriction && restriction.Length != 0)
+                if (restrictions[i] is { Length: > 0 } restriction)
                 {
                     if (addWhere)
                     {
@@ -156,180 +154,279 @@ static class NpgsqlSchema
     static string RemoveSpecialChars(string paramName)
         => paramName.Replace("(", "").Replace(")", "").Replace(".", "");
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetDatabases(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+
+    static Task<DataTable> GetDatabases(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var databases = new DataTable("Databases") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("Databases")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("database_name"),
+                new DataColumn("owner"),
+                new DataColumn("encoding")
+            }
+        };
 
-        databases.Columns.AddRange(new[] {
-            new DataColumn("database_name"),
-            new DataColumn("owner"),
-            new DataColumn("encoding")
-        });
+        var sql = new StringBuilder();
 
-        var getDatabases = new StringBuilder();
+        sql.Append(
+            """
+SELECT d.datname, u.usename, pg_catalog.pg_encoding_to_char(d.encoding)
+FROM pg_catalog.pg_database d
+LEFT JOIN pg_catalog.pg_user u ON d.datdba = u.usesysid
+""");
 
-        getDatabases.Append("SELECT d.datname AS database_name, u.usename AS owner, pg_catalog.pg_encoding_to_char(d.encoding) AS encoding FROM pg_catalog.pg_database d LEFT JOIN pg_catalog.pg_user u ON d.datdba = u.usesysid");
-
-        using var command = BuildCommand(conn, getDatabases, restrictions, "datname");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(databases, async, cancellationToken).ConfigureAwait(false);
-
-        return databases;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, "datname"),
+            dataTable,
+            (reader, row) =>
+        {
+            row["database_name"] = GetFieldValueOrDBNull<string>(reader, 0);
+            row["owner"] = GetFieldValueOrDBNull<string>(reader, 1);
+            row["encoding"] = GetFieldValueOrDBNull<string>(reader, 2);
+        }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetSchemata(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetSchemata(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var schemata = new DataTable("Schemata") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("Schemata")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("catalog_name"),
+                new DataColumn("schema_name"),
+                new DataColumn("schema_owner")
+            }
+        };
 
-        schemata.Columns.AddRange(new[] {
-            new DataColumn("catalog_name"),
-            new DataColumn("schema_name"),
-            new DataColumn("schema_owner")
-        });
-
-        var getSchemata = new StringBuilder(@"
+        var sql = new StringBuilder(
+            """
 SELECT * FROM (
-    SELECT current_database() AS catalog_name,
-        nspname AS schema_name,
-        r.rolname AS schema_owner
-    FROM
-        pg_catalog.pg_namespace LEFT JOIN pg_catalog.pg_roles r ON r.oid = nspowner
-    ) tmp");
+    SELECT current_database(), nspname, r.rolname
+    FROM pg_catalog.pg_namespace
+    LEFT JOIN pg_catalog.pg_roles r ON r.oid = nspowner
+) tmp
+""");
 
-        using var command = BuildCommand(conn, getSchemata, restrictions, "catalog_name", "schema_name", "schema_owner");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(schemata, async, cancellationToken).ConfigureAwait(false);
-
-        return schemata;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, "catalog_name", "schema_name", "schema_owner"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["catalog_name"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["schema_name"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["schema_owner"] = GetFieldValueOrDBNull<string>(reader, 2);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetTables(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetTables(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var tables = new DataTable("Tables") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("Tables")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("table_catalog"),
+                new DataColumn("table_schema"),
+                new DataColumn("table_name"),
+                new DataColumn("table_type")
+            }
+        };
 
-        tables.Columns.AddRange(new[] {
-            new DataColumn("table_catalog"),
-            new DataColumn("table_schema"),
-            new DataColumn("table_name"),
-            new DataColumn("table_type")
-        });
+        var sql = new StringBuilder();
 
-        var getTables = new StringBuilder();
-
-        getTables.Append(@"
+        sql.Append(
+            """
 SELECT table_catalog, table_schema, table_name, table_type
 FROM information_schema.tables
 WHERE
     table_type IN ('BASE TABLE', 'FOREIGN', 'FOREIGN TABLE') AND
-    table_schema NOT IN ('pg_catalog', 'information_schema')");
+    table_schema NOT IN ('pg_catalog', 'information_schema')
+""");
 
-        using var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(tables, async, cancellationToken).ConfigureAwait(false);
-
-        return tables;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["table_catalog"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["table_schema"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["table_name"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["table_type"] = GetFieldValueOrDBNull<string>(reader, 3);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("Columns")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("table_catalog"),
+                new DataColumn("table_schema"),
+                new DataColumn("table_name"),
+                new DataColumn("column_name"),
+                new DataColumn("ordinal_position", typeof(int)),
+                new DataColumn("column_default"),
+                new DataColumn("is_nullable"),
+                new DataColumn("data_type"),
+                new DataColumn("character_maximum_length", typeof(int)),
+                new DataColumn("character_octet_length", typeof(int)),
+                new DataColumn("numeric_precision", typeof(int)),
+                new DataColumn("numeric_precision_radix", typeof(int)),
+                new DataColumn("numeric_scale", typeof(int)),
+                new DataColumn("datetime_precision", typeof(int)),
+                new DataColumn("character_set_catalog"),
+                new DataColumn("character_set_schema"),
+                new DataColumn("character_set_name"),
+                new DataColumn("collation_catalog")
+            }
+        };
 
-        columns.Columns.AddRange(new DataColumn[] {
-            new("table_catalog"), new("table_schema"), new("table_name"), new("column_name"),
-            new("ordinal_position", typeof(int)),
-            new("column_default"),
-            new("is_nullable"),
-            new("data_type"),
-            new("character_maximum_length", typeof(int)), new("character_octet_length", typeof(int)),
-            new("numeric_precision", typeof(int)), new("numeric_precision_radix", typeof(int)), new("numeric_scale", typeof(int)),
-            new("datetime_precision", typeof(int)),
-            new("character_set_catalog"), new("character_set_schema"), new("character_set_name"),
-            new("collation_catalog")
-        });
-
-        var getColumns = new StringBuilder(@"
+        var sql = new StringBuilder(
+            """
 SELECT
-    table_catalog, table_schema, table_name, column_name,
+    table_catalog,
+    table_schema,
+    table_name,
+    column_name,
     ordinal_position,
     column_default,
     is_nullable,
-    CASE WHEN udt_schema is NULL THEN udt_name ELSE format_type(typ.oid, NULL) END AS data_type,
-    character_maximum_length, character_octet_length,
-    numeric_precision, numeric_precision_radix, numeric_scale,
+    CASE WHEN udt_schema is NULL THEN udt_name ELSE format_type(typ.oid, NULL) END,
+    character_maximum_length,
+    character_octet_length,
+    numeric_precision,
+    numeric_precision_radix,
+    numeric_scale,
     datetime_precision,
-    character_set_catalog, character_set_schema, character_set_name,
+    character_set_catalog,
+    character_set_schema,
+    character_set_name,
     collation_catalog
 FROM information_schema.columns
 JOIN pg_namespace AS ns ON ns.nspname = udt_schema
-JOIN pg_type AS typ ON typnamespace = ns.oid AND typname = udt_name");
+JOIN pg_type AS typ ON typnamespace = ns.oid AND typname = udt_name
+""");
 
-        using var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(columns, async, cancellationToken).ConfigureAwait(false);
-
-        return columns;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, "table_catalog", "table_schema", "table_name", "column_name"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["table_catalog"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["table_schema"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["table_name"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["column_name"] = GetFieldValueOrDBNull<string>(reader, 3);
+                row["ordinal_position"] = GetFieldValueOrDBNull<int>(reader, 4);
+                row["column_default"] = GetFieldValueOrDBNull<string>(reader, 5);
+                row["is_nullable"] = GetFieldValueOrDBNull<string>(reader, 6);
+                row["data_type"] = GetFieldValueOrDBNull<string>(reader, 7);
+                row["character_maximum_length"] = GetFieldValueOrDBNull<int>(reader, 8);
+                row["character_octet_length"] = GetFieldValueOrDBNull<int>(reader, 9);
+                row["numeric_precision"] = GetFieldValueOrDBNull<int>(reader, 10);
+                row["numeric_precision_radix"] = GetFieldValueOrDBNull<int>(reader, 11);
+                row["numeric_scale"] = GetFieldValueOrDBNull<int>(reader, 12);
+                row["datetime_precision"] = GetFieldValueOrDBNull<int>(reader, 13);
+                row["character_set_catalog"] = GetFieldValueOrDBNull<string>(reader, 14);
+                row["character_set_schema"] = GetFieldValueOrDBNull<string>(reader, 15);
+                row["character_set_name"] = GetFieldValueOrDBNull<string>(reader, 16);
+                row["collation_catalog"] = GetFieldValueOrDBNull<string>(reader, 17);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetViews(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetViews(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var views = new DataTable("Views") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("Views")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("table_catalog"),
+                new DataColumn("table_schema"),
+                new DataColumn("table_name"),
+                new DataColumn("check_option"),
+                new DataColumn("is_updatable")
+            }
+        };
 
-        views.Columns.AddRange(new[] {
-            new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
-            new DataColumn("check_option"), new DataColumn("is_updatable")
-        });
-
-        var getViews = new StringBuilder(@"
+        var sql = new StringBuilder(
+            """
 SELECT table_catalog, table_schema, table_name, check_option, is_updatable
 FROM information_schema.views
-WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
+WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+""");
 
-        using var command = BuildCommand(conn, getViews, restrictions, false, "table_catalog", "table_schema", "table_name");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(views, async, cancellationToken).ConfigureAwait(false);
-
-        return views;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, false, "table_catalog", "table_schema", "table_name"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["table_catalog"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["table_schema"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["table_name"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["check_option"] = GetFieldValueOrDBNull<string>(reader, 3);
+                row["is_updatable"] = GetFieldValueOrDBNull<string>(reader, 3);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetUsers(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetUsers(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("Users")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("user_name"),
+                new DataColumn("user_sysid", typeof(uint))
+            }
+        };
 
-        users.Columns.AddRange(new[] { new DataColumn("user_name"), new DataColumn("user_sysid", typeof(uint)) });
+        var sql = new StringBuilder();
 
-        var getUsers = new StringBuilder();
+        sql.Append("SELECT usename, usesysid FROM pg_catalog.pg_user");
 
-        getUsers.Append("SELECT usename as user_name, usesysid as user_sysid FROM pg_catalog.pg_user");
-
-        using var command = BuildCommand(conn, getUsers, restrictions, "usename");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(users, async, cancellationToken).ConfigureAwait(false);
-
-        return users;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, "usename"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["user_name"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["user_sysid"] = GetFieldValueOrDBNull<uint>(reader, 1);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetIndexes(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetIndexes(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var indexes = new DataTable("Indexes") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("Indexes")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("table_catalog"),
+                new DataColumn("table_schema"),
+                new DataColumn("table_name"),
+                new DataColumn("index_name"),
+                new DataColumn("type_desc")
+            }
+        };
 
-        indexes.Columns.AddRange(new[] {
-            new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
-            new DataColumn("index_name"), new DataColumn("type_desc")
-        });
-
-        var getIndexes = new StringBuilder(@"
-SELECT current_database() AS table_catalog,
-    n.nspname AS table_schema,
-    t.relname AS table_name,
-    i.relname AS index_name,
-    '' AS type_desc
+        var sql = new StringBuilder(
+            """
+SELECT current_database(),
+    n.nspname,
+    t.relname,
+    i.relname,
+    ''
 FROM
     pg_catalog.pg_class i
     JOIN pg_catalog.pg_index ix ON ix.indexrelid = i.oid
@@ -339,36 +436,52 @@ FROM
 WHERE
     i.relkind = 'i' AND
     n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
-    t.relkind = 'r'");
+    t.relkind = 'r'
+""");
 
-        using var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(indexes, async, cancellationToken).ConfigureAwait(false);
-
-        return indexes;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["table_catalog"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["table_schema"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["table_name"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["index_name"] = GetFieldValueOrDBNull<string>(reader, 3);
+                row["type_desc"] = GetFieldValueOrDBNull<string>(reader, 4);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetIndexColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetIndexColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var indexColumns = new DataTable("IndexColumns") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("IndexColumns")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("constraint_catalog"),
+                new DataColumn("constraint_schema"),
+                new DataColumn("constraint_name"),
+                new DataColumn("table_catalog"),
+                new DataColumn("table_schema"),
+                new DataColumn("table_name"),
+                new DataColumn("column_name"),
+                new DataColumn("index_name")
+            }
+        };
 
-        indexColumns.Columns.AddRange(new[] {
-            new DataColumn("constraint_catalog"), new DataColumn("constraint_schema"), new DataColumn("constraint_name"),
-            new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
-            new DataColumn("column_name"), new DataColumn("index_name")
-        });
-
-        var getIndexColumns = new StringBuilder(@"
+        var sql = new StringBuilder(
+            """
 SELECT
-    current_database() AS constraint_catalog,
-    t_ns.nspname AS constraint_schema,
-    ix_cls.relname AS constraint_name,
-    current_database() AS table_catalog,
-    ix_ns.nspname AS table_schema,
-    t.relname AS table_name,
-    a.attname AS column_name,
-    ix_cls.relname AS index_name
+    current_database(),
+    t_ns.nspname,
+    ix_cls.relname,
+    current_database(),
+    ix_ns.nspname,
+    t.relname,
+    a.attname,
+    ix_cls.relname
 FROM
     pg_class t
     JOIN pg_index ix ON t.oid = ix.indrelid
@@ -380,71 +493,117 @@ WHERE
     ix_cls.relkind = 'i' AND
     t_ns.nspname NOT IN ('pg_catalog', 'pg_toast') AND
     a.attnum = ANY(ix.indkey) AND
-    t.relkind = 'r'");
+    t.relkind = 'r'
+""");
 
-        using var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "t_ns.nspname", "t.relname", "ix_cls.relname", "a.attname");
-        using var adapter = new NpgsqlDataAdapter(command);
-        await adapter.Fill(indexColumns, async, cancellationToken).ConfigureAwait(false);
-
-        return indexColumns;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, false, "current_database()", "t_ns.nspname", "t.relname", "ix_cls.relname", "a.attname"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["constraint_catalog"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["constraint_schema"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["constraint_name"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["table_catalog"] = GetFieldValueOrDBNull<string>(reader, 3);
+                row["table_schema"] = GetFieldValueOrDBNull<string>(reader, 4);
+                row["table_name"] = GetFieldValueOrDBNull<string>(reader, 5);
+                row["column_name"] = GetFieldValueOrDBNull<string>(reader, 6);
+                row["index_name"] = GetFieldValueOrDBNull<string>(reader, 7);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType, bool async, CancellationToken cancellationToken = default)
     {
-        var getConstraints = new StringBuilder(@"
+        var sql = new StringBuilder(
+            """
 SELECT
-    current_database() AS ""CONSTRAINT_CATALOG"",
-    pgn.nspname AS ""CONSTRAINT_SCHEMA"",
-    pgc.conname AS ""CONSTRAINT_NAME"",
-    current_database() AS ""TABLE_CATALOG"",
-    pgtn.nspname AS ""TABLE_SCHEMA"",
-    pgt.relname AS ""TABLE_NAME"",
-    ""CONSTRAINT_TYPE"",
-    pgc.condeferrable AS ""IS_DEFERRABLE"",
-    pgc.condeferred AS ""INITIALLY_DEFERRED""
+    current_database(),
+    pgn.nspname,
+    pgc.conname,
+    current_database(),
+    pgtn.nspname,
+    pgt.relname,
+    constraint_type,
+    pgc.condeferrable,
+    pgc.condeferred
 FROM
     pg_catalog.pg_constraint pgc
     JOIN pg_catalog.pg_namespace pgn ON pgc.connamespace = pgn.oid
     JOIN pg_catalog.pg_class pgt ON pgc.conrelid = pgt.oid
     JOIN pg_catalog.pg_namespace pgtn ON pgt.relnamespace = pgtn.oid
     JOIN (
-        SELECT 'PRIMARY KEY' AS ""CONSTRAINT_TYPE"", 'p' AS ""contype""
+        SELECT 'PRIMARY KEY' AS constraint_type, 'p' AS contype
         UNION ALL
-        SELECT 'FOREIGN KEY' AS ""CONSTRAINT_TYPE"", 'f' AS ""contype""
+        SELECT 'FOREIGN KEY' AS constraint_type, 'f' AS contype
         UNION ALL
-        SELECT 'UNIQUE KEY' AS ""CONSTRAINT_TYPE"", 'u' AS ""contype""
-) mapping_table ON mapping_table.contype = pgc.contype");
-        if ("ForeignKeys".Equals(constraintType))
-            getConstraints.Append(" and pgc.contype='f'");
-        else if ("PrimaryKey".Equals(constraintType))
-            getConstraints.Append(" and pgc.contype='p'");
-        else if ("UniqueKeys".Equals(constraintType))
-            getConstraints.Append(" and pgc.contype='u'");
-        else
+        SELECT 'UNIQUE KEY' AS constraint_type, 'u' AS contype
+) mapping_table ON mapping_table.contype = pgc.contype
+""");
+
+        switch (constraintType)
+        {
+        case "ForeignKeys":
+            sql.Append(" and pgc.contype='f'");
+            break;
+        case "PrimaryKey":
+            sql.Append(" and pgc.contype='p'");
+            break;
+        case "UniqueKeys":
+            sql.Append(" and pgc.contype='u'");
+            break;
+        default:
             constraintType = "Constraints";
+            break;
+        }
 
-        using var command = BuildCommand(conn, getConstraints, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname");
-        using var adapter = new NpgsqlDataAdapter(command);
-        var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable(constraintType)
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("CONSTRAINT_CATALOG"),
+                new DataColumn("CONSTRAINT_SCHEMA"),
+                new DataColumn("CONSTRAINT_NAME"),
+                new DataColumn("TABLE_CATALOG"),
+                new DataColumn("TABLE_SCHEMA"),
+                new DataColumn("TABLE_NAME"),
+                new DataColumn("CONSTRAINT_TYPE"),
+                new DataColumn("IS_DEFERRABLE", typeof(bool)),
+                new DataColumn("INITIALLY_DEFERRED", typeof(bool))
+            }
+        };
 
-        await adapter.Fill(table, async, cancellationToken).ConfigureAwait(false);
-
-        return table;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["CONSTRAINT_CATALOG"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["CONSTRAINT_SCHEMA"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["CONSTRAINT_NAME"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["TABLE_CATALOG"] = GetFieldValueOrDBNull<string>(reader, 3);
+                row["TABLE_SCHEMA"] = GetFieldValueOrDBNull<string>(reader, 4);
+                row["TABLE_NAME"] = GetFieldValueOrDBNull<string>(reader, 5);
+                row["CONSTRAINT_TYPE"] = GetFieldValueOrDBNull<string>(reader, 6);
+                row["IS_DEFERRABLE"] = GetFieldValueOrDBNull<bool>(reader, 7);
+                row["INITIALLY_DEFERRED"] = GetFieldValueOrDBNull<bool>(reader, 8);
+            }, cancellationToken);
     }
 
-    [RequiresUnreferencedCode("Members from serialized types or types used in expressions may be trimmed if not referenced directly.")]
-    static async Task<DataTable> GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
+    static Task<DataTable> GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var getConstraintColumns = new StringBuilder(@"
-SELECT current_database() AS constraint_catalog,
-    n.nspname AS constraint_schema,
-    c.conname AS constraint_name,
-    current_database() AS table_catalog,
-    n.nspname AS table_schema,
-    t.relname AS table_name,
-    a.attname AS column_name,
-    a.attnum AS ordinal_number,
+        var sql = new StringBuilder(
+            """
+SELECT current_database(),
+    n.nspname,
+    c.conname,
+    current_database(),
+    n.nspname,
+    t.relname,
+    a.attname,
+    a.attnum,
     mapping_table.constraint_type
 FROM pg_constraint c
     JOIN pg_namespace n on n.oid = c.connamespace
@@ -458,15 +617,42 @@ FROM pg_constraint c
         SELECT 'UNIQUE KEY' AS constraint_type, 'u' AS contype
 ) mapping_table ON
     mapping_table.contype = c.contype
-    AND n.nspname NOT IN ('pg_catalog', 'pg_toast')");
+    AND n.nspname NOT IN ('pg_catalog', 'pg_toast')
+""");
 
-        using var command = BuildCommand(conn, getConstraintColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname");
-        using var adapter = new NpgsqlDataAdapter(command);
-        var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
+        var dataTable = new DataTable("ConstraintColumns")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("constraint_catalog"),
+                new DataColumn("constraint_schema"),
+                new DataColumn("constraint_name"),
+                new DataColumn("table_catalog"),
+                new DataColumn("table_schema"),
+                new DataColumn("table_name"),
+                new DataColumn("column_name"),
+                new DataColumn("ordinal_number", typeof(int)),
+                new DataColumn("constraint_type")
+            }
+        };
 
-        await adapter.Fill(table, async, cancellationToken).ConfigureAwait(false);
-
-        return table;
+        return ParseResults(
+            async,
+            BuildCommand(conn, sql, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname"),
+            dataTable,
+            (reader, row) =>
+            {
+                row["constraint_catalog"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["constraint_schema"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["constraint_name"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["table_catalog"] = GetFieldValueOrDBNull<string>(reader, 3);
+                row["table_schema"] = GetFieldValueOrDBNull<string>(reader, 4);
+                row["table_name"] = GetFieldValueOrDBNull<string>(reader, 5);
+                row["column_name"] = GetFieldValueOrDBNull<string>(reader, 6);
+                row["ordinal_number"] = GetFieldValueOrDBNull<int>(reader, 7);
+                row["constraint_type"] = GetFieldValueOrDBNull<string>(reader, 8);
+            }, cancellationToken);
     }
 
     static DataTable GetDataSourceInformation(NpgsqlConnection conn)
@@ -887,4 +1073,45 @@ FROM pg_constraint c
     };
 
     #endregion Reserved Keywords
+
+    static async Task<DataTable> ParseResults(bool async, NpgsqlCommand command, DataTable dataTable, Action<NpgsqlDataReader, DataRow> populateRow, CancellationToken cancellationToken)
+    {
+        NpgsqlDataReader? reader = null;
+        try
+        {
+            reader = async
+                ? await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false)
+                : command.ExecuteReader();
+
+            dataTable.BeginLoadData();
+
+            while (async ? await reader.ReadAsync(cancellationToken).ConfigureAwait(false) : reader.Read())
+                populateRow(reader, dataTable.Rows.Add());
+
+            return dataTable;
+        }
+        finally
+        {
+            dataTable.EndLoadData();
+
+            if (async)
+            {
+                if (reader is not null)
+                    await reader.DisposeAsync().ConfigureAwait(false);
+#if NETSTANDARD2_0
+                command.Dispose();
+#else
+                await command.DisposeAsync().ConfigureAwait(false);
+#endif
+            }
+            else
+            {
+                reader?.Dispose();
+                command.Dispose();
+            }
+        }
+    }
+
+    static object GetFieldValueOrDBNull<T>(NpgsqlDataReader reader, int ordinal)
+        => reader.IsDBNull(ordinal) ? DBNull.Value : reader.GetFieldValue<T>(ordinal)!;
 }
