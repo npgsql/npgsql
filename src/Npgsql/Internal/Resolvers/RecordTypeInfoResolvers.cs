@@ -17,7 +17,7 @@ class RecordTypeInfoResolver : IPgTypeInfoResolver
 
     static void AddInfos(TypeInfoMappingCollection mappings)
         => mappings.AddType<object[]>(DataTypeNames.Record, static (options, mapping, _) =>
-                mapping.CreateInfo(options, new ObjectArrayRecordConverter<object[]>(options), supportsWriting: false),
+                mapping.CreateInfo(options, new RecordConverter<object[]>(options), supportsWriting: false),
             MatchRequirement.DataTypeName);
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -107,7 +107,7 @@ class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
                 .MakeGenericMethod(mapping.Type)
                 .Invoke(null, new object[] { constructor, constructor.GetParameters().Length });
 
-            var converterType = typeof(ObjectArrayRecordConverter<>).MakeGenericType(mapping.Type);
+            var converterType = typeof(RecordConverter<>).MakeGenericType(mapping.Type);
             var converter = (PgConverter)Activator.CreateInstance(converterType, options, factory)!;
             return mapping.CreateInfo(options, converter, supportsWriting: false);
         };

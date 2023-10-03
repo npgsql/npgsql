@@ -79,9 +79,9 @@ public class PgTypeInfo
 
     public PgConverterResolution GetResolution<T>(T? value)
     {
-        // Other cases, to keep binary bloat minimal.
         if (this is not PgResolverTypeInfo resolverInfo)
-            return GetObjectResolution(null);
+            return new(Converter!, PgTypeId.GetValueOrDefault());
+
         var resolution = resolverInfo.GetResolution(value, null);
         return resolution ?? resolverInfo.GetDefaultResolution(null);
     }
@@ -106,22 +106,12 @@ public class PgTypeInfo
             => throw new NotSupportedException("Should not happen, please file a bug.");
     }
 
-    /// Throws if the type info is undecided in its PgTypeId.
-    internal PgConverterResolution GetConcreteResolution()
+    /// Throws if the instance is a PgResolverTypeInfo.
+    internal PgConverterResolution GetResolution()
     {
-        var pgTypeId = PgTypeId;
-        if (pgTypeId is null)
-            ThrowHelper.ThrowInvalidOperationException("PgTypeId is null.");
-
-        return this switch
-        {
-            { IsResolverInfo: false } => new(Converter, pgTypeId.GetValueOrDefault()),
-            PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolution(null),
-            _ => ThrowNotSupported()
-        };
-
-        static PgConverterResolution ThrowNotSupported()
-            => throw new NotSupportedException("Should not happen, please file a bug.");
+        if (IsResolverInfo)
+            ThrowHelper.ThrowInvalidOperationException("Instance is a PgResolverTypeInfo.");
+        return new(Converter, PgTypeId.GetValueOrDefault());
     }
 
     bool CachedCanConvert(DataFormat format, out BufferRequirements bufferRequirements)
@@ -192,19 +182,15 @@ public class PgTypeInfo
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
         format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
-        if (converter.IsDbNull(value))
+
+        writeState = null;
+        if (converter.GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
         {
-            writeState = null;
             size = default;
             return null;
         }
-        writeState = null;
-        var context = new SizeContext(format, bufferRequirements.Write);
-        size = bufferRequirements.Write is { Kind: SizeKind.Exact } req ? req : converter.GetSize(context, value, ref writeState);
 
-        if (size is { Kind: SizeKind.Unknown})
-            ThrowHelper.ThrowNotSupportedException($"Returning {nameof(Size.Unknown)} from {nameof(PgConverter<object>.GetSize)} is not supported yet.");
-
+        size = sizeOrDbNull;
         return new(this, converter, bufferRequirements.Write);
     }
 
@@ -220,19 +206,14 @@ public class PgTypeInfo
         format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        if (value is DBNull && Type != typeof(DBNull) || converter.IsDbNullAsObject(value))
+        writeState = null;
+        if (value is DBNull && Type != typeof(DBNull) || converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
         {
-            writeState = null;
             size = default;
             return null;
         }
-        writeState = null;
-        var context = new SizeContext(format, bufferRequirements.Write);
-        size = bufferRequirements.Write is { Kind: SizeKind.Exact } req ? req : converter.GetSizeAsObject(context, value, ref writeState);
 
-        if (size is { Kind: SizeKind.Unknown})
-            ThrowHelper.ThrowNotSupportedException($"Returning {nameof(Size.Unknown)} from {nameof(PgConverter.GetSizeAsObject)} is not supported yet.");
-
+        size = sizeOrDbNull;
         return new(this, converter, bufferRequirements.Write);
     }
 
