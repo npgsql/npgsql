@@ -418,6 +418,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
                 new DataColumn("user_sysid", typeof(uint))
             }
         };
+
         var sql = new StringBuilder();
 
         sql.Append("SELECT usename, usesysid FROM pg_catalog.pg_user");
