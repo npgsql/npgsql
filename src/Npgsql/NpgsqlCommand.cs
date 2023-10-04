@@ -942,7 +942,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         case CommandType.StoredProcedure:
             var sqlBuilder = new StringBuilder()
                 .Append(EnableStoredProcedureCompatMode ? "SELECT * FROM " : "CALL ")
-                .Append(CommandText)
+                .Append(commandText)
                 .Append('(');
 
             var isFirstParam = true;
