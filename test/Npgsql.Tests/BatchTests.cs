@@ -244,6 +244,29 @@ public class BatchTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task CommandType_StoredProcedure()
+    {
+        await using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "11.0", "Stored procedures are supported starting with PG 11");
+
+        var sproc = await GetTempProcedureName(conn);
+        await conn.ExecuteNonQueryAsync($"CREATE PROCEDURE {sproc}() LANGUAGE sql AS ''");
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands = { new($"{sproc}") {CommandType = CommandType.StoredProcedure} }
+        };
+
+        await using var reader = await batch.ExecuteReaderAsync(Behavior);
+
+        // Consume SELECT result set to parse the CommandComplete
+        await reader.CloseAsync();
+
+        Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Call));
+    }
+
+
+    [Test]
     public async Task StatementType_Merge()
     {
         await using var conn = await OpenConnectionAsync();
