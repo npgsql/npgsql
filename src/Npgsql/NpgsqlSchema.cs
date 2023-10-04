@@ -381,12 +381,19 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 
     static Task<DataTable> GetMaterializedViews(NpgsqlConnection conn, string?[]? restrictions, bool async, CancellationToken cancellationToken = default)
     {
-        var dataTable = new DataTable("MaterializedViews") { Locale = CultureInfo.InvariantCulture };
-
-        dataTable.Columns.AddRange(new[] {
-            new DataColumn("schemaname"), new DataColumn("matviewname"), new DataColumn("matviewowner"),
-            new DataColumn("tablespace"), new DataColumn("hasindexes", typeof(bool)), new DataColumn("ispopulated", typeof(bool))
-        });
+        var dataTable = new DataTable("MaterializedViews")
+        {
+            Locale = CultureInfo.InvariantCulture,
+            Columns =
+            {
+                new DataColumn("schemaname"),
+                new DataColumn("matviewname"),
+                new DataColumn("matviewowner"),
+                new DataColumn("tablespace"),
+                new DataColumn("hasindexes", typeof(bool)),
+                new DataColumn("ispopulated", typeof(bool))
+            }
+        };
 
         var sql = new StringBuilder();
 
