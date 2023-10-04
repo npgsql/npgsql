@@ -5,14 +5,14 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
+sealed class RecordConverter<T> : PgStreamingConverter<T>
 {
-    readonly PgSerializerOptions _serializerOptions;
+    readonly PgSerializerOptions _options;
     readonly Func<object[], T>? _factory;
 
-    public ObjectArrayRecordConverter(PgSerializerOptions serializerOptions, Func<object[], T>? factory = null)
+    public RecordConverter(PgSerializerOptions options, Func<object[], T>? factory = null)
     {
-        _serializerOptions = serializerOptions;
+        _options = options;
         _factory = factory;
     }
 
@@ -41,20 +41,18 @@ sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
                 continue;
 
             var postgresType =
-                _serializerOptions.DatabaseInfo.GetPostgresType(typeOid).GetRepresentationalType()
+                _options.DatabaseInfo.GetPostgresType(typeOid).GetRepresentationalType()
                 ?? throw new NotSupportedException($"Reading isn't supported for record field {i} (unknown type OID {typeOid}");
 
-            var typeInfo = _serializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
+            var typeInfo = _options.GetObjectOrDefaultTypeInfo(postgresType)
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
-            var resolution = typeInfo.GetConcreteResolution();
-            if (typeInfo.GetBufferRequirements(resolution.Converter, DataFormat.Binary) is not { } bufferRequirements)
-                throw new NotSupportedException($"Resolved record field converter '{resolution.Converter.GetType()}' has to support the binary format to be compatible.");
 
-            var scope = await reader.BeginNestedRead(async, length, bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
+            var converterInfo = typeInfo.Bind(new Field("?", _options.ToCanonicalTypeId(postgresType), -1), DataFormat.Binary);
+            var scope = await reader.BeginNestedRead(async, length, converterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
             try
             {
-                result[i] = await resolution.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
+                result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
             }
             finally
             {

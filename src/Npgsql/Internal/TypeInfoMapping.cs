@@ -351,15 +351,15 @@ public sealed class TypeInfoMappingCollection
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetConcreteResolution().GetConverter<T>()), GetDefaultConfigure(isDefault));
+            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetResolution().GetConverter<T>()), GetDefaultConfigure(isDefault));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetConcreteResolution().GetConverter<T>()), GetDefaultConfigure(matchRequirement));
+            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetResolution().GetConverter<T>()), GetDefaultConfigure(matchRequirement));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetConcreteResolution().GetConverter<T>()), configure);
+            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetResolution().GetConverter<T>()), configure);
 
     // Lives outside to prevent capture of T.
     void AddStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
@@ -451,8 +451,8 @@ public sealed class TypeInfoMappingCollection
         {
             var converter =
                 new PolymorphicArrayConverter<Array>(
-                    innerTypeInfo.GetConcreteResolution().GetConverter<Array>(),
-                    nullableInnerTypeInfo.GetConcreteResolution().GetConverter<Array>());
+                    innerTypeInfo.GetResolution().GetConverter<Array>(),
+                    nullableInnerTypeInfo.GetResolution().GetConverter<Array>());
 
             return new PgTypeInfo(innerTypeInfo.Options, converter,
                 innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
@@ -599,7 +599,7 @@ public sealed class TypeInfoMappingCollection
     static ArrayBasedArrayConverter<Array, TElement> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.GetConcreteResolution(), mapping.Type);
+            return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.GetResolution(), mapping.Type);
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
@@ -608,7 +608,7 @@ public sealed class TypeInfoMappingCollection
     static ListBasedArrayConverter<IList, TElement> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ListBasedArrayConverter<IList, TElement>(elemInfo.GetConcreteResolution());
+            return new ListBasedArrayConverter<IList, TElement>(elemInfo.GetResolution());
 
         ThrowBoxingNotSupported(resolver: false);
         return default;

@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
@@ -36,14 +35,8 @@ class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddType<JsonDocument>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options, new SystemTextJsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions)),
                 isDefault: true);
-            mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
-                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
-            mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
-                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
-            mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
-                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
-            mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
-                mapping.CreateInfo(options, new SystemTextJsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
+            mappings.AddStructType<JsonElement>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new SystemTextJsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
         }
     }
 
@@ -52,10 +45,7 @@ class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
         foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
         {
             mappings.AddArrayType<JsonDocument>(dataTypeName);
-            mappings.AddArrayType<JsonNode>(dataTypeName);
-            mappings.AddArrayType<JsonObject>(dataTypeName);
-            mappings.AddArrayType<JsonArray>(dataTypeName);
-            mappings.AddArrayType<JsonValue>(dataTypeName);
+            mappings.AddStructArrayType<JsonElement>(dataTypeName);
         }
     }
 

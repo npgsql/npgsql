@@ -6,6 +6,7 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
@@ -1486,6 +1487,86 @@ FROM
         Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed").And.Contains($"SELECT $1, $2"));
         AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2");
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+    }
+
+    [Test]
+    public async Task Log_ExecuteScalar_multiple_statement_without_parameters()
+    {
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
+
+        using (listLoggerProvider.Record())
+        {
+            await cmd.ExecuteScalarAsync();
+        }
+
+        var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+        Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[(SELECT 1, System.Object[]), (SELECT 2, System.Object[])]"));
+        var batchCommands = (IList<(string CommandText, object[] Parameters)>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
+        Assert.That(batchCommands.Count, Is.EqualTo(2));
+        Assert.That(batchCommands[0].CommandText, Is.EqualTo("SELECT 1"));
+        Assert.That(batchCommands[0].Parameters, Is.Empty);
+        Assert.That(batchCommands[1].CommandText, Is.EqualTo("SELECT 2"));
+        Assert.That(batchCommands[1].Parameters, Is.Empty);
+        AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+
+        if (!IsMultiplexing)
+            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+    }
+
+    [Test]
+    public async Task Log_ExecuteScalar_multiple_statement_with_parameters()
+    {
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", conn);
+        cmd.Parameters.Add(new() { ParameterName = "p1", Value = 8 });
+        cmd.Parameters.Add(new() { ParameterName = "p2", Value = 9 });
+
+        using (listLoggerProvider.Record())
+        {
+            await cmd.ExecuteScalarAsync();
+        }
+
+        var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+        Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[(SELECT $1, System.Object[]), (SELECT $1, System.Object[])]"));
+        var batchCommands = (IList<(string CommandText, object[] Parameters)>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
+        Assert.That(batchCommands.Count, Is.EqualTo(2));
+        Assert.That(batchCommands[0].CommandText, Is.EqualTo("SELECT $1"));
+        Assert.That(batchCommands[0].Parameters[0], Is.EqualTo(8));
+        Assert.That(batchCommands[1].CommandText, Is.EqualTo("SELECT $1"));
+        Assert.That(batchCommands[1].Parameters[0], Is.EqualTo(9));
+        AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+
+        if (!IsMultiplexing)
+            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+    }
+
+    [Test]
+    public async Task Log_ExecuteScalar_multiple_statement_with_parameter_logging_off()
+    {
+        await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, sensitiveDataLoggingEnabled: false);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", conn);
+        cmd.Parameters.Add(new() { ParameterName = "p1", Value = 8 });
+        cmd.Parameters.Add(new() { ParameterName = "p2", Value = 9 });
+
+        using (listLoggerProvider.Record())
+        {
+            await cmd.ExecuteScalarAsync();
+        }
+
+        var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+        Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[SELECT $1, SELECT $1]"));
+        var batchCommands = (IList<string>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
+        Assert.That(batchCommands.Count, Is.EqualTo(2));
+        Assert.That(batchCommands[0], Is.EqualTo("SELECT $1"));
+        Assert.That(batchCommands[1], Is.EqualTo("SELECT $1"));
+        AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+
+        if (!IsMultiplexing)
+            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     #endregion Logging

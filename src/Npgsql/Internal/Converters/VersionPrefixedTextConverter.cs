@@ -18,7 +18,7 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>, IResumab
         _textConverter = textConverter;
     }
 
-    protected override bool IsDbNullValue(T? value) => _textConverter.IsDbNull(value);
+    protected override bool IsDbNullValue(T? value, ref object? writeState) => _textConverter.IsDbNull(value, ref writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => VersionPrefixedTextConverter.CanConvert(_textConverter, format, out _innerRequirements, out bufferRequirements);

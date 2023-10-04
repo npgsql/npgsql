@@ -225,6 +225,34 @@ CREATE DOMAIN {domainType} AS TEXT");
     }
 
     [Test]
+    public async Task Databases()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var database = await conn.ExecuteScalarAsync("SELECT current_database()");
+
+        var dataTable = await GetSchema(conn, "Databases");
+        var databases = dataTable.Rows
+            .Cast<DataRow>()
+            .Select(r => (string)r["database_name"])
+            .ToList();
+
+        Assert.That(databases, Does.Contain(database));
+    }
+
+    [Test]
+    public async Task Schemata()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var schema = await CreateTempSchema(conn);
+
+        var dataTable = await GetSchema(conn, "Schemata");
+        var row = dataTable.Rows.Cast<DataRow>().Single(r => (string)r["schema_name"] == schema);
+
+        Assert.That(row["catalog_name"], Is.EqualTo(await conn.ExecuteScalarAsync("SELECT current_database()")));
+        Assert.That(row["schema_owner"], Is.EqualTo(await conn.ExecuteScalarAsync("SELECT current_user")));
+    }
+
+    [Test]
     public async Task ForeignKeys()
     {
         await using var conn = await OpenConnectionAsync();

@@ -36,7 +36,7 @@ class UnmappedRangeTypeInfoResolver : DynamicTypeInfoResolver
 
         return CreateCollection().AddMapping(matchedType, dataTypeName,
             (options, mapping, _) => mapping.CreateInfo(options,
-                (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type), subInfo.GetConcreteResolution().Converter)!,
+                (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type), subInfo.GetResolution().Converter)!,
                 preferredFormat: subInfo.PreferredFormat, supportsWriting: subInfo.SupportsWriting),
             mapping => mapping with { MatchRequirement = MatchRequirement.Single });
     }

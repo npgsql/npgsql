@@ -26,17 +26,17 @@ public abstract class PgConverter
 
     internal abstract Type TypeToConvert { get; }
 
-    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value)
+    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, ref object? writeState)
         => DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
-            _ => IsDbNullValueAsObject(value) || (value is null && ThrowInvalidNullValue())
+            _ => IsDbNullValueAsObject(value, ref writeState) || (value is null && ThrowInvalidNullValue())
         };
 
-    private protected abstract bool IsDbNullValueAsObject(object? value);
+    private protected abstract bool IsDbNullValueAsObject(object? value, ref object? writeState);
 
     internal abstract Size GetSizeAsObject(SizeContext context, object value, ref object? writeState);
 
@@ -94,14 +94,14 @@ public abstract class PgConverter<T> : PgConverter
     private protected PgConverter(bool customDbNullPredicate)
         : base(typeof(T), default(T) is null, customDbNullPredicate) { }
 
-    protected virtual bool IsDbNullValue(T? value) => throw new NotSupportedException();
+    protected virtual bool IsDbNullValue(T? value, ref object? writeState) => throw new NotSupportedException();
 
     // Object null semantics as follows, if T is a struct (so excluding nullable) report false for null values, don't throw on the cast.
     // As a result this creates symmetry with IsDbNull when we're dealing with a struct T, as it cannot be passed null at all.
-    private protected override bool IsDbNullValueAsObject(object? value)
-        => (default(T) is null || value is not null) && IsDbNullValue(Downcast(value));
+    private protected override bool IsDbNullValueAsObject(object? value, ref object? writeState)
+        => (default(T) is null || value is not null) && IsDbNullValue(Downcast(value), ref writeState);
 
-    public bool IsDbNull([NotNullWhen(false)] T? value)
+    public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
     {
         return DbNullPredicateKind switch
         {
@@ -109,7 +109,7 @@ public abstract class PgConverter<T> : PgConverter
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
-            DbNullPredicate.Custom => IsDbNullValue(value) || (value is null && ThrowInvalidNullValue()),
+            DbNullPredicate.Custom => IsDbNullValue(value, ref writeState) || (value is null && ThrowInvalidNullValue()),
             _ => ThrowOutOfRange()
         };
 
@@ -137,27 +137,47 @@ static class PgConverterExtensions
 {
     public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {
-        if (converter.IsDbNull(value))
+        if (converter.IsDbNull(value, ref writeState))
             return null;
 
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
         var size = converter.GetSize(new(format, writeRequirement), value, ref writeState);
-        if (size.Kind is SizeKind.UpperBound)
-            throw new InvalidOperationException("SizeKind.UpperBound is not a valid return value for GetSize.");
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            // Not valid yet.
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
         return size;
     }
 
     public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
     {
-        if (converter.IsDbNullAsObject(value))
+        if (converter.IsDbNullAsObject(value, ref writeState))
             return null;
 
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
         var size = converter.GetSizeAsObject(new(format, writeRequirement), value, ref writeState);
-        if (size.Kind is SizeKind.UpperBound)
-            throw new InvalidOperationException("SizeKind.UpperBound is not a valid return value for GetSize.");
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            // Not valid yet.
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
         return size;
     }
 }
@@ -176,8 +196,8 @@ public readonly struct SizeContext
         BufferRequirement = bufferRequirement;
     }
 
-    public DataFormat Format { get; }
     public required Size BufferRequirement { get; init; }
+    public DataFormat Format { get; }
 }
 
 class MultiWriteState : IDisposable

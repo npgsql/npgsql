@@ -290,10 +290,11 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         // We must commit the current column before reading the next one unless it was an IsNull call.
         PgConverterInfo info;
+        bool asObject;
         if (!PgReader.Resumable || PgReader.CurrentRemaining != PgReader.FieldSize)
         {
             await Commit(async, resumableOp: false).ConfigureAwait(false);
-            info = GetInfo();
+            info = GetInfo(out asObject);
 
             // We need to get info after potential I/O as we don't know beforehand at what column we're at.
             var columnLen = await ReadColumnLenIfNeeded(async, resumableOp: false).ConfigureAwait(false);
@@ -305,13 +306,13 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         }
         else
-            info = GetInfo();
+            info = GetInfo(out asObject);
 
         T result;
         if (async)
         {
             await PgReader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
-            result = info.AsObject
+            result = asObject
                 ? (T)await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
                 : await info.GetConverter<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
             await PgReader.EndReadAsync().ConfigureAwait(false);
@@ -319,7 +320,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         else
         {
             PgReader.StartRead(info.BufferRequirement);
-            result = info.AsObject
+            result = asObject
                 ? (T)info.Converter.ReadAsObject(PgReader)
                 : info.GetConverter<T>().Read(PgReader);
             PgReader.EndRead();
@@ -327,10 +328,12 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         return result;
 
-        PgConverterInfo GetInfo()
+        PgConverterInfo GetInfo(out bool asObject)
         {
             ref var cachedInfo = ref _columnInfoCache[_column];
-            return cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T), type) : cachedInfo;
+            var converterInfo = cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T), type) : cachedInfo;
+            asObject = converterInfo.IsBoxingConverter;
+            return converterInfo;
         }
 
         T DbNullOrThrow()

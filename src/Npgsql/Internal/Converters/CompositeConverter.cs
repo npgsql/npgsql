@@ -25,7 +25,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             if (field.IsDbNullable)
             {
                 readReq = readReq.Combine(Size.CreateUpperBound(0));
-                writeReq = readReq.Combine(Size.CreateUpperBound(0));
+                writeReq = writeReq.Combine(Size.CreateUpperBound(0));
             }
 
             req = req.Combine(
@@ -93,10 +93,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 field.ReadDbNull(builder);
             else
             {
-                var scope = await reader.BeginNestedRead(async, length, field.BinaryReadRequirement, cancellationToken).ConfigureAwait(false);
+                var converter = field.GetReadInfo(out var readRequirement);
+                var scope = await reader.BeginNestedRead(async, length, readRequirement, cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    await field.Read(async, builder, reader, cancellationToken).ConfigureAwait(false);
+                    await field.Read(async, converter, builder, reader, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -113,28 +114,35 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
-        var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
+        var arrayPool = ArrayPool<ElementState>.Shared;
         var data = arrayPool.Rent(_composite.Fields.Count);
 
         var totalSize = Size.Create(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
-        var boxedValue = (object)value;
+        var boxedInstance = (object)value;
         var anyWriteState = false;
         for (var i = 0; i < _composite.Fields.Count; i++)
         {
             var field = _composite.Fields[i];
+            var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement);
             object? fieldState = null;
-            var fieldSize = field.GetSizeOrDbNull(context.Format, boxedValue, ref fieldState);
+            var fieldSize = field.GetSizeOrDbNull(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
             anyWriteState = anyWriteState || fieldState is not null;
-            data[i] = (fieldSize ?? -1, fieldState);
+            data[i] = new()
+            {
+                Size = fieldSize ?? -1,
+                WriteState = fieldState,
+                Converter = converter,
+                BufferRequirement = writeRequirement
+            };
             totalSize = totalSize.Combine(fieldSize ?? 0);
         }
 
         writeState = new WriteState
         {
             ArrayPool = arrayPool,
-            BoxedInstance = boxedValue,
             Data = new(data, 0, _composite.Fields.Count),
-            AnyWriteState = anyWriteState
+            AnyWriteState = anyWriteState,
+            BoxedInstance = boxedInstance,
         };
         return totalSize;
     }
@@ -156,7 +164,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         writer.WriteInt32(_composite.Fields.Count);
 
         var writeState = writer.Current.WriteState as WriteState;
-        var boxedInstance = writeState?.BoxedInstance ?? value!;
+        var boxedInstance = writeState?.BoxedInstance ?? value;
         var data = writeState?.Data.Array;
         for (var i = 0; i < _composite.Fields.Count; i++)
         {
@@ -166,20 +174,61 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var field = _composite.Fields[i];
             writer.WriteAsOid(field.PgTypeId);
 
-            var (size, fieldState) = data?[i] ?? (field.IsDbNull(boxedInstance) ? -1 : field.BinaryReadRequirement, null);
-
-            var length = size.Value;
-            writer.WriteInt32(length);
-            if (length != -1)
+            ElementState elementState;
+            if (data?[i] is not { } state)
             {
-                using var _ = await writer.BeginNestedWrite(async, _bufferRequirements.Write, length, fieldState, cancellationToken).ConfigureAwait(false);
-                await field.Write(async, writer, boxedInstance, cancellationToken).ConfigureAwait(false);
+                var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement);
+                object? fieldState = null;
+                elementState = new()
+                {
+                    Size = field.IsDbNull(converter, boxedInstance, ref fieldState) ? -1 : writeRequirement,
+                    WriteState = null,
+                    Converter = converter,
+                    BufferRequirement = writeRequirement,
+                };
+            }
+            else
+                elementState = state;
+            var length = elementState.Size.Value;
+            writer.WriteInt32(length);
+            if (length is not -1)
+            {
+                using var _ = await writer.BeginNestedWrite(async, elementState.BufferRequirement, length, elementState.WriteState, cancellationToken).ConfigureAwait(false);
+                await field.Write(async, elementState.Converter, writer, boxedInstance, cancellationToken).ConfigureAwait(false);
             }
         }
     }
 
-    sealed class WriteState : MultiWriteState
+    readonly struct ElementState
     {
+        public required Size Size { get; init; }
+        public required object? WriteState { get; init; }
+        public required PgConverter Converter { get; init; }
+        public required Size BufferRequirement { get; init; }
+    }
+
+    class WriteState : IDisposable
+    {
+        public required ArrayPool<ElementState>? ArrayPool { get; init; }
+        public required ArraySegment<ElementState> Data { get; init; }
+        public required bool AnyWriteState { get; init; }
         public required object BoxedInstance { get; init; }
+
+        public void Dispose()
+        {
+            if (Data.Array is not { } array)
+                return;
+
+            if (AnyWriteState)
+            {
+                for (var i = Data.Offset; i < array.Length; i++)
+                    if (array[i].WriteState is IDisposable disposable)
+                        disposable.Dispose();
+
+                Array.Clear(Data.Array, Data.Offset, Data.Count);
+            }
+
+            ArrayPool?.Return(Data.Array);
+        }
     }
 }
