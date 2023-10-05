@@ -362,9 +362,9 @@ public sealed class FieldDescription
             return;
         }
 
-        // Have to check for null as it's a sentinel value used by ObjectOrDefaultTypeInfo init itself.
-        if (type is not null && ObjectOrDefaultInfo is var odfInfo)
+        if (_objectOrDefaultInfo is { IsDefault: false } || DataFormat is DataFormat.Text && type is not null)
         {
+            var odfInfo = DataFormat is DataFormat.Text ? ObjectOrDefaultInfo : _objectOrDefaultInfo;
             if (typeof(object) == type)
             {
                 lastConverterInfo = odfInfo;
@@ -384,26 +384,31 @@ public sealed class FieldDescription
         [MethodImpl(MethodImplOptions.NoInlining)]
         void GetInfoSlow(out PgConverterInfo lastConverterInfo, out bool asObject)
         {
-            PgConverterInfo converterInfo;
             var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
             switch (DataFormat)
             {
             case DataFormat.Binary:
                 // If we don't support binary we'll just throw.
-                converterInfo = typeInfo.Bind(Field, DataFormat);
+                lastConverterInfo = typeInfo.Bind(Field, DataFormat);
+                asObject = typeof(object) == type || lastConverterInfo.IsBoxingConverter;
                 break;
             default:
                 // For text we'll fall back to any available text converter for the expected clr type or throw.
-                if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
+                if (!typeInfo.TryBind(Field, DataFormat, out lastConverterInfo))
                 {
                     typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.UnknownPgType, _serializerOptions);
-                    converterInfo = typeInfo.Bind(Field, DataFormat);
+                    lastConverterInfo = typeInfo.Bind(Field, DataFormat);
+                    asObject = type != lastConverterInfo.TypeToConvert || lastConverterInfo.IsBoxingConverter;
                 }
+                else
+                    asObject = typeof(object) == type || lastConverterInfo.IsBoxingConverter;
                 break;
             }
 
-            lastConverterInfo = converterInfo;
-            asObject = converterInfo.IsBoxingConverter;
+            // We delay initializing ObjectOrDefaultInfo until after the first lookup (unless it is itself the first lookup).
+            // When passed in an unsupported type it allows the error to be more specific, instead of just having object/null to deal with.
+            if (_objectOrDefaultInfo.IsDefault && type is not null)
+                _ = ObjectOrDefaultInfo;
         }
     }
 

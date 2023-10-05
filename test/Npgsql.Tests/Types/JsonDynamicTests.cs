@@ -139,7 +139,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             base.DataSource);
 
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.That(exception.InnerException!.Message, Is.EqualTo(string.Format(NpgsqlStrings.DynamicJsonNotEnabled, "<unknown>")));
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(string.Format(NpgsqlStrings.DynamicJsonNotEnabled, "WeatherForecast")));
     }
 
     [Test]
