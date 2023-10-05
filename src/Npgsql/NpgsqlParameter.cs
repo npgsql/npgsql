@@ -319,7 +319,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // Infer from value but don't cache
             if (Value is not null)
                 // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+                return GlobalTypeMapper.Instance.FindDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
 
             return DbType.Object;
         }
@@ -353,7 +353,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // Infer from value but don't cache
             if (Value is not null)
                 // We pass ValueType here for the generic derived type (NpgsqlParameter<T>) where we should respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+                return GlobalTypeMapper.Instance.FindDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
             return NpgsqlDbType.Unknown;
         }
@@ -390,7 +390,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // Infer from value but don't cache
             if (Value is not null)
                 // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(GetValueType(StaticValueType)!, Value)?.DisplayName;
+                return GlobalTypeMapper.Instance.FindDataTypeName(GetValueType(StaticValueType)!, Value)?.DisplayName;
 
             return null;
         }

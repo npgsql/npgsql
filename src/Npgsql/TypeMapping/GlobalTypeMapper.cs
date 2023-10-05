@@ -91,7 +91,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    internal DataTypeName? TryGetDataTypeName(Type type, object value)
+    internal DataTypeName? FindDataTypeName(Type type, object value)
     {
         DataTypeName? dataTypeName;
         try
