@@ -193,6 +193,29 @@ class RangeTests : MultiplexingTestBase
             actual.LowerBound!.SequenceEqual(expected.LowerBound!) && actual.UpperBound!.SequenceEqual(expected.UpperBound!)));
     }
 
+    [Test]
+    public async Task Unmapped_range_supported_only_with_EnableUnmappedTypes()
+    {
+        await using var connection = await DataSource.OpenConnectionAsync();
+        var rangeType = await GetTempTypeName(connection);
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {rangeType} AS RANGE(subtype=text)");
+        await Task.Yield(); // TODO: fix multiplexing deadlock bug
+        await connection.ReloadTypesAsync();
+
+        var errorMessage = string.Format(
+            NpgsqlStrings.UnmappedRangesNotEnabled,
+            nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+            nameof(NpgsqlDataSourceBuilder));
+
+        var exception = await AssertTypeUnsupportedWrite(new NpgsqlRange<string>("bar", "foo"), rangeType);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+
+        exception = await AssertTypeUnsupportedRead<NpgsqlRange<string>>("""["bar","foo"]""", rangeType);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4441")]
     public async Task Array_of_range()
     {

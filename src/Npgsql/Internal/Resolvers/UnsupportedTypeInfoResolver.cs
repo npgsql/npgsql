@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Npgsql.Internal.Postgres;
+using Npgsql.PostgresTypes;
 using Npgsql.Properties;
 
 namespace Npgsql.Internal.Resolvers;
@@ -20,11 +21,40 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         if (type is null)
             return null;
 
-        // Dynamic JSON check is here because JsonDynamicTypeInfoResolver has RUC/RDC
-        if (type != typeof(object) && dataTypeName is { Value: "pg_catalog.json" or "pg_catalog.jsonb" })
+        // These checks are here because their resolver types have RUC/RDC
+        if (type != typeof(object))
         {
-            throw new NotSupportedException(
-                string.Format(NpgsqlStrings.DynamicJsonNotEnabled, type is null || type == typeof(object) ? "<unknown>" : type.Name));
+            switch (dataTypeName)
+            {
+            case "pg_catalog.json" or "pg_catalog.jsonb":
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.DynamicJsonNotEnabled,
+                        type == typeof(object) ? "<unknown>" : type.Name,
+                        nameof(NpgsqlDataSourceBuilder.EnableDynamicJsonMappings),
+                        typeof(TBuilder).Name));
+
+            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresEnumType:
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.UnmappedEnumsNotEnabled,
+                        nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+                        typeof(TBuilder).Name));
+
+            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresRangeType:
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.UnmappedRangesNotEnabled,
+                        nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+                        typeof(TBuilder).Name));
+
+            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresMultirangeType:
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.UnmappedRangesNotEnabled,
+                        nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+                        typeof(TBuilder).Name));
+            }
         }
 
         if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) && TypeInfoMappingCollection.IsArrayLikeType(elementType, out _))

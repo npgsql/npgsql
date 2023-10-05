@@ -200,5 +200,17 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("DynamicJsonNotEnabled", resourceCulture);
             }
         }
+        
+        internal static string UnmappedEnumsNotEnabled {
+            get {
+                return ResourceManager.GetString("UnmappedEnumsNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string UnmappedRangesNotEnabled {
+            get {
+                return ResourceManager.GetString("UnmappedRangesNotEnabled", resourceCulture);
+            }
+        }
     }
 }

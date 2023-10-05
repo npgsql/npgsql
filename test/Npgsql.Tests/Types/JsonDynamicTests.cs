@@ -118,6 +118,12 @@ public class JsonDynamicTests : MultiplexingTestBase
     {
         // This test uses base.DataSource, which doesn't have EnableDynamicJsonMappings()
 
+        var errorMessage = string.Format(
+            NpgsqlStrings.DynamicJsonNotEnabled,
+            nameof(WeatherForecast),
+            nameof(NpgsqlDataSourceBuilder.EnableDynamicJsonMappings),
+            nameof(NpgsqlDataSourceBuilder));
+
         var exception = await AssertTypeUnsupportedWrite(
                 new WeatherForecast
                 {
@@ -129,7 +135,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 base.DataSource);
 
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.That(exception.InnerException!.Message, Is.EqualTo(string.Format(NpgsqlStrings.DynamicJsonNotEnabled, "WeatherForecast")));
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedRead<WeatherForecast>(
             IsJsonb
@@ -139,7 +145,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             base.DataSource);
 
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.That(exception.InnerException!.Message, Is.EqualTo(string.Format(NpgsqlStrings.DynamicJsonNotEnabled, "WeatherForecast")));
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]

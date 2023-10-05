@@ -85,6 +85,25 @@ public class RecordTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task As_ValueTuple_supported_only_with_EnableRecordsAsTuples()
+    {
+        await using var connection = await DataSource.OpenConnectionAsync();
+        await using var command = new NpgsqlCommand("SELECT (1, 'foo')::record", connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        var errorMessage = string.Format(
+            NpgsqlStrings.RecordsNotEnabled,
+            nameof(NpgsqlDataSourceBuilder.EnableRecordsAsTuples),
+            nameof(NpgsqlDataSourceBuilder),
+            nameof(NpgsqlSlimDataSourceBuilder.EnableRecords));
+
+        var exception = Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<(int, string)>(0))!;
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+    }
+
+    [Test]
     public async Task Records_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
     {
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
@@ -99,8 +118,9 @@ public class RecordTests : MultiplexingTestBase
 
         var errorMessage = string.Format(
             NpgsqlStrings.RecordsNotEnabled,
-            nameof(NpgsqlSlimDataSourceBuilder.EnableRecords),
-            nameof(NpgsqlSlimDataSourceBuilder));
+            nameof(NpgsqlDataSourceBuilder.EnableRecordsAsTuples),
+            nameof(NpgsqlSlimDataSourceBuilder),
+            nameof(NpgsqlSlimDataSourceBuilder.EnableRecords));
 
         var exception = Assert.Throws<InvalidCastException>(() => reader.GetValue(0))!;
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);

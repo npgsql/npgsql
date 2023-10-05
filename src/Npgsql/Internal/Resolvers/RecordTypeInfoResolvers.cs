@@ -28,7 +28,11 @@ class RecordTypeInfoResolver : IPgTypeInfoResolver
         if (type != typeof(object) && dataTypeName == DataTypeNames.Record)
         {
             throw new NotSupportedException(
-                string.Format(NpgsqlStrings.RecordsNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRecords), typeof(TBuilder).Name));
+                string.Format(
+                    NpgsqlStrings.RecordsNotEnabled,
+                    nameof(NpgsqlDataSourceBuilder.EnableRecordsAsTuples),
+                    typeof(TBuilder).Name,
+                    nameof(NpgsqlSlimDataSourceBuilder.EnableRecords)));
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -127,6 +128,38 @@ public class MultirangeTests : TestBase
         var result = reader.GetFieldValue<NpgsqlRange<char[]>[]>(0);
         Assert.That(result, Is.EqualTo(value).Using<NpgsqlRange<char[]>[]>((actual, expected) =>
             actual[0].LowerBound!.SequenceEqual(expected[0].LowerBound!) && actual[0].UpperBound!.SequenceEqual(expected[0].UpperBound!)));
+    }
+
+    [Test]
+    public async Task Unmapped_multirange_supported_only_with_EnableUnmappedTypes()
+    {
+        await using var connection = await DataSource.OpenConnectionAsync();
+        var rangeType = await GetTempTypeName(connection);
+        var multirangeTypeName = rangeType + "_multirange";
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {rangeType} AS RANGE(subtype=text)");
+        await Task.Yield(); // TODO: fix multiplexing deadlock bug
+        await connection.ReloadTypesAsync();
+
+        var errorMessage = string.Format(
+            NpgsqlStrings.UnmappedRangesNotEnabled,
+            nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+            nameof(NpgsqlDataSourceBuilder));
+
+        var exception = await AssertTypeUnsupportedWrite(
+            new NpgsqlRange<string>[]
+            {
+                new("bar", "foo"),
+                new("moo", "zoo"),
+            },
+            multirangeTypeName);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+
+        exception = await AssertTypeUnsupportedRead<NpgsqlRange<string>>(
+            """{["bar","foo"],["moo","zoo"]}""",
+            multirangeTypeName);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     protected override NpgsqlDataSource DataSource { get; }
