@@ -79,8 +79,8 @@ class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
-        mappings.AddArrayType<Tuple<object>>(DataTypeNames.Record);
-        mappings.AddStructArrayType<ValueTuple<object>>(DataTypeNames.Record);
+        mappings.AddArrayType<Tuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
+        mappings.AddStructArrayType<ValueTuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
     }
 
     static readonly TypeInfoFactory Factory = static (options, mapping, _) =>
