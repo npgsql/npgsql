@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.100-preview.4.23260.5'
+  dotnet_sdk_version: '8.0.100-rc.1.23463.5'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
@@ -30,27 +30,27 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-2022]
-        pg_major: [15, 14, 13, 12, 11]
+        pg_major: [16, 15, 14, 13, 12, 11]
         config: [Release]
         test_tfm: [net8.0]
         include:
           - os: ubuntu-22.04
-            pg_major: 15
+            pg_major: 16
             config: Debug
             test_tfm: net8.0
           - os: ubuntu-22.04
-            pg_major: 15
+            pg_major: 16
             config: Release
             test_tfm: netcoreapp3.1
           - os: macos-12
             pg_major: 14
             config: Release
             test_tfm: net8.0
-          - os: ubuntu-22.04
-            pg_major: 16
-            config: Release
-            test_tfm: net8.0
-            pg_prerelease: 'PG Prerelease'
+#          - os: ubuntu-22.04
+#            pg_major: 17
+#            config: Release
+#            test_tfm: net8.0
+#            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: NuGet Cache
         uses: actions/cache@v3
@@ -141,7 +141,7 @@ jobs:
           sudo -u postgres psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'"
           
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v3
+      #- uses: actions/checkout@v4
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 
@@ -315,7 +315,6 @@ jobs:
         run: |
             if [ -z "${{ matrix.pg_prerelease }}" ]; then
                 dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
-                dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.NodaTime.Tests --logger "GitHubActions;report-warnings=false"
             fi
         shell: bash
 
@@ -340,7 +339,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: NuGet Cache
         uses: actions/cache@v3
@@ -382,7 +381,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v3.2.0

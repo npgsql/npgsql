@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -64,10 +67,9 @@ public class CopyTests : MultiplexingTestBase
         const int iterations = 500;
 
         var table = await GetTempTableName(conn);
-
+        await conn.ExecuteNonQueryAsync($@"CREATE TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
         using (var tx = conn.BeginTransaction())
         {
-            await conn.ExecuteNonQueryAsync($@"CREATE TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
 
             // Preload some data into the table
             using (var cmd =
@@ -158,14 +160,15 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         using var conn = await OpenConnectionAsync();
         var table = await GetTempTableName(conn);
         await conn.ExecuteNonQueryAsync($@"CREATE TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-
-        var garbage = new byte[] {1, 2, 3, 4};
-        using (var s = conn.BeginRawBinaryCopy($"COPY {table} (field_text, field_int4) FROM STDIN BINARY"))
+        await using (var tx = await conn.BeginTransactionAsync())
         {
-            s.Write(garbage, 0, garbage.Length);
-            s.Cancel();
+            var garbage = new byte[] {1, 2, 3, 4};
+            using (var s = conn.BeginRawBinaryCopy($"COPY {table} (field_text, field_int4) FROM STDIN BINARY"))
+            {
+                s.Write(garbage, 0, garbage.Length);
+                s.Cancel();
+            }
         }
-
         Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
     }
 
@@ -293,6 +296,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
             Assert.That(reader.StartRow(), Is.EqualTo(2));
             Assert.That(reader.Read<string>(), Is.EqualTo(longString));
             Assert.That(reader.IsNull, Is.True);
+            Assert.That(reader.IsNull, Is.True);
             reader.Skip();
 
             Assert.That(reader.StartRow(), Is.EqualTo(-1));
@@ -306,13 +310,15 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     {
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
-
-        using (var writer = conn.BeginBinaryImport($"COPY {table} (field_text, field_int4) FROM STDIN BINARY"))
+        await using (var tx = await conn.BeginTransactionAsync())
         {
-            writer.StartRow();
-            writer.Write("Hello");
-            writer.Write(8);
-            // No commit should rollback
+            using (var writer = conn.BeginBinaryImport($"COPY {table} (field_text, field_int4) FROM STDIN BINARY"))
+            {
+                writer.StartRow();
+                writer.Write("Hello");
+                writer.Write(8);
+                // No commit should rollback
+            }
         }
         Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
     }
@@ -524,12 +530,21 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
 
         using (var reader = conn.BeginBinaryExport($"COPY {table} (foo1, foo2, foo3, foo4, foo5) TO STDIN BINARY"))
         {
-            for (var row = 0; row < iterations; row++)
+            int row, col = 0;
+            for (row = 0; row < iterations; row++)
             {
                 Assert.That(reader.StartRow(), Is.EqualTo(5));
-                for (var col = 0; col < 5; col++)
-                    Assert.That(reader.Read<string>().Length, Is.EqualTo(len));
+                for (col = 0; col < 5; col++)
+                {
+                    var str = reader.Read<string>();
+                    Assert.That(str.Length, Is.EqualTo(len));
+#if NET6_0_OR_GREATER
+                    Assert.True(str.AsSpan().IndexOfAnyExcept('x') is -1);
+#endif
+                }
             }
+            Assert.That(row, Is.EqualTo(100));
+            Assert.That(col, Is.EqualTo(5));
         }
     }
 
@@ -540,12 +555,13 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
-CREATE TABLE {table} (bits BIT(3), bitarray BIT(3)[]);
-INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
+CREATE TABLE {table} (bits BIT(11), bitvector BIT(11), bitarray BIT(3)[]);
+INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'00000001101', ARRAY[B'101', B'111'])");
 
-        using var reader = conn.BeginBinaryExport($"COPY {table} (bits, bitarray) TO STDIN BINARY");
+        using var reader = conn.BeginBinaryExport($"COPY {table} (bits, bitvector, bitarray) TO STDIN BINARY");
         reader.StartRow();
-        Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { true, false, true })));
+        Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { false, false, false, false, false, false, false, true, true, false, true })));
+        Assert.That(reader.Read<BitVector32>(), Is.EqualTo(new BitVector32(0b00000001101000000000000000000000)));
         Assert.That(reader.Read<BitArray[]>(), Is.EqualTo(new[]
         {
             new BitArray(new[] { true, false, true }),
@@ -743,12 +759,15 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Cancel_raw_binary_export_when_not_consumed_and_then_Dispose()
     {
         await using var conn = await OpenConnectionAsync();
-        // This must be large enough to cause Postgres to queue up CopyData messages.
-        var stream = conn.BeginRawBinaryCopy("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY");
-        var buffer = new byte[32];
-        await stream.ReadAsync(buffer, 0, buffer.Length);
-        stream.Cancel();
-        Assert.DoesNotThrowAsync(async () => await stream.DisposeAsync());
+        await using (var tx = await conn.BeginTransactionAsync())
+        {
+            // This must be large enough to cause Postgres to queue up CopyData messages.
+            var stream = conn.BeginRawBinaryCopy("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY");
+            var buffer = new byte[32];
+            await stream.ReadAsync(buffer, 0, buffer.Length);
+            stream.Cancel();
+            Assert.DoesNotThrowAsync(async () => await stream.DisposeAsync());
+        }
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
     }
 
@@ -756,26 +775,16 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Cancel_binary_export_when_not_consumed_and_then_Dispose()
     {
         await using var conn = await OpenConnectionAsync();
-        // This must be large enough to cause Postgres to queue up CopyData messages.
-        var exporter = conn.BeginBinaryExport("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY");
-        await exporter.StartRowAsync();
-        await exporter.ReadAsync<string>();
-        exporter.Cancel();
-        Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
+        await using (var tx = await conn.BeginTransactionAsync())
+        {
+            // This must be large enough to cause Postgres to queue up CopyData messages.
+            var exporter = conn.BeginBinaryExport("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY");
+            await exporter.StartRowAsync();
+            await exporter.ReadAsync<string>();
+            exporter.Cancel();
+            Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
+        }
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
-    }
-
-    [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/4417")]
-    public async Task Binary_copy_throws_for_nullable()
-    {
-        await using var conn = await OpenConnectionAsync();
-        var tableName = await CreateTempTable(conn, "house_number integer");
-
-        await using var writer = await conn.BeginBinaryImportAsync($"COPY {tableName}(house_number) FROM STDIN BINARY");
-        int? value = 1;
-        await writer.StartRowAsync();
-        Assert.ThrowsAsync<InvalidCastException>(async () => await writer.WriteAsync(value, NpgsqlDbType.Integer));
     }
 
     [Test]
@@ -835,10 +844,12 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     {
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
-
-        var writer = (NpgsqlCopyTextWriter)conn.BeginTextImport($"COPY {table} (field_text, field_int4) FROM STDIN");
-        writer.Write("HELLO\t1\n");
-        writer.Cancel();
+        await using (var tx = await conn.BeginTransactionAsync())
+        {
+            var writer = (NpgsqlCopyTextWriter)conn.BeginTextImport($"COPY {table} (field_text, field_int4) FROM STDIN");
+            writer.Write("HELLO\t1\n");
+            writer.Cancel();
+        }
         Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
     }
 
@@ -943,12 +954,15 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     public async Task Cancel_text_export_when_not_consumed_and_then_Dispose()
     {
         await using var conn = await OpenConnectionAsync();
-        // This must be large enough to cause Postgres to queue up CopyData messages.
-        var reader = (NpgsqlCopyTextReader) conn.BeginTextExport("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT");
-        var buffer = new char[32];
-        await reader.ReadAsync(buffer, 0, buffer.Length);
-        reader.Cancel();
-        Assert.DoesNotThrow(reader.Dispose);
+        await using (var tx = await conn.BeginTransactionAsync())
+        {
+            // This must be large enough to cause Postgres to queue up CopyData messages.
+            var reader = (NpgsqlCopyTextReader) conn.BeginTextExport("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT");
+            var buffer = new char[32];
+            await reader.ReadAsync(buffer, 0, buffer.Length);
+            reader.Cancel();
+            Assert.DoesNotThrow(reader.Dispose);
+        }
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
     }
 
@@ -1028,7 +1042,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         {
             writer.StartRow();
             writer.Write(DBNull.Value, NpgsqlDbType.Integer);
-            writer.Write((string?)null, NpgsqlDbType.Uuid);
+            writer.Write<Guid?>(null, NpgsqlDbType.Uuid);
             writer.Write(DBNull.Value);
             writer.Write((string?)null);
             var rowsWritten = writer.Complete();
@@ -1053,7 +1067,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         {
             writer.StartRow();
             writer.Write(3.0, NpgsqlDbType.Integer);
-            writer.Write((object)new[] { 1, 2, 3 });
+            writer.Write(new[] { 1, 2, 3 });
             writer.StartRow();
             writer.Write(3, NpgsqlDbType.Integer);
             writer.Write((object)new List<int> { 4, 5, 6 });
@@ -1125,6 +1139,29 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         var table = await CreateTempTable(conn, "foo INT");
 
         Assert.That(() => conn.ExecuteNonQuery($@"COPY {table} (foo) TO stdin"), Throws.Exception.TypeOf<NotSupportedException>());
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5209")]
+    [Platform(Exclude = "MacOsX", Reason = "Write might not throw an exception")]
+    public async Task RawBinaryCopy_write_nre([Values] bool async)
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var server = await postmasterMock.WaitForServerConnection();
+        await server
+            .WriteCopyInResponse(isBinary: true)
+            .FlushAsync();
+
+        await using var stream = await conn.BeginRawBinaryCopyAsync("COPY SomeTable (field_text, field_int4) FROM STDIN");
+        server.Close();
+        var value = Encoding.UTF8.GetBytes(new string('a', conn.Settings.WriteBufferSize * 2));
+        if (async)
+            Assert.ThrowsAsync<NpgsqlException>(async () => await stream.WriteAsync(value));
+        else
+            Assert.Throws<NpgsqlException>(() => stream.Write(value));
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
     #endregion

@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 
 namespace Npgsql.NameTranslation;
@@ -11,11 +11,20 @@ namespace Npgsql.NameTranslation;
 /// </summary>
 public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
 {
+    internal static NpgsqlSnakeCaseNameTranslator Instance { get; } = new();
+
+    readonly CultureInfo _culture;
+
     /// <summary>
     /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
     /// </summary>
-    public NpgsqlSnakeCaseNameTranslator()
-        : this(false) { }
+    /// <param name="culture">
+    /// An object that supplies culture-specific casing rules.
+    /// This will be used when converting names to lower case.
+    /// If <see langword="null"/> then <see cref="CultureInfo.InvariantCulture"/> will be used.
+    /// </param>
+    public NpgsqlSnakeCaseNameTranslator(CultureInfo? culture = null)
+        : this(false, culture) { }
 
     /// <summary>
     /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
@@ -23,8 +32,16 @@ public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
     /// <param name="legacyMode">
     /// Uses the legacy naming convention if <see langword="true"/>, otherwise it uses the new naming convention.
     /// </param>
-    public NpgsqlSnakeCaseNameTranslator(bool legacyMode)
-        => LegacyMode = legacyMode;
+    /// <param name="culture">
+    /// An object that supplies culture-specific casing rules.
+    /// This will be used when converting names to lower case.
+    /// If <see langword="null"/> then <see cref="CultureInfo.InvariantCulture"/> will be used.
+    /// </param>
+    public NpgsqlSnakeCaseNameTranslator(bool legacyMode, CultureInfo? culture = null)
+    {
+        LegacyMode = legacyMode;
+        _culture = culture ?? CultureInfo.InvariantCulture;
+    }
 
     bool LegacyMode { get; }
 
@@ -42,15 +59,29 @@ public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
             throw new ArgumentNullException(nameof(clrName));
 
         return LegacyMode
-            ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower()
-            : ConvertToSnakeCase(clrName);
+            ? string.Concat(LegacyModeMap(clrName)).ToLower(_culture)
+            : ConvertToSnakeCase(clrName, _culture);
+
+        IEnumerable<string> LegacyModeMap(string clrName)
+        {
+            for (var i = 0; i < clrName.Length; i++)
+            {
+                var c = clrName[i];
+                yield return i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString();
+            }
+        }
     }
 
     /// <summary>
     /// Converts a string to its snake_case equivalent.
     /// </summary>
     /// <param name="name">The value to convert.</param>
-    public static string ConvertToSnakeCase(string name)
+    /// <param name="culture">
+    /// An object that supplies culture-specific casing rules.
+    /// This will be used when converting names to lower case.
+    /// If <see langword="null"/> then <see cref="CultureInfo.InvariantCulture"/> will be used.
+    /// </param>
+    public static string ConvertToSnakeCase(string name, CultureInfo culture)
     {
         if (string.IsNullOrEmpty(name))
             return name;
@@ -84,7 +115,7 @@ public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
                     builder.Append('_');
                 }
 
-                currentChar = char.ToLower(currentChar);
+                currentChar = char.ToLower(currentChar, culture);
                 break;
 
             case UnicodeCategory.LowercaseLetter:

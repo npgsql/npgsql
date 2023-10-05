@@ -57,21 +57,15 @@ namespace Npgsql.Properties {
             }
         }
         
-        internal static string CannotUseSslModeRequireWithoutTrustServerCertificate {
+        internal static string TransportSecurityDisabled {
             get {
-                return ResourceManager.GetString("CannotUseSslModeRequireWithoutTrustServerCertificate", resourceCulture);
+                return ResourceManager.GetString("TransportSecurityDisabled", resourceCulture);
             }
         }
         
-        internal static string CannotUseTrustServerCertificate {
+        internal static string IntegratedSecurityDisabled {
             get {
-                return ResourceManager.GetString("CannotUseTrustServerCertificate", resourceCulture);
-            }
-        }
-        
-        internal static string EncryptionDisabled {
-            get {
-                return ResourceManager.GetString("EncryptionDisabled", resourceCulture);
+                return ResourceManager.GetString("IntegratedSecurityDisabled", resourceCulture);
             }
         }
         
@@ -156,6 +150,48 @@ namespace Npgsql.Properties {
         internal static string FullTextSearchNotEnabled {
             get {
                 return ResourceManager.GetString("FullTextSearchNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string LTreeNotEnabled {
+            get {
+                return ResourceManager.GetString("LTreeNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string RangesNotEnabled {
+            get {
+                return ResourceManager.GetString("RangesNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string RangeArraysNotEnabled {
+            get {
+                return ResourceManager.GetString("RangeArraysNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string MultirangesNotEnabled {
+            get {
+                return ResourceManager.GetString("MultirangesNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string MultirangeArraysNotEnabled {
+            get {
+                return ResourceManager.GetString("MultirangeArraysNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string TimestampTzNoDateTimeUnspecified {
+            get {
+                return ResourceManager.GetString("TimestampTzNoDateTimeUnspecified", resourceCulture);
+            }
+        }
+        
+        internal static string TimestampNoDateTimeUtc {
+            get {
+                return ResourceManager.GetString("TimestampNoDateTimeUtc", resourceCulture);
             }
         }
     }

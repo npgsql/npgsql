@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -17,6 +16,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
 
 namespace Npgsql;
@@ -84,7 +84,8 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     static readonly List<NpgsqlParameter> EmptyParameters = new();
 
-    static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
+    static readonly TaskScheduler ConstrainedConcurrencyScheduler =
+        new ConcurrentExclusiveSchedulerPair(TaskScheduler.Default, Math.Max(1, Environment.ProcessorCount / 2)).ConcurrentScheduler;
 
     #endregion Fields
 
@@ -293,9 +294,24 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Returns whether this query will execute as a prepared (compiled) query.
     /// </summary>
-    public bool IsPrepared =>
-        _connectorPreparedOn == (InternalConnection?.Connector ?? _connector) &&
-        InternalBatchCommands.Any() && InternalBatchCommands.All(s => s.PreparedStatement?.IsPrepared == true);
+    public bool IsPrepared
+    {
+        get
+        {
+            return _connectorPreparedOn == (InternalConnection?.Connector ?? _connector) && AllPrepared();
+
+            bool AllPrepared()
+            {
+                if (InternalBatchCommands.Count is 0)
+                    return false;
+
+                foreach (var s in InternalBatchCommands)
+                    if (s.PreparedStatement is null || !s.PreparedStatement.IsPrepared)
+                        return false;
+                return true;
+            }
+        }
+    }
 
     #endregion Public properties
 
@@ -343,18 +359,6 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     }
 
     bool[]? _unknownResultTypeList;
-
-    #endregion
-
-    #region Result Types Management
-
-    /// <summary>
-    /// Marks result types to be used when using GetValue on a data reader, on a column-by-column basis.
-    /// Used for Entity Framework 5-6 compability.
-    /// Only primitive numerical types and DateTimeOffset are supported.
-    /// Set the whole array or just a value to null to use default type.
-    /// </summary>
-    internal Type[]? ObjectResultTypes { get; set; }
 
     #endregion
 
@@ -442,8 +446,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         using var _ = conn.StartTemporaryBindingScope(out var connector);
 
-        if (InternalBatchCommands.Any(s => s.PreparedStatement?.IsExplicit == true))
-            throw new NpgsqlException("Deriving parameters isn't supported for commands that are already prepared.");
+        foreach (var s in InternalBatchCommands)
+            if (s.PreparedStatement?.IsExplicit == true)
+                throw new NpgsqlException("Deriving parameters isn't supported for commands that are already prepared.");
 
         // Here we unprepare statements that possibly are auto-prepared
         Unprepare();
@@ -494,14 +499,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 throw new InvalidOperationException($"{CommandText} does not exist in pg_proc");
         }
 
-        var typeMapper = c.InternalConnection!.Connector!.TypeMapper;
+        var serializerOptions = c.InternalConnection!.Connector!.SerializerOptions;
 
         for (var i = 0; i < types.Length; i++)
         {
             var param = new NpgsqlParameter();
 
-            var (npgsqlDbType, postgresType) = typeMapper.GetTypeInfoByOid(types[i]);
-
+            var postgresType = serializerOptions.DatabaseInfo.GetPostgresType(types[i]);
+            var npgsqlDbType = postgresType.DataTypeName.ToNpgsqlDbType();
             param.DataTypeName = postgresType.DisplayName;
             param.PostgresType = postgresType;
             if (npgsqlDbType.HasValue)
@@ -547,58 +552,75 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (sendTask.IsFaulted)
                 sendTask.GetAwaiter().GetResult();
 
-            foreach (var batchCommand in InternalBatchCommands)
+            try
             {
-                Expect<ParseCompleteMessage>(
-                    connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
-                var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
-                    connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector).TypeOIDs;
-
-                if (batchCommand.PositionalParameters.Count != paramTypeOIDs.Count)
+                foreach (var batchCommand in InternalBatchCommands)
                 {
-                    connector.SkipUntil(BackendMessageCode.ReadyForQuery);
-                    Parameters.Clear();
-                    throw new NpgsqlException("There was a mismatch in the number of derived parameters between the Npgsql SQL parser and the PostgreSQL parser. Please report this as bug to the Npgsql developers (https://github.com/npgsql/npgsql/issues).");
-                }
+                    Expect<ParseCompleteMessage>(
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
+                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector).TypeOIDs;
 
-                for (var i = 0; i < paramTypeOIDs.Count; i++)
-                {
-                    try
-                    {
-                        var param = batchCommand.PositionalParameters[i];
-                        var paramOid = paramTypeOIDs[i];
-
-                        var (npgsqlDbType, postgresType) = connector.TypeMapper.GetTypeInfoByOid(paramOid);
-
-                        if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)
-                            throw new NpgsqlException("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");
-
-                        param.DataTypeName = postgresType.DisplayName;
-                        param.PostgresType = postgresType;
-                        if (npgsqlDbType.HasValue)
-                            param.NpgsqlDbType = npgsqlDbType.Value;
-                    }
-                    catch
+                    if (batchCommand.PositionalParameters.Count != paramTypeOIDs.Count)
                     {
                         connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                         Parameters.Clear();
-                        throw;
+                        throw new NpgsqlException(
+                            "There was a mismatch in the number of derived parameters between the Npgsql SQL parser and the PostgreSQL parser. Please report this as bug to the Npgsql developers (https://github.com/npgsql/npgsql/issues).");
+                    }
+
+                    for (var i = 0; i < paramTypeOIDs.Count; i++)
+                    {
+                        try
+                        {
+                            var param = batchCommand.PositionalParameters[i];
+                            var paramOid = paramTypeOIDs[i];
+
+                            var postgresType = connector.SerializerOptions.DatabaseInfo.GetPostgresType(paramOid);
+                            // We want to keep any domain types visible on the parameter, it will internally do a representational lookup again if necessary.
+                            var npgsqlDbType = postgresType.GetRepresentationalType().DataTypeName.ToNpgsqlDbType();
+                            if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)
+                                throw new NpgsqlException(
+                                    "The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");
+
+                            param.DataTypeName = postgresType.DisplayName;
+                            param.PostgresType = postgresType;
+                            if (npgsqlDbType.HasValue)
+                                param.NpgsqlDbType = npgsqlDbType.Value;
+                        }
+                        catch
+                        {
+                            connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+                            Parameters.Clear();
+                            throw;
+                        }
+                    }
+
+                    var msg = connector.ReadMessage(async: false).GetAwaiter().GetResult();
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.RowDescription:
+                    case BackendMessageCode.NoData:
+                        break;
+                    default:
+                        throw connector.UnexpectedMessageReceived(msg.Code);
                     }
                 }
 
-                var msg = connector.ReadMessage(async: false).GetAwaiter().GetResult();
-                switch (msg.Code)
+                Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
+            }
+            finally
+            {
+                try
                 {
-                case BackendMessageCode.RowDescription:
-                case BackendMessageCode.NoData:
-                    break;
-                default:
-                    throw connector.UnexpectedMessageReceived(msg.Code);
+                    // Make sure sendTask is complete so we don't race against asynchronous flush
+                    sendTask.GetAwaiter().GetResult();
+                }
+                catch
+                {
+                    // ignored
                 }
             }
-
-            Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
-            sendTask.GetAwaiter().GetResult();
         }
     }
 
@@ -624,10 +646,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 #else
     public override Task PrepareAsync(CancellationToken cancellationToken = default)
 #endif
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Prepare(true, cancellationToken);
-    }
+        => Prepare(async: true, cancellationToken);
 
     Task Prepare(bool async, CancellationToken cancellationToken = default)
     {
@@ -644,18 +663,24 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateValues: false, CommandType);
+                batchCommand.Parameters.ProcessParameters(connector.SerializerOptions, validateValues: false, CommandType);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
             }
 
             if (logger.IsEnabled(LogLevel.Debug) && needToPrepare)
-                LogMessages.PreparingCommandExplicitly(logger, string.Join("; ", InternalBatchCommands.Select(c => c.CommandText)), connector.Id);
+                LogMessages.PreparingCommandExplicitly(logger, string.Join("; ", CommandTexts()), connector.Id);
+
+            IEnumerable<string> CommandTexts()
+            {
+                foreach (var c in InternalBatchCommands)
+                    yield return c.CommandText;
+            }
         }
         else
         {
-            Parameters.ProcessParameters(connector.TypeMapper, validateValues: false, CommandType);
+            Parameters.ProcessParameters(connector.SerializerOptions, validateValues: false, CommandType);
             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
             foreach (var batchCommand in InternalBatchCommands)
@@ -683,53 +708,66 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (sendTask.IsFaulted)
                         sendTask.GetAwaiter().GetResult();
 
-                    // Loop over statements, skipping those that are already prepared (because they were persisted)
-                    var isFirst = true;
-                    foreach (var batchCommand in command.InternalBatchCommands)
+                    try
                     {
-                        if (!batchCommand.IsPreparing)
-                            continue;
-
-                        var pStatement = batchCommand.PreparedStatement!;
-
-                        if (pStatement.StatementBeingReplaced != null)
+                        // Loop over statements, skipping those that are already prepared (because they were persisted)
+                        var isFirst = true;
+                        foreach (var batchCommand in command.InternalBatchCommands)
                         {
-                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
-                            pStatement.StatementBeingReplaced.CompleteUnprepare();
-                            pStatement.StatementBeingReplaced = null;
+                            if (!batchCommand.IsPreparing)
+                                continue;
+
+                            var pStatement = batchCommand.PreparedStatement!;
+
+                            if (pStatement.StatementBeingReplaced != null)
+                            {
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                                pStatement.StatementBeingReplaced.CompleteUnprepare();
+                                pStatement.StatementBeingReplaced = null;
+                            }
+
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
+                            var msg = await connector.ReadMessage(async).ConfigureAwait(false);
+                            switch (msg.Code)
+                            {
+                            case BackendMessageCode.RowDescription:
+                                // Clone the RowDescription for use with the prepared statement (the one we have is reused
+                                // by the connection)
+                                var description = ((RowDescriptionMessage)msg).Clone();
+                                command.FixupRowDescription(description, isFirst);
+                                batchCommand.Description = description;
+                                break;
+                            case BackendMessageCode.NoData:
+                                batchCommand.Description = null;
+                                break;
+                            default:
+                                throw connector.UnexpectedMessageReceived(msg.Code);
+                            }
+
+                            pStatement.State = PreparedState.Prepared;
+                            connector.PreparedStatementManager.NumPrepared++;
+                            batchCommand.IsPreparing = false;
+                            isFirst = false;
                         }
 
-                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
-                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
-                        var msg = await connector.ReadMessage(async);
-                        switch (msg.Code)
-                        {
-                        case BackendMessageCode.RowDescription:
-                            // Clone the RowDescription for use with the prepared statement (the one we have is reused
-                            // by the connection)
-                            var description = ((RowDescriptionMessage)msg).Clone();
-                            command.FixupRowDescription(description, isFirst);
-                            batchCommand.Description = description;
-                            break;
-                        case BackendMessageCode.NoData:
-                            batchCommand.Description = null;
-                            break;
-                        default:
-                            throw connector.UnexpectedMessageReceived(msg.Code);
-                        }
-
-                        pStatement.State = PreparedState.Prepared;
-                        connector.PreparedStatementManager.NumPrepared++;
-                        batchCommand.IsPreparing = false;
-                        isFirst = false;
+                        Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
                     }
-
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
-
-                    if (async)
-                        await sendTask;
-                    else
-                        sendTask.GetAwaiter().GetResult();
+                    finally
+                    {
+                        try
+                        {
+                            // Make sure sendTask is complete so we don't race against asynchronous flush
+                            if (async)
+                                await sendTask.ConfigureAwait(false);
+                            else
+                                sendTask.GetAwaiter().GetResult();
+                        }
+                        catch
+                        {
+                            // ignored
+                        }
+                    }
                 }
 
                 LogMessages.CommandPreparedExplicitly(connector.CommandLogger, connector.Id);
@@ -768,10 +806,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     public Task UnprepareAsync(CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return Unprepare(true, cancellationToken);
-    }
+        => Unprepare(async: true, cancellationToken);
 
     async Task Unprepare(bool async, CancellationToken cancellationToken = default)
     {
@@ -779,7 +814,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         Debug.Assert(connection is not null);
         if (connection.Settings.Multiplexing)
             throw new NotSupportedException("Explicit preparation not supported with multiplexing");
-        if (InternalBatchCommands.All(s => !s.IsPrepared))
+
+        var forall = true;
+        foreach (var statement in InternalBatchCommands)
+            if (statement.IsPrepared)
+            {
+                forall = false;
+                break;
+            }
+        if (forall)
             return;
 
         var connector = connection.Connector!;
@@ -788,15 +831,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         using (connector.StartUserAction(cancellationToken))
         {
-            var sendTask = SendClose(connector, async, cancellationToken);
-            if (sendTask.IsFaulted)
-                sendTask.GetAwaiter().GetResult();
+            // Just wait for SendClose to complete since each statement takes no more than 20 bytes
+            await SendClose(connector, async, cancellationToken).ConfigureAwait(false);
 
             foreach (var batchCommand in InternalBatchCommands)
             {
                 if (batchCommand.PreparedStatement?.State == PreparedState.BeingUnprepared)
                 {
-                    Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                    Expect<CloseCompletedMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
 
                     var pStatement = batchCommand.PreparedStatement;
                     pStatement.CompleteUnprepare();
@@ -808,12 +850,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
-
-            if (async)
-                await sendTask;
-            else
-                sendTask.GetAwaiter().GetResult();
+            Expect<ReadyForQueryMessage>(await connector.ReadMessage(async).ConfigureAwait(false), connector);
         }
     }
 
@@ -905,7 +942,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         case CommandType.StoredProcedure:
             var sqlBuilder = new StringBuilder()
                 .Append(EnableStoredProcedureCompatMode ? "SELECT * FROM " : "CALL ")
-                .Append(CommandText)
+                .Append(commandText)
                 .Append('(');
 
             var isFirstParam = true;
@@ -988,10 +1025,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             NpgsqlBatchCommand? batchCommand = null;
 
+            var syncCaller = !async;
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
                 // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
-                ForceAsyncIfNecessary(ref async, i);
+                if (syncCaller && ShouldSchedule(ref async, i))
+                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
                 batchCommand = InternalBatchCommands[i];
                 var pStatement = batchCommand.PreparedStatement;
@@ -1005,16 +1044,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     // We may have a prepared statement that replaces an existing statement - close the latter first.
                     if (pStatement?.StatementBeingReplaced != null)
-                        await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async, cancellationToken);
+                        await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async, cancellationToken).ConfigureAwait(false);
 
-                    await connector.WriteParse(batchCommand.FinalCommandText, batchCommand.StatementName, batchCommand.PositionalParameters, async, cancellationToken);
+                    await connector.WriteParse(batchCommand.FinalCommandText, batchCommand.StatementName, batchCommand.PositionalParameters, async, cancellationToken).ConfigureAwait(false);
 
                     await connector.WriteBind(
                         batchCommand.PositionalParameters, string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
                         i == 0 ? UnknownResultTypeList : null,
-                        async, cancellationToken);
+                        async, cancellationToken).ConfigureAwait(false);
 
-                    await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async, cancellationToken);
+                    await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1022,13 +1061,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     await connector.WriteBind(
                         batchCommand.PositionalParameters, string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
                         i == 0 ? UnknownResultTypeList : null,
-                        async, cancellationToken);
+                        async, cancellationToken).ConfigureAwait(false);
                 }
 
-                await connector.WriteExecute(0, async, cancellationToken);
+                await connector.WriteExecute(0, async, cancellationToken).ConfigureAwait(false);
 
                 if (batchCommand.AppendErrorBarrier ?? EnableErrorBarriers)
-                    await connector.WriteSync(async, cancellationToken);
+                    await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
 
                 if (pStatement != null)
                     pStatement.LastUsed = DateTime.UtcNow;
@@ -1036,35 +1075,38 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             if (batchCommand is null || !(batchCommand.AppendErrorBarrier ?? EnableErrorBarriers))
             {
-                await connector.WriteSync(async, cancellationToken);
+                await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
             }
 
             if (flush)
-                await connector.Flush(async, cancellationToken);
+                await connector.Flush(async, cancellationToken).ConfigureAwait(false);
         }
 
         async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
         {
             var wroteSomething = false;
+            var syncCaller = !async;
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
-                ForceAsyncIfNecessary(ref async, i);
+                if (syncCaller && ShouldSchedule(ref async, i))
+                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
                 var batchCommand = InternalBatchCommands[i];
 
                 if (batchCommand.PreparedStatement?.State == PreparedState.Prepared)
-                    continue;   // Prepared, we already have the RowDescription
+                    continue; // Prepared, we already have the RowDescription
 
-                await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName, batchCommand.PositionalParameters, async, cancellationToken);
-                await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken);
+                await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName,
+                    batchCommand.PositionalParameters, async, cancellationToken).ConfigureAwait(false);
+                await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
                 wroteSomething = true;
             }
 
             if (wroteSomething)
             {
-                await connector.WriteSync(async, cancellationToken);
+                await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
                 if (flush)
-                    await connector.Flush(async, cancellationToken);
+                    await connector.Flush(async, cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -1073,27 +1115,31 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         BeginSend(connector);
 
+        var syncCaller = !async;
         for (var i = 0; i < InternalBatchCommands.Count; i++)
         {
-            ForceAsyncIfNecessary(ref async, i);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             var batchCommand = InternalBatchCommands[i];
 
-            await connector.WriteParse(batchCommand.FinalCommandText!, string.Empty, EmptyParameters, async, cancellationToken);
-            await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async, cancellationToken);
+            await connector.WriteParse(batchCommand.FinalCommandText!, string.Empty, EmptyParameters, async, cancellationToken).ConfigureAwait(false);
+            await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async, cancellationToken).ConfigureAwait(false);
         }
 
-        await connector.WriteSync(async, cancellationToken);
-        await connector.Flush(async, cancellationToken);
+        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     async Task SendPrepare(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
     {
         BeginSend(connector);
 
+        var syncCaller = !async;
         for (var i = 0; i < InternalBatchCommands.Count; i++)
         {
-            ForceAsyncIfNecessary(ref async, i);
+            if (syncCaller && ShouldSchedule(ref async, i))
+                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
             var batchCommand = InternalBatchCommands[i];
             var pStatement = batchCommand.PreparedStatement;
@@ -1106,49 +1152,49 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // We may have a prepared statement that replaces an existing statement - close the latter first.
             var statementToClose = pStatement!.StatementBeingReplaced;
             if (statementToClose != null)
-                await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async, cancellationToken);
+                await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async, cancellationToken).ConfigureAwait(false);
 
-            await connector.WriteParse(batchCommand.FinalCommandText!, pStatement.Name!, batchCommand.PositionalParameters, async, cancellationToken);
-            await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async, cancellationToken);
+            await connector.WriteParse(batchCommand.FinalCommandText!, pStatement.Name!, batchCommand.PositionalParameters, async,
+                cancellationToken).ConfigureAwait(false);
+            await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async, cancellationToken).ConfigureAwait(false);
         }
 
-        await connector.WriteSync(async, cancellationToken);
-        await connector.Flush(async, cancellationToken);
+        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void ForceAsyncIfNecessary(ref bool async, int numberOfStatementInBatch)
+    bool ShouldSchedule(ref bool async, int indexOfStatementInBatch)
     {
-        if (!async && numberOfStatementInBatch > 0)
-        {
-            // We're synchronously sending the non-first statement in a batch - switch to async writing.
-            // See long comment in Execute() above.
+        if (indexOfStatementInBatch <= 0)
+            return false;
 
-            // TODO: we can simply do all batch writing asynchronously, instead of starting with the 2nd statement.
-            // For now, writing the first statement synchronously gives us a better chance of handle and bubbling up errors correctly
-            // (see sendTask.IsFaulted in Execute()). Once #1323 is done, that shouldn't be needed any more and entire batches should
-            // be written asynchronously.
-            async = true;
-            SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
-        }
+        // We're synchronously sending the non-first statement in a batch - switch to async writing.
+        // See long comment in Execute() above.
+
+        // TODO: we can simply do all batch writing asynchronously, instead of starting with the 2nd statement.
+        // For now, writing the first statement synchronously gives us a better chance of handling and bubbling up errors correctly
+        // (see sendTask.IsFaulted in Execute()). Once #1323 is done, that shouldn't be needed any more and entire batches should
+        // be written asynchronously.
+        async = true;
+        return TaskScheduler.Current != ConstrainedConcurrencyScheduler;
     }
 
     async Task SendClose(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
     {
         BeginSend(connector);
 
-        var i = 0;
-        foreach (var batchCommand in InternalBatchCommands.Where(s => s.IsPrepared))
+        foreach (var batchCommand in InternalBatchCommands)
         {
-            ForceAsyncIfNecessary(ref async, i);
-
-            await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken);
+            if (!batchCommand.IsPrepared)
+                continue;
+            // No need to force async here since each statement takes no more than 20 bytes
+            await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
             batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
-            i++;
         }
 
-        await connector.WriteSync(async, cancellationToken);
-        await connector.Flush(async, cancellationToken);
+        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -1169,25 +1215,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </param>
     /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
     public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ExecuteNonQuery(true, cancellationToken);
-    }
+        => ExecuteNonQuery(async: true, cancellationToken);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
     {
-        var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+        var reader = await ExecuteReader(async, CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
         try
         {
-            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
+            while (async ? await reader.NextResultAsync(cancellationToken).ConfigureAwait(false) : reader.NextResult()) ;
 
             return reader.RecordsAffected;
         }
         finally
         {
             if (async)
-                await reader.DisposeAsync();
+                await reader.DisposeAsync().ConfigureAwait(false);
             else
                 reader.Dispose();
         }
@@ -1214,10 +1257,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <returns>A task representing the asynchronous operation, with the first column of the
     /// first row in the result set, or a null reference if the result set is empty.</returns>
     public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ExecuteScalar(true, cancellationToken).AsTask();
-    }
+        => ExecuteScalar(async: true, cancellationToken).AsTask();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)
@@ -1226,19 +1266,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (IsWrappedByBatch || !Parameters.HasOutputParameters)
             behavior |= CommandBehavior.SequentialAccess;
 
-        var reader = await ExecuteReader(behavior, async, cancellationToken);
+        var reader = await ExecuteReader(async, behavior, cancellationToken).ConfigureAwait(false);
         try
         {
-            var read = async ? await reader.ReadAsync(cancellationToken) : reader.Read();
-            var value = read && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-            // We read the whole result set to trigger any errors
-            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
-            return value;
+            var read = async ? await reader.ReadAsync(cancellationToken).ConfigureAwait(false) : reader.Read();
+            return read && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
         finally
         {
             if (async)
-                await reader.DisposeAsync();
+                await reader.DisposeAsync().ConfigureAwait(false);
             else
                 reader.Dispose();
         }
@@ -1264,7 +1301,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-        => await ExecuteReaderAsync(behavior, cancellationToken);
+        => await ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
@@ -1273,7 +1310,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <returns>A task representing the operation.</returns>
     public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
-        => ExecuteReader(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        => ExecuteReader(async: false, behavior, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// An asynchronous version of <see cref="ExecuteReader(CommandBehavior)"/>, which executes
@@ -1298,16 +1335,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return ExecuteReader(behavior, async: true, cancellationToken).AsTask();
-    }
+        => ExecuteReader(async: true, behavior, cancellationToken).AsTask();
 
     // TODO: Maybe pool these?
     internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
         = new();
 
-    internal virtual async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+    internal virtual async ValueTask<NpgsqlDataReader> ExecuteReader(bool async, CommandBehavior behavior, CancellationToken cancellationToken)
     {
         var conn = CheckAndGetConnection();
         _behavior = behavior;
@@ -1330,7 +1364,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (connector is not null)
             {
-                var dataSource = connector.DataSource;
                 var logger = connector.CommandLogger;
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1342,6 +1375,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 Task? sendTask;
 
                 var validateParameterValues = !behavior.HasFlag(CommandBehavior.SchemaOnly);
+                long startTimestamp;
 
                 try
                 {
@@ -1360,8 +1394,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     ResetPreparation();
                                     goto case false;
                                 }
-                                
-                                batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+
+                                batchCommand.Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                             }
                         }
                         else
@@ -1374,10 +1408,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 ResetPreparation();
                                 goto case false;
                             }
-                            Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+                            Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                         }
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
+                        connector.DataSource.MetricsReporter.CommandStartPrepared();
                         break;
 
                     case false:
@@ -1389,7 +1424,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var batchCommand = InternalBatchCommands[i];
 
-                                batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+                                batchCommand.Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                                 if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1401,7 +1436,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                         else
                         {
-                            Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+                            Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
@@ -1414,7 +1449,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             _connectorPreparedOn = connector;
                             if (numPrepared == InternalBatchCommands.Count)
+                            {
                                 NpgsqlEventSource.Log.CommandStartPrepared();
+                                connector.DataSource.MetricsReporter.CommandStartPrepared();
+                            }
                         }
 
                         break;
@@ -1431,6 +1469,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
 
                     NpgsqlEventSource.Log.CommandStart(CommandText);
+                    startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
                     TraceCommandStart(connector);
 
                     // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
@@ -1461,10 +1500,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
                 var reader = connector.DataReader;
-                reader.Init(this, behavior, InternalBatchCommands, sendTask);
+                reader.Init(this, behavior, InternalBatchCommands, startTimestamp, sendTask);
                 connector.CurrentReader = reader;
                 if (async)
-                    await reader.NextResultAsync(cancellationToken);
+                    await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
                 else
                     reader.NextResult();
 
@@ -1491,13 +1530,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
-                        batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateValues: true, CommandType);
+                        batchCommand.Parameters.ProcessParameters(dataSource.SerializerOptions, validateValues: true, CommandType);
                         ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
                     }
                 }
                 else
                 {
-                    Parameters.ProcessParameters(dataSource.TypeMapper, validateValues: true, CommandType);
+                    Parameters.ProcessParameters(dataSource.SerializerOptions, validateValues: true, CommandType);
                     ProcessRawQuery(null, standardConformingStrings: true, batchCommand: null);
                 }
 
@@ -1509,14 +1548,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 ExecutionCompletion.Reset();
                 try
                 {
-                    await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken);
+                    await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken).ConfigureAwait(false);
                 }
                 catch (ChannelClosedException ex)
                 {
                     Debug.Assert(ex.InnerException is not null);
                     throw ex.InnerException;
                 }
-                connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
+                connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version).ConfigureAwait(false);
                 // TODO: Overload of StartBindingScope?
                 conn.Connector = connector;
                 connector.Connection = conn;
@@ -1525,7 +1564,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var reader = connector.DataReader;
                 reader.Init(this, behavior, InternalBatchCommands);
                 connector.CurrentReader = reader;
-                await reader.NextResultAsync(cancellationToken);
+                await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
 
                 return reader;
             }
@@ -1534,7 +1573,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var reader = connector?.CurrentReader;
             if (e is not NpgsqlOperationInProgressException && reader is not null)
-                await reader.Cleanup(async);
+                await reader.Cleanup(async).ConfigureAwait(false);
 
             TraceSetException(e);
 
@@ -1624,7 +1663,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         // TODO: Statements isn't cleared/recycled, leaving this for now, since it'll be replaced by the new batching API
         _commandText = string.Empty;
         CommandType = CommandType.Text;
-        _parameters.Clear();
+        // Can be null if it's owned by batch
+        _parameters?.Clear();
         _timeout = null;
         _allResultTypesAreUnknown = false;
         EnableErrorBarriers = false;
@@ -1710,10 +1750,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         for (var i = 0; i < rowDescription.Count; i++)
         {
             var field = rowDescription[i];
-            field.FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
-                ? FormatCode.Text
-                : FormatCode.Binary;
-            field.ResolveHandler();
+            field.DataFormat = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
+                ? DataFormat.Text
+                : DataFormat.Binary;
         }
     }
 
@@ -1733,7 +1772,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     LogMessages.ExecutingCommandWithParameters(
                         logger,
                         singleCommand.FinalCommandText!,
-                        singleCommand.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value!).ToArray(),
+                        ParametersDbNullAsString(singleCommand),
                         connector.Id);
                 }
                 else
@@ -1741,7 +1780,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     LogMessages.CommandExecutionCompletedWithParameters(
                         logger,
                         singleCommand.FinalCommandText!,
-                        singleCommand.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value!).ToArray(),
+                        ParametersDbNullAsString(singleCommand),
                         connector.QueryLogStopWatch.ElapsedMilliseconds,
                         connector.Id);
                 }
@@ -1758,11 +1797,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (logParameters)
             {
-                var commands = InternalBatchCommands
-                    .Select(c => (
-                        c.CommandText,
-                        Parameters: (object[]?)c.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value).ToArray()!)
-                    ).ToArray();
+                var commands = new (string, object[])[InternalBatchCommands.Count];
+                for (var i = 0; i < InternalBatchCommands.Count; i++)
+                    commands[i] = (InternalBatchCommands[i].FinalCommandText!, ParametersDbNullAsString(InternalBatchCommands[i]));
 
                 if (executing)
                     LogMessages.ExecutingBatchWithParameters(logger, commands, connector.Id);
@@ -1771,13 +1808,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
             else
             {
-                var commands = InternalBatchCommands.Select(c => c.CommandText).ToArray().ToArray();
-
+                var commands = new string[InternalBatchCommands.Count];
+                for (var i = 0; i < InternalBatchCommands.Count; i++)
+                    commands[i] = InternalBatchCommands[i].FinalCommandText!;
                 if (executing)
                     LogMessages.ExecutingBatch(logger, commands, connector.Id);
                 else
                     LogMessages.BatchExecutionCompleted(logger, commands, connector.QueryLogStopWatch.ElapsedMilliseconds, connector.Id);
             }
+        }
+
+        object[] ParametersDbNullAsString(NpgsqlBatchCommand c)
+        {
+            var parameters = new object[c.PositionalParameters.Count];
+            for (var i = 0; i < c.PositionalParameters.Count; i++)
+                parameters[i] = c.PositionalParameters[i].Value == DBNull.Value ? "NULL" : c.PositionalParameters[i].Value!;
+            return parameters;
         }
     }
 
@@ -1795,7 +1841,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         var clone = new NpgsqlCommand(CommandText, InternalConnection, Transaction)
         {
-            CommandTimeout = CommandTimeout, CommandType = CommandType, DesignTimeVisible = DesignTimeVisible, _allResultTypesAreUnknown = _allResultTypesAreUnknown, _unknownResultTypeList = _unknownResultTypeList, ObjectResultTypes = ObjectResultTypes
+            CommandTimeout = CommandTimeout,
+            CommandType = CommandType,
+            DesignTimeVisible = DesignTimeVisible,
+            _allResultTypesAreUnknown = _allResultTypesAreUnknown,
+            _unknownResultTypeList = _unknownResultTypeList
         };
         _parameters.CloneTo(clone._parameters);
         return clone;

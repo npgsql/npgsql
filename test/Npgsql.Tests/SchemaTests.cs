@@ -225,6 +225,34 @@ CREATE DOMAIN {domainType} AS TEXT");
     }
 
     [Test]
+    public async Task Databases()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var database = await conn.ExecuteScalarAsync("SELECT current_database()");
+
+        var dataTable = await GetSchema(conn, "Databases");
+        var databases = dataTable.Rows
+            .Cast<DataRow>()
+            .Select(r => (string)r["database_name"])
+            .ToList();
+
+        Assert.That(databases, Does.Contain(database));
+    }
+
+    [Test]
+    public async Task Schemata()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var schema = await CreateTempSchema(conn);
+
+        var dataTable = await GetSchema(conn, "Schemata");
+        var row = dataTable.Rows.Cast<DataRow>().Single(r => (string)r["schema_name"] == schema);
+
+        Assert.That(row["catalog_name"], Is.EqualTo(await conn.ExecuteScalarAsync("SELECT current_database()")));
+        Assert.That(row["schema_owner"], Is.EqualTo(await conn.ExecuteScalarAsync("SELECT current_user")));
+    }
+
+    [Test]
     public async Task ForeignKeys()
     {
         await using var conn = await OpenConnectionAsync();
@@ -533,6 +561,14 @@ CREATE TABLE {table} (color {schema}.{enumName});");
         var dataTable = await GetSchema(conn, "Columns", new[] { null, null, table });
         var row = dataTable.Rows.Cast<DataRow>().Single();
         Assert.That(row["data_type"], Is.EqualTo($"{schema}.{enumName}"));
+    }
+
+    [Test]
+    public async Task SlimBuilder_introspection_without_unsupported_type_exceptions()
+    {
+        await using var dataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString).Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
+        Assert.That(() => GetSchema(conn, DbMetaDataCollectionNames.DataTypes), Throws.Nothing);
     }
 
     public SchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }

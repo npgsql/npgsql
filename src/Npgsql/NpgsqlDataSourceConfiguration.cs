@@ -5,21 +5,20 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
 
 namespace Npgsql;
 
-sealed record NpgsqlDataSourceConfiguration(
+sealed record NpgsqlDataSourceConfiguration(string? Name,
     NpgsqlLoggingConfiguration LoggingConfiguration,
-    EncryptionHandler EncryptionHandler,
+    TransportSecurityHandler TransportSecurityHandler,
+    IntegratedSecurityHandler userCertificateValidationCallback,
     RemoteCertificateValidationCallback? UserCertificateValidationCallback,
     Action<X509CertificateCollection>? ClientCertificatesCallback,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,
     TimeSpan PeriodicPasswordSuccessRefreshInterval,
     TimeSpan PeriodicPasswordFailureRefreshInterval,
-    List<TypeHandlerResolverFactory> ResolverFactories,
-    Dictionary<string, IUserTypeMapping> UserTypeMappings,
+    IEnumerable<IPgTypeInfoResolver> ResolverChain,
+    List<HackyEnumTypeMapping> HackyEnumMappings,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
     Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);

@@ -6,33 +6,44 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
-public sealed partial class NpgsqlReadBuffer
+sealed partial class NpgsqlReadBuffer
 {
     internal sealed class ColumnStream : Stream
+#if NETSTANDARD2_0
+        , IAsyncDisposable
+#endif
     {
         readonly NpgsqlConnector _connector;
         readonly NpgsqlReadBuffer _buf;
-        int _start, _len, _read;
+        long _startPos;
+        int _start;
+        int _read;
         bool _canSeek;
-        readonly bool _startCancellableOperations;
+        bool _commandScoped;
+        /// Does not throw ODE.
+        internal int CurrentLength { get; private set; }
         internal bool IsDisposed { get; private set; }
 
-        internal ColumnStream(NpgsqlConnector connector, bool startCancellableOperations = true)
+        internal ColumnStream(NpgsqlConnector connector)
         {
             _connector = connector;
             _buf = connector.ReadBuffer;
-            _startCancellableOperations = startCancellableOperations;
             IsDisposed = true;
         }
 
-        internal void Init(int len, bool canSeek)
+        internal void Init(int len, bool canSeek, bool commandScoped)
         {
             Debug.Assert(!canSeek || _buf.ReadBytesLeft >= len,
                 "Seekable stream constructed but not all data is in buffer (sequential)");
-            _start = _buf.ReadPosition;
-            _len = len;
-            _read = 0;
+            _startPos = _buf.CumulativeReadPosition;
+
             _canSeek = canSeek;
+            _start = canSeek ? _buf.ReadPosition : 0;
+
+            CurrentLength = len;
+            _read = 0;
+
+            _commandScoped = commandScoped;
             IsDisposed = false;
         }
 
@@ -47,7 +58,7 @@ public sealed partial class NpgsqlReadBuffer
             get
             {
                 CheckDisposed();
-                return _len;
+                return CurrentLength;
             }
         }
 
@@ -65,7 +76,7 @@ public sealed partial class NpgsqlReadBuffer
             {
                 if (value < 0)
                     throw new ArgumentOutOfRangeException(nameof(value), "Non - negative number required.");
-                Seek(_start + value, SeekOrigin.Begin);
+                Seek(value, SeekOrigin.Begin);
             }
         }
 
@@ -87,8 +98,9 @@ public sealed partial class NpgsqlReadBuffer
                 var tempPosition = unchecked(_start + (int)offset);
                 if (offset < 0 || tempPosition < _start)
                     throw new IOException(seekBeforeBegin);
-                _buf.ReadPosition = _start;
-                return tempPosition;
+                _buf.ReadPosition = tempPosition;
+                _read = (int)offset;
+                return _read;
             }
             case SeekOrigin.Current:
             {
@@ -96,15 +108,17 @@ public sealed partial class NpgsqlReadBuffer
                 if (unchecked(_buf.ReadPosition + offset) < _start || tempPosition < _start)
                     throw new IOException(seekBeforeBegin);
                 _buf.ReadPosition = tempPosition;
-                return tempPosition;
+                _read += (int)offset;
+                return _read;
             }
             case SeekOrigin.End:
             {
-                var tempPosition = unchecked(_len + (int)offset);
-                if (unchecked(_len + offset) < _start || tempPosition < _start)
+                var tempPosition = unchecked(_start + CurrentLength + (int)offset);
+                if (unchecked(_start + CurrentLength + offset) < _start || tempPosition < _start)
                     throw new IOException(seekBeforeBegin);
                 _buf.ReadPosition = tempPosition;
-                return tempPosition;
+                _read = CurrentLength + (int)offset;
+                return _read;
             }
             default:
                 throw new ArgumentOutOfRangeException(nameof(origin), "Invalid seek origin.");
@@ -137,9 +151,7 @@ public sealed partial class NpgsqlReadBuffer
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             ValidateArguments(buffer, offset, count);
-
-            using (NoSynchronizationContextScope.Enter())
-                return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+            return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
 #if NETSTANDARD2_0
@@ -150,12 +162,12 @@ public sealed partial class NpgsqlReadBuffer
         {
             CheckDisposed();
 
-            var count = Math.Min(span.Length, _len - _read);
+            var count = Math.Min(span.Length, CurrentLength - _read);
 
             if (count == 0)
                 return 0;
 
-            var read = _buf.Read(span.Slice(0, count));
+            var read = _buf.Read(_commandScoped, span.Slice(0, count));
             _read += read;
 
             return read;
@@ -169,20 +181,16 @@ public sealed partial class NpgsqlReadBuffer
         {
             CheckDisposed();
 
-            var count = Math.Min(buffer.Length, _len - _read);
-
-            if (count == 0)
-                return new ValueTask<int>(0);
-
-            using (NoSynchronizationContextScope.Enter())
-                return ReadLong(this, buffer.Slice(0, count), cancellationToken);
+            var count = Math.Min(buffer.Length, CurrentLength - _read);
+            return count == 0 ? new ValueTask<int>(0) : ReadLong(this, buffer.Slice(0, count), cancellationToken);
 
             static async ValueTask<int> ReadLong(ColumnStream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
-                using var registration = stream._startCancellableOperations
+                using var registration = cancellationToken.CanBeCanceled
                     ? stream._connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false)
                     : default;
-                var read = await stream._buf.ReadAsync(buffer, cancellationToken);
+
+                var read = await stream._buf.ReadAsync(stream._commandScoped, buffer, cancellationToken).ConfigureAwait(false);
                 stream._read += read;
                 return read;
             }
@@ -205,24 +213,21 @@ public sealed partial class NpgsqlReadBuffer
 #else
         public override ValueTask DisposeAsync()
 #endif
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return DisposeAsync(disposing: true, async: true);
-        }
+            => DisposeAsync(disposing: true, async: true);
 
         async ValueTask DisposeAsync(bool disposing, bool async)
         {
             if (IsDisposed || !disposing)
                 return;
 
-            var leftToSkip = _len - _read;
-            if (leftToSkip > 0)
+            if (!_connector.IsBroken)
             {
-                if (async)
-                    await _buf.Skip(leftToSkip, async);
-                else
-                    _buf.Skip(leftToSkip, async).GetAwaiter().GetResult();
+                var pos = _buf.CumulativeReadPosition - _startPos;
+                var remaining = checked((int)(CurrentLength - pos));
+                if (remaining > 0)
+                    await _buf.Skip(remaining, async).ConfigureAwait(false);
             }
+
             IsDisposed = true;
         }
     }

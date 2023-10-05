@@ -6,10 +6,8 @@ using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Npgsql.Internal;
 using Npgsql.Netstandard20;
-using Npgsql.Properties;
 using Npgsql.Replication;
 
 namespace Npgsql;
@@ -28,7 +26,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     string? _dataSourceCached;
 
     internal string? DataSourceCached
-        => _dataSourceCached ??= _host is null || _host.Contains(',')
+        => _dataSourceCached ??= _host is null || _host.Contains(",")
             ? null
             : IsUnixSocket(_host, _port, out var socketPath, replaceForAbstract: false)
                 ? socketPath
@@ -145,7 +143,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     public override void Clear()
     {
         Debug.Assert(Keys != null);
-        foreach (var k in Keys.ToArray())
+        foreach (var k in (string[])Keys)
             Remove(k);
     }
 
@@ -451,24 +449,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     SslMode _sslMode;
 
     /// <summary>
-    /// Whether to trust the server certificate without validating it.
-    /// </summary>
-    [Category("Security")]
-    [Description("Whether to trust the server certificate without validating it.")]
-    [DisplayName("Trust Server Certificate")]
-    [NpgsqlConnectionStringProperty]
-    public bool TrustServerCertificate
-    {
-        get => _trustServerCertificate;
-        set
-        {
-            _trustServerCertificate = value;
-            SetValue(nameof(TrustServerCertificate), value);
-        }
-    }
-    bool _trustServerCertificate;
-
-    /// <summary>
     /// Location of a client certificate to be sent to the server.
     /// </summary>
     [Category("Security")]
@@ -652,6 +632,25 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
     }
     bool _includeErrorDetail;
+
+    /// <summary>
+    /// Controls whether channel binding is required, disabled or preferred, depending on server support.
+    /// </summary>
+    [Category("Security")]
+    [Description("Controls whether channel binding is required, disabled or preferred, depending on server support.")]
+    [DisplayName("Channel Binding")]
+    [DefaultValue(ChannelBinding.Prefer)]
+    [NpgsqlConnectionStringProperty]
+    public ChannelBinding ChannelBinding
+    {
+        get => _channelBinding;
+        set
+        {
+            _channelBinding = value;
+            SetValue(nameof(ChannelBinding), value);
+        }
+    }
+    ChannelBinding _channelBinding;
 
     #endregion
 
@@ -1554,6 +1553,25 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         set => IncludeErrorDetail = value;
     }
 
+    /// <summary>
+    /// Whether to trust the server certificate without validating it.
+    /// </summary>
+    [Category("Security")]
+    [Description("Whether to trust the server certificate without validating it.")]
+    [DisplayName("Trust Server Certificate")]
+    [Obsolete("The TrustServerCertificate parameter is no longer needed and does nothing.")]
+    [NpgsqlConnectionStringProperty]
+    public bool TrustServerCertificate
+    {
+        get => _trustServerCertificate;
+        set
+        {
+            _trustServerCertificate = value;
+            SetValue(nameof(TrustServerCertificate), value);
+        }
+    }
+    bool _trustServerCertificate;
+
     #endregion
 
     #region Misc
@@ -1564,10 +1582,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
             throw new ArgumentException("Host can't be null");
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
-        if (TrustServerCertificate && SslMode is SslMode.Allow or SslMode.VerifyCA or SslMode.VerifyFull)
-            throw new ArgumentException(NpgsqlStrings.CannotUseTrustServerCertificate);
 
-        if (!Host.Contains(','))
+        if (!Host.Contains(","))
         {
             if (TargetSessionAttributesParsed is not null &&
                 TargetSessionAttributesParsed != Npgsql.TargetSessionAttributes.Any)
@@ -1667,12 +1683,32 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// <summary>
     /// Gets an <see cref="ICollection" /> containing the keys of the <see cref="NpgsqlConnectionStringBuilder"/>.
     /// </summary>
-    public new ICollection<string> Keys => base.Keys.Cast<string>().ToArray()!;
+    public new ICollection<string> Keys
+    {
+        get
+        {
+            var result = new string[base.Keys.Count];
+            var i = 0;
+            foreach (var key in base.Keys)
+                result[i++] = (string)key;
+            return result;
+        }
+    }
 
     /// <summary>
     /// Gets an <see cref="ICollection" /> containing the values in the <see cref="NpgsqlConnectionStringBuilder"/>.
     /// </summary>
-    public new ICollection<object?> Values => base.Values.Cast<object?>().ToArray();
+    public new ICollection<object?> Values
+    {
+        get
+        {
+            var result = new object?[base.Keys.Count];
+            var i = 0;
+            foreach (var key in base.Values)
+                result[i++] = (object?)key;
+            return result;
+        }
+    }
 
     /// <summary>
     /// Copies the elements of the <see cref="NpgsqlConnectionStringBuilder"/> to an Array, starting at a particular Array index.
@@ -1712,13 +1748,15 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         // provider, for example.
         base.GetProperties(propertyDescriptors);
 
-        var toRemove = propertyDescriptors.Values
-            .Cast<PropertyDescriptor>()
-            .Where(d =>
-                !d.Attributes.Cast<Attribute>().Any(a => a is NpgsqlConnectionStringPropertyAttribute) ||
-                d.Attributes.Cast<Attribute>().Any(a => a is ObsoleteAttribute)
-            )
-            .ToList();
+        var toRemove = new List<PropertyDescriptor>();
+        foreach (var value in propertyDescriptors.Values)
+        {
+            var d = (PropertyDescriptor)value;
+            foreach (var attribute in d.Attributes)
+                if (attribute is NpgsqlConnectionStringPropertyAttribute or ObsoleteAttribute)
+                    toRemove.Add(d);
+        }
+
         foreach (var o in toRemove)
             propertyDescriptors.Remove(o.DisplayName);
     }
@@ -1806,6 +1844,25 @@ public enum SslMode
     /// Fail the connection if the server doesn't support SSL. Also verifies server certificate with host's name.
     /// </summary>
     VerifyFull
+}
+
+/// <summary>
+/// Specifies how to manage channel binding.
+/// </summary>
+public enum ChannelBinding
+{
+    /// <summary>
+    /// Channel binding is disabled. If the server requires channel binding, the connection will fail.
+    /// </summary>
+    Disable,
+    /// <summary>
+    /// Prefer channel binding if the server allows it, but connect without it if not.
+    /// </summary>
+    Prefer,
+    /// <summary>
+    /// Fail the connection if the server doesn't support channel binding.
+    /// </summary>
+    Require
 }
 
 /// <summary>

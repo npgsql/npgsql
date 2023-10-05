@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -166,11 +167,68 @@ public class JsonTests : MultiplexingTestBase
             slimDataSource);
     }
 
+    [Test]
+    public async Task Poco_does_not_stomp_GetValue_string()
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        var dataSource = dataSourceBuilder.UseSystemTextJson(null, new[] {typeof(WeatherForecast)}, new[] {typeof(WeatherForecast)}).Build();
+        var sqlLiteral =
+            IsJsonb
+                ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
+                : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{(IsJsonb ? "jsonb" : "json")}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        Assert.That(reader.GetValue(0), Is.TypeOf<string>());
+    }
+
+    [Test]
+    public Task Roundtrip_string()
+        => AssertType(
+            @"{""p"": 1}",
+            @"{""p"": 1}",
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+    [Test]
+    public Task Roundtrip_char_array()
+        => AssertType(
+            @"{""p"": 1}".ToCharArray(),
+            @"{""p"": 1}",
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+    [Test]
+    public Task Roundtrip_byte_array()
+        => AssertType(
+            Encoding.ASCII.GetBytes(@"{""p"": 1}"),
+            @"{""p"": 1}",
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+    [JsonDerivedType(typeof(ExtendedDerivedWeatherForecast), typeDiscriminator: "extended")]
     record WeatherForecast
     {
         public DateTime Date { get; set; }
         public int TemperatureC { get; set; }
         public string Summary { get; set; } = "";
+    }
+
+    record DerivedWeatherForecast : WeatherForecast
+    {
+    }
+
+    record ExtendedDerivedWeatherForecast : DerivedWeatherForecast
+    {
+        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
     }
 
     [Test]
@@ -256,7 +314,7 @@ public class JsonTests : MultiplexingTestBase
             isDefault: false);
     }
 
-    [Test]
+    [Test, Ignore("TODO We should not change the default type for json/jsonb, it makes little sense.")]
     public async Task Poco_default_mapping()
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -266,7 +324,7 @@ public class JsonTests : MultiplexingTestBase
             dataSourceBuilder.UseSystemTextJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertTypeWrite(
+        await AssertType(
             dataSource,
             new WeatherForecast
             {
@@ -279,7 +337,136 @@ public class JsonTests : MultiplexingTestBase
                 : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
             NpgsqlDbType,
+            isDefaultForReading: false,
             isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
+    [Test]
+    public async Task Poco_polymorphic_mapping()
+    {
+        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
+        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
+        if (IsJsonb)
+            return;
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UseSystemTextJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertType<WeatherForecast>(
+            dataSource,
+            new ExtendedDerivedWeatherForecast()
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
+            """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
+            PostgresType,
+            NpgsqlDbType,
+            isDefaultForReading: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
+    [Test]
+    public async Task Poco_polymorphic_mapping_read_parents()
+    {
+        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
+        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
+        if (IsJsonb)
+            return;
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UseSystemTextJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
+        await using var dataSource = dataSourceBuilder.Build();
+
+        var value = new ExtendedDerivedWeatherForecast()
+        {
+            Date = new DateTime(2019, 9, 1),
+            Summary = "Partly cloudy",
+            TemperatureC = 10
+        };
+
+        var sql = """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+
+        await AssertTypeWrite<WeatherForecast>(
+            dataSource,
+            value,
+            sql,
+            PostgresType,
+            NpgsqlDbType,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+        // GetFieldValue
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value,
+            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast),
+            isDefault: false);
+
+        await AssertTypeRead<DerivedWeatherForecast>(dataSource, sql, PostgresType, value,
+            comparer: (_, actual) => actual.GetType() == typeof(DerivedWeatherForecast), isDefault: false);
+
+        await AssertTypeRead<ExtendedDerivedWeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
+    }
+
+
+    [Test]
+    public async Task Poco_exact_polymorphic_mapping()
+    {
+        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
+        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
+        if (IsJsonb)
+            return;
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UseSystemTextJson(jsonClrTypes: new[] { typeof(ExtendedDerivedWeatherForecast) });
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertType(
+            dataSource,
+            new ExtendedDerivedWeatherForecast()
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
+            """{"TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
+            PostgresType,
+            NpgsqlDbType,
+            isDefaultForReading: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
+    [Test]
+    public async Task Poco_unspecified_polymorphic_mapping()
+    {
+        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
+        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
+        // In this case we don't have any statically mapped base type to check its PolymorphicOptions on.
+        // Detecting whether the type could be polymorphic would require us to duplicate STJ's nearest polymorphic ancestor search.
+        if (IsJsonb)
+            return;
+
+        var value = new ExtendedDerivedWeatherForecast()
+        {
+            Date = new DateTime(2019, 9, 1),
+            Summary = "Partly cloudy",
+            TemperatureC = 10
+        };
+
+        var sql = """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+
+        await AssertType(
+            value,
+            sql,
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false);
+
+        await AssertTypeRead<DerivedWeatherForecast>(DataSource, sql, PostgresType, value,
+            comparer: (_, actual) => actual.GetType() == typeof(DerivedWeatherForecast), isDefault: false);
+
+        await AssertTypeRead<WeatherForecast>(DataSource, sql, PostgresType, value,
+            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast), isDefault: false);
     }
 
     public JsonTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)

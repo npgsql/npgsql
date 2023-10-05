@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Internal;
-using Npgsql.TypeMapping;
 using NUnit.Framework;
 
 namespace Npgsql.Tests;
@@ -70,6 +69,6 @@ public class PostgresTypeTests : TestBase
     async Task<NpgsqlDatabaseInfo> GetDatabaseInfo()
     {
         await using var conn = await OpenConnectionAsync();
-        return conn.NpgsqlDataSource.TypeMapper.DatabaseInfo;
+        return conn.NpgsqlDataSource.DatabaseInfo;
     }
 }

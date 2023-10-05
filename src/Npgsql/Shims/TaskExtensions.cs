@@ -42,7 +42,7 @@ static class TaskExtensions
             if (tasks.Count != 0)
             {
                 tasks.Add(task);
-                var result = await Task.WhenAny(tasks);
+                var result = await Task.WhenAny(tasks).ConfigureAwait(false);
                 if (result == cancellationTask)
                 {
                     task = Task.FromCanceled(cancellationToken);
@@ -52,7 +52,7 @@ static class TaskExtensions
                     task = Task.FromException(new TimeoutException());
                 }
             }
-            await task;
+            await task.ConfigureAwait(false);
         }
         finally
         {

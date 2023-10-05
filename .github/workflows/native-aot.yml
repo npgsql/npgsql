@@ -15,31 +15,32 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.100-preview.5.23266.8'
+  dotnet_sdk_version: '8.0.100-rc.1.23463.5'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  nuget_config: |
-    <?xml version="1.0" encoding="utf-8"?>
-    <configuration>
-
-        <packageSources>
-            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-            <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
-        </packageSources>
-
-        <packageSourceMapping>
-            <packageSource key="nuget.org">
-                <package pattern="*" />
-            </packageSource>
-            <packageSource key="dotnet8">
-                <package pattern="runtime.*" />
-                <package pattern="Microsoft.NETCore.App.Runtime.*" />
-                <package pattern="Microsoft.AspNetCore.App.Runtime.*" />
-                <package pattern="Microsoft.NET.ILLink.Tasks" />
-                <package pattern="Microsoft.DotNet.ILCompiler" />
-            </packageSource>
-        </packageSourceMapping>
-
-    </configuration>
+  # Uncomment and edit the following to use nightly/preview builds 
+#  nuget_config: |
+#    <?xml version="1.0" encoding="utf-8"?>
+#    <configuration>
+#
+#        <packageSources>
+#            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+#            <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
+#        </packageSources>
+#
+#        <packageSourceMapping>
+#            <packageSource key="nuget.org">
+#                <package pattern="*" />
+#            </packageSource>
+#            <packageSource key="dotnet8">
+#                <package pattern="runtime.*" />
+#                <package pattern="Microsoft.NETCore.App.Runtime.*" />
+#                <package pattern="Microsoft.AspNetCore.App.Runtime.*" />
+#                <package pattern="Microsoft.NET.ILLink.Tasks" />
+#                <package pattern="Microsoft.DotNet.ILCompiler" />
+#            </packageSource>
+#        </packageSourceMapping>
+#
+#    </configuration>
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -52,7 +53,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: NuGet Cache
         uses: actions/cache@v3
@@ -68,8 +69,8 @@ jobs:
           dotnet-version: |
             ${{ env.dotnet_sdk_version }}
 
-      - name: Setup nuget config
-        run: echo "$nuget_config" > NuGet.config
+#      - name: Setup nuget config
+#        run: echo "$nuget_config" > NuGet.config
 
       - name: Setup Native AOT prerequisites
         run: sudo apt-get install clang zlib1g-dev
@@ -80,7 +81,7 @@ jobs:
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v3
+      #- uses: actions/checkout@v4
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 
@@ -106,6 +107,20 @@ jobs:
         with:
           name: npgsql.mstat
           path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat"
+          retention-days: 3
+
+      - name: Upload codedgen dgml
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          name: npgsql.codegen.dgml.xml
+          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
+          retention-days: 3
+
+      - name: Upload scan dgml
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          name: npgsql.scan.dgml.xml
+          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"
           retention-days: 3
 
       - name: Assert binary size

@@ -9,12 +9,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
 public class BugTests : TestBase
 {
+    static uint ByteaOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Bytea].Value;
+
     #region Sequential reader bugs
 
     [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
@@ -69,18 +72,6 @@ public class BugTests : TestBase
         var ex = Assert.Throws<PostgresException>(() => cmd.ExecuteNonQuery())!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.ProgramLimitExceeded)
             .Or.EqualTo(PostgresErrorCodes.TooManyColumns)); // PostgreSQL 14.5, 13.8, 12.12, 11.17 and 10.22 changed the returned error
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1238")]
-    public void Record_with_non_int_field()
-    {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn);
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        var record = reader.GetFieldValue<object[]>(0);
-        Assert.That(record[0], Is.EqualTo("one"));
-        Assert.That(record[1], Is.EqualTo(2));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1450")]
@@ -1201,7 +1192,7 @@ BEGIN
 END;
 $$;");
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await connection.ExecuteScalarAsync($"SELECT {func}(0)"));
+        Assert.ThrowsAsync<NotSupportedException>(async () => await connection.ExecuteScalarAsync($"SELECT {func}(0)"));
     }
 
     [Test]
@@ -1284,9 +1275,9 @@ $$;");
 
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3839")]
-    public async Task SingleThreadedSynchronizationContext_deadlock()
+    public async Task UIThreadSynchronizationContext_deadlock()
     {
-        var syncContext = new SingleThreadSynchronizationContext(nameof(SingleThreadedSynchronizationContext_deadlock));
+        var syncContext = new SingleThreadSynchronizationContext(nameof(UIThreadSynchronizationContext_deadlock));
         using (var _ = syncContext.Enter())
         {
             // We have to Yield, so the current thread is changed to the one used by SingleThreadSynchronizationContext
@@ -1370,7 +1361,7 @@ $$;");
         await server
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+            .WriteRowDescription(new FieldDescription(ByteaOid))
             .WriteDataRowWithFlush(data);
 
         var otherData = new byte[10];
@@ -1379,7 +1370,7 @@ $$;");
             .WriteReadyForQuery()
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+            .WriteRowDescription(new FieldDescription(ByteaOid))
             .WriteDataRow(otherData)
             .WriteCommandComplete()
             .WriteReadyForQuery()

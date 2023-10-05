@@ -1,6 +1,8 @@
 using System;
+using System.Data;
 using Npgsql;
-using Npgsql.TypeMapping;
+using Npgsql.Internal.Postgres;
+using static Npgsql.Util.Statics;
 
 #pragma warning disable CA1720
 
@@ -633,6 +635,420 @@ public enum NpgsqlDbType
     Multirange = 0x20000000,
 
     #endregion
+}
+
+static class NpgsqlDbTypeExtensions
+{
+    internal static NpgsqlDbType? ToNpgsqlDbType(this DbType dbType)
+        => dbType switch
+        {
+            DbType.AnsiString => NpgsqlDbType.Text,
+            DbType.Binary => NpgsqlDbType.Bytea,
+            DbType.Byte => NpgsqlDbType.Smallint,
+            DbType.Boolean => NpgsqlDbType.Boolean,
+            DbType.Currency => NpgsqlDbType.Money,
+            DbType.Date => NpgsqlDbType.Date,
+            DbType.DateTime => LegacyTimestampBehavior ? NpgsqlDbType.Timestamp : NpgsqlDbType.TimestampTz,
+            DbType.Decimal => NpgsqlDbType.Numeric,
+            DbType.VarNumeric => NpgsqlDbType.Numeric,
+            DbType.Double => NpgsqlDbType.Double,
+            DbType.Guid => NpgsqlDbType.Uuid,
+            DbType.Int16 => NpgsqlDbType.Smallint,
+            DbType.Int32 => NpgsqlDbType.Integer,
+            DbType.Int64 => NpgsqlDbType.Bigint,
+            DbType.Single => NpgsqlDbType.Real,
+            DbType.String => NpgsqlDbType.Text,
+            DbType.Time => NpgsqlDbType.Time,
+            DbType.AnsiStringFixedLength => NpgsqlDbType.Text,
+            DbType.StringFixedLength => NpgsqlDbType.Text,
+            DbType.Xml => NpgsqlDbType.Xml,
+            DbType.DateTime2 => NpgsqlDbType.Timestamp,
+            DbType.DateTimeOffset => NpgsqlDbType.TimestampTz,
+
+            DbType.Object => null,
+            DbType.SByte => null,
+            DbType.UInt16 => null,
+            DbType.UInt32 => null,
+            DbType.UInt64 => null,
+
+            _ => throw new ArgumentOutOfRangeException(nameof(dbType), dbType, null)
+        };
+
+    public static DbType ToDbType(this NpgsqlDbType npgsqlDbType)
+        => npgsqlDbType switch
+        {
+            // Numeric types
+            NpgsqlDbType.Smallint => DbType.Int16,
+            NpgsqlDbType.Integer => DbType.Int32,
+            NpgsqlDbType.Bigint => DbType.Int64,
+            NpgsqlDbType.Real => DbType.Single,
+            NpgsqlDbType.Double => DbType.Double,
+            NpgsqlDbType.Numeric => DbType.Decimal,
+            NpgsqlDbType.Money => DbType.Currency,
+
+            // Text types
+            NpgsqlDbType.Text => DbType.String,
+            NpgsqlDbType.Xml => DbType.Xml,
+            NpgsqlDbType.Varchar => DbType.String,
+            NpgsqlDbType.Char => DbType.String,
+            NpgsqlDbType.Name => DbType.String,
+            NpgsqlDbType.Citext => DbType.String,
+            NpgsqlDbType.Refcursor => DbType.Object,
+            NpgsqlDbType.Jsonb => DbType.Object,
+            NpgsqlDbType.Json => DbType.Object,
+            NpgsqlDbType.JsonPath => DbType.Object,
+
+            // Date/time types
+            NpgsqlDbType.Timestamp => LegacyTimestampBehavior ? DbType.DateTime : DbType.DateTime2,
+            NpgsqlDbType.TimestampTz => LegacyTimestampBehavior ? DbType.DateTimeOffset : DbType.DateTime,
+            NpgsqlDbType.Date => DbType.Date,
+            NpgsqlDbType.Time => DbType.Time,
+
+            // Misc data types
+            NpgsqlDbType.Bytea => DbType.Binary,
+            NpgsqlDbType.Boolean => DbType.Boolean,
+            NpgsqlDbType.Uuid => DbType.Guid,
+
+            NpgsqlDbType.Unknown => DbType.Object,
+
+            _ => DbType.Object
+        };
+
+    /// Can return null when a custom range type is used.
+    internal static string? ToUnqualifiedDataTypeName(this NpgsqlDbType npgsqlDbType)
+        => npgsqlDbType switch
+        {
+            // Numeric types
+            NpgsqlDbType.Smallint => "int2",
+            NpgsqlDbType.Integer  => "int4",
+            NpgsqlDbType.Bigint   => "int8",
+            NpgsqlDbType.Real     => "float4",
+            NpgsqlDbType.Double   => "float8",
+            NpgsqlDbType.Numeric  => "numeric",
+            NpgsqlDbType.Money    => "money",
+
+            // Text types
+            NpgsqlDbType.Text      => "text",
+            NpgsqlDbType.Xml       => "xml",
+            NpgsqlDbType.Varchar   => "varchar",
+            NpgsqlDbType.Char      => "bpchar",
+            NpgsqlDbType.Name      => "name",
+            NpgsqlDbType.Refcursor => "refcursor",
+            NpgsqlDbType.Jsonb     => "jsonb",
+            NpgsqlDbType.Json      => "json",
+            NpgsqlDbType.JsonPath  => "jsonpath",
+
+            // Date/time types
+            NpgsqlDbType.Timestamp   => "timestamp",
+            NpgsqlDbType.TimestampTz => "timestamptz",
+            NpgsqlDbType.Date        => "date",
+            NpgsqlDbType.Time        => "time",
+            NpgsqlDbType.TimeTz      => "timetz",
+            NpgsqlDbType.Interval    => "interval",
+
+            // Network types
+            NpgsqlDbType.Cidr     => "cidr",
+            NpgsqlDbType.Inet     => "inet",
+            NpgsqlDbType.MacAddr  => "macaddr",
+            NpgsqlDbType.MacAddr8 => "macaddr8",
+
+            // Full-text search types
+            NpgsqlDbType.TsQuery   => "tsquery",
+            NpgsqlDbType.TsVector  => "tsvector",
+
+            // Geometry types
+            NpgsqlDbType.Box     => "box",
+            NpgsqlDbType.Circle  => "circle",
+            NpgsqlDbType.Line    => "line",
+            NpgsqlDbType.LSeg    => "lseg",
+            NpgsqlDbType.Path    => "path",
+            NpgsqlDbType.Point   => "point",
+            NpgsqlDbType.Polygon => "polygon",
+
+
+            // UInt types
+            NpgsqlDbType.Oid       => "oid",
+            NpgsqlDbType.Xid       => "xid",
+            NpgsqlDbType.Xid8      => "xid8",
+            NpgsqlDbType.Cid       => "cid",
+            NpgsqlDbType.Regtype   => "regtype",
+            NpgsqlDbType.Regconfig => "regconfig",
+
+            // Misc types
+            NpgsqlDbType.Boolean => "bool",
+            NpgsqlDbType.Bytea   => "bytea",
+            NpgsqlDbType.Uuid    => "uuid",
+            NpgsqlDbType.Varbit  => "varbit",
+            NpgsqlDbType.Bit     => "bit",
+
+            // Built-in range types
+            NpgsqlDbType.IntegerRange     => "int4range",
+            NpgsqlDbType.BigIntRange      => "int8range",
+            NpgsqlDbType.NumericRange     => "numrange",
+            NpgsqlDbType.TimestampRange   => "tsrange",
+            NpgsqlDbType.TimestampTzRange => "tstzrange",
+            NpgsqlDbType.DateRange        => "daterange",
+
+            // Built-in multirange types
+            NpgsqlDbType.IntegerMultirange     => "int4multirange",
+            NpgsqlDbType.BigIntMultirange      => "int8multirange",
+            NpgsqlDbType.NumericMultirange     => "nummultirange",
+            NpgsqlDbType.TimestampMultirange   => "tsmultirange",
+            NpgsqlDbType.TimestampTzMultirange => "tstzmultirange",
+            NpgsqlDbType.DateMultirange        => "datemultirange",
+
+            // Internal types
+            NpgsqlDbType.Int2Vector   => "int2vector",
+            NpgsqlDbType.Oidvector    => "oidvector",
+            NpgsqlDbType.PgLsn        => "pg_lsn",
+            NpgsqlDbType.Tid          => "tid",
+            NpgsqlDbType.InternalChar => "char",
+
+            // Plugin types
+            NpgsqlDbType.Citext    => "citext",
+            NpgsqlDbType.LQuery    => "lquery",
+            NpgsqlDbType.LTree     => "ltree",
+            NpgsqlDbType.LTxtQuery => "ltxtquery",
+            NpgsqlDbType.Hstore    => "hstore",
+            NpgsqlDbType.Geometry  => "geometry",
+            NpgsqlDbType.Geography => "geography",
+
+            NpgsqlDbType.Unknown => "unknown",
+
+            // Unknown cannot be composed
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array) && (npgsqlDbType & ~NpgsqlDbType.Array) == NpgsqlDbType.Unknown
+                => "unknown",
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Range) && (npgsqlDbType & ~NpgsqlDbType.Range) == NpgsqlDbType.Unknown
+                => "unknown",
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange) && (npgsqlDbType & ~NpgsqlDbType.Multirange) == NpgsqlDbType.Unknown
+                => "unknown",
+
+            _ => npgsqlDbType.HasFlag(NpgsqlDbType.Array)
+                ? ToUnqualifiedDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array) is { } name ? "_" + name : null
+                : null // e.g. ranges
+        };
+
+    internal static string ToUnqualifiedDataTypeNameOrThrow(this NpgsqlDbType npgsqlDbType)
+        => npgsqlDbType.ToUnqualifiedDataTypeName() ?? throw new ArgumentOutOfRangeException(nameof(npgsqlDbType), npgsqlDbType, "Cannot convert NpgsqlDbType to DataTypeName");
+
+    /// Can return null when a plugin type or custom range type is used.
+    internal static DataTypeName? ToDataTypeName(this NpgsqlDbType npgsqlDbType)
+        => npgsqlDbType switch
+        {
+            // Numeric types
+            NpgsqlDbType.Smallint => DataTypeNames.Int2,
+            NpgsqlDbType.Integer => DataTypeNames.Int4,
+            NpgsqlDbType.Bigint => DataTypeNames.Int8,
+            NpgsqlDbType.Real => DataTypeNames.Float4,
+            NpgsqlDbType.Double => DataTypeNames.Float8,
+            NpgsqlDbType.Numeric => DataTypeNames.Numeric,
+            NpgsqlDbType.Money => DataTypeNames.Money,
+
+            // Text types
+            NpgsqlDbType.Text => DataTypeNames.Text,
+            NpgsqlDbType.Xml => DataTypeNames.Xml,
+            NpgsqlDbType.Varchar => DataTypeNames.Varchar,
+            NpgsqlDbType.Char => DataTypeNames.Bpchar,
+            NpgsqlDbType.Name => DataTypeNames.Name,
+            NpgsqlDbType.Refcursor => DataTypeNames.RefCursor,
+            NpgsqlDbType.Jsonb => DataTypeNames.Jsonb,
+            NpgsqlDbType.Json => DataTypeNames.Json,
+            NpgsqlDbType.JsonPath => DataTypeNames.Jsonpath,
+
+            // Date/time types
+            NpgsqlDbType.Timestamp => DataTypeNames.Timestamp,
+            NpgsqlDbType.TimestampTz => DataTypeNames.TimestampTz,
+            NpgsqlDbType.Date => DataTypeNames.Date,
+            NpgsqlDbType.Time => DataTypeNames.Time,
+            NpgsqlDbType.TimeTz => DataTypeNames.TimeTz,
+            NpgsqlDbType.Interval => DataTypeNames.Interval,
+
+            // Network types
+            NpgsqlDbType.Cidr => DataTypeNames.Cidr,
+            NpgsqlDbType.Inet => DataTypeNames.Inet,
+            NpgsqlDbType.MacAddr => DataTypeNames.MacAddr,
+            NpgsqlDbType.MacAddr8 => DataTypeNames.MacAddr8,
+
+            // Full-text search types
+            NpgsqlDbType.TsQuery => DataTypeNames.TsQuery,
+            NpgsqlDbType.TsVector => DataTypeNames.TsVector,
+
+            // Geometry types
+            NpgsqlDbType.Box => DataTypeNames.Box,
+            NpgsqlDbType.Circle => DataTypeNames.Circle,
+            NpgsqlDbType.Line => DataTypeNames.Line,
+            NpgsqlDbType.LSeg => DataTypeNames.LSeg,
+            NpgsqlDbType.Path => DataTypeNames.Path,
+            NpgsqlDbType.Point => DataTypeNames.Point,
+            NpgsqlDbType.Polygon => DataTypeNames.Polygon,
+
+            // UInt types
+            NpgsqlDbType.Oid => DataTypeNames.Oid,
+            NpgsqlDbType.Xid => DataTypeNames.Xid,
+            NpgsqlDbType.Xid8 => DataTypeNames.Xid8,
+            NpgsqlDbType.Cid => DataTypeNames.Cid,
+            NpgsqlDbType.Regtype => DataTypeNames.RegType,
+            NpgsqlDbType.Regconfig => DataTypeNames.RegConfig,
+
+            // Misc types
+            NpgsqlDbType.Boolean => DataTypeNames.Bool,
+            NpgsqlDbType.Bytea => DataTypeNames.Bytea,
+            NpgsqlDbType.Uuid => DataTypeNames.Uuid,
+            NpgsqlDbType.Varbit => DataTypeNames.Varbit,
+            NpgsqlDbType.Bit => DataTypeNames.Bit,
+
+            // Built-in range types
+            NpgsqlDbType.IntegerRange => DataTypeNames.Int4Range,
+            NpgsqlDbType.BigIntRange => DataTypeNames.Int8Range,
+            NpgsqlDbType.NumericRange => DataTypeNames.NumRange,
+            NpgsqlDbType.TimestampRange => DataTypeNames.TsRange,
+            NpgsqlDbType.TimestampTzRange => DataTypeNames.TsTzRange,
+            NpgsqlDbType.DateRange => DataTypeNames.DateRange,
+
+            // Internal types
+            NpgsqlDbType.Int2Vector => DataTypeNames.Int2Vector,
+            NpgsqlDbType.Oidvector => DataTypeNames.OidVector,
+            NpgsqlDbType.PgLsn => DataTypeNames.PgLsn,
+            NpgsqlDbType.Tid => DataTypeNames.Tid,
+            NpgsqlDbType.InternalChar => DataTypeNames.Char,
+
+            // Special types
+            NpgsqlDbType.Unknown => DataTypeNames.Unknown,
+
+            // Unknown cannot be composed
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array) && (npgsqlDbType & ~NpgsqlDbType.Array) == NpgsqlDbType.Unknown
+                => DataTypeNames.Unknown,
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Range) && (npgsqlDbType & ~NpgsqlDbType.Range) == NpgsqlDbType.Unknown
+                => DataTypeNames.Unknown,
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange) && (npgsqlDbType & ~NpgsqlDbType.Multirange) == NpgsqlDbType.Unknown
+                 => DataTypeNames.Unknown,
+
+            // If both multirange and array are set we first remove array, so array is added to the outermost datatypename.
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array)
+                => ToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array)?.ToArrayName(),
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange)
+                => ToDataTypeName((npgsqlDbType | NpgsqlDbType.Range) & ~NpgsqlDbType.Multirange)?.ToDefaultMultirangeName(),
+
+            // Plugin types don't have a stable fully qualified name.
+            _ => null
+        };
+
+    internal static NpgsqlDbType? ToNpgsqlDbType(this DataTypeName dataTypeName) => ToNpgsqlDbType(dataTypeName.UnqualifiedName);
+    /// Should not be used with display names, first normalize it instead.
+    internal static NpgsqlDbType? ToNpgsqlDbType(string dataTypeName)
+    {
+        var unqualifiedName = dataTypeName;
+        if (dataTypeName.IndexOf(".", StringComparison.Ordinal) is not -1 and var index)
+            unqualifiedName = dataTypeName.Substring(0, index);
+
+        return unqualifiedName switch
+            {
+                // Numeric types
+                "int2" => NpgsqlDbType.Smallint,
+                "int4" => NpgsqlDbType.Integer,
+                "int8" => NpgsqlDbType.Bigint,
+                "float4" => NpgsqlDbType.Real,
+                "float8" => NpgsqlDbType.Double,
+                "numeric" => NpgsqlDbType.Numeric,
+                "money" => NpgsqlDbType.Money,
+
+                // Text types
+                "text" => NpgsqlDbType.Text,
+                "xml" => NpgsqlDbType.Xml,
+                "varchar" => NpgsqlDbType.Varchar,
+                "bpchar" => NpgsqlDbType.Char,
+                "name" => NpgsqlDbType.Name,
+                "refcursor" => NpgsqlDbType.Refcursor,
+                "jsonb" => NpgsqlDbType.Jsonb,
+                "json" => NpgsqlDbType.Json,
+                "jsonpath" => NpgsqlDbType.JsonPath,
+
+                // Date/time types
+                "timestamp" => NpgsqlDbType.Timestamp,
+                "timestamptz" => NpgsqlDbType.TimestampTz,
+                "date" => NpgsqlDbType.Date,
+                "time" => NpgsqlDbType.Time,
+                "timetz" => NpgsqlDbType.TimeTz,
+                "interval" => NpgsqlDbType.Interval,
+
+                // Network types
+                "cidr" => NpgsqlDbType.Cidr,
+                "inet" => NpgsqlDbType.Inet,
+                "macaddr" => NpgsqlDbType.MacAddr,
+                "macaddr8" => NpgsqlDbType.MacAddr8,
+
+                // Full-text search types
+                "tsquery" => NpgsqlDbType.TsQuery,
+                "tsvector" => NpgsqlDbType.TsVector,
+
+                // Geometry types
+                "box" => NpgsqlDbType.Box,
+                "circle" => NpgsqlDbType.Circle,
+                "line" => NpgsqlDbType.Line,
+                "lseg" => NpgsqlDbType.LSeg,
+                "path" => NpgsqlDbType.Path,
+                "point" => NpgsqlDbType.Point,
+                "polygon" => NpgsqlDbType.Polygon,
+
+                // UInt types
+                "oid" => NpgsqlDbType.Oid,
+                "xid" => NpgsqlDbType.Xid,
+                "xid8" => NpgsqlDbType.Xid8,
+                "cid" => NpgsqlDbType.Cid,
+                "regtype" => NpgsqlDbType.Regtype,
+                "regconfig" => NpgsqlDbType.Regconfig,
+
+                // Misc types
+                "bool" => NpgsqlDbType.Boolean,
+                "bytea" => NpgsqlDbType.Bytea,
+                "uuid" => NpgsqlDbType.Uuid,
+                "varbit" => NpgsqlDbType.Varbit,
+                "bit" => NpgsqlDbType.Bit,
+
+                // Built-in range types
+                "int4range" => NpgsqlDbType.IntegerRange,
+                "int8range" => NpgsqlDbType.BigIntRange,
+                "numrange" => NpgsqlDbType.NumericRange,
+                "tsrange" => NpgsqlDbType.TimestampRange,
+                "tstzrange" => NpgsqlDbType.TimestampTzRange,
+                "daterange" => NpgsqlDbType.DateRange,
+
+                // Built-in multirange types
+                "int4multirange" => NpgsqlDbType.IntegerMultirange,
+                "int8multirange" => NpgsqlDbType.BigIntMultirange,
+                "nummultirange" => NpgsqlDbType.NumericMultirange,
+                "tsmultirange" => NpgsqlDbType.TimestampMultirange,
+                "tstzmultirange" => NpgsqlDbType.TimestampTzMultirange,
+                "datemultirange" => NpgsqlDbType.DateMultirange,
+
+                // Internal types
+                "int2vector" => NpgsqlDbType.Int2Vector,
+                "oidvector" => NpgsqlDbType.Oidvector,
+                "pg_lsn" => NpgsqlDbType.PgLsn,
+                "tid" => NpgsqlDbType.Tid,
+                "char" => NpgsqlDbType.InternalChar,
+
+                // Plugin types
+                "citext" => NpgsqlDbType.Citext,
+                "lquery" => NpgsqlDbType.LQuery,
+                "ltree" => NpgsqlDbType.LTree,
+                "ltxtquery" => NpgsqlDbType.LTxtQuery,
+                "hstore" => NpgsqlDbType.Hstore,
+                "geometry" => NpgsqlDbType.Geometry,
+                "geography" => NpgsqlDbType.Geography,
+
+                _ when unqualifiedName.Contains("unknown")
+                    => !unqualifiedName.StartsWith("_", StringComparison.Ordinal)
+                        ? NpgsqlDbType.Unknown
+                        : null,
+                _ when unqualifiedName.StartsWith("_", StringComparison.Ordinal)
+                    => ToNpgsqlDbType(unqualifiedName.Substring(1)) is { } elementNpgsqlDbType
+                        ? elementNpgsqlDbType | NpgsqlDbType.Array
+                        : null,
+                // e.g. custom ranges, plugin types etc.
+                _ => null
+            };
+    }
 }
 
 /// <summary>

@@ -24,14 +24,11 @@
     <data name="CannotUseSslRootCertificateWithUserCallback" xml:space="preserve">
         <value>RootCertificate cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
-    <data name="CannotUseSslModeRequireWithoutTrustServerCertificate" xml:space="preserve">
-        <value>To validate server certificates, please use VerifyFull or VerifyCA instead of Require. To disable validation, explicitly set 'Trust Server Certificate' to true. See https://www.npgsql.org/doc/release-notes/6.0.html for more details.</value>
+    <data name="TransportSecurityDisabled" xml:space="preserve">
+        <value>Transport security hasn't been enabled; please call {0} on NpgsqlSlimDataSourceBuilder to enable it.</value>
     </data>
-    <data name="CannotUseTrustServerCertificate" xml:space="preserve">
-        <value>TrustServerCertificate=true is not supported with SslMode={0}</value>
-    </data>
-    <data name="EncryptionDisabled" xml:space="preserve">
-        <value>NpgsqlSlimDataSourceBuilder is being used, and encryption hasn't been enabled, call EnableEncryption() on NpgsqlSlimDataSourceBuilder to enable it.</value>
+    <data name="IntegratedSecurityDisabled" xml:space="preserve">
+        <value>Integrated security hasn't been enabled; please call {0} on NpgsqlSlimDataSourceBuilder to enable it.</value>
     </data>
     <data name="NoMultirangeTypeFound" xml:space="preserve">
         <value>No multirange type could be found in the database for subtype {0}.</value>
@@ -74,5 +71,26 @@
     </data>
     <data name="FullTextSearchNotEnabled" xml:space="preserve">
         <value>Full-text search isn't enabled; please call {0} on {1} to enable full-text search.</value>
+    </data>
+    <data name="LTreeNotEnabled" xml:space="preserve">
+        <value>Ltree isn't enabled; please call {0} on {1} to enable LTree.</value>
+    </data>
+    <data name="RangesNotEnabled" xml:space="preserve">
+        <value>Ranges aren't enabled; please call {0} on {1} to enable ranges.</value>
+    </data>
+    <data name="RangeArraysNotEnabled" xml:space="preserve">
+        <value>Range arrays aren't enabled; please call {0} on {1} to enable arrays for ranges.</value>
+    </data>
+    <data name="MultirangesNotEnabled" xml:space="preserve">
+        <value>Multiranges aren't enabled; please call {0} on {1} to enable multiranges.</value>
+    </data>
+    <data name="MultirangeArraysNotEnabled" xml:space="preserve">
+        <value>Multirange arrays aren't enabled; please call {0} on {1} to enable arrays for multiranges.</value>
+    </data>
+    <data name="TimestampTzNoDateTimeUnspecified" xml:space="preserve">
+        <value>Cannot write DateTime with Kind={0} to PostgreSQL type '{1}', only UTC is supported. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
+    </data>
+    <data name="TimestampNoDateTimeUtc" xml:space="preserve">
+        <value>Cannot write DateTime with Kind=UTC to PostgreSQL type '{0}', consider using '{1}'. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
     </data>
 </root>

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +18,6 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsSecure, Is.True);
@@ -31,7 +32,6 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsScram, Is.False);
@@ -60,7 +60,6 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
@@ -154,9 +153,9 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
+        using var tx = conn.BeginTransaction();
         using var cmd = CreateSleepCommand(conn, 10000);
         var cts = new CancellationTokenSource(1000).Token;
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(cts), Throws.Exception
@@ -175,12 +174,51 @@ public class SecurityTests : TestBase
                 csb.SslMode = SslMode.Require;
                 csb.Username = "npgsql_tests_scram";
                 csb.Password = "npgsql_tests_scram";
-                csb.TrustServerCertificate = true;
             });
             using var conn = dataSource.OpenConnection();
             // scram-sha-256-plus only works beginning from PostgreSQL 11
             if (conn.PostgreSqlVersion.Major >= 11)
             {
+                Assert.That(conn.IsScram, Is.False);
+                Assert.That(conn.IsScramPlus, Is.True);
+            }
+            else
+            {
+                Assert.That(conn.IsScram, Is.True);
+                Assert.That(conn.IsScramPlus, Is.False);
+            }
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("scram-sha-256-plus doesn't seem to be set up");
+        }
+    }
+
+    [Test]
+    public void ScramPlus_channel_binding([Values] ChannelBinding channelBinding)
+    {
+        try
+        {
+            using var dataSource = CreateDataSource(csb =>
+            {
+                csb.SslMode = SslMode.Require;
+                csb.Username = "npgsql_tests_scram";
+                csb.Password = "npgsql_tests_scram";
+                csb.ChannelBinding = channelBinding;
+            });
+            // scram-sha-256-plus only works beginning from PostgreSQL 11
+            MinimumPgVersion(dataSource, "11.0");
+            using var conn = dataSource.OpenConnection();
+
+            if (channelBinding == ChannelBinding.Disable)
+            {
+                Assert.That(conn.IsScram, Is.True);
+                Assert.That(conn.IsScramPlus, Is.False);
+            }
+            else
+            {
+                Assert.That(conn.IsScram, Is.False);
                 Assert.That(conn.IsScramPlus, Is.True);
             }
         }
@@ -220,29 +258,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    public void SslMode_Require_throws_without_TSC()
-    {
-        using var dataSource = CreateDataSource(csb => csb.SslMode = SslMode.Require);
-        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync())!;
-        Assert.That(ex.Message, Is.EqualTo(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate));
-    }
-
-    [Test]
-    public async Task SslMode_Require_with_callback_without_TSC()
-    {
-        await using var dataSource = CreateDataSource(csb =>
-        {
-            csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = false;
-            csb.Pooling = false;
-        });
-        await using var connection = dataSource.CreateConnection();
-        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
-
-        await connection.OpenAsync();
-    }
-
-    [Test]
+    [Platform(Exclude = "Win", Reason = "Postgresql doesn't close connection correctly on windows which might result in missing error message")]
     public async Task Connect_with_only_non_ssl_allowed_user([Values] bool multiplexing, [Values] bool keepAlive)
     {
         if (multiplexing && keepAlive)
@@ -262,6 +278,13 @@ public class SecurityTests : TestBase
             });
             await using var conn = await dataSource.OpenConnectionAsync();
             Assert.IsFalse(conn.IsSecure);
+        }
+        catch (NpgsqlException ex) when (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ex.InnerException is IOException)
+        {
+            // Windows server to windows client invites races that can cause the socket to be reset before all data can be read.
+            // https://www.postgresql.org/message-id/flat/90b34057-4176-7bb0-0dbb-9822a5f6425b%40greiz-reinsdorf.de
+            // https://www.postgresql.org/message-id/flat/16678-253e48d34dc0c376@postgresql.org
+            Assert.Ignore();
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
@@ -358,7 +381,6 @@ public class SecurityTests : TestBase
             csb.Username = "npgsql_tests_ssl";
             csb.Password = "npgsql_tests_ssl";
             csb.MaxPoolSize = 1;
-            csb.TrustServerCertificate = true;
         });
 
         NpgsqlConnection conn = default!;
@@ -375,20 +397,23 @@ public class SecurityTests : TestBase
         }
 
         await using var __ = conn;
-        var originalConnector = conn.Connector;
-
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "select pg_sleep(30)";
-        cmd.CommandTimeout = 3;
-        var ex = async
-            ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
-            : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
-        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+        await using (var tx = await conn.BeginTransactionAsync())
+        {
+            var originalConnector = conn.Connector;
 
-        await conn.CloseAsync();
-        await conn.OpenAsync();
+            cmd.CommandText = "select pg_sleep(30)";
+            cmd.CommandTimeout = 3;
+            var ex = async
+                ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+                : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
+            Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
 
-        Assert.AreSame(originalConnector, conn.Connector);
+            await conn.CloseAsync();
+            await conn.OpenAsync();
+
+            Assert.AreSame(originalConnector, conn.Connector);
+        }
 
         cmd.CommandText = "SELECT 1";
         if (async)

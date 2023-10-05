@@ -1,5 +1,5 @@
 using System;
-using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
@@ -96,6 +96,8 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
         }
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Changing Enlist to be false does not affect potentially trimmed out functionality.")]
+    [UnconditionalSuppressMessage("Aot", "IL3050", Justification = "Changing Enlist to be false does not cause dynamic codegen.")]
     public void Commit(Enlistment enlistment)
     {
         CheckDisposed();
@@ -121,7 +123,11 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
                 // if the user continues to use their connection after disposing the scope, and the MSDTC
                 // requests a commit at that exact time.
                 // To avoid this, we open a new connection for performing the 2nd phase.
-                using var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone();
+                var settings = _connector.Connection.Settings.Clone();
+                // Set Enlist to false because we might be in TransactionScope and we can't prepare transaction while being in an open transaction
+                // see #5246
+                settings.Enlist = false;
+                using var conn2 = _connector.Connection.CloneWith(settings.ConnectionString);
                 conn2.Open();
 
                 var connector = conn2.Connector!;

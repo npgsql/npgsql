@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Data;
 using System.Threading.Tasks;
-using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Types;
 
@@ -16,8 +14,11 @@ class MiscTypeTests : MultiplexingTestBase
     [Test]
     public async Task Boolean()
     {
-        await AssertType(true, "true", "boolean", NpgsqlDbType.Boolean, DbType.Boolean);
-        await AssertType(false, "false", "boolean", NpgsqlDbType.Boolean, DbType.Boolean);
+        await AssertType(true, "true", "boolean", NpgsqlDbType.Boolean, DbType.Boolean, skipArrayCheck: true);
+        await AssertType(false, "false", "boolean", NpgsqlDbType.Boolean, DbType.Boolean, skipArrayCheck: true);
+
+        // The literal representations for bools inside array are different ({t,f} instead of true/false, so we check separately.
+        await AssertType(new[] { true, false }, "{t,f}", "boolean[]", NpgsqlDbType.Boolean | NpgsqlDbType.Array);
     }
 
     [Test]
@@ -49,7 +50,7 @@ class MiscTypeTests : MultiplexingTestBase
         {
             cmd.Parameters.AddWithValue("p1", DBNull.Value);
             cmd.Parameters.Add(new NpgsqlParameter<string?>("p2", null));
-            cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
+            cmd.Parameters.Add(new NpgsqlParameter<object>("p3", DBNull.Value));
 
             await using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
@@ -60,106 +61,20 @@ class MiscTypeTests : MultiplexingTestBase
             }
         }
 
-        // Setting non-generic NpgsqlParameter.Value is not allowed, only DBNull.Value
+        // Setting non-generic NpgsqlParameter.Value to null is not allowed, only DBNull.Value
         await using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
         {
             cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null!);
-            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        // Setting generic NpgsqlParameter<object>.Value to null is not allowed, only DBNull.Value
+        await using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter<object>("p4", NpgsqlDbType.Text) { Value = null! });
+            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
     }
-
-    #region Record
-
-    [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/724")]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/1980")]
-    public async Task Read_Record_as_object_array()
-    {
-        var recordLiteral = "(1,'foo'::text)::record";
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        var record = (object[])reader[0];
-        Assert.That(record[0], Is.EqualTo(1));
-        Assert.That(record[1], Is.EqualTo("foo"));
-
-        var array = (object[][])reader[1];
-        Assert.That(array.Length, Is.EqualTo(2));
-        Assert.That(array[0][0], Is.EqualTo(1));
-        Assert.That(array[1][0], Is.EqualTo(1));
-    }
-
-    [Test]
-    public async Task Read_Record_as_ValueTuple()
-    {
-        var recordLiteral = "(1,'foo'::text)::record";
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        var record = reader.GetFieldValue<(int, string)>(0);
-        Assert.That(record.Item1, Is.EqualTo(1));
-        Assert.That(record.Item2, Is.EqualTo("foo"));
-
-        var array = (object[][])reader[1];
-        Assert.That(array.Length, Is.EqualTo(2));
-        Assert.That(array[0][0], Is.EqualTo(1));
-        Assert.That(array[1][0], Is.EqualTo(1));
-    }
-
-    [Test]
-    public async Task Read_Record_as_Tuple()
-    {
-        var recordLiteral = "(1,'foo'::text)::record";
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-
-        var record = reader.GetFieldValue<Tuple<int, string>>(0);
-        Assert.That(record.Item1, Is.EqualTo(1));
-        Assert.That(record.Item2, Is.EqualTo("foo"));
-
-        var array = (object[][])reader[1];
-        Assert.That(array.Length, Is.EqualTo(2));
-        Assert.That(array[0][0], Is.EqualTo(1));
-        Assert.That(array[1][0], Is.EqualTo(1));
-    }
-
-    [Test]
-    public Task Write_Record_is_not_supported()
-        => AssertTypeUnsupportedWrite<object[], NotSupportedException>(new object[] { 1, "foo" }, "record");
-
-    [Test]
-    public async Task Records_supported_only_with_EnableRecords([Values] bool withMappings)
-    {
-        Func<IResolveConstraint> assertExpr = () => withMappings
-            ? Throws.Nothing
-            : Throws.Exception
-                .TypeOf<NotSupportedException>()
-                .With.Property("Message")
-                .EqualTo(string.Format(NpgsqlStrings.RecordsNotEnabled, "EnableRecords", "NpgsqlSlimDataSourceBuilder"));
-
-        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        if (withMappings)
-            dataSourceBuilder.EnableRecords();
-        await using var dataSource = dataSourceBuilder.Build();
-        await using var conn = await dataSource.OpenConnectionAsync();
-        await using var cmd = conn.CreateCommand();
-
-        // RecordHandler doesn't support writing, so we only check for reading
-        cmd.CommandText = "SELECT ('one'::text, 2)";
-        await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
-
-        Assert.That(() => reader.GetValue(0), assertExpr());
-        Assert.That(() => reader.GetFieldValue<object[]>(0), assertExpr());
-    }
-
-    #endregion Record
 
     [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
@@ -238,6 +153,22 @@ class MiscTypeTests : MultiplexingTestBase
 
     #endregion
 
+
+    [Test]
+    public async Task ObjectArray()
+    {
+        await AssertTypeWrite(new object?[] { (short)4, null, (long)5, 6 }, "{4,NULL,5,6}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefault: false);
+        await AssertTypeWrite(new object?[] { "text", null, DBNull.Value, "chars".ToCharArray(), 'c' }, "{text,NULL,NULL,chars,c}", "text[]", NpgsqlDbType.Text | NpgsqlDbType.Array, isDefault: false);
+
+        await using var dataSource = CreateDataSource(b => b.ConnectionStringBuilder.Timezone = "Europe/Berlin");
+        await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]", NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false);
+        Assert.ThrowsAsync<ArgumentException>(() => AssertTypeWrite(dataSource, new object?[]
+            {
+                DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
+            }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
+            NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false));
+    }
+
     [Test]
     public Task Int2Vector()
         => AssertType(new short[] { 4, 5, 6 }, "4 5 6", "int2vector", NpgsqlDbType.Int2Vector, isDefault: false);
@@ -250,7 +181,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Void()
     {
         await using var conn = await OpenConnectionAsync();
-        Assert.That(await conn.ExecuteScalarAsync("SELECT pg_sleep(0)"), Is.SameAs(DBNull.Value));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT pg_sleep(0)"), Is.SameAs(null));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1364")]

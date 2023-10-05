@@ -5,7 +5,7 @@
     <PackageTags>npgsql;postgresql;postgres;nodatime;date;time;ado;ado;net;database;sql</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">netstandard2.0;net6.0</TargetFrameworks>
-    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
+    <TargetFrameworks Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>

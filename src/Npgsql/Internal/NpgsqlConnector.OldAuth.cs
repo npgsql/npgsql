@@ -38,7 +38,7 @@ partial class NpgsqlConnector
 #endif
 
 #if !NET7_0_OR_GREATER
-    async Task AuthenticateGSS(bool async)
+    internal async Task AuthenticateGSS(bool async)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 
@@ -46,7 +46,7 @@ partial class NpgsqlConnector
         try
         {
             if (async)
-                await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
+                await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName).ConfigureAwait(false);
             else
                 negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
         }
@@ -65,7 +65,7 @@ partial class NpgsqlConnector
 
         throw new NpgsqlException("NegotiateStream.AuthenticateAsClient completed unexpectedly without signaling success");
     }
-    
+
     /// <summary>
     /// This Stream is placed between NegotiateStream and the socket's NetworkStream (or SSLStream). It intercepts
     /// traffic and performs the following operations:
@@ -114,8 +114,8 @@ partial class NpgsqlConnector
 
             if (count > _leftToWrite)
                 throw new NpgsqlException($"NegotiateStream trying to write {count} bytes but according to frame header we only have {_leftToWrite} left!");
-            await _connector.WritePassword(buffer, offset, count, async, cancellationToken);
-            await _connector.Flush(async, cancellationToken);
+            await _connector.WritePassword(buffer, offset, count, async, cancellationToken).ConfigureAwait(false);
+            await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
             _leftToWrite -= count;
         }
 
@@ -129,7 +129,7 @@ partial class NpgsqlConnector
         {
             if (_leftToRead == 0)
             {
-                var response = ExpectAny<AuthenticationRequestMessage>(await _connector.ReadMessage(async), _connector);
+                var response = ExpectAny<AuthenticationRequestMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                     throw new AuthenticationCompleteException();
                 var gssMsg = response as AuthenticationGSSContinueMessage;

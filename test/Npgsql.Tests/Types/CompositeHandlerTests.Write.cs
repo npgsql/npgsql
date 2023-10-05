@@ -63,7 +63,9 @@ public partial class CompositeHandlerTests
 
     [Test]
     public void Write_type_with_private_property_throws()
-        => Assert.ThrowsAsync<InvalidOperationException>(async () => await Write(new TypeWithPrivateProperty()));
+        => Assert.ThrowsAsync(
+            Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
+            async () => await Write(new TypeWithPrivateProperty()));
 
     [Test]
     public void Write_type_with_private_getter_throws()
@@ -95,13 +97,19 @@ public partial class CompositeHandlerTests
 
     [Test]
     public void Write_type_with_less_properties_than_attributes_throws()
-        => Assert.ThrowsAsync<InvalidOperationException>(async () => await Write(new TypeWithLessPropertiesThanAttributes()));
+        => Assert.ThrowsAsync(
+            Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
+            async () => await Write(new TypeWithLessPropertiesThanAttributes()));
 
     [Test]
     public void Write_type_with_less_parameters_than_attributes_throws()
-        => Assert.ThrowsAsync<InvalidOperationException>(async () => await Write(new TypeWithMoreParametersThanAttributes(TheAnswer, HelloSlonik)));
+        => Assert.ThrowsAsync(
+            Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
+            async () => await Write(new TypeWithMoreParametersThanAttributes(TheAnswer, HelloSlonik)));
 
     [Test]
     public void Write_type_with_more_parameters_than_attributes_throws()
-        => Assert.ThrowsAsync<InvalidOperationException>(async () => await Write(new TypeWithLessParametersThanAttributes(TheAnswer)));
+        => Assert.ThrowsAsync(
+            Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
+            async () => await Write(new TypeWithLessParametersThanAttributes(TheAnswer)));
 }

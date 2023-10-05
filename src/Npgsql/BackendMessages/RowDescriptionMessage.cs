@@ -3,14 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Replication.PgOutput.Messages;
-using Npgsql.TypeMapping;
-using Npgsql.Util;
 
 namespace Npgsql.BackendMessages;
 
@@ -22,12 +20,15 @@ namespace Npgsql.BackendMessages;
 /// </remarks>
 sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescription>
 {
+    readonly bool _connectorOwned;
     FieldDescription?[] _fields;
     readonly Dictionary<string, int> _nameIndex;
     Dictionary<string, int>? _insensitiveIndex;
+    PgConverterInfo[]? _lastConverterInfoCache;
 
-    internal RowDescriptionMessage(int numFields = 10)
+    internal RowDescriptionMessage(bool connectorOwned, int numFields = 10)
     {
+        _connectorOwned = connectorOwned;
         _fields = new FieldDescription[numFields];
         _nameIndex = new Dictionary<string, int>();
     }
@@ -43,7 +44,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
             _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex);
     }
 
-    internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, TypeMapper typeMapper)
+    internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, PgSerializerOptions options)
     {
         _nameIndex.Clear();
         _insensitiveIndex?.Clear();
@@ -61,14 +62,14 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
             var field = _fields[i] ??= new();
 
             field.Populate(
-                typeMapper,
+                options,
                 name:                  buf.ReadNullTerminatedString(),
                 tableOID:              buf.ReadUInt32(),
                 columnAttributeNumber: buf.ReadInt16(),
                 oid:                   buf.ReadUInt32(),
                 typeSize:              buf.ReadInt16(),
                 typeModifier:          buf.ReadInt32(),
-                formatCode:            (FormatCode)buf.ReadInt16()
+                dataFormat:            DataFormatUtils.Create(buf.ReadInt16())
             );
 
             _nameIndex.TryAdd(field.Name, i);
@@ -78,9 +79,9 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
     }
 
     internal static RowDescriptionMessage CreateForReplication(
-        TypeMapper typeMapper, uint tableOID, FormatCode formatCode, IReadOnlyList<RelationMessage.Column> columns)
+        PgSerializerOptions options, uint tableOID, DataFormat dataFormat, IReadOnlyList<RelationMessage.Column> columns)
     {
-        var msg = new RowDescriptionMessage(columns.Count);
+        var msg = new RowDescriptionMessage(false, columns.Count);
         var numFields = msg.Count = columns.Count;
 
         for (var i = 0; i < numFields; ++i)
@@ -89,14 +90,14 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
             var column = columns[i];
 
             field.Populate(
-                typeMapper,
-                name:                  column.ColumnName,
-                tableOID:              tableOID,
+                options,
+                name: column.ColumnName,
+                tableOID: tableOID,
                 columnAttributeNumber: checked((short)i),
-                oid:                   column.DataTypeId,
-                typeSize:              0, // TODO: Confirm we don't have this in replication
-                typeModifier:          column.TypeModifier,
-                formatCode:            formatCode
+                oid: column.DataTypeId,
+                typeSize: 0, // TODO: Confirm we don't have this in replication
+                typeModifier: column.TypeModifier,
+                dataFormat: dataFormat
             );
 
             if (!msg._nameIndex.ContainsKey(field.Name))
@@ -108,6 +109,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 
     public FieldDescription this[int index]
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
             Debug.Assert(index < Count);
@@ -115,6 +117,20 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 
             return _fields[index]!;
         }
+    }
+
+    internal void SetConverterInfoCache(ReadOnlySpan<PgConverterInfo> values)
+    {
+        if (_connectorOwned || _lastConverterInfoCache is not null)
+            return;
+        Interlocked.CompareExchange(ref _lastConverterInfoCache, values.ToArray(), null);
+    }
+
+    internal void LoadConverterInfoCache(PgConverterInfo[] values)
+    {
+        if (_lastConverterInfoCache is not { } cache)
+            return;
+        cache.CopyTo(values.AsSpan());
     }
 
     public int Count { get; private set; }
@@ -164,7 +180,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
         public static readonly InsensitiveComparer Instance = new();
         static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
 
-        InsensitiveComparer() {}
+        InsensitiveComparer() { }
 
         // We should really have CompareOptions.IgnoreKanaType here, but see
         // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
@@ -204,7 +220,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
         }
 
         public void Reset() => _pos = -1;
-        public void Dispose() {}
+        public void Dispose() { }
     }
 }
 
@@ -215,14 +231,14 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 public sealed class FieldDescription
 {
 #pragma warning disable CS8618  // Lazy-initialized type
-    internal FieldDescription() {}
+    internal FieldDescription() { }
 
     internal FieldDescription(uint oid)
-        : this("?", 0, 0, oid, 0, 0, FormatCode.Binary) {}
+        : this("?", 0, 0, oid, 0, 0, DataFormat.Binary) { }
 
     internal FieldDescription(
         string name, uint tableOID, short columnAttributeNumber,
-        uint oid, short typeSize, int typeModifier, FormatCode formatCode)
+        uint oid, short typeSize, int typeModifier, DataFormat dataFormat)
     {
         Name = name;
         TableOID = tableOID;
@@ -230,38 +246,41 @@ public sealed class FieldDescription
         TypeOID = oid;
         TypeSize = typeSize;
         TypeModifier = typeModifier;
-        FormatCode = formatCode;
+        DataFormat = dataFormat;
     }
 #pragma warning restore CS8618
 
     internal FieldDescription(FieldDescription source)
     {
-        _typeMapper = source._typeMapper;
+        _serializerOptions = source._serializerOptions;
         Name = source.Name;
         TableOID = source.TableOID;
         ColumnAttributeNumber = source.ColumnAttributeNumber;
         TypeOID = source.TypeOID;
         TypeSize = source.TypeSize;
         TypeModifier = source.TypeModifier;
-        FormatCode = source.FormatCode;
-        Handler = source.Handler;
+        DataFormat = source.DataFormat;
+        PostgresType = source.PostgresType;
+        Field = source.Field;
+        _objectOrDefaultInfo = source._objectOrDefaultInfo;
     }
 
     internal void Populate(
-        TypeMapper typeMapper, string name, uint tableOID, short columnAttributeNumber,
-        uint oid, short typeSize, int typeModifier, FormatCode formatCode
+        PgSerializerOptions serializerOptions, string name, uint tableOID, short columnAttributeNumber,
+        uint oid, short typeSize, int typeModifier, DataFormat dataFormat
     )
     {
-        _typeMapper = typeMapper;
+        _serializerOptions = serializerOptions;
         Name = name;
         TableOID = tableOID;
         ColumnAttributeNumber = columnAttributeNumber;
         TypeOID = oid;
         TypeSize = typeSize;
         TypeModifier = typeModifier;
-        FormatCode = formatCode;
-
-        ResolveHandler();
+        DataFormat = dataFormat;
+        PostgresType = _serializerOptions.DatabaseInfo.FindPostgresType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
+        Field = new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
+        _objectOrDefaultInfo = default;
     }
 
     /// <summary>
@@ -296,43 +315,100 @@ public sealed class FieldDescription
 
     /// <summary>
     /// The format code being used for the field.
-    /// Currently will be zero (text) or one (binary).
+    /// Currently will be text or binary.
     /// In a RowDescription returned from the statement variant of Describe, the format code is not yet known and will always be zero.
     /// </summary>
-    internal FormatCode FormatCode { get; set; }
+    internal DataFormat DataFormat { get; set; }
+
+    internal Field Field { get; private set; }
 
     internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
 
-    /// <summary>
-    /// The Npgsql type handler assigned to handle this field.
-    /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.
-    /// </summary>
-    internal NpgsqlTypeHandler Handler { get; private set; }
+    internal PostgresType PostgresType { get; private set; }
 
-    internal PostgresType PostgresType
-        => _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType)
-            ? postgresType
-            : UnknownBackendType.Instance;
+    internal Type FieldType => ObjectOrDefaultInfo.TypeToConvert;
 
-    internal Type FieldType => Handler.GetFieldType(this);
+    PgConverterInfo _objectOrDefaultInfo;
+    internal PgConverterInfo ObjectOrDefaultInfo
+    {
+        get
+        {
+            if (!_objectOrDefaultInfo.IsDefault)
+                return _objectOrDefaultInfo;
 
-    internal void ResolveHandler()
-        => Handler = IsBinaryFormat ? _typeMapper.ResolveByOID(TypeOID) : _typeMapper.UnrecognizedTypeHandler;
+            ref var info = ref _objectOrDefaultInfo;
+            GetInfo(null, ref _objectOrDefaultInfo, out _);
+            return info;
+        }
+    }
 
-    TypeMapper _typeMapper;
-
-    internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
-    internal bool IsTextFormat => FormatCode == FormatCode.Text;
+    PgSerializerOptions _serializerOptions;
 
     internal FieldDescription Clone()
     {
-        var field =  new FieldDescription(this);
-        field.ResolveHandler();
+        var field = new FieldDescription(this);
         return field;
+    }
+
+    internal void GetInfo(Type? type, ref PgConverterInfo lastConverterInfo, out bool asObject)
+    {
+        Debug.Assert(lastConverterInfo.IsDefault || (
+            ReferenceEquals(_serializerOptions, lastConverterInfo.TypeInfo.Options) &&
+            lastConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
+
+        if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeToConvert == type)
+        {
+            asObject = lastConverterInfo.IsBoxingConverter;
+            return;
+        }
+
+        // Have to check for null as it's a sentinel value used by ObjectOrDefaultTypeInfo init itself.
+        if (type is not null && ObjectOrDefaultInfo is var odfInfo)
+        {
+            if (typeof(object) == type)
+            {
+                lastConverterInfo = odfInfo;
+                asObject = true;
+                return;
+            }
+            if (odfInfo.TypeToConvert == type)
+            {
+                lastConverterInfo = odfInfo;
+                asObject = lastConverterInfo.IsBoxingConverter;
+                return;
+            }
+        }
+
+        GetInfoSlow(out lastConverterInfo, out asObject);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void GetInfoSlow(out PgConverterInfo lastConverterInfo, out bool asObject)
+        {
+            PgConverterInfo converterInfo;
+            var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
+            switch (DataFormat)
+            {
+            case DataFormat.Binary:
+                // If we don't support binary we'll just throw.
+                converterInfo = typeInfo.Bind(Field, DataFormat);
+                break;
+            default:
+                // For text we'll fall back to any available text converter for the expected clr type or throw.
+                if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
+                {
+                    typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.UnknownPgType, _serializerOptions);
+                    converterInfo = typeInfo.Bind(Field, DataFormat);
+                }
+                break;
+            }
+
+            lastConverterInfo = converterInfo;
+            asObject = converterInfo.IsBoxingConverter;
+        }
     }
 
     /// <summary>
     /// Returns a string that represents the current object.
     /// </summary>
-    public override string ToString() => Name + (Handler == null ? "" : $"({Handler.PgDisplayName})");
+    public override string ToString() => Name + $"({PostgresType.DisplayName})";
 }

@@ -1,4 +1,3 @@
-using System;
 using AdoNet.Specification.Tests;
 
 namespace Npgsql.Specification.Tests;

@@ -1,4 +1,3 @@
-using Npgsql.Util;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -244,6 +243,29 @@ public class BatchTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task CommandType_StoredProcedure()
+    {
+        await using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "11.0", "Stored procedures are supported starting with PG 11");
+
+        var sproc = await GetTempProcedureName(conn);
+        await conn.ExecuteNonQueryAsync($"CREATE PROCEDURE {sproc}() LANGUAGE sql AS ''");
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands = { new($"{sproc}") {CommandType = CommandType.StoredProcedure} }
+        };
+
+        await using var reader = await batch.ExecuteReaderAsync(Behavior);
+
+        // Consume SELECT result set to parse the CommandComplete
+        await reader.CloseAsync();
+
+        Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Call));
+    }
+
+
+    [Test]
     public async Task StatementType_Merge()
     {
         await using var conn = await OpenConnectionAsync();
@@ -288,6 +310,12 @@ public class BatchTests : MultiplexingTestBase
         Assert.That(batch.BatchCommands[0].OID, Is.Not.EqualTo(0));
         Assert.That(batch.BatchCommands[1].OID, Is.EqualTo(0));
     }
+
+    [Test]
+    public void CanCreateParameter() => Assert.True(new NpgsqlBatchCommand().CanCreateParameter);
+
+    [Test]
+    public void CreateParameter() => Assert.NotNull(new NpgsqlBatchCommand().CreateParameter());
 
     #endregion NpgsqlBatchCommand
 
@@ -752,6 +780,41 @@ LANGUAGE 'plpgsql'");
             batch.BatchCommands.Clear();
         }
     }
+
+#if NET6_0_OR_GREATER // no batch reuse until 6.0
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5239")]
+    public async Task Batch_dispose_reuse()
+    {
+        await using var conn = await OpenConnectionAsync();
+        NpgsqlBatch firstBatch;
+        await using (var batch = conn.CreateBatch())
+        {
+            firstBatch = batch;
+
+            batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT 1"));
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
+        await using (var batch = conn.CreateBatch())
+        {
+            Assert.That(batch, Is.SameAs(firstBatch));
+
+            batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT 2"));
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(2));
+        }
+
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        await using (var batch = conn.CreateBatch())
+        {
+            Assert.That(batch, Is.SameAs(firstBatch));
+
+            batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT 3"));
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(3));
+        }
+    }
+#endif
 
     #endregion Miscellaneous
 

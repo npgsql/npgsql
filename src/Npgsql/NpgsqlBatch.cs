@@ -122,7 +122,10 @@ public class NpgsqlBatch : DbBatch
     }
 
     /// <inheritdoc />
-    protected override DbBatchCommand CreateDbBatchCommand()
+    protected override DbBatchCommand CreateDbBatchCommand() => CreateBatchCommand();
+
+    /// <inheritdoc cref="DbBatch.CreateBatchCommand"/>
+    public new NpgsqlBatchCommand CreateBatchCommand()
         => new NpgsqlBatchCommand();
 
     /// <inheritdoc />
@@ -137,7 +140,7 @@ public class NpgsqlBatch : DbBatch
     protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(
         CommandBehavior behavior,
         CancellationToken cancellationToken)
-        => await ExecuteReaderAsync(behavior, cancellationToken);
+        => await ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc cref="DbBatch.ExecuteReaderAsync(CancellationToken)"/>
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)

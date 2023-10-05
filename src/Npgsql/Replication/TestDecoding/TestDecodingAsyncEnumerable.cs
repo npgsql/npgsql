@@ -33,17 +33,10 @@ sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
         _walLocation = walLocation;
     }
 
-    public IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
-        using (NoSynchronizationContextScope.Enter())
-        {
-            return StartReplicationInternal(
-                CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
-        }
-    }
+        cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token;
 
-    async IAsyncEnumerator<TestDecodingData> StartReplicationInternal(CancellationToken cancellationToken)
-    {
         var stream = _connection.StartLogicalReplication(
             _slot, cancellationToken, _walLocation, _options.GetOptionPairs());
         var encoding = _connection.Encoding!;
@@ -52,7 +45,7 @@ sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
 
         try
         {
-            await foreach (var msg in stream.WithCancellation(cancellationToken))
+            await foreach (var msg in stream.ConfigureAwait(false))
             {
                 var len = (int)msg.Data.Length;
                 Debug.Assert(msg.Data.Position == 0);
@@ -65,7 +58,7 @@ sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
                 var offset = 0;
                 while (offset < len)
                 {
-                    var read = await msg.Data.ReadAsync(buffer, offset, len - offset, CancellationToken.None);
+                    var read = await msg.Data.ReadAsync(buffer, offset, len - offset, CancellationToken.None).ConfigureAwait(false);
                     if (read == 0)
                         throw new EndOfStreamException();
                     offset += read;

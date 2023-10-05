@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -10,8 +11,7 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
+using Npgsql.Internal.Resolvers;
 using Npgsql.Properties;
 using Npgsql.Util;
 
@@ -32,23 +32,22 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
-    readonly List<TypeHandlerResolverFactory> _resolverFactories;
-    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings;
-    readonly INpgsqlNameTranslator _defaultNameTranslator;
-
-    internal TypeMapper TypeMapper { get; private set; } = null!; // Initialized at bootstrapping
+    readonly IPgTypeInfoResolver _resolver;
+    internal PgSerializerOptions SerializerOptions { get; private set; } = null!; // Initialized at bootstrapping
 
     /// <summary>
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
     /// </summary>
     internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
 
-    internal EncryptionHandler EncryptionHandler { get; }
+    internal TransportSecurityHandler TransportSecurityHandler { get; }
     internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
+
+    internal IntegratedSecurityHandler IntegratedSecurityHandler { get; }
 
     internal Action<NpgsqlConnection>? ConnectionInitializer { get; }
     internal Func<NpgsqlConnection, Task>? ConnectionInitializerAsync { get; }
@@ -67,6 +66,9 @@ public abstract class NpgsqlDataSource : DbDataSource
     private protected readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
         = new();
 
+    internal MetricsReporter MetricsReporter { get; }
+    internal string Name { get; }
+
     internal abstract (int Total, int Idle, int Busy) Statistics { get; }
 
     volatile int _isDisposed;
@@ -77,6 +79,10 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// Semaphore to ensure we don't perform type loading and mapping setup concurrently for this data source.
     /// </summary>
     readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
+
+    readonly INpgsqlNameTranslator _defaultNameTranslator;
+
+    internal List<HackyEnumTypeMapping>? _hackyEnumTypeMappings;
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
@@ -89,21 +95,25 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Configuration = dataSourceConfig;
 
-        (LoggingConfiguration,
-                EncryptionHandler,
+        (var name,
+                LoggingConfiguration,
+                TransportSecurityHandler,
+                IntegratedSecurityHandler,
                 UserCertificateValidationCallback,
                 ClientCertificatesCallback,
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
-                _resolverFactories,
-                _userTypeMappings,
+                var resolverChain,
+                _hackyEnumTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
+        // TODO probably want this on the options so it can devirt unconditionally.
+        _resolver = new TypeInfoResolverChain(resolverChain);
         _password = settings.Password;
 
         if (_periodicPasswordSuccessRefreshInterval != default)
@@ -118,13 +128,16 @@ public abstract class NpgsqlDataSource : DbDataSource
             // in GetPasswordAsync.
             _passwordRefreshTask = Task.Run(RefreshPassword);
         }
+
+        Name = name ?? ConnectionString;
+        MetricsReporter = new MetricsReporter(this);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc cref="DbDataSource.CreateConnection" />
     public new NpgsqlConnection CreateConnection()
         => NpgsqlConnection.FromDataSource(this);
 
-    /// <inheritdoc />
+    /// <inheritdoc cref="DbDataSource.OpenConnection" />
     public new NpgsqlConnection OpenConnection()
     {
         var connection = CreateConnection();
@@ -145,7 +158,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     protected override DbConnection OpenDbConnection()
         => OpenConnection();
 
-    /// <inheritdoc />
+    /// <inheritdoc cref="DbDataSource.OpenConnectionAsync" />
     public new async ValueTask<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
     {
         var connection = CreateConnection();
@@ -164,7 +177,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     /// <inheritdoc />
     protected override async ValueTask<DbConnection> OpenDbConnectionAsync(CancellationToken cancellationToken = default)
-        => await OpenConnectionAsync(cancellationToken);
+        => await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     protected override DbConnection CreateDbConnection()
@@ -194,12 +207,16 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// <summary>
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionString" />.
     /// </summary>
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static NpgsqlDataSource Create(string connectionString)
         => new NpgsqlDataSourceBuilder(connectionString).Build();
 
     /// <summary>
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionStringBuilder" />.
     /// </summary>
+    [RequiresUnreferencedCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
+    [RequiresDynamicCode("NpgsqlDataSource uses reflection to handle various PostgreSQL types like records, unmapped enums. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
         => Create(connectionStringBuilder.ToString());
 
@@ -214,7 +231,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             return;
 
         var hasSemaphore = async
-            ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+            ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken).ConfigureAwait(false)
             : _setupMappingsSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
 
         if (!hasSemaphore)
@@ -226,19 +243,29 @@ public abstract class NpgsqlDataSource : DbDataSource
                 return;
 
             // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
-            // empty). So we set up here, and then later inject the DatabaseInfo.
-            var typeMapper = new TypeMapper(connector, _defaultNameTranslator);
-            connector.TypeMapper = typeMapper;
+            // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
+            connector.SerializerOptions =
+                new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
+                {
+                    TextEncoding = connector.TextEncoding,
+                    TypeInfoResolver = AdoTypeInfoResolver.Instance
+                };
 
             NpgsqlDatabaseInfo databaseInfo;
 
             using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
-                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
+                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async).ConfigureAwait(false);
 
-            DatabaseInfo = databaseInfo;
-            connector.DatabaseInfo = databaseInfo;
-            typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings);
-            TypeMapper = typeMapper;
+            connector.DatabaseInfo = DatabaseInfo = databaseInfo;
+            connector.SerializerOptions = SerializerOptions =
+                new(databaseInfo, CreateTimeZoneProvider(connector.Timezone))
+                {
+                    ArrayNullabilityMode = Settings.ArrayNullabilityMode,
+                    EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
+                    TextEncoding = connector.TextEncoding,
+                    TypeInfoResolver = _resolver,
+                    DefaultNameTranslator = _defaultNameTranslator
+                };
 
             _isBootstrapped = true;
         }
@@ -246,6 +273,18 @@ public abstract class NpgsqlDataSource : DbDataSource
         {
             _setupMappingsSemaphore.Release();
         }
+
+        // Func in a static function to make sure we don't capture state that might not stay around, like a connector.
+        static Func<string> CreateTimeZoneProvider(string postgresTimeZone)
+            => () =>
+            {
+                if (string.Equals(postgresTimeZone, "localtime", StringComparison.OrdinalIgnoreCase))
+                    throw new TimeZoneNotFoundException(
+                        "The special PostgreSQL timezone 'localtime' is not supported when reading values of type 'timestamp with time zone'. " +
+                        "Please specify a real timezone in 'postgresql.conf' on the server, or set the 'PGTZ' environment variable on the client.");
+
+                return postgresTimeZone;
+            };
     }
 
     #region Password management
@@ -272,7 +311,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         if (_password is null && _periodicPasswordProvider is not null)
         {
             if (async)
-                await _passwordRefreshTask;
+                await _passwordRefreshTask.ConfigureAwait(false);
             else
                 _passwordRefreshTask.GetAwaiter().GetResult();
 
@@ -286,7 +325,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         try
         {
-            _password = await _periodicPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token);
+            _password = await _periodicPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token).ConfigureAwait(false);
 
             _passwordProviderTimer!.Change(_periodicPasswordSuccessRefreshInterval, Timeout.InfiniteTimeSpan);
         }
@@ -338,7 +377,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         Debug.Assert(this is not NpgsqlMultiHostDataSource);
 
         var databaseStateInfo = _databaseStateInfo;
-        
+
         if (!ignoreTimeStamp && timeStamp <= databaseStateInfo.TimeStamp)
             return _databaseStateInfo.State;
 
@@ -414,8 +453,8 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         _passwordProviderTimer?.Dispose();
-
         _setupMappingsSemaphore.Dispose();
+        MetricsReporter.Dispose(); // TODO: This is probably too early, dispose only when all connections have been closed?
 
         Clear();
     }
@@ -443,7 +482,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         if (_passwordProviderTimer is not null)
         {
 #if NET5_0_OR_GREATER
-            await _passwordProviderTimer.DisposeAsync();
+            await _passwordProviderTimer.DisposeAsync().ConfigureAwait(false);
 #else
             _passwordProviderTimer.Dispose();
 #endif
@@ -463,7 +502,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     #endregion
-    
+
     sealed class DatabaseStateInfo
     {
         internal readonly DatabaseState State;
@@ -471,8 +510,8 @@ public abstract class NpgsqlDataSource : DbDataSource
         // While the TimeStamp is not strictly required, it does lower the risk of overwriting the current state with an old value
         internal readonly DateTime TimeStamp;
 
-        public DatabaseStateInfo() : this(default, default, default) {}
-        
+        public DatabaseStateInfo() : this(default, default, default) { }
+
         public DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
             => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
     }

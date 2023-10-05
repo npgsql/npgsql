@@ -1,7 +1,6 @@
 ﻿using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -62,67 +61,60 @@ public static class LogicalReplicationConnectionExtensions
         CancellationToken cancellationToken = default)
     {
         connection.CheckDisposed();
+        if (slotName is null)
+            throw new ArgumentNullException(nameof(slotName));
+        if (outputPlugin is null)
+            throw new ArgumentNullException(nameof(outputPlugin));
 
-        using var _ = NoSynchronizationContextScope.Enter();
-        return CreateLogicalReplicationSlotCore();
+        cancellationToken.ThrowIfCancellationRequested();
 
-        Task<ReplicationSlotOptions> CreateLogicalReplicationSlotCore()
+        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
+        if (isTemporary)
+            builder.Append(" TEMPORARY");
+        builder.Append(" LOGICAL ").Append(outputPlugin);
+        if (connection.PostgreSqlVersion.Major >= 15 && (slotSnapshotInitMode.HasValue || twoPhase))
         {
-            if (slotName is null)
-                throw new ArgumentNullException(nameof(slotName));
-            if (outputPlugin is null)
-                throw new ArgumentNullException(nameof(outputPlugin));
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
-            if (isTemporary)
-                builder.Append(" TEMPORARY");
-            builder.Append(" LOGICAL ").Append(outputPlugin);
-            if (connection.PostgreSqlVersion.Major >= 15 && (slotSnapshotInitMode.HasValue || twoPhase))
-            {
-                builder.Append('(');
-                if (slotSnapshotInitMode.HasValue)
-                {
-                    builder.Append(slotSnapshotInitMode switch
-                    {
-                        LogicalSlotSnapshotInitMode.Export => "SNAPSHOT 'export'",
-                        LogicalSlotSnapshotInitMode.Use => "SNAPSHOT 'use'",
-                        LogicalSlotSnapshotInitMode.NoExport => "SNAPSHOT 'nothing'",
-                        _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
-                            slotSnapshotInitMode,
-                            $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
-                    });
-                    if (twoPhase)
-                        builder.Append(",TWO_PHASE");
-                }
-                else
-                    builder.Append("TWO_PHASE");
-                builder.Append(')');
-            }
-            else
+            builder.Append('(');
+            if (slotSnapshotInitMode.HasValue)
             {
                 builder.Append(slotSnapshotInitMode switch
                 {
-                    // EXPORT_SNAPSHOT is the default since it has been introduced.
-                    // We don't set it unless it is explicitly requested so that older backends can digest the query too.
-                    null => string.Empty,
-                    LogicalSlotSnapshotInitMode.Export => " EXPORT_SNAPSHOT",
-                    LogicalSlotSnapshotInitMode.Use => " USE_SNAPSHOT",
-                    LogicalSlotSnapshotInitMode.NoExport => " NOEXPORT_SNAPSHOT",
+                    LogicalSlotSnapshotInitMode.Export => "SNAPSHOT 'export'",
+                    LogicalSlotSnapshotInitMode.Use => "SNAPSHOT 'use'",
+                    LogicalSlotSnapshotInitMode.NoExport => "SNAPSHOT 'nothing'",
                     _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
                         slotSnapshotInitMode,
                         $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
                 });
                 if (twoPhase)
-                    builder.Append(" TWO_PHASE");
+                    builder.Append(",TWO_PHASE");
             }
-            var command = builder.ToString();
-
-            LogMessages.CreatingReplicationSlot(connection.ReplicationLogger, slotName, command, connection.Connector.Id);
-
-            return connection.CreateReplicationSlot(command, cancellationToken);
+            else
+                builder.Append("TWO_PHASE");
+            builder.Append(')');
         }
+        else
+        {
+            builder.Append(slotSnapshotInitMode switch
+            {
+                // EXPORT_SNAPSHOT is the default since it has been introduced.
+                // We don't set it unless it is explicitly requested so that older backends can digest the query too.
+                null => string.Empty,
+                LogicalSlotSnapshotInitMode.Export => " EXPORT_SNAPSHOT",
+                LogicalSlotSnapshotInitMode.Use => " USE_SNAPSHOT",
+                LogicalSlotSnapshotInitMode.NoExport => " NOEXPORT_SNAPSHOT",
+                _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
+                    slotSnapshotInitMode,
+                    $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
+            });
+            if (twoPhase)
+                builder.Append(" TWO_PHASE");
+        }
+        var command = builder.ToString();
+
+        LogMessages.CreatingReplicationSlot(connection.ReplicationLogger, slotName, command, connection.Connector.Id);
+
+        return connection.CreateReplicationSlot(command, cancellationToken);
     }
 
     /// <summary>
@@ -150,9 +142,9 @@ public static class LogicalReplicationConnectionExtensions
         IEnumerable<KeyValuePair<string, string?>>? options = null,
         bool bypassingStream = false)
     {
-        using (NoSynchronizationContextScope.Enter())
-            return StartLogicalReplicationInternal(connection, slot, cancellationToken, walLocation, options, bypassingStream);
+        return StartLogicalReplicationInternal(connection, slot, cancellationToken, walLocation, options, bypassingStream);
 
+        // Local method to avoid having to add the EnumeratorCancellation attribute to the public signature.
         static async IAsyncEnumerable<XLogDataMessage> StartLogicalReplicationInternal(
             LogicalReplicationConnection connection,
             LogicalReplicationSlot slot,
@@ -166,12 +158,18 @@ public static class LogicalReplicationConnectionExtensions
                 .Append(" LOGICAL ")
                 .Append(walLocation ?? slot.ConsistentPoint);
 
-            if (options?.Any() == true)
+            var opts = new List<KeyValuePair<string, string?>>(options ?? Array.Empty<KeyValuePair<string, string?>>());
+            if (opts.Count > 0)
             {
-                builder
-                    .Append(" (")
-                    .Append(string.Join(", ", options.Select(kv => @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}")))
-                    .Append(')');
+                builder.Append(" (");
+                var stringOptions = new string[opts.Count];
+                for (var i = 0; i < opts.Count; i++)
+                {
+                    var kv = opts[i];
+                    stringOptions[i] = @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}";
+                }
+                builder.Append(string.Join(", ", stringOptions));
+                builder.Append(')');
             }
 
             var command = builder.ToString();
@@ -179,7 +177,7 @@ public static class LogicalReplicationConnectionExtensions
             LogMessages.StartingLogicalReplication(connection.ReplicationLogger, slot.Name, command, connection.Connector.Id);
 
             var enumerator = connection.StartReplicationInternalWrapper(command, bypassingStream, cancellationToken);
-            while (await enumerator.MoveNextAsync())
+            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 yield return enumerator.Current;
         }
     }

@@ -58,10 +58,10 @@ public class ReplicationTuple : IAsyncEnumerable<ReplicationValue>
         case RowState.NotRead:
             State = RowState.Reading;
             _tupleEnumerator.Reset(NumColumns, _rowDescription, cancellationToken);
-            while (await _tupleEnumerator.MoveNextAsync()) { }
+            while (await _tupleEnumerator.MoveNextAsync().ConfigureAwait(false)) { }
             break;
         case RowState.Reading:
-            while (await _tupleEnumerator.MoveNextAsync()) { }
+            while (await _tupleEnumerator.MoveNextAsync().ConfigureAwait(false)) { }
             break;
         case RowState.Consumed:
             return;

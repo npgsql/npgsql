@@ -53,6 +53,14 @@ static class ThrowHelper
         throw new InvalidCastException($"Column '{field.Name}' is null.");
 
     [DoesNotReturn]
+    internal static void ThrowInvalidCastException(string message) =>
+        throw new InvalidCastException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowInvalidCastException_NoValue() =>
+        throw new InvalidCastException("Field is null.");
+
+    [DoesNotReturn]
     internal static void ThrowArgumentOutOfRange_OutOfColumnBounds(string paramName, int columnLength) =>
         throw new ArgumentOutOfRangeException(paramName, $"The value is out of bounds from the column data, dataOffset must be between 0 and {columnLength}");
 
@@ -95,6 +103,10 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowArgumentNullException(string paramName)
         => throw new ArgumentNullException(paramName);
+
+    [DoesNotReturn]
+    internal static void ThrowArgumentNullException(string message, string paramName)
+        => throw new ArgumentNullException(paramName, message);
 
     [DoesNotReturn]
     internal static void ThrowIndexOutOfRangeException(string message)

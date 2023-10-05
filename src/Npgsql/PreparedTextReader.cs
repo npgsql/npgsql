@@ -27,7 +27,7 @@ sealed class PreparedTextReader : TextReader
     public override int Peek()
     {
         CheckDisposed();
-        
+
         return _position < _str.Length
             ? _str[_position]
             : -1;
@@ -36,7 +36,7 @@ sealed class PreparedTextReader : TextReader
     public override int Read()
     {
         CheckDisposed();
-        
+
         return _position < _str.Length
             ? _str[_position++]
             : -1;
@@ -82,7 +82,7 @@ sealed class PreparedTextReader : TextReader
 
     public
 #if !NETSTANDARD2_0
-    override 
+    override
 #endif
     ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken cancellationToken = default) => new(Read(buffer.Span));
 
@@ -91,7 +91,7 @@ sealed class PreparedTextReader : TextReader
     public override string ReadToEnd()
     {
         CheckDisposed();
-        
+
         if (_position == _str.Length)
             return string.Empty;
 
@@ -106,6 +106,12 @@ sealed class PreparedTextReader : TextReader
     {
         if (_disposed || _stream.IsDisposed)
             ThrowHelper.ThrowObjectDisposedException(nameof(PreparedTextReader));
+    }
+
+    public void Restart()
+    {
+        CheckDisposed();
+        _position = 0;
     }
 
     protected override void Dispose(bool disposing)

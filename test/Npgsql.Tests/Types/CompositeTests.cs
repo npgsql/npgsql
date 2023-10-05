@@ -138,7 +138,8 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
             @"(8,""(9,foo)"")",
             $"{secondSchemaName}.container",
-            npgsqlDbType: null);
+            npgsqlDbType: null,
+            isDefaultForWriting: false);
 
         await AssertType(
             connection,
@@ -146,7 +147,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             @"(8,""(9,foo)"")",
             $"{firstSchemaName}.container",
             npgsqlDbType: null,
-            isDefaultForWriting: false);
+            isDefaultForWriting: true);
     }
 
     [Test]
@@ -237,6 +238,77 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
             npgsqlDbType: null);
     }
 
+    [Test]
+    public async Task Composite_containing_array_type()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {compositeType} AS (ints int4[])");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeWithArray>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithArray { Ints = new[] { 1, 2, 3, 4 } },
+            @"(""{1,2,3,4}"")",
+            compositeType,
+            npgsqlDbType: null,
+            comparer: (actual, expected) => actual.Ints!.SequenceEqual(expected.Ints!));
+    }
+
+    [Test]
+    public async Task Composite_containing_converter_resolver_type()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {compositeType} AS (date_times timestamp[])");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
+        dataSourceBuilder.MapComposite<SomeCompositeWithConverterResolverType>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithConverterResolverType { DateTimes = new [] { new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Unspecified), new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Unspecified).AddDays(1) } },
+            """("{""1970-01-01 00:00:00"",""1970-01-02 00:00:00""}")""",
+            compositeType,
+            npgsqlDbType: null,
+            comparer: (actual, expected) => actual.DateTimes!.SequenceEqual(expected.DateTimes!));
+    }
+
+    [Test]
+    public async Task Composite_containing_converter_resolver_type_throws()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {compositeType} AS (date_times timestamp[])");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
+        dataSourceBuilder.MapComposite<SomeCompositeWithConverterResolverType>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        Assert.ThrowsAsync<ArgumentException>(() => AssertType(
+            connection,
+            new SomeCompositeWithConverterResolverType { DateTimes = new[] { DateTime.UnixEpoch } }, // UTC DateTime
+            """("{""1970-01-01 01:00:00"",""1970-01-02 01:00:00""}")""",
+            compositeType,
+            npgsqlDbType: null,
+            comparer: (actual, expected) => actual.DateTimes!.SequenceEqual(expected.DateTimes!)));
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
     public async Task Table_as_composite([Values] bool enabled)
     {
@@ -254,7 +326,7 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
             await DoAssertion();
         else
         {
-            Assert.ThrowsAsync<ArgumentException>(DoAssertion);
+            Assert.ThrowsAsync<NotSupportedException>(DoAssertion);
             // Start a transaction specifically for multiplexing (to bind a connector to the connection)
             await using var tx = await connection.BeginTransactionAsync();
             Assert.Null(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)));
@@ -400,6 +472,16 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     {
         public int X { get; set; }
         public string SomeText { get; set; }
+    }
+
+    class SomeCompositeWithArray
+    {
+        public int[]? Ints { get; set; }
+    }
+
+    class SomeCompositeWithConverterResolverType
+    {
+        public DateTime[]? DateTimes { get; set; }
     }
 
     record NameTranslationComposite
