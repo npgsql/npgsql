@@ -254,10 +254,10 @@ public sealed class TypeInfoMappingCollection
         };
 
     Func<Type?, bool> GetArrayTypeMatchPredicate(Func<Type?, bool> elementTypeMatchPredicate)
-        => type => type is null || (type.IsArray && elementTypeMatchPredicate.Invoke(type.GetElementType()!));
+        => type => type is null ? elementTypeMatchPredicate(null) : type.IsArray && elementTypeMatchPredicate.Invoke(type.GetElementType()!);
     Func<Type?, bool> GetListTypeMatchPredicate(Func<Type?, bool> elementTypeMatchPredicate)
-        => type => type is null || (type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(List<>)
-                                                                  && elementTypeMatchPredicate(type.GetGenericArguments()[0]));
+        => type => type is null ? elementTypeMatchPredicate(null) : type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(List<>)
+            && elementTypeMatchPredicate(type.GetGenericArguments()[0]);
 
     public void AddType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
         => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
@@ -289,7 +289,7 @@ public sealed class TypeInfoMappingCollection
     public void AddArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
     {
         // Always use a predicate to match all dimensions.
-        var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
+        var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
 
         AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _));
@@ -322,7 +322,7 @@ public sealed class TypeInfoMappingCollection
     public void AddResolverArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
     {
         // Always use a predicate to match all dimensions.
-        var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
+        var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
 
         AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _));
@@ -483,7 +483,9 @@ public sealed class TypeInfoMappingCollection
             {
                 MatchRequirement = mapping.MatchRequirement,
                 TypeMatchPredicate = mapping.TypeMatchPredicate is not null
-                    ? type => type is null || (Nullable.GetUnderlyingType(type) is { } underlying && mapping.TypeMatchPredicate(underlying))
+                    ? type => type is null
+                        ? mapping.TypeMatchPredicate(null)
+                        : Nullable.GetUnderlyingType(type) is { } underlying && mapping.TypeMatchPredicate(underlying)
                     : null
             });
     }
