@@ -121,14 +121,6 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
                 jsonb,
                 textEncoding,
                 serializerOptions)!;
-
-    public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-    {
-        if (type != typeof(object) && dataTypeName is { UnqualifiedName: "ltree" or "lquery" or "ltxtquery" })
-            throw new NotSupportedException(
-                string.Format(NpgsqlStrings.LTreeNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableLTree),
-                    typeof(TBuilder).Name));
-    }
 }
 
 [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
