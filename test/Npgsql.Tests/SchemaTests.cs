@@ -367,7 +367,7 @@ CREATE DOMAIN {domainType} AS TEXT");
 
         var dt = await GetSchema(conn, "MaterializedViews", new[] { null, viewName, null, null });
         foreach (var row in dt.Rows.OfType<DataRow>())
-            Assert.That(row["matviewname"], Is.EqualTo(viewName));
+            Assert.That(row["table_name"], Is.EqualTo(viewName));
     }
 
     [Test]

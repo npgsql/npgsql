@@ -386,31 +386,31 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
             Locale = CultureInfo.InvariantCulture,
             Columns =
             {
-                new DataColumn("schemaname"),
-                new DataColumn("matviewname"),
-                new DataColumn("matviewowner"),
-                new DataColumn("tablespace"),
-                new DataColumn("hasindexes", typeof(bool)),
-                new DataColumn("ispopulated", typeof(bool))
+                new DataColumn("table_catalog"),
+                new DataColumn("table_schema"),
+                new DataColumn("table_name"),
+                new DataColumn("table_owner"),
+                new DataColumn("has_indexes", typeof(bool)),
+                new DataColumn("is_populated", typeof(bool))
             }
         };
 
         var sql = new StringBuilder();
 
-        sql.Append(@"SELECT schemaname, matviewname, matviewowner, tablespace, hasindexes, ispopulated FROM pg_catalog.pg_matviews");
+        sql.Append("""SELECT current_database(), schemaname, matviewname, matviewowner, hasindexes, ispopulated FROM pg_catalog.pg_matviews""");
 
         return ParseResults(
             async,
-            BuildCommand(conn, sql, restrictions, "schemaname", "matviewname", "matviewowner", "tablespace"),
+            BuildCommand(conn, sql, restrictions, "current_database()", "schemaname", "matviewname", "matviewowner"),
             dataTable,
             (reader, row) =>
             {
-                row["schemaname"] = GetFieldValueOrDBNull<string>(reader, 0);
-                row["matviewname"] = GetFieldValueOrDBNull<string>(reader, 1);
-                row["matviewowner"] = GetFieldValueOrDBNull<string>(reader, 2);
-                row["tablespace"] = GetFieldValueOrDBNull<string>(reader, 3);
-                row["hasindexes"] = GetFieldValueOrDBNull<bool>(reader, 4);
-                row["ispopulated"] = GetFieldValueOrDBNull<bool>(reader, 5);
+                row["table_catalog"] = GetFieldValueOrDBNull<string>(reader, 0);
+                row["table_schema"] = GetFieldValueOrDBNull<string>(reader, 1);
+                row["table_name"] = GetFieldValueOrDBNull<string>(reader, 2);
+                row["table_owner"] = GetFieldValueOrDBNull<string>(reader, 3);
+                row["has_indexes"] = GetFieldValueOrDBNull<bool>(reader, 4);
+                row["is_populated"] = GetFieldValueOrDBNull<bool>(reader, 5);
             }, cancellationToken);
     }
 
