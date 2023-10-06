@@ -362,9 +362,9 @@ public sealed class FieldDescription
             return;
         }
 
-        if (_objectOrDefaultInfo is { IsDefault: false } || DataFormat is DataFormat.Text && type is not null)
+        var odfInfo = DataFormat is DataFormat.Text && type is not null ? ObjectOrDefaultInfo : _objectOrDefaultInfo;
+        if (odfInfo is { IsDefault: false })
         {
-            var odfInfo = DataFormat is DataFormat.Text ? ObjectOrDefaultInfo : _objectOrDefaultInfo;
             if (typeof(object) == type)
             {
                 lastConverterInfo = odfInfo;
