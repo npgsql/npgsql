@@ -365,6 +365,24 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _internalBuilder.UnmapComposite(clrType, pgName, nameTranslator);
 
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableDynamicJsonMappings(
+        JsonSerializerOptions? serializerOptions,
+        Type[]? jsonbClrTypes,
+        Type[]? jsonClrTypes)
+        => EnableDynamicJsonMappings(serializerOptions, jsonbClrTypes, jsonClrTypes);
+
+    [RequiresUnreferencedCode("The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode("The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableRecordsAsTuples()
+        => EnableRecordsAsTuples();
+
+    [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableUnmappedTypes()
+        => EnableUnmappedTypes();
+
     #endregion Type mapping
 
     /// <summary>

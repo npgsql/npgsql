@@ -63,6 +63,9 @@ Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.Np
 Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, uint? restartTimeline = null) -> void
 Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> uint?
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
+Npgsql.TypeMapping.INpgsqlTypeMapper.EnableDynamicJsonMappings(System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.INpgsqlTypeMapper.EnableRecordsAsTuples() -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.INpgsqlTypeMapper.EnableUnmappedTypes() -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.UserTypeMapping
 Npgsql.TypeMapping.UserTypeMapping.ClrType.get -> System.Type!
 Npgsql.TypeMapping.UserTypeMapping.PgTypeName.get -> string!
