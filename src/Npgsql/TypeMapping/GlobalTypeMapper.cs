@@ -175,64 +175,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         set => _userTypeMapper.DefaultNameTranslator = value;
     }
 
-    /// <summary>
-    /// Sets up dynamic System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
-    /// types, as well as <see cref="JsonNode" /> and its derived types.
-    /// </summary>
-    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
-    /// <param name="jsonbClrTypes">
-    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
-    /// </param>
-    /// <param name="jsonClrTypes">
-    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
-    /// </param>
-    /// <remarks>
-    /// Due to the dynamic nature of these mappings, they are not compatible with NativeAOT or trimming.
-    /// </remarks>
-    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
-    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    public INpgsqlTypeMapper EnableDynamicJsonMappings(
-        JsonSerializerOptions? serializerOptions = null,
-        Type[]? jsonbClrTypes = null,
-        Type[]? jsonClrTypes = null)
-    {
-        AddTypeInfoResolver(new JsonDynamicTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
-        AddTypeInfoResolver(new JsonDynamicArrayTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
-        return this;
-    }
-
-    /// <summary>
-    /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <see cref="ValueTuple" /> or <see cref="Tuple" />.
-    /// </summary>
-    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    [RequiresUnreferencedCode("The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
-    [RequiresDynamicCode("The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
-    public INpgsqlTypeMapper EnableRecordsAsTuples()
-    {
-        AddTypeInfoResolver(new TupledRecordTypeInfoResolver());
-        AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
-        return this;
-    }
-
-    /// <summary>
-    /// Sets up mappings allowing the use of unmapped enum, range and multirange types.
-    /// </summary>
-    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
-    [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
-    public INpgsqlTypeMapper EnableUnmappedTypes()
-    {
-        AddTypeInfoResolver(new UnmappedEnumTypeInfoResolver());
-        AddTypeInfoResolver(new UnmappedRangeTypeInfoResolver());
-        AddTypeInfoResolver(new UnmappedMultirangeTypeInfoResolver());
-
-        AddTypeInfoResolver(new UnmappedEnumArrayTypeInfoResolver());
-        AddTypeInfoResolver(new UnmappedRangeArrayTypeInfoResolver());
-        AddTypeInfoResolver(new UnmappedMultirangeArrayTypeInfoResolver());
-
-        return this;
-    }
-
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
     {

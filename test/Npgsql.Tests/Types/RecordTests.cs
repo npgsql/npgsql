@@ -94,7 +94,7 @@ public class RecordTests : MultiplexingTestBase
 
         var errorMessage = string.Format(
             NpgsqlStrings.RecordsNotEnabled,
-            nameof(NpgsqlDataSourceBuilder.EnableRecordsAsTuples),
+            nameof(INpgsqlTypeMapperExtensions.EnableRecordsAsTuples),
             nameof(NpgsqlDataSourceBuilder),
             nameof(NpgsqlSlimDataSourceBuilder.EnableRecords));
 
@@ -118,7 +118,7 @@ public class RecordTests : MultiplexingTestBase
 
         var errorMessage = string.Format(
             NpgsqlStrings.RecordsNotEnabled,
-            nameof(NpgsqlDataSourceBuilder.EnableRecordsAsTuples),
+            nameof(INpgsqlTypeMapperExtensions.EnableRecordsAsTuples),
             nameof(NpgsqlSlimDataSourceBuilder),
             nameof(NpgsqlSlimDataSourceBuilder.EnableRecords));
 

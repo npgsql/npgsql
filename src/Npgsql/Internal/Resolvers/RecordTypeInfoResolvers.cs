@@ -4,6 +4,7 @@ using System.Reflection;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.Resolvers;
 
@@ -30,7 +31,7 @@ class RecordTypeInfoResolver : IPgTypeInfoResolver
             throw new NotSupportedException(
                 string.Format(
                     NpgsqlStrings.RecordsNotEnabled,
-                    nameof(NpgsqlDataSourceBuilder.EnableRecordsAsTuples),
+                    nameof(INpgsqlTypeMapperExtensions.EnableRecordsAsTuples),
                     typeof(TBuilder).Name,
                     nameof(NpgsqlSlimDataSourceBuilder.EnableRecords)));
         }

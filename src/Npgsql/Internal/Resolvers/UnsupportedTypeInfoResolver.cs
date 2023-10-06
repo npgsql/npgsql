@@ -3,6 +3,7 @@ using System.Collections;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.Resolvers;
 
@@ -31,28 +32,28 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
                     string.Format(
                         NpgsqlStrings.DynamicJsonNotEnabled,
                         type == typeof(object) ? "<unknown>" : type.Name,
-                        nameof(NpgsqlDataSourceBuilder.EnableDynamicJsonMappings),
+                        nameof(INpgsqlTypeMapperExtensions.EnableDynamicJsonMappings),
                         typeof(TBuilder).Name));
 
             case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresEnumType:
                 throw new NotSupportedException(
                     string.Format(
                         NpgsqlStrings.UnmappedEnumsNotEnabled,
-                        nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
                         typeof(TBuilder).Name));
 
             case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresRangeType:
                 throw new NotSupportedException(
                     string.Format(
                         NpgsqlStrings.UnmappedRangesNotEnabled,
-                        nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
                         typeof(TBuilder).Name));
 
             case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresMultirangeType:
                 throw new NotSupportedException(
                     string.Format(
                         NpgsqlStrings.UnmappedRangesNotEnabled,
-                        nameof(NpgsqlDataSourceBuilder.EnableUnmappedTypes),
+                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
                         typeof(TBuilder).Name));
             }
         }

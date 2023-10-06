@@ -121,7 +121,7 @@ public class JsonDynamicTests : MultiplexingTestBase
         var errorMessage = string.Format(
             NpgsqlStrings.DynamicJsonNotEnabled,
             nameof(WeatherForecast),
-            nameof(NpgsqlDataSourceBuilder.EnableDynamicJsonMappings),
+            nameof(INpgsqlTypeMapperExtensions.EnableDynamicJsonMappings),
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(
