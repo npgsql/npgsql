@@ -366,7 +366,7 @@ public abstract class TestBase
         await AssertTypeUnsupportedWrite(value, pgTypeName, dataSource);
     }
 
-    public async Task AssertTypeUnsupportedRead(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    public async Task<InvalidCastException> AssertTypeUnsupportedRead(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
     {
         dataSource ??= DefaultDataSource;
 
@@ -377,7 +377,7 @@ public abstract class TestBase
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
+        return Assert.Throws<InvalidCastException>(() => reader.GetValue(0))!;
     }
 
     public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
@@ -389,6 +389,8 @@ public abstract class TestBase
         dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
+        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
+        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();

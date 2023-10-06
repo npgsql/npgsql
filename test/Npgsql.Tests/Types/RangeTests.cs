@@ -168,7 +168,7 @@ class RangeTests : MultiplexingTestBase
     [NonParallelizable]
     public async Task Unmapped_range_with_mapped_subtype()
     {
-        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+        await using var dataSource = CreateDataSource(b => b.EnableUnmappedTypes().ConnectionStringBuilder.MaxPoolSize = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         var typeName = await GetTempTypeName(conn);
@@ -191,6 +191,29 @@ class RangeTests : MultiplexingTestBase
         var result = reader.GetFieldValue<NpgsqlRange<char[]>>(0);
         Assert.That(result, Is.EqualTo(value).Using<NpgsqlRange<char[]>>((actual, expected) =>
             actual.LowerBound!.SequenceEqual(expected.LowerBound!) && actual.UpperBound!.SequenceEqual(expected.UpperBound!)));
+    }
+
+    [Test]
+    public async Task Unmapped_range_supported_only_with_EnableUnmappedTypes()
+    {
+        await using var connection = await DataSource.OpenConnectionAsync();
+        var rangeType = await GetTempTypeName(connection);
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {rangeType} AS RANGE(subtype=text)");
+        await Task.Yield(); // TODO: fix multiplexing deadlock bug
+        await connection.ReloadTypesAsync();
+
+        var errorMessage = string.Format(
+            NpgsqlStrings.UnmappedRangesNotEnabled,
+            nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+            nameof(NpgsqlDataSourceBuilder));
+
+        var exception = await AssertTypeUnsupportedWrite(new NpgsqlRange<string>("bar", "foo"), rangeType);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+
+        exception = await AssertTypeUnsupportedRead<NpgsqlRange<string>>("""["bar","foo"]""", rangeType);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4441")]

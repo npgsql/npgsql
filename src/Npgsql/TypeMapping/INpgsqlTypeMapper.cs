@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Npgsql.Internal;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
@@ -82,7 +84,7 @@ public interface INpgsqlTypeMapper
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     /// <typeparam name="T">The .NET type to be mapped</typeparam>
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
@@ -98,7 +100,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
     /// </param>
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
@@ -122,7 +124,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     INpgsqlTypeMapper MapComposite(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  Type clrType,
         string? pgName = null,
@@ -140,7 +142,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     bool UnmapComposite(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type clrType,
         string? pgName = null,

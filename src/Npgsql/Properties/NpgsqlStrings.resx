@@ -67,7 +67,8 @@
         <value>ValidationRootCertificateCallback cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
     <data name="RecordsNotEnabled" xml:space="preserve">
-        <value>Records aren't enabled; please call {0} on {1} to enable records.</value>
+        <value>Could not read a PostgreSQL record. If you're attempting to read a record as a .NET tuple, call '{0}' on '{1}' or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/types/basic.html and the 8.0 release notes for more details). If you're reading a record as a .NET object array using NpgsqlSlimDataSourceBuilder, call '{2}'.
+</value>
     </data>
     <data name="FullTextSearchNotEnabled" xml:space="preserve">
         <value>Full-text search isn't enabled; please call {0} on {1} to enable full-text search.</value>
@@ -92,5 +93,15 @@
     </data>
     <data name="TimestampNoDateTimeUtc" xml:space="preserve">
         <value>Cannot write DateTime with Kind=UTC to PostgreSQL type '{0}', consider using '{1}'. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
+    </data>
+    <data name="DynamicJsonNotEnabled" xml:space="preserve">
+        <value>Type '{0}' required dynamic JSON serialization, which requires an explicit opt-in; call '{1}' on '{2}' or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/types/json.html and the 8.0 release notes for more details). Alternatively, if you meant to use Newtonsoft JSON.NET instead of System.Text.Json, call UseJsonNet() instead.
+</value>
+    </data>
+    <data name="UnmappedEnumsNotEnabled" xml:space="preserve">
+        <value>Reading and writing unmapped enums requires an explicit opt-in; call '{0}' on '{1}' or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/types/enums_and_composites.html and the 8.0 release notes for more details).</value>
+    </data>
+    <data name="UnmappedRangesNotEnabled" xml:space="preserve">
+        <value>Reading and writing unmapped ranges and multiranges requires an explicit opt-in; call '{0}' on '{1}' or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/types/ranges.html and the 8.0 release notes for more details).</value>
     </data>
 </root>

@@ -62,8 +62,6 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
     /// </summary>
     /// <param name="selectCommandText"></param>
     /// <param name="selectConnectionString"></param>
-    [RequiresUnreferencedCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. Use NpgsqlSlimDataSourceBuilder to start with a reduced - reflection free - set and opt into what your app specifically requires.")]
-    [RequiresDynamicCode("ConnectionString based NpgsqlConnections use reflection to handle various PostgreSQL types like records, unmapped enums, etc. This can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlDataAdapter(string selectCommandText, string selectConnectionString)
         : this(selectCommandText, new NpgsqlConnection(selectConnectionString)) {}
 

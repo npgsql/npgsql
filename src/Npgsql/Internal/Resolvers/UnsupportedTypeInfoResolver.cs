@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using Npgsql.Internal.Postgres;
+using Npgsql.PostgresTypes;
+using Npgsql.Properties;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.Resolvers;
 
@@ -19,15 +22,47 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         if (type is null)
             return null;
 
+        // These checks are here because their resolver types have RUC/RDC
+        if (type != typeof(object))
+        {
+            switch (dataTypeName)
+            {
+            case "pg_catalog.json" or "pg_catalog.jsonb":
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.DynamicJsonNotEnabled,
+                        type == typeof(object) ? "<unknown>" : type.Name,
+                        nameof(INpgsqlTypeMapperExtensions.EnableDynamicJsonMappings),
+                        typeof(TBuilder).Name));
+
+            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresEnumType:
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.UnmappedEnumsNotEnabled,
+                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+                        typeof(TBuilder).Name));
+
+            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresRangeType:
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.UnmappedRangesNotEnabled,
+                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+                        typeof(TBuilder).Name));
+
+            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresMultirangeType:
+                throw new NotSupportedException(
+                    string.Format(
+                        NpgsqlStrings.UnmappedRangesNotEnabled,
+                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+                        typeof(TBuilder).Name));
+            }
+        }
+
         if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) && TypeInfoMappingCollection.IsArrayLikeType(elementType, out _))
             throw new NotSupportedException("Writing is not supported for jagged collections, use a multidimensional array instead.");
 
         if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string) && (dataTypeName is null || dataTypeName.Value.IsArray))
             throw new NotSupportedException("Writing is not supported for IEnumerable parameters, use an array or List instead.");
-
-        // TODO bring back json help message.
-        // $"Can't write CLR type {value.GetType()}. " +
-        //     "You may need to use the System.Text.Json or Json.NET plugins, see the docs for more information."
 
         return null;
     }

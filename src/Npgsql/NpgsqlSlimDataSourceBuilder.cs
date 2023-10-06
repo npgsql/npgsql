@@ -273,7 +273,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
@@ -282,13 +282,13 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
@@ -297,7 +297,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    [RequiresDynamicCode("Serializing arbitary types can require creating new generic types or methods. This may not work when AOT compiling.")]
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
@@ -367,29 +367,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// Sets up System.Text.Json mappings for the PostgreSQL <c>json</c> and <c>jsonb</c> types.
-    /// </summary>
-    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
-    /// <param name="jsonbClrTypes">
-    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
-    /// </param>
-    /// <param name="jsonClrTypes">
-    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
-    /// </param>
-    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
-    [RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    public NpgsqlSlimDataSourceBuilder UseSystemTextJson(
-        JsonSerializerOptions? serializerOptions = null,
-        Type[]? jsonbClrTypes = null,
-        Type[]? jsonClrTypes = null)
-    {
-        AddTypeInfoResolver(new SystemTextJsonDynamicTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
-        return this;
-    }
-
-    /// <summary>
-    /// Sets up mappings for the PostgreSQL <c>record</c> type.
+    /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <c>object[]</c>.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableRecords()

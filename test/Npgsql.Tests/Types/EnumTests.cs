@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -94,7 +96,8 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     [Test]
     public async Task Unmapped_enum_as_clr_enum()
     {
-        await using var connection = await OpenConnectionAsync();
+        await using var dataSource = CreateDataSource(b => b.EnableUnmappedTypes());
+        await using var connection = await dataSource.OpenConnectionAsync();
         var type1 = await GetTempTypeName(connection);
         var type2 = await GetTempTypeName(connection);
         await connection.ExecuteNonQueryAsync(@$"
@@ -104,6 +107,28 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
 
         await AssertType(connection, Mood.Happy, "happy", type1, npgsqlDbType: null, isDefault: false);
         await AssertType(connection, AnotherEnum.Value2, "value2", type2, npgsqlDbType: null, isDefault: false);
+    }
+
+    [Test]
+    public async Task Unmapped_enum_as_clr_enum_supported_only_with_EnableUnmappedTypes()
+    {
+        await using var connection = await DataSource.OpenConnectionAsync();
+        var enumType = await GetTempTypeName(connection);
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {enumType} AS ENUM ('sad', 'ok', 'happy')");
+        await connection.ReloadTypesAsync();
+
+        var errorMessage = string.Format(
+            NpgsqlStrings.UnmappedEnumsNotEnabled,
+            nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+            nameof(NpgsqlDataSourceBuilder));
+
+        var exception = await AssertTypeUnsupportedWrite(Mood.Happy, enumType);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+
+        exception = await AssertTypeUnsupportedRead<Mood>("happy", enumType);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]

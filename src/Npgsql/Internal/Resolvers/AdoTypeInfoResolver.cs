@@ -94,11 +94,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                     DataTypeNames.Xml, DataTypeNames.Name, DataTypeNames.RefCursor })
         {
             mappings.AddType<string>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
-                MatchRequirement.DataTypeName);
+                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
             mappings.AddStructType<char>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
-                MatchRequirement.DataTypeName);
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             // Uses the bytea converters, as neither type has a header.
             mappings.AddType<byte[]>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()),

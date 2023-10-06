@@ -8,7 +8,7 @@ using Npgsql.Internal.Postgres;
 namespace Npgsql.Json.NET.Internal;
 
 [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
-[RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+[RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 class JsonNetPocoTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
 {
     protected TypeInfoMappingCollection Mappings { get; } = new();
@@ -83,7 +83,7 @@ class JsonNetPocoTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
 }
 
 [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
-[RequiresDynamicCode("Serializing arbitary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+[RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 sealed class JsonNetPocoArrayTypeInfoResolver : JsonNetPocoTypeInfoResolver, IPgTypeInfoResolver
 {
     new TypeInfoMappingCollection Mappings { get; }

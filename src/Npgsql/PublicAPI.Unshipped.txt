@@ -1,9 +1,10 @@
-#nullable enable
+﻿#nullable enable
 const Npgsql.PostgresErrorCodes.IdleSessionTimeout = "57P05" -> string!
 Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Disable = 0 -> Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Prefer = 1 -> Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Require = 2 -> Npgsql.ChannelBinding
+Npgsql.INpgsqlTypeMapperExtensions
 Npgsql.NpgsqlBatch.CreateBatchCommand() -> Npgsql.NpgsqlBatchCommand!
 Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.get -> Npgsql.ChannelBinding
 Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.set -> void
@@ -14,7 +15,6 @@ Npgsql.NpgsqlDataSourceBuilder.Name.get -> string?
 Npgsql.NpgsqlDataSourceBuilder.Name.set -> void
 Npgsql.NpgsqlDataSourceBuilder.UseRootCertificate(System.Security.Cryptography.X509Certificates.X509Certificate2? rootCertificate) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseRootCertificateCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2!>? rootCertificateCallback) -> Npgsql.NpgsqlDataSourceBuilder!
-Npgsql.NpgsqlDataSourceBuilder.UseSystemTextJson(System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder
 Npgsql.NpgsqlSlimDataSourceBuilder.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
@@ -50,7 +50,6 @@ Npgsql.NpgsqlSlimDataSourceBuilder.UsePeriodicPasswordProvider(System.Func<Npgsq
 Npgsql.NpgsqlSlimDataSourceBuilder.UsePhysicalConnectionInitializer(System.Action<Npgsql.NpgsqlConnection!>? connectionInitializer, System.Func<Npgsql.NpgsqlConnection!, System.Threading.Tasks.Task!>? connectionInitializerAsync) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificate(System.Security.Cryptography.X509Certificates.X509Certificate2? rootCertificate) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificateCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2!>? rootCertificateCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
-Npgsql.NpgsqlSlimDataSourceBuilder.UseSystemTextJson(System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseUserCertificateValidationCallback(System.Net.Security.RemoteCertificateValidationCallback! userCertificateValidationCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.PostgresTypes.PostgresArrayType.PostgresArrayType(string! ns, string! name, uint oid, Npgsql.PostgresTypes.PostgresType! elementPostgresType) -> void
 Npgsql.PostgresTypes.PostgresBaseType.PostgresBaseType(string! ns, string! name, uint oid) -> void
@@ -112,6 +111,9 @@ override NpgsqlTypes.NpgsqlCidr.ToString() -> string!
 *REMOVED*static NpgsqlTypes.NpgsqlInet.ToIPAddress(NpgsqlTypes.NpgsqlInet inet) -> System.Net.IPAddress!
 *REMOVED*static NpgsqlTypes.NpgsqlInet.ToNpgsqlInet(System.Net.IPAddress? ip) -> NpgsqlTypes.NpgsqlInet
 *REMOVED*Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
+static Npgsql.INpgsqlTypeMapperExtensions.EnableDynamicJsonMappings<T>(this T mapper, System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> T
+static Npgsql.INpgsqlTypeMapperExtensions.EnableRecordsAsTuples<T>(this T mapper) -> T
+static Npgsql.INpgsqlTypeMapperExtensions.EnableUnmappedTypes<T>(this T mapper) -> T
 static NpgsqlTypes.NpgsqlInet.explicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPAddress! ip) -> NpgsqlTypes.NpgsqlInet
 *REMOVED*Npgsql.NpgsqlParameter.ConvertedValue.get -> object?
 *REMOVED*Npgsql.NpgsqlParameter.ConvertedValue.set -> void

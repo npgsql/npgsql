@@ -4,6 +4,7 @@ using System.Reflection;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.Resolvers;
 
@@ -28,7 +29,11 @@ class RecordTypeInfoResolver : IPgTypeInfoResolver
         if (type != typeof(object) && dataTypeName == DataTypeNames.Record)
         {
             throw new NotSupportedException(
-                string.Format(NpgsqlStrings.RecordsNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRecords), typeof(TBuilder).Name));
+                string.Format(
+                    NpgsqlStrings.RecordsNotEnabled,
+                    nameof(INpgsqlTypeMapperExtensions.EnableRecordsAsTuples),
+                    typeof(TBuilder).Name,
+                    nameof(NpgsqlSlimDataSourceBuilder.EnableRecords)));
         }
     }
 }
@@ -64,23 +69,23 @@ class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
             mapping => mapping with
             {
                 MatchRequirement = MatchRequirement.DataTypeName,
-                TypeMatchPredicate = type => type is null || (type is { IsConstructedGenericType: true, FullName: not null }
-                                             && type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal))
+                TypeMatchPredicate = type => type is { IsConstructedGenericType: true, FullName: not null }
+                                             && type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal)
             });
 
         mappings.AddStructType<ValueTuple<object>>(DataTypeNames.Record, Factory,
                 mapping => mapping with
                 {
                     MatchRequirement = MatchRequirement.DataTypeName,
-                    TypeMatchPredicate = type => type is null || (type is { IsConstructedGenericType: true, FullName: not null }
-                                                 && type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal))
+                    TypeMatchPredicate = type => type is { IsConstructedGenericType: true, FullName: not null }
+                                                 && type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal)
                 });
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
-        mappings.AddArrayType<Tuple<object>>(DataTypeNames.Record);
-        mappings.AddStructArrayType<ValueTuple<object>>(DataTypeNames.Record);
+        mappings.AddArrayType<Tuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
+        mappings.AddStructArrayType<ValueTuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
     }
 
     static readonly TypeInfoFactory Factory = static (options, mapping, _) =>
