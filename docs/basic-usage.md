@@ -224,7 +224,7 @@ await using var batch = new NpgsqlBatch(conn)
     }
 };
 
-await using var reader = await cmd.ExecuteReaderAsync();
+await using var reader = await batch.ExecuteReaderAsync();
 ```
 
 An <xref:Npgsql.NpgsqlBatch> simply contains a list of `NpgsqlBatchCommands`, each of which has a `CommandText` and a list of parameters (much like an <xref:Npgsql.NpgsqlCommand>). All statements and parameters are efficiently packed into a single packet - when possible - and sent to PostgreSQL.
