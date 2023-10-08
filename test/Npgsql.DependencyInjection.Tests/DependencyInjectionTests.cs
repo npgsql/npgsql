@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,13 +10,15 @@ using NUnit.Framework;
 
 namespace Npgsql.DependencyInjection.Tests;
 
-public class DependencyInjectionTests
+[TestFixture(DataSourceMode.Standard)]
+[TestFixture(DataSourceMode.Slim)]
+public class DependencyInjectionTests(DataSourceMode mode)
 {
     [Test]
     public async Task NpgsqlDataSource_is_registered_properly([Values] bool async)
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddNpgsqlDataSource(TestUtil.ConnectionString);
+        RegisterDataSource(serviceCollection, TestUtil.ConnectionString);
 
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
         var dataSource = serviceProvider.GetRequiredService<NpgsqlDataSource>();
@@ -29,7 +32,7 @@ public class DependencyInjectionTests
     public async Task NpgsqlMultiHostDataSource_is_registered_properly([Values] bool async)
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddMultiHostNpgsqlDataSource(TestUtil.ConnectionString);
+        RegisterMultiHostDataSource(serviceCollection, TestUtil.ConnectionString);
 
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
         var multiHostDataSource = serviceProvider.GetRequiredService<NpgsqlMultiHostDataSource>();
@@ -46,7 +49,7 @@ public class DependencyInjectionTests
     public void NpgsqlDataSource_is_registered_as_singleton_by_default()
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddNpgsqlDataSource(TestUtil.ConnectionString);
+        RegisterDataSource(serviceCollection, TestUtil.ConnectionString);
 
         using var serviceProvider = serviceCollection.BuildServiceProvider();
         using var scope1 = serviceProvider.CreateScope();
@@ -64,7 +67,7 @@ public class DependencyInjectionTests
     public async Task NpgsqlConnection_is_registered_properly([Values] bool async)
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddNpgsqlDataSource(TestUtil.ConnectionString);
+        RegisterDataSource(serviceCollection, TestUtil.ConnectionString);
 
         using var serviceProvider = serviceCollection.BuildServiceProvider();
         using var scope = serviceProvider.CreateScope();
@@ -84,7 +87,7 @@ public class DependencyInjectionTests
     public void NpgsqlConnection_is_registered_as_transient_by_default()
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddNpgsqlDataSource("Host=localhost;Username=test;Password=test");
+        RegisterDataSource(serviceCollection, "Host=localhost;Username=test;Password=test");
 
         using var serviceProvider = serviceCollection.BuildServiceProvider();
         using var scope1 = serviceProvider.CreateScope();
@@ -109,7 +112,7 @@ public class DependencyInjectionTests
 
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddLogging(b => b.AddProvider(listLoggerProvider));
-        serviceCollection.AddNpgsqlDataSource(TestUtil.ConnectionString);
+        RegisterDataSource(serviceCollection, TestUtil.ConnectionString);
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
 
         var dataSource = serviceProvider.GetRequiredService<NpgsqlDataSource>();
@@ -120,4 +123,24 @@ public class DependencyInjectionTests
 
         Assert.That(listLoggerProvider.Log.Any(l => l.Id == NpgsqlEventId.CommandExecutionCompleted));
     }
+
+    private IServiceCollection RegisterDataSource(ServiceCollection serviceCollection, string connectionString) => mode switch
+    {
+        DataSourceMode.Standard => serviceCollection.AddNpgsqlDataSource(connectionString),
+        DataSourceMode.Slim => serviceCollection.AddNpgsqlSlimDataSource(connectionString),
+        _ => throw new NotSupportedException($"Mode {mode} not supported")
+    };
+
+    private IServiceCollection RegisterMultiHostDataSource(ServiceCollection serviceCollection, string connectionString) => mode switch
+    {
+        DataSourceMode.Standard => serviceCollection.AddMultiHostNpgsqlDataSource(connectionString),
+        DataSourceMode.Slim => serviceCollection.AddMultiHostNpgsqlSlimDataSource(connectionString),
+        _ => throw new NotSupportedException($"Mode {mode} not supported")
+    };
+}
+
+public enum DataSourceMode
+{
+    Standard,
+    Slim
 }
