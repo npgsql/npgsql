@@ -430,23 +430,12 @@ public readonly record struct NpgsqlInet
     }
 
     public NpgsqlInet(string addr)
-    {
-        switch (addr.Split('/'))
+        => (Address, Netmask) = addr.Split('/') switch
         {
-        case { Length: 2 } segments:
-            Address = IPAddress.Parse(segments[0]);
-            Netmask = byte.Parse(segments[1]);
-            return;
-
-        case { Length: 1 } segments:
-            Address = IPAddress.Parse(segments[0]);
-            Netmask = 32;
-            return;
-
-        default:
-            throw new FormatException("Invalid number of parts in CIDR specification");
-        }
-    }
+            { Length: 2 } segments => (IPAddress.Parse(segments[0]), byte.Parse(segments[1])),
+            { Length: 1 } segments => (IPAddress.Parse(segments[0]), (byte)32),
+            _ => throw new FormatException("Invalid number of parts in CIDR specification")
+        };
 
     public override string ToString()
         => (Address.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
@@ -488,20 +477,12 @@ public readonly record struct NpgsqlCidr
     }
 
     public NpgsqlCidr(string addr)
-    {
-        switch (addr.Split('/'))
+        => (Address, Netmask) = addr.Split('/') switch
         {
-        case { Length: 2 } segments:
-            Address = IPAddress.Parse(segments[0]);
-            Netmask = byte.Parse(segments[1]);
-            return;
-
-        case { Length: 1 } segments:
-            throw new FormatException("Missing netmask");
-        default:
-            throw new FormatException("Invalid number of parts in CIDR specification");
-        }
-    }
+            { Length: 2 } segments => (IPAddress.Parse(segments[0]), byte.Parse(segments[1])),
+            { Length: 1 } => throw new FormatException("Missing netmask"),
+            _ => throw new FormatException("Invalid number of parts in CIDR specification")
+        };
 
     public static implicit operator NpgsqlInet(NpgsqlCidr cidr)
         => new(cidr.Address, cidr.Netmask);
