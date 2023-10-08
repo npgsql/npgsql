@@ -114,12 +114,12 @@ override NpgsqlTypes.NpgsqlCidr.ToString() -> string!
 static Npgsql.INpgsqlTypeMapperExtensions.EnableDynamicJsonMappings<T>(this T mapper, System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> T
 static Npgsql.INpgsqlTypeMapperExtensions.EnableRecordsAsTuples<T>(this T mapper) -> T
 static Npgsql.INpgsqlTypeMapperExtensions.EnableUnmappedTypes<T>(this T mapper) -> T
-static NpgsqlTypes.NpgsqlInet.explicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPAddress! ip) -> NpgsqlTypes.NpgsqlInet
+static NpgsqlTypes.NpgsqlCidr.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlCidr cidr) -> System.Net.IPAddress!
+static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTypes.NpgsqlCidr cidr) -> NpgsqlTypes.NpgsqlInet
 *REMOVED*Npgsql.NpgsqlParameter.ConvertedValue.get -> object?
 *REMOVED*Npgsql.NpgsqlParameter.ConvertedValue.set -> void
 *REMOVED*Npgsql.PostgresTypes.PostgresArrayType.PostgresArrayType(string! ns, string! internalName, uint oid, Npgsql.PostgresTypes.PostgresType! elementPostgresType) -> void
 *REMOVED*Npgsql.PostgresTypes.PostgresBaseType.PostgresBaseType(string! ns, string! internalName, uint oid) -> void
-*REMOVED*static NpgsqlTypes.NpgsqlInet.implicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPAddress! ip) -> NpgsqlTypes.NpgsqlInet
 *REMOVED*Npgsql.PostgresTypes.PostgresType.PostgresType(string! ns, string! name, string! internalName, uint oid) -> void
 *REMOVED*Npgsql.PostgresTypes.PostgresType.PostgresType(string! ns, string! name, uint oid) -> void
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
