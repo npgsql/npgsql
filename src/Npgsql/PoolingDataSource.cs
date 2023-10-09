@@ -115,7 +115,7 @@ class PoolingDataSource : NpgsqlDataSource
         _logger = LoggingConfiguration.ConnectionLogger;
     }
 
-    static SemaphoreSlim SyncOverAsyncSemaphore { get; } = new(Environment.ProcessorCount / 2);
+    static SemaphoreSlim SyncOverAsyncSemaphore { get; } = new(Math.Max(1, Environment.ProcessorCount / 2));
 
     internal sealed override ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
