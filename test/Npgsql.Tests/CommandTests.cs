@@ -131,7 +131,7 @@ public class CommandTests : MultiplexingTestBase
     [NonParallelizable] // Disables sql rewriting
     public async Task Legacy_batching_is_not_supported_when_EnableSqlParsing_is_disabled()
     {
-        using var _ = DisableSqlRewriting(ClearDataSources);
+        using var _ = DisableSqlRewriting();
 
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
@@ -143,7 +143,7 @@ public class CommandTests : MultiplexingTestBase
     [NonParallelizable] // Disables sql rewriting
     public async Task Positional_parameters_are_supported_when_EnableSqlParsing_is_disabled()
     {
-        using var _ = DisableSqlRewriting(ClearDataSources);
+        using var _ = DisableSqlRewriting();
 
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT $1", conn);
@@ -155,7 +155,7 @@ public class CommandTests : MultiplexingTestBase
     [NonParallelizable] // Disables sql rewriting
     public async Task Named_parameters_are_not_supported_when_EnableSqlParsing_is_disabled()
     {
-        using var _ = DisableSqlRewriting(ClearDataSources);
+        using var _ = DisableSqlRewriting();
 
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT @p", conn);

@@ -464,8 +464,6 @@ public abstract class TestBase
 
     #region Utilities for use by tests
 
-    protected static readonly NpgsqlDataSource SharedDataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
-
     protected virtual NpgsqlDataSourceBuilder CreateDataSourceBuilder()
         => new(ConnectionString);
 
@@ -497,7 +495,12 @@ public abstract class TestBase
             {
                 if (!DataSources.TryGetValue(connectionString, out dataSource))
                 {
-                    DataSources[connectionString] = dataSource = NpgsqlDataSource.Create(connectionString);
+                    var canonicalConnectionString = new NpgsqlConnectionStringBuilder(connectionString).ToString();
+                    if (!DataSources.TryGetValue(canonicalConnectionString, out dataSource))
+                    {
+                        DataSources[canonicalConnectionString] = dataSource = NpgsqlDataSource.Create(connectionString);
+                    }
+                    DataSources[connectionString] = dataSource;
                 }
             }
         }
@@ -528,8 +531,6 @@ public abstract class TestBase
         => GetDataSource(ConnectionString);
 
     protected virtual NpgsqlDataSource DataSource => DefaultDataSource;
-
-    protected void ClearDataSources() => DataSources.Clear();
 
     protected virtual NpgsqlConnection CreateConnection()
         => DataSource.CreateConnection();

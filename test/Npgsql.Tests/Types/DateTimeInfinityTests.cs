@@ -11,7 +11,7 @@ namespace Npgsql.Tests.Types;
 [TestFixture(false)]
 [NonParallelizable]
 #endif
-public class DateTimeInfinityTests : TestBase, IDisposable
+public sealed class DateTimeInfinityTests : TestBase, IDisposable
 {
     [Test]
     public async Task TimestampTz_write()
@@ -209,14 +209,18 @@ public class DateTimeInfinityTests : TestBase, IDisposable
                 "DateTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
         }
 #endif
-        // The switch is baked into the serializer options, so clear the sources on change here.
-        ClearDataSources();
+
+        DataSource = NpgsqlDataSource.Create(ConnectionString);
     }
+
+    protected override NpgsqlDataSource DataSource { get; }
 
     public void Dispose()
     {
 #if DEBUG
         DisableDateTimeInfinityConversions = false;
 #endif
+
+        DataSource.Dispose();
     }
 }

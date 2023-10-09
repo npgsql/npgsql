@@ -76,6 +76,7 @@ public class LegacyDateTimeTests : TestBase
     public void Teardown()
     {
         LegacyTimestampBehavior = false;
+        _dataSource.Dispose();
         NpgsqlDataSourceBuilder.ResetGlobalMappings(overwrite: true);
     }
 #endif

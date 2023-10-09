@@ -15,17 +15,17 @@ public class StoredProcedureTests : TestBase
     [TestCase(true, true)]
     public async Task With_input_parameters(bool withPositional, bool withNamed)
     {
-        var table = await CreateTempTable(SharedDataSource, "foo int, bar int");
-        var sproc = await GetTempProcedureName(SharedDataSource);
+        var table = await CreateTempTable(DataSource, "foo int, bar int");
+        var sproc = await GetTempProcedureName(DataSource);
 
-        await SharedDataSource.ExecuteNonQueryAsync(@$"
+        await DataSource.ExecuteNonQueryAsync(@$"
 CREATE PROCEDURE {sproc}(a int, b int)
 LANGUAGE SQL
 AS $$
     INSERT INTO {table} VALUES (a, b);
 $$");
 
-        await using (var command = SharedDataSource.CreateCommand(sproc))
+        await using (var command = DataSource.CreateCommand(sproc))
         {
             command.CommandType = CommandType.StoredProcedure;
 
@@ -40,7 +40,7 @@ $$");
             await command.ExecuteNonQueryAsync();
         }
 
-        await using (var command = SharedDataSource.CreateCommand($"SELECT * FROM {table}"))
+        await using (var command = DataSource.CreateCommand($"SELECT * FROM {table}"))
         await using (var reader = await command.ExecuteReaderAsync())
         {
             await reader.ReadAsync();
@@ -55,11 +55,11 @@ $$");
     [TestCase(true, true)]
     public async Task With_output_parameters(bool withPositional, bool withNamed)
     {
-        MinimumPgVersion(SharedDataSource, "14.0", "Stored procedure OUT parameters are only support starting with version 14");
+        MinimumPgVersion(DataSource, "14.0", "Stored procedure OUT parameters are only support starting with version 14");
 
-        var sproc = await GetTempProcedureName(SharedDataSource);
+        var sproc = await GetTempProcedureName(DataSource);
 
-        await SharedDataSource.ExecuteNonQueryAsync(@$"
+        await DataSource.ExecuteNonQueryAsync(@$"
 CREATE PROCEDURE {sproc}(a int, OUT out1 int, OUT out2 int, b int)
 LANGUAGE plpgsql
 AS $$
@@ -68,7 +68,7 @@ BEGIN
     out2 = b;
 END$$");
 
-        await using var command = SharedDataSource.CreateCommand(sproc);
+        await using var command = DataSource.CreateCommand(sproc);
         command.CommandType = CommandType.StoredProcedure;
 
         command.Parameters.Add(new() { Value = 8 });
@@ -96,9 +96,9 @@ END$$");
     [TestCase(true, true)]
     public async Task With_input_output_parameters(bool withPositional, bool withNamed)
     {
-        var sproc = await GetTempProcedureName(SharedDataSource);
+        var sproc = await GetTempProcedureName(DataSource);
 
-        await SharedDataSource.ExecuteNonQueryAsync(@$"
+        await DataSource.ExecuteNonQueryAsync(@$"
 CREATE PROCEDURE {sproc}(a int, INOUT inout1 int, INOUT inout2 int, b int)
 LANGUAGE plpgsql
 AS $$
@@ -107,7 +107,7 @@ BEGIN
     inout2 = inout2 + b;
 END$$");
 
-        await using var command = SharedDataSource.CreateCommand(sproc);
+        await using var command = DataSource.CreateCommand(sproc);
         command.CommandType = CommandType.StoredProcedure;
 
         command.Parameters.Add(new() { Value = 8 });

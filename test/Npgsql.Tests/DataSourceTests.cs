@@ -185,7 +185,7 @@ public class DataSourceTests : TestBase
     [Test]
     public async Task Cannot_access_connection_transaction_on_data_source_command()
     {
-        await using var command = SharedDataSource.CreateCommand();
+        await using var command = DataSource.CreateCommand();
 
         Assert.That(() => command.Connection, Throws.Exception.TypeOf<NotSupportedException>());
         Assert.That(() => command.Connection = null, Throws.Exception.TypeOf<NotSupportedException>());
@@ -199,7 +199,7 @@ public class DataSourceTests : TestBase
     [Test]
     public async Task Cannot_access_connection_transaction_on_data_source_batch()
     {
-        await using var batch = SharedDataSource.CreateBatch();
+        await using var batch = DataSource.CreateBatch();
 
         Assert.That(() => batch.Connection, Throws.Exception.TypeOf<NotSupportedException>());
         Assert.That(() => batch.Connection = null, Throws.Exception.TypeOf<NotSupportedException>());

@@ -19,7 +19,7 @@ public static class TestUtil
     /// test database.
     /// </summary>
     public const string DefaultConnectionString =
-        "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0;SSL Mode=Disable";
+        "Host=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0;SSL Mode=Disable;Multiplexing=False";
 
     /// <summary>
     /// The connection string that will be used when opening the connection to the tests database.
@@ -387,10 +387,9 @@ CREATE TABLE {tableName} ({columns});");
         return new DeferredExecutionDisposable(() => CultureInfo.CurrentCulture = oldCulture);
     }
 
-    internal static IDisposable DisableSqlRewriting(Action clearDataSources)
+    internal static IDisposable DisableSqlRewriting()
     {
 #if DEBUG
-        clearDataSources();
         NpgsqlCommand.EnableSqlRewriting = false;
         return new DeferredExecutionDisposable(() => NpgsqlCommand.EnableSqlRewriting = true);
 #else

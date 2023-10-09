@@ -467,4 +467,7 @@ class RangeTests : MultiplexingTestBase
         {
             builder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
         });
+
+    [OneTimeTearDown]
+    public void TearDown() => DataSource.Dispose();
 }

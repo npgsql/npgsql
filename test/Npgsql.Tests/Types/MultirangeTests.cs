@@ -175,4 +175,7 @@ public class MultirangeTests : TestBase
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
     }
+
+    [OneTimeTearDown]
+    public void TearDown() => DataSource.Dispose();
 }
