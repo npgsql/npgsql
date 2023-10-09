@@ -155,7 +155,7 @@ class PoolingDataSource : NpgsqlDataSource
                             SyncOverAsyncSemaphore.Wait(finalToken);
                             try
                             {
-                                var awaiter = _idleConnectorReader.ReadAsync(finalToken).GetAwaiter();
+                                var awaiter = _idleConnectorReader.ReadAsync(finalToken).ConfigureAwait(false).GetAwaiter();
                                 var mres = new ManualResetEventSlim(false, 0);
 
                                 // Cancellation happens through the ReadAsync call, which will complete the task.
