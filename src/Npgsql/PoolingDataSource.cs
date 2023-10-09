@@ -60,9 +60,6 @@ class PoolingDataSource : NpgsqlDataSource
 
     volatile int _isClearing;
 
-    static readonly ConcurrentExclusiveSchedulerPair ConstrainedConcurrencyScheduler =
-        new(TaskScheduler.Default, Math.Max(1, Environment.ProcessorCount / 2));
-
     #endregion
 
     internal sealed override (int Total, int Idle, int Busy) Statistics
@@ -118,6 +115,8 @@ class PoolingDataSource : NpgsqlDataSource
         _logger = LoggingConfiguration.ConnectionLogger;
     }
 
+    static SemaphoreSlim SyncOverAsyncSemaphore { get; } = new(Environment.ProcessorCount / 2);
+
     internal sealed override ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
@@ -149,11 +148,27 @@ class PoolingDataSource : NpgsqlDataSource
                 {
                     try
                     {
-                        var task = _idleConnectorReader.ReadAsync(finalToken);
-                        if (!async && !task.IsCompleted)
-                            await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler.ConcurrentScheduler);
+                        if (async)
+                            connector = await _idleConnectorReader.ReadAsync(finalToken).ConfigureAwait(false);
+                        else
+                        {
+                            SyncOverAsyncSemaphore.Wait(finalToken);
+                            try
+                            {
+                                var awaiter = _idleConnectorReader.ReadAsync(finalToken).GetAwaiter();
+                                var mres = new ManualResetEventSlim(false, 0);
 
-                        connector = await task.ConfigureAwait(false);
+                                // Cancellation happens through the ReadAsync call, which will complete the task.
+                                awaiter.UnsafeOnCompleted(() => mres.Set());
+                                mres.Wait(CancellationToken.None);
+                                connector = awaiter.GetResult();
+                            }
+                            finally
+                            {
+                                SyncOverAsyncSemaphore.Release();
+                            }
+                        }
+
                         if (CheckIdleConnector(connector))
                             return connector;
                     }
