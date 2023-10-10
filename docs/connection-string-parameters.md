@@ -26,7 +26,6 @@ SSL Key                      | Location of a client key for a client certificate
 SSL Password                 | Password for a key for a client certificate. Introduced in 6.0.                                                                             |
 Root Certificate             | Location of a CA certificate used to validate the server certificate.                                                                       | PGSSLROOTCERT
 Check Certificate Revocation | Whether to check the certificate revocation list during authentication.                                                                     | false
-Integrated Security          | Whether to use integrated security to log in (GSS/SSPI). [See docs for more info](security.md).                                             | false
 Persist Security Info        | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Introduced in 3.1. | false
 Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md).                                             | postgres
 Include Realm                | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
@@ -108,11 +107,12 @@ Server Compatibility Mode | A compatibility mode for special PostgreSQL server t
 
 ## Obsolete
 
-Parameter                 | Description                                                                                                      | Default
-------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------
-Client Certificate        | Location of a client certificate to be sent to the server. Deprecated in 6.0.                                    | PGSSLCERT
-Client Certificate Key    | Location of a client key for a client certificate to be sent to the server. Deprecated in 6.0.                   | PGSSLKEY
-Use Perf Counters         | Makes Npgsql write performance information about connection use to Windows Performance Counters. Removed in 5.0. | false
+Parameter                 | Description                                                                                                         | Default
+------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------
+Integrated Security       | Whether to use integrated security to log in (GSS/SSPI). Deprecated in 8.0, doesn't do anything and can be removed. | false
+Client Certificate        | Location of a client certificate to be sent to the server. Deprecated in 6.0.                                       | PGSSLCERT
+Client Certificate Key    | Location of a client key for a client certificate to be sent to the server. Deprecated in 6.0.                      | PGSSLKEY
+Use Perf Counters         | Makes Npgsql write performance information about connection use to Windows Performance Counters. Removed in 5.0.    | false
 
 ## Environment variables
 
