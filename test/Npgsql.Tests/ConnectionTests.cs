@@ -1395,6 +1395,49 @@ CREATE TABLE record ()");
                 : originalApplicationName));
     }
 
+    [Test]
+    [Description("Test whether the internal NpgsqlConnection.Open method stays on the same thread with async=false")]
+    public async Task Sync_open_blocked_same_thread()
+    {
+        if (IsMultiplexing)
+            return;
+
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MaxPoolSize = 1;
+        });
+
+        await using var openConnection = await dataSource.OpenConnectionAsync();
+
+        // 2 tasks are usually enough to reproduce the issue
+        const int taskCount = 2;
+
+        var tcs = new TaskCompletionSource<object?>[taskCount];
+        for (var i = 0; i < tcs.Length; i++)
+        {
+            tcs[i] = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+        var sameThreadTasks = Enumerable.Range(0, taskCount).Select(x => Task.Run(async () =>
+        {
+            var beforeOpenThread = Thread.CurrentThread;
+            tcs[x].SetResult(null);
+            using var conn = dataSource.CreateConnection();
+            // even though we await it should complete synchronously due to async = false
+            await conn.Open(async: false, CancellationToken.None);
+            return beforeOpenThread == Thread.CurrentThread;
+        })).ToList();
+
+        await Task.WhenAll(tcs.Select(x => x.Task));
+        // Just in case give them a second to block on getting a connection from the pool
+        await Task.Delay(1000);
+        await openConnection.CloseAsync();
+
+        foreach (var sameThreadTask in sameThreadTasks)
+        {
+            Assert.IsTrue(await sameThreadTask, "Synchronous open completed on different thread");
+        }
+    }
+
     #region Physical connection initialization
 
     [Test]
