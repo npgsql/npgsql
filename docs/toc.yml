@@ -2,22 +2,26 @@
   href: index.md
 - name: Release notes
   items:
+  - name: "8.0"
+    href: release-notes/8.0.md
   - name: "7.0"
     href: release-notes/7.0.md
   - name: "6.0"
     href: release-notes/6.0.md
-  - name: "5.0"
-    href: release-notes/5.0.md
-  - name: "4.1"
-    href: release-notes/4.1.md
-  - name: "4.0"
-    href: release-notes/4.0.md
-  - name: "3.2"
-    href: release-notes/3.2.md
-  - name: "3.1"
-    href: release-notes/3.1.md
-  - name: "3.0"
-    href: release-notes/3.0.md
+  - name: Out of support
+    items:
+    - name: "5.0"
+      href: release-notes/5.0.md
+    - name: "4.1"
+      href: release-notes/4.1.md
+    - name: "4.0"
+      href: release-notes/4.0.md
+    - name: "3.2"
+      href: release-notes/3.2.md
+    - name: "3.1"
+      href: release-notes/3.1.md
+    - name: "3.0"
+      href: release-notes/3.0.md
 - name: Installation
   href: installation.md
 - name: Basic usage

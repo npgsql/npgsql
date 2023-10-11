@@ -29,6 +29,9 @@ await using var dataSource = dataSourceBuilder.Build();
 
 You typically build a single data source, and then use that instance throughout your application; data sources are thread-safe, and (usually) correspond to a connection pool inside Npgsql. For more information on data source configuration, consult the relevant documentation pages.
 
+> [!NOTE]
+> If you're using NativeAOT and trimming and are concerned with minimizing application size, consider using <xref:Npgsql.NpgsqlSlimDataSourceBuilder>; this builder includes only the very minimum of functionality by default, and allows adding additional features via opt-ins.
+
 ## Basic SQL Execution
 
 Once you have a data source, an <xref:Npgsql.NpgsqlCommand> can be used to execute SQL against it:
