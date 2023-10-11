@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.100-rc.1.23463.5'
+  dotnet_sdk_version: '8.0.100-rc.2.23502.2'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Uncomment and edit the following to use nightly/preview builds 
 #  nuget_config: |

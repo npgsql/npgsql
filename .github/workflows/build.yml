@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.100-rc.1.23463.5'
+  dotnet_sdk_version: '8.0.100-rc.2.23502.2'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
