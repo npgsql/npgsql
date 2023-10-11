@@ -46,7 +46,7 @@ Require<sup>1</sup> | Yes                      | No                           | 
 VerifyCA            | Yes                      | Depends on CA policy         | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust.
 VerifyFull          | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
 
-<sup>1</sup> `SSL Mode=Require` currently requires explicitly setting `Trust Server Certificate=true` as well (this requirement will be removed in a future version). This combination should be used with e.g. self-signed certificates, which don't need to be validated. As an alternative to `Trust Server Certificate=true`, provide your custom certificate validation via <xref:Npgsql.NpgsqlConnection.UserCertificateValidationCallback?displayProperty=nameWithType>.
+<sup>1</sup> Prior to Npgsql 8.0, `SSL Mode=Require` required explicitly setting `Trust Server Certificate=true` as well, to make it explicit that the server certificate isn't validated. Starting with 8.0, `Trust Server Certificate=true` is no longer required and does nothing.
 
 The default mode in 6.0+ is `Prefer`, which allows SSL but does not require it, and does not validate certificates.
 
