@@ -37,8 +37,8 @@ date                        | DateTime                   | DateOnly (6.0+)
 time without time zone      | TimeSpan                   | TimeOnly (6.0+)
 time with time zone         | DateTimeOffset             |
 interval                    | TimeSpan<sup>3</sup>       | <xref:NpgsqlTypes.NpgsqlInterval>
-cidr                        | (IPAddress, int)           | NpgsqlInet
-inet                        | IPAddress                  | NpgsqlInet, (IPAddress, int)
+cidr                        | <xref:NpgsqlTypes.NpgsqlCidr><sup>4</sup> |
+inet                        | IPAddress                  | <xref:NpgsqlTypes.NpgsqlInet>
 macaddr                     | PhysicalAddress            |
 tsquery                     | NpgsqlTsQuery              |
 tsvector                    | NpgsqlTsVector             |
@@ -72,6 +72,8 @@ array types                 | Array (of element type)    |
 <sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` as a DateTimeOffset returns a local offset based on the timezone of the server where Npgsql is running.
 
 <sup>3</sup> PostgreSQL intervals with month or year components cannot be read as TimeSpan. Consider using NodaTime's [Period](https://nodatime.org/3.0.x/api/NodaTime.Period.html) type, or <xref:NpgsqlTypes.NpgsqlInterval>.
+
+<sup>4</sup> Prior to version 8.0, the default mapping for `cidr` was `ValueTuple<IPAddress, int>`.
 
 The Default .NET type column specifies the data type `NpgsqlDataReader.GetValue()` will return.
 
