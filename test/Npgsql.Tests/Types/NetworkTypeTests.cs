@@ -61,7 +61,6 @@ class NetworkTypeTests : MultiplexingTestBase
             NpgsqlDbType.Cidr,
             isDefaultForWriting: false);
 
-#pragma warning disable 618  // For NpgsqlInet
     [Test]
     public Task Inet_v4_as_NpgsqlInet()
         => AssertType(
@@ -79,7 +78,6 @@ class NetworkTypeTests : MultiplexingTestBase
             "inet",
             NpgsqlDbType.Inet,
             isDefaultForReading: false);
-#pragma warning restore 618  // For NpgsqlInet
 
     [Test]
     public Task Macaddr()
