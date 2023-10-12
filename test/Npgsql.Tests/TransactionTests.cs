@@ -66,7 +66,10 @@ public class TransactionTests : MultiplexingTestBase
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
         }
 
-        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
+        // Because disposed NpgsqlTransaction might be reused by another thread
+        if (!IsMultiplexing)
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Basic insert within a rolled back transaction")]
@@ -92,7 +95,10 @@ public class TransactionTests : MultiplexingTestBase
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
         }
 
-        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
+        // Because disposed NpgsqlTransaction might be reused by another thread
+        if (!IsMultiplexing)
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Basic insert within a rolled back transaction")]
@@ -118,7 +124,10 @@ public class TransactionTests : MultiplexingTestBase
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
         }
 
-        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
+        // Because disposed NpgsqlTransaction might be reused by another thread
+        if (!IsMultiplexing)
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Dispose a transaction in progress, should roll back")]
