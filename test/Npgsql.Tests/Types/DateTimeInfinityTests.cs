@@ -14,6 +14,57 @@ namespace Npgsql.Tests.Types;
 public class DateTimeInfinityTests : TestBase, IDisposable
 {
     [Test]
+    public async Task TimestampTz_write_DTO()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
+        {
+            Parameters =
+            {
+                new()
+                {
+                    Value = DisableDateTimeInfinityConversions ? DateTimeOffset.MinValue.ToUniversalTime().AddYears(1) : DateTimeOffset.MinValue,
+                    NpgsqlDbType = NpgsqlDbType.TimestampTz
+                },
+            }
+        };
+
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions ? "0002-01-01 00:00:00" : "-infinity"));
+
+        cmd.Parameters[0].Value = DateTimeOffset.MaxValue;
+
+        if (DisableDateTimeInfinityConversions)
+            Assert.That(async () => await cmd.ExecuteScalarAsync(), Is.EqualTo("9999-12-31 23:59:59.999999"));
+        else
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("infinity"));
+    }
+
+    [Test]
+    public async Task TimestampTz_read_DTO()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand(
+            "SELECT '-infinity'::timestamp with time zone, 'infinity'::timestamp with time zone",
+            conn);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        if (DisableDateTimeInfinityConversions)
+        {
+            Assert.That(() => reader.GetFieldValue<DateTimeOffset>(0), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader.GetFieldValue<DateTimeOffset>(1), Throws.Exception.TypeOf<InvalidCastException>());
+        }
+        else
+        {
+            Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(DateTimeOffset.MinValue));
+            Assert.That(reader.GetFieldValue<DateTimeOffset>(1), Is.EqualTo(DateTimeOffset.MaxValue));
+        }
+    }
+
+    [Test]
     public async Task TimestampTz_write()
     {
         await using var conn = await OpenConnectionAsync();

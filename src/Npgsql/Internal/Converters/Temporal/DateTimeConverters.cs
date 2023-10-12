@@ -40,7 +40,7 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
     }
 
     protected override DateTimeOffset ReadCore(PgReader reader)
-        => PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);
+        => new(PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions), TimeSpan.Zero);
 
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
     {
