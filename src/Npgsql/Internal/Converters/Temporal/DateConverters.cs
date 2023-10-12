@@ -35,7 +35,7 @@ sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
     {
         if (_dateTimeInfinityConversions)
         {
-            if (value == DateTime.MaxValue)
+            if (value >= DateTime.MaxValue.Date)
             {
                 writer.WriteInt32(int.MaxValue);
                 return;
