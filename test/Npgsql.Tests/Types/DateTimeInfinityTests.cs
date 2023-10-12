@@ -46,11 +46,11 @@ public class DateTimeInfinityTests : TestBase, IDisposable
 
     static readonly TestCaseData[] DateDateTimeValues =
     {
-        new TestCaseData(DateTime.MinValue.Date.AddYears(1), "0002-01-01", "0002-01-01")
+        new TestCaseData(DateTime.MinValue.AddYears(1), "0002-01-01", "0002-01-01")
             .SetName("MinValue_AddYear"),
-        new TestCaseData(DateTime.MinValue.Date, "0001-01-01", "-infinity")
+        new TestCaseData(DateTime.MinValue, "0001-01-01", "-infinity")
             .SetName("MinValue"),
-        new TestCaseData(DateTime.MaxValue.Date, "9999-12-31", "infinity")
+        new TestCaseData(DateTime.MaxValue, "9999-12-31", "infinity")
             .SetName("MaxValue"),
     };
 
@@ -81,7 +81,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
 
     [Test, TestCaseSource(nameof(DateDateTimeValues))]
     public Task Date_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
-        => AssertType(dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
+        => AssertType(DisableDateTimeInfinityConversions ? dateTime.Date : dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
             "date", NpgsqlDbType.Date, DbType.Date,
             isDefault: false);
 
