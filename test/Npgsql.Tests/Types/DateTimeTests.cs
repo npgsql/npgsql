@@ -129,24 +129,21 @@ public class DateTimeTests : TestBase
 
     #region Time with timezone
 
-    [Test]
-    public async Task TimeTz_as_DateTimeOffset()
+    static readonly TestCaseData[] TimeTzValues =
     {
-        await AssertTypeRead("13:03:45.51+02",
-            "time with time zone", new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)));
+        new TestCaseData(new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)), "13:03:45.51+02")
+            .SetName("Timezone"),
+        new TestCaseData(new DateTimeOffset(1, 1, 2, 1, 0, 45, 510, TimeSpan.FromHours(-3)), "01:00:45.51-03")
+            .SetName("Negative_timezone"),
+        new TestCaseData(new DateTimeOffset(1212720130000, TimeSpan.Zero), "09:41:12.013+00")
+            .SetName("Utc"),
+        new TestCaseData(new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0)), "01:00:00+02")
+            .SetName("Before_utc_zero"),
+    };
 
-        await AssertTypeWrite(
-            new DateTimeOffset(1, 1, 1, 13, 3, 45, 510, TimeSpan.FromHours(2)),
-            "13:03:45.51+02",
-            "time with time zone",
-            NpgsqlDbType.TimeTz,
-            isDefault: false);
-    }
-
-    [Test]
-    public Task TimeTz_before_utc_zero()
-        => AssertTypeRead("01:00:00+02",
-            "time with time zone", new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0)));
+    [Test, TestCaseSource(nameof(TimeTzValues))]
+    public Task TimeTz_as_DateTimeOffset(DateTimeOffset time, string sqlLiteral)
+        => AssertType(time, sqlLiteral, "time with time zone", NpgsqlDbType.TimeTz, isDefault: false);
 
     #endregion
 

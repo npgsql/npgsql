@@ -46,7 +46,7 @@ sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
 
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
     {
-        writer.WriteInt64(value.Ticks / 10);
+        writer.WriteInt64(value.TimeOfDay.Ticks / 10);
         writer.WriteInt32(-(int)(value.Offset.Ticks / TimeSpan.TicksPerSecond));
     }
 }
