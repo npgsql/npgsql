@@ -386,6 +386,25 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         Assert.That(await conn.ExecuteScalarAsync($"SELECT field FROM {table}"), Is.EqualTo(data));
     }
 
+    [Test]
+    public async Task Import_reused_instance_confused_mapping_info()
+    {
+        using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "field int4");
+
+        var data = 8;
+        using (var writer = conn.BeginBinaryImport($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write(data, NpgsqlDbType.Integer);
+            writer.StartRow();
+            writer.Write(data, "int2");
+            // If we don't reset NpgsqlDbType during reuse of the instance we'll succeed at writing 8 a second time as an int4.
+            // If we did properly reset we'll get a postgres exception "insufficient data left in message" due to the int2 value being unexpected.
+            Assert.Throws<PostgresException>(() => writer.Complete());
+        }
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/816")]
     public async Task Import_string_with_buffer_length()
     {
