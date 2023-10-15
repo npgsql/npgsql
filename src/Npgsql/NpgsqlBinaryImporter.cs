@@ -296,8 +296,22 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (_column == -1)
             throw new InvalidOperationException("A row hasn't been started");
 
-        if (typeof(T) == typeof(object) || typeof(T) == typeof(DBNull))
+        // Statically map any DBNull value during importing, generic parameters when T = DBNull normally won't find any mapping.
+        if (typeof(T) == typeof(DBNull))
         {
+            await WriteNull(async, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (typeof(T) == typeof(object))
+        {
+            // Allow null values for object typed parameters, parameters exclusively accept DBNull.Value when T = object.
+            if (value == null || value is DBNull)
+            {
+                await WriteNull(async, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
             if (param.GetType() != typeof(NpgsqlParameter))
             {
                 var newParam = _params[_column] = new NpgsqlParameter();

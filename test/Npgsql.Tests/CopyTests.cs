@@ -419,6 +419,46 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         writer.Write(data);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5330")]
+    public async Task Import_object_null()
+    {
+        using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "field TEXT[]");
+
+        using (var writer = conn.BeginBinaryImport($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write<object?>(null, NpgsqlDbType.Boolean);
+            var rowsWritten = writer.Complete();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT field FROM {table}"), Is.EqualTo(DBNull.Value));
+    }
+
+    static readonly TestCaseData[] DBNullValues =
+    {
+        new TestCaseData(DBNull.Value).SetName("DBNull.Value"),
+        new TestCaseData(null).SetName("null")
+    };
+
+    [Test, TestCaseSource(nameof(DBNullValues))]
+    public async Task Import_dbnull(DBNull? value)
+    {
+        using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "field TEXT[]");
+
+        using (var writer = conn.BeginBinaryImport($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write(value, NpgsqlDbType.Boolean);
+            var rowsWritten = writer.Complete();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT field FROM {table}"), Is.EqualTo(DBNull.Value));
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_table_definition_binary_import()
     {
