@@ -201,6 +201,15 @@ public class CommandParameterTests : MultiplexingTestBase
             isNpgsqlDbTypeInferredFromClrType: true, skipArrayCheck: true);
     }
 
+    [Test]
+    public async Task Object_generic_parameter_works()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT $1", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<object> { NpgsqlDbType = NpgsqlDbType.Integer, Value = 8 });
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
+    }
+
     public CommandParameterTests(MultiplexingMode multiplexingMode) : base(multiplexingMode)
     {
     }

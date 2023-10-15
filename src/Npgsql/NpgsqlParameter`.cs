@@ -108,7 +108,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     private protected override ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (TypeInfo!.IsBoxing || _useSubStream)
+        if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing || _useSubStream)
             return base.WriteValue(async, writer, cancellationToken);
 
         Debug.Assert(Converter is PgConverter<T>);
