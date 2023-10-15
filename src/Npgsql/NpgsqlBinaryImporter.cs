@@ -176,16 +176,14 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
 
-        var p = _params[_column];
-        if (p == null)
-        {
-            // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object)
-                ? new NpgsqlParameter()
-                : new NpgsqlParameter<T>();
-        }
+        // First row, create the parameter objects
+        ref var p = ref _params[_column];
+        if (p is not NpgsqlParameter<T> typedParam)
+            p = typedParam = new NpgsqlParameter<T>();
+        else if (p._npgsqlDbType is not null || p._dataTypeName is not null)
+            p.ResetDbType();
 
-        return Write(value, p, async, cancellationToken);
+        return Write(value, typedParam, async, cancellationToken);
     }
 
     /// <summary>
@@ -225,20 +223,17 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
 
-        var p = _params[_column];
-        if (p == null)
+        // First row, create the parameter objects
+        ref var p = ref _params[_column];
+        if (p is not NpgsqlParameter<T> typedParam)
+            p = typedParam = new NpgsqlParameter<T> { NpgsqlDbType = npgsqlDbType };
+        else if (p._npgsqlDbType != npgsqlDbType || p._dataTypeName is not null)
         {
-            // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object) || typeof(T) == typeof(DBNull)
-                ? new NpgsqlParameter()
-                : new NpgsqlParameter<T>();
+            p.ResetDbType();
             p.NpgsqlDbType = npgsqlDbType;
         }
 
-        if (npgsqlDbType != p.NpgsqlDbType)
-            throw new InvalidOperationException($"Can't change {nameof(p.NpgsqlDbType)} from {p.NpgsqlDbType} to {npgsqlDbType}");
-
-        return Write(value, p, async, cancellationToken);
+        return Write(value, typedParam, async, cancellationToken);
     }
 
     /// <summary>
@@ -274,62 +269,34 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
 
-        var p = _params[_column];
-        if (p == null)
+        // First row, create the parameter objects
+        ref var p = ref _params[_column];
+        if (p is not NpgsqlParameter<T> typedParam)
+            p = typedParam = new NpgsqlParameter<T> { DataTypeName = dataTypeName };
+        else if (p._npgsqlDbType is not null || p._dataTypeName != dataTypeName)
         {
-            // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object)
-                ? new NpgsqlParameter()
-                : new NpgsqlParameter<T>();
+            p.ResetDbType();
             p.DataTypeName = dataTypeName;
         }
 
-        //if (dataTypeName!= p.DataTypeName)
-        //    throw new InvalidOperationException($"Can't change {nameof(p.DataTypeName)} from {p.DataTypeName} to {dataTypeName}");
-
-        return Write(value, p, async, cancellationToken);
+        return Write(value, typedParam, async, cancellationToken);
     }
 
-    async Task Write<T>(T value, NpgsqlParameter param, bool async, CancellationToken cancellationToken = default)
+    async Task Write<T>(T value, NpgsqlParameter<T> param, bool async, CancellationToken cancellationToken = default)
     {
         CheckReady();
         if (_column == -1)
             throw new InvalidOperationException("A row hasn't been started");
 
         // Statically map any DBNull value during importing, generic parameters when T = DBNull normally won't find any mapping.
-        if (typeof(T) == typeof(DBNull))
+        // Also allow null values for object typed parameters, parameters exclusively accept DBNull.Value when T = object.
+        if (typeof(T) == typeof(DBNull) || (typeof(T) == typeof(object) && (value == null || value is DBNull)))
         {
             await WriteNull(async, cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        if (typeof(T) == typeof(object))
-        {
-            // Allow null values for object typed parameters, parameters exclusively accept DBNull.Value when T = object.
-            if (value == null || value is DBNull)
-            {
-                await WriteNull(async, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            if (param.GetType() != typeof(NpgsqlParameter))
-            {
-                var newParam = _params[_column] = new NpgsqlParameter();
-                newParam.NpgsqlDbType = param.NpgsqlDbType;
-                param = newParam;
-            }
-            param.Value = value;
-        }
-        else
-        {
-            if (param is not NpgsqlParameter<T> typedParam)
-            {
-                _params[_column] = typedParam = new NpgsqlParameter<T>();
-                typedParam.NpgsqlDbType = param.NpgsqlDbType;
-                param = typedParam;
-            }
-            typedParam.TypedValue = value;
-        }
+        param.TypedValue = value;
         param.ResolveTypeInfo(_connector.SerializerOptions);
         param.Bind(out _, out _);
         try

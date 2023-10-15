@@ -26,8 +26,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected byte _scale;
     private protected int _size;
 
-    private protected NpgsqlDbType? _npgsqlDbType;
-    private protected string? _dataTypeName;
+    internal NpgsqlDbType? _npgsqlDbType;
+    internal string? _dataTypeName;
 
     private protected string _name = string.Empty;
     object? _value;
