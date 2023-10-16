@@ -387,7 +387,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    public async Task Import_reused_instance_confused_mapping_info()
+    public async Task Import_reused_instance_mapping_info_identical_or_throws()
     {
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "field int4");
@@ -398,10 +398,11 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
             writer.StartRow();
             writer.Write(data, NpgsqlDbType.Integer);
             writer.StartRow();
-            writer.Write(data, "int2");
-            // If we don't reset NpgsqlDbType during reuse of the instance we'll succeed at writing 8 a second time as an int4.
-            // If we did properly reset we'll get a postgres exception "insufficient data left in message" due to the int2 value being unexpected.
-            Assert.Throws<PostgresException>(() => writer.Complete());
+            Assert.Throws(Is.TypeOf<InvalidOperationException>().With.Property("Message").StartsWith("Write for column 0 resolves to a different PostgreSQL type"),
+                () => writer.Write(data, "int2"));
+            // Should be recoverable by using the same type again.
+            writer.Write(data, "int4");
+            writer.Complete();
         }
     }
 

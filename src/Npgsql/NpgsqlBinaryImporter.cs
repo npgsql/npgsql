@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -176,14 +177,28 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
 
-        // First row, create the parameter objects
+        // First row, create the parameter object
         ref var p = ref _params[_column];
         if (p is not NpgsqlParameter<T> typedParam)
-            p = typedParam = new NpgsqlParameter<T>();
-        else if (p._npgsqlDbType is not null || p._dataTypeName is not null)
-            p.ResetDbType();
+            typedParam = new NpgsqlParameter<T>();
 
-        return Write(value, typedParam, async, cancellationToken);
+        // We only set previousParam if anything actually changed, this saves some checks during the write.
+        // For object typed parameters when we don't have any other data we always have to pass the previousParam.
+        // In such cases the runtime type will define the entire postgres type lookup.
+        PgTypeInfo? previousTypeInfo = null;
+        PgConverter? previousConverter = null;
+        PgTypeId previousTypeId = default;
+        if (p is not null && (typeof(T) == typeof(object) || p._npgsqlDbType is not null || p._dataTypeName is not null))
+        {
+            p.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
+            if (ReferenceEquals(p, typedParam))
+                p.ResetDbType();
+        }
+
+        if (!ReferenceEquals(p, typedParam))
+            p = typedParam;
+
+        return Write(async, value, typedParam, previousTypeInfo, previousConverter, previousTypeId, cancellationToken);
     }
 
     /// <summary>
@@ -226,14 +241,26 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         // First row, create the parameter objects
         ref var p = ref _params[_column];
         if (p is not NpgsqlParameter<T> typedParam)
-            p = typedParam = new NpgsqlParameter<T> { NpgsqlDbType = npgsqlDbType };
-        else if (p._npgsqlDbType != npgsqlDbType || p._dataTypeName is not null)
+            typedParam = new NpgsqlParameter<T> { NpgsqlDbType = npgsqlDbType };
+
+        // We only set previousParam if anything actually changed, this saves some checks during the write.
+        PgTypeInfo? previousTypeInfo = null;
+        PgConverter? previousConverter = null;
+        PgTypeId previousTypeId = default;
+        if (p is not null && (p._npgsqlDbType != npgsqlDbType || p._dataTypeName is not null))
         {
-            p.ResetDbType();
-            p.NpgsqlDbType = npgsqlDbType;
+            p.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
+            if (ReferenceEquals(p, typedParam))
+            {
+                p.ResetDbType();
+                p.NpgsqlDbType = npgsqlDbType;
+            }
         }
 
-        return Write(value, typedParam, async, cancellationToken);
+        if (!ReferenceEquals(p, typedParam))
+            p = typedParam;
+
+        return Write(async, value, typedParam, previousTypeInfo, previousConverter, previousTypeId, cancellationToken);
     }
 
     /// <summary>
@@ -272,17 +299,29 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         // First row, create the parameter objects
         ref var p = ref _params[_column];
         if (p is not NpgsqlParameter<T> typedParam)
-            p = typedParam = new NpgsqlParameter<T> { DataTypeName = dataTypeName };
-        else if (p._npgsqlDbType is not null || p._dataTypeName != dataTypeName)
+            typedParam = new NpgsqlParameter<T> { DataTypeName = dataTypeName };
+
+        // We only set previousParam if anything actually changed, this saves some checks during the write.
+        PgTypeInfo? previousTypeInfo = null;
+        PgConverter? previousConverter = null;
+        PgTypeId previousTypeId = default;
+        if (p is not null && (p._npgsqlDbType is not null || p._dataTypeName != dataTypeName))
         {
-            p.ResetDbType();
-            p.DataTypeName = dataTypeName;
+            p.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
+            if (ReferenceEquals(p, typedParam))
+            {
+                p.ResetDbType();
+                p.DataTypeName = dataTypeName;
+            }
         }
 
-        return Write(value, typedParam, async, cancellationToken);
+        if (!ReferenceEquals(p, typedParam))
+            p = typedParam;
+
+        return Write(async, value, typedParam, previousTypeInfo, previousConverter, previousTypeId, cancellationToken);
     }
 
-    async Task Write<T>(T value, NpgsqlParameter<T> param, bool async, CancellationToken cancellationToken = default)
+    async Task Write<T>(bool async, T value, NpgsqlParameter<T> param, PgTypeInfo? previousTypeInfo, PgConverter? previousConverter, PgTypeId previousTypeId, CancellationToken cancellationToken = default)
     {
         CheckReady();
         if (_column == -1)
@@ -298,6 +337,16 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         param.TypedValue = value;
         param.ResolveTypeInfo(_connector.SerializerOptions);
+
+        if (previousTypeInfo is not null && previousConverter is not null && param.PgTypeId != previousTypeId)
+        {
+            var currentPgTypeId = param.PgTypeId;
+            param.GetResolutionInfo(previousTypeInfo, previousConverter, previousTypeId);
+            throw new InvalidOperationException($"Write for column {_column} resolves to a different PostgreSQL type: {currentPgTypeId} than the first row resolved to ({previousTypeId}). " +
+                                                $"Please make sure to use clr types that resolve to the same PostgreSQL type across rows. " +
+                                                $"Alternatively pass the same NpgsqlDbType or DataTypeName to ensure the PostgreSQL type ends up to be identical." );
+        }
+
         param.Bind(out _, out _);
         try
         {

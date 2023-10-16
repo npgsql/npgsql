@@ -27,7 +27,7 @@ public readonly struct PgTypeId: IEquatable<PgTypeId>
     public static implicit operator PgTypeId(DataTypeName name) => new(name);
     public static implicit operator PgTypeId(Oid id) => new(id);
 
-    public override string ToString() => IsOid ? _oid.ToString() : _dataTypeName.Value;
+    public override string ToString() => IsOid ? "OID " + _oid : "DataTypeName " + _dataTypeName.Value;
 
     public bool Equals(PgTypeId other)
         => (this, other) switch
