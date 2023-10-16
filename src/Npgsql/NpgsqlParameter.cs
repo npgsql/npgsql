@@ -278,6 +278,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             if (value is null || _value?.GetType() != value.GetType())
                 ResetTypeInfo();
+            else
+                ResetBindingInfo();
             _value = value;
         }
     }
@@ -738,10 +740,19 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         ResetBindingInfo();
     }
 
-    void ResetBindingInfo()
+    private protected void ResetBindingInfo()
     {
+        if (WriteSize is null)
+        {
+            Debug.Assert(_writeState == default && _useSubStream == default && Format == default && _bufferRequirement == default);
+            return;
+        }
+
         if (_writeState is not null)
+        {
             TypeInfo?.DisposeWriteState(_writeState);
+            _writeState = null;
+        }
         if (_useSubStream)
         {
             _useSubStream = false;

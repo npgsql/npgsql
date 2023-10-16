@@ -28,6 +28,8 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         {
             if (typeof(T) == typeof(object) && (value is null || _typedValue?.GetType() != value.GetType()))
                 ResetTypeInfo();
+            else
+                ResetBindingInfo();
             _typedValue = value;
         }
     }
