@@ -18,5 +18,5 @@ sealed class NpgsqlCidrConverter : PgBufferedConverter<NpgsqlCidr>
     }
 
     protected override void WriteCore(PgWriter writer, NpgsqlCidr value)
-        => NpgsqlInetConverter.WriteImpl(writer, (value.Address, value.Netmask), isCidr: false);
+        => NpgsqlInetConverter.WriteImpl(writer, (value.Address, value.Netmask), isCidr: true);
 }
