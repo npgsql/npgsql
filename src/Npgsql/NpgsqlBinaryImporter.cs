@@ -341,7 +341,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (previousTypeInfo is not null && previousConverter is not null && param.PgTypeId != previousTypeId)
         {
             var currentPgTypeId = param.PgTypeId;
-            param.GetResolutionInfo(previousTypeInfo, previousConverter, previousTypeId);
+            param.SetResolutionInfo(previousTypeInfo, previousConverter, previousTypeId);
             throw new InvalidOperationException($"Write for column {_column} resolves to a different PostgreSQL type: {currentPgTypeId} than the first row resolved to ({previousTypeId}). " +
                                                 $"Please make sure to use clr types that resolve to the same PostgreSQL type across rows. " +
                                                 $"Alternatively pass the same NpgsqlDbType or DataTypeName to ensure the PostgreSQL type ends up to be identical." );

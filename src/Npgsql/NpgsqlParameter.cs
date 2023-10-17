@@ -506,7 +506,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         pgTypeId = PgTypeId;
     }
 
-    internal void GetResolutionInfo(PgTypeInfo typeInfo, PgConverter converter, PgTypeId pgTypeId)
+    internal void SetResolutionInfo(PgTypeInfo typeInfo, PgConverter converter, PgTypeId pgTypeId)
     {
         if (WriteSize is not null)
             ResetBindingInfo();
