@@ -128,8 +128,62 @@ public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
 /// </remarks>
 public struct NpgsqlBox : IEquatable<NpgsqlBox>
 {
-    public NpgsqlPoint UpperRight { get; set; }
-    public NpgsqlPoint LowerLeft { get; set; }
+    public NpgsqlPoint UpperRight
+    {
+        get => _upperRight;
+        set
+        {
+            if (value.X < _lowerLeft.X)
+            {
+                _upperRight.X = _lowerLeft.X;
+                _lowerLeft.X = value.X;
+            }
+            else
+            {
+                _upperRight.X = value.X;
+            }
+
+            if (value.Y < _lowerLeft.Y)
+            {
+                _upperRight.Y = _lowerLeft.Y;
+                _lowerLeft.Y = value.Y;
+            }
+            else
+            {
+                _upperRight.Y = value.Y;
+            }
+        }
+    }
+    private NpgsqlPoint _upperRight;
+
+
+    public NpgsqlPoint LowerLeft
+    {
+        get => _lowerLeft;
+        set
+        {
+            if (value.X > _upperRight.X)
+            {
+                _lowerLeft.X = _upperRight.X;
+                _upperRight.X = value.X;
+            }
+            else
+            {
+                _lowerLeft.X = value.X;
+            }
+
+            if (value.Y > _upperRight.Y)
+            {
+                _lowerLeft.Y = _upperRight.Y;
+                _upperRight.Y = value.Y;
+            }
+            else
+            {
+                _lowerLeft.Y = value.Y;
+            }
+        }
+    }
+    private NpgsqlPoint _lowerLeft;
 
     public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this()
     {

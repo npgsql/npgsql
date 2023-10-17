@@ -25,21 +25,46 @@ class GeometricTypeTests : MultiplexingTestBase
         => AssertType(new NpgsqlLSeg(1, 2, 3, 4), "[(1,2),(3,4)]", "lseg", NpgsqlDbType.LSeg);
 
     [Test]
-    public Task Box()
-        => AssertType(new NpgsqlBox(3, 4, 1, 2), "(4,3),(2,1)", "box", NpgsqlDbType.Box,
+    public async Task Box()
+    {
+        await AssertType(
+            new NpgsqlBox(top: 3, right: 4, bottom: 1, left: 2),
+            "(4,3),(2,1)",
+            "box",
+            NpgsqlDbType.Box,
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
 
+        await AssertType(
+            new NpgsqlBox(top: 1, right: 2, bottom: 3, left: 4),
+            "(4,3),(2,1)",
+            "box",
+            NpgsqlDbType.Box,
+            skipArrayCheck: true); // Uses semicolon instead of comma as separator
+    }
+
     [Test]
-    public Task Box_array()
-        => AssertType(
+    public async Task Box_array()
+    {
+        var boxarr = await AssertType(
             new[]
             {
-                new NpgsqlBox(3, 4, 1, 2),
-                new NpgsqlBox(5, 6, 3, 4)
+                new NpgsqlBox(top: 3, right: 4, bottom: 1, left: 2),
+                new NpgsqlBox(top: 5, right: 6, bottom: 3, left: 4),
             },
             "{(4,3),(2,1);(6,5),(4,3)}",
             "box[]",
             NpgsqlDbType.Box | NpgsqlDbType.Array);
+
+        await AssertType(
+            new[]
+            {
+                new NpgsqlBox(top: 1, right: 2, bottom: 3, left: 4),
+                new NpgsqlBox(top: 3, right: 4, bottom: 5, left: 6)
+            },
+            "{(4,3),(2,1);(6,5),(4,3)}",
+            "box[]",
+            NpgsqlDbType.Box | NpgsqlDbType.Array);
+    }
 
     [Test]
     public Task Path_closed()
