@@ -182,7 +182,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (p is not NpgsqlParameter<T> typedParam)
             typedParam = new NpgsqlParameter<T>();
 
-        // We only set previousParam if anything actually changed, this saves some checks during the write.
+        // We only report previous values if anything actually changed, this saves some checks during the write.
         // For object typed parameters when we don't have any other data we always have to pass the previousParam.
         // In such cases the runtime type will define the entire postgres type lookup.
         PgTypeInfo? previousTypeInfo = null;
@@ -243,7 +243,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (p is not NpgsqlParameter<T> typedParam)
             typedParam = new NpgsqlParameter<T> { NpgsqlDbType = npgsqlDbType };
 
-        // We only set previousParam if anything actually changed, this saves some checks during the write.
+        // We only report previous values if anything actually changed, this saves some checks during the write.
         PgTypeInfo? previousTypeInfo = null;
         PgConverter? previousConverter = null;
         PgTypeId previousTypeId = default;
@@ -301,7 +301,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (p is not NpgsqlParameter<T> typedParam)
             typedParam = new NpgsqlParameter<T> { DataTypeName = dataTypeName };
 
-        // We only set previousParam if anything actually changed, this saves some checks during the write.
+        // We only report previous values if anything actually changed, this saves some checks during the write.
         PgTypeInfo? previousTypeInfo = null;
         PgConverter? previousConverter = null;
         PgTypeId previousTypeId = default;
