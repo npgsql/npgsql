@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
@@ -26,8 +27,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected byte _scale;
     private protected int _size;
 
-    private protected NpgsqlDbType? _npgsqlDbType;
-    private protected string? _dataTypeName;
+    internal NpgsqlDbType? _npgsqlDbType;
+    internal string? _dataTypeName;
 
     private protected string _name = string.Empty;
     object? _value;
@@ -40,7 +41,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal PgTypeInfo? TypeInfo { get; private set; }
 
-    internal PgTypeId PgTypeId { get; set; }
+    internal PgTypeId PgTypeId { get; private set; }
     internal PgConverter? Converter { get; private set; }
 
     internal DataFormat Format { get; private protected set; }
@@ -277,6 +278,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             if (value is null || _value?.GetType() != value.GetType())
                 ResetTypeInfo();
+            else
+                ResetBindingInfo();
             _value = value;
         }
     }
@@ -496,11 +499,28 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
+    internal void GetResolutionInfo(out PgTypeInfo? typeInfo, out PgConverter? converter, out PgTypeId pgTypeId)
+    {
+        typeInfo = TypeInfo;
+        converter = Converter;
+        pgTypeId = PgTypeId;
+    }
+
+    internal void SetResolutionInfo(PgTypeInfo typeInfo, PgConverter converter, PgTypeId pgTypeId)
+    {
+        if (WriteSize is not null)
+            ResetBindingInfo();
+
+        TypeInfo = typeInfo;
+        Converter = converter;
+        PgTypeId = pgTypeId;
+    }
+
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
     internal void ResolveTypeInfo(PgSerializerOptions options)
     {
-        var previouslyBound = TypeInfo?.Options == options;
-        if (!previouslyBound)
+        var previouslyResolved = TypeInfo?.Options == options;
+        if (!previouslyResolved)
         {
             var staticValueType = StaticValueType;
             var valueType = GetValueType(StaticValueType);
@@ -551,7 +571,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
         // We never reuse resolutions for resolvers across executions as a mutable value itself may influence the result.
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
-        if (!previouslyBound || TypeInfo is PgResolverTypeInfo)
+        if (!previouslyResolved || TypeInfo is PgResolverTypeInfo)
         {
             ResetConverterResolution();
             var resolution = ResolveConverter(TypeInfo!);
@@ -720,10 +740,19 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         ResetBindingInfo();
     }
 
-    void ResetBindingInfo()
+    private protected void ResetBindingInfo()
     {
+        if (WriteSize is null)
+        {
+            Debug.Assert(_writeState == default && _useSubStream == default && Format == default && _bufferRequirement == default);
+            return;
+        }
+
         if (_writeState is not null)
+        {
             TypeInfo?.DisposeWriteState(_writeState);
+            _writeState = null;
+        }
         if (_useSubStream)
         {
             _useSubStream = false;

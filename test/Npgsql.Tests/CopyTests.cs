@@ -386,6 +386,26 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         Assert.That(await conn.ExecuteScalarAsync($"SELECT field FROM {table}"), Is.EqualTo(data));
     }
 
+    [Test]
+    public async Task Import_reused_instance_mapping_info_identical_or_throws()
+    {
+        using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "field int4");
+
+        var data = 8;
+        using (var writer = conn.BeginBinaryImport($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write(data, NpgsqlDbType.Integer);
+            writer.StartRow();
+            Assert.Throws(Is.TypeOf<InvalidOperationException>().With.Property("Message").StartsWith("Write for column 0 resolves to a different PostgreSQL type"),
+                () => writer.Write(data, "int2"));
+            // Should be recoverable by using the same type again.
+            writer.Write(data, "int4");
+            writer.Complete();
+        }
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/816")]
     public async Task Import_string_with_buffer_length()
     {
