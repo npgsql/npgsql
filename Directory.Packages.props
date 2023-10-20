@@ -41,7 +41,7 @@
     <PackageVersion Include="xunit" Version="2.5.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.4.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
-    <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.1" />
+    <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(ExtensionsVersion)" />
 
     <!-- Benchmarks -->
