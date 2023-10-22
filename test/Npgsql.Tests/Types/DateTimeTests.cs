@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using NpgsqlTypes;
@@ -160,10 +161,16 @@ public class DateTimeTests : TestBase
     };
 
     [Test, TestCaseSource(nameof(TimestampValues))]
-    public Task Timestamp_as_DateTime(DateTime dateTime, string sqlLiteral)
-        => AssertType(dateTime, sqlLiteral, "timestamp without time zone", NpgsqlDbType.Timestamp, DbType.DateTime2,
+    public async Task Timestamp_as_DateTime(DateTime dateTime, string sqlLiteral)
+    {
+        await AssertType(dateTime, sqlLiteral, "timestamp without time zone", NpgsqlDbType.Timestamp, DbType.DateTime2,
             // Explicitly check kind as well.
             comparer: (actual, expected) => actual.Kind == expected.Kind && actual.Equals(expected));
+
+        await AssertType(
+            new List<DateTime> { dateTime, dateTime }, $$"""{"{{sqlLiteral}}","{{sqlLiteral}}"}""", "timestamp without time zone[]", NpgsqlDbType.Timestamp | NpgsqlDbType.Array,
+            isDefaultForReading: false);
+    }
 
     [Test]
     public Task Timestamp_cannot_write_utc_DateTime()
@@ -252,10 +259,17 @@ public class DateTimeTests : TestBase
     };
 
     [Test, TestCaseSource(nameof(TimestampTzWriteValues))]
-    public Task Timestamptz_as_DateTime(DateTime dateTime, string sqlLiteral)
-        => AssertType(dateTime, sqlLiteral, "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTime,
+    public async Task Timestamptz_as_DateTime(DateTime dateTime, string sqlLiteral)
+    {
+        await AssertType(dateTime, sqlLiteral, "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTime,
             // Explicitly check kind as well.
             comparer: (actual, expected) => actual.Kind == expected.Kind && actual.Equals(expected));
+
+        await AssertType(
+            new List<DateTime> { dateTime, dateTime }, $$"""{"{{sqlLiteral}}","{{sqlLiteral}}"}""", "timestamp with time zone[]", NpgsqlDbType.TimestampTz | NpgsqlDbType.Array,
+            isDefaultForReading: false);
+
+    }
 
     [Test]
     public async Task Timestamptz_infinity_as_DateTime()
