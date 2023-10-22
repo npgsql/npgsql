@@ -629,10 +629,10 @@ public sealed class TypeInfoMappingCollection
         return default;
     }
 
-    static ListBasedArrayConverter<IList, TElement> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    static ListBasedArrayConverter<List<TElement>, TElement> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ListBasedArrayConverter<IList, TElement>(elemInfo.GetResolution());
+            return new ListBasedArrayConverter<List<TElement>, TElement>(elemInfo.GetResolution());
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
