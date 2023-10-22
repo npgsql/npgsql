@@ -2,13 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
-using Npgsql.Internal.Resolvers;
-using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -11,7 +10,6 @@ using Npgsql.Internal;
 using Npgsql.Internal.Resolvers;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql;
 
@@ -72,7 +70,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlSlimDataSourceBuilder(string? connectionString = null)
     {
         ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
-        _userTypeMapper = new();
+        _userTypeMapper = new() { DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator };
         // Reverse order
         AddTypeInfoResolver(UnsupportedTypeInfoResolver);
         AddTypeInfoResolver(new AdoTypeInfoResolver());
@@ -257,7 +255,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     #region Type mapping
 
     /// <inheritdoc />
-    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = GlobalTypeMapper.Instance.DefaultNameTranslator;
+    public INpgsqlNameTranslator DefaultNameTranslator
+    {
+        get => _userTypeMapper.DefaultNameTranslator;
+        set => _userTypeMapper.DefaultNameTranslator = value;
+    }
 
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
