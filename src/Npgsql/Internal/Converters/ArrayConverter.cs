@@ -557,9 +557,15 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
-        => typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>)
-            ? new ListBasedArrayConverter<T, TElement>(effectiveResolution)
-            : new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, _effectiveType);
+    {
+        if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>))
+            return new ListBasedArrayConverter<T, TElement>(effectiveResolution);
+
+        if (typeof(T) == typeof(Array) || typeof(T).IsArray)
+            return new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, _effectiveType);
+
+        throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
+    }
 
     protected override PgConverterResolution? GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
     {

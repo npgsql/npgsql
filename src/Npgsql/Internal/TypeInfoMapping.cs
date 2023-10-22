@@ -647,10 +647,10 @@ public sealed class TypeInfoMappingCollection
         return default;
     }
 
-    static ArrayConverterResolver<IList, TElement> CreateListBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo)
+    static ArrayConverterResolver<List<TElement>, TElement> CreateListBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayConverterResolver<IList, TElement>(elemInfo, mapping.Type);
+            return new ArrayConverterResolver<List<TElement>, TElement>(elemInfo, mapping.Type);
 
         ThrowBoxingNotSupported(resolver: true);
         return default;
