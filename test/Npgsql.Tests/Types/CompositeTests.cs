@@ -31,6 +31,56 @@ public class CompositeTests : MultiplexingTestBase
             npgsqlDbType: null);
     }
 
+    [Test]
+    public async Task Basic_with_custom_default_translator()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, s text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.DefaultNameTranslator = new CustomTranslator();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeComposite { SomeText = "foo", X = 8 },
+            "(8,foo)",
+            type,
+            npgsqlDbType: null);
+    }
+
+    [Test]
+    public async Task Basic_with_custom_translator()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, s text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type, new CustomTranslator());
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeComposite { SomeText = "foo", X = 8 },
+            "(8,foo)",
+            type,
+            npgsqlDbType: null);
+    }
+
+    class CustomTranslator : INpgsqlNameTranslator
+    {
+        public string TranslateTypeName(string clrName) => throw new NotImplementedException();
+
+        public string TranslateMemberName(string clrName) => clrName[0].ToString().ToLowerInvariant();
+    }
+
 #pragma warning disable CS0618 // GlobalTypeMapper is obsolete
     [Test, NonParallelizable]
     public async Task Global_mapping()

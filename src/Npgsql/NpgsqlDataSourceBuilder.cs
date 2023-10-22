@@ -3,15 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Internal.Resolvers;
 using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql;
 
