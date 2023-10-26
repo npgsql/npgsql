@@ -141,16 +141,20 @@ static class EncodingExtensions
 #else
             var rented = false;
             byte[] arr;
+            var offset = 0;
             var memory = bytes.First;
             if (MemoryMarshal.TryGetArray(memory, out var segment))
+            {
                 arr = segment.Array!;
+                offset = segment.Offset;
+            }
             else
             {
                 rented = true;
                 arr = ArrayPool<byte>.Shared.Rent(memory.Length);
                 bytes.First.Span.CopyTo(arr);
             }
-            var ret = encoding.GetString(arr, 0, memory.Length);
+            var ret = encoding.GetString(arr, offset, memory.Length);
             if (rented)
                 ArrayPool<byte>.Shared.Return(arr);
             return ret;
