@@ -46,7 +46,7 @@
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.9" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.1.1" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.1.2" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.9" />
 
     <!-- NativeAOT -->
