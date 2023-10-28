@@ -30,9 +30,9 @@ If you don't want to modify your query, Npgsql also includes an API for requesti
 The following code returns all the columns in the resultset as text:
 
 ```c#
-using (var cmd = new NpgsqlCommand(...)) {
+await using (var cmd = new NpgsqlCommand(...)) {
   cmd.AllResultTypesAreUnknown = true;
-  var reader = cmd.ExecuteReader();
+  await using var reader = await cmd.ExecuteReaderAsync();
   // Read everything as strings
 }
 ```
@@ -40,10 +40,10 @@ using (var cmd = new NpgsqlCommand(...)) {
 You can also specify text only for some columns in your resultset:
 
 ```c#
-using (var cmd = new NpgsqlCommand(...)) {
+await using (var cmd = new NpgsqlCommand(...)) {
   // Only the second field will be fetched as text
   cmd.UnknownResultTypeList = new[] { false, true };
-  var reader = cmd.ExecuteReader();
+  await using var reader = await cmd.ExecuteReaderAsync();
   // Read everything as strings
 }
 ```
@@ -53,7 +53,7 @@ using (var cmd = new NpgsqlCommand(...)) {
 When sending a JSONB parameter, you must explicitly specify its type to be JSONB with NpgsqlDbType:
 
 ```c#
-using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES (@p)", conn)) {
+await using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES (@p)", conn)) {
   cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, jsonText);
 }
 ```

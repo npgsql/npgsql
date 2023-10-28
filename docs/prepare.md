@@ -32,9 +32,9 @@ To prepare your commands, simply use the following standard ADO.NET code:
 ```c#
 var cmd = new NpgsqlCommand(...);
 cmd.Parameters.Add("param", NpgsqlDbType.Integer);
-cmd.Prepare();
+await cmd.PrepareAsync();
 // Set parameters
-cmd.ExecuteNonQuery();
+await cmd.ExecuteNonQueryAsync();
 // And so on
 ```
 
@@ -45,7 +45,7 @@ Note that preparation happens on individual statements, and not on commands, whi
 ```c#
 var cmd = new NpgsqlCommand("UPDATE foo SET bar=@bar WHERE baz=@baz; UPDATE foo SET bar=@bar WHERE baz=@baz");
 // set parameters.
-cmd.Prepare();
+await cmd.PrepareAsync();
 ```
 
 Although there are two statements in this command, the same prepared statement is used to execute since the SQL is identical.
@@ -57,18 +57,19 @@ With many database drivers, prepared statements are closed when their owning com
 In Npgsql, all prepared statements are persistent - they don't get closed when a command or connection is closed. Npgsql keeps track of statements prepared on each physical connection; if you prepare the same SQL a second time on the same physical connection, Npgsql will simply reuse the prepared statement from the first preparation. This means that in an application with short-lived, pooled connections, prepared statements will gradually be created as the application warms up and the connections are first used. Then, opening a new pooled connection will return a physical connection that already has a prepared statement for your SQL, providing a very substantial performance boost. For example:
 
 ```c#
-using (var conn = new NpgsqlConnection(...)
-using (var cmd = new NpgsqlCommand("<some_sql>", conn) {
-    conn.Open();
-    cmd.Prepare();    // First time on this physical connection, Npgsql prepares with PostgreSQL
-    cmd.ExecuteNonQuery();
+await using (var conn = await dataSource.OpenConnectionAsync())
+await using (var cmd = new NpgsqlCommand("<some_sql>", conn))
+{
+    await cmd.PrepareAsync();    // First time on this physical connection, Npgsql prepares with PostgreSQL
+    await cmd.ExecuteNonQueryAsync();
 }
 
-using (var conn = new NpgsqlConnection(...)
-using (var cmd = new NpgsqlCommand("<some_sql>", conn) {
-    conn.Open();      // We assume the pool returned the same physical connection used above
-    cmd.Prepare();    // The connection already has a prepared statement for <some_sql>, this doesn't need to do anything
-    cmd.ExecuteNonQuery();
+await using (var conn = await dataSource.OpenConnectionAsync())
+await using (var cmd = new NpgsqlCommand("<some_sql>", conn))
+{
+    // We assume the internal connection pool returned the same physical connection used above
+    await cmd.PrepareAsync();    // The connection already has a prepared statement for <some_sql>, this doesn't need to do anything
+    await cmd.ExecuteNonQueryAsync();
 }
 ```
 

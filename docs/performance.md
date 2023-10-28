@@ -21,13 +21,15 @@ var batch = new NpgsqlBatch(connection)
 {
     BatchCommands = { new("SELECT ..."), new("SELECT ...") }
 };
-using (var reader = batch.ExecuteReader())
+await using (var reader = await batch.ExecuteReaderAsync())
 {
-    while (reader.Read()) {
+    while (await reader.ReadAsync()) {
         // Read first resultset
     }
-    reader.NextResult();
-    while (reader.Read()) {
+
+    await reader.NextResultAsync();
+
+    while (await reader.ReadAsync()) {
         // Read second resultset
     }
 }
