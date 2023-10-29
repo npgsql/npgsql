@@ -5,23 +5,16 @@ using Npgsql.Properties;
 
 namespace Npgsql.Internal.Resolvers;
 
-sealed class LTreeTypeInfoResolver : IPgTypeInfoResolver
+class LTreeTypeInfoResolver : IPgTypeInfoResolver
 {
     const byte LTreeVersion = 1;
-    TypeInfoMappingCollection Mappings { get; }
-
-    public LTreeTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings);
-        // TODO: Opt-in only
-        AddArrayInfos(Mappings);
-    }
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddType<string>("ltree",
             static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
@@ -32,13 +25,17 @@ sealed class LTreeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<string>("ltxtquery",
             static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
             MatchRequirement.DataTypeName);
+
+        return mappings;
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddArrayType<string>("ltree");
         mappings.AddArrayType<string>("lquery");
         mappings.AddArrayType<string>("ltxtquery");
+
+        return mappings;
     }
 
     public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
@@ -48,4 +45,13 @@ sealed class LTreeTypeInfoResolver : IPgTypeInfoResolver
                 string.Format(NpgsqlStrings.LTreeNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableLTree),
                     typeof(TBuilder).Name));
     }
+}
+
+sealed class LTreeArrayTypeInfoResolver : LTreeTypeInfoResolver, IPgTypeInfoResolver
+{
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }

@@ -66,6 +66,10 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new JsonArrayTypeInfoResolver(),
             new RangeArrayTypeInfoResolver(),
             new RecordArrayTypeInfoResolver(),
+            new FullTextSearchArrayTypeInfoResolver(),
+            new NetworkArrayTypeInfoResolver(),
+            new GeometricArrayTypeInfoResolver(),
+            new LTreeArrayTypeInfoResolver()
         }, overwrite);
 
     static NpgsqlDataSourceBuilder()
@@ -86,6 +90,10 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
 
             // Reverse order arrays.
+            AddTypeInfoResolver(new LTreeArrayTypeInfoResolver());
+            AddTypeInfoResolver(new GeometricArrayTypeInfoResolver());
+            AddTypeInfoResolver(new NetworkArrayTypeInfoResolver());
+            AddTypeInfoResolver(new FullTextSearchArrayTypeInfoResolver());
             AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
             AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
             AddTypeInfoResolver(new JsonArrayTypeInfoResolver());

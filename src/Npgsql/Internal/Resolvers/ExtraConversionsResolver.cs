@@ -8,14 +8,13 @@ namespace Npgsql.Internal.Resolvers;
 
 class ExtraConversionsResolver : IPgTypeInfoResolver
 {
-    public ExtraConversionsResolver() => AddInfos(Mappings);
-
-    protected TypeInfoMappingCollection Mappings { get; } = new();
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         // Int2
         mappings.AddStructType<int>(DataTypeNames.Int2,
@@ -139,9 +138,11 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         // Hstore
         mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
             static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding, result => result.ToImmutableDictionary())));
+
+        return mappings;
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // Int2
         mappings.AddStructArrayType<int>(DataTypeNames.Int2);
@@ -217,18 +218,15 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
 
         // Hstore
         mappings.AddArrayType<ImmutableDictionary<string, string?>>("hstore");
+
+        return mappings;
     }
 }
 
 sealed class ExtraConversionsArrayTypeInfoResolver : ExtraConversionsResolver, IPgTypeInfoResolver
 {
-    public ExtraConversionsArrayTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection(base.Mappings.Items);
-        AddArrayInfos(Mappings);
-    }
-
-    new TypeInfoMappingCollection Mappings { get; }
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);

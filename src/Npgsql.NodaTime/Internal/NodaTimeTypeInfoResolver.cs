@@ -9,7 +9,7 @@ using static Npgsql.Internal.PgConverterFactory;
 
 namespace Npgsql.NodaTime.Internal;
 
-sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
+class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
 {
     static DataTypeName TimestampTzDataTypeName => new("pg_catalog.timestamptz");
     static DataTypeName TimestampDataTypeName => new("pg_catalog.timestamp");
@@ -25,20 +25,13 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
     static DataTypeName TimestampRangeDataTypeName => new("pg_catalog.tsrange");
     static DataTypeName TimestampMultirangeDataTypeName => new("pg_catalog.tsmultirange");
 
-    TypeInfoMappingCollection Mappings { get; }
-
-    public NodaTimeTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings);
-        // TODO: Opt-in only
-        AddArrayInfos(Mappings);
-    }
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         // timestamp and timestamptz, legacy and non-legacy modes
         if (LegacyTimestampBehavior)
@@ -190,9 +183,11 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName,
             static (options, mapping, _) =>
                 mapping.CreateInfo(options, CreateListMultirangeConverter(CreateRangeConverter(new LocalDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
+
+        return mappings;
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // timestamptz
         mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
@@ -261,5 +256,16 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<List<DateInterval>>(DateMultirangeDataTypeName);
         mappings.AddArrayType<NpgsqlRange<LocalDate>[]>(DateMultirangeDataTypeName);
         mappings.AddArrayType<List<NpgsqlRange<LocalDate>>>(DateMultirangeDataTypeName);
+
+        return mappings;
     }
+}
+
+sealed class NodaTimeArrayTypeInfoResolver : NodaTimeTypeInfoResolver, IPgTypeInfoResolver
+{
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }

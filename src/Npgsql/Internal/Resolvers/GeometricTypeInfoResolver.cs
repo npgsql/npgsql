@@ -5,22 +5,15 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-sealed class GeometricTypeInfoResolver : IPgTypeInfoResolver
+class GeometricTypeInfoResolver : IPgTypeInfoResolver
 {
-    TypeInfoMappingCollection Mappings { get; }
-
-    public GeometricTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings);
-        // TODO: Opt-in only
-        AddArrayInfos(Mappings);
-    }
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddStructType<NpgsqlPoint>(DataTypeNames.Point,
             static (options, mapping, _) => mapping.CreateInfo(options, new PointConverter()), isDefault: true);
@@ -36,9 +29,11 @@ sealed class GeometricTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new PathConverter()), isDefault: true);
         mappings.AddStructType<NpgsqlCircle>(DataTypeNames.Circle,
             static (options, mapping, _) => mapping.CreateInfo(options, new CircleConverter()), isDefault: true);
+
+        return mappings;
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddStructArrayType<NpgsqlPoint>(DataTypeNames.Point);
         mappings.AddStructArrayType<NpgsqlBox>(DataTypeNames.Box);
@@ -47,5 +42,16 @@ sealed class GeometricTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<NpgsqlLSeg>(DataTypeNames.LSeg);
         mappings.AddStructArrayType<NpgsqlPath>(DataTypeNames.Path);
         mappings.AddStructArrayType<NpgsqlCircle>(DataTypeNames.Circle);
+
+        return mappings;
     }
+}
+
+sealed class GeometricArrayTypeInfoResolver : GeometricTypeInfoResolver, IPgTypeInfoResolver
+{
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }

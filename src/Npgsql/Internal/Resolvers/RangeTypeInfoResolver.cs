@@ -14,21 +14,15 @@ namespace Npgsql.Internal.Resolvers;
 // TODO improve the ability to switch on server capability.
 class RangeTypeInfoResolver : IPgTypeInfoResolver
 {
-    protected TypeInfoMappingCollection Mappings { get; }
-    protected TypeInfoMappingCollection MappingsWithMultiRanges { get; }
-
-    public RangeTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings, supportsMultiRange: false);
-        MappingsWithMultiRanges = new TypeInfoMappingCollection();
-        AddInfos(MappingsWithMultiRanges, supportsMultiRange: true);
-    }
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new(), supportsMultirange: false);
+    TypeInfoMappingCollection? _mappingsWithMultiranges;
+    protected TypeInfoMappingCollection MappingsWithMultiranges => _mappingsWithMultiranges ??= AddInfos(new(), supportsMultirange: true);
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => (options.DatabaseInfo.SupportsMultirangeTypes ? MappingsWithMultiRanges : Mappings).Find(type, dataTypeName, options);
+        => (options.DatabaseInfo.SupportsMultirangeTypes ? MappingsWithMultiranges : Mappings).Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings, bool supportsMultiRange)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings, bool supportsMultirange)
     {
         // numeric ranges
         mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.Int4Range,
@@ -106,7 +100,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                 mapping.CreateInfo(options, CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options)));
 #endif
 
-        if (supportsMultiRange)
+        if (supportsMultirange)
         {
             // int4multirange
             mappings.AddType<NpgsqlRange<int>[]>(DataTypeNames.Int4Multirange,
@@ -247,9 +241,11 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
                         CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
 #endif
         }
+
+        return mappings;
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings, bool supportsMultiRange)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings, bool supportsMultiRange)
     {
         // numeric ranges
         mappings.AddStructArrayType<NpgsqlRange<int>>(DataTypeNames.Int4Range);
@@ -338,6 +334,8 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddArrayType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange);
 #endif
         }
+
+        return mappings;
     }
 
     public static void ThrowIfUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
@@ -421,17 +419,12 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
 
 sealed class RangeArrayTypeInfoResolver : RangeTypeInfoResolver, IPgTypeInfoResolver
 {
-    new TypeInfoMappingCollection Mappings { get; }
-    new TypeInfoMappingCollection MappingsWithMultiRanges { get; }
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings), supportsMultiRange: false);
 
-    public RangeArrayTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection(base.Mappings);
-        AddArrayInfos(Mappings, supportsMultiRange: false);
-        MappingsWithMultiRanges = new TypeInfoMappingCollection(base.MappingsWithMultiRanges);
-        AddArrayInfos(MappingsWithMultiRanges, supportsMultiRange: true);
-    }
+    TypeInfoMappingCollection? _mappingsWithMultiranges;
+    new TypeInfoMappingCollection MappingsWithMultiranges => _mappingsWithMultiranges ??= AddArrayInfos(new(base.MappingsWithMultiranges), supportsMultiRange: true);
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => (options.DatabaseInfo.SupportsMultirangeTypes ? MappingsWithMultiRanges : Mappings).Find(type, dataTypeName, options);
+        => (options.DatabaseInfo.SupportsMultirangeTypes ? MappingsWithMultiranges : Mappings).Find(type, dataTypeName, options);
 }

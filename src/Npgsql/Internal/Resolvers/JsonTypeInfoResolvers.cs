@@ -10,12 +10,11 @@ class JsonTypeInfoResolver : IPgTypeInfoResolver
 {
     static JsonSerializerOptions? DefaultSerializerOptions;
 
-    protected TypeInfoMappingCollection Mappings { get; } = new();
+    readonly JsonSerializerOptions _serializerOptions;
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new(), _serializerOptions);
 
     public JsonTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
-        => AddTypeInfos(Mappings, serializerOptions);
-
-    static void AddTypeInfos(TypeInfoMappingCollection mappings, JsonSerializerOptions? serializerOptions = null)
     {
         if (serializerOptions is null)
         {
@@ -27,7 +26,11 @@ class JsonTypeInfoResolver : IPgTypeInfoResolver
                 DefaultSerializerOptions = serializerOptions;
             }
         }
+        _serializerOptions = serializerOptions;
+    }
 
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings, JsonSerializerOptions serializerOptions)
+    {
         // Jsonb is the first default for JsonDocument
         foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
         {
@@ -38,15 +41,19 @@ class JsonTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructType<JsonElement>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options, new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
         }
+
+        return mappings;
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
         {
             mappings.AddArrayType<JsonDocument>(dataTypeName);
             mappings.AddStructArrayType<JsonElement>(dataTypeName);
         }
+
+        return mappings;
     }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
@@ -67,13 +74,11 @@ class JsonTypeInfoResolver : IPgTypeInfoResolver
 
 sealed class JsonArrayTypeInfoResolver : JsonTypeInfoResolver, IPgTypeInfoResolver
 {
-    new TypeInfoMappingCollection Mappings { get; }
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
 
-    public JsonArrayTypeInfoResolver(JsonSerializerOptions? serializerOptions = null) : base(serializerOptions)
-    {
-        Mappings = new TypeInfoMappingCollection(base.Mappings);
-        AddArrayInfos(Mappings);
-    }
+    public JsonArrayTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
+        : base(serializerOptions) { }
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);

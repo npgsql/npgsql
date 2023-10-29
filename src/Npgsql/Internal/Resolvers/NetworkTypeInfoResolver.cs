@@ -8,22 +8,15 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
+class NetworkTypeInfoResolver : IPgTypeInfoResolver
 {
-    TypeInfoMappingCollection Mappings { get; }
-
-    public NetworkTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings);
-        // TODO: Opt-in only
-        AddArrayInfos(Mappings);
-    }
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         // macaddr
         mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr,
@@ -59,9 +52,11 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
 
             return resolvedMapping.CreateInfo(options, converter);
         }
+
+        return mappings;
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // macaddr
         mappings.AddArrayType<PhysicalAddress>(DataTypeNames.MacAddr);
@@ -73,5 +68,16 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
 
         // cidr
         mappings.AddStructArrayType<NpgsqlCidr>(DataTypeNames.Cidr);
+
+        return mappings;
     }
+}
+
+sealed class NetworkArrayTypeInfoResolver : NetworkTypeInfoResolver, IPgTypeInfoResolver
+{
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }

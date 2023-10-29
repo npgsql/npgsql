@@ -13,21 +13,41 @@ namespace Npgsql.Internal.Resolvers;
 [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
 {
-    protected TypeInfoMappingCollection Mappings { get; } = new();
-    protected JsonSerializerOptions _serializerOptions;
+    JsonSerializerOptions? _serializerOptions;
+    JsonSerializerOptions SerializerOptions
+#if NET7_0_OR_GREATER
+        => _serializerOptions ??= JsonSerializerOptions.Default;
+#else
+        => _serializerOptions ??= new();
+#endif
+
+    Type[] _jsonbClrTypes;
+    Type[] _jsonClrTypes;
+    TypeInfoMappingCollection? _mappings;
+
+    protected TypeInfoMappingCollection Mappings
+    {
+        get
+        {
+            if (_mappings is not null)
+                return _mappings;
+
+            // Publish _mappings before nulling _jsonbClrTypes and _jsonClrTypes as we may be called concurrently.
+            _mappings = AddInfos(new(), _jsonbClrTypes, _jsonClrTypes, SerializerOptions);
+            _jsonbClrTypes = null!;
+            _jsonClrTypes = null!;
+            return _mappings;
+        }
+    }
 
     public JsonDynamicTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
     {
-#if NET7_0_OR_GREATER
-        _serializerOptions = serializerOptions ??= JsonSerializerOptions.Default;
-#else
-        _serializerOptions = serializerOptions ??= new JsonSerializerOptions();
-#endif
-
-        AddMappings(Mappings, jsonbClrTypes ?? Array.Empty<Type>(), jsonClrTypes ?? Array.Empty<Type>(), serializerOptions);
+        _jsonbClrTypes = jsonbClrTypes ?? Array.Empty<Type>();
+        _jsonClrTypes = jsonClrTypes ?? Array.Empty<Type>();
+        _serializerOptions = serializerOptions;
     }
 
-    void AddMappings(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerOptions serializerOptions)
+    TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerOptions serializerOptions)
     {
         // We do GetTypeInfo calls directly so we need a resolver.
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
@@ -70,12 +90,14 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
             }
             mappings.AddRange(dynamicMappings.ToTypeInfoMappingCollection());
         }
+
+        return mappings;
     }
 
-    protected void AddArrayInfos(TypeInfoMappingCollection mappings, TypeInfoMappingCollection baseMappings)
+    protected TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings, TypeInfoMappingCollection baseMappings)
     {
         if (baseMappings.Items.Count == 0)
-            return;
+            return mappings;
 
         foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
         {
@@ -89,6 +111,8 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
         foreach (var mapping in baseMappings.Items)
             dynamicMappings.AddArrayMapping(mapping.Type, mapping.DataTypeName);
         mappings.AddRange(dynamicMappings.ToTypeInfoMappingCollection());
+
+        return mappings;
     }
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
@@ -110,7 +134,7 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
             var baseType = jsonb ? mapping.Type : typeof(object);
 
             return mapping.CreateInfo(options,
-                CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, _serializerOptions, baseType));
+                CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, SerializerOptions, baseType));
         });
     }
 
@@ -126,14 +150,11 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
 [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
 sealed class JsonDynamicArrayTypeInfoResolver : JsonDynamicTypeInfoResolver, IPgTypeInfoResolver
 {
-    new TypeInfoMappingCollection Mappings { get; }
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings), base.Mappings);
 
     public JsonDynamicArrayTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
-        : base(jsonbClrTypes, jsonClrTypes, serializerOptions)
-    {
-        Mappings = new TypeInfoMappingCollection(base.Mappings);
-        AddArrayInfos(Mappings, base.Mappings);
-    }
+        : base(jsonbClrTypes, jsonClrTypes, serializerOptions) { }
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options) ?? base.GetTypeInfo(type, dataTypeName, options);
