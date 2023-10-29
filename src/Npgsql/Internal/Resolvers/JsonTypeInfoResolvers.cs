@@ -8,6 +8,8 @@ namespace Npgsql.Internal.Resolvers;
 
 class JsonTypeInfoResolver : IPgTypeInfoResolver
 {
+    static JsonSerializerOptions? DefaultSerializerOptions;
+
     protected TypeInfoMappingCollection Mappings { get; } = new();
 
     public JsonTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
@@ -17,8 +19,13 @@ class JsonTypeInfoResolver : IPgTypeInfoResolver
     {
         if (serializerOptions is null)
         {
-            serializerOptions = new JsonSerializerOptions();
-            serializerOptions.TypeInfoResolver = new BasicJsonTypeInfoResolver();
+            serializerOptions = DefaultSerializerOptions;
+            if (serializerOptions is null)
+            {
+                serializerOptions = new JsonSerializerOptions();
+                serializerOptions.TypeInfoResolver = new BasicJsonTypeInfoResolver();
+                DefaultSerializerOptions = serializerOptions;
+            }
         }
 
         // Jsonb is the first default for JsonDocument
