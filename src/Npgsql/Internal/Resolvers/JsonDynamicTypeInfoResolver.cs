@@ -6,7 +6,6 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
-using Npgsql.Properties;
 
 namespace Npgsql.Internal.Resolvers;
 

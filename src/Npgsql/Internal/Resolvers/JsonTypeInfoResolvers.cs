@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
@@ -9,24 +8,25 @@ namespace Npgsql.Internal.Resolvers;
 
 class JsonTypeInfoResolver : IPgTypeInfoResolver
 {
+    static JsonSerializerOptions? DefaultSerializerOptions;
+
     protected TypeInfoMappingCollection Mappings { get; } = new();
 
     public JsonTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
         => AddTypeInfos(Mappings, serializerOptions);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only used to request rooted and statically known types (JsonDocument,JsonElement etc).")]
-    [UnconditionalSuppressMessage("Aot", "IL3050", Justification = "Only used to request rooted and statically known types  (JsonDocument,JsonElement etc).")]
     static void AddTypeInfos(TypeInfoMappingCollection mappings, JsonSerializerOptions? serializerOptions = null)
     {
-#if NET7_0_OR_GREATER
-        serializerOptions ??= JsonSerializerOptions.Default;
-#else
         if (serializerOptions is null)
         {
-            serializerOptions = new JsonSerializerOptions();
-            serializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
+            serializerOptions = DefaultSerializerOptions;
+            if (serializerOptions is null)
+            {
+                serializerOptions = new JsonSerializerOptions();
+                serializerOptions.TypeInfoResolver = new BasicJsonTypeInfoResolver();
+                DefaultSerializerOptions = serializerOptions;
+            }
         }
-#endif
 
         // Jsonb is the first default for JsonDocument
         foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
@@ -51,6 +51,18 @@ class JsonTypeInfoResolver : IPgTypeInfoResolver
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
+
+    sealed class BasicJsonTypeInfoResolver : IJsonTypeInfoResolver
+    {
+        public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options)
+        {
+            if (type == typeof(JsonDocument))
+                return JsonMetadataServices.CreateValueInfo<JsonDocument>(options, JsonMetadataServices.JsonDocumentConverter);
+            if (type == typeof(JsonElement))
+                return JsonMetadataServices.CreateValueInfo<JsonElement>(options, JsonMetadataServices.JsonElementConverter);
+            return null;
+        }
+    }
 }
 
 sealed class JsonArrayTypeInfoResolver : JsonTypeInfoResolver, IPgTypeInfoResolver
