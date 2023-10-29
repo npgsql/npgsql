@@ -224,35 +224,32 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                         // See #4305.
                         isStreamBroken = connector.IsSecure && e is IOException;
 #endif
+                        // When reading notifications (Wait), just throw TimeoutException or
+                        // OperationCanceledException immediately.
+                        // Nothing to cancel, and no breaking of the connection.
+                        if (readingNotifications && !isStreamBroken)
+                            throw CreateException(connector);
 
-                        if (!isStreamBroken)
+                        // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
+                        // TODO: As an optimization, we can still attempt to send a cancellation request, but after
+                        // that immediately break the connection
+                        if (connector.AttemptPostgresCancellation &&
+                            !connector.PostgresCancellationPerformed &&
+                            connector.PerformPostgresCancellation() &&
+                            !isStreamBroken)
                         {
-                            // When reading notifications (Wait), just throw TimeoutException or
-                            // OperationCanceledException immediately.
-                            // Nothing to cancel, and no breaking of the connection.
-                            if (readingNotifications)
-                                throw CreateException(connector);
-
-                            // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
-                            // TODO: As an optimization, we can still attempt to send a cancellation request, but after
-                            // that immediately break the connection
-                            if (connector.AttemptPostgresCancellation &&
-                                !connector.PostgresCancellationPerformed &&
-                                connector.PerformPostgresCancellation())
+                            // Note that if the cancellation timeout is negative, we flow down and break the
+                            // connection immediately.
+                            var cancellationTimeout = connector.Settings.CancellationTimeout;
+                            if (cancellationTimeout >= 0)
                             {
-                                // Note that if the cancellation timeout is negative, we flow down and break the
-                                // connection immediately.
-                                var cancellationTimeout = connector.Settings.CancellationTimeout;
-                                if (cancellationTimeout >= 0)
-                                {
-                                    if (cancellationTimeout > 0)
-                                        buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                                if (cancellationTimeout > 0)
+                                    buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
-                                    if (async)
-                                        finalCt = buffer.Cts.Start();
+                                if (async)
+                                    finalCt = buffer.Cts.Start();
 
-                                    continue;
-                                }
+                                continue;
                             }
                         }
 
