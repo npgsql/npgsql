@@ -144,14 +144,14 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             }
             else
             {
-                mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsMultirange,
+                mappings.AddResolverType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsMultirange,
                     static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
                             options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
                     isDefault: true);
-                mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange,
+                mappings.AddResolverType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange,
                     static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
@@ -189,14 +189,14 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             }
             else
             {
-                mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange,
+                mappings.AddResolverType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
                             options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
                     isDefault: true);
-                mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange,
+                mappings.AddResolverType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),

@@ -244,7 +244,7 @@ public class PgTypeInfo
 
 public sealed class PgResolverTypeInfo : PgTypeInfo
 {
-    internal readonly PgConverterResolver _converterResolver;
+    readonly PgConverterResolver _converterResolver;
 
     public PgResolverTypeInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
         : base(options,
@@ -278,6 +278,8 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
 
     public PgConverterResolution GetDefaultResolution(PgTypeId? pgTypeId)
         => _converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
+
+    public PgConverterResolver GetConverterResolver() => _converterResolver;
 }
 
 public readonly struct PgConverterResolution

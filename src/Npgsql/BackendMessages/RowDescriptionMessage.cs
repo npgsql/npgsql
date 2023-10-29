@@ -383,7 +383,10 @@ public sealed class FieldDescription
             }
             if (odfInfo.TypeToConvert == type)
             {
-                lastColumnInfo = new(odfInfo, DataFormat, odfInfo.IsBoxingConverter);
+                // As TypeInfoMappingCollection is always adding object mappings for
+                // default/datatypename mappings, we'll also check Converter.TypeToConvert.
+                // If we have an exact match we are still able to use e.g. a converter for ints in an unboxed fashion.
+                lastColumnInfo = new(odfInfo, DataFormat, odfInfo.IsBoxingConverter && odfInfo.Converter.TypeToConvert != type);
                 return;
             }
         }
