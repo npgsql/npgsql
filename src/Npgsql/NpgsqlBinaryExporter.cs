@@ -282,7 +282,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         // Allow one more read if the field is a db null.
         // We cannot allow endless rereads otherwise it becomes quite unclear when a column advance happens.
-        if (PgReader is { Resumable: true, FieldSize: -1 })
+        if (PgReader is { Initialized: true, Resumable: true, FieldSize: -1 })
         {
             await Commit(async, resumableOp: false).ConfigureAwait(false);
             return DbNullOrThrow();
@@ -291,7 +291,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         // We must commit the current column before reading the next one unless it was an IsNull call.
         PgConverterInfo info;
         bool asObject;
-        if (!PgReader.Resumable || PgReader.CurrentRemaining != PgReader.FieldSize)
+        if (!PgReader.Initialized || !PgReader.Resumable || PgReader.CurrentRemaining != PgReader.FieldSize)
         {
             await Commit(async, resumableOp: false).ConfigureAwait(false);
             info = GetInfo(out asObject);
@@ -400,7 +400,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async ValueTask<int> ReadColumnLenIfNeeded(bool async, bool resumableOp)
     {
-        if (PgReader is { Resumable: true, FieldSize: -1 })
+        if (PgReader is { Initialized: true, Resumable: true, FieldSize: -1 })
             return -1;
 
         await _buf.Ensure(4, async).ConfigureAwait(false);

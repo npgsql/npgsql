@@ -1961,6 +1961,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         int HandleReread(bool resuming)
         {
+            Debug.Assert(pgReader.Initialized);
             var columnLength = pgReader.FieldSize;
             pgReader.Commit(resuming);
             if (!resuming && columnLength > 0)

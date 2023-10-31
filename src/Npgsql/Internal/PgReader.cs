@@ -54,7 +54,7 @@ public class PgReader
     internal int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
     internal int FieldRemaining => FieldSize - FieldOffset;
 
-    bool HasCurrent => _currentSize >= 0;
+    bool HasCurrent => _currentSize is not -1;
     int CurrentSize => HasCurrent ? _currentSize : _fieldSize;
 
     public ValueMetadata Current => new() { Size = CurrentSize, Format = _fieldFormat, BufferRequirement = CurrentBufferRequirement };
@@ -416,28 +416,29 @@ public class PgReader
 
     internal PgReader Init(int fieldLength, DataFormat format, bool resumable = false)
     {
-        if (resumable)
+        if (Initialized)
         {
-            if (Resumable)
+            if (resumable)
             {
-                Debug.Assert(Initialized);
-                return this;
+                if (Resumable)
+                    return this;
+                _resumable = true;
             }
-            _resumable = true;
-        }
-        else if (Initialized)
-        {
-            if (!IsAtStart)
-                ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
-            _resumable = false;
+            else
+            {
+                if (!IsAtStart)
+                    ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
+                _resumable = false;
+            }
         }
 
-        // Debug.Assert(!Initialized || Resumable, "Reader wasn't properly committed before next init");
         Debug.Assert(!_requiresCleanup, "Reader wasn't properly committed before next init");
 
         _fieldStartPos = _buffer.CumulativeReadPosition;
         _fieldFormat = format;
         _fieldSize = fieldLength;
+        _resumable = resumable;
+        _fieldCompleted = false;
         return this;
     }
 
@@ -571,18 +572,22 @@ public class PgReader
             return;
         }
 
-        _fieldCompleted = false;
-        _fieldSize = default;
         _fieldStartPos = -1;
-        _resumable = false;
-        _fieldFormat = default;
-        if (_currentSize is not -1)
+        Debug.Assert(!Initialized);
+
+        // These will always be re-initialized by Init()
+        // _fieldSize = default;
+        // _fieldFormat = default;
+        // _resumable = default;
+        // _fieldCompleted = default;
+
+        if (HasCurrent)
         {
             _currentStartPos = 0;
             _currentBufferRequirement = default;
             _currentSize = -1;
+            Debug.Assert(!HasCurrent);
         }
-        Debug.Assert(!Initialized);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         void CommitSlow()
@@ -609,14 +614,23 @@ public class PgReader
             }
 
             Consume(async: false, count: FieldRemaining).GetAwaiter().GetResult();
-            _fieldSize = default;
+
             _fieldStartPos = -1;
-            _resumable = false;
-            _fieldFormat = default;
-            _currentStartPos = 0;
-            _currentBufferRequirement = default;
-            _currentSize = -1;
             Debug.Assert(!Initialized);
+
+            // These will always be re-initialized by Init()
+            // _fieldSize = default;
+            // _fieldFormat = default;
+            // _resumable = default;
+            // _fieldCompleted = default;
+
+            if (HasCurrent)
+            {
+                _currentStartPos = 0;
+                _currentBufferRequirement = default;
+                _currentSize = -1;
+                Debug.Assert(!HasCurrent);
+            }
         }
     }
 
@@ -638,18 +652,23 @@ public class PgReader
         if (_requiresCleanup || (!_fieldCompleted && FieldRemaining > 0))
             return CommitSlow();
 
-        _fieldCompleted = false;
-        _fieldSize = default;
         _fieldStartPos = -1;
-        _resumable = false;
-        _fieldFormat = default;
-        if (_currentSize is not -1)
+        Debug.Assert(!Initialized);
+
+        // These will always be re-initialized by Init()
+        // _fieldSize = default;
+        // _fieldFormat = default;
+        // _resumable = default;
+        // _fieldCompleted = default;
+
+        if (HasCurrent)
         {
             _currentStartPos = 0;
             _currentBufferRequirement = default;
             _currentSize = -1;
+            Debug.Assert(!HasCurrent);
         }
-        Debug.Assert(!Initialized);
+
         return new();
 
         async ValueTask CommitSlow()
@@ -676,14 +695,23 @@ public class PgReader
             }
 
             await Consume(async: true, count: FieldRemaining).ConfigureAwait(false);
-            _fieldSize = default;
+
             _fieldStartPos = -1;
-            _resumable = false;
-            _fieldFormat = default;
-            _currentStartPos = 0;
-            _currentBufferRequirement = default;
-            _currentSize = -1;
             Debug.Assert(!Initialized);
+
+            // These will always be re-initialized by Init()
+            // _fieldSize = default;
+            // _fieldFormat = default;
+            // _resumable = default;
+            // _fieldCompleted = default;
+
+            if (HasCurrent)
+            {
+                _currentStartPos = 0;
+                _currentBufferRequirement = default;
+                _currentSize = -1;
+                Debug.Assert(!HasCurrent);
+            }
         }
     }
 
