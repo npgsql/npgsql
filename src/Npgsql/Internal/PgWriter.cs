@@ -366,6 +366,9 @@ public sealed class PgWriter
     }
 
     public void WriteBytes(ReadOnlySpan<byte> buffer)
+        => WriteBytes(allowMixedIO: false, buffer);
+
+    internal void WriteBytes(bool allowMixedIO, ReadOnlySpan<byte> buffer)
     {
         while (!buffer.IsEmpty)
         {
@@ -374,11 +377,14 @@ public sealed class PgWriter
             Advance(write);
             buffer = buffer.Slice(write);
             if (Remaining is 0)
-                Flush();
+                Flush(allowWhenNonBlocking: allowMixedIO);
         }
     }
 
     public ValueTask WriteBytesAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        => WriteBytesAsync(allowMixedIO: false, buffer, cancellationToken);
+
+    internal ValueTask WriteBytesAsync(bool allowMixedIO, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
     {
         if (buffer.Length <= Remaining)
         {
@@ -402,9 +408,13 @@ public sealed class PgWriter
             }
         }
     }
-
-    public Stream GetStream()
-        => new PgWriterStream(this);
+    /// <summary>
+    /// Gets a <see cref="Stream"/> that can be used to write to the underlying buffer.
+    /// </summary>
+    /// <param name="allowMixedIO">Blocking flushes during writes that were expected to be non-blocking and vice versa cause an exception to be thrown unless allowMixedIO is set to true, false by default.</param>
+    /// <returns>The stream.</returns>
+    public Stream GetStream(bool allowMixedIO = false)
+        => new PgWriterStream(this, allowMixedIO);
 
     public bool ShouldFlush(Size bufferRequirement)
         => ShouldFlush(bufferRequirement is { Kind: SizeKind.UpperBound }
@@ -414,13 +424,16 @@ public sealed class PgWriter
     public bool ShouldFlush(int byteCount) => Remaining < byteCount && FlushMode is not FlushMode.None;
 
     public void Flush(TimeSpan timeout = default)
+        => Flush(allowWhenNonBlocking: false, timeout);
+
+    void Flush(bool allowWhenNonBlocking, TimeSpan timeout = default)
     {
         switch (FlushMode)
         {
         case FlushMode.None:
             return;
-        case FlushMode.NonBlocking:
-            throw new NotSupportedException($"Cannot call {nameof(Flush)} on a non-blocking {nameof(PgWriter)}, you might need to override {nameof(PgConverter<object>.WriteAsync)} on {nameof(PgConverter)} if you want to call flush.");
+        case FlushMode.NonBlocking when !allowWhenNonBlocking:
+            throw new NotSupportedException($"Cannot call {nameof(Flush)} on a non-blocking {nameof(PgWriter)}, call FlushAsync instead.");
         }
 
         if (_writer is not IStreamingWriter<byte> writer)
@@ -432,12 +445,15 @@ public sealed class PgWriter
     }
 
     public ValueTask FlushAsync(CancellationToken cancellationToken = default)
+        => FlushAsync(allowWhenBlocking: false, cancellationToken);
+
+    ValueTask FlushAsync(bool allowWhenBlocking, CancellationToken cancellationToken = default)
     {
         switch (FlushMode)
         {
         case FlushMode.None:
             return new();
-        case FlushMode.Blocking:
+        case FlushMode.Blocking when !allowWhenBlocking:
             throw new NotSupportedException($"Cannot call {nameof(FlushAsync)} on a blocking {nameof(PgWriter)}, call Flush instead.");
         }
 
@@ -487,9 +503,13 @@ public sealed class PgWriter
     sealed class PgWriterStream : Stream
     {
         readonly PgWriter _writer;
+        readonly bool _allowMixedIO;
 
-        internal PgWriterStream(PgWriter writer)
-            => _writer = writer;
+        internal PgWriterStream(PgWriter writer, bool allowMixedIO)
+        {
+            _writer = writer;
+            _allowMixedIO = allowMixedIO;
+        }
 
         public override void Write(byte[] buffer, int offset, int count)
             => Write(async: false, buffer: buffer, offset: offset, count: count, CancellationToken.None).GetAwaiter().GetResult();
@@ -513,15 +533,15 @@ public sealed class PgWriter
                 if (cancellationToken.IsCancellationRequested)
                     return Task.FromCanceled(cancellationToken);
 
-                return _writer.WriteBytesAsync(buffer, cancellationToken).AsTask();
+                return _writer.WriteBytesAsync(_allowMixedIO, buffer, cancellationToken).AsTask();
             }
 
-            _writer.WriteBytes(new Span<byte>(buffer, offset, count));
+            _writer.WriteBytes(_allowMixedIO, new Span<byte>(buffer, offset, count));
             return Task.CompletedTask;
         }
 
 #if !NETSTANDARD2_0
-        public override void Write(ReadOnlySpan<byte> buffer) => _writer.WriteBytes(buffer);
+        public override void Write(ReadOnlySpan<byte> buffer) => _writer.WriteBytes(_allowMixedIO, buffer);
 
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
