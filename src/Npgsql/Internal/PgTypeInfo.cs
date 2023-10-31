@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;

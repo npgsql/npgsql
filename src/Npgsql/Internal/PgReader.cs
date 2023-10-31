@@ -63,9 +63,6 @@ public class PgReader
     Size CurrentBufferRequirement => HasCurrent ? _currentBufferRequirement : _fieldBufferRequirement;
     int CurrentOffset => FieldOffset - _currentStartPos;
 
-    int BufferSize => _buffer.Size;
-    int BufferBytesRemaining => _buffer.ReadBytesLeft;
-
     internal bool IsAtStart => FieldOffset is 0;
     internal bool Resumable => _resumable;
     public bool IsResumed => Resumable && CurrentSize != CurrentRemaining;
@@ -194,7 +191,7 @@ public class PgReader
 
         length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
-        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= BufferBytesRemaining);
+        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft);
     }
 
     public TextReader GetTextReader(Encoding encoding)
@@ -209,7 +206,7 @@ public class PgReader
         const int maxPreparedSize = 1024 * 64;
 
         _requiresCleanup = true;
-        if (CurrentRemaining > BufferBytesRemaining || CurrentRemaining > maxPreparedSize)
+        if (CurrentRemaining > _buffer.ReadBytesLeft || CurrentRemaining > maxPreparedSize)
             return new StreamReader(GetColumnStream(), encoding, detectEncodingFromByteOrderMarks: false);
 
         if (_preparedTextReader is { IsDisposed: false })
@@ -230,16 +227,18 @@ public class PgReader
     {
         var count = buffer.Length;
         CheckBounds(count);
-        if (BufferBytesRemaining >= count)
+        var offset = _buffer.ReadPosition;
+        var remaining = _buffer.FilledBytes - offset;
+        if (remaining >= count)
         {
-            _buffer.Buffer.AsSpan(_buffer.ReadPosition, count).CopyTo(buffer.Span);
+            _buffer.Buffer.AsSpan(offset, count).CopyTo(buffer.Span);
             _buffer.ReadPosition += count;
             return new();
         }
 
-        return Slow();
+        return Slow(count, buffer, cancellationToken);
 
-        async ValueTask Slow()
+        async ValueTask Slow(int count, Memory<byte> buffer, CancellationToken cancellationToken)
         {
             var stream = _buffer.CreateStream(count, canSeek: false);
             await using var _ = stream.ConfigureAwait(false);
@@ -251,16 +250,18 @@ public class PgReader
     {
         var count = buffer.Length;
         CheckBounds(count);
-        if (BufferBytesRemaining >= count)
+        var offset = _buffer.ReadPosition;
+        var remaining = _buffer.FilledBytes - offset;
+        if (remaining >= count)
         {
-            _buffer.Buffer.AsSpan(_buffer.ReadPosition, count).CopyTo(buffer);
+            _buffer.Buffer.AsSpan(offset, count).CopyTo(buffer);
             _buffer.ReadPosition += count;
             return;
         }
 
-        Slow(buffer);
+        Slow(count, buffer);
 
-        void Slow(Span<byte> buffer)
+        void Slow(int count, Span<byte> buffer)
         {
             using var stream = _buffer.CreateStream(count, canSeek: false);
             stream.ReadExactly(buffer);
@@ -270,9 +271,11 @@ public class PgReader
     public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
     {
         CheckBounds(count);
-        if (BufferBytesRemaining >= count)
+        var offset = _buffer.ReadPosition;
+        var remaining = _buffer.FilledBytes - offset;
+        if (remaining >= count)
         {
-            bytes = new ReadOnlySpan<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            bytes = new ReadOnlySpan<byte>(_buffer.Buffer, offset, count);
             _buffer.ReadPosition += count;
             return true;
         }
@@ -283,9 +286,11 @@ public class PgReader
     public bool TryReadBytes(int count, out ReadOnlyMemory<byte> bytes)
     {
         CheckBounds(count);
-        if (BufferBytesRemaining >= count)
+        var offset = _buffer.ReadPosition;
+        var remaining = _buffer.FilledBytes - offset;
+        if (remaining >= count)
         {
-            bytes = new ReadOnlyMemory<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            bytes = new ReadOnlyMemory<byte>(_buffer.Buffer, offset, count);
             _buffer.ReadPosition += count;
             return true;
         }
@@ -297,9 +302,11 @@ public class PgReader
     public ReadOnlySequence<byte> ReadBytes(int count)
     {
         CheckBounds(count);
-        if (BufferBytesRemaining >= count)
+        var offset = _buffer.ReadPosition;
+        var remaining = _buffer.FilledBytes - offset;
+        if (remaining >= count)
         {
-            var result = new ReadOnlySequence<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            var result = new ReadOnlySequence<byte>(_buffer.Buffer, offset, count);
             _buffer.ReadPosition += count;
             return result;
         }
@@ -313,9 +320,11 @@ public class PgReader
     public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int count, CancellationToken cancellationToken = default)
     {
         CheckBounds(count);
-        if (BufferBytesRemaining >= count)
+        var offset = _buffer.ReadPosition;
+        var remaining = _buffer.FilledBytes - offset;
+        if (remaining >= count)
         {
-            var result = new ReadOnlySequence<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            var result = new ReadOnlySequence<byte>(_buffer.Buffer, offset, count);
             _buffer.ReadPosition += count;
             return result;
         }
@@ -737,12 +746,12 @@ public class PgReader
         => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
     public bool ShouldBuffer(int byteCount)
     {
-        return BufferBytesRemaining < byteCount && ShouldBufferSlow();
+        return _buffer.ReadBytesLeft < byteCount && ShouldBufferSlow();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         bool ShouldBufferSlow()
         {
-            if (byteCount > BufferSize)
+            if (byteCount > _buffer.Size)
                 ThrowArgumentOutOfRange();
             if (byteCount > CurrentRemaining)
                 ThrowArgumentOutOfRangeOfValue();
