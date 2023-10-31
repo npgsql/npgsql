@@ -510,7 +510,7 @@ public class DateTimeTests : TestBase
 
     [Test, TestCaseSource(nameof(IntervalValues))]
     public Task Interval_as_TimeSpan(TimeSpan timeSpan, string sqlLiteral)
-        => AssertType(timeSpan, sqlLiteral, "interval", NpgsqlDbType.Interval, isDefaultForWriting: false);
+        => AssertType(timeSpan, sqlLiteral, "interval", NpgsqlDbType.Interval);
 
     [Test]
     public Task Interval_write_as_TimeSpan_truncates_ticks()
@@ -518,8 +518,7 @@ public class DateTimeTests : TestBase
             new TimeSpan(new TimeSpan(2, 3, 4).Ticks + 1),
             "02:03:04",
             "interval",
-            NpgsqlDbType.Interval,
-            isDefault: false);
+            NpgsqlDbType.Interval);
 
     [Test]
     public Task Interval_as_NpgsqlInterval()
@@ -527,8 +526,7 @@ public class DateTimeTests : TestBase
             new NpgsqlInterval(2, 15, 7384005000),
             "2 mons 15 days 02:03:04.005", "interval",
             NpgsqlDbType.Interval,
-            isDefaultForReading: false,
-            isDefaultForWriting: false);
+            isDefaultForReading: false);
 
     [Test]
     public Task Interval_with_months_cannot_read_as_TimeSpan()
