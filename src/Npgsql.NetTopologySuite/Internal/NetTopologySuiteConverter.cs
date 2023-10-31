@@ -32,10 +32,8 @@ sealed class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
         return (int)lengthStream.Length;
     }
 
-#pragma warning disable CA2252 // GetStream() is a "preview" feature
     public override void Write(PgWriter writer, T value)
-        => _writer.Write(value, writer.GetStream());
-#pragma warning restore CA2252
+        => _writer.Write(value, writer.GetStream(allowMixedIO: true));
 
     // PostGisReader/PostGisWriter doesn't support async
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
