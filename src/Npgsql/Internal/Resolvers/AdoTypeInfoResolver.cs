@@ -226,6 +226,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)));
 #endif
 
+        // Interval
+        mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
+            static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
+        mappings.AddStructType<NpgsqlInterval>(DataTypeNames.Interval,
+            static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
+
         // Time
         mappings.AddStructType<TimeSpan>(DataTypeNames.Time,
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()), isDefault: true);
@@ -240,13 +246,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimeTz,
             static (options, mapping, _) => mapping.CreateInfo(options, new DateTimeOffsetTimeTzConverter()),
             MatchRequirement.DataTypeName);
-
-        // Interval
-        mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
-            static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()),
-            MatchRequirement.DataTypeName);
-        mappings.AddStructType<NpgsqlInterval>(DataTypeNames.Interval,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
         // Uuid
         mappings.AddStructType<Guid>(DataTypeNames.Uuid,
@@ -411,6 +410,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<DateOnly>(DataTypeNames.Date);
 #endif
 
+        // Interval
+        mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
+        mappings.AddStructArrayType<NpgsqlInterval>(DataTypeNames.Interval);
+
         // Time
         mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Time);
         mappings.AddStructArrayType<long>(DataTypeNames.Time);
@@ -420,11 +423,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // TimeTz
         mappings.AddStructArrayType<DateTimeOffset>(DataTypeNames.TimeTz);
-
-        // Interval
-        mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
-        mappings.AddStructArrayType<NpgsqlInterval>(DataTypeNames.Interval);
-
         // Uuid
         mappings.AddStructArrayType<Guid>(DataTypeNames.Uuid);
 
