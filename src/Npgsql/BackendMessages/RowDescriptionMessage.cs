@@ -12,6 +12,20 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.BackendMessages;
 
+readonly struct ColumnInfo
+{
+    public ColumnInfo(PgConverterInfo converterInfo, DataFormat dataFormat, bool asObject)
+    {
+        ConverterInfo = converterInfo;
+        DataFormat = dataFormat;
+        AsObject = asObject;
+    }
+
+    public PgConverterInfo ConverterInfo { get; }
+    public DataFormat DataFormat { get; }
+    public bool AsObject { get; }
+}
+
 /// <summary>
 /// A RowDescription message sent from the backend.
 /// </summary>
@@ -24,7 +38,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
     FieldDescription?[] _fields;
     readonly Dictionary<string, int> _nameIndex;
     Dictionary<string, int>? _insensitiveIndex;
-    PgConverterInfo[]? _lastConverterInfoCache;
+    ColumnInfo[]? _lastConverterInfoCache;
 
     internal RowDescriptionMessage(bool connectorOwned, int numFields = 10)
     {
@@ -119,14 +133,14 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
         }
     }
 
-    internal void SetConverterInfoCache(ReadOnlySpan<PgConverterInfo> values)
+    internal void SetConverterInfoCache(ReadOnlySpan<ColumnInfo> values)
     {
         if (_connectorOwned || _lastConverterInfoCache is not null)
             return;
         Interlocked.CompareExchange(ref _lastConverterInfoCache, values.ToArray(), null);
     }
 
-    internal void LoadConverterInfoCache(PgConverterInfo[] values)
+    internal void LoadConverterInfoCache(ColumnInfo[] values)
     {
         if (_lastConverterInfoCache is not { } cache)
             return;
@@ -328,17 +342,17 @@ public sealed class FieldDescription
 
     internal Type FieldType => ObjectOrDefaultInfo.TypeToConvert;
 
-    PgConverterInfo _objectOrDefaultInfo;
+    ColumnInfo _objectOrDefaultInfo;
     internal PgConverterInfo ObjectOrDefaultInfo
     {
         get
         {
-            if (!_objectOrDefaultInfo.IsDefault)
-                return _objectOrDefaultInfo;
+            if (!_objectOrDefaultInfo.ConverterInfo.IsDefault)
+                return _objectOrDefaultInfo.ConverterInfo;
 
             ref var info = ref _objectOrDefaultInfo;
-            GetInfo(null, ref _objectOrDefaultInfo, out _);
-            return info;
+            GetInfo(null, ref _objectOrDefaultInfo);
+            return info.ConverterInfo;
         }
     }
 
@@ -350,64 +364,60 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal void GetInfo(Type? type, ref PgConverterInfo lastConverterInfo, out bool asObject)
+    internal void GetInfo(Type? type, ref ColumnInfo lastColumnInfo)
     {
-        Debug.Assert(lastConverterInfo.IsDefault || (
-            ReferenceEquals(_serializerOptions, lastConverterInfo.TypeInfo.Options) &&
-            lastConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
+        Debug.Assert(lastColumnInfo.ConverterInfo.IsDefault || (
+            ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) &&
+            lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
 
-        if (!lastConverterInfo.IsDefault && lastConverterInfo.TypeToConvert == type)
-        {
-            asObject = lastConverterInfo.IsBoxingConverter;
+        if (!lastColumnInfo.ConverterInfo.IsDefault && lastColumnInfo.ConverterInfo.TypeToConvert == type)
             return;
-        }
 
-        var odfInfo = DataFormat is DataFormat.Text && type is not null ? ObjectOrDefaultInfo : _objectOrDefaultInfo;
+        var odfInfo = DataFormat is DataFormat.Text && type is not null ? ObjectOrDefaultInfo : _objectOrDefaultInfo.ConverterInfo;
         if (odfInfo is { IsDefault: false })
         {
             if (typeof(object) == type)
             {
-                lastConverterInfo = odfInfo;
-                asObject = true;
+                lastColumnInfo = new(odfInfo, DataFormat, true);
                 return;
             }
             if (odfInfo.TypeToConvert == type)
             {
-                lastConverterInfo = odfInfo;
-                asObject = lastConverterInfo.IsBoxingConverter;
+                lastColumnInfo = new(odfInfo, DataFormat, odfInfo.IsBoxingConverter);
                 return;
             }
         }
 
-        GetInfoSlow(out lastConverterInfo, out asObject);
+        GetInfoSlow(out lastColumnInfo);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void GetInfoSlow(out PgConverterInfo lastConverterInfo, out bool asObject)
+        void GetInfoSlow(out ColumnInfo lastColumnInfo)
         {
             var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
+            PgConverterInfo converterInfo;
             switch (DataFormat)
             {
             case DataFormat.Binary:
                 // If we don't support binary we'll just throw.
-                lastConverterInfo = typeInfo.Bind(Field, DataFormat);
-                asObject = typeof(object) == type || lastConverterInfo.IsBoxingConverter;
+                converterInfo = typeInfo.Bind(Field, DataFormat);
+                lastColumnInfo = new(converterInfo, DataFormat.Binary, typeof(object) == type || converterInfo.IsBoxingConverter);
                 break;
             default:
                 // For text we'll fall back to any available text converter for the expected clr type or throw.
-                if (!typeInfo.TryBind(Field, DataFormat, out lastConverterInfo))
+                if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
                 {
                     typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.UnknownPgType, _serializerOptions);
-                    lastConverterInfo = typeInfo.Bind(Field, DataFormat);
-                    asObject = type != lastConverterInfo.TypeToConvert || lastConverterInfo.IsBoxingConverter;
+                    converterInfo = typeInfo.Bind(Field, DataFormat);
+                    lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
                 }
                 else
-                    asObject = typeof(object) == type || lastConverterInfo.IsBoxingConverter;
+                    lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
                 break;
             }
 
             // We delay initializing ObjectOrDefaultInfo until after the first lookup (unless it is itself the first lookup).
             // When passed in an unsupported type it allows the error to be more specific, instead of just having object/null to deal with.
-            if (_objectOrDefaultInfo.IsDefault && type is not null)
+            if (_objectOrDefaultInfo.ConverterInfo.IsDefault && type is not null)
                 _ = ObjectOrDefaultInfo;
         }
     }

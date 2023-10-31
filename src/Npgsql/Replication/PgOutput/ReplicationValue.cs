@@ -26,7 +26,7 @@ public class ReplicationValue
     public TupleDataKind Kind { get; private set; }
 
     FieldDescription _fieldDescription = null!;
-    PgConverterInfo _lastInfo;
+    ColumnInfo _lastInfo;
     bool _isConsumed;
 
     PgReader PgReader => _readBuffer.PgReader;
@@ -88,7 +88,7 @@ public class ReplicationValue
     {
         CheckActive();
 
-        _fieldDescription.GetInfo(typeof(T), ref _lastInfo, out var asObject);
+        _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
         var info = _lastInfo;
 
         switch (Kind)
@@ -112,10 +112,10 @@ public class ReplicationValue
         using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
         var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
-        await reader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
-        var result = asObject
-            ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await info.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+        await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
+        var result = info.AsObject
+            ? (T)await info.ConverterInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+            : await info.ConverterInfo.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
     }
@@ -158,7 +158,7 @@ public class ReplicationValue
         CheckActive();
 
         ref var info = ref _lastInfo;
-        _fieldDescription.GetInfo(typeof(TextReader), ref info, out _);
+        _fieldDescription.GetInfo(typeof(TextReader), ref info);
 
         switch (Kind)
         {
@@ -171,8 +171,8 @@ public class ReplicationValue
         }
 
         var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
-        reader.StartRead(info.BufferRequirement);
-        var result = (TextReader)info.Converter.ReadAsObject(reader);
+        reader.StartRead(info.ConverterInfo.BufferRequirement);
+        var result = (TextReader)info.ConverterInfo.Converter.ReadAsObject(reader);
         reader.EndRead();
         return result;
     }
