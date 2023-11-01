@@ -6,15 +6,15 @@ namespace Npgsql.BackendMessages;
 
 sealed class CommandCompleteMessage : IBackendMessage
 {
+    uint _oid;
+    ulong _rows;
     internal StatementType StatementType { get; private set; }
-    internal uint OID { get; private set; }
-    internal ulong Rows { get; private set; }
+
+    internal uint OID => _oid;
+    internal ulong Rows => _rows;
 
     internal CommandCompleteMessage Load(NpgsqlReadBuffer buf, int len)
     {
-        Rows = 0;
-        OID = 0;
-
         var bytes = buf.Span.Slice(0, len);
         buf.Skip(len);
 
@@ -34,6 +34,9 @@ sealed class CommandCompleteMessage : IBackendMessage
             _ => (StatementType.Other, 0)
         };
 
+        _oid = 0;
+        _rows = 0;
+
         // Slice away the null terminator.
         var arguments = bytes.Slice(argumentsStart, bytes.Length - argumentsStart - 1);
         switch (StatementType)
@@ -42,15 +45,13 @@ sealed class CommandCompleteMessage : IBackendMessage
         case StatementType.Call:
             break;
         case StatementType.Insert:
-            if (!Utf8Parser.TryParse(arguments, out uint oid, out var nextArgumentOffset))
+            if (!Utf8Parser.TryParse(arguments, out _oid, out var nextArgumentOffset))
                 throw new InvalidOperationException("Invalid bytes in command complete message.");
-            OID = oid;
             arguments = arguments.Slice(nextArgumentOffset + 1);
             goto default;
         default:
-            if (!Utf8Parser.TryParse(arguments, out ulong rows, out _))
+            if (!Utf8Parser.TryParse(arguments, out _rows, out _))
                 throw new InvalidOperationException("Invalid bytes in command complete message.");
-            Rows = rows;
             break;
         }
 
