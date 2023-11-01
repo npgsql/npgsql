@@ -117,18 +117,13 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
                 "DateTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
         }
 #endif
-
-        DataSource = NpgsqlDataSource.Create(ConnectionString);
     }
-
-    protected override NpgsqlDataSource DataSource { get; }
 
     public void Dispose()
     {
 #if DEBUG
         DisableDateTimeInfinityConversions = false;
 #endif
-
         DataSource.Dispose();
     }
 }
