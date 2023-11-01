@@ -728,9 +728,13 @@ public class PgReader
     {
         _requiresCleanup = true;
         var pooledArray = _pooledArray;
-        var array = _pooledArray = ArrayPool.Rent(count);
         if (pooledArray is not null)
+        {
+            if (pooledArray.Length >= count)
+                return pooledArray;
             ArrayPool.Return(pooledArray);
+        }
+        var array = _pooledArray = ArrayPool.Rent(count);
         return array;
     }
 
