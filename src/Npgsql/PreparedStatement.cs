@@ -44,7 +44,7 @@ sealed class PreparedStatement
 
     internal long LastUsed { get; set; }
 
-    internal void RefreshLastUsed() => LastUsed = Stopwatch.GetTimestamp() / (Stopwatch.Frequency / 100000); // 10 microsecond resolution
+    internal void RefreshLastUsed() => LastUsed = Stopwatch.GetTimestamp();
 
     /// <summary>
     /// Contains the handler types for a prepared statement's parameters, for overloaded cases (same SQL, different param types)
