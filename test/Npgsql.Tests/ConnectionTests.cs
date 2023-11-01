@@ -1046,10 +1046,10 @@ LANGUAGE 'plpgsql'");
     [Test]
     public async Task Clone_with_data_source()
     {
-        await using var connection = await SharedDataSource.OpenConnectionAsync();
+        await using var connection = await DataSource.OpenConnectionAsync();
         await using var clonedConnection = (NpgsqlConnection)((ICloneable)connection).Clone();
 
-        Assert.That(clonedConnection.NpgsqlDataSource, Is.SameAs(SharedDataSource));
+        Assert.That(clonedConnection.NpgsqlDataSource, Is.SameAs(DataSource));
         Assert.DoesNotThrowAsync(() => clonedConnection.OpenAsync());
     }
 
