@@ -39,7 +39,9 @@ public class PgReader
     ArraySegment<char>? _charsReadBuffer;
 
     bool _requiresCleanup;
-    bool _fieldCompleted;
+    // The field reading process of doing init/commit and startread/endread pairs is very perf sensitive.
+    // So this is used in Commit as a fast-path alternative to FieldRemaining to detect if the field was consumed succesfully.
+    bool _fieldConsumed;
 
     internal PgReader(NpgsqlReadBuffer buffer)
     {
@@ -447,7 +449,7 @@ public class PgReader
         _fieldFormat = format;
         _fieldSize = fieldLength;
         _resumable = resumable;
-        _fieldCompleted = false;
+        _fieldConsumed = false;
         return this;
     }
 
@@ -481,7 +483,7 @@ public class PgReader
         if (FieldOffset != FieldSize)
             ThrowNotConsumedExactly();
 
-        _fieldCompleted = true;
+        _fieldConsumed = true;
     }
 
     internal ValueTask EndReadAsync()
@@ -496,7 +498,7 @@ public class PgReader
         if (FieldOffset != FieldSize)
             ThrowNotConsumedExactly();
 
-        _fieldCompleted = true;
+        _fieldConsumed = true;
         return new();
     }
 
@@ -575,7 +577,7 @@ public class PgReader
 
         // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
         // Also shut down any streaming, pooled arrays etc.
-        if (_requiresCleanup || (!_fieldCompleted && FieldRemaining > 0))
+        if (_requiresCleanup || (!_fieldConsumed && FieldRemaining > 0))
         {
             CommitSlow();
             return;
@@ -658,7 +660,7 @@ public class PgReader
 
         // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
         // Also shut down any streaming, pooled arrays etc.
-        if (_requiresCleanup || (!_fieldCompleted && FieldRemaining > 0))
+        if (_requiresCleanup || (!_fieldConsumed && FieldRemaining > 0))
             return CommitSlow();
 
         _fieldStartPos = -1;
