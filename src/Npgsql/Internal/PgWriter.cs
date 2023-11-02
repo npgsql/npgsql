@@ -43,10 +43,10 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
         var writePosition = _buffer.WritePosition;
-        if (sizeHint > writePosition)
+        var bufferSize = _buffer.Size - writePosition;
+        if (sizeHint > bufferSize)
             ThrowOutOfMemoryException();
 
-        var bufferSize = _buffer.Size - writePosition;
         _lastBufferSize = bufferSize;
         return _buffer.Buffer.AsMemory(writePosition, bufferSize);
     }
@@ -54,10 +54,10 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
     public Span<byte> GetSpan(int sizeHint = 0)
     {
         var writePosition = _buffer.WritePosition;
-        if (sizeHint > writePosition)
+        var bufferSize = _buffer.Size - writePosition;
+        if (sizeHint > bufferSize)
             ThrowOutOfMemoryException();
 
-        var bufferSize = _buffer.Size - writePosition;
         _lastBufferSize = bufferSize;
         return _buffer.Buffer.AsSpan(writePosition, bufferSize);
     }
