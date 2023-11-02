@@ -540,11 +540,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 builtinDataTypeName = NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDataTypeName();
             }
 
-            var pgTypeId = dataTypeName is null
-                ? null
-                : TryGetRepresentationalTypeId(options, builtinDataTypeName ?? dataTypeName, out var id)
-                    ? id
-                    : ThrowNotSupported(builtinDataTypeName ?? dataTypeName);
+            PgTypeId? pgTypeId = null;
+            if (dataTypeName is not null)
+            {
+                if (!options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
+                {
+                    ThrowNotSupported(builtinDataTypeName ?? dataTypeName);
+                    return;
+                }
+
+                pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
+            }
 
             if (staticValueType == typeof(object))
             {
@@ -576,23 +582,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             PgTypeId = resolution.PgTypeId;
         }
 
-        bool TryGetRepresentationalTypeId(PgSerializerOptions options, string dataTypeName, out PgTypeId pgTypeId)
-        {
-            if (options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
-            {
-                pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
-                return true;
-            }
-
-            pgTypeId = default;
-            return false;
-        }
-
         void ThrowNoTypeInfo()
             => ThrowHelper.ThrowInvalidOperationException(
                 $"Parameter '{(!string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}")}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
 
-        PgTypeId? ThrowNotSupported(string dataTypeName)
+        void ThrowNotSupported(string dataTypeName)
         {
             throw new NotSupportedException(_npgsqlDbType is not null
                 ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
