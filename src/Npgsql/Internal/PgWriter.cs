@@ -35,30 +35,34 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
     public void Advance(int count)
     {
         if (_lastBufferSize < count || _buffer.WriteSpaceLeft < count)
-            throw new InvalidOperationException("Cannot advance past the end of the current buffer.");
+            ThrowHelper.ThrowInvalidOperationException("Cannot advance past the end of the current buffer.");
         _lastBufferSize = null;
         _buffer.WritePosition += count;
     }
 
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
-        if (sizeHint > _buffer.WriteSpaceLeft)
-            throw new OutOfMemoryException("Not enough space left in buffer.");
+        var writePosition = _buffer.WritePosition;
+        if (sizeHint > writePosition)
+            ThrowOutOfMemoryException();
 
-        var bufferSize = _buffer.WriteSpaceLeft;
+        var bufferSize = _buffer.Size - writePosition;
         _lastBufferSize = bufferSize;
-        return _buffer.Buffer.AsMemory(_buffer.WritePosition, bufferSize);
+        return _buffer.Buffer.AsMemory(writePosition, bufferSize);
     }
 
     public Span<byte> GetSpan(int sizeHint = 0)
     {
-        if (sizeHint > _buffer.WriteSpaceLeft)
-            throw new OutOfMemoryException("Not enough space left in buffer.");
+        var writePosition = _buffer.WritePosition;
+        if (sizeHint > writePosition)
+            ThrowOutOfMemoryException();
 
-        var bufferSize = _buffer.WriteSpaceLeft;
+        var bufferSize = _buffer.Size - writePosition;
         _lastBufferSize = bufferSize;
-        return _buffer.Buffer.AsSpan(_buffer.WritePosition, bufferSize);
+        return _buffer.Buffer.AsSpan(writePosition, bufferSize);
     }
+
+    static void ThrowOutOfMemoryException() => throw new OutOfMemoryException("Not enough space left in buffer.");
 
     public void Flush(TimeSpan timeout = default)
     {
