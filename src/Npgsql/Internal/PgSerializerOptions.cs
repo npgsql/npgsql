@@ -16,14 +16,13 @@ public sealed class PgSerializerOptions
     internal static bool IntrospectionCaller { get; set; }
 
     readonly Func<string>? _timeZoneProvider;
-    readonly object _typeInfoCache;
+    object? _typeInfoCache;
 
     internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, Func<string>? timeZoneProvider = null)
     {
         _timeZoneProvider = timeZoneProvider;
         DatabaseInfo = databaseInfo;
         UnknownPgType = databaseInfo.GetPostgresType("unknown");
-        _typeInfoCache = PortableTypeIds ? new TypeInfoCache<DataTypeName>(this) : new TypeInfoCache<Oid>(this);
     }
 
     // Represents the 'unknown' type, which can be used for reading and writing arbitrary text values.
@@ -62,8 +61,8 @@ public sealed class PgSerializerOptions
     // for.
     PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId, bool defaultTypeFallback)
         => PortableTypeIds
-            ? Unsafe.As<TypeInfoCache<DataTypeName>>(_typeInfoCache).GetOrAddInfo(type, pgTypeId?.DataTypeName, defaultTypeFallback)
-            : Unsafe.As<TypeInfoCache<Oid>>(_typeInfoCache).GetOrAddInfo(type, pgTypeId?.Oid, defaultTypeFallback);
+            ? Unsafe.As<TypeInfoCache<DataTypeName>>(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this)).GetOrAddInfo(type, pgTypeId?.DataTypeName, defaultTypeFallback)
+            : Unsafe.As<TypeInfoCache<Oid>>(_typeInfoCache ??= new TypeInfoCache<Oid>(this)).GetOrAddInfo(type, pgTypeId?.Oid, defaultTypeFallback);
 
     public PgTypeInfo? GetDefaultTypeInfo(PostgresType pgType)
         => GetTypeInfoCore(null, ToCanonicalTypeId(pgType), false);
