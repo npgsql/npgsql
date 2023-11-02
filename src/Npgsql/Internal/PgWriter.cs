@@ -108,24 +108,19 @@ public sealed class PgWriter
 
     internal PgWriter(IBufferWriter<byte> writer) => _writer = writer;
 
-    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog)
-    {
-        if (_typeCatalog is not null)
-            throw new InvalidOperationException("Invalid concurrent use or PgWriter was not reset properly.");
-
-        _typeCatalog = typeCatalog;
-        return this;
-    }
-
-    internal void Reset()
+    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
     {
         if (_pos != _offset)
-            throw new InvalidOperationException("PgWriter still has uncommitted bytes.");
+            ThrowHelper.ThrowInvalidOperationException("Invalid concurrent use or PgWriter was not committed properly, PgWriter still has uncommitted bytes.");
 
-        _typeCatalog = null;
-        FlushMode = FlushMode.None;
+        // Elide write barrier if we can.
+        if (!ReferenceEquals(_typeCatalog, typeCatalog))
+            _typeCatalog = typeCatalog;
+
+        FlushMode = flushMode;
         _totalBytesWritten = 0;
         ResetBuffer();
+        return this;
     }
 
     void ResetBuffer()
