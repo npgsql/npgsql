@@ -33,7 +33,7 @@ partial class NpgsqlConnector
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write(NpgsqlWriteBuffer writeBuffer, int len, StatementOrPortal statementOrPortal, byte[] name)
+        static void Write(NpgsqlWriteBuffer writeBuffer, int len, StatementOrPortal statementOrPortal, byte[] name)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Describe);
             writeBuffer.WriteInt32(len - 1);
@@ -62,7 +62,7 @@ partial class NpgsqlConnector
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write(NpgsqlWriteBuffer writeBuffer)
+        static void Write(NpgsqlWriteBuffer writeBuffer)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Sync);
             writeBuffer.WriteInt32(len - 1);
@@ -93,7 +93,7 @@ partial class NpgsqlConnector
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write(NpgsqlWriteBuffer writeBuffer, int maxRows)
+        static void Write(NpgsqlWriteBuffer writeBuffer, int maxRows)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Execute);
             writeBuffer.WriteInt32(len - 1);
@@ -283,7 +283,7 @@ partial class NpgsqlConnector
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write(NpgsqlWriteBuffer writeBuffer, int len, StatementOrPortal type, byte[] name)
+        static void Write(NpgsqlWriteBuffer writeBuffer, int len, StatementOrPortal type, byte[] name)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Close);
             writeBuffer.WriteInt32(len - 1);
