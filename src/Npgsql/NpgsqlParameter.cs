@@ -519,7 +519,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
     internal void ResolveTypeInfo(PgSerializerOptions options)
     {
-        var previouslyResolved = TypeInfo?.Options == options;
+        var previouslyResolved = ReferenceEquals(TypeInfo?.Options, options);
         if (!previouslyResolved)
         {
             var staticValueType = StaticValueType;
@@ -540,20 +540,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
 
             var pgTypeId = dataTypeName is null
-                ? (PgTypeId?)null
-                : TryGetRepresentationalTypeId(builtinDataTypeName ?? dataTypeName, out var id)
+                ? null
+                : TryGetRepresentationalTypeId(options, builtinDataTypeName ?? dataTypeName, out var id)
                     ? id
-                    : throw new NotSupportedException(_npgsqlDbType is not null
-                        ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
-                        : $"The data type name '{builtinDataTypeName ?? dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
+                    : ThrowNotSupported(builtinDataTypeName ?? dataTypeName);
 
             if (staticValueType == typeof(object))
             {
-                if (valueType == null && pgTypeId is null)
+                if (valueType is null && pgTypeId is null)
                 {
-                    var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
-                    ThrowHelper.ThrowInvalidOperationException(
-                        $"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
+                    ThrowNoTypeInfo();
                     return;
                 }
 
@@ -579,7 +575,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             PgTypeId = resolution.PgTypeId;
         }
 
-        bool TryGetRepresentationalTypeId(string dataTypeName, out PgTypeId pgTypeId)
+        bool TryGetRepresentationalTypeId(PgSerializerOptions options, string dataTypeName, out PgTypeId pgTypeId)
         {
             if (options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
             {
@@ -589,6 +585,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             pgTypeId = default;
             return false;
+        }
+
+        void ThrowNoTypeInfo()
+            => ThrowHelper.ThrowInvalidOperationException(
+                $"Parameter '{(!string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}")}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
+
+        PgTypeId? ThrowNotSupported(string dataTypeName)
+        {
+            throw new NotSupportedException(_npgsqlDbType is not null
+                ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
+                : $"The data type name '{dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
         }
     }
 
