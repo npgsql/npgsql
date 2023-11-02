@@ -4,25 +4,32 @@ using System.Reflection;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.Resolvers;
 
 class RecordTypeInfoResolver : IPgTypeInfoResolver
 {
-    protected TypeInfoMappingCollection Mappings { get; } = new();
-    public RecordTypeInfoResolver() => AddInfos(Mappings);
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
-        => mappings.AddType<object[]>(DataTypeNames.Record, static (options, mapping, _) =>
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
+    {
+        mappings.AddType<object[]>(DataTypeNames.Record, static (options, mapping, _) =>
                 mapping.CreateInfo(options, new RecordConverter<object[]>(options), supportsWriting: false),
             MatchRequirement.DataTypeName);
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
-        => mappings.AddArrayType<object[]>(DataTypeNames.Record);
+        return mappings;
+    }
+
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
+    {
+        mappings.AddArrayType<object[]>(DataTypeNames.Record);
+
+        return mappings;
+    }
 
     public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
@@ -40,13 +47,8 @@ class RecordTypeInfoResolver : IPgTypeInfoResolver
 
 sealed class RecordArrayTypeInfoResolver : RecordTypeInfoResolver, IPgTypeInfoResolver
 {
-    public RecordArrayTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection(base.Mappings.Items);
-        AddArrayInfos(Mappings);
-    }
-
-    new TypeInfoMappingCollection Mappings { get; }
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
@@ -56,14 +58,14 @@ sealed class RecordArrayTypeInfoResolver : RecordTypeInfoResolver, IPgTypeInfoRe
 [RequiresDynamicCode("Tupled records need to construct a generic converter for a statically unknown (value)tuple type.")]
 class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
 {
-    protected TypeInfoMappingCollection Mappings { get; } = new();
-    public TupledRecordTypeInfoResolver() => AddInfos(Mappings);
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
     // Stand-in type, type match predicate does the actual work.
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddType<Tuple<object>>(DataTypeNames.Record, Factory,
             mapping => mapping with
@@ -80,12 +82,16 @@ class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
                     TypeMatchPredicate = type => type is { IsConstructedGenericType: true, FullName: not null }
                                                  && type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal)
                 });
+
+        return mappings;
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddArrayType<Tuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
         mappings.AddStructArrayType<ValueTuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
+
+        return mappings;
     }
 
     static readonly TypeInfoFactory Factory = static (options, mapping, _) =>
@@ -129,13 +135,8 @@ class TupledRecordTypeInfoResolver : IPgTypeInfoResolver
 [RequiresDynamicCode("Tupled records need to construct a generic converter for a statically unknown (value)tuple type.")]
 sealed class TupledRecordArrayTypeInfoResolver : TupledRecordTypeInfoResolver, IPgTypeInfoResolver
 {
-    public TupledRecordArrayTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection(base.Mappings.Items);
-        AddArrayInfos(Mappings);
-    }
-
-    new TypeInfoMappingCollection Mappings { get; }
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);

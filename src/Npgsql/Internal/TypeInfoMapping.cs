@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -154,7 +153,7 @@ public sealed class TypeInfoMappingCollection
         return fallback?.Factory(options, fallback.Value, dataTypeName is not null);
     }
 
-    bool TryFindMapping(Type type, string dataTypeName, out TypeInfoMapping value)
+    bool TryGetMapping(Type type, string dataTypeName, out TypeInfoMapping value)
     {
         foreach (var mapping in _baseCollection?._items ?? _items)
         {
@@ -171,8 +170,8 @@ public sealed class TypeInfoMappingCollection
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    TypeInfoMapping FindMapping(Type type, string dataTypeName)
-        => TryFindMapping(type, dataTypeName, out var info) ? info : throw new InvalidOperationException($"Could not find mapping for {type} <-> {dataTypeName}");
+    TypeInfoMapping GetMapping(Type type, string dataTypeName)
+        => TryGetMapping(type, dataTypeName, out var info) ? info : throw new InvalidOperationException($"Could not find mapping for {type} <-> {dataTypeName}");
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgTypeInfo, PgConverter> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
@@ -181,7 +180,7 @@ public sealed class TypeInfoMappingCollection
             var innerInfo = innerMapping.Factory(options, innerMapping, dataTypeNameMatch);
             var converter = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var writingSupported = supportsWriting && innerInfo.SupportsWriting && mapping.Type != typeof(object);
+            var writingSupported = supportsWriting && innerInfo.SupportsWriting;
             var unboxedType = ComputeUnboxedType(defaultType: mappingType, converter.TypeToConvert, mapping.Type);
 
             return new PgTypeInfo(options, converter, TypeInfoMappingHelpers.ResolveFullyQualifiedName(options, mapping.DataTypeName), unboxedType)
@@ -198,7 +197,7 @@ public sealed class TypeInfoMappingCollection
             var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, innerMapping, dataTypeNameMatch);
             var resolver = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var writingSupported = supportsWriting && innerInfo.SupportsWriting && mapping.Type != typeof(object);
+            var writingSupported = supportsWriting && innerInfo.SupportsWriting;
             var unboxedType = ComputeUnboxedType(defaultType: mappingType, resolver.TypeToConvert, mapping.Type);
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
@@ -268,26 +267,41 @@ public sealed class TypeInfoMappingCollection
     public void AddType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : class
     {
         var mapping = new TypeInfoMapping(typeof(T), dataTypeName, createInfo);
-        _items.Add(configure?.Invoke(mapping) ?? mapping);
+        mapping = configure?.Invoke(mapping) ?? mapping;
+        if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
+            _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
+                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.GetResolution().Converter, copyPreferredFormat: true))
+            {
+                MatchRequirement = mapping.MatchRequirement
+            });
+        _items.Add(mapping);
     }
 
-    // Aliased to AddType at this time.
     public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
-        => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
+        => AddResolverType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
 
-    // Aliased to AddType at this time.
     public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : class
-        => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(matchRequirement));
+        => AddResolverType<T>(dataTypeName, createInfo, GetDefaultConfigure(matchRequirement));
 
-    // Aliased to AddType at this time.
     public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : class
-        => AddType<T>(dataTypeName, createInfo, configure);
+    {
+        var mapping = new TypeInfoMapping(typeof(T), dataTypeName, createInfo);
+        mapping = configure?.Invoke(mapping) ?? mapping;
+        if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
+            _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
+                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.GetConverterResolver(), copyPreferredFormat: true))
+            {
+                MatchRequirement = mapping.MatchRequirement
+            });
+        _items.Add(mapping);
+    }
+
 
     public void AddArrayType<TElement>(string elementDataTypeName) where TElement : class
-        => AddArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping: false);
+        => AddArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping: false);
 
     public void AddArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping) where TElement : class
-        => AddArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping);
+        => AddArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping);
 
     public void AddArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
         => AddArrayType<TElement>(elementMapping, suppressObjectMapping: false);
@@ -300,7 +314,7 @@ public sealed class TypeInfoMappingCollection
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
-        AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryFindMapping(typeof(object), arrayDataTypeName, out _));
+        AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _));
         AddArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverter<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
 
         void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgTypeInfo, PgConverter> converter, Func<Type?, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
@@ -324,10 +338,10 @@ public sealed class TypeInfoMappingCollection
     }
 
     public void AddResolverArrayType<TElement>(string elementDataTypeName) where TElement : class
-        => AddResolverArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping: false);
+        => AddResolverArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping: false);
 
     public void AddResolverArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping) where TElement : class
-        => AddResolverArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping);
+        => AddResolverArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), suppressObjectMapping);
 
     public void AddResolverArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
         => AddResolverArrayType<TElement>(elementMapping, suppressObjectMapping: false);
@@ -340,7 +354,7 @@ public sealed class TypeInfoMappingCollection
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
-        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryFindMapping(typeof(object), arrayDataTypeName, out _));
+        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _));
         AddResolverArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverterResolver<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
 
         void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> converter, Func<Type?, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
@@ -381,6 +395,12 @@ public sealed class TypeInfoMappingCollection
     {
         var mapping = new TypeInfoMapping(type, dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
+        if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
+            _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
+                CreateComposedFactory(type, mapping, static (_, info) => info.GetResolution().Converter, copyPreferredFormat: true))
+            {
+                MatchRequirement = mapping.MatchRequirement
+            });
         _items.Add(mapping);
         _items.Add(new TypeInfoMapping(nullableType, dataTypeName,
             CreateComposedFactory(nullableType, mapping, nullableConverter, copyPreferredFormat: true))
@@ -395,10 +415,10 @@ public sealed class TypeInfoMappingCollection
     }
 
     public void AddStructArrayType<TElement>(string elementDataTypeName) where TElement : struct
-        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping: false);
+        => AddStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping: false);
 
     public void AddStructArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping) where TElement : struct
-        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
+        => AddStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
 
     public void AddStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping) where TElement : struct
         => AddStructArrayType<TElement>(elementMapping, nullableElementMapping, suppressObjectMapping: false);
@@ -416,7 +436,7 @@ public sealed class TypeInfoMappingCollection
 
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
             CreateArrayBasedConverter<TElement>, CreateArrayBasedConverter<TElement?>,
-            arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryFindMapping(typeof(object), arrayDataTypeName, out _));
+            arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _));
 
         // Don't add the object converter for the list based converter.
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
@@ -491,6 +511,12 @@ public sealed class TypeInfoMappingCollection
     {
         var mapping = new TypeInfoMapping(type, dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
+        if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
+            _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
+                CreateComposedFactory(type, mapping, static (_, info) => info.GetConverterResolver(), copyPreferredFormat: true))
+            {
+                MatchRequirement = mapping.MatchRequirement
+            });
         _items.Add(mapping);
         _items.Add(new TypeInfoMapping(nullableType, dataTypeName,
             CreateComposedFactory(nullableType, mapping, nullableConverter, copyPreferredFormat: true))
@@ -505,10 +531,10 @@ public sealed class TypeInfoMappingCollection
     }
 
     public void AddResolverStructArrayType<TElement>(string elementDataTypeName) where TElement : struct
-        => AddResolverStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping: false);
+        => AddResolverStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping: false);
 
     public void AddResolverStructArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping) where TElement : struct
-        => AddResolverStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
+        => AddResolverStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
 
     public void AddResolverStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping) where TElement : struct
         => AddResolverStructArrayType<TElement>(elementMapping, nullableElementMapping, suppressObjectMapping: false);
@@ -525,7 +551,7 @@ public sealed class TypeInfoMappingCollection
 
         AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
             CreateArrayBasedConverterResolver<TElement>,
-            CreateArrayBasedConverterResolver<TElement?>, suppressObjectMapping: suppressObjectMapping || TryFindMapping(typeof(object), arrayDataTypeName, out _), arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate);
+            CreateArrayBasedConverterResolver<TElement?>, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _), arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate);
 
         // Don't add the object converter for the list based converter.
         AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
@@ -580,7 +606,7 @@ public sealed class TypeInfoMappingCollection
         }
 
     public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
-        => AddPolymorphicResolverArrayType(FindMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
+        => AddPolymorphicResolverArrayType(GetMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
 
     public void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
     {

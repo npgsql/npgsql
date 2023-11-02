@@ -6,22 +6,26 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.GeoJSON.Internal;
 
-sealed class GeoJSONTypeInfoResolver : IPgTypeInfoResolver
+class GeoJSONTypeInfoResolver : IPgTypeInfoResolver
 {
-    TypeInfoMappingCollection Mappings { get; }
+    readonly GeoJSONOptions _options;
+    readonly bool _geographyAsDefault;
+    readonly CrsMap? _crsMap;
 
-    internal GeoJSONTypeInfoResolver(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new(), _options, _geographyAsDefault, _crsMap);
+
+    public GeoJSONTypeInfoResolver(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
     {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings, options, geographyAsDefault, crsMap);
-        // TODO opt-in arrays
-        AddArrayInfos(Mappings);
+        _options = options;
+        _geographyAsDefault = geographyAsDefault;
+        _crsMap = crsMap;
     }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings, GeoJSONOptions geoJsonOptions, bool geographyAsDefault, CrsMap? crsMap)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings, GeoJSONOptions geoJsonOptions, bool geographyAsDefault, CrsMap? crsMap)
     {
         crsMap ??= new CrsMap(CrsMap.WellKnown);
 
@@ -57,9 +61,11 @@ sealed class GeoJSONTypeInfoResolver : IPgTypeInfoResolver
                 (options, mapping, _) => mapping.CreateInfo(options, new GeoJSONConverter<GeometryCollection>(geoJsonOptions, crsMap)),
                 matchRequirement);
         }
+
+        return mappings;
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         foreach (var dataTypeName in new[] { "geometry", "geography" })
         {
@@ -72,5 +78,19 @@ sealed class GeoJSONTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddArrayType<MultiPolygon>(dataTypeName);
             mappings.AddArrayType<GeometryCollection>(dataTypeName);
         }
+
+        return mappings;
     }
+}
+
+sealed class GeoJSONArrayTypeInfoResolver : GeoJSONTypeInfoResolver, IPgTypeInfoResolver
+{
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
+
+    public GeoJSONArrayTypeInfoResolver(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
+        : base(options, geographyAsDefault, crsMap) { }
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }

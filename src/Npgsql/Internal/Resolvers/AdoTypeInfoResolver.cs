@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.IO;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
@@ -16,15 +15,10 @@ namespace Npgsql.Internal.Resolvers;
 // Baseline types that are always supported.
 class AdoTypeInfoResolver : IPgTypeInfoResolver
 {
-    public AdoTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings);
-    }
-
     public static AdoTypeInfoResolver Instance { get; } = new();
 
-    protected TypeInfoMappingCollection Mappings { get; }
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
@@ -46,7 +40,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         return new PgTypeInfo(options, new StringTextConverter(options.TextEncoding), dataTypeName);
     }
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         // Bool
         mappings.AddStructType<bool>(DataTypeNames.Bool,
@@ -312,9 +306,11 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             MatchRequirement.DataTypeName);
         mappings.AddStructType<ulong>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
+
+        return mappings;
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // Bool
         mappings.AddStructArrayType<bool>(DataTypeNames.Bool);
@@ -448,21 +444,15 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Int2vector
         mappings.AddArrayType<short[]>(DataTypeNames.Int2Vector);
+
+        return mappings;
     }
 }
 
 sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
 {
-    new TypeInfoMappingCollection Mappings { get; }
-
-    public AdoArrayTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection(base.Mappings);
-        var elementTypeCount = Mappings.Items.Count;
-        AddArrayInfos(Mappings);
-        // Make sure we have at least one mapping for each element type.
-        Debug.Assert(Mappings.Items.Count >= elementTypeCount * 2);
-    }
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {

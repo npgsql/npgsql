@@ -7,9 +7,13 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.NetTopologySuite.Internal;
 
-sealed class NetTopologySuiteTypeInfoResolver : IPgTypeInfoResolver
+class NetTopologySuiteTypeInfoResolver : IPgTypeInfoResolver
 {
-    TypeInfoMappingCollection Mappings { get; }
+    readonly PostGisReader _gisReader;
+    readonly bool _geographyAsDefault;
+
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new(), _gisReader, new(), _geographyAsDefault);
 
     public NetTopologySuiteTypeInfoResolver(
         CoordinateSequenceFactory? coordinateSequenceFactory,
@@ -21,19 +25,14 @@ sealed class NetTopologySuiteTypeInfoResolver : IPgTypeInfoResolver
         precisionModel ??= NtsGeometryServices.Instance.DefaultPrecisionModel;
         handleOrdinates = handleOrdinates == Ordinates.None ? coordinateSequenceFactory.Ordinates : handleOrdinates;
 
-        var reader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
-        var writer = new PostGisWriter();
-
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings, reader, writer, geographyAsDefault);
-        // TODO: Opt-in only
-        AddArrayInfos(Mappings);
+        _geographyAsDefault = geographyAsDefault;
+        _gisReader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
     }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings, PostGisReader reader, PostGisWriter writer, bool geographyAsDefault)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings, PostGisReader reader, PostGisWriter writer, bool geographyAsDefault)
     {
         // geometry
         mappings.AddType<Geometry>("geometry",
@@ -88,9 +87,11 @@ sealed class NetTopologySuiteTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<GeometryCollection>("geography",
             (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<GeometryCollection>(reader, writer)),
             matchRequirement: geographyAsDefault ? MatchRequirement.All : MatchRequirement.DataTypeName);
+
+        return mappings;
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // geometry
         mappings.AddArrayType<Geometry>("geometry");
@@ -111,5 +112,19 @@ sealed class NetTopologySuiteTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<Polygon>("geography");
         mappings.AddArrayType<MultiPolygon>("geography");
         mappings.AddArrayType<GeometryCollection>("geography");
+
+        return mappings;
     }
+}
+
+sealed class NetTopologySuiteArrayTypeInfoResolver : NetTopologySuiteTypeInfoResolver, IPgTypeInfoResolver
+{
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
+
+    public NetTopologySuiteArrayTypeInfoResolver(CoordinateSequenceFactory? coordinateSequenceFactory, PrecisionModel? precisionModel, Ordinates handleOrdinates, bool geographyAsDefault)
+        : base(coordinateSequenceFactory, precisionModel, handleOrdinates, geographyAsDefault) { }
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }

@@ -492,7 +492,10 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     {
         if (column.LastConverterInfo is { IsDefault: false } lastInfo && lastInfo.TypeToConvert == type)
         {
-            asObject = lastInfo.IsBoxingConverter;
+            // As TypeInfoMappingCollection is always adding object mappings for
+            // default/datatypename mappings, we'll also check Converter.TypeToConvert.
+            // If we have an exact match we are still able to use e.g. a converter for ints in an unboxed fashion.
+            asObject = lastInfo.IsBoxingConverter && lastInfo.Converter.TypeToConvert != type;
             return lastInfo;
         }
 
@@ -506,7 +509,10 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
             if (odfInfo.TypeToConvert == type)
             {
-                asObject = odfInfo.IsBoxingConverter;
+                // As TypeInfoMappingCollection is always adding object mappings for
+                // default/datatypename mappings, we'll also check Converter.TypeToConvert.
+                // If we have an exact match we are still able to use e.g. a converter for ints in an unboxed fashion.
+                asObject = odfInfo.IsBoxingConverter && odfInfo.Converter.TypeToConvert != type;
                 return odfInfo;
             }
         }

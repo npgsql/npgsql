@@ -42,6 +42,17 @@ public class LTreeTests : MultiplexingTestBase
         dataSourceBuilder.EnableLTree();
         await using var dataSource = dataSourceBuilder.Build();
 
+        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false, skipArrayCheck: true);
+    }
+
+    [Test]
+    public async Task NpgsqlSlimSourceBuilder_EnableArrays()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.EnableLTree();
+        dataSourceBuilder.EnableArrays();
+        await using var dataSource = dataSourceBuilder.Build();
+
         await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false);
     }
 

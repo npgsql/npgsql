@@ -6,22 +6,15 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
+class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
 {
-    TypeInfoMappingCollection Mappings { get; }
-
-    public FullTextSearchTypeInfoResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings);
-        // TODO: Opt-in only
-        AddArrayInfos(Mappings);
-    }
+    TypeInfoMappingCollection? _mappings;
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new());
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
-    static void AddInfos(TypeInfoMappingCollection mappings)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings)
     {
         // tsvector
         mappings.AddType<NpgsqlTsVector>(DataTypeNames.TsVector,
@@ -42,9 +35,11 @@ sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryOr>(options.TextEncoding)));
         mappings.AddType<NpgsqlTsQueryFollowedBy>(DataTypeNames.TsQuery,
             static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryFollowedBy>(options.TextEncoding)));
+
+        return mappings;
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // tsvector
         mappings.AddArrayType<NpgsqlTsVector>(DataTypeNames.TsVector);
@@ -57,6 +52,8 @@ sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<NpgsqlTsQueryAnd>(DataTypeNames.TsQuery);
         mappings.AddArrayType<NpgsqlTsQueryOr>(DataTypeNames.TsQuery);
         mappings.AddArrayType<NpgsqlTsQueryFollowedBy>(DataTypeNames.TsQuery);
+
+        return mappings;
     }
 
     public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
@@ -78,4 +75,13 @@ sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch), typeof(TBuilder).Name));
     }
+}
+
+sealed class FullTextSearchArrayTypeInfoResolver : FullTextSearchTypeInfoResolver, IPgTypeInfoResolver
+{
+    TypeInfoMappingCollection? _mappings;
+    new TypeInfoMappingCollection Mappings => _mappings ??= AddArrayInfos(new(base.Mappings));
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }

@@ -3,7 +3,6 @@ using System.Collections;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Properties;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.Resolvers;
 
