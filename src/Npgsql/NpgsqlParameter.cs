@@ -523,7 +523,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (!previouslyResolved)
         {
             var staticValueType = StaticValueType;
-            var valueType = GetValueType(StaticValueType);
+            var valueType = GetValueType(staticValueType);
 
             string? dataTypeName = null;
             DataTypeName? builtinDataTypeName = null;
