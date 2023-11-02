@@ -95,12 +95,14 @@ sealed class PreparedStatement
     internal bool DoParametersMatch(List<NpgsqlParameter> parameters)
     {
         var paramTypes = ConverterParamTypes!;
-        var forall = paramTypes.Length == parameters.Count;
-        for (var i = 0; forall && i < paramTypes.Length; i++)
-            if (paramTypes[i] != parameters[i].PgTypeId)
-                forall = false;
+        if (paramTypes.Length != parameters.Count)
+            return false;
 
-        return forall;
+        for (var i = 0; i < paramTypes.Length; i++)
+            if (paramTypes[i] != parameters[i].PgTypeId)
+                return false;
+
+        return true;
     }
 
     internal void AbortPrepare()

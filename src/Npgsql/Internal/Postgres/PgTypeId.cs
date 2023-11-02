@@ -30,12 +30,13 @@ public readonly struct PgTypeId: IEquatable<PgTypeId>
     public override string ToString() => IsOid ? "OID " + _oid : "DataTypeName " + _dataTypeName.Value;
 
     public bool Equals(PgTypeId other)
-        => (this, other) switch
-        {
-            ({ IsOid: true }, { IsOid: true }) => _oid == other._oid,
-            ({ IsDataTypeName: true }, { IsDataTypeName: true }) => _dataTypeName.Equals(other._dataTypeName),
-            _ => false
-        };
+    {
+        if (IsOid && other.IsOid)
+            return _oid == other._oid;
+        if (IsDataTypeName && other.IsDataTypeName)
+            return _dataTypeName.Equals(other._dataTypeName);
+        return false;
+    }
 
     public override bool Equals(object? obj) => obj is PgTypeId other && Equals(other);
     public override int GetHashCode() => IsOid ? _oid.GetHashCode() : _dataTypeName.GetHashCode();
