@@ -179,7 +179,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         CheckClosedOrDisposed();
         return TryRead() ?? Read(async: true, cancellationToken);
-
     }
 
     // This is an optimized execution path that avoids calling any async methods for the (usual)
@@ -343,7 +342,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             using var registration = isConsuming ? default : Connector.StartNestedCancellableOperation(cancellationToken);
             // If we're in the middle of a resultset, consume it
             if (State is ReaderState.BeforeResult or ReaderState.InResult)
-                await ConsumeResultSet().ConfigureAwait(false);
+                await ConsumeResultSet(async).ConfigureAwait(false);
 
             Debug.Assert(State is ReaderState.BetweenResults);
 
@@ -366,9 +365,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // We are now at the end of the previous result set. Read up to the next result set, if any.
             // Non-prepared statements receive ParseComplete, BindComplete, DescriptionRow/NoData,
             // prepared statements receive only BindComplete
-            for (var i = ++StatementIndex; i < statements.Count; i = ++StatementIndex)
+            for (statementIndex = ++StatementIndex; statementIndex < statements.Count; statementIndex = ++StatementIndex)
             {
-                var statement = statements[i];
+                var statement = statements[statementIndex];
 
                 IBackendMessage msg;
                 if (statement.TryGetPrepared(out var preparedStatement))
@@ -567,7 +566,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             throw;
         }
 
-        async ValueTask ConsumeResultSet()
+        async ValueTask ConsumeResultSet(bool async)
         {
             await ConsumeRow(async).ConfigureAwait(false);
             while (true)
@@ -793,7 +792,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         if (msg.Code is not BackendMessageCode.DataRow)
         {
-            HandleUncommon();
+            HandleUncommon(msg);
             return;
         }
 
@@ -839,7 +838,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void HandleUncommon()
+        void HandleUncommon(IBackendMessage msg)
         {
             switch (msg.Code)
             {
@@ -1557,7 +1556,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         // The only statically mapped converter, it always exists.
         if (typeof(T) == typeof(Stream))
-            return GetStream();
+            return GetStream(ordinal, cancellationToken);
 
         return Core(ordinal, cancellationToken).AsTask();
 
@@ -1583,7 +1582,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             return result;
         }
 
-        async Task<T> GetStream()
+        async Task<T> GetStream(int ordinal, CancellationToken cancellationToken)
         {
             using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
@@ -1611,7 +1610,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         // The only statically mapped converter, it always exists.
         if (typeof(T) == typeof(Stream))
-            return GetStream();
+            return GetStream(ordinal);
 
         var field = GetInfo(ordinal, typeof(T), out var converter, out var bufferRequirement, out var asObject);
 
@@ -1634,7 +1633,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         return result;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        T GetStream()
+        T GetStream(int ordinal)
         {
             var field = GetDefaultInfo(ordinal, out _, out _);
             PgReader.ThrowIfStreamActive();
@@ -2244,6 +2243,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         switch (state)
         {
         case ReaderState.InResult:
+            ThrowColumnOutOfRange(maxColumns);
             break;
         case ReaderState.Closed:
             ThrowHelper.ThrowInvalidOperationException("The reader is closed");
@@ -2255,8 +2255,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             ThrowHelper.ThrowInvalidOperationException("No row is available");
             break;
         }
-
-        ThrowColumnOutOfRange(maxColumns);
         return default!;
     }
 

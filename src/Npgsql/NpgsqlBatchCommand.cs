@@ -13,6 +13,8 @@ namespace Npgsql;
 /// <inheritdoc/>
 public sealed class NpgsqlBatchCommand : DbBatchCommand
 {
+    internal static readonly List<NpgsqlParameter> EmptyParameters = new();
+
     string _commandText;
 
     /// <inheritdoc/>
@@ -154,6 +156,8 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     }
 
     internal bool HasParameters => _inputParameters?.Count > 0 || _ownedInputParameters?.Count > 0;
+
+    internal List<NpgsqlParameter> CurrentParametersReadOnly => HasParameters ? PositionalParameters : EmptyParameters;
 
     List<NpgsqlParameter>? _ownedInputParameters;
     List<NpgsqlParameter>? _inputParameters;
