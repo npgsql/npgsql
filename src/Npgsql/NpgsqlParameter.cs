@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -619,12 +620,22 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             return;
         }
 
+        if (_size > 0)
+            HandleSizeTruncation();
+
+        BindCore();
+        format = Format;
+        size = WriteSize!.Value;
+
         // Handle Size truncate behavior for a predetermined set of types and pg types.
         // Doesn't matter if we 'box' Value, all supported types are reference types.
-        if (_size > 0 && Converter!.TypeToConvert is var type &&
-            (type == typeof(string) || type == typeof(char[]) || type == typeof(byte[]) || type == typeof(Stream)) &&
-            Value is { } value)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void HandleSizeTruncation()
         {
+            var type = Converter!.TypeToConvert;
+            if ((type != typeof(string) && type != typeof(char[]) && type != typeof(byte[]) && type != typeof(Stream)) || Value is not { } value)
+                return;
+
             var dataTypeName = TypeInfo!.Options.GetDataTypeName(PgTypeId);
             if (dataTypeName == DataTypeNames.Text || dataTypeName == DataTypeNames.Varchar || dataTypeName == DataTypeNames.Bpchar)
             {
@@ -649,10 +660,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     _useSubStream = true;
             }
         }
-
-        BindCore();
-        format = Format;
-        size = WriteSize!.Value;
     }
 
     private protected virtual void BindCore(bool allowNullReference = false)
