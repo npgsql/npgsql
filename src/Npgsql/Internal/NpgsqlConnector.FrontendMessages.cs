@@ -226,20 +226,22 @@ partial class NpgsqlConnector
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
         writeBuffer.WriteUInt16((ushort)parameters.Count);
-
-        var writer = parameters.Count > 0 ? writeBuffer.GetWriter(DatabaseInfo, async ? FlushMode.NonBlocking : FlushMode.Blocking) : null!;
-        try
+        if (parameters.Count > 0)
         {
-            for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
+            var writer = writeBuffer.GetWriter(DatabaseInfo, async ? FlushMode.NonBlocking : FlushMode.Blocking);
+            try
             {
-                var param = parameters[paramIndex];
-                await param.Write(async, writer, cancellationToken).ConfigureAwait(false);
+                for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
+                {
+                    var param = parameters[paramIndex];
+                    await param.Write(async, writer, cancellationToken).ConfigureAwait(false);
+                }
             }
-        }
-        catch(Exception ex)
-        {
-            Break(ex);
-            throw;
+            catch(Exception ex)
+            {
+                Break(ex);
+                throw;
+            }
         }
 
         if (unknownResultTypeList != null)
