@@ -43,16 +43,20 @@ static class AdoSerializerHelpers
         {
             inner = ex;
         }
-        return typeInfo ?? ThrowWritingNotSupported(type,
-            pgTypeString:
-                pgTypeId is null ? "no NpgsqlDbType or DataTypeName. Try setting one of these values to the expected database type." :
-                npgsqlDbType is null
-                ? $"DataTypeName '{options.DatabaseInfo.FindPostgresType(pgTypeId.GetValueOrDefault())?.DisplayName ?? "unknown"}'"
-                : $"NpgsqlDbType '{npgsqlDbType}'", inner);
+        return typeInfo ?? ThrowWritingNotSupported(type, options, pgTypeId, npgsqlDbType, inner);
 
         // InvalidCastException thrown to align with ADO.NET convention.
         [DoesNotReturn]
-        static PgTypeInfo ThrowWritingNotSupported(Type? type, string pgTypeString, Exception? inner = null)
-            => throw new InvalidCastException($"Writing{(type is null ? "" : $" values of '{type.FullName}'")} is not supported for parameters having {pgTypeString}.", inner);
+        static PgTypeInfo ThrowWritingNotSupported(Type? type, PgSerializerOptions options, PgTypeId? pgTypeId, NpgsqlDbType? npgsqlDbType, Exception? inner = null)
+        {
+            var pgTypeString = pgTypeId is null
+                ? "no NpgsqlDbType or DataTypeName. Try setting one of these values to the expected database type."
+                : npgsqlDbType is null
+                    ? $"DataTypeName '{options.DatabaseInfo.FindPostgresType(pgTypeId.GetValueOrDefault())?.DisplayName ?? "unknown"}'"
+                    : $"NpgsqlDbType '{npgsqlDbType}'";
+
+            throw new InvalidCastException(
+                $"Writing{(type is null ? "" : $" values of '{type.FullName}'")} is not supported for parameters having {pgTypeString}.", inner);
+        }
     }
 }
