@@ -570,7 +570,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
         if (!previouslyResolved || TypeInfo is PgResolverTypeInfo)
         {
-            ResetConverterResolution();
+            ResetBindingInfo(); // No need for ResetConverterResolution as we'll mutate those fields directly afterwards.
             var resolution = ResolveConverter(TypeInfo!);
             Converter = resolution.Converter;
             PgTypeId = resolution.PgTypeId;
