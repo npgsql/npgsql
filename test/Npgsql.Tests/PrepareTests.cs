@@ -257,7 +257,7 @@ public class PrepareTests: TestBase
     {
         using var dataSource = CreateDataSource();
         using var conn1 = dataSource.OpenConnection();
-        var preparedStatement = "";
+        var preparedStatement = Array.Empty<byte>();
         using (var cmd1 = new NpgsqlCommand("SELECT @p", conn1))
         {
             cmd1.Parameters.AddWithValue("p", 8);

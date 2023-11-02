@@ -296,34 +296,33 @@ public readonly struct PgConverterResolution
 
 readonly struct PgConverterInfo
 {
+    readonly PgTypeInfo _typeInfo;
+
     public PgConverterInfo(PgTypeInfo pgTypeInfo, PgConverter converter, Size bufferRequirement)
     {
-        TypeInfo = pgTypeInfo;
+        _typeInfo = pgTypeInfo;
         Converter = converter;
         BufferRequirement = bufferRequirement;
+
+        // Object typed resolvers can return any type of converter, so we check the type of the converter instead.
+        // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
+        if (pgTypeInfo.IsResolverInfo && pgTypeInfo.Type == typeof(object))
+            TypeToConvert = Converter.TypeToConvert;
+        else
+            TypeToConvert = pgTypeInfo.Type;
     }
 
-    public bool IsDefault => TypeInfo is null;
+    public bool IsDefault => _typeInfo is null;
 
-    public Type TypeToConvert
-    {
-        get
-        {
-            // Object typed resolvers can return any type of converter, so we check the type of the converter instead.
-            // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
-            if (TypeInfo.IsResolverInfo && TypeInfo.Type == typeof(object))
-                return Converter.TypeToConvert;
+    public Type TypeToConvert { get; }
 
-            return TypeInfo.Type;
-        }
-    }
+    public PgTypeInfo TypeInfo => _typeInfo;
 
-    public PgTypeInfo TypeInfo { get; }
     public PgConverter Converter { get; }
     public Size BufferRequirement { get; }
 
     /// Whether Converter.TypeToConvert matches PgTypeInfo.Type, if it doesn't object apis should be used.
-    public bool IsBoxingConverter => TypeInfo.IsBoxing;
+    public bool IsBoxingConverter => _typeInfo.IsBoxing;
 
     public PgConverter<T> GetConverter<T>() => (PgConverter<T>)Converter;
 }

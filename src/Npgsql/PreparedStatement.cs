@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.Postgres;
 
@@ -17,7 +18,7 @@ sealed class PreparedStatement
 
     internal string Sql { get; }
 
-    internal string? Name;
+    internal byte[]? Name;
 
     internal RowDescriptionMessage? Description;
 
@@ -41,7 +42,9 @@ sealed class PreparedStatement
 
     internal int AutoPreparedSlotIndex { get; set; }
 
-    internal DateTime LastUsed { get; set; }
+    internal long LastUsed { get; set; }
+
+    internal void RefreshLastUsed() => LastUsed = Stopwatch.GetTimestamp();
 
     /// <summary>
     /// Contains the handler types for a prepared statement's parameters, for overloaded cases (same SQL, different param types)
@@ -58,7 +61,7 @@ sealed class PreparedStatement
     {
         var pStatement = new PreparedStatement(manager, sql, true)
         {
-            Name = name,
+            Name = Encoding.ASCII.GetBytes(name),
             StatementBeingReplaced = statementBeingReplaced
         };
         pStatement.SetParamTypes(parameters);
@@ -91,14 +94,13 @@ sealed class PreparedStatement
 
     internal bool DoParametersMatch(List<NpgsqlParameter> parameters)
     {
-        if (ConverterParamTypes!.Length != parameters.Count)
-            return false;
+        var paramTypes = ConverterParamTypes!;
+        var forall = paramTypes.Length == parameters.Count;
+        for (var i = 0; forall && i < paramTypes.Length; i++)
+            if (paramTypes[i] != parameters[i].PgTypeId)
+                forall = false;
 
-        for (var i = 0; i < ConverterParamTypes.Length; i++)
-            if (ConverterParamTypes[i] != parameters[i].PgTypeId)
-                return false;
-
-        return true;
+        return forall;
     }
 
     internal void AbortPrepare()

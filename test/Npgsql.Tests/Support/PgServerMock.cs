@@ -152,7 +152,7 @@ class PgServerMock : IDisposable
         Assert.That(actualSql, Is.EqualTo(expectedSql));
     }
 
-    internal Task WaitForData() => _readBuffer.EnsureAsync(1);
+    internal Task WaitForData() => _readBuffer.EnsureAsync(1).AsTask();
 
     internal Task FlushAsync()
     {
@@ -213,7 +213,7 @@ class PgServerMock : IDisposable
 
         _writeBuffer.WriteByte((byte)BackendMessageCode.RowDescription);
         _writeBuffer.WriteInt32(4 + 2 + fields.Sum(f => Encoding.GetByteCount(f.Name) + 1 + 18));
-        _writeBuffer.WriteInt16(fields.Length);
+        _writeBuffer.WriteInt16((short)fields.Length);
 
         foreach (var field in fields)
         {
@@ -251,7 +251,7 @@ class PgServerMock : IDisposable
 
         _writeBuffer.WriteByte((byte)BackendMessageCode.DataRow);
         _writeBuffer.WriteInt32(4 + 2 + columnValues.Sum(v => 4 + v.Length));
-        _writeBuffer.WriteInt16(columnValues.Length);
+        _writeBuffer.WriteInt16((short)columnValues.Length);
 
         foreach (var field in columnValues)
         {
@@ -271,7 +271,7 @@ class PgServerMock : IDisposable
 
         _writeBuffer.WriteByte((byte)BackendMessageCode.DataRow);
         _writeBuffer.WriteInt32(4 + 2 + columnValues.Sum(v => 4 + v.Length));
-        _writeBuffer.WriteInt16(columnValues.Length);
+        _writeBuffer.WriteInt16((short)columnValues.Length);
 
         foreach (var field in columnValues)
         {

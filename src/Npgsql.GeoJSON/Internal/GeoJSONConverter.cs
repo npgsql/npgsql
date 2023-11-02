@@ -291,11 +291,15 @@ static class GeoJSONConverter
             return position;
 
             double ReadDouble(bool littleEndian)
-                => littleEndian
-                    // Netstandard is missing ReverseEndianness apis for double.
-                    ? Unsafe.As<long, double>(ref Unsafe.AsRef(
-                        BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref Unsafe.AsRef(reader.ReadDouble())))))
-                    : reader.ReadDouble();
+            {
+                if (littleEndian)
+                {
+                    var value = BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref Unsafe.AsRef(reader.ReadDouble())));
+                    return Unsafe.As<long, double>(ref value);
+                }
+
+                return reader.ReadDouble();
+            }
         }
     }
 

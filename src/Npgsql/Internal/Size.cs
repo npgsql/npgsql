@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Npgsql.Internal;
 
-public enum SizeKind : byte
+public enum SizeKind
 {
     Unknown = 0,
     Exact,

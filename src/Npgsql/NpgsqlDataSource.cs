@@ -57,7 +57,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly Task _passwordRefreshTask = null!;
     string? _password;
 
-    bool _isBootstrapped;
+    internal bool IsBootstrapped { get; private set; }
 
     volatile DatabaseStateInfo _databaseStateInfo = new();
 
@@ -223,7 +223,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         bool async,
         CancellationToken cancellationToken)
     {
-        if (_isBootstrapped && !forceReload)
+        if (IsBootstrapped && !forceReload)
             return;
 
         var hasSemaphore = async
@@ -235,7 +235,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         try
         {
-            if (_isBootstrapped && !forceReload)
+            if (IsBootstrapped && !forceReload)
                 return;
 
             // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
@@ -263,7 +263,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                     DefaultNameTranslator = _defaultNameTranslator
                 };
 
-            _isBootstrapped = true;
+            IsBootstrapped = true;
         }
         finally
         {

@@ -1,122 +1,61 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Buffers.Text;
 using Npgsql.Internal;
 
 namespace Npgsql.BackendMessages;
 
 sealed class CommandCompleteMessage : IBackendMessage
 {
+    uint _oid;
+    ulong _rows;
     internal StatementType StatementType { get; private set; }
-    internal uint OID { get; private set; }
-    internal ulong Rows { get; private set; }
+
+    internal uint OID => _oid;
+    internal ulong Rows => _rows;
 
     internal CommandCompleteMessage Load(NpgsqlReadBuffer buf, int len)
     {
-        Rows = 0;
-        OID = 0;
-
-        var bytes = buf.Buffer;
-        var i = buf.ReadPosition;
+        var bytes = buf.Span.Slice(0, len);
         buf.Skip(len);
-        switch (bytes[i])
+
+        // PostgreSQL always writes these strings as ASCII, see https://github.com/postgres/postgres/blob/c8e1ba736b2b9e8c98d37a5b77c4ed31baf94147/src/backend/tcop/cmdtag.c#L130-L133
+        (StatementType, var argumentsStart) = Convert.ToChar(bytes[0]) switch
         {
-        case (byte)'I':
-            if (!AreEqual(bytes, i, "INSERT "))
-                goto default;
-            StatementType = StatementType.Insert;
-            i += 7;
-            OID = (uint) ParseNumber(bytes, ref i);
-            i++;
-            Rows = ParseNumber(bytes, ref i);
-            return this;
+            'S' when bytes.StartsWith("SELECT "u8) => (StatementType.Select, "SELECT ".Length),
+            'I' when bytes.StartsWith("INSERT "u8) => (StatementType.Insert, "INSERT ".Length),
+            'U' when bytes.StartsWith("UPDATE "u8) => (StatementType.Update, "UPDATE ".Length),
+            'D' when bytes.StartsWith("DELETE "u8) => (StatementType.Delete, "DELETE ".Length),
+            'M' when bytes.StartsWith("MERGE "u8) => (StatementType.Merge, "MERGE ".Length),
+            'C' when bytes.StartsWith("COPY "u8) => (StatementType.Copy, "COPY ".Length),
+            'C' when bytes.StartsWith("CALL"u8) => (StatementType.Call, "CALL".Length),
+            'M' when bytes.StartsWith("MOVE "u8) => (StatementType.Move, "MOVE ".Length),
+            'F' when bytes.StartsWith("FETCH "u8) => (StatementType.Fetch, "FETCH ".Length),
+            'C' when bytes.StartsWith("CREATE TABLE AS "u8) => (StatementType.CreateTableAs, "CREATE TABLE AS ".Length),
+            _ => (StatementType.Other, 0)
+        };
 
-        case (byte)'D':
-            if (!AreEqual(bytes, i, "DELETE "))
-                goto default;
-            StatementType = StatementType.Delete;
-            i += 7;
-            Rows = ParseNumber(bytes, ref i);
-            return this;
+        _oid = 0;
+        _rows = 0;
 
-        case (byte)'U':
-            if (!AreEqual(bytes, i, "UPDATE "))
-                goto default;
-            StatementType = StatementType.Update;
-            i += 7;
-            Rows = ParseNumber(bytes, ref i);
-            return this;
-
-        case (byte)'S':
-            if (!AreEqual(bytes, i, "SELECT "))
-                goto default;
-            StatementType = StatementType.Select;
-            i += 7;
-            Rows = ParseNumber(bytes, ref i);
-            return this;
-
-        case (byte)'M':
-            if (AreEqual(bytes, i, "MERGE "))
-            {
-                StatementType = StatementType.Merge;
-                i += 6;
-            }
-            else if (AreEqual(bytes, i, "MOVE "))
-            {
-                StatementType = StatementType.Move;
-                i += 5;
-            }
-            else
-                goto default;
-            Rows = ParseNumber(bytes, ref i);
-            return this;
-
-        case (byte)'F':
-            if (!AreEqual(bytes, i, "FETCH "))
-                goto default;
-            StatementType = StatementType.Fetch;
-            i += 6;
-            Rows = ParseNumber(bytes, ref i);
-            return this;
-
-        case (byte)'C':
-            if (AreEqual(bytes, i, "COPY "))
-            {
-                StatementType = StatementType.Copy;
-                i += 5;
-                Rows = ParseNumber(bytes, ref i);
-                return this;
-            }
-            if (bytes[i + 4] == 0 && AreEqual(bytes, i, "CALL"))
-            {
-                StatementType = StatementType.Call;
-                return this;
-            }
+        // Slice away the null terminator.
+        var arguments = bytes.Slice(argumentsStart, bytes.Length - argumentsStart - 1);
+        switch (StatementType)
+        {
+        case StatementType.Other:
+        case StatementType.Call:
+            break;
+        case StatementType.Insert:
+            if (!Utf8Parser.TryParse(arguments, out _oid, out var nextArgumentOffset))
+                throw new InvalidOperationException("Invalid bytes in command complete message.");
+            arguments = arguments.Slice(nextArgumentOffset + 1);
             goto default;
-
         default:
-            StatementType = StatementType.Other;
-            return this;
+            if (!Utf8Parser.TryParse(arguments, out _rows, out _))
+                throw new InvalidOperationException("Invalid bytes in command complete message.");
+            break;
         }
-    }
 
-    static bool AreEqual(byte[] bytes, int pos, string s)
-    {
-        for (var i = 0; i < s.Length; i++)
-        {
-            if (bytes[pos+i] != s[i])
-                return false;
-        }
-        return true;
-    }
-
-    static ulong ParseNumber(byte[] bytes, ref int pos)
-    {
-        Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
-        ulong result = 0;
-        do
-        {
-            result = result * 10 + bytes[pos++] - '0';
-        } while (bytes[pos] >= '0' && bytes[pos] <= '9');
-        return result;
+        return this;
     }
 
     public BackendMessageCode Code => BackendMessageCode.CommandComplete;

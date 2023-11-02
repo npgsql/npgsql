@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -74,7 +75,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     internal PgReader PgReader { get; }
 
     long _flushedBytes; // this will always fit at least one message.
-    internal long CumulativeReadPosition => unchecked(_flushedBytes + ReadPosition);
+    internal long CumulativeReadPosition
+        // Cast to uint to remove the sign extension (ReadPosition is never negative)
+        => _flushedBytes + (uint)ReadPosition;
 
     internal readonly byte[] Buffer;
     internal int FilledBytes;
@@ -126,10 +129,10 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region I/O
 
-    public Task Ensure(int count, bool async)
+    public ValueTask Ensure(int count, bool async)
         => Ensure(count, async, readingNotifications: false);
 
-    public Task EnsureAsync(int count)
+    public ValueTask EnsureAsync(int count)
         => Ensure(count, async: true, readingNotifications: false);
 
     // Can't share due to Span vs Memory difference (can't make a memory out of a span).
@@ -275,11 +278,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
     /// not, reads from the socket until enough is available.
     /// </summary>
-    internal Task Ensure(int count, bool async, bool readingNotifications)
+    internal ValueTask Ensure(int count, bool async, bool readingNotifications)
     {
-        return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong(this, count, async, readingNotifications);
+        return count <= ReadBytesLeft ? new() : EnsureLong(this, count, async, readingNotifications);
 
-        static async Task EnsureLong(
+#if NET6_0_OR_GREATER
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+#endif
+        static async ValueTask EnsureLong(
             NpgsqlReadBuffer buffer,
             int count,
             bool async,
@@ -413,7 +419,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         }
     }
 
-    internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
+    internal ValueTask ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
     internal NpgsqlReadBuffer AllocateOversize(int count)
     {
@@ -463,112 +469,121 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     #region Read Simple
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public sbyte ReadSByte() => Read<sbyte>();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public byte ReadByte() => Read<byte>();
+    public byte ReadByte()
+    {
+        CheckBounds<byte>();
+        var result = Buffer[ReadPosition];
+        ReadPosition += sizeof(byte);
+        return result;
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public short ReadInt16()
-        => ReadInt16(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public short ReadInt16(bool littleEndian)
     {
-        var result = Read<short>();
-        return littleEndian == BitConverter.IsLittleEndian
-            ? result : BinaryPrimitives.ReverseEndianness(result);
+        CheckBounds<short>();
+        var result = BitConverter.IsLittleEndian
+            ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<short>(ref Buffer[ReadPosition]))
+            : Unsafe.ReadUnaligned<short>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(short);
+        return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ushort ReadUInt16()
-        => ReadUInt16(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ushort ReadUInt16(bool littleEndian)
     {
-        var result = Read<ushort>();
-        return littleEndian == BitConverter.IsLittleEndian
-            ? result : BinaryPrimitives.ReverseEndianness(result);
+        CheckBounds<ushort>();
+        var result = BitConverter.IsLittleEndian
+            ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ushort>(ref Buffer[ReadPosition]))
+            : Unsafe.ReadUnaligned<ushort>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(ushort);
+        return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int ReadInt32()
-        => ReadInt32(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int ReadInt32(bool littleEndian)
     {
-        var result = Read<int>();
-        return littleEndian == BitConverter.IsLittleEndian
-            ? result : BinaryPrimitives.ReverseEndianness(result);
+        CheckBounds<int>();
+        var result = BitConverter.IsLittleEndian
+            ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]))
+            : Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(int);
+        return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public uint ReadUInt32()
-        => ReadUInt32(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public uint ReadUInt32(bool littleEndian)
     {
-        var result = Read<uint>();
-        return littleEndian == BitConverter.IsLittleEndian
-            ? result : BinaryPrimitives.ReverseEndianness(result);
+        CheckBounds<uint>();
+        var result = BitConverter.IsLittleEndian
+            ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<uint>(ref Buffer[ReadPosition]))
+            : Unsafe.ReadUnaligned<uint>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(uint);
+        return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public long ReadInt64()
-        => ReadInt64(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public long ReadInt64(bool littleEndian)
     {
-        var result = Read<long>();
-        return littleEndian == BitConverter.IsLittleEndian
-            ? result : BinaryPrimitives.ReverseEndianness(result);
+        CheckBounds<long>();
+        var result = BitConverter.IsLittleEndian
+            ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]))
+            : Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(long);
+        return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ulong ReadUInt64()
-        => ReadUInt64(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ulong ReadUInt64(bool littleEndian)
     {
-        var result = Read<ulong>();
-        return littleEndian == BitConverter.IsLittleEndian
-            ? result : BinaryPrimitives.ReverseEndianness(result);
+        CheckBounds<ulong>();
+        var result = BitConverter.IsLittleEndian
+            ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ulong>(ref Buffer[ReadPosition]))
+            : Unsafe.ReadUnaligned<ulong>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(ulong);
+        return result;
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float ReadSingle()
-        => ReadSingle(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public float ReadSingle(bool littleEndian)
     {
-        var result = ReadInt32(littleEndian);
-        return Unsafe.As<int, float>(ref result);
+        CheckBounds<float>();
+        float result;
+        if (BitConverter.IsLittleEndian)
+        {
+            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]));
+            result = Unsafe.As<int, float>(ref value);
+        }
+        else
+            result = Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(float);
+        return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double ReadDouble()
-        => ReadDouble(false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double ReadDouble(bool littleEndian)
     {
-        var result = ReadInt64(littleEndian);
-        return Unsafe.As<long, double>(ref result);
+        CheckBounds<double>();
+        double result;
+        if (BitConverter.IsLittleEndian)
+        {
+            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]));
+            result = Unsafe.As<long, double>(ref value);
+        }
+        else
+            result = Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
+        ReadPosition += sizeof(double);
+        return result;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    unsafe T Read<T>() where T : unmanaged
+    [Conditional("DEBUG")]
+    unsafe void CheckBounds<T>() where T : unmanaged
     {
-        Debug.Assert(sizeof(T) <= ReadBytesLeft, "There is not enough space left in the buffer.");
-        var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(T);
-        return result;
+        if (sizeof(T) > ReadBytesLeft)
+            ThrowNoSpaceLeft();
+
+        static void ThrowNoSpaceLeft()
+            => ThrowHelper.ThrowInvalidOperationException("There is not enough space left in the buffer.");
     }
 
     public string ReadString(int byteLen)

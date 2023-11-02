@@ -7,6 +7,8 @@ namespace Npgsql;
 
 sealed class SqlQueryParser
 {
+    static NpgsqlParameterCollection EmptyParameters { get; } = new();
+
     readonly Dictionary<string, int> _paramIndexMap = new();
     readonly StringBuilder _rewrittenSql = new();
 
@@ -70,7 +72,7 @@ sealed class SqlQueryParser
             // Batching mode. We're processing only one batch - if we encounter a semicolon (legacy batching), that's an error.
             Debug.Assert(batchCommand is not null);
             sql = batchCommand.CommandText;
-            parameters = batchCommand.Parameters;
+            parameters = batchCommand._parameters ?? EmptyParameters;
             batchCommands = null;
         }
         else
@@ -78,7 +80,7 @@ sealed class SqlQueryParser
             // Command mode. Semicolons (legacy batching) may occur.
             Debug.Assert(batchCommand is null);
             sql = command.CommandText;
-            parameters = command.Parameters;
+            parameters = command._parameters ?? EmptyParameters;
             batchCommands = command.InternalBatchCommands;
             MoveToNextBatchCommand();
         }
@@ -484,7 +486,11 @@ sealed class SqlQueryParser
 
         Finish:
         _rewrittenSql.Append(sql, currTokenBeg, end - currTokenBeg);
-        batchCommand.FinalCommandText = _rewrittenSql.ToString();
+        if (statementIndex is 0 && _paramIndexMap.Count is 0)
+            // Single statement, no parameters, no rewriting necessary
+            batchCommand.FinalCommandText = sql;
+        else
+            batchCommand.FinalCommandText = _rewrittenSql.ToString();
         if (batchCommands is not null && batchCommands.Count > statementIndex + 1)
             batchCommands.RemoveRange(statementIndex + 1, batchCommands.Count - (statementIndex + 1));
 

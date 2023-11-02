@@ -20,7 +20,7 @@ sealed class ResettableCancellationTokenSource : IDisposable
     public TimeSpan Timeout { get; set; }
 
     CancellationTokenSource _cts = new();
-    CancellationTokenRegistration _registration;
+    CancellationTokenRegistration? _registration;
 
     /// <summary>
     /// Used, so we wouldn't concurently use the cts for the cancellation, while it's being disposed
@@ -100,7 +100,8 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// <returns>The <see cref="CancellationToken"/> from the wrapped <see cref="CancellationTokenSource"/></returns>
     public CancellationToken Reset()
     {
-        _registration.Dispose();
+        _registration?.Dispose();
+        _registration = null;
         lock (lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
@@ -155,7 +156,8 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// </remarks>
     public void Stop()
     {
-        _registration.Dispose();
+        _registration?.Dispose();
+        _registration = null;
         lock (lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
@@ -219,7 +221,7 @@ sealed class ResettableCancellationTokenSource : IDisposable
 
         lock (lockObject)
         {
-            _registration.Dispose();
+            _registration?.Dispose();
             _cts.Dispose();
 
             isDisposed = true;

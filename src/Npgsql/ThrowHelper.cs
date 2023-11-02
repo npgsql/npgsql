@@ -113,7 +113,7 @@ static class ThrowHelper
         => throw new IndexOutOfRangeException(message);
 
     [DoesNotReturn]
-    internal static void ThrowNotSupportedException(string message)
+    internal static void ThrowNotSupportedException(string? message = null)
         => throw new NotSupportedException(message);
 
     [DoesNotReturn]

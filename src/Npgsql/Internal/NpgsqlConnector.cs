@@ -451,6 +451,10 @@ public sealed partial class NpgsqlConnector
             var newState = (int)value;
             if (newState == _state)
                 return;
+
+            if (newState is < 0 or > (int)ConnectorState.Replication)
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(value), "Unknown state: " + value);
+
             Interlocked.Exchange(ref _state, newState);
         }
     }
@@ -458,20 +462,7 @@ public sealed partial class NpgsqlConnector
     /// <summary>
     /// Returns whether the connector is open, regardless of any task it is currently performing
     /// </summary>
-    bool IsConnected
-        => State switch
-        {
-            ConnectorState.Ready       => true,
-            ConnectorState.Executing   => true,
-            ConnectorState.Fetching    => true,
-            ConnectorState.Waiting     => true,
-            ConnectorState.Copy        => true,
-            ConnectorState.Replication => true,
-            ConnectorState.Closed      => false,
-            ConnectorState.Connecting  => false,
-            ConnectorState.Broken      => false,
-            _                          => throw new ArgumentOutOfRangeException("Unknown state: " + State)
-        };
+    bool IsConnected => State is not (ConnectorState.Closed or ConnectorState.Connecting or ConnectorState.Broken);
 
     internal bool IsReady => State == ConnectorState.Ready;
     internal bool IsClosed => State == ConnectorState.Closed;
@@ -1322,6 +1313,9 @@ public sealed partial class NpgsqlConnector
         return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false))!;
     }
 
+#if NET6_0_OR_GREATER
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+#endif
     async ValueTask<IBackendMessage?> ReadMessageLong(
         bool async,
         DataRowLoadingMode dataRowLoadingMode,
@@ -1474,7 +1468,15 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal IBackendMessage? ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage)
+    internal IBackendMessage? ParseResultSetMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool handleCallbacks = false)
+        => code switch
+        {
+            BackendMessageCode.DataRow => _dataRowMessage.Load(len),
+            BackendMessageCode.CommandComplete => _commandCompleteMessage.Load(buf, len),
+            _ => ParseServerMessage(buf, code, len, false, handleCallbacks)
+        };
+
+    internal IBackendMessage? ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage, bool handleCallbacks = true)
     {
         switch (code)
         {
@@ -1510,12 +1512,18 @@ public sealed partial class NpgsqlConnector
             ReadParameterStatus(buf.GetNullTerminatedBytes(), buf.GetNullTerminatedBytes());
             return null;
         case BackendMessageCode.NoticeResponse:
-            var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail, LoggingConfiguration.ExceptionLogger);
-            LogMessages.ReceivedNotice(ConnectionLogger, notice.MessageText, Id);
-            Connection?.OnNotice(notice);
+            if (handleCallbacks)
+            {
+                var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail, LoggingConfiguration.ExceptionLogger);
+                LogMessages.ReceivedNotice(ConnectionLogger, notice.MessageText, Id);
+                Connection?.OnNotice(notice);
+            }
             return null;
         case BackendMessageCode.NotificationResponse:
-            Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
+            if (handleCallbacks)
+            {
+                Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
+            }
             return null;
 
         case BackendMessageCode.AuthenticationRequest:
@@ -1549,17 +1557,15 @@ public sealed partial class NpgsqlConnector
         case BackendMessageCode.CopyDone:
             return CopyDoneMessage.Instance;
 
-        case BackendMessageCode.PortalSuspended:
-            throw new NpgsqlException("Unimplemented message: " + code);
         case BackendMessageCode.ErrorResponse:
             return null;
 
+        case BackendMessageCode.PortalSuspended:
         case BackendMessageCode.FunctionCallResponse:
             // We don't use the obsolete function call protocol
-            throw new NpgsqlException("Unexpected backend message: " + code);
-
         default:
-            throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {code} of enum {nameof(BackendMessageCode)}. Please file a bug.");
+            ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {code} of enum {nameof(BackendMessageCode)}. Please file a bug.");
+            return null;
         }
     }
 

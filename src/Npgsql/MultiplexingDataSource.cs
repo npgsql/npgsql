@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -15,8 +16,6 @@ sealed class MultiplexingDataSource : PoolingDataSource
     readonly ILogger _commandLogger;
 
     readonly bool _autoPrepare;
-
-    internal volatile bool StartupCheckPerformed;
 
     readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
     internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
@@ -190,15 +189,18 @@ sealed class MultiplexingDataSource : PoolingDataSource
                 // under our write threshold and timer delay.
                 // Note we already have one command we read above, and have already updated the connector's
                 // CommandsInFlightCount. Now write that command.
-                var writtenSynchronously = WriteCommand(connector, command, ref stats);
-
-                while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
-                       writtenSynchronously &&
-                       _multiplexCommandReader.TryRead(out command))
+                var first = true;
+                bool writtenSynchronously;
+                do
                 {
-                    Interlocked.Increment(ref connector.CommandsInFlightCount);
+                    if (first)
+                        first = false;
+                    else
+                        Interlocked.Increment(ref connector.CommandsInFlightCount);
                     writtenSynchronously = WriteCommand(connector, command, ref stats);
-                }
+                } while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
+                         writtenSynchronously &&
+                         _multiplexCommandReader.TryRead(out command));
 
                 // If all commands were written synchronously (good path), complete the write here, flushing
                 // and updating statistics. If not, CompleteRewrite is scheduled to run later, when the async
@@ -212,6 +214,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool WriteCommand(NpgsqlConnector connector, NpgsqlCommand command, ref MultiplexingStats stats)
         {
             // Note: this method *never* awaits on I/O - doing so would suspend all outgoing multiplexing commands
@@ -283,7 +286,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
             default:
                 Debug.Fail("When writing command to connector, task is in invalid state " + task.Status);
-                throw new Exception("When writing command to connector, task is in invalid state " + task.Status);
+                ThrowHelper.ThrowNpgsqlException("When writing command to connector, task is in invalid state " + task.Status);
+                return false;
             }
         }
 
@@ -326,7 +330,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
             default:
                 Debug.Fail("When flushing, task is in invalid state " + task.Status);
-                throw new Exception("When flushing, task is in invalid state " + task.Status);
+                ThrowHelper.ThrowNpgsqlException("When flushing, task is in invalid state " + task.Status);
+                return;
             }
         }
 

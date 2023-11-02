@@ -183,7 +183,6 @@ sealed class NpgsqlWriteBuffer : IDisposable
         }
         NpgsqlEventSource.Log.BytesWritten(WritePosition);
         _metricsReporter?.ReportBytesWritten(WritePosition);
-        //NpgsqlEventSource.Log.RequestFailed();
 
         WritePosition = 0;
         if (_copyMode)
@@ -265,88 +264,91 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     #region Write Simple
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteSByte(sbyte value) => Write(value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteByte(byte value) => Write(value);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void WriteInt16(int value)
-        => WriteInt16((short)value, false);
+    public void WriteByte(byte value)
+    {
+        CheckBounds<byte>();
+        Buffer[WritePosition] = value;
+        WritePosition += sizeof(byte);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteInt16(short value)
-        => WriteInt16(value, false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteInt16(short value, bool littleEndian)
-        => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    {
+        CheckBounds<short>();
+        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        WritePosition += sizeof(short);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteUInt16(ushort value)
-        => WriteUInt16(value, false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteUInt16(ushort value, bool littleEndian)
-        => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    {
+        CheckBounds<ushort>();
+        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        WritePosition += sizeof(ushort);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteInt32(int value)
-        => WriteInt32(value, false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteInt32(int value, bool littleEndian)
-        => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    {
+        CheckBounds<int>();
+        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        WritePosition += sizeof(int);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteUInt32(uint value)
-        => WriteUInt32(value, false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteUInt32(uint value, bool littleEndian)
-        => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    {
+        CheckBounds<uint>();
+        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        WritePosition += sizeof(uint);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteInt64(long value)
-        => WriteInt64(value, false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteInt64(long value, bool littleEndian)
-        => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    {
+        CheckBounds<long>();
+        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        WritePosition += sizeof(long);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteUInt64(ulong value)
-        => WriteUInt64(value, false);
+    {
+        CheckBounds<ulong>();
+        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
+        WritePosition += sizeof(ulong);
+    }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteUInt64(ulong value, bool littleEndian)
-        => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteSingle(float value)
-        => WriteSingle(value, false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteSingle(float value, bool littleEndian)
-        => WriteInt32(Unsafe.As<float, int>(ref value), littleEndian);
+    {
+        CheckBounds<float>();
+        if (BitConverter.IsLittleEndian)
+            Unsafe.WriteUnaligned(ref Buffer[WritePosition], BinaryPrimitives.ReverseEndianness(Unsafe.As<float, long>(ref value)));
+        else
+            Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);
+        WritePosition += sizeof(float);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void WriteDouble(double value)
-        => WriteDouble(value, false);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteDouble(double value, bool littleEndian)
-        => WriteInt64(Unsafe.As<double, long>(ref value), littleEndian);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void Write<T>(T value)
     {
-        if (Unsafe.SizeOf<T>() > WriteSpaceLeft)
-            ThrowNotSpaceLeft();
+        CheckBounds<double>();
+        if (BitConverter.IsLittleEndian)
+            Unsafe.WriteUnaligned(ref Buffer[WritePosition], BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref value)));
+        else
+            Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);
+        WritePosition += sizeof(double);
+    }
 
-        Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);
-        WritePosition += Unsafe.SizeOf<T>();
+    [Conditional("DEBUG")]
+    unsafe void CheckBounds<T>() where T : unmanaged
+    {
+        if (sizeof(T) > WriteSpaceLeft)
+            ThrowNotSpaceLeft();
     }
 
     static void ThrowNotSpaceLeft()
@@ -477,6 +479,14 @@ sealed class NpgsqlWriteBuffer : IDisposable
         WriteByte(0);
     }
 
+    public void WriteNullTerminatedString(byte[] s)
+    {
+        AssertASCIIOnly(s);
+        Debug.Assert(WriteSpaceLeft >= s.Length + 1);
+        WriteBytes(s);
+        WriteByte(0);
+    }
+
     #endregion
 
     #region Write Complex
@@ -582,6 +592,14 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     [Conditional("DEBUG")]
     internal static void AssertASCIIOnly(string s)
+    {
+        foreach (var c in s)
+            if (c >= 128)
+                Debug.Fail("Method only supports ASCII strings");
+    }
+
+    [Conditional("DEBUG")]
+    internal static void AssertASCIIOnly(byte[] s)
     {
         foreach (var c in s)
             if (c >= 128)

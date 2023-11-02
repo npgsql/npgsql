@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 
@@ -15,6 +16,8 @@ sealed class PreparedStatementManager
     internal PreparedStatement?[] AutoPrepared { get; }
 
     readonly PreparedStatement?[] _candidates;
+
+    static readonly List<NpgsqlParameter> EmptyParameters = new();
 
     /// <summary>
     /// Total number of current prepared statements (whether explicit or automatic).
@@ -65,7 +68,7 @@ sealed class PreparedStatementManager
                 // Great, we've found an explicit prepared statement.
                 // We just need to check that the parameter types correspond, since prepared statements are
                 // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
-                return pStatement.DoParametersMatch(batchCommand.PositionalParameters!)
+                return pStatement.DoParametersMatch(batchCommand.CurrentParametersReadOnly)
                     ? pStatement
                     : null;
             }
@@ -89,7 +92,7 @@ sealed class PreparedStatementManager
         }
 
         // Statement hasn't been prepared yet
-        return BySql[sql] = PreparedStatement.CreateExplicit(this, sql, NextPreparedStatementName(), batchCommand.PositionalParameters, statementBeingReplaced);
+        return BySql[sql] = PreparedStatement.CreateExplicit(this, sql, NextPreparedStatementName(), batchCommand.CurrentParametersReadOnly, statementBeingReplaced);
     }
 
     internal PreparedStatement? TryGetAutoPrepared(NpgsqlBatchCommand batchCommand)
@@ -99,7 +102,7 @@ sealed class PreparedStatementManager
         {
             // New candidate. Find an empty candidate slot or eject a least-used one.
             int slotIndex = -1, leastUsages = int.MaxValue;
-            var lastUsed = DateTime.MaxValue;
+            var lastUsed = long.MaxValue;
             for (var i = 0; i < _candidates.Length; i++)
             {
                 var candidate = _candidates[i];
@@ -143,10 +146,10 @@ sealed class PreparedStatementManager
             // for preparation (earlier identical statement in the same command).
             // We just need to check that the parameter types correspond, since prepared statements are
             // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
-            if (!pStatement.DoParametersMatch(batchCommand.PositionalParameters))
+            if (!pStatement.DoParametersMatch(batchCommand.CurrentParametersReadOnly))
                 return null;
             // Prevent this statement from being replaced within this batch
-            pStatement.LastUsed = DateTime.MaxValue;
+            pStatement.LastUsed = long.MaxValue;
             return pStatement;
 
         case PreparedState.BeingUnprepared:
@@ -162,7 +165,7 @@ sealed class PreparedStatementManager
         {
             // Statement still hasn't passed the usage threshold, no automatic preparation.
             // Return null for unprepared execution.
-            pStatement.LastUsed = DateTime.UtcNow;
+            pStatement.RefreshLastUsed();
             return null;
         }
 
@@ -170,7 +173,7 @@ sealed class PreparedStatementManager
         LogMessages.AutoPreparingStatement(_commandLogger, sql, _connector.Id);
 
         // Look for either an empty autoprepare slot, or the least recently used prepared statement which we'll replace it.
-        var oldestTimestamp = DateTime.MaxValue;
+        var oldestLastUsed = long.MaxValue;
         var selectedIndex = -1;
         for (var i = 0; i < AutoPrepared.Length; i++)
         {
@@ -186,10 +189,10 @@ sealed class PreparedStatementManager
             switch (slot.State)
             {
             case PreparedState.Prepared:
-                if (slot.LastUsed < oldestTimestamp)
+                if (slot.LastUsed < oldestLastUsed)
                 {
                     selectedIndex = i;
-                    oldestTimestamp = slot.LastUsed;
+                    oldestLastUsed = slot.LastUsed;
                 }
                 break;
 
@@ -217,7 +220,7 @@ sealed class PreparedStatementManager
 
         if (oldPreparedStatement is null)
         {
-            pStatement.Name = "_auto" + selectedIndex;
+            pStatement.Name = Encoding.ASCII.GetBytes("_auto" + selectedIndex);
         }
         else
         {
@@ -242,12 +245,12 @@ sealed class PreparedStatementManager
 
 
         // Make sure this statement isn't replaced by a later statement in the same batch.
-        pStatement.LastUsed = DateTime.MaxValue;
+        pStatement.LastUsed = long.MaxValue;
 
         // Note that the parameter types are only set at the moment of preparation - in the candidate phase
         // there's no differentiation between overloaded statements, which are a pretty rare case, saving
         // allocations.
-        pStatement.SetParamTypes(batchCommand.PositionalParameters);
+        pStatement.SetParamTypes(batchCommand.CurrentParametersReadOnly);
 
         return pStatement;
     }

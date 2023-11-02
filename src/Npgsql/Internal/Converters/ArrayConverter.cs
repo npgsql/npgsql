@@ -305,9 +305,10 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-#pragma warning disable CS9193
-        => Unsafe.As<ValueTask<object>, ValueTask<T>>(ref Unsafe.AsRef(_pgArrayConverter.Read(async: true, reader, cancellationToken)));
-#pragma warning restore
+    {
+        var value = _pgArrayConverter.Read(async: true, reader, cancellationToken);
+        return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
+    }
 
     public override Size GetSize(SizeContext context, T values, ref object? writeState)
         => _pgArrayConverter.GetSize(context, values, ref writeState);

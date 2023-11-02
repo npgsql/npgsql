@@ -252,31 +252,34 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (_dataSource is null)
         {
             Debug.Assert(string.IsNullOrEmpty(_connectionString));
-
-            throw new InvalidOperationException("The ConnectionString property has not been initialized.");
+            ThrowHelper.ThrowInvalidOperationException("The ConnectionString property has not been initialized.");
         }
 
-        FullState = ConnectionState.Connecting;
         _userFacingConnectionString = _dataSource.ConnectionString;
         _connectionLogger = _dataSource.LoggingConfiguration.ConnectionLogger;
-        LogMessages.OpeningConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+        if (_connectionLogger.IsEnabled(LogLevel.Trace))
+            LogMessages.OpeningConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
 
         if (Settings.Multiplexing)
         {
             if (Settings.Enlist && Transaction.Current != null)
             {
                 // TODO: Keep in mind that the TransactionScope can be disposed
-                throw new NotSupportedException();
+                ThrowHelper.ThrowNotSupportedException();
             }
 
             // We're opening in multiplexing mode, without a transaction. We don't actually do anything.
 
             // If we've never connected with this connection string, open a physical connector in order to generate
             // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-            if (!((MultiplexingDataSource)_dataSource).StartupCheckPerformed)
+            if (!_dataSource.IsBootstrapped)
+            {
+                FullState = ConnectionState.Connecting;
                 return PerformMultiplexingStartupCheck(async, cancellationToken);
+            }
 
-            LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+            if (_connectionLogger.IsEnabled(LogLevel.Debug))
+                LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
             FullState = ConnectionState.Open;
 
             return Task.CompletedTask;
@@ -288,6 +291,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         {
             Debug.Assert(!Settings.Multiplexing);
 
+            FullState = ConnectionState.Connecting;
             NpgsqlConnector? connector = null;
             try
             {
@@ -348,7 +352,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 EndBindingScope(ConnectorBindingScope.Connection);
 
                 LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
-                ((MultiplexingDataSource)NpgsqlDataSource).StartupCheckPerformed = true;
 
                 FullState = ConnectionState.Open;
             }
@@ -494,11 +497,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             case ConnectorState.Executing:
                 return ConnectionState.Open | ConnectionState.Executing;
             case ConnectorState.Fetching:
-                return ConnectionState.Open | ConnectionState.Fetching;
             case ConnectorState.Copy:
-                return ConnectionState.Open | ConnectionState.Fetching;
             case ConnectorState.Replication:
-                return ConnectionState.Open | ConnectionState.Fetching;
             case ConnectorState.Waiting:
                 return ConnectionState.Open | ConnectionState.Fetching;
             case ConnectorState.Connecting:
@@ -515,10 +515,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
         internal set
         {
+            if (value is < 0 or > ConnectionState.Broken)
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(value), "Unknown connection state", value);
+
             var originalOpen = _fullState.HasFlag(ConnectionState.Open);
 
             _fullState = value;
-
             var currentOpen = _fullState.HasFlag(ConnectionState.Open);
             if (currentOpen != originalOpen)
             {
@@ -1550,21 +1552,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckDisposed();
 
-        switch (FullState)
-        {
-        case ConnectionState.Closed:
-        case ConnectionState.Broken:
-            return;
-        case ConnectionState.Open:
-        case ConnectionState.Connecting:
-        case ConnectionState.Open | ConnectionState.Executing:
-        case ConnectionState.Open | ConnectionState.Fetching:
+        var fullState = FullState;
+        if (fullState is ConnectionState.Connecting || fullState.HasFlag(ConnectionState.Open))
             ThrowHelper.ThrowInvalidOperationException("Connection already open");
-            return;
-        default:
-            ThrowHelper.ThrowArgumentOutOfRangeException();
-            return;
-        }
     }
 
     void CheckDisposed()
