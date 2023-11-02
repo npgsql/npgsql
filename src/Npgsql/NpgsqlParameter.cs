@@ -49,6 +49,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected Size? WriteSize { get; set; }
     private protected object? _writeState;
     private protected Size _bufferRequirement;
+    private protected bool _asObject;
 
     #endregion
 
@@ -595,7 +596,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     // Pull from Value so we also support object typed generic params.
-    private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo) => typeInfo.GetObjectResolution(Value);
+    private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
+    {
+        _asObject = true;
+        return typeInfo.GetObjectResolution(Value);
+    }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
     internal void Bind(out DataFormat format, out Size size)
@@ -651,7 +656,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     Value = truncated;
                 }
                 else if (value is Stream)
+                {
+                    _asObject = true;
                     _useSubStream = true;
+                }
             }
         }
     }
@@ -743,6 +751,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     void ResetConverterResolution()
     {
+        _asObject = false;
         Converter = null;
         PgTypeId = default;
         ResetBindingInfo();
