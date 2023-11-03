@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -48,6 +49,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected Size? WriteSize { get; set; }
     private protected object? _writeState;
     private protected Size _bufferRequirement;
+    private protected bool _asObject;
 
     #endregion
 
@@ -519,41 +521,36 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
     internal void ResolveTypeInfo(PgSerializerOptions options)
     {
-        var previouslyResolved = TypeInfo?.Options == options;
+        var typeInfo = TypeInfo;
+        var previouslyResolved = ReferenceEquals(typeInfo?.Options, options);
         if (!previouslyResolved)
         {
-            var staticValueType = StaticValueType;
-            var valueType = GetValueType(StaticValueType);
+            var dataTypeName =
+                _npgsqlDbType is { } npgsqlDbType
+                    ? npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow()
+                    : _dataTypeName is not null
+                        ? Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName)
+                        : null;
 
-            string? dataTypeName = null;
-            DataTypeName? builtinDataTypeName = null;
-            if (_npgsqlDbType is { } npgsqlDbType)
+            PgTypeId? pgTypeId = null;
+            if (dataTypeName is not null)
             {
-                dataTypeName = npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow();
-                builtinDataTypeName = npgsqlDbType.ToDataTypeName();
-            }
-            else if (_dataTypeName is not null)
-            {
-                dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName);
-                // If we can find a match in an NpgsqlDbType we known we're dealing with a fully qualified built-in data type name.
-                builtinDataTypeName = NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDataTypeName();
-            }
-
-            var pgTypeId = dataTypeName is null
-                ? (PgTypeId?)null
-                : TryGetRepresentationalTypeId(builtinDataTypeName ?? dataTypeName, out var id)
-                    ? id
-                    : throw new NotSupportedException(_npgsqlDbType is not null
-                        ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
-                        : $"The data type name '{builtinDataTypeName ?? dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
-
-            if (staticValueType == typeof(object))
-            {
-                if (valueType == null && pgTypeId is null)
+                if (!options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
                 {
-                    var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
-                    ThrowHelper.ThrowInvalidOperationException(
-                        $"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
+                    ThrowNotSupported(dataTypeName);
+                    return;
+                }
+
+                pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
+            }
+
+            var valueType = StaticValueType;
+            if (valueType == typeof(object))
+            {
+                valueType = Value?.GetType();
+                if (valueType is null && pgTypeId is null)
+                {
+                    ThrowNoTypeInfo();
                     return;
                 }
 
@@ -565,35 +562,38 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 }
             }
 
-            TypeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+            TypeInfo = typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
         // We never reuse resolutions for resolvers across executions as a mutable value itself may influence the result.
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
-        if (!previouslyResolved || TypeInfo is PgResolverTypeInfo)
+        if (!previouslyResolved || typeInfo!.IsResolverInfo)
         {
-            ResetConverterResolution();
-            var resolution = ResolveConverter(TypeInfo!);
+            ResetBindingInfo(); // No need for ResetConverterResolution as we'll mutate those fields directly afterwards.
+            var resolution = ResolveConverter(typeInfo!);
             Converter = resolution.Converter;
             PgTypeId = resolution.PgTypeId;
         }
 
-        bool TryGetRepresentationalTypeId(string dataTypeName, out PgTypeId pgTypeId)
-        {
-            if (options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
-            {
-                pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
-                return true;
-            }
+        void ThrowNoTypeInfo()
+            => ThrowHelper.ThrowInvalidOperationException(
+                $"Parameter '{(!string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}")}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
 
-            pgTypeId = default;
-            return false;
+        void ThrowNotSupported(string dataTypeName)
+        {
+            throw new NotSupportedException(_npgsqlDbType is not null
+                ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
+                : $"The data type name '{dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
         }
     }
 
     // Pull from Value so we also support object typed generic params.
-    private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo) => typeInfo.GetObjectResolution(Value);
+    private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
+    {
+        _asObject = true;
+        return typeInfo.GetObjectResolution(Value);
+    }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
     internal void Bind(out DataFormat format, out Size size)
@@ -612,12 +612,22 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             return;
         }
 
+        if (_size > 0)
+            HandleSizeTruncation();
+
+        BindCore();
+        format = Format;
+        size = WriteSize!.Value;
+
         // Handle Size truncate behavior for a predetermined set of types and pg types.
         // Doesn't matter if we 'box' Value, all supported types are reference types.
-        if (_size > 0 && Converter!.TypeToConvert is var type &&
-            (type == typeof(string) || type == typeof(char[]) || type == typeof(byte[]) || type == typeof(Stream)) &&
-            Value is { } value)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void HandleSizeTruncation()
         {
+            var type = Converter!.TypeToConvert;
+            if ((type != typeof(string) && type != typeof(char[]) && type != typeof(byte[]) && type != typeof(Stream)) || Value is not { } value)
+                return;
+
             var dataTypeName = TypeInfo!.Options.GetDataTypeName(PgTypeId);
             if (dataTypeName == DataTypeNames.Text || dataTypeName == DataTypeNames.Varchar || dataTypeName == DataTypeNames.Bpchar)
             {
@@ -639,13 +649,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     Value = truncated;
                 }
                 else if (value is Stream)
+                {
+                    _asObject = true;
                     _useSubStream = true;
+                }
             }
         }
-
-        BindCore();
-        format = Format;
-        size = WriteSize!.Value;
     }
 
     private protected virtual void BindCore(bool allowNullReference = false)
@@ -735,6 +744,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     void ResetConverterResolution()
     {
+        _asObject = false;
         Converter = null;
         PgTypeId = default;
         ResetBindingInfo();

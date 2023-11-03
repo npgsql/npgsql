@@ -35,30 +35,34 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
     public void Advance(int count)
     {
         if (_lastBufferSize < count || _buffer.WriteSpaceLeft < count)
-            throw new InvalidOperationException("Cannot advance past the end of the current buffer.");
+            ThrowHelper.ThrowInvalidOperationException("Cannot advance past the end of the current buffer.");
         _lastBufferSize = null;
         _buffer.WritePosition += count;
     }
 
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
-        if (sizeHint > _buffer.WriteSpaceLeft)
-            throw new OutOfMemoryException("Not enough space left in buffer.");
+        var writePosition = _buffer.WritePosition;
+        var bufferSize = _buffer.Size - writePosition;
+        if (sizeHint > bufferSize)
+            ThrowOutOfMemoryException();
 
-        var bufferSize = _buffer.WriteSpaceLeft;
         _lastBufferSize = bufferSize;
-        return _buffer.Buffer.AsMemory(_buffer.WritePosition, bufferSize);
+        return _buffer.Buffer.AsMemory(writePosition, bufferSize);
     }
 
     public Span<byte> GetSpan(int sizeHint = 0)
     {
-        if (sizeHint > _buffer.WriteSpaceLeft)
-            throw new OutOfMemoryException("Not enough space left in buffer.");
+        var writePosition = _buffer.WritePosition;
+        var bufferSize = _buffer.Size - writePosition;
+        if (sizeHint > bufferSize)
+            ThrowOutOfMemoryException();
 
-        var bufferSize = _buffer.WriteSpaceLeft;
         _lastBufferSize = bufferSize;
-        return _buffer.Buffer.AsSpan(_buffer.WritePosition, bufferSize);
+        return _buffer.Buffer.AsSpan(writePosition, bufferSize);
     }
+
+    static void ThrowOutOfMemoryException() => throw new OutOfMemoryException("Not enough space left in buffer.");
 
     public void Flush(TimeSpan timeout = default)
     {
@@ -104,42 +108,37 @@ public sealed class PgWriter
 
     internal PgWriter(IBufferWriter<byte> writer) => _writer = writer;
 
-    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog)
+    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
     {
-        if (_typeCatalog is not null)
-            throw new InvalidOperationException("Invalid concurrent use or PgWriter was not reset properly.");
+        if (_pos != _offset)
+            ThrowHelper.ThrowInvalidOperationException("Invalid concurrent use or PgWriter was not committed properly, PgWriter still has uncommitted bytes.");
 
-        _typeCatalog = typeCatalog;
+        // Elide write barrier if we can.
+        if (!ReferenceEquals(_typeCatalog, typeCatalog))
+            _typeCatalog = typeCatalog;
+
+        FlushMode = flushMode;
+        _totalBytesWritten = 0;
+        RequestBuffer(count: 0);
         return this;
     }
 
-    internal void Reset()
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    void RequestBuffer(int count)
     {
-        if (_pos != _offset)
-            throw new InvalidOperationException("PgWriter still has uncommitted bytes.");
+        // GetMemory will check whether count is larger than the max buffer size.
+        var mem = _writer.GetMemory(count);
+        if (!MemoryMarshal.TryGetArray<byte>(mem, out var segment))
+            ThrowHelper.ThrowNotSupportedException("Only array backed writers are supported.");
 
-        _typeCatalog = null;
-        FlushMode = FlushMode.None;
-        _totalBytesWritten = 0;
-        ResetBuffer();
-    }
-
-    void ResetBuffer()
-    {
-        _buffer = null;
-        _pos = 0;
-        _offset = 0;
-        _length = 0;
+        _buffer = segment.Array!;
+        _offset = _pos = segment.Offset;
+        _length = segment.Offset + segment.Count;
     }
 
     internal FlushMode FlushMode { get; private set; }
 
-    internal PgWriter Refresh()
-    {
-        if (_buffer is not null)
-            ResetBuffer();
-        return this;
-    }
+    internal void RefreshBuffer() => RequestBuffer(count: 0);
 
     internal PgWriter WithFlushMode(FlushMode mode)
     {
@@ -147,42 +146,27 @@ public sealed class PgWriter
         return this;
     }
 
-    // TODO if we're working on a normal buffer writer we should use normal Ensure (so commit and get another buffer) semantics.
     void Ensure(int count = 1)
     {
-        if (_buffer is null)
-            SetBuffer();
+        if (count <= Remaining)
+            return;
 
-        if (count > _length - _pos)
-            ThrowOutOfRange();
+        Slow(count);
 
-        void ThrowOutOfRange() => throw new ArgumentOutOfRangeException(nameof(count), "Coud not ensure enough space in buffer.");
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void SetBuffer()
+        void Slow(int count)
         {
-            // GetMemory will check whether count is larger than the max buffer size.
-            var mem = _writer.GetMemory(count);
-            if (!MemoryMarshal.TryGetArray<byte>(mem, out var segment))
-                throw new NotSupportedException("Only array backed writers are supported.");
-
-            _buffer = segment.Array!;
-            _offset = segment.Offset;
-            _pos = segment.Offset;
-            _length = segment.Offset + segment.Count;
+            // Try to re-request a larger size.
+            Commit();
+            RequestBuffer(count);
+            // GetMemory is expected to throw if count is too large for the remaining space.
+            Debug.Assert(count <= Remaining);
         }
     }
 
     Span<byte> Span => _buffer.AsSpan(_pos, _length - _pos);
 
-    int Remaining
-    {
-        get
-        {
-            if (_buffer is null)
-                Ensure(count: 0);
-            return _length - _pos;
-        }
-    }
+    int Remaining => _length - _pos;
 
     void Advance(int count) => _pos += count;
 
@@ -440,19 +424,19 @@ public sealed class PgWriter
             throw new NotSupportedException($"Cannot call {nameof(Flush)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");
 
         Commit();
-        ResetBuffer();
         writer.Flush(timeout);
+        RequestBuffer(count: 0);
     }
 
     public ValueTask FlushAsync(CancellationToken cancellationToken = default)
         => FlushAsync(allowWhenBlocking: false, cancellationToken);
 
-    ValueTask FlushAsync(bool allowWhenBlocking, CancellationToken cancellationToken = default)
+    async ValueTask FlushAsync(bool allowWhenBlocking, CancellationToken cancellationToken = default)
     {
         switch (FlushMode)
         {
         case FlushMode.None:
-            return new();
+            return;
         case FlushMode.Blocking when !allowWhenBlocking:
             throw new NotSupportedException($"Cannot call {nameof(FlushAsync)} on a blocking {nameof(PgWriter)}, call Flush instead.");
         }
@@ -461,8 +445,8 @@ public sealed class PgWriter
             throw new NotSupportedException($"Cannot call {nameof(FlushAsync)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");
 
         Commit();
-        ResetBuffer();
-        return writer.FlushAsync(cancellationToken);
+        await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+        RequestBuffer(count: 0);
     }
 
     internal ValueTask Flush(bool async, CancellationToken cancellationToken = default)

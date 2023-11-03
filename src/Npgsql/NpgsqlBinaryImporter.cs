@@ -141,7 +141,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
         _buf.WriteInt16((short)NumColumns);
 
-        _pgWriter.Refresh();
+        _pgWriter.RefreshBuffer();
         _column = 0;
         _rowsImported++;
     }
@@ -381,7 +381,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
 
         _buf.WriteInt32(-1);
-        _pgWriter.Refresh();
+        _pgWriter.RefreshBuffer();
         _column++;
     }
 

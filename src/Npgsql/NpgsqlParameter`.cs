@@ -82,14 +82,21 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     #endregion Constructors
 
     private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
-        => typeInfo.IsBoxing ? base.ResolveConverter(typeInfo) : typeInfo.GetResolution(TypedValue);
+    {
+        if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing)
+            return base.ResolveConverter(typeInfo);
 
+        _asObject = false;
+        return typeInfo.GetResolution(TypedValue);
+    }
+
+    // We ignore allowNullReference, it's just there to control the base implementation.
     private protected override void BindCore(bool allowNullReference = false)
     {
-        // If we're object typed we should support DBNull, call into base BindCore.
-        if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing || _useSubStream)
+        if (_asObject)
         {
-            base.BindCore(typeof(T) != typeof(object) && (TypeInfo!.IsBoxing || _useSubStream || allowNullReference));
+            // If we're object typed we should not support null.
+            base.BindCore(typeof(T) != typeof(object));
             return;
         }
 
@@ -110,7 +117,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     private protected override ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing || _useSubStream)
+        if (_asObject)
             return base.WriteValue(async, writer, cancellationToken);
 
         Debug.Assert(Converter is PgConverter<T>);

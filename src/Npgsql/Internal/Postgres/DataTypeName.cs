@@ -226,7 +226,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     }
 
     public override string ToString() => Value;
-    public bool Equals(DataTypeName other) => !IsDefault && !other.IsDefault && _value == other._value;
+    public bool Equals(DataTypeName other) => string.Equals(_value, other._value);
     public override bool Equals(object? obj) => obj is DataTypeName other && Equals(other);
     public override int GetHashCode() => _value.GetHashCode();
     public static bool operator ==(DataTypeName left, DataTypeName right) => left.Equals(right);

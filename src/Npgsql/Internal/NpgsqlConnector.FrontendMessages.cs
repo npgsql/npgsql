@@ -22,18 +22,18 @@ partial class NpgsqlConnector
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(len, statementOrPortal, asciiName, async, cancellationToken);
 
-        Write(len, statementOrPortal, asciiName);
+        Write(writeBuffer, len, statementOrPortal, asciiName);
         return Task.CompletedTask;
 
         async Task FlushAndWrite(int len, StatementOrPortal statementOrPortal, byte[] name, bool async, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
-            Debug.Assert(len <= writeBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({writeBuffer.WriteSpaceLeft})");
-            Write(len, statementOrPortal, name);
+            Debug.Assert(len <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
+            Write(WriteBuffer, len, statementOrPortal, name);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write(int len, StatementOrPortal statementOrPortal, byte[] name)
+        static void Write(NpgsqlWriteBuffer writeBuffer, int len, StatementOrPortal statementOrPortal, byte[] name)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Describe);
             writeBuffer.WriteInt32(len - 1);
@@ -51,18 +51,18 @@ partial class NpgsqlConnector
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(async, cancellationToken);
 
-        Write();
+        Write(writeBuffer);
         return Task.CompletedTask;
 
         async Task FlushAndWrite(bool async, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
-            Debug.Assert(len <= writeBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({writeBuffer.WriteSpaceLeft})");
-            Write();
+            Debug.Assert(len <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
+            Write(WriteBuffer);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write()
+        static void Write(NpgsqlWriteBuffer writeBuffer)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Sync);
             writeBuffer.WriteInt32(len - 1);
@@ -82,18 +82,18 @@ partial class NpgsqlConnector
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(maxRows, async, cancellationToken);
 
-        Write(maxRows);
+        Write(writeBuffer, maxRows);
         return Task.CompletedTask;
 
         async Task FlushAndWrite(int maxRows, bool async, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
-            Debug.Assert(10 <= writeBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length 10 which is bigger than the buffer ({writeBuffer.WriteSpaceLeft})");
-            Write(maxRows);
+            Debug.Assert(10 <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length 10 which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
+            Write(WriteBuffer, maxRows);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write(int maxRows)
+        static void Write(NpgsqlWriteBuffer writeBuffer, int maxRows)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Execute);
             writeBuffer.WriteInt32(len - 1);
@@ -226,20 +226,22 @@ partial class NpgsqlConnector
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
         writeBuffer.WriteUInt16((ushort)parameters.Count);
-
-        var writer = writeBuffer.GetWriter(DatabaseInfo, async ? FlushMode.NonBlocking : FlushMode.Blocking);
-        try
+        if (parameters.Count > 0)
         {
-            for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
+            var writer = writeBuffer.GetWriter(DatabaseInfo, async ? FlushMode.NonBlocking : FlushMode.Blocking);
+            try
             {
-                var param = parameters[paramIndex];
-                await param.Write(async, writer, cancellationToken).ConfigureAwait(false);
+                for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
+                {
+                    var param = parameters[paramIndex];
+                    await param.Write(async, writer, cancellationToken).ConfigureAwait(false);
+                }
             }
-        }
-        catch(Exception ex)
-        {
-            Break(ex);
-            throw;
+            catch(Exception ex)
+            {
+                Break(ex);
+                throw;
+            }
         }
 
         if (unknownResultTypeList != null)
@@ -270,18 +272,18 @@ partial class NpgsqlConnector
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(len, type, asciiName, async, cancellationToken);
 
-        Write(len, type, asciiName);
+        Write(writeBuffer, len, type, asciiName);
         return Task.CompletedTask;
 
         async Task FlushAndWrite(int len, StatementOrPortal type, byte[] name, bool async, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
-            Debug.Assert(len <= writeBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({writeBuffer.WriteSpaceLeft})");
-            Write(len, type, name);
+            Debug.Assert(len <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
+            Write(WriteBuffer, len, type, name);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Write(int len, StatementOrPortal type, byte[] name)
+        static void Write(NpgsqlWriteBuffer writeBuffer, int len, StatementOrPortal type, byte[] name)
         {
             writeBuffer.WriteByte(FrontendMessageCode.Close);
             writeBuffer.WriteInt32(len - 1);

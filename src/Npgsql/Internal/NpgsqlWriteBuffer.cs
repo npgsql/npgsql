@@ -68,15 +68,9 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     public int WriteSpaceLeft => Size - WritePosition;
 
-    internal PgWriter GetWriter(NpgsqlDatabaseInfo typeCatalog, FlushMode? flushMode = null)
-    {
-        // Make sure we'll refetch from the write buffer.
-        _pgWriter.Reset();
-        var writer = _pgWriter.Init(typeCatalog);
-        if (flushMode is not null)
-            writer.WithFlushMode(flushMode.GetValueOrDefault());
-        return writer;
-    }
+    // (Re)init to make sure we'll refetch from the write buffer.
+    internal PgWriter GetWriter(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
+        => _pgWriter.Init(typeCatalog, flushMode);
 
     internal readonly byte[] Buffer;
     readonly Encoder _textEncoder;
