@@ -18,7 +18,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
         return context?.Find(type, dataTypeName.GetValueOrDefault(), options);
     }
 
-    protected DynamicMappingCollection CreateCollection(TypeInfoMappingCollection? baseCollection = null) => new(baseCollection);
+    protected static DynamicMappingCollection CreateCollection(TypeInfoMappingCollection? baseCollection = null) => new(baseCollection);
 
     protected static bool IsTypeOrNullableOfType(Type type, Func<Type, bool> predicate, out Type matchedType)
     {

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
+using System.Threading;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 
@@ -21,24 +22,11 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
         => _serializerOptions ??= new();
 #endif
 
-    Type[] _jsonbClrTypes;
-    Type[] _jsonClrTypes;
+    readonly Type[] _jsonbClrTypes;
+    readonly Type[] _jsonClrTypes;
     TypeInfoMappingCollection? _mappings;
 
-    protected TypeInfoMappingCollection Mappings
-    {
-        get
-        {
-            if (_mappings is not null)
-                return _mappings;
-
-            // Publish _mappings before nulling _jsonbClrTypes and _jsonClrTypes as we may be called concurrently.
-            _mappings = AddInfos(new(), _jsonbClrTypes, _jsonClrTypes, SerializerOptions);
-            _jsonbClrTypes = null!;
-            _jsonClrTypes = null!;
-            return _mappings;
-        }
-    }
+    protected TypeInfoMappingCollection Mappings => _mappings ??= AddInfos(new(), _jsonbClrTypes, _jsonClrTypes, SerializerOptions);
 
     public JsonDynamicTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
     {
@@ -47,7 +35,7 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
         _serializerOptions = serializerOptions;
     }
 
-    TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerOptions serializerOptions)
+    static TypeInfoMappingCollection AddInfos(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerOptions serializerOptions)
     {
         // We do GetTypeInfo calls directly so we need a resolver.
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
@@ -94,7 +82,7 @@ class JsonDynamicTypeInfoResolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
         return mappings;
     }
 
-    protected TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings, TypeInfoMappingCollection baseMappings)
+    protected static TypeInfoMappingCollection AddArrayInfos(TypeInfoMappingCollection mappings, TypeInfoMappingCollection baseMappings)
     {
         if (baseMappings.Items.Count == 0)
             return mappings;
