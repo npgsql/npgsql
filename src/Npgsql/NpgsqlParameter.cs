@@ -524,8 +524,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var previouslyResolved = ReferenceEquals(TypeInfo?.Options, options);
         if (!previouslyResolved)
         {
-            var staticValueType = StaticValueType;
-            var valueType = GetValueType(staticValueType);
+            var valueType = StaticValueType;
 
             string? dataTypeName = null;
             DataTypeName? builtinDataTypeName = null;
@@ -553,8 +552,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
             }
 
-            if (staticValueType == typeof(object))
+            if (valueType == typeof(object))
             {
+                valueType = Value?.GetType();
                 if (valueType is null && pgTypeId is null)
                 {
                     ThrowNoTypeInfo();
