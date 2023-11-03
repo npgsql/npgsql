@@ -521,7 +521,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
     internal void ResolveTypeInfo(PgSerializerOptions options)
     {
-        var previouslyResolved = ReferenceEquals(TypeInfo?.Options, options);
+        var typeInfo = TypeInfo;
+        var previouslyResolved = ReferenceEquals(typeInfo?.Options, options);
         if (!previouslyResolved)
         {
             string? dataTypeName = null;
@@ -560,16 +561,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 }
             }
 
-            TypeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+            TypeInfo = typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
         // We never reuse resolutions for resolvers across executions as a mutable value itself may influence the result.
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
-        if (!previouslyResolved || TypeInfo is PgResolverTypeInfo)
+        if (!previouslyResolved || typeInfo!.IsResolverInfo)
         {
             ResetBindingInfo(); // No need for ResetConverterResolution as we'll mutate those fields directly afterwards.
-            var resolution = ResolveConverter(TypeInfo!);
+            var resolution = ResolveConverter(typeInfo!);
             Converter = resolution.Converter;
             PgTypeId = resolution.PgTypeId;
         }
