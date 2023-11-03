@@ -32,7 +32,7 @@
     <PackageVersion Include="Scriban.Signed" Version="5.9.0 " />
     
     <!-- Tests -->
-    <PackageVersion Include="NUnit" Version="3.13.3" />
+    <PackageVersion Include="NUnit" Version="3.14.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(ExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(ExtensionsVersion)" />
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
