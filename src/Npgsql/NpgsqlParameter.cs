@@ -524,34 +524,25 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var previouslyResolved = ReferenceEquals(TypeInfo?.Options, options);
         if (!previouslyResolved)
         {
-            var valueType = StaticValueType;
-
             string? dataTypeName = null;
-            DataTypeName? builtinDataTypeName = null;
             if (_npgsqlDbType is { } npgsqlDbType)
-            {
-                dataTypeName = npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow();
-                builtinDataTypeName = npgsqlDbType.ToDataTypeName();
-            }
+                dataTypeName = npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow();
             else if (_dataTypeName is not null)
-            {
                 dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName);
-                // If we can find a match in an NpgsqlDbType we known we're dealing with a fully qualified built-in data type name.
-                builtinDataTypeName = NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDataTypeName();
-            }
 
             PgTypeId? pgTypeId = null;
             if (dataTypeName is not null)
             {
                 if (!options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
                 {
-                    ThrowNotSupported(builtinDataTypeName ?? dataTypeName);
+                    ThrowNotSupported(dataTypeName);
                     return;
                 }
 
                 pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
             }
 
+            var valueType = StaticValueType;
             if (valueType == typeof(object))
             {
                 valueType = Value?.GetType();
