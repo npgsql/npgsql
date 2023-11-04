@@ -18,7 +18,7 @@ public static class NpgsqlGeoJSONExtensions
     /// <param name="geographyAsDefault">Specifies that the geography type is used for mapping by default.</param>
     public static INpgsqlTypeMapper UseGeoJson(this INpgsqlTypeMapper mapper, GeoJSONOptions options = GeoJSONOptions.None, bool geographyAsDefault = false)
     {
-        mapper.AddTypeInfoResolver(new GeoJSONTypeInfoResolver(options, geographyAsDefault, crsMap: null));
+        mapper.AddTypeInfoResolverFactory(new GeoJSONTypeInfoResolverFactory(options, geographyAsDefault, crsMap: null));
         return mapper;
     }
 
@@ -31,7 +31,7 @@ public static class NpgsqlGeoJSONExtensions
     /// <param name="geographyAsDefault">Specifies that the geography type is used for mapping by default.</param>
     public static INpgsqlTypeMapper UseGeoJson(this INpgsqlTypeMapper mapper, CrsMap crsMap, GeoJSONOptions options = GeoJSONOptions.None, bool geographyAsDefault = false)
     {
-        mapper.AddTypeInfoResolver(new GeoJSONTypeInfoResolver(options, geographyAsDefault, crsMap));
+        mapper.AddTypeInfoResolverFactory(new GeoJSONTypeInfoResolverFactory(options, geographyAsDefault, crsMap));
         return mapper;
     }
 }

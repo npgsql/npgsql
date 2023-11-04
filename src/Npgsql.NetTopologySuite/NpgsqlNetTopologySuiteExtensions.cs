@@ -27,10 +27,7 @@ public static class NpgsqlNetTopologySuiteExtensions
         Ordinates handleOrdinates = Ordinates.None,
         bool geographyAsDefault = false)
     {
-        // TODO opt-in of arrays.
-        // Reverse order
-        mapper.AddTypeInfoResolver(new NetTopologySuiteArrayTypeInfoResolver(coordinateSequenceFactory, precisionModel, handleOrdinates, geographyAsDefault));
-        mapper.AddTypeInfoResolver(new NetTopologySuiteTypeInfoResolver(coordinateSequenceFactory, precisionModel, handleOrdinates, geographyAsDefault));
+        mapper.AddTypeInfoResolverFactory(new NetTopologySuiteTypeInfoResolverFactory(coordinateSequenceFactory, precisionModel, handleOrdinates, geographyAsDefault));
         return mapper;
     }
 }

@@ -32,12 +32,9 @@ public static class NpgsqlJsonNetExtensions
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        // TODO opt-in of arrays.
         // Reverse order
-        mapper.AddTypeInfoResolver(new JsonNetPocoArrayTypeInfoResolver(jsonbClrTypes, jsonClrTypes, settings));
-        mapper.AddTypeInfoResolver(new JsonNetArrayTypeInfoResolver(settings));
-        mapper.AddTypeInfoResolver(new JsonNetPocoTypeInfoResolver(jsonbClrTypes, jsonClrTypes, settings));
-        mapper.AddTypeInfoResolver(new JsonNetTypeInfoResolver(settings));
+        mapper.AddTypeInfoResolverFactory(new JsonNetPocoTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, settings));
+        mapper.AddTypeInfoResolverFactory(new JsonNetTypeInfoResolverFactory(settings));
         return mapper;
     }
 }
