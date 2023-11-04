@@ -103,7 +103,7 @@ public class GlobalTypeMapperTests : TestBase
     public void Reset_and_add_resolver()
     {
         NpgsqlConnection.GlobalTypeMapper.Reset();
-        NpgsqlConnection.GlobalTypeMapper.AddTypeInfoResolver(new DummyResolver());
+        NpgsqlConnection.GlobalTypeMapper.AddTypeInfoResolverFactory(new DummyResolverFactory());
     }
 
     [TearDown]
@@ -112,8 +112,14 @@ public class GlobalTypeMapperTests : TestBase
 
     enum Mood { Sad, Ok, Happy }
 
-    class DummyResolver : IPgTypeInfoResolver
+    class DummyResolverFactory : PgTypeInfoResolverFactory
     {
-        public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options) => null;
+        public override IPgTypeInfoResolver CreateResolver() => new DummyResolver();
+        public override IPgTypeInfoResolver? CreateArrayResolver() => null;
+
+        class DummyResolver : IPgTypeInfoResolver
+        {
+            public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options) => null;
+        }
     }
 }

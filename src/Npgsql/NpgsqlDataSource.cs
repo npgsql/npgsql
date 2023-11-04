@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.Resolvers;
+using Npgsql.Internal.ResolverFactories;
 using Npgsql.Properties;
 using Npgsql.Util;
 
@@ -244,7 +244,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     TextEncoding = connector.TextEncoding,
-                    TypeInfoResolver = AdoTypeInfoResolver.Instance
+                    TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver()
                 };
 
             NpgsqlDatabaseInfo databaseInfo;

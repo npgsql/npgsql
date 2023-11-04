@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.Resolvers;
+using Npgsql.Internal.ResolverFactories;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
 
@@ -36,7 +36,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
-    readonly List<IPgTypeInfoResolver> _resolverChain = new();
+    PgTypeInfoResolverChainBuilder _resolverChainBuilder = new(); // mutable struct, don't make readonly.
+
     readonly UserTypeMapper _userTypeMapper;
 
     Action<NpgsqlConnection>? _syncConnectionInitializer;
@@ -53,10 +54,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public string ConnectionString => ConnectionStringBuilder.ToString();
 
     static NpgsqlSlimDataSourceBuilder()
-        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new []
-        {
-            AdoTypeInfoResolver.Instance
-        });
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(static () => new(), new[] { new AdoTypeInfoResolverFactory() });
 
     /// <summary>
     /// A diagnostics name used by Npgsql when generating tracing, logging and metrics.
@@ -68,23 +66,14 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <paramref name="connectionString"/>.
     /// </summary>
     public NpgsqlSlimDataSourceBuilder(string? connectionString = null)
-    {
-        ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
-        _userTypeMapper = new() { DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator };
-        // Reverse order
-        AddTypeInfoResolver(UnsupportedTypeInfoResolver);
-        AddTypeInfoResolver(new AdoTypeInfoResolver());
-        // When used publicly we start off with our slim defaults.
-        var plugins = new List<IPgTypeInfoResolver>(GlobalTypeMapper.Instance.GetPluginResolvers());
-        plugins.Reverse();
-        foreach (var plugin in plugins)
-            AddTypeInfoResolver(plugin);
-    }
+        : this(new NpgsqlConnectionStringBuilder(connectionString))
+        => ResetResolverFactories();
 
     internal NpgsqlSlimDataSourceBuilder(NpgsqlConnectionStringBuilder connectionStringBuilder)
     {
         ConnectionStringBuilder = connectionStringBuilder;
-        _userTypeMapper = new();
+        _userTypeMapper = new() { DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator };
+        ConfigureResolverChain = chain => chain.Add(UnsupportedTypeInfoResolver);
     }
 
     /// <summary>
@@ -318,32 +307,26 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
 
-    /// <summary>
-    /// Adds a type info resolver which can add or modify support for PostgreSQL types.
-    /// Typically used by plugins.
-    /// </summary>
-    /// <param name="resolver">The type resolver to be added.</param>
-    public void AddTypeInfoResolver(IPgTypeInfoResolver resolver)
-    {
-        var type = resolver.GetType();
 
-        for (var i = 0; i < _resolverChain.Count; i++)
-            if (_resolverChain[i].GetType() == type)
-            {
-                _resolverChain.RemoveAt(i);
-                break;
-            }
-
-        _resolverChain.Insert(0, resolver);
-    }
+    /// <inheritdoc />
+    public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.PrependResolverFactory(factory);
 
     void INpgsqlTypeMapper.Reset()
-        => ResetTypeMappings();
+        => ResetResolverFactories();
 
-    internal void ResetTypeMappings()
+    internal Action<List<IPgTypeInfoResolver>> ConfigureResolverChain { get; set; }
+    internal void AppendResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.AppendResolverFactory(factory);
+
+    internal void ResetResolverFactories()
     {
-        _resolverChain.Clear();
-        _resolverChain.AddRange(GlobalTypeMapper.Instance.GetPluginResolvers());
+        _resolverChainBuilder.Clear();
+        // When used publicly we start off with our slim defaults.
+        _resolverChainBuilder.AppendResolverFactory(_userTypeMapper);
+        if (GlobalTypeMapper.Instance.GetUserMappingsResolverFactory() is { } userMappingsResolverFactory)
+            _resolverChainBuilder.AppendResolverFactory(userMappingsResolverFactory);
+        foreach (var factory in GlobalTypeMapper.Instance.GetPluginResolverFactories())
+            _resolverChainBuilder.AppendResolverFactory(factory);
+        _resolverChainBuilder.AppendResolverFactory(new AdoTypeInfoResolverFactory());
     }
 
     #endregion Type mapping
@@ -356,14 +339,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableArrays()
     {
-        AddTypeInfoResolver(new LTreeArrayTypeInfoResolver());
-        AddTypeInfoResolver(new GeometricArrayTypeInfoResolver());
-        AddTypeInfoResolver(new NetworkArrayTypeInfoResolver());
-        AddTypeInfoResolver(new FullTextSearchArrayTypeInfoResolver());
-        AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
-        AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
-        AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
-        AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
+        _resolverChainBuilder.EnableArrays();
         return this;
     }
 
@@ -373,7 +349,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableRanges()
     {
-        AddTypeInfoResolver(new RangeTypeInfoResolver());
+        _resolverChainBuilder.EnableRanges();
         return this;
     }
 
@@ -383,7 +359,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableMultiranges()
     {
-        AddTypeInfoResolver(new RangeTypeInfoResolver());
+        _resolverChainBuilder.EnableMultiranges();
         return this;
     }
 
@@ -393,7 +369,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableRecords()
     {
-        AddTypeInfoResolver(new RecordTypeInfoResolver());
+        AddTypeInfoResolverFactory(new RecordTypeInfoResolverFactory());
         return this;
     }
 
@@ -403,7 +379,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableFullTextSearch()
     {
-        AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
+        AddTypeInfoResolverFactory(new FullTextSearchTypeInfoResolverFactory());
         return this;
     }
 
@@ -413,7 +389,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableLTree()
     {
-        AddTypeInfoResolver(new LTreeTypeInfoResolver());
+        AddTypeInfoResolverFactory(new LTreeTypeInfoResolverFactory());
         return this;
     }
 
@@ -423,7 +399,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder EnableExtraConversions()
     {
-        AddTypeInfoResolver(new ExtraConversionsResolver());
+        AddTypeInfoResolverFactory(new ExtraConversionResolverFactory());
         return this;
     }
 
@@ -546,26 +522,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
-            Resolvers(),
+            _resolverChainBuilder.Build(ConfigureResolverChain),
             HackyEnumMappings(),
             DefaultNameTranslator,
             _syncConnectionInitializer,
             _asyncConnectionInitializer);
-
-        IEnumerable<IPgTypeInfoResolver> Resolvers()
-        {
-            var resolvers = new List<IPgTypeInfoResolver>();
-
-            if (_userTypeMapper.Items.Count > 0)
-                resolvers.Add(_userTypeMapper.Build());
-
-            if (GlobalTypeMapper.Instance.GetUserMappingsResolver() is { } globalUserTypeMapper)
-                resolvers.Add(globalUserTypeMapper);
-
-            resolvers.AddRange(_resolverChain);
-
-            return resolvers;
-        }
 
         List<HackyEnumTypeMapping> HackyEnumMappings()
         {

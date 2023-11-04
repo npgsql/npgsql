@@ -49,7 +49,7 @@ public class TypeMapperTests : TestBase
         await EnsureExtensionAsync(adminConnection, "citext");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.AddTypeInfoResolver(new CitextToStringTypeHandlerResolverFactory());
+        dataSourceBuilder.AddTypeInfoResolverFactory(new CitextToStringTypeHandlerResolverFactory());
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -90,16 +90,23 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
 
     #region Support
 
-    class CitextToStringTypeHandlerResolverFactory : IPgTypeInfoResolver
+    class CitextToStringTypeHandlerResolverFactory : PgTypeInfoResolverFactory
     {
-        public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        {
-            if (type == typeof(string) || dataTypeName?.UnqualifiedName == "citext")
-                if (options.DatabaseInfo.TryGetPostgresTypeByName("citext", out var pgType))
-                    return new(options, new StringTextConverter(options.TextEncoding), options.ToCanonicalTypeId(pgType));
+        public override IPgTypeInfoResolver CreateResolver() => new Resolver();
+        public override IPgTypeInfoResolver? CreateArrayResolver() => null;
 
-            return null;
+        sealed class Resolver : IPgTypeInfoResolver
+        {
+            public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+            {
+                if (type == typeof(string) || dataTypeName?.UnqualifiedName == "citext")
+                    if (options.DatabaseInfo.TryGetPostgresTypeByName("citext", out var pgType))
+                        return new(options, new StringTextConverter(options.TextEncoding), options.ToCanonicalTypeId(pgType));
+
+                return null;
+            }
         }
+
     }
 
     enum Mood { Sad, Ok, Happy }

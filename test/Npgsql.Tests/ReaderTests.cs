@@ -1746,7 +1746,7 @@ LANGUAGE plpgsql VOLATILE";
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
-        dataSourceBuilder.AddTypeInfoResolver(new ExplodingTypeHandlerResolver(safe: true));
+        dataSourceBuilder.AddTypeInfoResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: true));
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -1763,7 +1763,7 @@ LANGUAGE plpgsql VOLATILE";
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         // Temporarily reroute integer to go to a type handler which generates some exception
-        dataSourceBuilder.AddTypeInfoResolver(new ExplodingTypeHandlerResolver(safe: false));
+        dataSourceBuilder.AddTypeInfoResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: false));
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -2249,17 +2249,26 @@ LANGUAGE plpgsql VOLATILE";
 
 #region Mock Type Handlers
 
-class ExplodingTypeHandlerResolver : IPgTypeInfoResolver
+sealed class ExplodingTypeHandlerResolverFactory : PgTypeInfoResolverFactory
 {
     readonly bool _safe;
-    public ExplodingTypeHandlerResolver(bool safe) => _safe = safe;
+    public ExplodingTypeHandlerResolverFactory(bool safe) => _safe = safe;
 
-    public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(_safe);
+    public override IPgTypeInfoResolver? CreateArrayResolver() => null;
+
+    sealed class Resolver : IPgTypeInfoResolver
     {
-        if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-            return new(options, new ExplodingTypeHandler(_safe), DataTypeNames.Int4);
+        readonly bool _safe;
+        public Resolver(bool safe) => _safe = safe;
 
-        return null;
+        public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        {
+            if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
+                return new(options, new ExplodingTypeHandler(_safe), DataTypeNames.Int4);
+
+            return null;
+        }
     }
 }
 
