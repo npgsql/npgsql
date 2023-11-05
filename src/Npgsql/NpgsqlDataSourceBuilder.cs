@@ -47,14 +47,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public string ConnectionString => _internalBuilder.ConnectionString;
 
     internal static void ResetGlobalMappings(bool overwrite)
-        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(static () =>
-        {
-            var builder = new PgTypeInfoResolverChainBuilder();
-            builder.EnableRanges();
-            builder.EnableMultiranges();
-            builder.EnableArrays();
-            return builder;
-        }, new PgTypeInfoResolverFactory[]
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new PgTypeInfoResolverFactory[]
         {
             overwrite ? new AdoTypeInfoResolverFactory() : AdoTypeInfoResolverFactory.Instance,
             new ExtraConversionResolverFactory(),
@@ -64,6 +57,13 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new NetworkTypeInfoResolverFactory(),
             new GeometricTypeInfoResolverFactory(),
             new LTreeTypeInfoResolverFactory(),
+        }, static () =>
+        {
+            var builder = new PgTypeInfoResolverChainBuilder();
+            builder.EnableRanges();
+            builder.EnableMultiranges();
+            builder.EnableArrays();
+            return builder;
         }, overwrite);
 
     static NpgsqlDataSourceBuilder()

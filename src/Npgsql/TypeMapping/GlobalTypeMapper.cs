@@ -14,7 +14,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     readonly UserTypeMapper _userTypeMapper = new();
     readonly List<PgTypeInfoResolverFactory> _pluginResolverFactories = new();
     readonly ReaderWriterLockSlim _lock = new();
-    IReadOnlyCollection<PgTypeInfoResolverFactory> _typeMappingResolvers = Array.Empty<PgTypeInfoResolverFactory>();
+    PgTypeInfoResolverFactory[] _typeMappingResolvers = Array.Empty<PgTypeInfoResolverFactory>();
 
     internal List<HackyEnumTypeMapping> HackyEnumTypeMappings { get; } = new();
 
@@ -47,10 +47,10 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    internal void AddGlobalTypeMappingResolvers(Func<PgTypeInfoResolverChainBuilder> builderFactory, IReadOnlyCollection<PgTypeInfoResolverFactory> factories, bool overwrite = false)
+    internal void AddGlobalTypeMappingResolvers(PgTypeInfoResolverFactory[] factories, Func<PgTypeInfoResolverChainBuilder>? builderFactory = null, bool overwrite = false)
     {
         // Good enough logic to prevent SlimBuilder overriding the normal Builder.
-        if (overwrite || factories.Count > _typeMappingResolvers.Count)
+        if (overwrite || factories.Length > _typeMappingResolvers.Length)
         {
             _builderFactory = builderFactory;
             _typeMappingResolvers = factories;
@@ -61,7 +61,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     void ResetTypeMappingCache() => _typeMappingOptions = null;
 
     PgSerializerOptions? _typeMappingOptions;
-    Func<PgTypeInfoResolverChainBuilder> _builderFactory = () => new();
+    Func<PgTypeInfoResolverChainBuilder>? _builderFactory;
 
     PgSerializerOptions TypeMappingOptions
     {
@@ -73,7 +73,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             _lock.EnterReadLock();
             try
             {
-                var builder = _builderFactory();
+                var builder = _builderFactory?.Invoke() ?? new();
                 builder.AppendResolverFactory(_userTypeMapper);
                 foreach (var factory in _pluginResolverFactories)
                     builder.AppendResolverFactory(factory);

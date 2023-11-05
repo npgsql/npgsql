@@ -6,8 +6,8 @@ namespace Npgsql.Internal;
 struct PgTypeInfoResolverChainBuilder
 {
     readonly List<PgTypeInfoResolverFactory> _factories = new();
-    Action<List<PgTypeInfoResolverFactory>, List<IPgTypeInfoResolver>>? _addRangeResolvers;
-    Action<List<PgTypeInfoResolverFactory>, List<IPgTypeInfoResolver>>? _addMultirangeResolvers;
+    Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addRangeResolvers;
+    Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addMultirangeResolvers;
     RangeArrayHandler _rangeArrayHandler = RangeArrayHandler.Instance;
     MultirangeArrayHandler _multirangeArrayHandler = MultirangeArrayHandler.Instance;
     Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _arrayResolvers;
@@ -43,9 +43,9 @@ struct PgTypeInfoResolverChainBuilder
         _addRangeResolvers ??= AddResolvers;
         _rangeArrayHandler = RangeArrayHandlerImpl.Instance;
 
-        static void AddResolvers(List<PgTypeInfoResolverFactory> factories, List<IPgTypeInfoResolver> resolvers)
+        static void AddResolvers(PgTypeInfoResolverChainBuilder instance, List<IPgTypeInfoResolver> resolvers)
         {
-            foreach (var factory in factories)
+            foreach (var factory in instance._factories)
                 if (factory.CreateRangeResolver() is { } resolver)
                     resolvers.Add(resolver);
         }
@@ -56,9 +56,9 @@ struct PgTypeInfoResolverChainBuilder
         _addMultirangeResolvers ??= AddResolvers;
         _multirangeArrayHandler = MultirangeArrayHandlerImpl.Instance;
 
-        static void AddResolvers(List<PgTypeInfoResolverFactory> factories, List<IPgTypeInfoResolver> resolvers)
+        static void AddResolvers(PgTypeInfoResolverChainBuilder instance, List<IPgTypeInfoResolver> resolvers)
         {
-            foreach (var factory in factories)
+            foreach (var factory in instance._factories)
                 if (factory.CreateMultirangeResolver() is { } resolver)
                     resolvers.Add(resolver);
         }
@@ -86,14 +86,15 @@ struct PgTypeInfoResolverChainBuilder
         }
     }
 
-    public IReadOnlyCollection<IPgTypeInfoResolver> Build(Action<List<IPgTypeInfoResolver>>? configure = null)
+    public IEnumerable<IPgTypeInfoResolver> Build(Action<List<IPgTypeInfoResolver>>? configure = null)
     {
         var resolvers = new List<IPgTypeInfoResolver>();
         foreach (var factory in _factories)
             resolvers.Add(factory.CreateResolver());
-        _addRangeResolvers?.Invoke(_factories, resolvers);
-        _addMultirangeResolvers?.Invoke(_factories, resolvers);
-        _arrayResolvers?.Invoke(this, resolvers);
+        var instance = this;
+        _addRangeResolvers?.Invoke(instance, resolvers);
+        _addMultirangeResolvers?.Invoke(instance, resolvers);
+        _arrayResolvers?.Invoke(instance, resolvers);
         configure?.Invoke(resolvers);
         return resolvers;
     }
