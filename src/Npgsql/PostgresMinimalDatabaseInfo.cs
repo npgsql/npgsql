@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Reflection;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using Npgsql.Util;
-using NpgsqlTypes;
 
 namespace Npgsql;
 
@@ -23,33 +23,29 @@ sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
 
     static PostgresType[] CreateTypes(bool withMultiranges)
     {
-        var builtinTypes = new List<BuiltInPostgresType>();
-        foreach (var field in typeof(NpgsqlDbType).GetFields())
-            if (field.GetCustomAttribute<BuiltInPostgresType>() is { } attr)
-                builtinTypes.Add(attr);
-
         var pgTypes = new List<PostgresType>();
-        foreach (var attr in builtinTypes)
+        foreach (var attr in DefaultPgTypes.Items)
         {
-            var baseType = new PostgresBaseType("pg_catalog", attr.Name, attr.BaseOID);
-            var arrayType = new PostgresArrayType("pg_catalog", "_" + attr.Name, attr.ArrayOID, baseType);
-
-            if (attr.RangeName is null)
-                pgTypes.AddRange(new PostgresType[] { baseType, arrayType });
-            else
+            switch (attr.TypeKind)
             {
-                var rangeType = new PostgresRangeType("pg_catalog", attr.RangeName, attr.RangeOID, baseType);
-
-                pgTypes.AddRange(withMultiranges
-                    ? new PostgresType[]
-                    {
-                        baseType, arrayType, rangeType,
-                        new PostgresMultirangeType("pg_catalog", attr.MultirangeName!, attr.MultirangeOID, rangeType)
-                    }
-                    : new PostgresType[] { baseType, arrayType, rangeType });
-            }
+                case PgTypeKind.Base:
+                case PgTypeKind.Pseudo:
+                    var baseType = new PostgresBaseType("pg_catalog", attr.Name.UnqualifiedName, attr.Oid.Value);
+                    pgTypes.Add(baseType);
+                    pgTypes.Add(new PostgresArrayType("pg_catalog", attr.ArrayName.UnqualifiedName, attr.ArrayOid.Value, baseType));
+                    break;
+                case PgTypeKind.Range:
+                    var rangeType = new PostgresRangeType("pg_catalog", attr.Name.UnqualifiedName, attr.Oid.Value,
+                        pgTypes.Find(x => x.OID == attr.SubTypeOid) ?? throw new InvalidOperationException("Could not find range subtype"));
+                    pgTypes.Add(rangeType);
+                    pgTypes.Add(new PostgresArrayType("pg_catalog", attr.ArrayName.UnqualifiedName, attr.ArrayOid.Value, rangeType));
+                    if (withMultiranges)
+                        pgTypes.Add(new PostgresMultirangeType("pg_catalog", attr.MultirangeName!.Value.UnqualifiedName, attr.MultirangeOid!.Value.Value, rangeType));
+                    break;
+                default:
+                    throw new NotSupportedException();
+            };
         }
-
         return pgTypes.ToArray();
     }
 
