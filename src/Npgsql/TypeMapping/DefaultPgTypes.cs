@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 using static Npgsql.TypeMapping.PgTypeGroup;
 
@@ -65,16 +66,13 @@ static class DefaultPgTypes
             {
                 Create(DataTypeNames.Int2, oid: 21, arrayOid: 1005),
                 Create(DataTypeNames.Int4, oid: 23, arrayOid: 1007),
-                Create(DataTypeNames.Int4Range, oid: 3904, arrayOid: 3905,
-                    subTypeOid: 23, multirangeOid: 4451, multirangeArrayOid: 6150, typeKind: PgTypeKind.Range),
+                CreateRange(DataTypeNames.Int4Range, oid: 3904, arrayOid: 3905, subTypeOid: 23, multirangeOid: 4451, multirangeArrayOid: 6150),
                 Create(DataTypeNames.Int8, oid: 20, arrayOid: 1016),
-                Create(DataTypeNames.Int8Range, oid: 3926, arrayOid: 3927,
-                    subTypeOid: 20, multirangeOid: 4536, multirangeArrayOid: 6157, typeKind: PgTypeKind.Range),
+                CreateRange(DataTypeNames.Int8Range, oid: 3926, arrayOid: 3927, subTypeOid: 20, multirangeOid: 4536, multirangeArrayOid: 6157),
                 Create(DataTypeNames.Float4, oid: 700, arrayOid: 1021),
                 Create(DataTypeNames.Float8, oid: 701, arrayOid: 1022),
                 Create(DataTypeNames.Numeric, oid: 1700, arrayOid: 1231),
-                Create(DataTypeNames.NumRange, oid: 3906, arrayOid: 3907,
-                    subTypeOid: 1700, multirangeOid: 4532, multirangeArrayOid: 6151, typeKind: PgTypeKind.Range),
+                CreateRange(DataTypeNames.NumRange, oid: 3906, arrayOid: 3907, subTypeOid: 1700, multirangeOid: 4532, multirangeArrayOid: 6151),
                 Create(DataTypeNames.Money, oid: 790, arrayOid: 791),
                 Create(DataTypeNames.Bool, oid: 16, arrayOid: 1000),
                 Create(DataTypeNames.Box, oid: 603, arrayOid: 1020),
@@ -90,15 +88,12 @@ static class DefaultPgTypes
                 Create(DataTypeNames.Name, oid: 19, arrayOid: 1003),
                 Create(DataTypeNames.Bytea, oid: 17, arrayOid: 1001),
                 Create(DataTypeNames.Date, oid: 1082, arrayOid: 1182),
-                Create(DataTypeNames.DateRange, oid: 3912, arrayOid: 3913,
-                    subTypeOid: 1082, multirangeOid: 4535, multirangeArrayOid: 6155, typeKind: PgTypeKind.Range),
+                CreateRange(DataTypeNames.DateRange, oid: 3912, arrayOid: 3913, subTypeOid: 1082, multirangeOid: 4535, multirangeArrayOid: 6155),
                 Create(DataTypeNames.Time, oid: 1083, arrayOid: 1183),
                 Create(DataTypeNames.Timestamp, oid: 1114, arrayOid: 1115),
-                Create(DataTypeNames.TsRange, oid: 3908, arrayOid: 3909,
-                    subTypeOid: 1114, multirangeOid: 4533, multirangeArrayOid: 6152, typeKind: PgTypeKind.Range),
+                CreateRange(DataTypeNames.TsRange, oid: 3908, arrayOid: 3909, subTypeOid: 1114, multirangeOid: 4533, multirangeArrayOid: 6152),
                 Create(DataTypeNames.TimestampTz, oid: 1184, arrayOid: 1185),
-                Create(DataTypeNames.TsTzRange, oid: 3910, arrayOid: 3911,
-                    subTypeOid: 1184, multirangeOid: 4534, multirangeArrayOid: 6153, typeKind: PgTypeKind.Range),
+                CreateRange(DataTypeNames.TsTzRange, oid: 3910, arrayOid: 3911, subTypeOid: 1184, multirangeOid: 4534, multirangeArrayOid: 6153),
                 Create(DataTypeNames.Interval, oid: 1186, arrayOid: 1187),
                 Create(DataTypeNames.TimeTz, oid: 1266, arrayOid: 1270),
                 Create(DataTypeNames.Inet, oid: 869, arrayOid: 1041),
@@ -168,7 +163,19 @@ readonly struct PgTypeGroup
     public DataTypeName? MultirangeArrayName { get; init; }
     public Oid? MultirangeArrayOid { get; init; }
 
-    public static PgTypeGroup Create(DataTypeName name, Oid oid, Oid arrayOid, Oid? subTypeOid = null, string? multirangeName = null, Oid? multirangeOid = null, Oid? multirangeArrayOid = null, PgTypeKind typeKind = PgTypeKind.Base)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static PgTypeGroup Create(DataTypeName name, uint oid, uint arrayOid)
+        => Create(name, oid, arrayOid, subTypeOid: null, typeKind: PgTypeKind.Base);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static PgTypeGroup Create(DataTypeName name, uint oid, uint arrayOid, PgTypeKind typeKind)
+        => Create(name, oid, arrayOid, subTypeOid: null, typeKind: typeKind);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static PgTypeGroup CreateRange(DataTypeName name, uint oid, uint arrayOid, uint subTypeOid, uint multirangeOid, uint multirangeArrayOid)
+        => Create(name, oid, arrayOid, subTypeOid, multirangeOid: multirangeOid, multirangeArrayOid: multirangeArrayOid, typeKind: PgTypeKind.Range);
+
+    public static PgTypeGroup Create(DataTypeName name, uint oid, uint arrayOid, uint? subTypeOid, string? multirangeName = null, uint? multirangeOid = null, uint? multirangeArrayOid = null, PgTypeKind typeKind = PgTypeKind.Base)
     {
         DataTypeName? multirangeDataTypeName = null;
         if (typeKind is PgTypeKind.Range)
