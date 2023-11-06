@@ -29,6 +29,18 @@ public abstract class PostgresType
         FullName = Namespace + "." + Name;
     }
 
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL data type.
+    /// </summary>
+    /// <param name="dataTypeName">The data type's fully qualified name.</param>
+    /// <param name="oid">The data type's OID.</param>
+    private protected PostgresType(DataTypeName dataTypeName, Oid oid)
+    {
+        DataTypeName = dataTypeName;
+        OID = oid.Value;
+        FullName = Namespace + "." + Name;
+    }
+
     #endregion
 
     #region Public Properties

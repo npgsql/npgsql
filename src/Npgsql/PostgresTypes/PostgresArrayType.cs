@@ -1,4 +1,6 @@
-﻿namespace Npgsql.PostgresTypes;
+﻿using Npgsql.Internal.Postgres;
+
+namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL array data type, which can hold several multiple values in a single column.
@@ -18,6 +20,16 @@ public class PostgresArrayType : PostgresType
     /// </summary>
     protected internal PostgresArrayType(string ns, string name, uint oid, PostgresType elementPostgresType)
         : base(ns, name, oid)
+    {
+        Element = elementPostgresType;
+        Element.Array = this;
+    }
+
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL array data type.
+    /// </summary>
+    internal PostgresArrayType(DataTypeName dataTypeName, Oid oid, PostgresType elementPostgresType)
+        : base(dataTypeName, oid)
     {
         Element = elementPostgresType;
         Element.Array = this;

@@ -1,4 +1,6 @@
 ﻿
+using Npgsql.Internal.Postgres;
+
 namespace Npgsql.PostgresTypes;
 
 /// <summary>
@@ -6,10 +8,17 @@ namespace Npgsql.PostgresTypes;
 /// </summary>
 public class PostgresBaseType : PostgresType
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL base data type.
+    /// </summary>
     protected internal PostgresBaseType(string ns, string name, uint oid)
-        : base(ns, name, oid)
-    {}
+        : base(ns, name, oid) {}
+
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL base data type.
+    /// </summary>
+    internal PostgresBaseType(DataTypeName dataTypeName, Oid oid)
+        : base(dataTypeName, oid) {}
 
     /// <inheritdoc/>
     internal override string GetPartialNameWithFacets(int typeModifier)
