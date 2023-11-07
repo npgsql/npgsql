@@ -1,4 +1,6 @@
 using System;
+using System.Data;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -61,6 +63,10 @@ public class JsonTests : MultiplexingTestBase
     public async Task Write_as_ArraySegment_of_char()
         => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""", PostgresType, NpgsqlDbType,
             isDefault: false);
+
+    [Test]
+    public Task As_MemoryStream()
+        => AssertTypeWrite(() => new MemoryStream("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefault: false);
 
     [Test]
     public async Task As_JsonDocument()

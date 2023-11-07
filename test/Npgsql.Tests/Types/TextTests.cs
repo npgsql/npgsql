@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using NpgsqlTypes;
@@ -51,6 +52,10 @@ public class TextTests : MultiplexingTestBase
 
         await AssertType("foo", "foo", "citext", NpgsqlDbType.Citext, inferredDbType: DbType.String, isDefaultForWriting: false);
     }
+
+    [Test]
+    public Task Text_as_MemoryStream()
+        => AssertTypeWrite(() => new MemoryStream("foo"u8.ToArray()), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
 
     [Test]
     public async Task Text_long()
