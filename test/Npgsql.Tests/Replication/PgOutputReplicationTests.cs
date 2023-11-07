@@ -641,10 +641,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await NextMessage<BeginMessage>(messages);
             }, nameof(Dispose_while_replicating));
 
-    [TestCase(true)]
-    [TestCase(false)]
+    [Platform(Exclude = "MacOsX", Reason = "Test is flaky in CI on Mac, see https://github.com/npgsql/npgsql/issues/5294")]
+    [TestCase(true, true)]
+    [TestCase(true, false)]
+    [TestCase(false, false)]
     [Test(Description = "Tests whether logical decoding messages get replicated as Logical Replication Protocol Messages on PostgreSQL 14 and above")]
-    public Task LogicalDecodingMessage(bool writeMessages)
+    public Task LogicalDecodingMessage(bool writeMessages, bool readMessages)
         => SafeReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
@@ -689,9 +691,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(msg.Flags, Is.EqualTo(1));
                     Assert.That(msg.Prefix, Is.EqualTo(prefix));
                     Assert.That(msg.Data.Length, Is.EqualTo(transactionalMessage.Length));
-                    var buffer = new MemoryStream();
-                    await msg.Data.CopyToAsync(buffer, CancellationToken.None);
-                    Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(transactionalMessage));
+                    if (readMessages)
+                    {
+                        var buffer = new MemoryStream();
+                        await msg.Data.CopyToAsync(buffer, CancellationToken.None);
+                        Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(transactionalMessage));
+                    }
                 }
 
                 // Relation
@@ -712,9 +717,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(msg.Flags, Is.EqualTo(0));
                     Assert.That(msg.Prefix, Is.EqualTo(prefix));
                     Assert.That(msg.Data.Length, Is.EqualTo(nonTransactionalMessage.Length));
-                    var buffer = new MemoryStream();
-                    await msg.Data.CopyToAsync(buffer, CancellationToken.None);
-                    Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(nonTransactionalMessage));
+                    if (readMessages)
+                    {
+                        var buffer = new MemoryStream();
+                        await msg.Data.CopyToAsync(buffer, CancellationToken.None);
+                        Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(nonTransactionalMessage));
+                    }
                 }
 
                 if (IsStreaming)
@@ -737,9 +745,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                         Assert.That(msg.Flags, Is.EqualTo(1));
                         Assert.That(msg.Prefix, Is.EqualTo(prefix));
                         Assert.That(msg.Data.Length, Is.EqualTo(transactionalMessage.Length));
-                        var buffer = new MemoryStream();
-                        await msg.Data.CopyToAsync(buffer, CancellationToken.None);
-                        Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(transactionalMessage));
+                        if (readMessages)
+                        {
+                            var buffer = new MemoryStream();
+                            await msg.Data.CopyToAsync(buffer, CancellationToken.None);
+                            Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(transactionalMessage));
+                        }
                     }
 
                     // Further inserts
@@ -767,9 +778,13 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(msg.Flags, Is.EqualTo(0));
                     Assert.That(msg.Prefix, Is.EqualTo(prefix));
                     Assert.That(msg.Data.Length, Is.EqualTo(nonTransactionalMessage.Length));
-                    var buffer = new MemoryStream();
-                    await msg.Data.CopyToAsync(buffer, CancellationToken.None);
-                    Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(nonTransactionalMessage));
+                    if (readMessages)
+                    {
+                        var buffer = new MemoryStream();
+                        await msg.Data.CopyToAsync(buffer, CancellationToken.None);
+                        Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(nonTransactionalMessage));
+                    }
+
                     if (IsStreaming)
                         await messages.MoveNextAsync();
                 }
