@@ -122,6 +122,7 @@ class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
                 data.Init(checked((int)length), false);
                 yield return _logicalDecodingMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock, transactionXid,
                     flags, messageLsn, prefix, data);
+                await data.DisposeAsync();
                 continue;
             }
             case BackendReplicationMessageCode.Commit:
