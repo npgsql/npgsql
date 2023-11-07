@@ -1822,10 +1822,12 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
         Dictionary<string, string>? ReadIniFile(string filePath)
         {
-            var lines = File.ReadAllLines(filePath);
-
             Dictionary<string, string>? settings = default;
-            foreach (var rawLine in lines)
+
+            var bytes = File.ReadAllBytes(filePath);
+            var mem = new MemoryStream(bytes);
+            using var reader = new StreamReader(mem);
+            while (reader.ReadLine() is { } rawLine)
             {
                 var line = rawLine.Trim();
 
