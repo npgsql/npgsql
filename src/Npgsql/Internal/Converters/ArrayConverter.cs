@@ -432,21 +432,19 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
     Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
         => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
 
-    unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
     {
-        TElement? result;
-        if (isDbNull)
-            result = default;
-        else if (!async)
-            result = _elemConverter.Read(reader);
-        else
-        {
-            var task = _elemConverter.ReadAsync(reader, cancellationToken);
-            if (!task.IsCompletedSuccessfully)
-                return AwaitTask(task.AsTask(), new(this, &SetResult), collection, indices);
+        if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
+            return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
 
-            result = task.Result;
-        }
+        SetValue(collection, indices, isDbNull ? default : _elemConverter.Read(reader));
+        return new();
+    }
+
+    unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, int[] indices, CancellationToken cancellationToken)
+    {
+        if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
+            return AwaitTask(task, new(this, &SetResult), collection, indices);
 
         SetValue(collection, indices, result);
         return new();
@@ -505,33 +503,31 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
         => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices[0]), ref writeState);
 
-    unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
     {
         Debug.Assert(indices.Length is 1);
-        TElement? result;
-        if (isDbNull)
-            result = default;
-        else if (!async)
-            result = _elemConverter.Read(reader);
-        else
-        {
-            var task = _elemConverter.ReadAsync(reader, cancellationToken);
-            if (!task.IsCompletedSuccessfully)
-                return AwaitTask(task.AsTask(), new(this, &SetResult), collection, indices);
+        if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
+            return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
 
-            result = task.Result;
-        }
-
-        SetValue(collection, indices[0], result);
+        SetValue(collection, indices[0], isDbNull ? default : _elemConverter.Read(reader));
         return new();
-
-        // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
-        static void SetResult(Task task, object collection, int[] indices)
-        {
-            Debug.Assert(task is Task<TElement>);
-            SetValue(collection, indices[0], new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
-        }
     }
+
+     unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, int[] indices, CancellationToken cancellationToken)
+     {
+         if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
+             return AwaitTask(task, new(this, &SetResult), collection, indices);
+
+         SetValue(collection, indices[0], result);
+         return new();
+
+         // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
+         static void SetResult(Task task, object collection, int[] indices)
+         {
+             Debug.Assert(task is Task<TElement>);
+             SetValue(collection, indices[0], new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
+         }
+     }
 
     ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int[] indices, CancellationToken cancellationToken)
     {

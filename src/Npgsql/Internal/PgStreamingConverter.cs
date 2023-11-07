@@ -16,6 +16,19 @@ public abstract class PgStreamingConverter<T> : PgConverter<T>
         return format is DataFormat.Binary;
     }
 
+    // Workaround for trimming https://github.com/dotnet/runtime/issues/92850#issuecomment-1744521361
+    internal Task<T>? ReadAsyncAsTask(PgReader reader, CancellationToken cancellationToken, out T result)
+    {
+        var task = ReadAsync(reader, cancellationToken);
+        if (task.IsCompletedSuccessfully)
+        {
+            result = task.Result;
+            return null;
+        }
+        result = default!;
+        return task.AsTask();
+    }
+
     internal sealed override unsafe ValueTask<object> ReadAsObject(
         bool async, PgReader reader, CancellationToken cancellationToken)
     {
