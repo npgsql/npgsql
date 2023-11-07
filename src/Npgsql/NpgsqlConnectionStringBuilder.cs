@@ -1857,7 +1857,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
                     // Check whether it is the specified service
                     if (sectionPrefix == Service)
                     {
-                        settings = new Dictionary<string, string>();
+                        settings = [];
                     }
 
                     continue;
