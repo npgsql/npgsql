@@ -30,6 +30,53 @@ public class EnumTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task Data_source_unmap()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+
+        var isUnmapSuccessful = dataSourceBuilder.UnmapEnum<Mood>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+
+        Assert.IsTrue(isUnmapSuccessful);
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null));
+    }
+
+    [Test]
+    public async Task Data_source_mapping_non_generic()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum(typeof(Mood), type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null);
+    }
+
+    [Test]
+    public async Task Data_source_unmap_non_generic()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum(typeof(Mood), type);
+
+        var isUnmapSuccessful = dataSourceBuilder.UnmapEnum(typeof(Mood), type);
+        await using var dataSource = dataSourceBuilder.Build();
+
+        Assert.IsTrue(isUnmapSuccessful);
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null));
+    }
+
+    [Test]
     public async Task Dual_enums()
     {
         await using var adminConnection = await OpenConnectionAsync();

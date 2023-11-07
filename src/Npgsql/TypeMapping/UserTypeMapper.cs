@@ -57,6 +57,27 @@ sealed class UserTypeMapper
         where TEnum : struct, Enum
         => Unmap(typeof(TEnum), out _, pgName, nameTranslator ?? DefaultNameTranslator);
 
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "MapEnum<TEnum> TEnum has less DAM annotations than clrType.")]
+    [RequiresDynamicCode("Calling MapEnum with a Type can require creating new generic types or methods. This may not work when AOT compiling.")]
+    public UserTypeMapper MapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        if (!clrType.IsEnum || !clrType.IsValueType)
+            throw new ArgumentException("Type must be a concrete Enum", nameof(clrType));
+
+        var openMethod = typeof(UserTypeMapper).GetMethod(nameof(MapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var method = openMethod.MakeGenericMethod(clrType);
+        method.Invoke(this, new object?[] { pgName, nameTranslator });
+        return this;
+    }
+
+    public bool UnmapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)]Type clrType,string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        if (!clrType.IsEnum || !clrType.IsValueType)
+            throw new ArgumentException("Type must be a concrete Enum", nameof(clrType));
+
+        return Unmap(clrType, out _, pgName, nameTranslator ?? DefaultNameTranslator);
+    }
+
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     public UserTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : class

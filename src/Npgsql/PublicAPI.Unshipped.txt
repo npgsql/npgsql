@@ -11,8 +11,10 @@ Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.set -> void
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void
 Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object?[]! values) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlDataSourceBuilder.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
+Npgsql.NpgsqlDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlDataSourceBuilder.Name.get -> string?
 Npgsql.NpgsqlDataSourceBuilder.Name.set -> void
+Npgsql.NpgsqlDataSourceBuilder.UnmapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.NpgsqlDataSourceBuilder.UseRootCertificate(System.Security.Cryptography.X509Certificates.X509Certificate2? rootCertificate) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseRootCertificateCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2!>? rootCertificateCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder
@@ -35,12 +37,14 @@ Npgsql.NpgsqlSlimDataSourceBuilder.EnableRecords() -> Npgsql.NpgsqlSlimDataSourc
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableTransportSecurity() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlSlimDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlSlimDataSourceBuilder.Name.get -> string?
 Npgsql.NpgsqlSlimDataSourceBuilder.Name.set -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.NpgsqlSlimDataSourceBuilder(string? connectionString = null) -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.NpgsqlSlimDataSourceBuilder.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.NpgsqlSlimDataSourceBuilder.UnmapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.NpgsqlSlimDataSourceBuilder.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.NpgsqlSlimDataSourceBuilder.UseClientCertificate(System.Security.Cryptography.X509Certificates.X509Certificate? clientCertificate) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseClientCertificates(System.Security.Cryptography.X509Certificates.X509CertificateCollection? clientCertificates) -> Npgsql.NpgsqlSlimDataSourceBuilder!
@@ -58,6 +62,8 @@ Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.Np
 Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, uint? restartTimeline = null) -> void
 Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> uint?
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
+Npgsql.TypeMapping.INpgsqlTypeMapper.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.INpgsqlTypeMapper.UnmapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.TypeMapping.UserTypeMapping
 Npgsql.TypeMapping.UserTypeMapping.ClrType.get -> System.Type!
 Npgsql.TypeMapping.UserTypeMapping.PgTypeName.get -> string!

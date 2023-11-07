@@ -216,6 +216,41 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
+    [RequiresDynamicCode("Calling MapEnum with a Type can require creating new generic types or methods. This may not work when AOT compiling.")]
+    public INpgsqlTypeMapper MapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            _userTypeMapper.MapEnum(clrType, pgName, nameTranslator);
+            ResetTypeMappingCache();
+            return this;
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <inheritdoc />
+    public bool UnmapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+        Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            var result = _userTypeMapper.UnmapEnum(clrType, pgName, nameTranslator);
+            ResetTypeMappingCache();
+            return result;
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <inheritdoc />
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => MapComposite(typeof(T), pgName, nameTranslator);
