@@ -502,7 +502,7 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
         => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices[0]), ref writeState);
 
-     ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
     {
         Debug.Assert(indices.Length is 1);
         if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
