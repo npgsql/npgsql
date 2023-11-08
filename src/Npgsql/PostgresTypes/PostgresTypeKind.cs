@@ -4,18 +4,18 @@ enum PostgresTypeKind
 {
     /// A base type.
     Base,
-    /// An enum carying its variants.
+    /// An enum carrying its variants.
     Enum,
     /// A pseudo type like anyarray.
     Pseudo,
-    // An array carying its element type.
+    // An array carrying its element type.
     Array,
-    // A range carying its element type.
+    // A range carrying its element type.
     Range,
-    // A multi-range carying its element type.
+    // A multi-range carrying its element type.
     Multirange,
-    // A domain carying its underlying type.
+    // A domain carrying its underlying type.
     Domain,
-    // A composite carying its constituent fields.
+    // A composite carrying its constituent fields.
     Composite
 }
