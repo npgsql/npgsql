@@ -25,9 +25,9 @@ sealed class MetricsReporter : IDisposable
     static readonly Counter<long> BytesRead;
 
     static readonly UpDownCounter<int> PendingConnectionRequests;
-    static readonly UpDownCounter<int> ConnectionTimeouts;
+    static readonly Counter<int> ConnectionTimeouts;
     static readonly Histogram<double> ConnectionCreateTime;
-    static readonly ObservableUpDownCounter<double> PreparedRatio;
+    static readonly ObservableGauge<double> PreparedRatio;
 
     readonly NpgsqlDataSource _dataSource;
     readonly KeyValuePair<string, object?> _poolNameTag;
@@ -48,23 +48,20 @@ sealed class MetricsReporter : IDisposable
     {
         Meter = new("Npgsql", Version);
 
-        CommandsExecuting =
-            Meter.CreateUpDownCounter<int>(
-                "db.client.commands.executing",
-                unit: "{command}",
-                description: "The number of currently executing database commands.");
+        CommandsExecuting = Meter.CreateUpDownCounter<int>(
+            "db.client.commands.executing",
+            unit: "{command}",
+            description: "The number of currently executing database commands.");
 
-        CommandsFailed
-            = Meter.CreateCounter<int>(
-                "db.client.commands.failed",
-                unit: "{command}",
-                description: "The number of database commands which have failed.");
+        CommandsFailed = Meter.CreateCounter<int>(
+            "db.client.commands.failed",
+            unit: "{command}",
+            description: "The number of database commands which have failed.");
 
-        CommandDuration
-            = Meter.CreateHistogram<double>(
-                "db.client.commands.duration",
-                unit: "s",
-                description: "The duration of database commands, in seconds.");
+        CommandDuration = Meter.CreateHistogram<double>(
+            "db.client.commands.duration",
+            unit: "s",
+            description: "The duration of database commands, in seconds.");
 
         BytesWritten = Meter.CreateCounter<long>(
             "db.client.commands.bytes_written",
@@ -79,17 +76,17 @@ sealed class MetricsReporter : IDisposable
         PendingConnectionRequests = Meter.CreateUpDownCounter<int>(
             "db.client.connections.pending_requests",
             unit: "{request}",
-            "The number of pending requests for an open connection, cumulative for the entire pool.");
+            description: "The number of pending requests for an open connection, cumulative for the entire pool.");
 
-        ConnectionTimeouts = Meter.CreateUpDownCounter<int>(
+        ConnectionTimeouts = Meter.CreateCounter<int>(
             "db.client.connections.timeouts",
             unit: "{timeout}",
             description: "The number of connection timeouts that have occurred trying to obtain a connection from the pool.");
-        ConnectionCreateTime
-            = Meter.CreateHistogram<double>(
+
+        ConnectionCreateTime = Meter.CreateHistogram<double>(
             "db.client.connections.create_time",
-            "s",
-            "The time it took to create a new connection.");
+            unit: "s",
+            description: "The time it took to create a new connection.");
 
         // Observable metrics; these are for values we already track internally (and efficiently) inside the connection pool implementation.
         Meter.CreateObservableUpDownCounter(
@@ -107,7 +104,7 @@ sealed class MetricsReporter : IDisposable
             unit: "{connection}",
             description: "The maximum number of open connections allowed.");
 
-        PreparedRatio = Meter.CreateObservableUpDownCounter(
+        PreparedRatio = Meter.CreateObservableGauge(
             "db.client.commands.prepared_ratio",
             GetPreparedCommandsRatio,
             description: "The ratio of prepared command executions.");
@@ -223,7 +220,7 @@ sealed class MetricsReporter : IDisposable
     {
         lock (Reporters)
         {
-            var measurements = new Measurement<double>[Reporters.Count];
+            var measurements = new List<Measurement<double>>(Reporters.Count);
 
             for (var i = 0; i < Reporters.Count; i++)
             {
@@ -234,9 +231,10 @@ sealed class MetricsReporter : IDisposable
                     All = Interlocked.Exchange(ref reporter._commandCounters.All, default)
                 };
 
-                measurements[i] = new Measurement<double>(
-                    (double)counters.PreparedCommandsStarted / counters.CommandsStarted * 100,
-                    reporter._poolNameTag);
+                var value = (double)counters.PreparedCommandsStarted / counters.CommandsStarted * 100;
+
+                if (double.IsNormal(value))
+                    measurements.Add(new Measurement<double>(value, reporter._poolNameTag));
             }
 
             return measurements;
