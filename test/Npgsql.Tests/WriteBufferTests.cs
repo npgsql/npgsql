@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Npgsql.Internal;
 using NUnit.Framework;
 
@@ -7,6 +8,20 @@ namespace Npgsql.Tests;
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // Parallel access to a single buffer
 class WriteBufferTests
 {
+    [Test]
+    public void Buffered_full_buffer_no_flush()
+    {
+        WriteBuffer.WritePosition += WriteBuffer.WriteSpaceLeft - sizeof(int);
+        var writer = WriteBuffer.GetWriter(null!, FlushMode.NonBlocking);
+        Assert.That(writer.ShouldFlush(sizeof(int)), Is.False);
+
+        Assert.DoesNotThrow(() =>
+        {
+            Span<byte> intBytes = stackalloc byte[4];
+            writer.WriteBytes(intBytes);
+        });
+    }
+
     [Test]
     public void GetWriter_Full_Buffer()
     {
