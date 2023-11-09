@@ -804,7 +804,8 @@ public sealed partial class NpgsqlConnector
                     throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
             }
 
-            ConnectionLogger.LogTrace("Socket connected to {Host}:{Port}", Host, Port);
+            if (ConnectionLogger.IsEnabled(LogLevel.Trace))
+                ConnectionLogger.LogTrace("Socket connected to {Host}:{Port}", Host, Port);
         }
         catch
         {
@@ -932,7 +933,8 @@ public sealed partial class NpgsqlConnector
             ReadBuffer.Underlying = _stream;
             WriteBuffer.Underlying = _stream;
             IsSecure = true;
-            ConnectionLogger.LogTrace("SSL negotiation successful");
+            if (ConnectionLogger.IsEnabled(LogLevel.Trace))
+                ConnectionLogger.LogTrace("SSL negotiation successful");
         }
         catch
         {
@@ -959,7 +961,8 @@ public sealed partial class NpgsqlConnector
         for (var i = 0; i < endpoints.Length; i++)
         {
             var endpoint = endpoints[i];
-            ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
+            if (ConnectionLogger.IsEnabled(LogLevel.Trace))
+                ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
             var protocolType =
                 endpoint.AddressFamily == AddressFamily.InterNetwork ||
                 endpoint.AddressFamily == AddressFamily.InterNetworkV6
@@ -1003,7 +1006,8 @@ public sealed partial class NpgsqlConnector
                     // ignored
                 }
 
-                ConnectionLogger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
+                if (ConnectionLogger.IsEnabled(LogLevel.Trace))
+                    ConnectionLogger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
 
                 if (i == endpoints.Length - 1)
                     throw new NpgsqlException($"Failed to connect to {endpoint}", e);
@@ -1040,7 +1044,8 @@ public sealed partial class NpgsqlConnector
         for (var i = 0; i < endpoints.Length; i++)
         {
             var endpoint = endpoints[i];
-            ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
+            if (ConnectionLogger.IsEnabled(LogLevel.Trace))
+                ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
             var protocolType =
                 endpoint.AddressFamily == AddressFamily.InterNetwork ||
                 endpoint.AddressFamily == AddressFamily.InterNetworkV6
@@ -1071,7 +1076,8 @@ public sealed partial class NpgsqlConnector
                 if (e is OperationCanceledException)
                     e = new TimeoutException("Timeout during connection attempt");
 
-                ConnectionLogger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
+                if (ConnectionLogger.IsEnabled(LogLevel.Trace))
+                    ConnectionLogger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
 
                 if (i == endpoints.Length - 1)
                     throw new NpgsqlException($"Failed to connect to {endpoint}", e);
@@ -2170,7 +2176,8 @@ public sealed partial class NpgsqlConnector
                 // (see Open)
             }
 
-            ConnectionLogger.LogTrace("Cleaning up connector", Id);
+            if (ConnectionLogger.IsEnabled(LogLevel.Trace))
+                ConnectionLogger.LogTrace("Cleaning up connector", Id);
             Cleanup();
 
             if (_isKeepAliveEnabled)
