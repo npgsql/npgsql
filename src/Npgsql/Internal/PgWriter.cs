@@ -356,12 +356,12 @@ public sealed class PgWriter
     {
         while (!buffer.IsEmpty)
         {
+            if (Remaining is 0)
+                Flush(allowWhenNonBlocking: allowMixedIO);
             var write = Math.Min(buffer.Length, Remaining);
             buffer.Slice(0, write).CopyTo(Span);
             Advance(write);
             buffer = buffer.Slice(write);
-            if (Remaining is 0)
-                Flush(allowWhenNonBlocking: allowMixedIO);
         }
     }
 
@@ -383,12 +383,12 @@ public sealed class PgWriter
         {
             while (!buffer.IsEmpty)
             {
+                if (Remaining is 0)
+                    await FlushAsync(cancellationToken).ConfigureAwait(false);
                 var write = Math.Min(buffer.Length, Remaining);
                 buffer.Span.Slice(0, write).CopyTo(Span);
                 Advance(write);
                 buffer = buffer.Slice(write);
-                if (Remaining is 0)
-                    await FlushAsync(cancellationToken).ConfigureAwait(false);
             }
         }
     }
