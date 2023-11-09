@@ -353,7 +353,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (statementIndex >= 0)
             {
                 if (RowDescription is { } description && statements[statementIndex].IsPrepared && ColumnInfoCache is { } cache)
-                    description.SetConverterInfoCache(new(cache, 0, _numColumns));
+                    description.SetColumnInfoCache(new(cache, 0, _numColumns));
 
                 if (statementIndex is 0 && _behavior.HasFlag(CommandBehavior.SingleResult) && !isConsuming)
                 {
@@ -426,7 +426,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         ColumnInfoCache = ArrayPool<ColumnInfo>.Shared.Rent(RowDescription.Count);
                     }
                     if (statement.IsPrepared)
-                        RowDescription.LoadConverterInfoCache(ColumnInfoCache);
+                        RowDescription.LoadColumnInfoCache(Connector.SerializerOptions, ColumnInfoCache);
                 }
                 else
                 {
@@ -580,7 +580,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                     var statement = _statements[StatementIndex];
                     if (statement.IsPrepared && ColumnInfoCache is not null)
-                        RowDescription!.SetConverterInfoCache(new(ColumnInfoCache, 0, _numColumns));
+                        RowDescription!.SetColumnInfoCache(new(ColumnInfoCache, 0, _numColumns));
 
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
                         Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
@@ -2193,6 +2193,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
 
         ref var info = ref ColumnInfoCache![ordinal];
+
+        Debug.Assert(info.ConverterInfo.IsDefault || ReferenceEquals(Connector.SerializerOptions, info.ConverterInfo.TypeInfo.Options), "Cache is bleeding over");
+
         if (info.ConverterInfo.TypeToConvert == type)
         {
             converter = info.ConverterInfo.Converter;

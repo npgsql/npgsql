@@ -828,6 +828,33 @@ $$ LANGUAGE plpgsql;";
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
     }
 
+#if DEBUG
+    // The asserts we're testing are debug only.
+    [Test]
+    public async Task Use_after_reload_types_invalidates_cached_infos()
+    {
+        if (IsMultiplexing)
+            return;
+
+        using var conn1 = await OpenConnectionAsync();
+        using var cmd = new NpgsqlCommand("SELECT 1", conn1);
+        cmd.Prepare();
+        using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            await reader.ReadAsync();
+            Assert.DoesNotThrow(() => reader.GetInt32(0));
+        }
+
+        await conn1.ReloadTypesAsync();
+
+        using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            await reader.ReadAsync();
+            Assert.DoesNotThrow(() => reader.GetInt32(0));
+        }
+    }
+#endif
+
     [Test, Description("CreateCommand before connection open")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/565")]
     public async Task Create_command_before_connection_open()

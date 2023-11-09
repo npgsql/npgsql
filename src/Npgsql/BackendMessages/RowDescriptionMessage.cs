@@ -133,17 +133,25 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
         }
     }
 
-    internal void SetConverterInfoCache(ReadOnlySpan<ColumnInfo> values)
+    internal void SetColumnInfoCache(ReadOnlySpan<ColumnInfo> values)
     {
         if (_connectorOwned || _lastConverterInfoCache is not null)
             return;
         Interlocked.CompareExchange(ref _lastConverterInfoCache, values.ToArray(), null);
     }
 
-    internal void LoadConverterInfoCache(ColumnInfo[] values)
+    internal void LoadColumnInfoCache(PgSerializerOptions options, ColumnInfo[] values)
     {
         if (_lastConverterInfoCache is not { } cache)
             return;
+
+        // If the options have changed (for instance due to ReloadTypes) we need to invalidate the cache.
+        if (Count > 0 && !ReferenceEquals(options, _fields[0]!._serializerOptions))
+        {
+            Interlocked.CompareExchange(ref _lastConverterInfoCache, null, cache);
+            return;
+        }
+
         cache.CopyTo(values.AsSpan());
     }
 
@@ -356,7 +364,7 @@ public sealed class FieldDescription
         }
     }
 
-    PgSerializerOptions _serializerOptions;
+    internal PgSerializerOptions _serializerOptions;
 
     internal FieldDescription Clone()
     {
