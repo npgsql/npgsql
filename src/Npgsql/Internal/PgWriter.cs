@@ -377,14 +377,14 @@ public sealed class PgWriter
             return new();
         }
 
-        return Core(buffer, cancellationToken);
+        return Core(allowMixedIO, buffer, cancellationToken);
 
-        async ValueTask Core(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        async ValueTask Core(bool allowMixedIO, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
             while (!buffer.IsEmpty)
             {
                 if (Remaining is 0)
-                    await FlushAsync(cancellationToken).ConfigureAwait(false);
+                    await FlushAsync(allowWhenBlocking: allowMixedIO, cancellationToken).ConfigureAwait(false);
                 var write = Math.Min(buffer.Length, Remaining);
                 buffer.Span.Slice(0, write).CopyTo(Span);
                 Advance(write);
