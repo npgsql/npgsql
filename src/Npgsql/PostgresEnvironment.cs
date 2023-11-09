@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -91,15 +90,20 @@ static class PostgresEnvironment
     {
         try
         {
-            return ExecuteCommand("pg_config", async: false, "--sysconfdir").GetAwaiter().GetResult()?.FirstOrDefault();
+            var lines = ExecuteCommand("pg_config", async: false, "--sysconfdir").GetAwaiter().GetResult();
+            if (lines is not null && lines.Length > 0) {
+                return lines[0];
+            }
         }
         catch
         {
-            return null;
+            // Ignore
         }
+
+        return null;
     }
 
-    internal static ValueTask<string[]?> ExecuteCommand(
+    internal static Task<string[]?> ExecuteCommand(
         string processName,
         bool async,
         string arguments = "",
@@ -110,7 +114,7 @@ static class PostgresEnvironment
         if (processPath == null)
         {
             logger?.LogDebug($"{processName} not found in PATH");
-            return new((string[]?)null);
+            return Task.FromResult<string[]?>(null);
         }
         var processStartInfo = new ProcessStartInfo
         {
@@ -125,13 +129,13 @@ static class PostgresEnvironment
         if (process is null)
         {
             logger?.LogDebug($"{processName} process could not be started");
-            return new((string[]?)null);
+            return Task.FromResult<string[]?>(null);
         }
 
         return ExecuteCommandInternal();
 
 #pragma warning disable CS1998
-        async ValueTask<string[]?> ExecuteCommandInternal()
+        async Task<string[]?> ExecuteCommandInternal()
 #pragma warning restore CS1998
         {
 #if NET5_0_OR_GREATER
