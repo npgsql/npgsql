@@ -233,7 +233,7 @@ sealed class MetricsReporter : IDisposable
 
                 var value = (double)counters.PreparedCommandsStarted / counters.CommandsStarted * 100;
 
-                if (double.IsNormal(value))
+                if (double.IsFinite(value))
                     measurements.Add(new Measurement<double>(value, reporter._poolNameTag));
             }
 
