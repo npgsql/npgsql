@@ -163,28 +163,16 @@ public class DependencyInjectionTests(DataSourceMode mode)
     IServiceCollection RegisterDataSource(ServiceCollection serviceCollection, string connectionString, object? serviceKey = null)
         => mode switch
         {
-            DataSourceMode.Standard =>
-                serviceKey is not null
-                    ? serviceCollection.AddNpgsqlDataSource(serviceKey, connectionString)
-                    : serviceCollection.AddNpgsqlDataSource(connectionString),
-            DataSourceMode.Slim =>
-                serviceKey is not null
-                    ? serviceCollection.AddNpgsqlSlimDataSource(serviceKey, connectionString)
-                    : serviceCollection.AddNpgsqlSlimDataSource(connectionString),
+            DataSourceMode.Standard => serviceCollection.AddNpgsqlDataSource(connectionString, serviceKey: serviceKey),
+            DataSourceMode.Slim => serviceCollection.AddNpgsqlSlimDataSource(connectionString, serviceKey: serviceKey),
             _ => throw new NotSupportedException($"Mode {mode} not supported")
         };
 
     IServiceCollection RegisterMultiHostDataSource(ServiceCollection serviceCollection, string connectionString, object? serviceKey = null)
         => mode switch
         {
-            DataSourceMode.Standard =>
-                serviceKey is not null
-                    ? serviceCollection.AddMultiHostNpgsqlDataSource(serviceKey, connectionString)
-                    : serviceCollection.AddMultiHostNpgsqlDataSource(connectionString),
-            DataSourceMode.Slim =>
-                serviceKey is not null
-                    ? serviceCollection.AddMultiHostNpgsqlSlimDataSource(serviceKey, connectionString)
-                    : serviceCollection.AddMultiHostNpgsqlSlimDataSource(connectionString),
+            DataSourceMode.Standard => serviceCollection.AddMultiHostNpgsqlDataSource(connectionString, serviceKey: serviceKey),
+            DataSourceMode.Slim => serviceCollection.AddMultiHostNpgsqlSlimDataSource(connectionString, serviceKey: serviceKey),
             _ => throw new NotSupportedException($"Mode {mode} not supported")
         };
 }
