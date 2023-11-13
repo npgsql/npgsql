@@ -39,16 +39,6 @@ public sealed class PostgresNotice
     public string SqlState { get; set; }
 
     /// <summary>
-    /// The SQLSTATE code for the error.
-    /// </summary>
-    /// <remarks>
-    /// Always present.
-    /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
-    /// </remarks>
-    [Obsolete("Use SqlState instead")]
-    public string Code => SqlState;
-
-    /// <summary>
     /// The primary human-readable error message. This should be accurate but terse.
     /// </summary>
     /// <remarks>

@@ -4,6 +4,8 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
+#pragma warning disable CS0618 // Large object support is obsolete
+
 public class LargeObjectTests : TestBase
 {
     [Test]

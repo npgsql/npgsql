@@ -454,12 +454,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public override string DataSource => Connector?.Settings.DataSourceCached ?? _dataSource?.Settings.DataSourceCached ?? string.Empty;
 
     /// <summary>
-    /// Whether to use Windows integrated security to log in.
-    /// </summary>
-    [Obsolete("The IntegratedSecurity parameter is no longer needed and does nothing.")]
-    public bool IntegratedSecurity => Settings.IntegratedSecurity;
-
-    /// <summary>
     /// User name.
     /// </summary>
     public string? UserName => Settings.Username;

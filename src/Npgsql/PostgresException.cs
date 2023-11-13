@@ -270,17 +270,6 @@ public sealed class PostgresException : NpgsqlException
 #endif
 
     /// <summary>
-    /// The SQLSTATE code for the error.
-    /// </summary>
-    /// <remarks>
-    /// Always present.
-    /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
-    /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
-    /// </remarks>
-    [Obsolete("Use SqlState instead")]
-    public string Code => SqlState;
-
-    /// <summary>
     /// The primary human-readable error message. This should be accurate but terse.
     /// </summary>
     /// <remarks>

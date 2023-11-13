@@ -1,4 +1,5 @@
-﻿using Npgsql.Util;
+﻿using System;
+using Npgsql.Util;
 using System.Data;
 using System.Text;
 using System.Threading;
@@ -9,6 +10,7 @@ namespace Npgsql;
 /// <summary>
 /// Large object manager. This class can be used to store very large files in a PostgreSQL database.
 /// </summary>
+[Obsolete("NpgsqlLargeObjectManager allows manipulating PostgreSQL large objects via publicly available PostgreSQL functions (lo_read, lo_write); call these yourself directly.")]
 public class NpgsqlLargeObjectManager
 {
     const int InvWrite = 0x00020000;

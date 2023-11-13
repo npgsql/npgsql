@@ -10,6 +10,7 @@ namespace Npgsql;
 /// An interface to remotely control the seekable stream for an opened large object on a PostgreSQL server.
 /// Note that the OpenRead/OpenReadWrite method as well as all operations performed on this stream must be wrapped inside a database transaction.
 /// </summary>
+[Obsolete("NpgsqlLargeObjectStream allows manipulating PostgreSQL large objects via publicly available PostgreSQL functions (lo_read, lo_write); call these yourself directly.")]
 public sealed class NpgsqlLargeObjectStream : Stream
 {
     readonly NpgsqlLargeObjectManager _manager;

@@ -77,6 +77,7 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
     /// </summary>
     /// <param name="value"></param>
     /// <returns></returns>
+    [Obsolete("Client-side parsing of NpgsqlTsQuery is unreliable and cannot fully duplicate the PostgreSQL logic. Use PG functions instead (e.g. to_tsquery)")]
     public static NpgsqlTsQuery Parse(string value)
     {
         if (value == null)

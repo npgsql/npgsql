@@ -26,18 +26,6 @@ public sealed class NpgsqlNotificationEventArgs : EventArgs
     /// </summary>
     public string Payload { get; }
 
-    /// <summary>
-    /// The channel on which the notification was sent.
-    /// </summary>
-    [Obsolete("Use Channel instead")]
-    public string Condition => Channel;
-
-    /// <summary>
-    /// An optional payload string that was sent with this notification.
-    /// </summary>
-    [Obsolete("Use Payload instead")]
-    public string AdditionalInformation => Payload;
-
     internal NpgsqlNotificationEventArgs(NpgsqlReadBuffer buf)
     {
         PID = buf.ReadInt32();
