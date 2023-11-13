@@ -28,19 +28,22 @@ public static class NpgsqlServiceCollectionExtensions
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
     public static IServiceCollection AddNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
         Action<NpgsqlDataSourceBuilder> dataSourceBuilderAction,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
-        => AddNpgsqlDataSourceCore(serviceCollection, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
+        => AddNpgsqlDataSourceCore(serviceCollection, serviceKey, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
@@ -55,9 +58,10 @@ public static class NpgsqlServiceCollectionExtensions
         this IServiceCollection serviceCollection,
         string connectionString,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
         => AddNpgsqlDataSourceCore(
-            serviceCollection, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
@@ -75,14 +79,16 @@ public static class NpgsqlServiceCollectionExtensions
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
     public static IServiceCollection AddNpgsqlSlimDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
         Action<NpgsqlSlimDataSourceBuilder> dataSourceBuilderAction,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
-        => AddNpgsqlSlimDataSourceCore(serviceCollection, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
+        => AddNpgsqlSlimDataSourceCore(serviceCollection, serviceKey, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
@@ -97,14 +103,16 @@ public static class NpgsqlServiceCollectionExtensions
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
     public static IServiceCollection AddNpgsqlSlimDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
         => AddNpgsqlSlimDataSourceCore(
-            serviceCollection, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
@@ -122,15 +130,17 @@ public static class NpgsqlServiceCollectionExtensions
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
     public static IServiceCollection AddMultiHostNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
         Action<NpgsqlDataSourceBuilder> dataSourceBuilderAction,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
         => AddMultiHostNpgsqlDataSourceCore(
-            serviceCollection, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
@@ -146,14 +156,16 @@ public static class NpgsqlServiceCollectionExtensions
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
     public static IServiceCollection AddMultiHostNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
         => AddMultiHostNpgsqlDataSourceCore(
-            serviceCollection, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
@@ -171,15 +183,17 @@ public static class NpgsqlServiceCollectionExtensions
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
     public static IServiceCollection AddMultiHostNpgsqlSlimDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
         Action<NpgsqlSlimDataSourceBuilder> dataSourceBuilderAction,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
         => AddMultiHostNpgsqlSlimDataSourceCore(
-            serviceCollection, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
@@ -195,17 +209,20 @@ public static class NpgsqlServiceCollectionExtensions
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
     public static IServiceCollection AddMultiHostNpgsqlSlimDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
         ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
         => AddMultiHostNpgsqlSlimDataSourceCore(
-            serviceCollection, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     static IServiceCollection AddNpgsqlDataSourceCore(
         this IServiceCollection serviceCollection,
+        object? serviceKey,
         string connectionString,
         Action<NpgsqlDataSourceBuilder>? dataSourceBuilderAction,
         ServiceLifetime connectionLifetime,
@@ -214,7 +231,8 @@ public static class NpgsqlServiceCollectionExtensions
         serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(NpgsqlDataSource),
-                sp =>
+                serviceKey,
+                (sp, key) =>
                 {
                     var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
                     dataSourceBuilder.UseLoggerFactory(sp.GetService<ILoggerFactory>());
@@ -223,13 +241,14 @@ public static class NpgsqlServiceCollectionExtensions
                 },
                 dataSourceLifetime));
 
-        AddCommonServices(serviceCollection, connectionLifetime, dataSourceLifetime);
+        AddCommonServices(serviceCollection, serviceKey, connectionLifetime, dataSourceLifetime);
 
         return serviceCollection;
     }
 
     static IServiceCollection AddNpgsqlSlimDataSourceCore(
         this IServiceCollection serviceCollection,
+        object? serviceKey,
         string connectionString,
         Action<NpgsqlSlimDataSourceBuilder>? dataSourceBuilderAction,
         ServiceLifetime connectionLifetime,
@@ -238,7 +257,8 @@ public static class NpgsqlServiceCollectionExtensions
         serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(NpgsqlDataSource),
-                sp =>
+                serviceKey,
+                (sp, key) =>
                 {
                     var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(connectionString);
                     dataSourceBuilder.UseLoggerFactory(sp.GetService<ILoggerFactory>());
@@ -247,13 +267,14 @@ public static class NpgsqlServiceCollectionExtensions
                 },
                 dataSourceLifetime));
 
-        AddCommonServices(serviceCollection, connectionLifetime, dataSourceLifetime);
+        AddCommonServices(serviceCollection, serviceKey, connectionLifetime, dataSourceLifetime);
 
         return serviceCollection;
     }
 
     static IServiceCollection AddMultiHostNpgsqlDataSourceCore(
         this IServiceCollection serviceCollection,
+        object? serviceKey,
         string connectionString,
         Action<NpgsqlDataSourceBuilder>? dataSourceBuilderAction,
         ServiceLifetime connectionLifetime,
@@ -262,7 +283,8 @@ public static class NpgsqlServiceCollectionExtensions
         serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(NpgsqlMultiHostDataSource),
-                sp =>
+                serviceKey,
+                (sp, key) =>
                 {
                     var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
                     dataSourceBuilder.UseLoggerFactory(sp.GetService<ILoggerFactory>());
@@ -271,19 +293,33 @@ public static class NpgsqlServiceCollectionExtensions
                 },
                 dataSourceLifetime));
 
-        serviceCollection.TryAdd(
-            new ServiceDescriptor(
-                typeof(NpgsqlDataSource),
-                sp => sp.GetRequiredService<NpgsqlMultiHostDataSource>(),
-                dataSourceLifetime));
+        if (serviceKey is not null)
+        {
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(NpgsqlDataSource),
+                    serviceKey,
+                    (sp, key) => sp.GetRequiredKeyedService<NpgsqlMultiHostDataSource>(key),
+                    dataSourceLifetime));
+        }
+        else
+        {
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(NpgsqlDataSource),
+                    sp => sp.GetRequiredService<NpgsqlMultiHostDataSource>(),
+                    dataSourceLifetime));
 
-        AddCommonServices(serviceCollection, connectionLifetime, dataSourceLifetime);
+        }
+
+        AddCommonServices(serviceCollection, serviceKey, connectionLifetime, dataSourceLifetime);
 
         return serviceCollection;
     }
 
     static IServiceCollection AddMultiHostNpgsqlSlimDataSourceCore(
         this IServiceCollection serviceCollection,
+        object? serviceKey,
         string connectionString,
         Action<NpgsqlSlimDataSourceBuilder>? dataSourceBuilderAction,
         ServiceLifetime connectionLifetime,
@@ -292,7 +328,8 @@ public static class NpgsqlServiceCollectionExtensions
         serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(NpgsqlMultiHostDataSource),
-                sp =>
+                serviceKey,
+                (sp, _) =>
                 {
                     var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(connectionString);
                     dataSourceBuilder.UseLoggerFactory(sp.GetService<ILoggerFactory>());
@@ -301,38 +338,80 @@ public static class NpgsqlServiceCollectionExtensions
                 },
                 dataSourceLifetime));
 
-        serviceCollection.TryAdd(
-            new ServiceDescriptor(
-                typeof(NpgsqlDataSource),
-                sp => sp.GetRequiredService<NpgsqlMultiHostDataSource>(),
-                dataSourceLifetime));
+        if (serviceKey is not null)
+        {
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(NpgsqlDataSource),
+                    serviceKey,
+                    (sp, key) => sp.GetRequiredKeyedService<NpgsqlMultiHostDataSource>(key),
+                    dataSourceLifetime));
+        }
+        else
+        {
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(NpgsqlDataSource),
+                    sp => sp.GetRequiredService<NpgsqlMultiHostDataSource>(),
+                    dataSourceLifetime));
 
-        AddCommonServices(serviceCollection, connectionLifetime, dataSourceLifetime);
+        }
+
+        AddCommonServices(serviceCollection, serviceKey, connectionLifetime, dataSourceLifetime);
 
         return serviceCollection;
     }
 
     static void AddCommonServices(
         IServiceCollection serviceCollection,
+        object? serviceKey,
         ServiceLifetime connectionLifetime,
         ServiceLifetime dataSourceLifetime)
     {
-        serviceCollection.TryAdd(
-            new ServiceDescriptor(
-                typeof(NpgsqlConnection),
-                sp => sp.GetRequiredService<NpgsqlDataSource>().CreateConnection(),
-                connectionLifetime));
+        // We don't try to invoke KeyedService methods if there is no service key.
+        // This allows user code that use non-standard containers without support for IKeyedServiceProvider to keep on working.
+        if (serviceKey is not null)
+        {
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(NpgsqlConnection),
+                    serviceKey,
+                    (sp, key) => sp.GetRequiredKeyedService<NpgsqlDataSource>(key).CreateConnection(),
+                    connectionLifetime));
 
-        serviceCollection.TryAdd(
-            new ServiceDescriptor(
-                typeof(DbDataSource),
-                sp => sp.GetRequiredService<NpgsqlDataSource>(),
-                dataSourceLifetime));
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(DbDataSource),
+                    serviceKey,
+                    (sp, key) => sp.GetRequiredKeyedService<NpgsqlDataSource>(key),
+                    dataSourceLifetime));
 
-        serviceCollection.TryAdd(
-            new ServiceDescriptor(
-                typeof(DbConnection),
-                sp => sp.GetRequiredService<NpgsqlConnection>(),
-                connectionLifetime));
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(DbConnection),
+                    serviceKey,
+                    (sp, key) => sp.GetRequiredKeyedService<NpgsqlConnection>(key),
+                    connectionLifetime));
+        }
+        else
+        {
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(NpgsqlConnection),
+                    sp => sp.GetRequiredService<NpgsqlDataSource>().CreateConnection(),
+                    connectionLifetime));
+
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(DbDataSource),
+                    sp => sp.GetRequiredService<NpgsqlDataSource>(),
+                    dataSourceLifetime));
+
+            serviceCollection.TryAdd(
+                new ServiceDescriptor(
+                    typeof(DbConnection),
+                    sp => sp.GetRequiredService<NpgsqlConnection>(),
+                    connectionLifetime));
+        }
     }
 }
