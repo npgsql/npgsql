@@ -227,13 +227,6 @@ public enum NpgsqlDbType
     /// Corresponds to the PostgreSQL "timestamp with time zone" type.
     /// </summary>
     /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-    [Obsolete("Use TimestampTz instead")]  // NOTE: Don't remove this (see #1694)
-    TimestampTZ = TimestampTz,
-
-    /// <summary>
-    /// Corresponds to the PostgreSQL "timestamp with time zone" type.
-    /// </summary>
-    /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
     [BuiltInPostgresType("timestamptz", baseOID: 1184, arrayOID: 1185, rangeName: "tstzrange", rangeOID: 3910, multirangeName: "tstzmultirange", multirangeOID: 4534)]
     TimestampTz = 26,
 
@@ -243,13 +236,6 @@ public enum NpgsqlDbType
     /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
     [BuiltInPostgresType("interval", baseOID: 1186, arrayOID: 1187)]
     Interval = 30,
-
-    /// <summary>
-    /// Corresponds to the PostgreSQL "time with time zone" type.
-    /// </summary>
-    /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-    [Obsolete("Use TimeTz instead")]  // NOTE: Don't remove this (see #1694)
-    TimeTZ = TimeTz,
 
     /// <summary>
     /// Corresponds to the PostgreSQL "time with time zone" type.
