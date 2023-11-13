@@ -5,6 +5,8 @@ using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
 
+#pragma warning disable CS0618 // NpgsqlTsVector.Parse is obsolete
+
 namespace Npgsql.Tests.Types;
 
 public class FullTextSearchTests : MultiplexingTestBase

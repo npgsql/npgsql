@@ -10,6 +10,7 @@ namespace Npgsql.Tests;
 /// </summary>
 public class TypesTests
 {
+#pragma warning disable CS0618 // {NpgsqlTsVector,NpgsqlTsQuery}.Parse are obsolete
     [Test]
     public void TsVector()
     {
@@ -83,6 +84,7 @@ public class TypesTests
         Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a <a> b"));
         Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a <-1> b"));
     }
+#pragma warning restore CS0618 // {NpgsqlTsVector,NpgsqlTsQuery}.Parse are obsolete
 
     [Test]
     public void TsQueryEquatibility()
@@ -173,6 +175,7 @@ public class TypesTests
         }
     }
 
+#pragma warning disable CS0618 // {NpgsqlTsVector,NpgsqlTsQuery}.Parse are obsolete
     [Test]
     public void TsQueryOperatorPrecedence()
     {
@@ -180,6 +183,7 @@ public class TypesTests
         var expectedGrouping = NpgsqlTsQuery.Parse("((!(a) <-> b) & c) | (d & e)");
         Assert.AreEqual(expectedGrouping.ToString(), query.ToString());
     }
+#pragma warning restore CS0618 // {NpgsqlTsVector,NpgsqlTsQuery}.Parse are obsolete
 
     [Test]
     public void NpgsqlPath_empty()

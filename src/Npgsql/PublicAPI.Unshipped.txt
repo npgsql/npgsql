@@ -122,10 +122,40 @@ static Npgsql.INpgsqlTypeMapperExtensions.EnableRecordsAsTuples<T>(this T mapper
 static Npgsql.INpgsqlTypeMapperExtensions.EnableUnmappedTypes<T>(this T mapper) -> T
 static NpgsqlTypes.NpgsqlCidr.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlCidr cidr) -> System.Net.IPAddress!
 static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTypes.NpgsqlCidr cidr) -> NpgsqlTypes.NpgsqlInet
+*REMOVED*Npgsql.NpgsqlConnection.IntegratedSecurity.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.BackendTimeouts.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.BackendTimeouts.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ClientCertificate.get -> string?
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ClientCertificate.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ClientCertificateKey.get -> string?
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ClientCertificateKey.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ContinuousProcessing.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ContinuousProcessing.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ConvertInfinityDateTime.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ConvertInfinityDateTime.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.IncludeErrorDetails.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.IncludeErrorDetails.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.IntegratedSecurity.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.IntegratedSecurity.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.PreloadReader.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.PreloadReader.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.UseExtendedTypes.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.UseExtendedTypes.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.UsePerfCounters.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.UsePerfCounters.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.UseSslStream.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.UseSslStream.set -> void
+*REMOVED*Npgsql.NpgsqlNotificationEventArgs.AdditionalInformation.get -> string!
+*REMOVED*Npgsql.NpgsqlNotificationEventArgs.Condition.get -> string!
 *REMOVED*Npgsql.NpgsqlParameter.ConvertedValue.get -> object?
 *REMOVED*Npgsql.NpgsqlParameter.ConvertedValue.set -> void
+*REMOVED*Npgsql.PostgresException.Code.get -> string!
+*REMOVED*Npgsql.PostgresNotice.Code.get -> string!
 *REMOVED*Npgsql.PostgresTypes.PostgresArrayType.PostgresArrayType(string! ns, string! internalName, uint oid, Npgsql.PostgresTypes.PostgresType! elementPostgresType) -> void
 *REMOVED*Npgsql.PostgresTypes.PostgresBaseType.PostgresBaseType(string! ns, string! internalName, uint oid) -> void
 *REMOVED*Npgsql.PostgresTypes.PostgresType.PostgresType(string! ns, string! name, string! internalName, uint oid) -> void
 *REMOVED*Npgsql.PostgresTypes.PostgresType.PostgresType(string! ns, string! name, uint oid) -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.DeleteMessage.RelationId.get -> uint
+*REMOVED*Npgsql.Replication.PgOutput.Messages.InsertMessage.RelationId.get -> uint
+*REMOVED*Npgsql.Replication.PgOutput.Messages.UpdateMessage.RelationId.get -> uint
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void

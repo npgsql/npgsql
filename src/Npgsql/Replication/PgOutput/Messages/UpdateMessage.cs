@@ -19,12 +19,6 @@ public abstract class UpdateMessage : TransactionalMessage
     public RelationMessage Relation { get; private set; } = null!;
 
     /// <summary>
-    /// ID of the relation corresponding to the ID in the relation message.
-    /// </summary>
-    [Obsolete("Use Relation.RelationId")]
-    public uint RelationId => Relation.RelationId;
-
-    /// <summary>
     /// Columns representing the new row.
     /// </summary>
     public abstract ReplicationTuple NewRow { get; }
