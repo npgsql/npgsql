@@ -572,7 +572,7 @@ public sealed partial class NpgsqlConnector
         {
             await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt).ConfigureAwait(false);
 
-            var username = await conn.GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
+            var username = await conn.GetUsername(async, cancellationToken).ConfigureAwait(false);
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
@@ -704,7 +704,7 @@ public sealed partial class NpgsqlConnector
         WriteStartup(startupParams);
     }
 
-    ValueTask<string> GetUsernameAsync(bool async, CancellationToken cancellationToken)
+    ValueTask<string> GetUsername(bool async, CancellationToken cancellationToken)
     {
         var username = Settings.Username;
         if (username?.Length > 0)
@@ -720,9 +720,9 @@ public sealed partial class NpgsqlConnector
             return new(username);
         }
 
-        return GetUsernameAsyncInternal();
+        return GetUsernameInternal();
 
-        async ValueTask<string> GetUsernameAsyncInternal()
+        async ValueTask<string> GetUsernameInternal()
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {

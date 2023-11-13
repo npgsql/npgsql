@@ -1323,6 +1323,24 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     ArrayNullabilityMode _arrayNullabilityMode;
 
+    /// <summary>
+    /// Set service name to retrieve associated PostgreSQL configuration parameters from the pg_service.conf file.
+    /// </summary>
+    [Category("Advanced")]
+    [Description("Set service name to retrieve associated PostgreSQL configuration parameters from the pg_service.conf file.")]
+    [DisplayName("Service")]
+    [NpgsqlConnectionStringProperty]
+    public string? Service
+    {
+        get => _service;
+        set
+        {
+            _service = value;
+            SetValue(nameof(Service), value);
+        }
+    }
+    string? _service;
+
     #endregion
 
     #region Multiplexing
@@ -1418,6 +1436,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     internal void PostProcessAndValidate()
     {
+        LoadConfigurationFromPgServiceFile();
+
         if (string.IsNullOrWhiteSpace(Host))
             throw new ArgumentException("Host can't be null");
         if (Multiplexing && !Pooling)
@@ -1599,6 +1619,122 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
         foreach (var o in toRemove)
             propertyDescriptors.Remove(o.DisplayName);
+    }
+
+    #endregion
+
+    #region Load from Postgres service file
+
+    void LoadConfigurationFromPgServiceFile()
+    { 
+        Service ??= PostgresEnvironment.Service;
+        if (Service is null)
+        {
+            return;
+        }
+
+        if (!LoadConfigurationFromIniFile(PostgresEnvironment.UserServiceFile))
+            LoadConfigurationFromIniFile(PostgresEnvironment.SystemServiceFile);
+
+        bool LoadConfigurationFromIniFile(string? filePath)
+        {
+            if (filePath is null || !File.Exists(filePath))
+            {
+                return false;
+            }
+
+            var settings = ReadIniFile(filePath);
+            if (settings is null)
+            {
+                return false;
+            }
+
+            foreach (var kv in settings)
+            {
+                if (ContainsKey(kv.Key) && !Keys.Contains(kv.Key))
+                {
+                    this[kv.Key] = kv.Value;
+                }
+            }
+
+            return true;
+        }
+
+        Dictionary<string, string>? ReadIniFile(string filePath)
+        {
+            Dictionary<string, string>? settings = default;
+
+            var bytes = File.ReadAllBytes(filePath);
+            var mem = new MemoryStream(bytes);
+            using var reader = new StreamReader(mem);
+            while (reader.ReadLine() is { } rawLine)
+            {
+                var line = rawLine.Trim();
+
+                // Ignore blank lines
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                // Ignore comments
+                if (line[0] is ';' or '#' or '/')
+                {
+                    continue;
+                }
+
+                // [Section:header]
+                if (line[0] == '[' && line[line.Length - 1] == ']')
+                {
+                    // All settings for the specific service has been retrieved
+                    if (settings is not null)
+                    {
+                        break;
+                    }
+
+                    // remove the brackets
+                    var sectionPrefix = line.Substring(1, line.Length - 2).Trim();
+                    // Check whether it is the specified service
+                    if (sectionPrefix == Service)
+                    {
+                        settings = [];
+                    }
+
+                    continue;
+                }
+
+                // Skip lines if not in the section for specified service
+                if (settings is null)
+                {
+                    continue;
+                }
+
+                // key = value OR "value"
+                var separator = line.IndexOf('=');
+                if (separator <= 0)
+                {
+                    throw new FormatException($"Unrecognized line format: '{rawLine}'.");
+                }
+
+                var key = line.Substring(0, separator).Trim();
+                var value = line.Substring(separator + 1).Trim();
+
+                // Remove quotes
+                if (value.Length > 1 && value[0] == '"' && value[value.Length - 1] == '"')
+                {
+                    value = value.Substring(1, value.Length - 2);
+                }
+
+                if (settings.ContainsKey(key))
+                {
+                    throw new FormatException($"A duplicate key '{key}' was found.");
+                }
+
+                settings[key] = value;
+            }
+
+            return settings;
+        }
     }
 
     #endregion

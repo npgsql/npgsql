@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
@@ -126,5 +129,137 @@ class ConnectionStringBuilderTests
         var builder = new NpgsqlConnectionStringBuilder();
         Assert.That(() => builder.ConnectionString = "Server=127.0.0.1;User Id=npgsql_tests;Pooling:false",
             Throws.Exception.TypeOf<ArgumentException>());
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public void PgService_ViaEnvironmentVariable()
+    {
+        using var pgServiceVariable = SetEnvironmentVariable("PGSERVICE", "MyService");
+
+        PgService_With((service, host, port, reverse) =>
+        {
+            var builder = new NpgsqlConnectionStringBuilder();
+            builder.Host = host;
+            if (port is not null) builder.Port = (int)port;
+            return builder;
+        });
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public void PgService_ViaConnectionString()
+    {
+        PgService_With((service, host, port, reverse) =>
+        {
+            var fields = new List<string>();
+            if (service is not null) fields.Add($"Service={service}");
+            if (host is not null) fields.Add($"Host={host}");
+            if (port is not null) fields.Add($"Port={port}");
+            if (reverse) fields.Reverse();
+            return new NpgsqlConnectionStringBuilder(string.Join(";", fields));
+        });
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public void PgService_ViaProperty()
+    {
+        PgService_With((service, host, port, reverse) =>
+        {
+            var builder = new NpgsqlConnectionStringBuilder();
+            builder.Host = host;
+            if (port is not null && reverse) builder.Port = (int)port;
+            builder.Service = service;
+            if (port is not null && !reverse) builder.Port = (int)port;
+            return builder;
+        });
+    }
+
+    private void PgService_With(Func<string?, string?, int?, bool, NpgsqlConnectionStringBuilder> factory)
+    {
+        // Nominal case
+        var builder = factory("MyService", "MyHost", null, false);
+        builder.PostProcessAndValidate();
+        Assert.That(builder, Is.Not.Null);
+        Assert.That(builder.Count, Is.EqualTo(2));
+
+        // Missing service file is ignored
+        var tempFile = Path.GetTempFileName();
+        using var pgServiceFileVariable = SetEnvironmentVariable("PGSERVICEFILE", tempFile);
+        builder = factory("MyService", "MyHost", null, false);
+        builder.PostProcessAndValidate();
+        Assert.That(builder, Is.Not.Null);
+        Assert.That(builder.Count, Is.EqualTo(2));
+
+        try
+        {
+            // Comments are ignored
+            File.WriteAllText(tempFile, "# test");
+            builder = factory("MyService", "MyHost", null, false);
+            builder.PostProcessAndValidate();
+            Assert.That(builder, Is.Not.Null);
+            Assert.That(builder.Count, Is.EqualTo(2));
+
+            // Other services are ignored
+            File.WriteAllText(tempFile, """
+                [OtherService]
+                Host=test
+                Port=1234
+                """);
+            builder = factory("MyService", "MyHost", null, false);
+            builder.PostProcessAndValidate();
+            Assert.That(builder, Is.Not.Null);
+            Assert.That(builder.Count, Is.EqualTo(2));
+
+            // Unknown settings are ignored
+            File.WriteAllText(tempFile, """
+                [MyService]
+                Unknown=test
+                Port=1234
+                """);
+            builder = factory("MyService", "MyHost", null, false);
+            builder.PostProcessAndValidate();
+            builder.PostProcessAndValidate();
+            Assert.That(builder, Is.Not.Null);
+            Assert.That(builder.Count, Is.EqualTo(3));
+            Assert.That(builder.Host, Is.EqualTo("MyHost"));
+            Assert.That(builder.Port, Is.EqualTo(1234));
+            Assert.That(builder.Service, Is.EqualTo("MyService"));
+
+            // Overridden settings are ignored
+            File.WriteAllText(tempFile, """
+                [MyService]
+                Host=test
+                Port=1234
+                """);
+            builder = factory("MyService", "MyHost", null, false);
+            builder.PostProcessAndValidate();
+            Assert.That(builder, Is.Not.Null);
+            Assert.That(builder.Count, Is.EqualTo(3));
+            Assert.That(builder.Host, Is.EqualTo("MyHost"));
+            Assert.That(builder.Port, Is.EqualTo(1234));
+            Assert.That(builder.Service, Is.EqualTo("MyService"));
+
+            builder = factory("MyService", "MyHost", 5678, false);
+            builder.PostProcessAndValidate();
+            Assert.That(builder, Is.Not.Null);
+            Assert.That(builder.Count, Is.EqualTo(3));
+            Assert.That(builder.Host, Is.EqualTo("MyHost"));
+            Assert.That(builder.Port, Is.EqualTo(5678));
+            Assert.That(builder.Service, Is.EqualTo("MyService"));
+
+            builder = factory("MyService", "MyHost", 5678, true);
+            builder.PostProcessAndValidate();
+            Assert.That(builder, Is.Not.Null);
+            Assert.That(builder.Count, Is.EqualTo(3));
+            Assert.That(builder.Host, Is.EqualTo("MyHost"));
+            Assert.That(builder.Port, Is.EqualTo(5678));
+            Assert.That(builder.Service, Is.EqualTo("MyService"));
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 }
