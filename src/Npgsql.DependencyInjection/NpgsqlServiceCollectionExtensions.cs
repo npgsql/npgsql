@@ -41,7 +41,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="dataSourceBuilderAction">
     /// An action to configure the <see cref="NpgsqlDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
@@ -90,7 +90,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
@@ -139,7 +139,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="dataSourceBuilderAction">
     /// An action to configure the <see cref="NpgsqlSlimDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
@@ -188,7 +188,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
@@ -238,7 +238,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="dataSourceBuilderAction">
     /// An action to configure the <see cref="NpgsqlDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
@@ -290,7 +290,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
@@ -340,7 +340,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="dataSourceBuilderAction">
     /// An action to configure the <see cref="NpgsqlDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
@@ -392,7 +392,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
-    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the DataSource.</param>
+    /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
@@ -561,7 +561,7 @@ public static class NpgsqlServiceCollectionExtensions
         ServiceLifetime dataSourceLifetime)
     {
         // We don't try to invoke KeyedService methods if there is no service key.
-        // This allows users that use non-standard containers without support for IKeyedServiceProvider to keep on working.
+        // This allows user code that use non-standard containers without support for IKeyedServiceProvider to keep on working.
         if (serviceKey is not null)
         {
             serviceCollection.TryAdd(

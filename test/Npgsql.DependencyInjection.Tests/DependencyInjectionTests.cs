@@ -160,31 +160,33 @@ public class DependencyInjectionTests(DataSourceMode mode)
         Assert.That(listLoggerProvider.Log.Any(l => l.Id == NpgsqlEventId.CommandExecutionCompleted));
     }
 
-    IServiceCollection RegisterDataSource(ServiceCollection serviceCollection, string connectionString, object? serviceKey = null) => mode switch
-    {
-        DataSourceMode.Standard =>
-            serviceKey is not null
-                ? serviceCollection.AddNpgsqlDataSource(serviceKey, connectionString)
-                : serviceCollection.AddNpgsqlDataSource(connectionString),
-        DataSourceMode.Slim =>
-            serviceKey is not null
-                ? serviceCollection.AddNpgsqlSlimDataSource(serviceKey, connectionString)
-                : serviceCollection.AddNpgsqlSlimDataSource(connectionString),
-        _ => throw new NotSupportedException($"Mode {mode} not supported")
-    };
+    IServiceCollection RegisterDataSource(ServiceCollection serviceCollection, string connectionString, object? serviceKey = null)
+        => mode switch
+        {
+            DataSourceMode.Standard =>
+                serviceKey is not null
+                    ? serviceCollection.AddNpgsqlDataSource(serviceKey, connectionString)
+                    : serviceCollection.AddNpgsqlDataSource(connectionString),
+            DataSourceMode.Slim =>
+                serviceKey is not null
+                    ? serviceCollection.AddNpgsqlSlimDataSource(serviceKey, connectionString)
+                    : serviceCollection.AddNpgsqlSlimDataSource(connectionString),
+            _ => throw new NotSupportedException($"Mode {mode} not supported")
+        };
 
-    IServiceCollection RegisterMultiHostDataSource(ServiceCollection serviceCollection, string connectionString, object? serviceKey = null) => mode switch
-    {
-        DataSourceMode.Standard =>
-            serviceKey is not null
-                ? serviceCollection.AddMultiHostNpgsqlDataSource(serviceKey, connectionString)
-                : serviceCollection.AddMultiHostNpgsqlDataSource(connectionString),
-        DataSourceMode.Slim =>
-            serviceKey is not null
-                ? serviceCollection.AddMultiHostNpgsqlSlimDataSource(serviceKey, connectionString)
-                : serviceCollection.AddMultiHostNpgsqlSlimDataSource(connectionString),
-        _ => throw new NotSupportedException($"Mode {mode} not supported")
-    };
+    IServiceCollection RegisterMultiHostDataSource(ServiceCollection serviceCollection, string connectionString, object? serviceKey = null)
+        => mode switch
+        {
+            DataSourceMode.Standard =>
+                serviceKey is not null
+                    ? serviceCollection.AddMultiHostNpgsqlDataSource(serviceKey, connectionString)
+                    : serviceCollection.AddMultiHostNpgsqlDataSource(connectionString),
+            DataSourceMode.Slim =>
+                serviceKey is not null
+                    ? serviceCollection.AddMultiHostNpgsqlSlimDataSource(serviceKey, connectionString)
+                    : serviceCollection.AddMultiHostNpgsqlSlimDataSource(connectionString),
+            _ => throw new NotSupportedException($"Mode {mode} not supported")
+        };
 }
 
 public enum DataSourceMode
