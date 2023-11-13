@@ -828,7 +828,6 @@ $$ LANGUAGE plpgsql;";
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
     }
 
-#if DEBUG
     // The asserts we're testing are debug only.
     [Test]
     public async Task Use_after_reload_types_invalidates_cached_infos()
@@ -853,7 +852,6 @@ $$ LANGUAGE plpgsql;";
             Assert.DoesNotThrow(() => reader.GetInt32(0));
         }
     }
-#endif
 
     [Test, Description("CreateCommand before connection open")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/565")]
