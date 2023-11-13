@@ -76,18 +76,18 @@ For information on tweaking the pooling behavior (or turning it off), see the [p
 
 ### Connections without a data source
 
-The data source concept is new in Npgsql 7.0, and is the recommended way to use Npgsql. When using older versions, connections where instantiated directly, rather than obtaining them from a data source:
+The data source concept is new in Npgsql 7.0, and is the recommended way to use Npgsql. When using older versions, connections are instantiated directly, rather than obtaining them from a data source:
 
 ```csharp
 await using var conn = new NpgsqlConnection(connectionString);
 await conn.OpenAsync();
 ```
 
-Direct instantiation of connection is still supported, but is discouraged for various reasons when using Npgsql 7.0.
+Direct instantiation of connection is still supported, but is discouraged for various reasons when using Npgsql 7.0 or above.
 
 ## Other execution methods
 
-Above, we executed SQL via [ExecuteReaderAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executereaderasync). There are other ways to execute a command, based on what results you expect from it:
+Above, we executed SQL via [ExecuteReaderAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executereaderasync). There are various ways to execute a command, based on what results you expect from it:
 
 1. [ExecuteNonQueryAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executenonqueryasync): executes SQL which doesn't return any results, typically `INSERT`, `UPDATE` or `DELETE` statements. Returns the number of rows affected.
 2. [ExecuteScalarAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executescalarasync): executes SQL which returns a single, scalar value.
