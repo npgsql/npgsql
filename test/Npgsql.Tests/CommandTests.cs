@@ -1,7 +1,6 @@
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Tests.Support;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using NUnit.Framework;
 using System;
@@ -19,8 +18,8 @@ namespace Npgsql.Tests;
 
 public class CommandTests : MultiplexingTestBase
 {
-    static uint Int4Oid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value;
-    static uint TextOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Text].Value;
+    static uint Int4Oid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4).Value;
+    static uint TextOid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Text).Value;
 
     #region Legacy batching
 

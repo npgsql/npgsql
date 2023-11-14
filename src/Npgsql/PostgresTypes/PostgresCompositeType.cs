@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.PostgresTypes;
 
@@ -20,10 +21,14 @@ public class PostgresCompositeType : PostgresType
     /// <summary>
     /// Constructs a representation of a PostgreSQL array data type.
     /// </summary>
-#pragma warning disable CA2222 // Do not decrease inherited member visibility
     internal PostgresCompositeType(string ns, string name, uint oid)
         : base(ns, name, oid) {}
-#pragma warning restore CA2222 // Do not decrease inherited member visibility
+
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL domain data type.
+    /// </summary>
+    internal PostgresCompositeType(DataTypeName dataTypeName, Oid oid)
+        : base(dataTypeName, oid) {}
 
     /// <summary>
     /// Represents a field in a PostgreSQL composite data type.

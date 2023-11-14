@@ -13,7 +13,6 @@ using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Tests.Support;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -27,8 +26,8 @@ namespace Npgsql.Tests;
 [TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.SequentialAccess)]
 public class ReaderTests : MultiplexingTestBase
 {
-    static uint Int4Oid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value;
-    static uint ByteaOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Bytea].Value;
+    static uint Int4Oid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4).Value;
+    static uint ByteaOid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Bytea).Value;
 
     [Test]
     public async Task Resumable_non_consumed_to_non_resumable()
@@ -1238,7 +1237,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
             .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
             .FlushAsync();
 

@@ -1,4 +1,6 @@
-﻿namespace Npgsql.PostgresTypes;
+﻿using Npgsql.Internal.Postgres;
+
+namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL range data type.
@@ -24,6 +26,16 @@ public class PostgresRangeType : PostgresType
     protected internal PostgresRangeType(
         string ns, string name, uint oid, PostgresType subtypePostgresType)
         : base(ns, name, oid)
+    {
+        Subtype = subtypePostgresType;
+        Subtype.Range = this;
+    }
+
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL range data type.
+    /// </summary>
+    internal PostgresRangeType(DataTypeName dataTypeName, Oid oid, PostgresType subtypePostgresType)
+        : base(dataTypeName, oid)
     {
         Subtype = subtypePostgresType;
         Subtype.Range = this;

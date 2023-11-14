@@ -1,6 +1,5 @@
 ﻿using Npgsql.BackendMessages;
 using Npgsql.Tests.Support;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using NUnit.Framework;
 using System;
@@ -16,7 +15,7 @@ namespace Npgsql.Tests;
 
 public class BugTests : TestBase
 {
-    static uint ByteaOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Bytea].Value;
+    static uint ByteaOid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Bytea).Value;
 
     #region Sequential reader bugs
 

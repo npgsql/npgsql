@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
+using Npgsql.PostgresTypes;
 using Npgsql.Properties;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Internal.PgConverterFactory;
@@ -343,16 +343,16 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         var kind = CheckUnsupported(type, dataTypeName, options);
         switch (kind)
         {
-        case PgTypeKind.Range when kind.Value.HasFlag(PgTypeKind.Array):
+        case PostgresTypeKind.Range when kind.Value.HasFlag(PostgresTypeKind.Array):
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.RangeArraysNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableArrays), typeof(TBuilder).Name));
-        case PgTypeKind.Range:
+        case PostgresTypeKind.Range:
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.RangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), typeof(TBuilder).Name));
-        case PgTypeKind.Multirange when kind.Value.HasFlag(PgTypeKind.Array):
+        case PostgresTypeKind.Multirange when kind.Value.HasFlag(PostgresTypeKind.Array):
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.MultirangeArraysNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableArrays), typeof(TBuilder).Name));
-        case PgTypeKind.Multirange:
+        case PostgresTypeKind.Multirange:
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.MultirangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableMultiranges), typeof(TBuilder).Name));
         default:
@@ -360,7 +360,7 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
         }
     }
 
-    public static PgTypeKind? CheckUnsupported(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    public static PostgresTypeKind? CheckUnsupported(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
         // Only trigger on well known data type names.
         var npgsqlDbType = dataTypeName?.ToNpgsqlDbType();
@@ -371,12 +371,12 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
 
             if (npgsqlDbType.Value.HasFlag(NpgsqlDbType.Range))
                 return dataTypeName?.IsArray == true
-                    ? PgTypeKind.Array | PgTypeKind.Range
-                    : PgTypeKind.Range;
+                    ? PostgresTypeKind.Array | PostgresTypeKind.Range
+                    : PostgresTypeKind.Range;
 
             return dataTypeName?.IsArray == true
-                ? PgTypeKind.Array | PgTypeKind.Multirange
-                : PgTypeKind.Multirange;
+                ? PostgresTypeKind.Array | PostgresTypeKind.Multirange
+                : PostgresTypeKind.Multirange;
         }
 
         if (type == typeof(object))
@@ -407,10 +407,10 @@ class RangeTypeInfoResolver : IPgTypeInfoResolver
             // If we don't know more than the clr type, default to a Multirange kind over Array as they share the same types.
             foreach (var argument in matchingArguments)
                 if (argument == type)
-                    return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
+                    return isArray ? PostgresTypeKind.Multirange : PostgresTypeKind.Range;
 
             if (type.AssemblyQualifiedName == "System.Numerics.BigInteger,System.Runtime.Numerics")
-                return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
+                return isArray ? PostgresTypeKind.Multirange : PostgresTypeKind.Range;
         }
 
         return null;

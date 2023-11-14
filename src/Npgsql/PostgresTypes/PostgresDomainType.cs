@@ -1,4 +1,6 @@
-﻿namespace Npgsql.PostgresTypes;
+﻿using Npgsql.Internal.Postgres;
+
+namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL domain type.
@@ -28,6 +30,16 @@ public class PostgresDomainType : PostgresType
     /// </summary>
     protected internal PostgresDomainType(string ns, string name, uint oid, PostgresType baseType, bool notNull)
         : base(ns, name, oid)
+    {
+        BaseType = baseType;
+        NotNull = notNull;
+    }
+
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL domain data type.
+    /// </summary>
+    internal PostgresDomainType(DataTypeName dataTypeName, Oid oid, PostgresType baseType, bool notNull)
+        : base(dataTypeName, oid)
     {
         BaseType = baseType;
         NotNull = notNull;
