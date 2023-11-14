@@ -132,7 +132,7 @@ public sealed class TypeInfoMappingCollection
             var matchRequirement = mapping.MatchRequirement;
             if (dataTypeMatch && typeMatch
                 || matchRequirement is not MatchRequirement.All && dataTypeMatch && looseTypeMatch
-                || matchRequirement is MatchRequirement.Single && dataTypeName is null && looseTypeMatch)
+                || matchRequirement is MatchRequirement.Single && dataTypeName is null && typeMatch)
             {
                 var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, mapping.DataTypeName);
                 return mapping.Factory(options, mapping with { Type = type ?? mapping.Type, DataTypeName = resolvedDataTypeName }, dataTypeName is not null);
