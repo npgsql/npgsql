@@ -114,14 +114,14 @@ public class JsonDynamicTests : MultiplexingTestBase
     }
 
     [Test]
-    public async Task As_poco_supported_only_with_EnableDynamicJsonMappings()
+    public async Task As_poco_supported_only_with_EnableDynamicJson()
     {
-        // This test uses base.DataSource, which doesn't have EnableDynamicJsonMappings()
+        // This test uses base.DataSource, which doesn't have EnableDynamicJson()
 
         var errorMessage = string.Format(
             NpgsqlStrings.DynamicJsonNotEnabled,
             nameof(WeatherForecast),
-            nameof(INpgsqlTypeMapperExtensions.EnableDynamicJsonMappings),
+            nameof(INpgsqlTypeMapperExtensions.EnableDynamicJson),
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(
@@ -152,7 +152,7 @@ public class JsonDynamicTests : MultiplexingTestBase
     public async Task Poco_does_not_stomp_GetValue_string()
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
-        var dataSource = dataSourceBuilder.EnableDynamicJsonMappings(null, new[] {typeof(WeatherForecast)}, new[] {typeof(WeatherForecast)}).Build();
+        var dataSource = dataSourceBuilder.EnableDynamicJson(null, new[] {typeof(WeatherForecast)}, new[] {typeof(WeatherForecast)}).Build();
         var sqlLiteral =
             IsJsonb
                 ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
@@ -169,7 +169,7 @@ public class JsonDynamicTests : MultiplexingTestBase
     public async Task Custom_JsonSerializerOptions()
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJsonMappings(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        dataSourceBuilder.EnableDynamicJson(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertTypeWrite(
@@ -193,9 +193,9 @@ public class JsonDynamicTests : MultiplexingTestBase
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         if (IsJsonb)
-            dataSourceBuilder.EnableDynamicJsonMappings(jsonbClrTypes: new[] { typeof(WeatherForecast) });
+            dataSourceBuilder.EnableDynamicJson(jsonbClrTypes: new[] { typeof(WeatherForecast) });
         else
-            dataSourceBuilder.EnableDynamicJsonMappings(jsonClrTypes: new[] { typeof(WeatherForecast) });
+            dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(
@@ -224,7 +224,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             return;
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJsonMappings(jsonClrTypes: new[] { typeof(WeatherForecast) });
+        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType<WeatherForecast>(
@@ -251,7 +251,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             return;
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJsonMappings(jsonClrTypes: new[] { typeof(WeatherForecast) });
+        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
         await using var dataSource = dataSourceBuilder.Build();
 
         var value = new ExtendedDerivedWeatherForecast()
@@ -292,7 +292,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             return;
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJsonMappings(jsonClrTypes: new[] { typeof(ExtendedDerivedWeatherForecast) });
+        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(ExtendedDerivedWeatherForecast) });
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(
@@ -363,7 +363,7 @@ public class JsonDynamicTests : MultiplexingTestBase
     public JsonDynamicTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)
         : base(multiplexingMode)
     {
-        DataSource = CreateDataSource(b => b.EnableDynamicJsonMappings());
+        DataSource = CreateDataSource(b => b.EnableDynamicJson());
 
         if (npgsqlDbType == NpgsqlDbType.Jsonb)
             using (var conn = OpenConnection())

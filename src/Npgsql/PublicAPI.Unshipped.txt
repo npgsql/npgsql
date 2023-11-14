@@ -119,7 +119,7 @@ override NpgsqlTypes.NpgsqlCidr.ToString() -> string!
 *REMOVED*static NpgsqlTypes.NpgsqlInet.ToIPAddress(NpgsqlTypes.NpgsqlInet inet) -> System.Net.IPAddress!
 *REMOVED*static NpgsqlTypes.NpgsqlInet.ToNpgsqlInet(System.Net.IPAddress? ip) -> NpgsqlTypes.NpgsqlInet
 *REMOVED*Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
-static Npgsql.INpgsqlTypeMapperExtensions.EnableDynamicJsonMappings<T>(this T mapper, System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> T
+static Npgsql.INpgsqlTypeMapperExtensions.EnableDynamicJson<T>(this T mapper, System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> T
 static Npgsql.INpgsqlTypeMapperExtensions.EnableRecordsAsTuples<T>(this T mapper) -> T
 static Npgsql.INpgsqlTypeMapperExtensions.EnableUnmappedTypes<T>(this T mapper) -> T
 static NpgsqlTypes.NpgsqlCidr.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlCidr cidr) -> System.Net.IPAddress!
