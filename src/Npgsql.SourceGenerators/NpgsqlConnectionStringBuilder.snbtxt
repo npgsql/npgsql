@@ -4,7 +4,7 @@ using System.Collections.Generic;
 #nullable disable
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 #pragma warning disable RS0016 // Add public types and members to the declared API
-#pragma warning disable 618 // Member is obsolete
+#pragma warning disable CS0618 // Member is obsolete
 
 namespace Npgsql
 {
@@ -13,18 +13,18 @@ namespace Npgsql
         private partial int Init()
         {
             // Set the strongly-typed properties to their default values
-            {{
+            {{~
                for p in properties
                  if p.is_obsolete
                    continue
                  end
 
                  if (p.default_value != null)
-            }}
+            ~}}
             {{ p.name }} = {{ p.default_value }};
-            {{
+            {{~
                  end
-               end }}
+               end ~}}
 
             // Setting the strongly-typed properties here also set the string-based properties in the base class.
             // Clear them (default settings = empty connection string)
@@ -33,91 +33,59 @@ namespace Npgsql
             return 0;
         }
 
-        private partial int GeneratedSetter(string keyword, object value)
+        private partial bool GeneratedActions(GeneratedAction action, string keyword, ref object value)
         {
             switch (keyword)
             {
-            {{ for kv in properties_by_keyword }}
+            {{~ for kv in properties_by_keyword ~}}
             case "{{ kv.key }}":
-            {{ p = kv.value }}
-            {{ if p.is_enum }}
+            {{~ for alternative in kv.value.alternatives ~}}
+            case "{{ alternative }}":
+            {{~ end ~}}
             {
-                {{ p.name }} = value is string s
-                    ? ({{ p.type_name }})Enum.Parse(typeof({{ p.type_name }}), s, ignoreCase: true)
-                    : ({{ p.type_name }})Convert.ChangeType(value, typeof({{ p.type_name }}));
-            }
-            {{ else }}
-                {{ p.name }} = ({{ p.type_name }})Convert.ChangeType(value, typeof({{ p.type_name }}));
-            {{ end }}
-                break;
-            {{ end }}
-
-                default:
-                    throw new KeyNotFoundException();
-            }
-
-            return 0;
-        }
-
-        private partial bool TryGetValueGenerated(string keyword, out object value)
-        {
-            switch (keyword)
-            {
-            {{ for kv in properties_by_keyword }}
-            case "{{ kv.key }}":
-            {{ p = kv.value }}
-                value = (object){{ p.name }} ?? "";
+            {{~ p = kv.value ~}}
+                const string canonicalName = "{{ p.canonical_name }}";
+                switch(action)
+                {
+                case GeneratedAction.Remove: 
+                    var removed = base.ContainsKey(canonicalName);
+                    {{~ if p.default_value == null ~}}
+                    {{ p.name }} = default;
+                    {{~ else ~}}
+                    {{ p.name }} = {{ p.default_value }};
+                    {{~ end ~}}
+                    {{~ if p.type_name != "String" ~}}
+                    base.Remove(canonicalName);
+                    {{~ else ~}}
+                    // String property setters call SetValue, which itself calls base.Remove().
+                    {{~ end ~}}
+                    return removed;
+                case GeneratedAction.Set:
+                {{~ if p.is_enum ~}}
+                    {{ p.name }} = ({{ p.type_name }})GetValue(typeof({{ p.type_name }}), value);
+                {{~ else ~}}
+                    {{ p.name }} = ({{ p.type_name }})Convert.ChangeType(value, typeof({{ p.type_name }}));
+                {{~ end ~}}
+                    break;
+                case GeneratedAction.Get:
+                    value = (object){{ p.name }} ?? "";
+                    break;
+                case GeneratedAction.GetCanonical:
+                    value = canonicalName;
+                    break;
+                }
                 return true;
-            {{ end }}
             }
-
-            value = null;
-            return false;
+            {{~ end ~}}
+            }
+            if (action is GeneratedAction.Get or GeneratedAction.GetCanonical)
+                return false;
+            throw new KeyNotFoundException();
+            
+            static object GetValue(Type type, object value)
+                => value is string s
+                    ? Enum.Parse(type, s, ignoreCase: true)
+                    : Convert.ChangeType(value, type);
         }
-
-        private partial bool ContainsKeyGenerated(string keyword)
-            => keyword switch
-            {
-                {{ for kv in properties_by_keyword }}
-                "{{ kv.key }}" => true,
-                {{ end }}
-
-                _ => false
-            };
-
-        private partial bool RemoveGenerated(string keyword)
-        {
-            switch (keyword)
-            {
-            {{ for kv in properties_by_keyword }}
-            case "{{ kv.key }}":
-            {
-                {{ p = kv.value }}
-                var removed = base.ContainsKey("{{ p.canonical_name }}");
-                // Note that string property setters call SetValue, which itself calls base.Remove().
-                {{ if p.default_value == null }}
-                {{ p.name }} = default;
-                {{ else }}
-                {{ p.name }} = {{ p.default_value }};
-                {{ end }}
-                base.Remove("{{ p.canonical_name }}");
-                return removed;
-            }
-            {{ end }}
-
-            default:
-                throw new KeyNotFoundException();
-            }
-        }
-
-        private partial string ToCanonicalKeyword(string keyword)
-            => keyword switch
-            {
-                {{ for kv in properties_by_keyword }}
-                "{{ kv.key }}" => "{{ kv.value.canonical_name }}",
-                {{ end }}
-
-                _ => throw new KeyNotFoundException()
-            };
     }
 }

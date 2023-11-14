@@ -63,6 +63,19 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     // Method fake-returns an int only to make sure it's code-generated
     private partial int Init();
 
+    /// <summary>
+    /// GeneratedAction and GeneratedActions exist to be able to produce a streamlined binary footprint for NativeAOT.
+    /// An idiomatic approach where each action has its own method would double the binary size of NpgsqlConnectionStringBuilder.
+    /// </summary>
+    enum GeneratedAction
+    {
+        Set,
+        Get,
+        Remove,
+        GetCanonical
+    }
+    private partial bool GeneratedActions(GeneratedAction action, string keyword, ref object? value);
+
     #endregion
 
     #region Non-static property handling
@@ -91,7 +104,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
             try
             {
-                GeneratedSetter(keyword.ToUpperInvariant(), value);
+                var val = value;
+                GeneratedActions(GeneratedAction.Set, keyword.ToUpperInvariant(), ref val);
             }
             catch (Exception e)
             {
@@ -99,9 +113,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
             }
         }
     }
-
-    // Method fake-returns an int only to make sure it's code-generated
-    private partial int GeneratedSetter(string keyword, object? value);
 
     object? IDictionary<string, object?>.this[string keyword]
     {
@@ -125,9 +136,10 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// <param name="keyword">The key of the key/value pair to be removed from the connection string in this DbConnectionStringBuilder.</param>
     /// <returns><b>true</b> if the key existed within the connection string and was removed; <b>false</b> if the key did not exist.</returns>
     public override bool Remove(string keyword)
-        => RemoveGenerated(keyword.ToUpperInvariant());
-
-    private partial bool RemoveGenerated(string keyword);
+    {
+        object? value = null;
+        return GeneratedActions(GeneratedAction.Remove, keyword.ToUpperInvariant(), ref value);
+    }
 
     /// <summary>
     /// Removes the entry from the DbConnectionStringBuilder instance.
@@ -153,11 +165,10 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// <param name="keyword">The key to locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
     /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains an entry with the specified key; otherwise <b>false</b>.</returns>
     public override bool ContainsKey(string keyword)
-        => keyword is null
-            ? throw new ArgumentNullException(nameof(keyword))
-            : ContainsKeyGenerated(keyword.ToUpperInvariant());
-
-    private partial bool ContainsKeyGenerated(string keyword);
+    {
+        object? value = null;
+        return GeneratedActions(GeneratedAction.GetCanonical, (keyword ?? throw new ArgumentNullException(nameof(keyword))).ToUpperInvariant(), ref value);
+    }
 
     /// <summary>
     /// Determines whether the <see cref="NpgsqlConnectionStringBuilder"/> contains a specific key-value pair.
@@ -176,24 +187,23 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// <returns><b>true</b> if keyword was found within the connection string, <b>false</b> otherwise.</returns>
     public override bool TryGetValue(string keyword, [NotNullWhen(true)] out object? value)
     {
-        if (keyword == null)
-            throw new ArgumentNullException(nameof(keyword));
-
-        return TryGetValueGenerated(keyword.ToUpperInvariant(), out value);
+        object? v = null;
+        var result = GeneratedActions(GeneratedAction.Get, (keyword ?? throw new ArgumentNullException(nameof(keyword))).ToUpperInvariant(), ref v);
+        value = v;
+        return result;
     }
-
-    private partial bool TryGetValueGenerated(string keyword, [NotNullWhen(true)] out object? value);
 
     void SetValue(string propertyName, object? value)
     {
-        var canonicalKeyword = ToCanonicalKeyword(propertyName.ToUpperInvariant());
+        object? canonicalKeyword = null;
+        var result = GeneratedActions(GeneratedAction.GetCanonical, (propertyName ?? throw new ArgumentNullException(nameof(propertyName))).ToUpperInvariant(), ref canonicalKeyword);
+        if (!result)
+            throw new KeyNotFoundException();
         if (value == null)
-            base.Remove(canonicalKeyword);
+            base.Remove((string)canonicalKeyword!);
         else
-            base[canonicalKeyword] = value;
+            base[(string)canonicalKeyword!] = value;
     }
-
-    private partial string ToCanonicalKeyword(string keyword);
 
     #endregion
 

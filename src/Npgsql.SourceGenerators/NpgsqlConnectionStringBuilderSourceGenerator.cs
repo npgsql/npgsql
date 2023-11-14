@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -89,11 +90,24 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
 
             propertiesByKeyword[displayName.ToUpperInvariant()] = propertyDetails;
             if (property.Name != displayName)
-                propertiesByKeyword[property.Name.ToUpperInvariant()] = propertyDetails;
+            {
+                var propertyName = property.Name.ToUpperInvariant();
+                if (!propertiesByKeyword.ContainsKey(propertyName))
+                    propertyDetails.Alternatives.Add(propertyName);
+            }
+
             if (propertyAttribute.ConstructorArguments.Length == 1)
+            {
                 foreach (var synonymArg in propertyAttribute.ConstructorArguments[0].Values)
+                {
                     if (synonymArg.Value is string synonym)
-                        propertiesByKeyword[synonym.ToUpperInvariant()] = propertyDetails;
+                    {
+                        var synonymName = synonym.ToUpperInvariant();
+                        if (!propertiesByKeyword.ContainsKey(synonymName))
+                            propertyDetails.Alternatives.Add(synonymName);
+                    }
+                }
+            }
         }
 
         var template = Template.Parse(EmbeddedResource.GetContent("NpgsqlConnectionStringBuilder.snbtxt"), "NpgsqlConnectionStringBuilder.snbtxt");
@@ -115,5 +129,18 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
         public bool IsEnum { get; set; }
         public bool IsObsolete { get; set; }
         public object? DefaultValue { get; set; }
+
+        public HashSet<string> Alternatives { get; } = new(StringComparer.Ordinal);
+
+        public PropertyDetails Clone()
+            => new()
+            {
+                Name = Name,
+                CanonicalName = CanonicalName,
+                TypeName = TypeName,
+                IsEnum = IsEnum,
+                IsObsolete = IsObsolete,
+                DefaultValue = DefaultValue
+            };
     }
 }
