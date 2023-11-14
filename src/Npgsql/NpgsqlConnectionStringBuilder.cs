@@ -63,6 +63,10 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     // Method fake-returns an int only to make sure it's code-generated
     private partial int Init();
 
+    /// <summary>
+    /// GeneratedAction and GeneratedActions exist to be able to produce a streamlined binary footprint for NativeAOT.
+    /// An idiomatic approach where each action has its own method would double the binary size of NpgsqlConnectionStringBuilder.
+    /// </summary>
     enum GeneratedAction
     {
         Set,
