@@ -4,7 +4,7 @@ using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Properties;
 
-namespace Npgsql.Internal.Resolvers;
+namespace Npgsql.Internal.ResolverFactories;
 
 sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
 {
@@ -13,10 +13,11 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         if (options.IntrospectionMode)
             return null;
 
-        RecordTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
-        RangeTypeInfoResolver.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
-        FullTextSearchTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
-        LTreeTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
+        RecordTypeInfoResolverFactory.CheckUnsupported<TBuilder>(type, dataTypeName, options);
+        AdoTypeInfoResolverFactory.ThrowIfRangeUnsupported<TBuilder>(type, dataTypeName, options);
+        AdoTypeInfoResolverFactory.ThrowIfMultirangeUnsupported<TBuilder>(type, dataTypeName, options);
+        FullTextSearchTypeInfoResolverFactory.CheckUnsupported<TBuilder>(type, dataTypeName, options);
+        LTreeTypeInfoResolverFactory.CheckUnsupported<TBuilder>(type, dataTypeName, options);
 
         if (type is null)
             return null;

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
@@ -7,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.Resolvers;
+using Npgsql.Internal.ResolverFactories;
 using Npgsql.TypeMapping;
 
 namespace Npgsql;
@@ -48,28 +47,23 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public string ConnectionString => _internalBuilder.ConnectionString;
 
     internal static void ResetGlobalMappings(bool overwrite)
-        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new IPgTypeInfoResolver[]
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new PgTypeInfoResolverFactory[]
         {
-            overwrite ? new AdoTypeInfoResolver() : AdoTypeInfoResolver.Instance,
-            new ExtraConversionsResolver(),
-            new JsonTypeInfoResolver(),
-            new RangeTypeInfoResolver(),
-            new RecordTypeInfoResolver(),
-            new FullTextSearchTypeInfoResolver(),
-            new NetworkTypeInfoResolver(),
-            new GeometricTypeInfoResolver(),
-            new LTreeTypeInfoResolver(),
-
-            // Arrays
-            new AdoArrayTypeInfoResolver(),
-            new ExtraConversionsArrayTypeInfoResolver(),
-            new JsonArrayTypeInfoResolver(),
-            new RangeArrayTypeInfoResolver(),
-            new RecordArrayTypeInfoResolver(),
-            new FullTextSearchArrayTypeInfoResolver(),
-            new NetworkArrayTypeInfoResolver(),
-            new GeometricArrayTypeInfoResolver(),
-            new LTreeArrayTypeInfoResolver()
+            overwrite ? new AdoTypeInfoResolverFactory() : AdoTypeInfoResolverFactory.Instance,
+            new ExtraConversionResolverFactory(),
+            new JsonTypeInfoResolverFactory(),
+            new RecordTypeInfoResolverFactory(),
+            new FullTextSearchTypeInfoResolverFactory(),
+            new NetworkTypeInfoResolverFactory(),
+            new GeometricTypeInfoResolverFactory(),
+            new LTreeTypeInfoResolverFactory(),
+        }, static () =>
+        {
+            var builder = new PgTypeInfoResolverChainBuilder();
+            builder.EnableRanges();
+            builder.EnableMultiranges();
+            builder.EnableArrays();
+            return builder;
         }, overwrite);
 
     static NpgsqlDataSourceBuilder()
@@ -81,41 +75,13 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSourceBuilder(string? connectionString = null)
     {
         _internalBuilder = new(new NpgsqlConnectionStringBuilder(connectionString));
-        AddDefaultFeatures();
-
-        void AddDefaultFeatures()
-        {
-            _internalBuilder.EnableTransportSecurity();
-            _internalBuilder.EnableIntegratedSecurity();
-            AddTypeInfoResolver(UnsupportedTypeInfoResolver);
-
-            // Reverse order arrays.
-            AddTypeInfoResolver(new LTreeArrayTypeInfoResolver());
-            AddTypeInfoResolver(new GeometricArrayTypeInfoResolver());
-            AddTypeInfoResolver(new NetworkArrayTypeInfoResolver());
-            AddTypeInfoResolver(new FullTextSearchArrayTypeInfoResolver());
-            AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
-            AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
-            AddTypeInfoResolver(new JsonArrayTypeInfoResolver());
-            AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
-            AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
-
-            // Reverse order.
-            AddTypeInfoResolver(new LTreeTypeInfoResolver());
-            AddTypeInfoResolver(new GeometricTypeInfoResolver());
-            AddTypeInfoResolver(new NetworkTypeInfoResolver());
-            AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
-            AddTypeInfoResolver(new RecordTypeInfoResolver());
-            AddTypeInfoResolver(new RangeTypeInfoResolver());
-            AddTypeInfoResolver(new JsonTypeInfoResolver());
-            AddTypeInfoResolver(new ExtraConversionsResolver());
-            AddTypeInfoResolver(AdoTypeInfoResolver.Instance);
-
-            var plugins = new List<IPgTypeInfoResolver>(GlobalTypeMapper.Instance.GetPluginResolvers());
-            plugins.Reverse();
-            foreach (var plugin in plugins)
-                AddTypeInfoResolver(plugin);
-        }
+        _internalBuilder.EnableTransportSecurity();
+        _internalBuilder.EnableIntegratedSecurity();
+        _internalBuilder.ConfigureResolverChain = chain => chain.Add(UnsupportedTypeInfoResolver);
+        _internalBuilder.EnableRanges();
+        _internalBuilder.EnableMultiranges();
+        _internalBuilder.EnableArrays();
+        ResetResolverFactories();
     }
 
     /// <summary>
@@ -271,12 +237,24 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     #region Type mapping
 
     /// <inheritdoc />
-    public void AddTypeInfoResolver(IPgTypeInfoResolver resolver)
-        => _internalBuilder.AddTypeInfoResolver(resolver);
+    public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
+        => _internalBuilder.AddTypeInfoResolverFactory(factory);
 
     /// <inheritdoc />
     void INpgsqlTypeMapper.Reset()
-        => _internalBuilder.ResetTypeMappings();
+        => ResetResolverFactories();
+
+    void ResetResolverFactories()
+    {
+        _internalBuilder.ResetResolverFactories();
+        _internalBuilder.AppendResolverFactory(new ExtraConversionResolverFactory());
+        _internalBuilder.AppendResolverFactory(new JsonTypeInfoResolverFactory());
+        _internalBuilder.AppendResolverFactory(new RecordTypeInfoResolverFactory());
+        _internalBuilder.AppendResolverFactory(new FullTextSearchTypeInfoResolverFactory());
+        _internalBuilder.AppendResolverFactory(new NetworkTypeInfoResolverFactory());
+        _internalBuilder.AppendResolverFactory(new GeometricTypeInfoResolverFactory());
+        _internalBuilder.AppendResolverFactory(new LTreeTypeInfoResolverFactory());
+    }
 
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)

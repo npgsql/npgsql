@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Npgsql.Internal;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
@@ -192,11 +190,11 @@ public interface INpgsqlTypeMapper
         INpgsqlNameTranslator? nameTranslator = null);
 
     /// <summary>
-    /// Adds a type info resolver which can add or modify support for PostgreSQL types.
+    /// Adds a type info resolver factory which can add or modify support for PostgreSQL types.
     /// Typically used by plugins.
     /// </summary>
-    /// <param name="resolver">The type resolver to be added.</param>
-    void AddTypeInfoResolver(IPgTypeInfoResolver resolver);
+    /// <param name="factory">The type resolver factory to be added.</param>
+    void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory);
 
     /// <summary>
     /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.

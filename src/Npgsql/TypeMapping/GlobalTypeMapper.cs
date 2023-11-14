@@ -12,19 +12,19 @@ namespace Npgsql.TypeMapping;
 sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
     readonly UserTypeMapper _userTypeMapper = new();
-    readonly List<IPgTypeInfoResolver> _pluginResolvers = new();
+    readonly List<PgTypeInfoResolverFactory> _pluginResolverFactories = new();
     readonly ReaderWriterLockSlim _lock = new();
-    IPgTypeInfoResolver[] _typeMappingResolvers = Array.Empty<IPgTypeInfoResolver>();
+    PgTypeInfoResolverFactory[] _typeMappingResolvers = Array.Empty<PgTypeInfoResolverFactory>();
 
     internal List<HackyEnumTypeMapping> HackyEnumTypeMappings { get; } = new();
 
-    internal IEnumerable<IPgTypeInfoResolver> GetPluginResolvers()
+    internal IEnumerable<PgTypeInfoResolverFactory> GetPluginResolverFactories()
     {
-        var resolvers = new List<IPgTypeInfoResolver>();
+        var resolvers = new List<PgTypeInfoResolverFactory>();
         _lock.EnterReadLock();
         try
         {
-            resolvers.AddRange(_pluginResolvers);
+            resolvers.AddRange(_pluginResolverFactories);
         }
         finally
         {
@@ -34,12 +34,12 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         return resolvers;
     }
 
-    internal IPgTypeInfoResolver? GetUserMappingsResolver()
+    internal PgTypeInfoResolverFactory? GetUserMappingsResolverFactory()
     {
         _lock.EnterReadLock();
         try
         {
-            return _userTypeMapper.Items.Count > 0 ? _userTypeMapper.Build() : null;
+            return _userTypeMapper.Items.Count > 0 ? _userTypeMapper : null;
         }
         finally
         {
@@ -47,12 +47,13 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    internal void AddGlobalTypeMappingResolvers(IPgTypeInfoResolver[] resolvers, bool overwrite = false)
+    internal void AddGlobalTypeMappingResolvers(PgTypeInfoResolverFactory[] factories, Func<PgTypeInfoResolverChainBuilder>? builderFactory = null, bool overwrite = false)
     {
         // Good enough logic to prevent SlimBuilder overriding the normal Builder.
-        if (overwrite || resolvers.Length > _typeMappingResolvers.Length)
+        if (overwrite || factories.Length > _typeMappingResolvers.Length)
         {
-            _typeMappingResolvers = resolvers;
+            _builderFactory = builderFactory;
+            _typeMappingResolvers = factories;
             ResetTypeMappingCache();
         }
     }
@@ -60,6 +61,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     void ResetTypeMappingCache() => _typeMappingOptions = null;
 
     PgSerializerOptions? _typeMappingOptions;
+    Func<PgTypeInfoResolverChainBuilder>? _builderFactory;
 
     PgSerializerOptions TypeMappingOptions
     {
@@ -71,17 +73,19 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             _lock.EnterReadLock();
             try
             {
-                var resolvers = new List<IPgTypeInfoResolver>();
-                resolvers.Add(_userTypeMapper.Build());
-                resolvers.AddRange(_pluginResolvers);
-                resolvers.AddRange(_typeMappingResolvers);
+                var builder = _builderFactory?.Invoke() ?? new();
+                builder.AppendResolverFactory(_userTypeMapper);
+                foreach (var factory in _pluginResolverFactories)
+                    builder.AppendResolverFactory(factory);
+                foreach (var factory in _typeMappingResolvers)
+                    builder.AppendResolverFactory(factory);
                 return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
                     PortableTypeIds = true,
                     // Don't throw if our catalog doesn't know the datatypename.
                     IntrospectionMode = true,
-                    TypeInfoResolver = new TypeInfoResolverChain(resolvers)
+                    TypeInfoResolver = new TypeInfoResolverChain(builder.Build())
                 };
             }
             finally
@@ -114,32 +118,28 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     static GlobalTypeMapper()
         => Instance = new GlobalTypeMapper();
 
-    /// <summary>
-    /// Adds a type info resolver which can add or modify support for PostgreSQL types.
-    /// Typically used by plugins.
-    /// </summary>
-    /// <param name="resolver">The type resolver to be added.</param>
-    public void AddTypeInfoResolver(IPgTypeInfoResolver resolver)
+    /// <inheritdoc />
+    public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
     {
         _lock.EnterWriteLock();
         try
         {
-            var type = resolver.GetType();
+            var type = factory.GetType();
 
             // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapper.UseNodaTime,
             // we replace an existing resolver of the same CLR type.
-            if (_pluginResolvers.Count > 0 && _pluginResolvers[0].GetType() == type)
-                _pluginResolvers[0] = resolver;
-            for (var i = 0; i < _pluginResolvers.Count; i++)
+            if (_pluginResolverFactories.Count > 0 && _pluginResolverFactories[0].GetType() == type)
+                _pluginResolverFactories[0] = factory;
+            for (var i = 0; i < _pluginResolverFactories.Count; i++)
             {
-                if (_pluginResolvers[i].GetType() == type)
+                if (_pluginResolverFactories[i].GetType() == type)
                 {
-                    _pluginResolvers.RemoveAt(i);
+                    _pluginResolverFactories.RemoveAt(i);
                     break;
                 }
             }
 
-            _pluginResolvers.Insert(0, resolver);
+            _pluginResolverFactories.Insert(0, factory);
             ResetTypeMappingCache();
         }
         finally
@@ -154,7 +154,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         _lock.EnterWriteLock();
         try
         {
-            _pluginResolvers.Clear();
+            _pluginResolverFactories.Clear();
             _userTypeMapper.Items.Clear();
             HackyEnumTypeMappings.Clear();
         }

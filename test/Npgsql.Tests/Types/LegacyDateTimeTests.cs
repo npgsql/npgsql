@@ -1,7 +1,7 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
-using Npgsql.Internal.Resolvers;
+using Npgsql.Internal.ResolverFactories;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
@@ -60,8 +60,7 @@ public class LegacyDateTimeTests : TestBase
         _dataSource = CreateDataSource(builder =>
         {
             // Can't use the static AdoTypeInfoResolver instance, it already captured the feature flag.
-            builder.AddTypeInfoResolver(new AdoTypeInfoResolver());
-            builder.AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
+            builder.AddTypeInfoResolverFactory(new AdoTypeInfoResolverFactory());
             builder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
         });
         NpgsqlDataSourceBuilder.ResetGlobalMappings(overwrite: true);

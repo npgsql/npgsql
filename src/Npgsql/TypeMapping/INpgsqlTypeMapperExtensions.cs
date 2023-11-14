@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Npgsql.Internal.Resolvers;
+using Npgsql.Internal.ResolverFactories;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -38,8 +38,7 @@ public static class INpgsqlTypeMapperExtensions
         Type[]? jsonClrTypes = null)
         where T : INpgsqlTypeMapper
     {
-        mapper.AddTypeInfoResolver(new JsonDynamicTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
-        mapper.AddTypeInfoResolver(new JsonDynamicArrayTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        mapper.AddTypeInfoResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return mapper;
     }
 
@@ -51,8 +50,7 @@ public static class INpgsqlTypeMapperExtensions
     [RequiresDynamicCode("The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
     public static T EnableRecordsAsTuples<T>(this T mapper) where T : INpgsqlTypeMapper
     {
-        mapper.AddTypeInfoResolver(new TupledRecordTypeInfoResolver());
-        mapper.AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
+        mapper.AddTypeInfoResolverFactory(new TupledRecordTypeInfoResolverFactory());
         return mapper;
     }
 
@@ -64,14 +62,7 @@ public static class INpgsqlTypeMapperExtensions
     [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
     public static T EnableUnmappedTypes<T>(this T mapper) where T : INpgsqlTypeMapper
     {
-        mapper.AddTypeInfoResolver(new UnmappedEnumTypeInfoResolver());
-        mapper.AddTypeInfoResolver(new UnmappedRangeTypeInfoResolver());
-        mapper.AddTypeInfoResolver(new UnmappedMultirangeTypeInfoResolver());
-
-        mapper.AddTypeInfoResolver(new UnmappedEnumArrayTypeInfoResolver());
-        mapper.AddTypeInfoResolver(new UnmappedRangeArrayTypeInfoResolver());
-        mapper.AddTypeInfoResolver(new UnmappedMultirangeArrayTypeInfoResolver());
-
+        mapper.AddTypeInfoResolverFactory(new UnmappedTypeInfoResolverFactory());
         return mapper;
     }
 }

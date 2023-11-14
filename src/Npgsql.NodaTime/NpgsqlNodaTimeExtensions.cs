@@ -15,10 +15,7 @@ public static class NpgsqlNodaTimeExtensions
     /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
     public static INpgsqlTypeMapper UseNodaTime(this INpgsqlTypeMapper mapper)
     {
-        // TODO opt-in of arrays.
-        // Reverse order
-        mapper.AddTypeInfoResolver(new NodaTimeArrayTypeInfoResolver());
-        mapper.AddTypeInfoResolver(new NodaTimeTypeInfoResolver());
+        mapper.AddTypeInfoResolverFactory(new NodaTimeTypeInfoResolverFactory());
         return mapper;
     }
 }

@@ -29,10 +29,11 @@ public abstract class UserTypeMapping
     internal UserTypeMapping(string pgTypeName, Type type)
         => (PgTypeName, ClrType) = (pgTypeName, type);
 
-    internal abstract void Build(TypeInfoMappingCollection mappings);
+    internal abstract void AddMapping(TypeInfoMappingCollection mappings);
+    internal abstract void AddArrayMapping(TypeInfoMappingCollection mappings);
 }
 
-sealed class UserTypeMapper
+sealed class UserTypeMapper : PgTypeInfoResolverFactory
 {
     readonly List<UserTypeMapping> _mappings;
     public IList<UserTypeMapping> Items => _mappings;
@@ -144,21 +145,46 @@ sealed class UserTypeMapper
         => type.GetCustomAttribute<PgNameAttribute>()?.PgName
            ?? nameTranslator.TranslateTypeName(type.Name);
 
-    public IPgTypeInfoResolver Build()
-    {
-        var infoMappings = new TypeInfoMappingCollection();
-        foreach (var mapping in _mappings)
-            mapping.Build(infoMappings);
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(new(_mappings));
+    public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver(new(_mappings));
 
-        return new UserMappingResolver(infoMappings);
+    class Resolver : IPgTypeInfoResolver
+    {
+        protected readonly List<UserTypeMapping> _userTypeMappings;
+        TypeInfoMappingCollection? _mappings;
+        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new());
+
+        public Resolver(List<UserTypeMapping> userTypeMappings) => _userTypeMappings = userTypeMappings;
+
+        PgTypeInfo? IPgTypeInfoResolver.GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+            => Mappings.Find(type, dataTypeName, options);
+
+        TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
+        {
+            foreach (var userTypeMapping in _userTypeMappings)
+                userTypeMapping.AddMapping(mappings);
+
+            return mappings;
+        }
     }
 
-    sealed class UserMappingResolver : IPgTypeInfoResolver
+    sealed class ArrayResolver : Resolver, IPgTypeInfoResolver
     {
-        readonly TypeInfoMappingCollection _mappings;
-        public UserMappingResolver(TypeInfoMappingCollection mappings) => _mappings = mappings;
+        TypeInfoMappingCollection? _mappings;
+        new TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(base.Mappings));
+
+        public ArrayResolver(List<UserTypeMapping> userTypeMappings) : base(userTypeMappings) { }
+
         PgTypeInfo? IPgTypeInfoResolver.GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-            => _mappings.Find(type, dataTypeName, options);
+            => Mappings.Find(type, dataTypeName, options);
+
+        TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
+        {
+            foreach (var userTypeMapping in _userTypeMappings)
+                userTypeMapping.AddArrayMapping(mappings);
+
+            return mappings;
+        }
     }
 
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
@@ -170,7 +196,7 @@ sealed class UserTypeMapper
             : base(pgTypeName, typeof(T))
             => _nameTranslator = nameTranslator;
 
-        internal override void Build(TypeInfoMappingCollection mappings)
+        internal override void AddMapping(TypeInfoMappingCollection mappings)
         {
             mappings.AddType<T>(PgTypeName, (options, mapping, _) =>
             {
@@ -181,9 +207,9 @@ sealed class UserTypeMapper
                 return mapping.CreateInfo(options, new CompositeConverter<T>(
                     ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, _nameTranslator, options)));
             }, isDefault: true);
-            // TODO this should be split out so we can enjoy EnableArray trimming.
-            mappings.AddArrayType<T>(PgTypeName);
         }
+
+        internal override void AddArrayMapping(TypeInfoMappingCollection mappings) => mappings.AddArrayType<T>(PgTypeName);
     }
 
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
@@ -195,7 +221,7 @@ sealed class UserTypeMapper
             : base(pgTypeName, typeof(T))
             => _nameTranslator = nameTranslator;
 
-        internal override void Build(TypeInfoMappingCollection mappings)
+        internal override void AddMapping(TypeInfoMappingCollection mappings)
         {
             mappings.AddStructType<T>(PgTypeName, (options, mapping, dataTypeNameMatch) =>
             {
@@ -206,9 +232,9 @@ sealed class UserTypeMapper
                 return mapping.CreateInfo(options, new CompositeConverter<T>(
                     ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, _nameTranslator, options)));
             }, isDefault: true);
-            // TODO this should be split out so we can enjoy EnableArray trimming.
-            mappings.AddStructArrayType<T>(PgTypeName);
         }
+
+        internal override void AddArrayMapping(TypeInfoMappingCollection mappings) => mappings.AddStructArrayType<T>(PgTypeName);
     }
 
     internal abstract class EnumMapping : UserTypeMapping
@@ -242,14 +268,11 @@ sealed class UserTypeMapper
             }
         }
 
-        internal override void Build(TypeInfoMappingCollection mappings)
-        {
-            mappings.AddStructType<TEnum>(PgTypeName, (options, mapping, _) =>
+        internal override void AddMapping(TypeInfoMappingCollection mappings)
+            => mappings.AddStructType<TEnum>(PgTypeName, (options, mapping, _) =>
                 mapping.CreateInfo(options, new EnumConverter<TEnum>(_enumToLabel, _labelToEnum, options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
 
-            // TODO this should be split out so we can enjoy EnableArray trimming.
-            mappings.AddStructArrayType<TEnum>(PgTypeName);
-        }
+        internal override void AddArrayMapping(TypeInfoMappingCollection mappings) => mappings.AddStructArrayType<TEnum>(PgTypeName);
     }
 }
 
