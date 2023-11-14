@@ -294,7 +294,8 @@ static class GeoJSONConverter
             {
                 if (littleEndian)
                 {
-                    var value = BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref Unsafe.AsRef(reader.ReadDouble())));
+                    var doubleValue = reader.ReadDouble();
+                    var value = BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref doubleValue));
                     return Unsafe.As<long, double>(ref value);
                 }
 
