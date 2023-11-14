@@ -134,7 +134,7 @@ public sealed class TypeInfoMappingCollection
                 || matchRequirement is not MatchRequirement.All && dataTypeMatch && looseTypeMatch
                 || matchRequirement is MatchRequirement.Single && dataTypeName is null && typeMatch)
             {
-                var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, mapping.DataTypeName);
+                var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, mapping.DataTypeName, options);
                 return mapping.Factory(options, mapping with { Type = type ?? mapping.Type, DataTypeName = resolvedDataTypeName }, dataTypeName is not null);
             }
 
@@ -145,13 +145,13 @@ public sealed class TypeInfoMappingCollection
 
         if (fallback is { } fbMapping)
         {
-            var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, fbMapping.DataTypeName);
+            var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, fbMapping.DataTypeName, options);
             return fbMapping.Factory(options, fbMapping with { Type = type!, DataTypeName = resolvedDataTypeName }, dataTypeName is not null);
         }
 
         return null;
 
-        string ResolveFullyQualifiedDataTypeName(DataTypeName? dataTypeName, string mappingDataTypeName)
+        static string ResolveFullyQualifiedDataTypeName(DataTypeName? dataTypeName, string mappingDataTypeName, PgSerializerOptions options)
         {
             // Make sure plugins (which match on unqualified names) and converter resolvers get the fully qualified name to canonicalize.
             if (dataTypeName is not null)
