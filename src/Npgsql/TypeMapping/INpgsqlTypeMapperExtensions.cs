@@ -31,7 +31,7 @@ public static class INpgsqlTypeMapperExtensions
     /// </remarks>
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    public static T EnableDynamicJsonMappings<T>(
+    public static T EnableDynamicJson<T>(
         this T mapper,
         JsonSerializerOptions? serializerOptions = null,
         Type[]? jsonbClrTypes = null,
