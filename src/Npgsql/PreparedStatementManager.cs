@@ -222,7 +222,7 @@ sealed class PreparedStatementManager
                 }
             }
 
-            if (selectedIndex == -1)
+            if (selectedIndex < 0)
             {
                 // We're here if we couldn't find a free slot or a prepared statement to replace - this means all slots are taken by
                 // statements being prepared in this batch.
