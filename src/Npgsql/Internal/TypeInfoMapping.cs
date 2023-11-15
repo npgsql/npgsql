@@ -129,28 +129,39 @@ public sealed class TypeInfoMappingCollection
             var typeMatch = type is not null && looseTypeMatch;
             var dataTypeMatch = dataTypeName is not null && mapping.DataTypeNameEquals(dataTypeName.Value.Value);
 
-            switch (mapping.MatchRequirement)
+            var matchRequirement = mapping.MatchRequirement;
+            if (dataTypeMatch && typeMatch
+                || matchRequirement is not MatchRequirement.All && dataTypeMatch && looseTypeMatch
+                || matchRequirement is MatchRequirement.Single && dataTypeName is null && typeMatch)
             {
-            case var _ when dataTypeMatch && typeMatch:
-            case not MatchRequirement.All when dataTypeMatch && looseTypeMatch:
-            case MatchRequirement.Single when dataTypeName is null && looseTypeMatch:
-                var resolvedMapping = mapping with
-                {
-                    Type = type ?? mapping.Type,
-                    // Make sure plugins (which match on unqualified names) and resolvers get the fully qualified name to canonicalize.
-                    DataTypeName = dataTypeName is not null ? dataTypeName.GetValueOrDefault().Value : mapping.DataTypeName
-                };
-                return resolvedMapping.Factory(options, resolvedMapping, dataTypeName is not null);
-            // DataTypeName is explicitly requiring dataTypeName so it won't be used for a fallback, Single would have matched above already.
-            case MatchRequirement.All when fallback is null && dataTypeName is null && typeMatch:
-                fallback = mapping.TypeMatchPredicate is not null ? mapping with { Type = type! } : mapping;
-                break;
-            default:
-                continue;
+                var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, mapping.DataTypeName, options);
+                return mapping.Factory(options, mapping with { Type = type ?? mapping.Type, DataTypeName = resolvedDataTypeName }, dataTypeName is not null);
             }
+
+            // DataTypeName is explicitly requiring dataTypeName so it won't be used for a fallback, Single would have matched above already.
+            if (matchRequirement is MatchRequirement.All && fallback is null && dataTypeName is null && typeMatch)
+                fallback = mapping;
         }
 
-        return fallback?.Factory(options, fallback.Value, dataTypeName is not null);
+        if (fallback is { } fbMapping)
+        {
+            var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, fbMapping.DataTypeName, options);
+            return fbMapping.Factory(options, fbMapping with { Type = type!, DataTypeName = resolvedDataTypeName }, dataTypeName is not null);
+        }
+
+        return null;
+
+        static string ResolveFullyQualifiedDataTypeName(DataTypeName? dataTypeName, string mappingDataTypeName, PgSerializerOptions options)
+        {
+            // Make sure plugins (which match on unqualified names) and converter resolvers get the fully qualified name to canonicalize.
+            if (dataTypeName is not null)
+                return dataTypeName.GetValueOrDefault().Value;
+
+            if (TypeInfoMappingHelpers.TryResolveFullyQualifiedName(options, mappingDataTypeName, out var fqDataTypeName))
+                return fqDataTypeName.Value;
+
+            throw new NotSupportedException($"Cannot resolve '{mappingDataTypeName}' to a fully qualified datatype name. The datatype was not found in the current database info.");
+        }
     }
 
     bool TryGetMapping(Type type, string dataTypeName, out TypeInfoMapping value)
@@ -177,13 +188,17 @@ public sealed class TypeInfoMappingCollection
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgTypeInfo, PgConverter> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
         => (options, mapping, dataTypeNameMatch) =>
         {
-            var innerInfo = innerMapping.Factory(options, innerMapping, dataTypeNameMatch);
+            var resolvedInnerMapping = innerMapping;
+            if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
+                resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
+
+            var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, dataTypeNameMatch);
             var converter = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
             var writingSupported = supportsWriting && innerInfo.SupportsWriting;
             var unboxedType = ComputeUnboxedType(defaultType: mappingType, converter.TypeToConvert, mapping.Type);
 
-            return new PgTypeInfo(options, converter, TypeInfoMappingHelpers.ResolveFullyQualifiedName(options, mapping.DataTypeName), unboxedType)
+            return new PgTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType)
             {
                 PreferredFormat = preferredFormat,
                 SupportsWriting = writingSupported
@@ -194,7 +209,11 @@ public sealed class TypeInfoMappingCollection
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
         => (options, mapping, dataTypeNameMatch) =>
         {
-            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, innerMapping, dataTypeNameMatch);
+            var resolvedInnerMapping = innerMapping;
+            if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
+                resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
+
+            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, dataTypeNameMatch);
             var resolver = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
             var writingSupported = supportsWriting && innerInfo.SupportsWriting;
@@ -202,7 +221,7 @@ public sealed class TypeInfoMappingCollection
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
             PgTypeId? pgTypeId = innerInfo.PgTypeId is not null
-                ? TypeInfoMappingHelpers.ResolveFullyQualifiedName(options, mapping.DataTypeName)
+                ? options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName))
                 : null;
             return new PgResolverTypeInfo(options, resolver, pgTypeId, unboxedType)
             {
@@ -689,30 +708,38 @@ public sealed class TypeInfoMappingCollection
 
 public static class TypeInfoMappingHelpers
 {
-    internal static PgTypeId ResolveFullyQualifiedName(PgSerializerOptions options, string dataTypeName)
-        => !DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
-            ? options.ToCanonicalTypeId(options.DatabaseInfo.GetPostgresType(dataTypeName))
-            : new(new DataTypeName(dataTypeName));
+    internal static bool TryResolveFullyQualifiedName(PgSerializerOptions options, string dataTypeName, out DataTypeName fqDataTypeName)
+    {
+        if (DataTypeName.IsFullyQualified(dataTypeName.AsSpan()))
+        {
+            fqDataTypeName = new DataTypeName(dataTypeName);
+            return true;
+        }
+
+        if (options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
+        {
+            fqDataTypeName = pgType.DataTypeName;
+            return true;
+        }
+
+        fqDataTypeName = default;
+        return false;
+    }
 
     internal static PostgresType GetPgType(this TypeInfoMapping mapping, PgSerializerOptions options)
-        => !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? options.DatabaseInfo.GetPostgresType(mapping.DataTypeName)
-            : options.DatabaseInfo.GetPostgresType(new DataTypeName(mapping.DataTypeName));
+        => options.DatabaseInfo.GetPostgresType(new DataTypeName(mapping.DataTypeName));
 
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
-        => new(options, converter, ResolveFullyQualifiedName(options, mapping.DataTypeName))
+        => new(options, converter, new DataTypeName(mapping.DataTypeName))
         {
             PreferredFormat = preferredFormat,
             SupportsWriting = supportsWriting
         };
 
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null, bool supportsWriting = true)
-    {
-        PgTypeId? pgTypeId = includeDataTypeName ? ResolveFullyQualifiedName(options, mapping.DataTypeName) : null;
-        return new(options, resolver, pgTypeId)
+        => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
             PreferredFormat = preferredFormat,
             SupportsWriting = supportsWriting
         };
-    }
 }
