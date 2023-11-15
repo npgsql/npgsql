@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -44,6 +43,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 
+    readonly Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
@@ -52,7 +52,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal Action<NpgsqlConnection>? ConnectionInitializer { get; }
     internal Func<NpgsqlConnection, Task>? ConnectionInitializerAsync { get; }
 
-    readonly Timer? _passwordProviderTimer;
+    readonly Timer? _periodicPasswordProviderTimer;
     readonly CancellationTokenSource? _timerPasswordProviderCancellationTokenSource;
     readonly Task _passwordRefreshTask = null!;
     string? _password;
@@ -101,6 +101,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 IntegratedSecurityHandler,
                 UserCertificateValidationCallback,
                 ClientCertificatesCallback,
+                _passwordProvider,
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
@@ -123,7 +124,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             _timerPasswordProviderCancellationTokenSource = new();
 
             // Create the timer, but don't start it; the manual run below will will schedule the first refresh.
-            _passwordProviderTimer = new Timer(state => _ = RefreshPassword(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            _periodicPasswordProviderTimer = new Timer(state => _ = RefreshPassword(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             // Trigger the first refresh attempt right now, outside the timer; this allows us to capture the Task so it can be observed
             // in GetPasswordAsync.
             _passwordRefreshTask = Task.Run(RefreshPassword);
@@ -293,7 +294,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         set
         {
-            if (_periodicPasswordProvider is not null)
+            if (_passwordProvider is not null || _periodicPasswordProvider is not null)
                 throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
 
             _password = value;
@@ -302,6 +303,9 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal async ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken = default)
     {
+        if (_passwordProvider is not null)
+            return InvokePasswordProvider();
+
         // A periodic password provider is configured, but the first refresh hasn't completed yet (race condition).
         // Wait until it completes.
         if (_password is null && _periodicPasswordProvider is not null)
@@ -310,11 +314,24 @@ public abstract class NpgsqlDataSource : DbDataSource
                 await _passwordRefreshTask.ConfigureAwait(false);
             else
                 _passwordRefreshTask.GetAwaiter().GetResult();
-
             Debug.Assert(_password is not null);
         }
 
         return _password;
+
+        string InvokePasswordProvider()
+        {
+            try
+            {
+                return _passwordProvider(Settings);
+            }
+            catch (Exception e)
+            {
+                _connectionLogger.LogError(e, "Password provider threw an exception");
+
+                throw new NpgsqlException("An exception was thrown from the password provider", e);
+            }
+        }
     }
 
     async Task RefreshPassword()
@@ -323,13 +340,13 @@ public abstract class NpgsqlDataSource : DbDataSource
         {
             _password = await _periodicPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token).ConfigureAwait(false);
 
-            _passwordProviderTimer!.Change(_periodicPasswordSuccessRefreshInterval, Timeout.InfiniteTimeSpan);
+            _periodicPasswordProviderTimer!.Change(_periodicPasswordSuccessRefreshInterval, Timeout.InfiniteTimeSpan);
         }
         catch (Exception e)
         {
             _connectionLogger.LogError(e, "Periodic password provider threw an exception");
 
-            _passwordProviderTimer!.Change(_periodicPasswordFailureRefreshInterval, Timeout.InfiniteTimeSpan);
+            _periodicPasswordProviderTimer!.Change(_periodicPasswordFailureRefreshInterval, Timeout.InfiniteTimeSpan);
 
             throw new NpgsqlException("An exception was thrown from the periodic password provider", e);
         }
@@ -448,7 +465,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             cancellationTokenSource.Dispose();
         }
 
-        _passwordProviderTimer?.Dispose();
+        _periodicPasswordProviderTimer?.Dispose();
         _setupMappingsSemaphore.Dispose();
         MetricsReporter.Dispose(); // TODO: This is probably too early, dispose only when all connections have been closed?
 
@@ -475,12 +492,12 @@ public abstract class NpgsqlDataSource : DbDataSource
             cancellationTokenSource.Dispose();
         }
 
-        if (_passwordProviderTimer is not null)
+        if (_periodicPasswordProviderTimer is not null)
         {
 #if NET5_0_OR_GREATER
-            await _passwordProviderTimer.DisposeAsync().ConfigureAwait(false);
+            await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
 #else
-            _passwordProviderTimer.Dispose();
+            _periodicPasswordProviderTimer.Dispose();
 #endif
         }
 

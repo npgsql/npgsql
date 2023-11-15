@@ -48,6 +48,33 @@ public class AuthenticationTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task Password_provider()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
+        var providerCalled = false;
+        dataSourceBuilder.UsePasswordProvider(settings =>
+        {
+            providerCalled = true;
+            return password;
+        });
+
+        using var dataSource = dataSourceBuilder.Build();
+        using var conn = await dataSource.OpenConnectionAsync();
+        Assert.True(providerCalled, "Password_provider not used");
+    }
+
+    [Test]
+    public void Password_provider_exception()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        dataSourceBuilder.UsePasswordProvider(settings => throw new Exception());
+
+        using var dataSource = dataSourceBuilder.Build();
+        Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync());
+    }
+
+    [Test]
     public async Task Periodic_password_provider()
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
@@ -127,6 +154,17 @@ public class AuthenticationTests : MultiplexingTestBase
         dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10));
         Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
             .With.Message.EqualTo(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword));
+    }
+
+    [Test]
+    public void Multiple_password_providers_is_not_supported()
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
+        dataSourceBuilder
+            .UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10))
+            .UsePasswordProvider(_ => "foo");
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSetMultiplePasswordProviders));
     }
 
     #region pgpass

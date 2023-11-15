@@ -33,6 +33,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     IntegratedSecurityHandler _integratedSecurityHandler = new();
 
+    Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
@@ -236,6 +237,23 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         _periodicPasswordSuccessRefreshInterval = successRefreshInterval;
         _periodicPasswordFailureRefreshInterval = failureRefreshInterval;
 
+        return this;
+    }
+
+    /// <summary>
+    /// Configures a password provider, which is called by the data source when opening connections.
+    /// </summary>
+    /// <param name="passwordProvider">A callback which returns the password to be sent to PostgreSQL.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    /// <remarks>
+    /// <para>
+    /// The provided callback is invoked when opening connections. Therefore its important the callback internally depends on cached
+    /// data or returns quickly otherwise. Any unnecessary delay will affect connection opening time.
+    /// </para>
+    /// </remarks>
+    public NpgsqlSlimDataSourceBuilder UsePasswordProvider(Func<NpgsqlConnectionStringBuilder, string> passwordProvider)
+    {
+        _passwordProvider = passwordProvider;
         return this;
     }
 
@@ -504,7 +522,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             throw new InvalidOperationException(NpgsqlStrings.TransportSecurityDisabled);
         }
 
-        if (_periodicPasswordProvider is not null &&
+        if (_passwordProvider is not null && _periodicPasswordProvider is not null)
+        {
+            throw new NotSupportedException(NpgsqlStrings.CannotSetMultiplePasswordProviders);
+        }
+
+        if ((_passwordProvider is not null || _periodicPasswordProvider is not null) &&
             (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
         {
             throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
@@ -519,6 +542,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _integratedSecurityHandler,
             _userCertificateValidationCallback,
             _clientCertificatesCallback,
+            _passwordProvider,
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
