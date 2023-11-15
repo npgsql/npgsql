@@ -404,7 +404,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         void BuildLookup()
         {
             if (TwoPassCompatMode)
-                _caseSensitiveLookup = new Dictionary<string, int>(InternalList.Count, StringComparer.Ordinal);
+                _caseSensitiveLookup = new Dictionary<string, int>(InternalList.Count);
 
             _caseInsensitiveLookup = new Dictionary<string, int>(InternalList.Count, StringComparer.OrdinalIgnoreCase);
 
@@ -674,7 +674,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             if (TwoPassCompatMode)
             {
                 Debug.Assert(_caseSensitiveLookup is not null);
-                other._caseSensitiveLookup = new Dictionary<string, int>(_caseSensitiveLookup, StringComparer.Ordinal);
+                other._caseSensitiveLookup = new Dictionary<string, int>(_caseSensitiveLookup);
             }
         }
     }
