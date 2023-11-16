@@ -93,9 +93,15 @@ namespace Npgsql.Properties {
             }
         }
         
-        internal static string CannotSetMultiplePasswordProviders {
+        internal static string CannotSetMultiplePasswordProviderKinds {
             get {
-                return ResourceManager.GetString("CannotSetMultiplePasswordProviders", resourceCulture);
+                return ResourceManager.GetString("CannotSetMultiplePasswordProviderKinds", resourceCulture);
+            }
+        }
+        
+        internal static string SyncAndAsyncPasswordProvidersRequired {
+            get {
+                return ResourceManager.GetString("SyncAndAsyncPasswordProvidersRequired", resourceCulture);
             }
         }
         

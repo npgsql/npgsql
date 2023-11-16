@@ -48,27 +48,32 @@ public class AuthenticationTests : MultiplexingTestBase
     }
 
     [Test]
-    public async Task Password_provider()
+    public async Task Password_provider([Values]bool async)
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
         var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
-        var providerCalled = false;
-        dataSourceBuilder.UsePasswordProvider(settings =>
+        var syncProviderCalled = false;
+        var asyncProviderCalled = false;
+        dataSourceBuilder.UsePasswordProvider(_ =>
         {
-            providerCalled = true;
+            syncProviderCalled = true;
             return password;
+        }, (_,_) =>
+        {
+            asyncProviderCalled = true;
+            return new(password);
         });
 
         using var dataSource = dataSourceBuilder.Build();
-        using var conn = await dataSource.OpenConnectionAsync();
-        Assert.True(providerCalled, "Password_provider not used");
+        using var conn = async ? await dataSource.OpenConnectionAsync() : dataSource.OpenConnection();
+        Assert.True(async ? asyncProviderCalled : syncProviderCalled, "Password_provider not used");
     }
 
     [Test]
     public void Password_provider_exception()
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
-        dataSourceBuilder.UsePasswordProvider(settings => throw new Exception());
+        dataSourceBuilder.UsePasswordProvider(_ => throw new Exception(), (_,_) => throw new Exception());
 
         using var dataSource = dataSourceBuilder.Build();
         Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync());
@@ -162,9 +167,9 @@ public class AuthenticationTests : MultiplexingTestBase
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
         dataSourceBuilder
             .UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10))
-            .UsePasswordProvider(_ => "foo");
+            .UsePasswordProvider(_ => "foo", (_,_) => new("foo"));
         Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
-            .With.Message.EqualTo(NpgsqlStrings.CannotSetMultiplePasswordProviders));
+            .With.Message.EqualTo(NpgsqlStrings.CannotSetMultiplePasswordProviderKinds));
     }
 
     #region pgpass

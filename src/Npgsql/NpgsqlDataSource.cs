@@ -44,6 +44,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 
     readonly Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
+    readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _passwordProviderAsync;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
@@ -102,6 +103,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 UserCertificateValidationCallback,
                 ClientCertificatesCallback,
                 _passwordProvider,
+                _passwordProviderAsync,
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
@@ -112,6 +114,8 @@ public abstract class NpgsqlDataSource : DbDataSource
                 ConnectionInitializerAsync)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
+
+        Debug.Assert(_passwordProvider is null || _passwordProviderAsync is not null);
 
         // TODO probably want this on the options so it can devirt unconditionally.
         _resolver = new TypeInfoResolverChain(resolverChain);
@@ -301,29 +305,33 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    internal async ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken = default)
+    internal ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken = default)
     {
         if (_passwordProvider is not null)
-            return InvokePasswordProvider();
+            return GetPassword(async, cancellationToken);
 
         // A periodic password provider is configured, but the first refresh hasn't completed yet (race condition).
-        // Wait until it completes.
         if (_password is null && _periodicPasswordProvider is not null)
+            return GetInitialPeriodicPassword(async);
+
+        return new(_password);
+
+        async ValueTask<string?> GetInitialPeriodicPassword(bool async)
         {
             if (async)
                 await _passwordRefreshTask.ConfigureAwait(false);
             else
                 _passwordRefreshTask.GetAwaiter().GetResult();
             Debug.Assert(_password is not null);
+
+            return _password;
         }
 
-        return _password;
-
-        string InvokePasswordProvider()
+        async ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken)
         {
             try
             {
-                return _passwordProvider(Settings);
+                return async ? await _passwordProviderAsync!(Settings, cancellationToken).ConfigureAwait(false) : _passwordProvider(Settings);
             }
             catch (Exception e)
             {
