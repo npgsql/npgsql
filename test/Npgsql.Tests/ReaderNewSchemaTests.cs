@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
@@ -740,6 +741,25 @@ CREATE TABLE {table2} (foo INTEGER)");
 
         var columns = await GetColumnSchema(reader);
         Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
+    }
+
+    [Test]
+    public async Task GetColumnSchema_via_interface()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "foo INTEGER");
+
+        using var cmd = new NpgsqlCommand($"SELECT foo FROM {table} WHERE foo > @p", conn)
+        {
+            Parameters = { new() { ParameterName = "p", NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer } }
+        };
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+
+        var iface = (IDbColumnSchemaGenerator)reader;
+        var schema = iface.GetColumnSchema();
+        Assert.NotNull(schema);
+        Assert.AreEqual(1, schema.Count);
+        Assert.NotNull(schema[0]);
     }
 
     #region Not supported
