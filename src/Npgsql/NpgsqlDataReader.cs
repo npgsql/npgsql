@@ -65,11 +65,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     internal int StatementIndex { get; private set; }
 
     /// <summary>
-    /// The number of columns in the current row
-    /// </summary>
-    int _numColumns;
-
-    /// <summary>
     /// Records, for each column, its starting offset and length in the current row.
     /// Used only in non-sequential mode.
     /// </summary>
@@ -100,6 +95,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// The RowDescription message for the current resultset being processed
     /// </summary>
     internal RowDescriptionMessage? RowDescription;
+
+    int ColumnCount => RowDescription!.Count;
 
     /// <summary>
     /// Stores the last converter info resolved by column, to speed up repeated reading.
@@ -353,7 +350,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (statementIndex >= 0)
             {
                 if (RowDescription is { } description && statements[statementIndex].IsPrepared && ColumnInfoCache is { } cache)
-                    description.SetColumnInfoCache(new(cache, 0, _numColumns));
+                    description.SetColumnInfoCache(new(cache, 0, ColumnCount));
 
                 if (statementIndex is 0 && _behavior.HasFlag(CommandBehavior.SingleResult) && !isConsuming)
                 {
@@ -417,13 +414,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 if (RowDescription is not null)
                 {
-                    if (ColumnInfoCache?.Length >= RowDescription.Count)
-                        Array.Clear(ColumnInfoCache, 0, RowDescription.Count);
+                    if (ColumnInfoCache?.Length >= ColumnCount)
+                        Array.Clear(ColumnInfoCache, 0, ColumnCount);
                     else
                     {
                         if (ColumnInfoCache is { } cache)
                             ArrayPool<ColumnInfo>.Shared.Return(cache, clearArray: true);
-                        ColumnInfoCache = ArrayPool<ColumnInfo>.Shared.Rent(RowDescription.Count);
+                        ColumnInfoCache = ArrayPool<ColumnInfo>.Shared.Rent(ColumnCount);
                     }
                     if (statement.IsPrepared)
                         RowDescription.LoadColumnInfoCache(Connector.SerializerOptions, ColumnInfoCache);
@@ -580,7 +577,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                     var statement = _statements[StatementIndex];
                     if (statement.IsPrepared && ColumnInfoCache is not null)
-                        RowDescription!.SetColumnInfoCache(new(ColumnInfoCache, 0, _numColumns));
+                        RowDescription!.SetColumnInfoCache(new(ColumnInfoCache, 0, ColumnCount));
 
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
                         Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
@@ -734,13 +731,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 // Found a resultset
                 if (RowDescription is not null)
                 {
-                    if (ColumnInfoCache?.Length >= RowDescription.Count)
-                        Array.Clear(ColumnInfoCache, 0, RowDescription.Count);
+                    if (ColumnInfoCache?.Length >= ColumnCount)
+                        Array.Clear(ColumnInfoCache, 0, ColumnCount);
                     else
                     {
                         if (ColumnInfoCache is { } cache)
                             ArrayPool<ColumnInfo>.Shared.Return(cache, clearArray: true);
-                        ColumnInfoCache = ArrayPool<ColumnInfo>.Shared.Rent(RowDescription.Count);
+                        ColumnInfoCache = ArrayPool<ColumnInfo>.Shared.Rent(ColumnCount);
                     }
                     return true;
                 }
@@ -807,8 +804,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             Buffer = Connector.ReadBuffer;
         // We assume that the row's number of columns is identical to the description's
         var numColumns = Buffer.ReadInt16();
-        Debug.Assert(numColumns == RowDescription!.Count,
-            $"Row's number of columns ({numColumns}) differs from the row description's ({RowDescription.Count})");
+        if (ColumnCount != numColumns)
+            ThrowHelper.ThrowArgumentException($"Row's number of columns ({numColumns}) differs from the row description's ({ColumnCount})");
 
         var readPosition = Buffer.ReadPosition;
         var msgRemainder = dataRow.Length - sizeof(short);
@@ -823,7 +820,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         switch (State)
         {
         case ReaderState.BetweenResults:
-            _numColumns = numColumns;
             _hasRows = true;
             State = ReaderState.BeforeResult;
             break;
@@ -1810,7 +1806,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         => GetColumnSchema(async: true, cancellationToken);
 
     Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
-        => RowDescription == null || RowDescription.Count == 0
+        => RowDescription == null || ColumnCount == 0
             ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
             : new DbColumnSchemaGenerator(_connection!, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                 .GetColumnSchema(async, cancellationToken);
@@ -2124,7 +2120,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             else
                 PgReader.Commit(resuming: false);
             // Skip over the remaining columns in the row
-            for (; _column < _numColumns - 1; _column++)
+            for (; _column < ColumnCount - 1; _column++)
             {
                 await Buffer.Ensure(4, async).ConfigureAwait(false);
                 var len = Buffer.ReadInt32();
@@ -2183,12 +2179,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     DataFormat GetInfo(int ordinal, Type type, out PgConverter converter, out Size bufferRequirement, out bool asObject)
     {
         var state = State;
-        if (state is not ReaderState.InResult || (uint)ordinal > (uint)_numColumns)
+        if (state is not ReaderState.InResult || (uint)ordinal > (uint)ColumnCount)
         {
             Unsafe.SkipInit(out converter);
             Unsafe.SkipInit(out bufferRequirement);
             Unsafe.SkipInit(out asObject);
-            HandleInvalidState(state, _numColumns);
+            HandleInvalidState(state, ColumnCount);
             Debug.Fail("Should never get here");
         }
 
