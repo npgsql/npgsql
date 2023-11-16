@@ -1792,7 +1792,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var columns = GetColumnSchema();
         var result = new DbColumn[columns.Count];
         var i = 0;
-        foreach (var column in result)
+        foreach (var column in columns)
             result[i++] = column;
 
         return new ReadOnlyCollection<DbColumn>(result);
