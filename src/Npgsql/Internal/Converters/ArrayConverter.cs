@@ -135,6 +135,9 @@ readonly struct PgArrayConverter
 
     public async ValueTask<object> Read(bool async, PgReader reader, CancellationToken cancellationToken = default)
     {
+        if (reader.ShouldBuffer(sizeof(int) + sizeof(int) + sizeof(uint)))
+            await reader.Buffer(async, sizeof(int) + sizeof(int) + sizeof(uint), cancellationToken).ConfigureAwait(false);
+
         var dimensions = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
         _ = reader.ReadUInt32(); // Element OID.
