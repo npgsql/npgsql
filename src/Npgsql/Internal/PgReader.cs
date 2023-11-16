@@ -87,11 +87,17 @@ public class PgReader
         _currentSize = size;
     }
 
-    [Conditional("DEBUG")]
     void CheckBounds(int count)
     {
-        if (count > FieldRemaining)
-            ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the field.");
+        if (NpgsqlReadBuffer.BufferBoundsChecks)
+            Core(count);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void Core(int count)
+        {
+            if (count > FieldRemaining)
+                ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the field.");
+        }
     }
 
     public byte ReadByte()

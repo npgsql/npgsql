@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +20,8 @@ namespace Npgsql.Internal;
 sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
+
+    internal static readonly bool BufferBoundsChecks = Statics.EnableDiagnostics;
 
     public NpgsqlConnection Connection => Connector.Connection!;
     internal readonly NpgsqlConnector Connector;
@@ -471,7 +472,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte ReadByte()
     {
-        CheckBounds<byte>();
+        CheckBounds(sizeof(byte));
         var result = Buffer[ReadPosition];
         ReadPosition += sizeof(byte);
         return result;
@@ -480,7 +481,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public short ReadInt16()
     {
-        CheckBounds<short>();
+        CheckBounds(sizeof(short));
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<short>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<short>(ref Buffer[ReadPosition]);
@@ -491,7 +492,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ushort ReadUInt16()
     {
-        CheckBounds<ushort>();
+        CheckBounds(sizeof(ushort));
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ushort>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<ushort>(ref Buffer[ReadPosition]);
@@ -502,7 +503,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int ReadInt32()
     {
-        CheckBounds<int>();
+        CheckBounds(sizeof(int));
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]);
@@ -513,7 +514,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public uint ReadUInt32()
     {
-        CheckBounds<uint>();
+        CheckBounds(sizeof(uint));
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<uint>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<uint>(ref Buffer[ReadPosition]);
@@ -524,7 +525,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public long ReadInt64()
     {
-        CheckBounds<long>();
+        CheckBounds(sizeof(long));
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]);
@@ -535,7 +536,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ulong ReadUInt64()
     {
-        CheckBounds<ulong>();
+        CheckBounds(sizeof(ulong));
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ulong>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<ulong>(ref Buffer[ReadPosition]);
@@ -547,7 +548,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float ReadSingle()
     {
-        CheckBounds<float>();
+        CheckBounds(sizeof(float));
         float result;
         if (BitConverter.IsLittleEndian)
         {
@@ -563,7 +564,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double ReadDouble()
     {
-        CheckBounds<double>();
+        CheckBounds(sizeof(double));
         double result;
         if (BitConverter.IsLittleEndian)
         {
@@ -576,14 +577,17 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         return result;
     }
 
-    [Conditional("DEBUG")]
-    unsafe void CheckBounds<T>() where T : unmanaged
+    void CheckBounds(int count)
     {
-        if (sizeof(T) > ReadBytesLeft)
-            ThrowNoSpaceLeft();
+        if (BufferBoundsChecks)
+            Core(count);
 
-        static void ThrowNoSpaceLeft()
-            => ThrowHelper.ThrowInvalidOperationException("There is not enough space left in the buffer.");
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void Core(int count)
+        {
+            if (count > ReadBytesLeft)
+                ThrowHelper.ThrowInvalidOperationException("There is not enough data left in the buffer.");
+        }
     }
 
     public string ReadString(int byteLen)
