@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -34,6 +33,12 @@ readonly struct ColumnInfo
 /// </remarks>
 sealed class RowDescriptionMessage : IBackendMessage
 {
+    // We should really have CompareOptions.IgnoreKanaType here, but see
+    // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
+    static readonly StringComparer InvariantIgnoreCaseAndKanaWidthComparer =
+        CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(
+            CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType);
+
     readonly bool _connectorOwned;
     FieldDescription?[] _fields;
     readonly Dictionary<string, int> _nameIndex;
@@ -55,7 +60,7 @@ sealed class RowDescriptionMessage : IBackendMessage
             _fields[i] = source._fields[i]!.Clone();
         _nameIndex = new Dictionary<string, int>(source._nameIndex);
         if (source._insensitiveIndex?.Count > 0)
-            _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex);
+            _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex, InvariantIgnoreCaseAndKanaWidthComparer);
     }
 
     internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, PgSerializerOptions options)
@@ -178,7 +183,7 @@ sealed class RowDescriptionMessage : IBackendMessage
         if (_insensitiveIndex is null || _insensitiveIndex.Count == 0)
         {
             if (_insensitiveIndex == null)
-                _insensitiveIndex = new Dictionary<string, int>(InsensitiveComparer.Instance);
+                _insensitiveIndex = new Dictionary<string, int>(InvariantIgnoreCaseAndKanaWidthComparer);
 
             foreach (var kv in _nameIndex)
                 _insensitiveIndex.TryAdd(kv.Key, kv.Value);
@@ -190,25 +195,6 @@ sealed class RowDescriptionMessage : IBackendMessage
     public BackendMessageCode Code => BackendMessageCode.RowDescription;
 
     internal RowDescriptionMessage Clone() => new(this);
-
-    /// <summary>
-    /// Comparer that's case-insensitive and Kana width-insensitive
-    /// </summary>
-    sealed class InsensitiveComparer : IEqualityComparer<string>
-    {
-        public static readonly InsensitiveComparer Instance = new();
-        static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
-
-        InsensitiveComparer() { }
-
-        // We should really have CompareOptions.IgnoreKanaType here, but see
-        // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
-        public bool Equals(string? x, string? y)
-            => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType) == 0;
-
-        public int GetHashCode(string o)
-            => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
-    }
 }
 
 /// <summary>
