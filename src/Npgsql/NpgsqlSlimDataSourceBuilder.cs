@@ -33,6 +33,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     IntegratedSecurityHandler _integratedSecurityHandler = new();
 
+    Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
+    Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _passwordProviderAsync;
+
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
@@ -40,8 +43,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     readonly UserTypeMapper _userTypeMapper;
 
-    Action<NpgsqlConnection>? _syncConnectionInitializer;
-    Func<NpgsqlConnection, Task>? _asyncConnectionInitializer;
+    Action<NpgsqlConnection>? _connectionInitializer;
+    Func<NpgsqlConnection, Task>? _connectionInitializerAsync;
 
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
@@ -236,6 +239,34 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         _periodicPasswordSuccessRefreshInterval = successRefreshInterval;
         _periodicPasswordFailureRefreshInterval = failureRefreshInterval;
 
+        return this;
+    }
+
+    /// <summary>
+    /// Configures a password provider, which is called by the data source when opening connections.
+    /// </summary>
+    /// <param name="passwordProvider">
+    /// A callback that may be invoked during <see cref="NpgsqlConnection.Open()" /> which returns the password to be sent to PostgreSQL.
+    /// </param>
+    /// <param name="passwordProviderAsync">
+    /// A callback that may be invoked during <see cref="NpgsqlConnection.OpenAsync(CancellationToken)" /> which returns the password to be sent to PostgreSQL.
+    /// </param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    /// <remarks>
+    /// <para>
+    /// The provided callback is invoked when opening connections. Therefore its important the callback internally depends on cached
+    /// data or returns quickly otherwise. Any unnecessary delay will affect connection opening time.
+    /// </para>
+    /// </remarks>
+    public NpgsqlSlimDataSourceBuilder UsePasswordProvider(
+        Func<NpgsqlConnectionStringBuilder, string>? passwordProvider,
+        Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? passwordProviderAsync)
+    {
+        if (passwordProvider is null != passwordProviderAsync is null)
+            throw new ArgumentException(NpgsqlStrings.SyncAndAsyncPasswordProvidersRequired);
+
+        _passwordProvider = passwordProvider;
+        _passwordProviderAsync = passwordProviderAsync;
         return this;
     }
 
@@ -455,8 +486,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         if (connectionInitializer is null != connectionInitializerAsync is null)
             throw new ArgumentException(NpgsqlStrings.SyncAndAsyncConnectionInitializersRequired);
 
-        _syncConnectionInitializer = connectionInitializer;
-        _asyncConnectionInitializer = connectionInitializerAsync;
+        _connectionInitializer = connectionInitializer;
+        _connectionInitializerAsync = connectionInitializerAsync;
 
         return this;
     }
@@ -504,7 +535,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             throw new InvalidOperationException(NpgsqlStrings.TransportSecurityDisabled);
         }
 
-        if (_periodicPasswordProvider is not null &&
+        if (_passwordProvider is not null && _periodicPasswordProvider is not null)
+        {
+            throw new NotSupportedException(NpgsqlStrings.CannotSetMultiplePasswordProviderKinds);
+        }
+
+        if ((_passwordProvider is not null || _periodicPasswordProvider is not null) &&
             (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
         {
             throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
@@ -519,14 +555,16 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _integratedSecurityHandler,
             _userCertificateValidationCallback,
             _clientCertificatesCallback,
+            _passwordProvider,
+            _passwordProviderAsync,
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
             _resolverChainBuilder.Build(ConfigureResolverChain),
             HackyEnumMappings(),
             DefaultNameTranslator,
-            _syncConnectionInitializer,
-            _asyncConnectionInitializer);
+            _connectionInitializer,
+            _connectionInitializerAsync);
 
         List<HackyEnumTypeMapping> HackyEnumMappings()
         {

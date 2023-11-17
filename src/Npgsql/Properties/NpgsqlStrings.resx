@@ -42,6 +42,12 @@
     <data name="CannotSetBothPasswordProviderAndPassword" xml:space="preserve">
         <value>When registering a password provider, a password or password file may not be set.</value>
     </data>
+    <data name="CannotSetMultiplePasswordProviderKinds" xml:space="preserve">
+        <value>Multiple kinds of password providers were found, only one kind may be configured per DbDataSource.</value>
+    </data>
+    <data name="SyncAndAsyncPasswordProvidersRequired" xml:space="preserve">
+        <value>Both sync and async password providers must be provided.</value>
+    </data>
     <data name="PasswordProviderMissing" xml:space="preserve">
         <value>The right type of password provider (sync or async) was not found.</value>
     </data>
