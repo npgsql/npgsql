@@ -364,10 +364,10 @@ public sealed class FieldDescription
             }
         }
 
-        GetInfoSlow(out lastColumnInfo);
+        GetInfoSlow(type, out lastColumnInfo);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void GetInfoSlow(out ColumnInfo lastColumnInfo)
+        void GetInfoSlow(Type? type, out ColumnInfo lastColumnInfo)
         {
             var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
             PgConverterInfo converterInfo;
