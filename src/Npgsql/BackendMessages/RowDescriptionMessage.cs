@@ -32,7 +32,7 @@ readonly struct ColumnInfo
 /// <remarks>
 /// See https://www.postgresql.org/docs/current/static/protocol-message-formats.html
 /// </remarks>
-sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescription>
+sealed class RowDescriptionMessage : IBackendMessage
 {
     readonly bool _connectorOwned;
     FieldDescription?[] _fields;
@@ -157,9 +157,6 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 
     public int Count { get; private set; }
 
-    public IEnumerator<FieldDescription> GetEnumerator() => new Enumerator(this);
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
     /// <summary>
     /// Given a string name, returns the field's ordinal index in the row.
     /// </summary>
@@ -211,38 +208,6 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 
         public int GetHashCode(string o)
             => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
-    }
-
-    sealed class Enumerator : IEnumerator<FieldDescription>
-    {
-        readonly RowDescriptionMessage _rowDescription;
-        int _pos = -1;
-
-        public Enumerator(RowDescriptionMessage rowDescription)
-            => _rowDescription = rowDescription;
-
-        public FieldDescription Current
-        {
-            get
-            {
-                if (_pos < 0)
-                    ThrowHelper.ThrowInvalidOperationException();
-                return _rowDescription[_pos];
-            }
-        }
-
-        object IEnumerator.Current => Current;
-
-        public bool MoveNext()
-        {
-            if (_pos == _rowDescription.Count - 1)
-                return false;
-            _pos++;
-            return true;
-        }
-
-        public void Reset() => _pos = -1;
-        public void Dispose() { }
     }
 }
 

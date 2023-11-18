@@ -112,8 +112,9 @@ ORDER BY attnum";
             // the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
 
             var filters = new List<string>();
-            foreach (var f in _rowDescription)
+            for (var index = 0; index < _rowDescription.Count; index++)
             {
+                var f = _rowDescription[index];
                 // Only column fields
                 if (f.TableOID != 0)
                     filters.Add($"(attr.attrelid={f.TableOID} AND attr.attnum={f.ColumnAttributeNumber})");
