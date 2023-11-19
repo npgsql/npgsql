@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using System.Text;
@@ -153,6 +154,20 @@ SELECT onedim, twodim FROM (VALUES
     public async Task Generic_List()
         => await AssertType(
             new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefaultForReading: false);
+
+    [Test]
+    public async Task Generic_IList()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+
+        var expected = ImmutableArray.Create(1,2,3);
+        cmd.Parameters.Add(new NpgsqlParameter<IList<int>>("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer) { TypedValue = expected });
+
+        var reader = await cmd.ExecuteReaderAsync();
+        reader.Read();
+        Assert.AreEqual(expected, reader.GetFieldValue<int[]>(0));
+    }
 
     [Test, Description("Verifies that an InvalidOperationException is thrown when the returned array has a different number of dimensions from what was requested.")]
     public async Task Wrong_array_dimensions_throws()
@@ -381,11 +396,6 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
 
         await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
     }
-
-    class IntList : List<int> { }
-    // ReSharper disable UnusedTypeParameter
-    class MisleadingIntList<T> : List<int> { }
-    // ReSharper restore UnusedTypeParameter
 
     public ArrayTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

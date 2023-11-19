@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -368,7 +367,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     }
 }
 
-sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class, IList
+sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class
 {
     readonly PgConverter<TElement> _elemConverter;
 
@@ -470,7 +469,7 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
     }
 }
 
-sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class, IList
+sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class
 {
     readonly PgConverter<TElement> _elemConverter;
 
@@ -481,15 +480,15 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static TElement? GetValue(object collection, int index)
     {
-        Debug.Assert(collection is List<TElement?>);
-        return Unsafe.As<List<TElement?>>(collection)[index];
+        Debug.Assert(collection is IList<TElement?>);
+        return Unsafe.As<IList<TElement?>>(collection)[index];
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static void SetValue(object collection, int index, TElement? value)
     {
-        Debug.Assert(collection is List<TElement?>);
-        var list = Unsafe.As<List<TElement?>>(collection);
+        Debug.Assert(collection is IList<TElement?>);
+        var list = Unsafe.As<IList<TElement?>>(collection);
         list.Insert(index, value);
     }
 
@@ -498,9 +497,9 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
 
     int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
     {
-        Debug.Assert(collection is List<TElement?>);
+        Debug.Assert(collection is IList<TElement?>);
         lengths = null;
-        return Unsafe.As<List<TElement?>>(collection).Count;
+        return Unsafe.As<IList<TElement?>>(collection).Count;
     }
 
     Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
@@ -543,7 +542,7 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     }
 }
 
-sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<T> where T : class, IList
+sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<T> where T : class
 {
     readonly Type _effectiveType;
 
@@ -558,11 +557,11 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
 
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
     {
-        if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>))
-            return new ListBasedArrayConverter<T, TElement>(effectiveResolution);
-
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
             return new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, _effectiveType);
+
+        if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
+            return new ListBasedArrayConverter<T, TElement>(effectiveResolution);
 
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
@@ -585,6 +584,13 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
                         resolution ??= result;
                     }
                     break;
+                case List<TElement> list:
+                    foreach (var value in list)
+                    {
+                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                        resolution ??= result;
+                    }
+                    break;
                 case IList<TElement> list:
                     foreach (var value in list)
                     {
@@ -592,13 +598,15 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
                         resolution ??= result;
                     }
                     break;
-                default:
-                    foreach (var value in values)
+                case Array array:
+                    foreach (var value in array)
                     {
                         var result = EffectiveTypeInfo.GetResolutionAsObject(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
                         resolution ??= result;
                     }
                     break;
+                default:
+                    throw new NotSupportedException();
             }
         }
 
