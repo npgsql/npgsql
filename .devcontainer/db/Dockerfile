@@ -1,3 +1,3 @@
-FROM postgres:alpine
-RUN apk update && \
-    apk add --no-cache openssl
+FROM postgres
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends openssl postgresql-16-postgis-3
