@@ -48,7 +48,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
                 if (FindMatch(type, infos, defaultTypeFallback) is { } info)
                     return info;
 
-            return AddEntryById(id, infos, defaultTypeFallback);
+            return AddEntryById(type, id, infos, defaultTypeFallback);
         }
 
         if (type is not null)
@@ -91,7 +91,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
                     : _cacheByClrType[type];
         }
 
-        PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo? Info)[]? infos, bool defaultTypeFallback)
+        PgTypeInfo? AddEntryById(Type? type, TPgTypeId pgTypeId, (Type? Type, PgTypeInfo? Info)[]? infos, bool defaultTypeFallback)
         {
             // We cache negatives (null info) to allow 'object or default' checks to never hit the resolvers after the first lookup.
             var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback, _validatePgTypeIds);

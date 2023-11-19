@@ -294,7 +294,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (!PgReader.Initialized || !PgReader.Resumable || PgReader.CurrentRemaining != PgReader.FieldSize)
         {
             await Commit(async, resumableOp: false).ConfigureAwait(false);
-            info = GetInfo(out asObject);
+            info = GetInfo(type, out asObject);
 
             // We need to get info after potential I/O as we don't know beforehand at what column we're at.
             var columnLen = await ReadColumnLenIfNeeded(async, resumableOp: false).ConfigureAwait(false);
@@ -306,7 +306,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         }
         else
-            info = GetInfo(out asObject);
+            info = GetInfo(type, out asObject);
 
         T result;
         if (async)
@@ -328,7 +328,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         return result;
 
-        PgConverterInfo GetInfo(out bool asObject)
+        PgConverterInfo GetInfo(NpgsqlDbType? type, out bool asObject)
         {
             ref var cachedInfo = ref _columnInfoCache[_column];
             var converterInfo = cachedInfo.IsDefault ? cachedInfo = CreateConverterInfo(typeof(T), type) : cachedInfo;
