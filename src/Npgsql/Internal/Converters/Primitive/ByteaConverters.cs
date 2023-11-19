@@ -118,6 +118,7 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
                 throw new InvalidOperationException();
 
             writer.WriteBytes(writeStateSegment.AsSpan());
+            return;
         }
 
         // Non-derived MemoryStream fast path
