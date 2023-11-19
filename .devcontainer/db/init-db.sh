@@ -24,6 +24,5 @@ psql -U postgres <<EOF
     CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests';
     CREATE DATABASE npgsql_tests OWNER npgsql_tests;
     CREATE EXTENSION ltree npgsql_tests;
-    CREATE EXTENSION IF NOT EXISTS plpgsql npsql_tests;
     CREATE EXTENSION postgis npgsql_tests;
 EOF
