@@ -517,7 +517,7 @@ public sealed class PgWriter
                 if (cancellationToken.IsCancellationRequested)
                     return Task.FromCanceled(cancellationToken);
 
-                return _writer.WriteBytesAsync(_allowMixedIO, buffer, cancellationToken).AsTask();
+                return _writer.WriteBytesAsync(_allowMixedIO, buffer.AsMemory(offset, count), cancellationToken).AsTask();
             }
 
             _writer.WriteBytes(_allowMixedIO, new Span<byte>(buffer, offset, count));

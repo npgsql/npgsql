@@ -71,6 +71,24 @@ public class ByteaTests : MultiplexingTestBase
     }
 
     [Test]
+    public Task Write_as_MemoryStream_exposableArray()
+    {
+        var msFactory = () =>
+        {
+            var ms = new MemoryStream(20);
+            ms.WriteByte(1);
+            ms.WriteByte(2);
+            ms.WriteByte(3);
+            ms.WriteByte(4);
+            ms.Position = 1;
+            return ms;
+        };
+
+        return AssertTypeWrite(
+            msFactory, "\\x020304", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+    }
+
+    [Test]
     public async Task Write_as_MemoryStream_long()
     {
         var rnd = new Random(1);
