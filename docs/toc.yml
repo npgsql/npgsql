@@ -36,18 +36,18 @@
     href: types/basic.md
   - name: Date and time
     href: types/datetime.md
-  - name: NodaTime
-    href: types/nodatime.md
   - name: Enums and composites
     href: types/enums_and_composites.md
-  - name: Json.NET
-    href: types/jsonnet.md
   - name: Spatial
     items:
     - name: NetTopologySuite
       href: types/nts.md
     - name: GeoJSON
       href: types/geojson.md
+  - name: JSON
+    href: types/json.md
+  - name: NodaTime
+    href: types/nodatime.md
 - name: Diagnostics
   items:
   - name: Overview
