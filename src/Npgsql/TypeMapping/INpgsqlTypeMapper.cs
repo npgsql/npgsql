@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Npgsql.Internal;
+using Npgsql.Internal.ResolverFactories;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
@@ -195,6 +198,51 @@ public interface INpgsqlTypeMapper
     /// </summary>
     /// <param name="factory">The type resolver factory to be added.</param>
     void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory);
+
+    /// <summary>
+    /// Configures the JSON serializer options used when reading and writing all System.Text.Json data.
+    /// </summary>
+    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
+    /// <returns></returns>
+    INpgsqlTypeMapper ConfigureJsonOptions(JsonSerializerOptions serializerOptions);
+
+    /// <summary>
+    /// Sets up dynamic System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types, as well as <see cref="JsonNode" /> and its derived types.
+    /// </summary>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    /// <remarks>
+    /// Due to the dynamic nature of these mappings, they are not compatible with NativeAOT or trimming.
+    /// </remarks>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode(
+        "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper EnableDynamicJson(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null);
+
+    /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <see cref="ValueTuple" /> or <see cref="Tuple" />.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode(
+        "The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode(
+        "The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
+    INpgsqlTypeMapper EnableRecordsAsTuples();
+
+    /// <summary>
+    /// Sets up mappings allowing the use of unmapped enum, range and multirange types.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode(
+        "The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode(
+        "The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
+    INpgsqlTypeMapper EnableUnmappedTypes();
 
     /// <summary>
     /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.
