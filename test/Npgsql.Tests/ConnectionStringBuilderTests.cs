@@ -21,15 +21,6 @@ class ConnectionStringBuilderTests
     }
 
     [Test]
-    public void From_string()
-    {
-        var builder = new NpgsqlConnectionStringBuilder();
-        builder.ConnectionString = "Host=myhost;EF Template Database=foo";
-        Assert.That(builder.Host, Is.EqualTo("myhost"));
-        Assert.That(builder.EntityTemplateDatabase, Is.EqualTo("foo"));
-    }
-
-    [Test]
     public void TryGetValue()
     {
         var builder = new NpgsqlConnectionStringBuilder();

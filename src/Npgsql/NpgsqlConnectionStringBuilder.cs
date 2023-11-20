@@ -270,10 +270,10 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     string? _database;
 
     /// <summary>
-    /// The username to connect with. Not required if using GSS/SSPI/Kerberos.
+    /// The username to connect with.
     /// </summary>
     [Category("Connection")]
-    [Description("The username to connect with. Not required if using IntegratedSecurity.")]
+    [Description("The username to connect with.")]
     [DisplayName("Username")]
     [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
     public string? Username
@@ -288,10 +288,10 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     string? _username;
 
     /// <summary>
-    /// The password to connect with. Not required if using GSS/SSPI/Kerberos.
+    /// The password to connect with.
     /// </summary>
     [Category("Connection")]
-    [Description("The password to connect with. Not required if using IntegratedSecurity.")]
+    [Description("The password to connect with.")]
     [PasswordPropertyText(true)]
     [DisplayName("Password")]
     [NpgsqlConnectionStringProperty("PSW", "PWD")]
@@ -958,52 +958,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     int _hostRecheckSeconds;
 
     #endregion Properties - Failover and load balancing
-
-    #region Properties - Entity Framework
-
-    /// <summary>
-    /// The database template to specify when creating a database in Entity Framework. If not specified,
-    /// PostgreSQL defaults to "template1".
-    /// </summary>
-    /// <remarks>
-    /// https://www.postgresql.org/docs/current/static/manage-ag-templatedbs.html
-    /// </remarks>
-    [Category("Entity Framework")]
-    [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]
-    [DisplayName("EF Template Database")]
-    [NpgsqlConnectionStringProperty]
-    public string? EntityTemplateDatabase
-    {
-        get => _entityTemplateDatabase;
-        set
-        {
-            _entityTemplateDatabase = value;
-            SetValue(nameof(EntityTemplateDatabase), value);
-        }
-    }
-    string? _entityTemplateDatabase;
-
-    /// <summary>
-    /// The database admin to specify when creating and dropping a database in Entity Framework. This is needed because
-    /// Npgsql needs to connect to a database in order to send the create/drop database command.
-    /// If not specified, defaults to "template1". Check NpgsqlServices.UsingPostgresDBConnection for more information.
-    /// </summary>
-    [Category("Entity Framework")]
-    [Description("The database admin to specify when creating and dropping a database in Entity Framework. If not specified, defaults to \"template1\".")]
-    [DisplayName("EF Admin Database")]
-    [NpgsqlConnectionStringProperty]
-    public string? EntityAdminDatabase
-    {
-        get => _entityAdminDatabase;
-        set
-        {
-            _entityAdminDatabase = value;
-            SetValue(nameof(EntityAdminDatabase), value);
-        }
-    }
-    string? _entityAdminDatabase;
-
-    #endregion
 
     #region Properties - Advanced
 
