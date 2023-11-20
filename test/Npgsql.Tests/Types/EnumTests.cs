@@ -166,7 +166,7 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
 
         var errorMessage = string.Format(
             NpgsqlStrings.UnmappedEnumsNotEnabled,
-            nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+            nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(Mood.Happy, enumType);

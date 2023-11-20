@@ -155,6 +155,30 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         return this;
     }
 
+    /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <see cref="ValueTuple" /> or <see cref="Tuple" />.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode("The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
+    public NpgsqlDataSourceBuilder EnableRecordsAsTuples()
+    {
+        AddTypeInfoResolverFactory(new TupledRecordTypeInfoResolverFactory());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings allowing the use of unmapped enum, range and multirange types.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
+    public NpgsqlDataSourceBuilder EnableUnmappedTypes()
+    {
+        AddTypeInfoResolverFactory(new UnmappedTypeInfoResolverFactory());
+        return this;
+    }
+
     #region Authentication
 
     /// <summary>

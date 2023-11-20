@@ -17,7 +17,7 @@ sealed class RecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
             throw new NotSupportedException(
                 string.Format(
                     NpgsqlStrings.RecordsNotEnabled,
-                    nameof(INpgsqlTypeMapperExtensions.EnableRecordsAsTuples),
+                    nameof(NpgsqlSlimDataSourceBuilder.EnableRecordsAsTuples),
                     typeof(TBuilder).Name,
                     nameof(NpgsqlSlimDataSourceBuilder.EnableRecords)));
         }

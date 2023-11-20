@@ -39,21 +39,21 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
                 throw new NotSupportedException(
                     string.Format(
                         NpgsqlStrings.UnmappedEnumsNotEnabled,
-                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+                        nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
                         typeof(TBuilder).Name));
 
             case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresRangeType:
                 throw new NotSupportedException(
                     string.Format(
                         NpgsqlStrings.UnmappedRangesNotEnabled,
-                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+                        nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
                         typeof(TBuilder).Name));
 
             case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresMultirangeType:
                 throw new NotSupportedException(
                     string.Format(
                         NpgsqlStrings.UnmappedRangesNotEnabled,
-                        nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+                        nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
                         typeof(TBuilder).Name));
             }
         }
