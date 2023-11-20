@@ -2,12 +2,15 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Internal.ResolverFactories;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql;
 
@@ -75,13 +78,23 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSourceBuilder(string? connectionString = null)
     {
         _internalBuilder = new(new NpgsqlConnectionStringBuilder(connectionString));
+        _internalBuilder.ConfigureDefaultFactories = static instance =>
+        {
+            instance.AppendDefaultFactories();
+            instance.AppendResolverFactory(new ExtraConversionResolverFactory());
+            instance.AppendResolverFactory(new JsonTypeInfoResolverFactory(instance.JsonSerializerOptions));
+            instance.AppendResolverFactory(new RecordTypeInfoResolverFactory());
+            instance.AppendResolverFactory(new FullTextSearchTypeInfoResolverFactory());
+            instance.AppendResolverFactory(new NetworkTypeInfoResolverFactory());
+            instance.AppendResolverFactory(new GeometricTypeInfoResolverFactory());
+            instance.AppendResolverFactory(new LTreeTypeInfoResolverFactory());
+        };
+        _internalBuilder.ConfigureResolverChain = static chain => chain.Add(UnsupportedTypeInfoResolver);
         _internalBuilder.EnableTransportSecurity();
         _internalBuilder.EnableIntegratedSecurity();
-        _internalBuilder.ConfigureResolverChain = chain => chain.Add(UnsupportedTypeInfoResolver);
         _internalBuilder.EnableRanges();
         _internalBuilder.EnableMultiranges();
         _internalBuilder.EnableArrays();
-        ResetResolverFactories();
     }
 
     /// <summary>
@@ -105,6 +118,64 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSourceBuilder EnableParameterLogging(bool parameterLoggingEnabled = true)
     {
         _internalBuilder.EnableParameterLogging(parameterLoggingEnabled);
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the JSON serializer options used when reading and writing all System.Text.Json data.
+    /// </summary>
+    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
+    /// <returns></returns>
+    public NpgsqlDataSourceBuilder ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
+    {
+        _internalBuilder.ConfigureJsonOptions(serializerOptions);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up dynamic System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types, as well as <see cref="JsonNode" /> and its derived types.
+    /// </summary>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    /// <remarks>
+    /// Due to the dynamic nature of these mappings, they are not compatible with NativeAOT or trimming.
+    /// </remarks>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    public NpgsqlDataSourceBuilder EnableDynamicJson(
+        Type[]? jsonbClrTypes = null,
+        Type[]? jsonClrTypes = null)
+    {
+        _internalBuilder.EnableDynamicJson(jsonbClrTypes, jsonClrTypes);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <see cref="ValueTuple" /> or <see cref="Tuple" />.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode("The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
+    public NpgsqlDataSourceBuilder EnableRecordsAsTuples()
+    {
+        AddTypeInfoResolverFactory(new TupledRecordTypeInfoResolverFactory());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings allowing the use of unmapped enum, range and multirange types.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
+    public NpgsqlDataSourceBuilder EnableUnmappedTypes()
+    {
+        AddTypeInfoResolverFactory(new UnmappedTypeInfoResolverFactory());
         return this;
     }
 
@@ -265,20 +336,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         => _internalBuilder.AddTypeInfoResolverFactory(factory);
 
     /// <inheritdoc />
-    void INpgsqlTypeMapper.Reset()
-        => ResetResolverFactories();
-
-    void ResetResolverFactories()
-    {
-        _internalBuilder.ResetResolverFactories();
-        _internalBuilder.AppendResolverFactory(new ExtraConversionResolverFactory());
-        _internalBuilder.AppendResolverFactory(new JsonTypeInfoResolverFactory());
-        _internalBuilder.AppendResolverFactory(new RecordTypeInfoResolverFactory());
-        _internalBuilder.AppendResolverFactory(new FullTextSearchTypeInfoResolverFactory());
-        _internalBuilder.AppendResolverFactory(new NetworkTypeInfoResolverFactory());
-        _internalBuilder.AppendResolverFactory(new GeometricTypeInfoResolverFactory());
-        _internalBuilder.AppendResolverFactory(new LTreeTypeInfoResolverFactory());
-    }
+    void INpgsqlTypeMapper.Reset() => ((INpgsqlTypeMapper)_internalBuilder).Reset();
 
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)

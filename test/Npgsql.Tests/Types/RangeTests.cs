@@ -204,7 +204,7 @@ class RangeTests : MultiplexingTestBase
 
         var errorMessage = string.Format(
             NpgsqlStrings.UnmappedRangesNotEnabled,
-            nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+            nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(new NpgsqlRange<string>("bar", "foo"), rangeType);

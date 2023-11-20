@@ -121,7 +121,7 @@ public class JsonDynamicTests : MultiplexingTestBase
         var errorMessage = string.Format(
             NpgsqlStrings.DynamicJsonNotEnabled,
             nameof(WeatherForecast),
-            nameof(INpgsqlTypeMapperExtensions.EnableDynamicJson),
+            nameof(NpgsqlSlimDataSourceBuilder.EnableDynamicJson),
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(
@@ -151,8 +151,9 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_does_not_stomp_GetValue_string()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        var dataSource = dataSourceBuilder.EnableDynamicJson(null, new[] {typeof(WeatherForecast)}, new[] {typeof(WeatherForecast)}).Build();
+        var dataSource = CreateDataSourceBuilder()
+            .EnableDynamicJson(new[] {typeof(WeatherForecast)}, new[] {typeof(WeatherForecast)})
+            .Build();
         var sqlLiteral =
             IsJsonb
                 ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
@@ -168,9 +169,10 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Custom_JsonSerializerOptions()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJson(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await using var dataSource = dataSourceBuilder.Build();
+        await using var dataSource = CreateDataSourceBuilder()
+            .ConfigureJsonOptions(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+            .EnableDynamicJson()
+            .Build();
 
         await AssertTypeWrite(
             dataSource,

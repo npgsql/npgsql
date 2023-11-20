@@ -142,7 +142,7 @@ public class MultirangeTests : TestBase
 
         var errorMessage = string.Format(
             NpgsqlStrings.UnmappedRangesNotEnabled,
-            nameof(INpgsqlTypeMapperExtensions.EnableUnmappedTypes),
+            nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(
