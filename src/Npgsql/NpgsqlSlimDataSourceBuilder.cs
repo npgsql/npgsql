@@ -658,4 +658,27 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
             throw new NotSupportedException("Replication is not supported with multiple hosts");
     }
+
+    INpgsqlTypeMapper INpgsqlTypeMapper.ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
+        => ConfigureJsonOptions(serializerOptions);
+
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode(
+        "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableDynamicJson(Type[]? jsonbClrTypes, Type[]? jsonClrTypes)
+        => EnableDynamicJson(jsonbClrTypes, jsonClrTypes);
+
+    [RequiresUnreferencedCode(
+        "The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode(
+        "The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableRecordsAsTuples()
+        => EnableRecordsAsTuples();
+
+    [RequiresUnreferencedCode(
+        "The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
+    [RequiresDynamicCode(
+        "The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableUnmappedTypes()
+        => EnableUnmappedTypes();
 }
