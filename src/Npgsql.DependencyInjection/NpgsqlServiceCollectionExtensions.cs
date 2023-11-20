@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -43,7 +44,56 @@ public static class NpgsqlServiceCollectionExtensions
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="dataSourceBuilderAction">
+    /// An action to configure the <see cref="NpgsqlDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
+    /// </param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
+    public static IServiceCollection AddNpgsqlDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        Action<NpgsqlDataSourceBuilder> dataSourceBuilderAction,
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
+        => AddNpgsqlDataSourceCore(serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
     /// <param name="serviceKey">The <see cref="ServiceDescriptor.ServiceKey"/> of the data source.</param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    public static IServiceCollection AddNpgsqlDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
+        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
+        object? serviceKey = null)
+        => AddNpgsqlDataSourceCore(
+            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
@@ -54,14 +104,14 @@ public static class NpgsqlServiceCollectionExtensions
     /// Defaults to <see cref="ServiceLifetime.Singleton" />.
     /// </param>
     /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
     public static IServiceCollection AddNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
-        ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
-        ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton,
-        object? serviceKey = null)
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
         => AddNpgsqlDataSourceCore(
-            serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+            serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
@@ -95,6 +145,32 @@ public static class NpgsqlServiceCollectionExtensions
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
     /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="dataSourceBuilderAction">
+    /// An action to configure the <see cref="NpgsqlSlimDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
+    /// </param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
+    public static IServiceCollection AddNpgsqlSlimDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        Action<NpgsqlSlimDataSourceBuilder> dataSourceBuilderAction,
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
+        => AddNpgsqlSlimDataSourceCore(serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
     /// Defaults to <see cref="ServiceLifetime.Transient" />.
@@ -113,6 +189,29 @@ public static class NpgsqlServiceCollectionExtensions
         object? serviceKey = null)
         => AddNpgsqlSlimDataSourceCore(
             serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlDataSource" /> and an <see cref="NpgsqlConnection" /> in the <see cref="IServiceCollection" />.
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
+    public static IServiceCollection AddNpgsqlSlimDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
+        => AddNpgsqlSlimDataSourceCore(
+            serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
@@ -144,6 +243,33 @@ public static class NpgsqlServiceCollectionExtensions
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="dataSourceBuilderAction">
+    /// An action to configure the <see cref="NpgsqlDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
+    /// </param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
+    public static IServiceCollection AddMultiHostNpgsqlDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        Action<NpgsqlDataSourceBuilder> dataSourceBuilderAction,
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
+        => AddMultiHostNpgsqlDataSourceCore(
+            serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
     /// <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
@@ -166,6 +292,30 @@ public static class NpgsqlServiceCollectionExtensions
         object? serviceKey = null)
         => AddMultiHostNpgsqlDataSourceCore(
             serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
+    /// <see cref="IServiceCollection" />.
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
+    public static IServiceCollection AddMultiHostNpgsqlDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
+        => AddMultiHostNpgsqlDataSourceCore(
+            serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
@@ -197,6 +347,33 @@ public static class NpgsqlServiceCollectionExtensions
 
     /// <summary>
     /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="dataSourceBuilderAction">
+    /// An action to configure the <see cref="NpgsqlDataSourceBuilder" /> for further customizations of the <see cref="NpgsqlDataSource" />.
+    /// </param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
+    public static IServiceCollection AddMultiHostNpgsqlSlimDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        Action<NpgsqlSlimDataSourceBuilder> dataSourceBuilderAction,
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
+        => AddMultiHostNpgsqlSlimDataSourceCore(
+            serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
     /// <see cref="IServiceCollection" />.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
@@ -219,6 +396,30 @@ public static class NpgsqlServiceCollectionExtensions
         object? serviceKey = null)
         => AddMultiHostNpgsqlSlimDataSourceCore(
             serviceCollection, serviceKey, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
+
+    /// <summary>
+    /// Registers an <see cref="NpgsqlMultiHostDataSource" /> and an <see cref="NpgsqlConnection" /> in the
+    /// <see cref="IServiceCollection" />.
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection" /> to add services to.</param>
+    /// <param name="connectionString">An Npgsql connection string.</param>
+    /// <param name="connectionLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
+    /// </param>
+    /// <param name="dataSourceLifetime">
+    /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
+    /// Defaults to <see cref="ServiceLifetime.Singleton" />.
+    /// </param>
+    /// <returns>The same service collection so that multiple calls can be chained.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never), Obsolete("Defined for binary compatibility with 7.0")]
+    public static IServiceCollection AddMultiHostNpgsqlSlimDataSource(
+        this IServiceCollection serviceCollection,
+        string connectionString,
+        ServiceLifetime connectionLifetime,
+        ServiceLifetime dataSourceLifetime)
+        => AddMultiHostNpgsqlSlimDataSourceCore(
+            serviceCollection, serviceKey: null, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
 
     static IServiceCollection AddNpgsqlDataSourceCore(
         this IServiceCollection serviceCollection,
