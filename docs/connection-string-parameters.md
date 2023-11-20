@@ -19,14 +19,15 @@ Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the p
 
 Parameter                    | Description                                                                                                                                 | Default
 ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------
-SSL Mode                     | Controls whether SSL is used, depending on server support. [See docs for possible values and more info](security.md).                       | Prefer in 6.0, Disable previously
+SSL Mode                     | Controls whether SSL is used, depending on server support. [See docs for possible values and more info](security.md).                       | Prefer
 Trust Server Certificate     | Whether to trust the server certificate without validating it. [See docs for more info](security.md).                                       | false
-SSL Certificate              | Location of a client certificate to be sent to the server. Introduced in 6.0. [See docs](security.md)                                       | PGSSLCERT
-SSL Key                      | Location of a client key for a client certificate to be sent to the server. Introduced in 6.0.                                              | PGSSLKEY
-SSL Password                 | Password for a key for a client certificate. Introduced in 6.0.                                                                             |
+SSL Certificate              | Location of a client certificate to be sent to the server. [See docs](security.md).                                                         | PGSSLCERT
+SSL Key                      | Location of a client key for a client certificate to be sent to the server.                                                                 | PGSSLKEY
+SSL Password                 | Password for a key for a client certificate.                                                                                                |
 Root Certificate             | Location of a CA certificate used to validate the server certificate.                                                                       | PGSSLROOTCERT
 Check Certificate Revocation | Whether to check the certificate revocation list during authentication.                                                                     | false
-Persist Security Info        | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Introduced in 3.1. | false
+Channel Binding              | Control whether channel binding is used when authenticating with SASL. Introduced in 8.0.                                                   | Prefer
+Persist Security Info        | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. | false
 Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md).                                             | postgres
 Include Realm                | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
 Include Error Detail         | When enabled, PostgreSQL error and notice details are included on <xref:Npgsql.PostgresException.Detail?displayProperty=nameWithType> and <xref:Npgsql.PostgresNotice.Detail?displayProperty=nameWithType>. These can contain sensitive data. | false
@@ -49,7 +50,6 @@ Parameter                | Description                                          
 ------------------------ | ------------------------------------------------------------ | -------
 Timeout                  | The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error. | 15
 Command Timeout          | The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity. | 30
-Internal Command Timeout | The time to wait (in seconds) while trying to execute an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1
 Cancellation Timeout     | The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error. -1 skips the wait, 0 means infinite wait. Introduced in 5.0. | 2000
 Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | 0 (disabled)
 Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | false
@@ -109,10 +109,7 @@ Server Compatibility Mode | A compatibility mode for special PostgreSQL server t
 
 Parameter                 | Description                                                                                                         | Default
 ------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------
-Integrated Security       | Whether to use integrated security to log in (GSS/SSPI). Deprecated in 8.0, doesn't do anything and can be removed. | false
-Client Certificate        | Location of a client certificate to be sent to the server. Deprecated in 6.0.                                       | PGSSLCERT
-Client Certificate Key    | Location of a client key for a client certificate to be sent to the server. Deprecated in 6.0.                      | PGSSLKEY
-Use Perf Counters         | Makes Npgsql write performance information about connection use to Windows Performance Counters. Removed in 5.0.    | false
+Internal Command Timeout  | The time to wait (in seconds) while trying to execute an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1
 
 ## Environment variables
 
