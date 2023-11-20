@@ -13,7 +13,7 @@ using NpgsqlTypes;
 namespace Npgsql.TypeMapping;
 
 /// <inheritdoc />
-sealed class GlobalTypeMapper : INpgsqlTypeMapper
+public sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
     readonly UserTypeMapper _userTypeMapper = new();
     readonly List<PgTypeInfoResolverFactory> _pluginResolverFactories = new();

@@ -70,6 +70,24 @@ Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replica
 Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, uint? restartTimeline = null) -> void
 Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> uint?
+Npgsql.TypeMapping.GlobalTypeMapper
+Npgsql.TypeMapping.GlobalTypeMapper.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
+Npgsql.TypeMapping.GlobalTypeMapper.ConfigureJsonOptions(System.Text.Json.JsonSerializerOptions! serializerOptions) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
+Npgsql.TypeMapping.GlobalTypeMapper.DefaultNameTranslator.set -> void
+Npgsql.TypeMapping.GlobalTypeMapper.EnableDynamicJson(System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.EnableRecordsAsTuples() -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.EnableUnmappedTypes() -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.GlobalTypeMapper() -> void
+Npgsql.TypeMapping.GlobalTypeMapper.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.Reset() -> void
+Npgsql.TypeMapping.GlobalTypeMapper.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.TypeMapping.GlobalTypeMapper.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.TypeMapping.GlobalTypeMapper.UnmapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.TypeMapping.GlobalTypeMapper.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.UnmapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
@@ -128,6 +146,7 @@ override NpgsqlTypes.NpgsqlCidr.ToString() -> string!
 *REMOVED*static NpgsqlTypes.NpgsqlInet.ToIPAddress(NpgsqlTypes.NpgsqlInet inet) -> System.Net.IPAddress!
 *REMOVED*static NpgsqlTypes.NpgsqlInet.ToNpgsqlInet(System.Net.IPAddress? ip) -> NpgsqlTypes.NpgsqlInet
 *REMOVED*Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
+static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.GlobalTypeMapper!
 static NpgsqlTypes.NpgsqlCidr.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlCidr cidr) -> System.Net.IPAddress!
 static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTypes.NpgsqlCidr cidr) -> NpgsqlTypes.NpgsqlInet
 *REMOVED*Npgsql.NpgsqlConnection.IntegratedSecurity.get -> bool
@@ -171,3 +190,4 @@ static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTyp
 *REMOVED*Npgsql.Replication.PgOutput.Messages.InsertMessage.RelationId.get -> uint
 *REMOVED*Npgsql.Replication.PgOutput.Messages.UpdateMessage.RelationId.get -> uint
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
+*REMOVED*static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
