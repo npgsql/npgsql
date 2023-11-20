@@ -122,7 +122,7 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
         }
 
         // Non-derived MemoryStream fast path
-        if (value.GetType() == typeof(MemoryStream) && ((MemoryStream)value).TryGetBuffer(out var segment))
+        if (value is MemoryStream memoryStream && memoryStream.TryGetBuffer(out var segment))
             writer.WriteBytes(segment.AsSpan((int)value.Position));
         else
             value.CopyTo(writer.GetStream());
@@ -139,7 +139,7 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
         }
 
         // Non-derived MemoryStream fast path
-        if (value.GetType() == typeof(MemoryStream) && ((MemoryStream)value).TryGetBuffer(out var segment))
+        if (value is MemoryStream memoryStream && memoryStream.TryGetBuffer(out var segment))
         {
             return writer.WriteBytesAsync(segment.AsMemory((int)value.Position), cancellationToken);
         }
