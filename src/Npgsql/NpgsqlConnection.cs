@@ -458,12 +458,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     public string? UserName => Settings.Username;
 
-    // The following two lines are here for backwards compatibility with the EF6 provider
-    // ReSharper disable UnusedMember.Global
-    internal string? EntityTemplateDatabase => Settings.EntityTemplateDatabase;
-    internal string? EntityAdminDatabase => Settings.EntityAdminDatabase;
-    // ReSharper restore UnusedMember.Global
-
     #endregion Configuration settings
 
     #region State management

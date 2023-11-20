@@ -141,6 +141,10 @@ static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTyp
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ContinuousProcessing.set -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ConvertInfinityDateTime.get -> bool
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.ConvertInfinityDateTime.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.EntityAdminDatabase.get -> string?
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.EntityAdminDatabase.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.EntityTemplateDatabase.get -> string?
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.EntityTemplateDatabase.set -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.IncludeErrorDetails.get -> bool
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.IncludeErrorDetails.set -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.IntegratedSecurity.get -> bool
