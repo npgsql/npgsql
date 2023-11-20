@@ -21,7 +21,11 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
 
+#if DEBUG
+    internal static readonly bool BufferBoundsChecks = true;
+#else
     internal static readonly bool BufferBoundsChecks = Statics.EnableDiagnostics;
+#endif
 
     public NpgsqlConnection Connection => Connector.Connection!;
     internal readonly NpgsqlConnector Connector;
