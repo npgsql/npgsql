@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -10,6 +12,7 @@ using Npgsql.Internal;
 using Npgsql.Internal.ResolverFactories;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql;
 
@@ -46,6 +49,10 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     Action<NpgsqlConnection>? _connectionInitializer;
     Func<NpgsqlConnection, Task>? _connectionInitializerAsync;
 
+    internal JsonSerializerOptions? JsonSerializerOptions { get; private set; }
+
+    internal Action<NpgsqlSlimDataSourceBuilder> ConfigureDefaultFactories { get; set; }
+
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
     /// </summary>
@@ -70,13 +77,14 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder(string? connectionString = null)
         : this(new NpgsqlConnectionStringBuilder(connectionString))
-        => ResetResolverFactories();
+    {}
 
     internal NpgsqlSlimDataSourceBuilder(NpgsqlConnectionStringBuilder connectionStringBuilder)
     {
         ConnectionStringBuilder = connectionStringBuilder;
         _userTypeMapper = new() { DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator };
-        ConfigureResolverChain = chain => chain.Add(UnsupportedTypeInfoResolver);
+        ConfigureDefaultFactories = static instance => instance.AppendDefaultFactories();
+        ConfigureResolverChain = static chain => chain.Add(UnsupportedTypeInfoResolver);
     }
 
     /// <summary>
@@ -100,6 +108,17 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlSlimDataSourceBuilder EnableParameterLogging(bool parameterLoggingEnabled = true)
     {
         _sensitiveDataLoggingEnabled = parameterLoggingEnabled;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the JSON serializer options used when reading and writing all System.Text.Json data.
+    /// </summary>
+    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
+    /// <returns></returns>
+    public NpgsqlSlimDataSourceBuilder ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
+    {
+        JsonSerializerOptions = serializerOptions;
         return this;
     }
 
@@ -342,15 +361,14 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <inheritdoc />
     public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.PrependResolverFactory(factory);
 
-    void INpgsqlTypeMapper.Reset()
-        => ResetResolverFactories();
+    /// <inheritdoc />
+    void INpgsqlTypeMapper.Reset() => _resolverChainBuilder.Clear();
 
     internal Action<List<IPgTypeInfoResolver>> ConfigureResolverChain { get; set; }
     internal void AppendResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.AppendResolverFactory(factory);
 
-    internal void ResetResolverFactories()
+    internal void AppendDefaultFactories()
     {
-        _resolverChainBuilder.Clear();
         // When used publicly we start off with our slim defaults.
         _resolverChainBuilder.AppendResolverFactory(_userTypeMapper);
         if (GlobalTypeMapper.Instance.GetUserMappingsResolverFactory() is { } userMappingsResolverFactory)
@@ -456,6 +474,29 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         return this;
     }
 
+    /// <summary>
+    /// Sets up dynamic System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types, as well as <see cref="JsonNode" /> and its derived types.
+    /// </summary>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    /// <remarks>
+    /// Due to the dynamic nature of these mappings, they are not compatible with NativeAOT or trimming.
+    /// </remarks>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    public NpgsqlSlimDataSourceBuilder EnableDynamicJson(
+        Type[]? jsonbClrTypes = null,
+        Type[]? jsonClrTypes = null)
+    {
+        _resolverChainBuilder.AppendResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, JsonSerializerOptions));
+        return this;
+    }
+
     #endregion Optional opt-ins
 
     /// <summary>
@@ -545,6 +586,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         {
             throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
         }
+
+        ConfigureDefaultFactories(this);
 
         return new(
             Name,

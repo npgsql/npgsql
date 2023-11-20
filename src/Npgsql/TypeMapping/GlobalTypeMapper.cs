@@ -2,9 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
+using Npgsql.Internal.ResolverFactories;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 
@@ -62,6 +66,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
     PgSerializerOptions? _typeMappingOptions;
     Func<PgTypeInfoResolverChainBuilder>? _builderFactory;
+    JsonSerializerOptions? _jsonSerializerOptions;
 
     PgSerializerOptions TypeMappingOptions
     {
@@ -169,6 +174,40 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     {
         get => _userTypeMapper.DefaultNameTranslator;
         set => _userTypeMapper.DefaultNameTranslator = value;
+    }
+
+    /// <summary>
+    /// Configures the JSON serializer options used when reading and writing all System.Text.Json data.
+    /// </summary>
+    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
+    /// <returns></returns>
+    public INpgsqlTypeMapper ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
+    {
+        _jsonSerializerOptions = serializerOptions;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up dynamic System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types, as well as <see cref="JsonNode" /> and its derived types.
+    /// </summary>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    /// <remarks>
+    /// Due to the dynamic nature of these mappings, they are not compatible with NativeAOT or trimming.
+    /// </remarks>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    public INpgsqlTypeMapper EnableDynamicJson(
+        Type[]? jsonbClrTypes = null,
+        Type[]? jsonClrTypes = null)
+    {
+        AddTypeInfoResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, _jsonSerializerOptions));
+        return this;
     }
 
     /// <inheritdoc />

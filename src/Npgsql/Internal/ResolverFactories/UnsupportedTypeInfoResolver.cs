@@ -32,7 +32,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
                     string.Format(
                         NpgsqlStrings.DynamicJsonNotEnabled,
                         type == typeof(object) ? "<unknown>" : type.Name,
-                        nameof(INpgsqlTypeMapperExtensions.EnableDynamicJson),
+                        nameof(NpgsqlSlimDataSourceBuilder.EnableDynamicJson),
                         typeof(TBuilder).Name));
 
             case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresEnumType:
