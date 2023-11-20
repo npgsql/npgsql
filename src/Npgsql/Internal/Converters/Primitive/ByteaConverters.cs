@@ -125,7 +125,7 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
         if (value.GetType() == typeof(MemoryStream) && ((MemoryStream)value).TryGetBuffer(out var segment))
             writer.WriteBytes(segment.AsSpan((int)value.Position));
         else
-            value.CopyTo(writer.GetStream(allowMixedIO: true));
+            value.CopyTo(writer.GetStream());
     }
 
     public override ValueTask WriteAsync(PgWriter writer, Stream value, CancellationToken cancellationToken = default)
