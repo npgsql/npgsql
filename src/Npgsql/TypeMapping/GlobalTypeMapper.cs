@@ -153,6 +153,30 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
+    void ReplaceTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            var type = factory.GetType();
+
+            for (var i = 0; i < _pluginResolverFactories.Count; i++)
+            {
+                if (_pluginResolverFactories[i].GetType() == type)
+                {
+                    _pluginResolverFactories[i] = factory;
+                    break;
+                }
+            }
+
+            ResetTypeMappingCache();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
     /// <inheritdoc />
     public void Reset()
     {
@@ -184,6 +208,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     public INpgsqlTypeMapper ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
     {
         _jsonSerializerOptions = serializerOptions;
+        // If JsonTypeInfoResolverFactory exists we replace it with a configured instance on the same index of the array.
+        ReplaceTypeInfoResolverFactory(new JsonTypeInfoResolverFactory(serializerOptions));
         return this;
     }
 
