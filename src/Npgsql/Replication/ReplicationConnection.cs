@@ -915,7 +915,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
     void SetTimeouts(TimeSpan readTimeout, TimeSpan writeTimeout)
     {
         var connector = Connector;
-        connector.UserTimeout = readTimeout > TimeSpan.Zero ? (int)readTimeout.TotalMilliseconds : 0;
+        var readBuffer = connector.ReadBuffer;
+        if (readBuffer != null)
+            readBuffer.Timeout = readTimeout > TimeSpan.Zero ? readTimeout : TimeSpan.Zero;
 
         var writeBuffer = connector.WriteBuffer;
         if (writeBuffer != null)

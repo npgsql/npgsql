@@ -46,12 +46,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// </summary>
     public TimeSpan Timeout
     {
-        set
-        {
-            _buf.Timeout = value;
-            // While calling Complete(), we're using the connector, which overwrites the buffer's timeout with it's own
-            _connector.UserTimeout = (int)value.TotalMilliseconds;
-        }
+        set => _buf.Timeout = value;
     }
 
     #endregion

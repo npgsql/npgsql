@@ -215,13 +215,6 @@ public sealed partial class NpgsqlConnector
     }
 
     /// <summary>
-    /// The timeout for reading messages that are part of the user's command
-    /// (i.e. which aren't internal prepended commands).
-    /// </summary>
-    /// <remarks>Precision is milliseconds</remarks>
-    internal int UserTimeout { private get; set; }
-
-    /// <summary>
     /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
     /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
     /// command will accidentally cancel a later one, see #615.
@@ -413,26 +406,6 @@ public sealed partial class NpgsqlConnector
     internal string Database => Settings.Database!;
     string KerberosServiceName => Settings.KerberosServiceName;
     int ConnectionTimeout => Settings.Timeout;
-
-    /// <summary>
-    /// The actual command timeout value that gets set on internal commands.
-    /// </summary>
-    /// <remarks>Precision is milliseconds</remarks>
-    int InternalCommandTimeout
-    {
-        get
-        {
-            var internalTimeout = Settings.InternalCommandTimeout;
-            if (internalTimeout == -1)
-                return Math.Max(Settings.CommandTimeout, MinimumInternalCommandTimeout) * 1000;
-
-            // Todo: Decide what we really want here
-            // This assertion can easily fail if InternalCommandTimeout is set to 1 or 2 in the connection string
-            // We probably don't want to allow these values but in that case a Debug.Assert is the wrong way to enforce it.
-            Debug.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
-            return internalTimeout * 1000;
-        }
-    }
 
     #endregion Configuration settings
 
@@ -1328,7 +1301,6 @@ public sealed partial class NpgsqlConnector
             try
             {
                 // TODO: There could be room for optimization here, rather than the async call(s)
-                ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
                 for (; PendingPrependedResponses > 0; PendingPrependedResponses--)
                     await ReadMessageLong(async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true).ConfigureAwait(false);
                 // We've read all the prepended response.
@@ -1348,8 +1320,6 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
-
             while (true)
             {
                 await ReadBuffer.Ensure(5, async, readingNotifications).ConfigureAwait(false);
@@ -1788,7 +1758,6 @@ public sealed partial class NpgsqlConnector
                 {
                     if (cancellationTimeout > 0)
                     {
-                        UserTimeout = cancellationTimeout;
                         ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
                         ReadBuffer.Cts.CancelAfter(cancellationTimeout);
                     }
@@ -1797,7 +1766,6 @@ public sealed partial class NpgsqlConnector
                 }
             }
 
-            UserTimeout = -1;
             ReadBuffer.Timeout = _cancelImmediatelyTimeout;
             ReadBuffer.Cts.Cancel();
         }
@@ -2482,10 +2450,10 @@ public sealed partial class NpgsqlConnector
 
             StartCancellableOperation(cancellationToken, attemptPgCancellation);
 
-            // We reset the UserTimeout for every user action, so it wouldn't leak from the previous query or action
+            // We reset the ReadBuffer.Timeout for every user action, so it wouldn't leak from the previous query or action
             // For example, we might have successfully cancelled the previous query (so the connection is not broken)
             // But the next time, we call the Prepare, which doesn't set it's own timeout
-            UserTimeout = (command?.CommandTimeout ?? Settings.CommandTimeout) * 1000;
+            ReadBuffer.Timeout = TimeSpan.FromSeconds(command?.CommandTimeout ?? Settings.CommandTimeout);
 
             return new UserAction(this);
         }
@@ -2584,9 +2552,8 @@ public sealed partial class NpgsqlConnector
 
             LogMessages.SendingKeepalive(ConnectionLogger, Id);
             AttemptPostgresCancellation = false;
-            var timeout = InternalCommandTimeout;
-            WriteBuffer.Timeout = TimeSpan.FromSeconds(timeout);
-            UserTimeout = timeout;
+            var timeout = Math.Max(Settings.CommandTimeout, MinimumInternalCommandTimeout);
+            ReadBuffer.Timeout = WriteBuffer.Timeout = TimeSpan.FromSeconds(timeout);
             WriteSync(async: false).GetAwaiter().GetResult();
             Flush();
             SkipUntil(BackendMessageCode.ReadyForQuery);
@@ -2628,7 +2595,7 @@ public sealed partial class NpgsqlConnector
             cancellationToken.ThrowIfCancellationRequested();
 
             var timeoutForKeepalive = _isKeepAliveEnabled && (timeout <= 0 || keepaliveMs < timeout);
-            UserTimeout = timeoutForKeepalive ? keepaliveMs : timeout;
+            ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
             try
             {
                 var msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
