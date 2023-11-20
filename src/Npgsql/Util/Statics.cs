@@ -10,16 +10,19 @@ namespace Npgsql.Util;
 static class Statics
 {
 #if DEBUG
+    internal static bool EnableDiagnostics;
     internal static bool LegacyTimestampBehavior;
     internal static bool DisableDateTimeInfinityConversions;
 #else
+    internal static readonly bool EnableDiagnostics;
     internal static readonly bool LegacyTimestampBehavior;
     internal static readonly bool DisableDateTimeInfinityConversions;
 #endif
 
     static Statics()
     {
-        LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
+        EnableDiagnostics = AppContext.TryGetSwitch("Npgsql.EnableDiagnostics", out var enabled) && enabled;
+        LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out enabled) && enabled;
         DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
     }
 
