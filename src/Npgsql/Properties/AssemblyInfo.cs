@@ -8,9 +8,7 @@ using System.Security;
 [assembly: AssemblyTrademark("")]
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
 
-#if NET5_0_OR_GREATER
 [module: SkipLocalsInit]
-#endif
 
 [assembly: InternalsVisibleTo("Npgsql.Tests, PublicKey=" +
 "0024000004800000940000000602000000240000525341310004000001000100" +

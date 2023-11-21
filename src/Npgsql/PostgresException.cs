@@ -263,11 +263,7 @@ public sealed class PostgresException : NpgsqlException
     /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
     /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
     /// </remarks>
-#if NET5_0_OR_GREATER
     public override string SqlState { get; }
-#else
-    public string SqlState { get; }
-#endif
 
     /// <summary>
     /// The primary human-readable error message. This should be accurate but terse.

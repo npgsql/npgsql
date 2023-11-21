@@ -14,7 +14,6 @@ sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>
     protected override void WriteCore(PgWriter writer, TimeSpan value) => writer.WriteInt64(value.Ticks / 10);
 }
 
-#if NET6_0_OR_GREATER
 sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
@@ -25,7 +24,6 @@ sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
     protected override TimeOnly ReadCore(PgReader reader) => new(reader.ReadInt64() * 10);
     protected override void WriteCore(PgWriter writer, TimeOnly value) => writer.WriteInt64(value.Ticks / 10);
 }
-#endif
 
 sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
 {

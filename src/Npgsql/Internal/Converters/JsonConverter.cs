@@ -114,21 +114,11 @@ static class JsonConverter
         var isUtf8 = encoding.CodePage == Encoding.UTF8.CodePage;
         byteCount = reader.CurrentRemaining;
         // We always fall back to buffers on older targets
-        if (isUtf8
-#if !NETSTANDARD
-            || byteCount >= StreamingThreshold
-#endif
-            )
+        if (isUtf8 || byteCount >= StreamingThreshold)
         {
-            stream =
-#if !NETSTANDARD
-                !isUtf8
+            stream = !isUtf8
                     ? Encoding.CreateTranscodingStream(reader.GetStream(), encoding, Encoding.UTF8)
                     : reader.GetStream();
-#else
-                reader.GetStream();
-            Debug.Assert(isUtf8);
-#endif
         }
         else
             stream = null;

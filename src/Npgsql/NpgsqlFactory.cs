@@ -48,7 +48,6 @@ public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     /// </summary>
     public override DbDataAdapter CreateDataAdapter() => new NpgsqlDataAdapter();
 
-#if !NETSTANDARD2_0
     /// <summary>
     /// Specifies whether the specific <see cref="DbProviderFactory"/> supports the <see cref="DbDataAdapter"/> class.
     /// </summary>
@@ -58,9 +57,7 @@ public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     /// Specifies whether the specific <see cref="DbProviderFactory"/> supports the <see cref="DbCommandBuilder"/> class.
     /// </summary>
     public override bool CanCreateCommandBuilder => true;
-#endif
 
-#if NET6_0_OR_GREATER
     /// <inheritdoc/>
     public override bool CanCreateBatch => true;
 
@@ -69,7 +66,6 @@ public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
 
     /// <inheritdoc/>
     public override DbBatchCommand CreateBatchCommand() => new NpgsqlBatchCommand();
-#endif
 
 #if NET7_0_OR_GREATER
     /// <inheritdoc/>

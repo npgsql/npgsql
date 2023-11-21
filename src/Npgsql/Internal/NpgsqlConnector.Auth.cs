@@ -250,10 +250,8 @@ partial class NpgsqlConnector
         }
     }
 
-#if NET6_0_OR_GREATER
     static byte[] Hi(string str, byte[] salt, int count)
         => Rfc2898DeriveBytes.Pbkdf2(str, salt, count, HashAlgorithmName.SHA256, 256 / 8);
-#endif
 
     static byte[] Xor(byte[] buffer1, byte[] buffer2)
     {

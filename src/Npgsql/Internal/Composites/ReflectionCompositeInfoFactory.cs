@@ -151,10 +151,8 @@ static class ReflectionCompositeInfoFactory
     static Expression UnboxAny(Expression expression, Type type)
         => type.IsValueType ? Expression.Unbox(expression, type) : Expression.Convert(expression, type, null);
 
-#if !NETSTANDARD
     [DynamicDependency("TypedValue", typeof(StrongBox<>))]
     [DynamicDependency("Length", typeof(StrongBox[]))]
-#endif
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "DynamicDependencies in place for the System.Linq.Expression.Property calls")]
     static Func<StrongBox[], T> CreateStrongBoxConstructor<T>(ConstructorInfo constructorInfo)
     {

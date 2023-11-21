@@ -598,9 +598,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
                 {
                     var str = reader.Read<string>();
                     Assert.That(str.Length, Is.EqualTo(len));
-#if NET6_0_OR_GREATER
                     Assert.True(str.AsSpan().IndexOfAnyExcept('x') is -1);
-#endif
                 }
             }
             Assert.That(row, Is.EqualTo(100));

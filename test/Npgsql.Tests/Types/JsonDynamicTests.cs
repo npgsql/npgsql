@@ -15,7 +15,6 @@ namespace Npgsql.Tests.Types;
 [TestFixture(MultiplexingMode.Multiplexing, NpgsqlDbType.Jsonb)]
 public class JsonDynamicTests : MultiplexingTestBase
 {
-#if NET6_0_OR_GREATER
     [Test]
     public Task Roundtrip_JsonObject()
         => AssertType(
@@ -73,7 +72,6 @@ public class JsonDynamicTests : MultiplexingTestBase
         cmd.Parameters.Add(new("p", new[] { jsonObject1, jsonObject2 }));
         await cmd.ExecuteNonQueryAsync();
     }
-#endif
 
     [Test]
     public async Task As_poco()

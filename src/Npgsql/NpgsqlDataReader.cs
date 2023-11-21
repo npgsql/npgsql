@@ -1031,11 +1031,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <summary>
     /// Releases the resources used by the <see cref="NpgsqlDataReader"/>.
     /// </summary>
-#if NETSTANDARD2_0
-    public async ValueTask DisposeAsync()
-#else
     public override async ValueTask DisposeAsync()
-#endif
     {
         try
         {
@@ -1076,11 +1072,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <summary>
     /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
     /// </summary>
-#if NETSTANDARD2_0
-    public Task CloseAsync()
-#else
     public override Task CloseAsync()
-#endif
         => Close(async: true, connectionClosing: false, isDisposing: false);
 
     internal async Task Close(bool async, bool connectionClosing, bool isDisposing)
@@ -1798,11 +1790,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Asynchronously returns schema information for the columns in the current resultset.
     /// </summary>
     /// <returns></returns>
-#if NET5_0_OR_GREATER
     public new Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
-#else
-    public Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
-#endif
         => GetColumnSchema(async: true, cancellationToken);
 
     Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
@@ -1828,14 +1816,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     [UnconditionalSuppressMessage(
         "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
-#if NET5_0_OR_GREATER
     public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
-#else
-    public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
-#endif
         => GetSchemaTable(async: true, cancellationToken);
 
-     [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "typeof(Type).TypeInitializer is not used.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "typeof(Type).TypeInitializer is not used.")]
     async Task<DataTable?> GetSchemaTable(bool async, CancellationToken cancellationToken = default)
     {
         if (FieldCount == 0) // No resultset
@@ -2024,9 +2008,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         return Core(async, !committed, ordinal, dataFormat, resumableOp);
 
-#if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-#endif
         async ValueTask<int> Core(bool async, bool commit, int ordinal, DataFormat dataFormat, bool resumableOp)
         {
             if (commit)

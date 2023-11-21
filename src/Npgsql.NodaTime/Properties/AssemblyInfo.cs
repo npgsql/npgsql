@@ -1,8 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-#if NET5_0_OR_GREATER
 [module: SkipLocalsInit]
-#endif
 
 [assembly: InternalsVisibleTo("Npgsql.PluginTests, PublicKey=" +
 "0024000004800000940000000602000000240000525341310004000001000100" +

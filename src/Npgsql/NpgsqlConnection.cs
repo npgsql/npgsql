@@ -579,7 +579,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     internal NpgsqlBatch? CachedBatch { get; set; }
 
-#if NET6_0_OR_GREATER
     /// <inheritdoc/>
     public override bool CanCreateBatch => true;
 
@@ -600,13 +599,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         return NpgsqlBatch.CreateCachedBatch(this);
     }
-#else
-    /// <summary>
-    /// Creates and returns a <see cref="NpgsqlBatch"/> object associated with the <see cref="NpgsqlConnection"/>.
-    /// </summary>
-    /// <returns>A <see cref="NpgsqlBatch"/> object.</returns>
-    public NpgsqlBatch CreateBatch() => new(this);
-#endif
 
     #endregion Command / Batch creation
 
@@ -673,7 +665,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
     }
 
-#if !NETSTANDARD2_0
     /// <summary>
     /// Asynchronously begins a database transaction.
     /// </summary>
@@ -715,7 +706,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </remarks>
     public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
         => BeginTransaction(async: true, level, cancellationToken);
-#endif
 
     /// <summary>
     /// Enlist transaction.
@@ -783,11 +773,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
     /// If it is non-pooled, the physical connection will be closed.
     /// </summary>
-#if NETSTANDARD2_0
-    public Task CloseAsync()
-#else
     public override Task CloseAsync()
-#endif
         => Close(async: true);
 
     internal bool TakeCloseLock() => Interlocked.Exchange(ref _closing, 1) == 0;
@@ -941,11 +927,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// Releases all resources used by the <see cref="NpgsqlConnection"/>.
     /// </summary>
-#if NETSTANDARD2_0
-    public async ValueTask DisposeAsync()
-#else
     public override async ValueTask DisposeAsync()
-#endif
     {
         if (_disposed)
             return;
@@ -1407,14 +1389,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
     }
 
-    static bool IsValidCopyCommand(string copyCommand)
-    {
-    #if NET6_0_OR_GREATER || NETSTANDARD2_1
-        return copyCommand.AsSpan().TrimStart().StartsWith("COPY", StringComparison.OrdinalIgnoreCase);
-    #else
-        return copyCommand.TrimStart().StartsWith("COPY", StringComparison.OrdinalIgnoreCase);
-    #endif
-    }
+    static bool IsValidCopyCommand(string copyCommand) => copyCommand.AsSpan().TrimStart().StartsWith("COPY", StringComparison.OrdinalIgnoreCase);
+
     #endregion
 
     #region Wait
@@ -1719,11 +1695,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The collection specified.</returns>
-#if NET5_0_OR_GREATER
     public override Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
-#else
-    public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
-#endif
         => GetSchemaAsync("MetaDataCollections", null, cancellationToken);
 
     /// <summary>
@@ -1734,11 +1706,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The collection specified.</returns>
-#if NET5_0_OR_GREATER
     public override Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
-#else
-    public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
-#endif
         => GetSchemaAsync(collectionName, null, cancellationToken);
 
     /// <summary>
@@ -1753,11 +1721,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The collection specified.</returns>
-#if NET5_0_OR_GREATER
     public override Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
-#else
-    public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
-#endif
     {
         return NpgsqlSchema.GetSchema(async: true, this, collectionName, restrictions, cancellationToken);
     }

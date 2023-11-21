@@ -97,18 +97,5 @@ public class TestDecodingOptions : IEquatable<TestDecodingOptions>
 
     /// <inheritdoc />
     public override int GetHashCode()
-    {
-#if NETSTANDARD2_0
-        var hashCode = IncludeXids.GetHashCode();
-        hashCode = (hashCode * 397) ^ IncludeTimestamp.GetHashCode();
-        hashCode = (hashCode * 397) ^ ForceBinary.GetHashCode();
-        hashCode = (hashCode * 397) ^ SkipEmptyXacts.GetHashCode();
-        hashCode = (hashCode * 397) ^ OnlyLocal.GetHashCode();
-        hashCode = (hashCode * 397) ^ IncludeRewrites.GetHashCode();
-        hashCode = (hashCode * 397) ^ StreamChanges.GetHashCode();
-        return hashCode;
-#else
-        return HashCode.Combine(IncludeXids, IncludeTimestamp, ForceBinary, SkipEmptyXacts, OnlyLocal, IncludeRewrites, StreamChanges);
-#endif
-    }
+        => HashCode.Combine(IncludeXids, IncludeTimestamp, ForceBinary, SkipEmptyXacts, OnlyLocal, IncludeRewrites, StreamChanges);
 }

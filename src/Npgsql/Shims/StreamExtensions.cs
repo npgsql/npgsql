@@ -1,9 +1,6 @@
-﻿#if NETSTANDARD2_0 || !NET7_0_OR_GREATER
-using System.Buffers;
-using System.Diagnostics;
+﻿#if !NET7_0_OR_GREATER
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql;
 
 // ReSharper disable once CheckNamespace
 namespace System.IO
@@ -36,66 +33,6 @@ namespace System.IO
                 totalRead += read;
             }
         }
-
-#if NETSTANDARD2_0
-        public static int Read(this Stream stream, Span<byte> buffer)
-        {
-            var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
-            try
-            {
-                var numRead = stream.Read(sharedBuffer, 0, buffer.Length);
-                new Span<byte>(sharedBuffer, 0, numRead).CopyTo(buffer);
-                return numRead;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(sharedBuffer);
-            }
-        }
-
-        public static async ValueTask<int> ReadAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
-            try
-            {
-                var result = await stream.ReadAsync(sharedBuffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
-                new Span<byte>(sharedBuffer, 0, result).CopyTo(buffer.Span);
-                return result;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(sharedBuffer);
-            }
-        }
-
-        public static void Write(this Stream stream, ReadOnlySpan<byte> buffer)
-        {
-            var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
-            try
-            {
-                buffer.CopyTo(sharedBuffer);
-                stream.Write(sharedBuffer, 0, buffer.Length);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(sharedBuffer);
-            }
-        }
-
-        public static async ValueTask WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
-            buffer.Span.CopyTo(sharedBuffer);
-            try
-            {
-                await stream.WriteAsync(sharedBuffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(sharedBuffer);
-            }
-        }
-#endif
     }
 }
 #endif

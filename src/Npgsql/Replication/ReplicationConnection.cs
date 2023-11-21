@@ -541,31 +541,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
             if (columnStream != null && !bypassingStream && !_replicationCancellationTokenSource.Token.IsCancellationRequested)
                 await columnStream.DisposeAsync().ConfigureAwait(false);
 
-#if NETSTANDARD2_0
-            if (_sendFeedbackTimer != null)
-            {
-                var mre = new ManualResetEvent(false);
-                var actuallyDisposed = _sendFeedbackTimer.Dispose(mre);
-                Debug.Assert(actuallyDisposed, $"{nameof(_sendFeedbackTimer)} had already been disposed when completing replication");
-                if (actuallyDisposed)
-                    await mre.WaitOneAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            if (_requestFeedbackTimer != null)
-            {
-                var mre = new ManualResetEvent(false);
-                var actuallyDisposed = _requestFeedbackTimer.Dispose(mre);
-                Debug.Assert(actuallyDisposed, $"{nameof(_requestFeedbackTimer)} had already been disposed when completing replication");
-                if (actuallyDisposed)
-                    await mre.WaitOneAsync(cancellationToken).ConfigureAwait(false);
-            }
-#else
-
             if (_sendFeedbackTimer != null)
                 await _sendFeedbackTimer.DisposeAsync().ConfigureAwait(false);
             if (_requestFeedbackTimer != null)
                 await _requestFeedbackTimer.DisposeAsync().ConfigureAwait(false);
-#endif
             _sendFeedbackTimer = null;
             _requestFeedbackTimer = null;
 

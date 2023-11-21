@@ -85,7 +85,6 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
             "date", NpgsqlDbType.Date, DbType.Date,
             isDefault: false);
 
-#if NET6_0_OR_GREATER
     static readonly TestCaseData[] DateOnlyDateTimeValues =
     {
         new TestCaseData(DateOnly.MinValue.AddYears(1), "0002-01-01", "0002-01-01")
@@ -101,7 +100,6 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
         => AssertType(dateTime,
             DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral, "date", NpgsqlDbType.Date, DbType.Date,
             isDefault: false);
-#endif
 
     NpgsqlDataSource? _dataSource;
     protected override NpgsqlDataSource DataSource => _dataSource ??= CreateDataSource(csb => csb.Timezone = "UTC");

@@ -501,13 +501,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         if (_periodicPasswordProviderTimer is not null)
-        {
-#if NET5_0_OR_GREATER
             await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
-#else
-            _periodicPasswordProviderTimer.Dispose();
-#endif
-        }
 
         _setupMappingsSemaphore.Dispose();
 

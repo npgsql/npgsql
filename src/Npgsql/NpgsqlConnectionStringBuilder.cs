@@ -7,7 +7,6 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal;
-using Npgsql.Netstandard20;
 using Npgsql.Replication;
 
 namespace Npgsql;
@@ -1434,7 +1433,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
             var ipv6End = originalHost.LastIndexOf(']');
             if (otherColon == -1 || portSeparator > ipv6End && otherColon < ipv6End)
             {
-                port = originalHost.Slice(portSeparator + 1).ParseInt();
+                port = int.Parse(originalHost.Slice(portSeparator + 1));
                 host = originalHost.Slice(0, portSeparator).ToString();
                 return true;
             }

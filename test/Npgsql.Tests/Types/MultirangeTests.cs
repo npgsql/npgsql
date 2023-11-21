@@ -75,7 +75,6 @@ public class MultirangeTests : TestBase
                 """{["2020-01-01 01:00:00+01","2020-01-05 01:00:00+01"),["2020-01-10 01:00:00+01",)}""", "tstzmultirange", NpgsqlDbType.TimestampTzMultirange, true, true, default(NpgsqlRange<DateTime>))
             .SetName("DateTime TimestampTzMultirange"),
 
-#if NET6_0_OR_GREATER
         new TestCaseData(
                 new NpgsqlRange<DateOnly>[]
                 {
@@ -84,7 +83,6 @@ public class MultirangeTests : TestBase
                 },
                 "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", NpgsqlDbType.DateMultirange, false, false, default(NpgsqlRange<DateOnly>))
             .SetName("DateOnly"),
-#endif
     };
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]

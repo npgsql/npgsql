@@ -46,9 +46,7 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
             ? ReadAsync(reader, encoding, cancellationToken)
             : new(ConvertFrom(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining))));
 
-#if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-#endif
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding, CancellationToken cancellationToken)
             => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
     }
@@ -100,9 +98,7 @@ abstract class ArrayBasedTextConverter<T> : PgStreamingConverter<T>
     {
         return async ? ReadAsync(reader, encoding) : new(ConvertFrom(GetSegment(reader.ReadBytes(reader.CurrentRemaining), encoding)));
 
-#if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-#endif
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding)
             => ConvertFrom(GetSegment(await reader.ReadBytesAsync(reader.CurrentRemaining).ConfigureAwait(false), encoding));
 
@@ -157,7 +153,7 @@ sealed class CharTextConverter : PgBufferedConverter<char>
     {
         var byteSeq = reader.ReadBytes(Math.Min(_oneCharMaxByteCount.Value, reader.CurrentRemaining));
         Debug.Assert(byteSeq.IsSingleSegment);
-        var bytes = byteSeq.GetFirstSpan();
+        var bytes = byteSeq.FirstSpan;
 
         var chars = _encoding.GetCharCount(bytes);
         if (chars < 1)
@@ -259,21 +255,13 @@ sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableR
                 return 0;
 
             const int maxStackAlloc = 512;
-#if NETSTANDARD
-            var tempCharBuf = new char[maxStackAlloc];
-#else
             Span<char> tempCharBuf = stackalloc char[maxStackAlloc];
-#endif
             var totalRead = 0;
             var fin = false;
             while (!fin)
             {
                 var toRead = count is null ? maxStackAlloc : Math.Min(maxStackAlloc, count.Value - totalRead);
-#if NETSTANDARD
-                var read = reader.ReadBlock(tempCharBuf, 0, toRead);
-#else
                 var read = reader.ReadBlock(tempCharBuf.Slice(0, toRead));
-#endif
                 totalRead += read;
                 if (count is not null && read is 0)
                     throw new EndOfStreamException();

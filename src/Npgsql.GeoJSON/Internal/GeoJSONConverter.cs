@@ -51,9 +51,9 @@ sealed class GeoJSONConverter<T> : PgStreamingConverter<T> where T : IGeoJSONObj
             if (crsType == GeoJSONOptions.None)
                 return null;
 
-#if NETSTANDARD2_0
-            return cachedCrs.GetOrAdd(srid, srid =>
+            return cachedCrs.GetOrAdd(srid, static (srid, state) =>
             {
+                var (crsMap, crsType) = state;
                 var authority = crsMap.GetAuthority(srid);
 
                 return authority is null
@@ -61,20 +61,7 @@ sealed class GeoJSONConverter<T> : PgStreamingConverter<T> where T : IGeoJSONObj
                     : new NamedCRS(crsType == GeoJSONOptions.LongCRS
                         ? "urn:ogc:def:crs:" + authority + "::" + srid
                         : authority + ":" + srid);
-            });
-#else
-        return cachedCrs.GetOrAdd(srid, static (srid, state) =>
-        {
-            var (crsMap, crsType) = state;
-            var authority = crsMap.GetAuthority(srid);
-
-            return authority is null
-                ? throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table")
-                : new NamedCRS(crsType == GeoJSONOptions.LongCRS
-                    ? "urn:ogc:def:crs:" + authority + "::" + srid
-                    : authority + ":" + srid);
-        }, (crsMap, crsType));
-#endif
+            }, (crsMap, crsType));
         };
 }
 
