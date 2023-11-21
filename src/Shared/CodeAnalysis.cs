@@ -1,7 +1,3 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
-
-#pragma warning disable 1591
 
 namespace System.Diagnostics.CodeAnalysis
 {

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 
-#pragma warning disable CA1034
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes;
@@ -470,10 +469,8 @@ public sealed class NpgsqlTsQueryLexeme : NpgsqlTsQuery
     /// <summary>
     /// Weight enum, can be OR'ed together.
     /// </summary>
-#pragma warning disable CA1714
     [Flags]
     public enum Weight
-#pragma warning restore CA1714
     {
         /// <summary>
         /// None

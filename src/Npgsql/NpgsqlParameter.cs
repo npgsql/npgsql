@@ -418,7 +418,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     [Category("Data")]
     public sealed override ParameterDirection Direction { get; set; }
 
-#pragma warning disable CS0109
     /// <summary>
     /// Gets or sets the maximum number of digits used to represent the <see cref="Value"/> property.
     /// </summary>
@@ -444,7 +443,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         get => _scale;
         set => _scale = value;
     }
-#pragma warning restore CS0109
 
     /// <inheritdoc />
     [DefaultValue(0)]
@@ -478,12 +476,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// <inheritdoc />
     public sealed override bool SourceColumnNullMapping { get; set; }
 
-#pragma warning disable CA2227
     /// <summary>
     /// The collection to which this parameter belongs, if any.
     /// </summary>
     public NpgsqlParameterCollection? Collection { get; set; }
-#pragma warning restore CA2227
 
     /// <summary>
     /// The PostgreSQL data type, such as int4 or text, as discovered from pg_type.

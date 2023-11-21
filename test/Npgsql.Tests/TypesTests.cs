@@ -202,7 +202,6 @@ public class TypesTests
         var o = p.Value;
     }
 
-#pragma warning disable 618
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/750")]
     public void NpgsqlInet()
@@ -210,5 +209,4 @@ public class TypesTests
         var v = new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 32);
         Assert.That(v.ToString(), Is.EqualTo("2001:1db8:85a3:1142:1000:8a2e:1370:7334/32"));
     }
-#pragma warning restore 618
 }

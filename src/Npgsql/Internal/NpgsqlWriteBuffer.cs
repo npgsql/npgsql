@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Npgsql.Util;
 using static System.Threading.Timeout;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 namespace Npgsql.Internal;
 
 /// <summary>

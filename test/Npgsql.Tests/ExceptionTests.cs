@@ -250,7 +250,6 @@ $$ LANGUAGE 'plpgsql';");
 
 #pragma warning disable SYSLIB0011
 #pragma warning disable SYSLIB0050
-#pragma warning disable 618
     [Test]
     public void Serialization()
     {
@@ -286,9 +285,7 @@ $$ LANGUAGE 'plpgsql';");
     }
 
     SerializationInfo CreateSerializationInfo() => new(typeof(PostgresException), new FormatterConverter());
-#pragma warning restore 618
 #pragma warning restore SYSLIB0011
-#pragma warning disable SYSLIB0050
 
 #pragma warning disable SYSLIB0051
     [Test]

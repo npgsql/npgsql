@@ -107,14 +107,12 @@ class WriteBufferTests
         Assert.That(completed, Is.False);
     }
 
-#pragma warning disable CS8625
     [SetUp]
     public void SetUp()
     {
         Underlying = new MemoryStream();
         WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding);
     }
-#pragma warning restore CS8625
 
     // ReSharper disable once InconsistentNaming
     NpgsqlWriteBuffer WriteBuffer = default!;
