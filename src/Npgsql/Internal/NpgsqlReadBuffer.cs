@@ -24,7 +24,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 #if DEBUG
     internal static readonly bool BufferBoundsChecks = true;
 #else
-    internal static readonly bool BufferBoundsChecks = Statics.EnableDiagnostics;
+    internal static readonly bool BufferBoundsChecks = Statics.EnableAssertions;
 #endif
 
     public NpgsqlConnection Connection => Connector.Connection!;
