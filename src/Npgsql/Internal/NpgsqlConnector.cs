@@ -1035,7 +1035,7 @@ public sealed partial class NpgsqlConnector
 
         static Task OpenSocketConnectionAsync(Socket socket, EndPoint endpoint, NpgsqlTimeout perIpTimeout, CancellationToken cancellationToken)
         {
-            // Whether the OS platform support Socket.ConnectAsync cancellation API or they do not,
+            // Whether the OS platform supports Socket.ConnectAsync cancellation API or not,
             // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteAsync. It stops waiting
             // and raises the exception, while the actual task may be left running.
             Task ConnectAsync(CancellationToken ct) =>
