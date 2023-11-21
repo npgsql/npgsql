@@ -228,6 +228,15 @@ public class NpgsqlParameterCollectionTests
     }
 
     [Test]
+    public void Throw_multiple_positions_same_instance()
+    {
+        using var cmd = new NpgsqlCommand("SELECT $1, $2");
+        var p = new NpgsqlParameter("", "Hello world");
+        cmd.Parameters.Add(p);
+        Assert.Throws<InvalidOperationException>(() => cmd.Parameters.Add(p));
+    }
+
+    [Test]
     public void IndexOf_falls_back_to_first_insensitive_match([Values] bool manyParams)
     {
         if (_compatMode == CompatMode.OnePass)
