@@ -41,7 +41,6 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// <inheritdoc cref="DbBatchCommand.Parameters"/>
     public new NpgsqlParameterCollection Parameters => _parameters ??= new();
 
-#pragma warning disable CA1822 // Mark members as static
 
 #if NET8_0_OR_GREATER
     /// <inheritdoc/>
@@ -66,7 +65,6 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
 #endif
     => true;
 
-#pragma warning restore CA1822 // Mark members as static
 
     /// <summary>
     /// Appends an error barrier after this batch command. Defaults to the value of <see cref="NpgsqlBatch.EnableErrorBarriers" /> on the

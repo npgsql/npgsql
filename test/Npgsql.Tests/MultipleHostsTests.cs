@@ -161,10 +161,6 @@ public class MultipleHostsTests : TestBase
     [Test, Platform(Exclude = "MacOsX", Reason = "#3786")]
     public void All_hosts_are_down()
     {
-        // Different exception raised in .NET Core 3.1, skip (NUnit doesn't seem to support detecting .NET Core versions)
-        if (RuntimeInformation.FrameworkDescription.StartsWith(".NET Core 3.1"))
-            return;
-
         var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
 
         using var socket1 = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);

@@ -84,7 +84,6 @@ class ReadBufferTests
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("bar"));
     }
 
-#pragma warning disable CS8625
     [SetUp]
     public void SetUp()
     {
@@ -92,7 +91,6 @@ class ReadBufferTests
         ReadBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
         Writer = stream.Writer;
     }
-#pragma warning restore CS8625
 
     // ReSharper disable once InconsistentNaming
     NpgsqlReadBuffer ReadBuffer = default!;

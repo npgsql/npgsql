@@ -44,9 +44,7 @@ sealed class KerberosUsernameProvider
 
         return GetUsernameAsyncInternal();
 
-#pragma warning disable CS1998
         async ValueTask<string?> GetUsernameAsyncInternal()
-#pragma warning restore CS1998
         {
             if (async)
                 await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);

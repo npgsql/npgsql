@@ -21,7 +21,6 @@ using Npgsql.Schema;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
-#pragma warning disable CA2222 // Do not decrease inherited member visibility
 namespace Npgsql;
 
 /// <summary>

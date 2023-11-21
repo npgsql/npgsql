@@ -8,7 +8,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 /// <summary>
 /// Hacky temporary measure used by EFCore.PG to extract user-configured enum mappings. Accessed via reflection only.

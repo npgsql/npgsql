@@ -1035,7 +1035,7 @@ public sealed partial class NpgsqlConnector
 
         static Task OpenSocketConnectionAsync(Socket socket, EndPoint endpoint, NpgsqlTimeout perIpTimeout, CancellationToken cancellationToken)
         {
-            // Whether the framework and/or the OS platform support Socket.ConnectAsync cancellation API or they do not,
+            // Whether the OS platform supports Socket.ConnectAsync cancellation API or not,
             // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteAsync. It stops waiting
             // and raises the exception, while the actual task may be left running.
             Task ConnectAsync(CancellationToken ct) =>
@@ -2484,7 +2484,6 @@ public sealed partial class NpgsqlConnector
 
     #region Keepalive
 
-#pragma warning disable CA1801 // Review unused parameters
     void PerformKeepAlive(object? state)
     {
         Debug.Assert(_isKeepAliveEnabled);
@@ -2523,7 +2522,6 @@ public sealed partial class NpgsqlConnector
             Monitor.Exit(SyncObj);
         }
     }
-#pragma warning restore CA1801 // Review unused parameters
 
     #endregion
 
@@ -2792,9 +2790,7 @@ enum ConnectorState
     Replication,
 }
 
-#pragma warning disable CA1717
 enum TransactionStatus : byte
-#pragma warning restore CA1717
 {
     /// <summary>
     /// Currently not in a transaction block

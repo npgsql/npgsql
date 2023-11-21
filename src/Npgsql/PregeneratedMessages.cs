@@ -9,11 +9,9 @@ static class PregeneratedMessages
 {
     static PregeneratedMessages()
     {
-#pragma warning disable CS8625
         // This is the only use of a write buffer without a connector, for in-memory construction of
         // pregenerated messages.
         using var buf = new NpgsqlWriteBuffer(null, new MemoryStream(), null, NpgsqlWriteBuffer.MinimumSize, Encoding.ASCII);
-#pragma warning restore CS8625
 
         BeginTransRepeatableRead    = Generate(buf, "BEGIN ISOLATION LEVEL REPEATABLE READ");
         BeginTransSerializable      = Generate(buf, "BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE");

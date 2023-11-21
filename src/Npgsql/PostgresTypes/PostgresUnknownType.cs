@@ -10,7 +10,5 @@ public sealed class UnknownBackendType : PostgresType
     /// <summary>
     /// Constructs a the unknown backend type.
     /// </summary>
-#pragma warning disable CA2222 // Do not decrease inherited member visibility
     UnknownBackendType() : base("", "<unknown>", 0) { }
-#pragma warning restore CA2222 // Do not decrease inherited member visibility
 }

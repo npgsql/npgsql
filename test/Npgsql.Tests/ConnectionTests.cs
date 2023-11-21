@@ -720,12 +720,8 @@ public class ConnectionTests : MultiplexingTestBase
 
         var startTimestamp = Stopwatch.GetTimestamp();
         // Give a few seconds for a KeepAlive to possibly perform
-        while (GetElapsedTime(startTimestamp).TotalSeconds < 2)
+        while (Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds < 2)
             Assert.DoesNotThrow(conn.ReloadTypes);
-
-        // dotnet 3.1 doesn't have Stopwatch.GetElapsedTime method.
-        static TimeSpan GetElapsedTime(long startingTimestamp) =>
-            new((long)((Stopwatch.GetTimestamp() - startingTimestamp) * ((double)10000000 / Stopwatch.Frequency)));
     }
 
     #region ChangeDatabase
