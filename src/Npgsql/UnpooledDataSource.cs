@@ -46,5 +46,5 @@ sealed class UnpooledDataSource : NpgsqlDataSource
         connector.Close();
     }
 
-    internal override void Clear() {}
+    internal override Task Clear(bool async, CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

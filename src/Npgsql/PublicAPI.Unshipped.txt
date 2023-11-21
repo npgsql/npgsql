@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 const Npgsql.PostgresErrorCodes.IdleSessionTimeout = "57P05" -> string!
 Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Disable = 0 -> Npgsql.ChannelBinding
@@ -175,3 +175,5 @@ static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTyp
 *REMOVED*Npgsql.Replication.PgOutput.Messages.InsertMessage.RelationId.get -> uint
 *REMOVED*Npgsql.Replication.PgOutput.Messages.UpdateMessage.RelationId.get -> uint
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
+static Npgsql.NpgsqlConnection.ClearAllPoolsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Npgsql.NpgsqlConnection.ClearPoolAsync(Npgsql.NpgsqlConnection! connection, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

@@ -367,10 +367,10 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
     internal override ValueTask<NpgsqlConnector?> OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(NpgsqlMultiHostDataSource));
 
-    internal override void Clear()
+    internal override async Task Clear(bool async, CancellationToken cancellationToken = default)
     {
         foreach (var pool in _pools)
-            pool.Clear();
+            await pool.Clear(async, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
