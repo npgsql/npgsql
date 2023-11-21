@@ -96,5 +96,6 @@ public class TestDecodingOptions : IEquatable<TestDecodingOptions>
         => obj is TestDecodingOptions other && other.Equals(this);
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(IncludeXids, IncludeTimestamp, ForceBinary, SkipEmptyXacts, OnlyLocal, IncludeRewrites, StreamChanges);
+    public override int GetHashCode()
+        => HashCode.Combine(IncludeXids, IncludeTimestamp, ForceBinary, SkipEmptyXacts, OnlyLocal, IncludeRewrites, StreamChanges);
 }

@@ -153,7 +153,7 @@ sealed class CharTextConverter : PgBufferedConverter<char>
     {
         var byteSeq = reader.ReadBytes(Math.Min(_oneCharMaxByteCount.Value, reader.CurrentRemaining));
         Debug.Assert(byteSeq.IsSingleSegment);
-        var bytes = byteSeq.GetFirstSpan();
+        var bytes = byteSeq.FirstSpan;
 
         var chars = _encoding.GetCharCount(bytes);
         if (chars < 1)
