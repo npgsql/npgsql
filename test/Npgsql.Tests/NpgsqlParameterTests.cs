@@ -3,6 +3,7 @@ using NUnit.Framework;
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Threading.Tasks;
 
 namespace Npgsql.Tests;
 
@@ -433,6 +434,15 @@ public class NpgsqlParameterTest : TestBase
         Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J3");
         p.Value = DBNull.Value;
         Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J4");
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5428")]
+    public async Task Match_param_index_case_insensitively()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p,@P", conn);
+        cmd.Parameters.AddWithValue("p", "Hello world");
+        await cmd.ExecuteNonQueryAsync();
     }
 
     [Test]
