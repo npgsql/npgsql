@@ -32,11 +32,8 @@ static class AsyncHelpers
 
     sealed class CompletionSource<T> : CompletionSource
     {
-#if NETSTANDARD
-        AsyncValueTaskMethodBuilder<T> _amb = AsyncValueTaskMethodBuilder<T>.Create();
-#else
         PoolingAsyncValueTaskMethodBuilder<T> _amb = PoolingAsyncValueTaskMethodBuilder<T>.Create();
-#endif
+
         public ValueTask<T> Task => _amb.Task;
 
         public void SetResult(T value)

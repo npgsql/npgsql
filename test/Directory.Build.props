@@ -2,8 +2,7 @@
   <Import Project="../Directory.Build.props" />
 
   <PropertyGroup>
-    <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">net8.0;netcoreapp3.1</TargetFrameworks>
-    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
 
     <!-- Suppress warnings for [RequiresPreviewFeatures] (<EnablePreviewFeatures> doesn't seem to work across <ProjectReference>) -->

@@ -2,7 +2,6 @@ using System;
 
 namespace Npgsql;
 
-#if NET6_0_OR_GREATER
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -256,20 +255,3 @@ sealed class MetricsReporter : IDisposable
     static readonly double StopWatchTickFrequency = (double)TicksPerSecond / Stopwatch.Frequency;
 #endif
 }
-#else
-sealed class MetricsReporter : IDisposable
-{
-    public MetricsReporter(NpgsqlDataSource _) {}
-    internal long ReportCommandStart() => 0;
-    internal void ReportCommandStop(long startTimestamp) {}
-    internal void CommandStartPrepared() {}
-    internal void ReportCommandFailed() {}
-    internal void ReportBytesWritten(long bytesWritten) {}
-    internal void ReportBytesRead(long bytesRead) {}
-    internal void ReportConnectionPoolTimeout() {}
-    internal void ReportPendingConnectionRequestStart() {}
-    internal void ReportPendingConnectionRequestStop() {}
-    internal void ReportConnectionCreateTime(TimeSpan duration) {}
-    public void Dispose() {}
-}
-#endif

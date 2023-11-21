@@ -38,10 +38,6 @@ jobs:
             pg_major: 16
             config: Debug
             test_tfm: net8.0
-          - os: ubuntu-22.04
-            pg_major: 16
-            config: Release
-            test_tfm: netcoreapp3.1
           - os: macos-12
             pg_major: 14
             config: Release

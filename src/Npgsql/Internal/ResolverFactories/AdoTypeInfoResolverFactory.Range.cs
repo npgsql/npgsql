@@ -62,10 +62,7 @@ sealed partial class AdoTypeInfoResolverFactory
             var matchingArguments =
                 new[]
                 {
-                    typeof(int), typeof(long), typeof(decimal), typeof(DateTime),
-# if NET6_0_OR_GREATER
-                    typeof(DateOnly)
-#endif
+                    typeof(int), typeof(long), typeof(decimal), typeof(DateTime), typeof(DateOnly)
                 };
 
             // If we don't know more than the clr type, default to a Multirange kind over Array as they share the same types.
@@ -160,11 +157,9 @@ sealed partial class AdoTypeInfoResolverFactory
                 isDefault: true);
             mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.DateRange,
                 static (options, mapping, _) => mapping.CreateInfo(options, CreateRangeConverter(new Int4Converter<int>(), options)));
-    #if NET6_0_OR_GREATER
             mappings.AddStructType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options)));
-    #endif
 
             return mappings;
         }
@@ -209,9 +204,7 @@ sealed partial class AdoTypeInfoResolverFactory
             // daterange
             mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange);
             mappings.AddStructArrayType<NpgsqlRange<int>>(DataTypeNames.DateRange);
-#if NET6_0_OR_GREATER
             mappings.AddStructArrayType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange);
-#endif
 
             return mappings;
         }

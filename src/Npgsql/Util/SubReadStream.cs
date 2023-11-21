@@ -108,11 +108,7 @@ sealed class SubReadStream : Stream
         return ret;
     }
 
-#if !NETSTANDARD2_0
     public override int Read(Span<byte> destination)
-#else
-    int Read(Span<byte> destination)
-#endif
     {
         // parameter validation sent to _superStream.Read
         var origCount = destination.Length;
@@ -147,11 +143,7 @@ sealed class SubReadStream : Stream
         return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
     }
 
-#if !NETSTANDARD2_0
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-#else
-    ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-#endif
     {
         ThrowIfDisposed();
         ThrowIfCantRead();
@@ -209,19 +201,4 @@ sealed class SubReadStream : Stream
         }
         base.Dispose(disposing);
     }
-
-#if NETSTANDARD
-    void ValidateBufferArguments(byte[]? buffer, int offset, int count)
-    {
-        if (buffer is null)
-            ThrowHelper.ThrowArgumentNullException(nameof(buffer));
-
-        if (offset < 0)
-            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(offset), "Offset is less than 0");
-
-        if ((uint)count > buffer.Length - offset)
-            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Count larger than buffer minus offset");
-
-    }
-#endif
 }

@@ -231,10 +231,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<int>(DataTypeNames.Date,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()));
-    #if NET6_0_OR_GREATER
             mappings.AddStructType<DateOnly>(DataTypeNames.Date,
                 static (options, mapping, _) => mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)));
-    #endif
 
             // Interval
             mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
@@ -247,10 +245,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()), isDefault: true);
             mappings.AddStructType<long>(DataTypeNames.Time,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
-    #if NET6_0_OR_GREATER
             mappings.AddStructType<TimeOnly>(DataTypeNames.Time,
                 static (options, mapping, _) => mapping.CreateInfo(options, new TimeOnlyTimeConverter()));
-    #endif
 
             // TimeTz
             mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimeTz,
@@ -443,9 +439,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Date
             mappings.AddStructArrayType<DateTime>(DataTypeNames.Date);
             mappings.AddStructArrayType<int>(DataTypeNames.Date);
-    #if NET6_0_OR_GREATER
             mappings.AddStructArrayType<DateOnly>(DataTypeNames.Date);
-    #endif
 
             // Interval
             mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
@@ -454,9 +448,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Time
             mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Time);
             mappings.AddStructArrayType<long>(DataTypeNames.Time);
-    #if NET6_0_OR_GREATER
             mappings.AddStructArrayType<TimeOnly>(DataTypeNames.Time);
-    #endif
 
             // TimeTz
             mappings.AddStructArrayType<DateTimeOffset>(DataTypeNames.TimeTz);

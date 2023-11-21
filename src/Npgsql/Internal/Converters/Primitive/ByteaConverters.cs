@@ -26,9 +26,7 @@ abstract class ByteaConverters<T> : PgStreamingConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => writer.WriteBytesAsync(ConvertTo(value), cancellationToken);
 
-#if NET6_0_OR_GREATER
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-#endif
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         var bytes = new byte[reader.CurrentRemaining];
@@ -145,11 +143,7 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
         }
         else
         {
-#if NETSTANDARD2_0
-            return new ValueTask(value.CopyToAsync(writer.GetStream()));
-#else
             return new ValueTask(value.CopyToAsync(writer.GetStream(), cancellationToken));
-#endif
         }
     }
 }

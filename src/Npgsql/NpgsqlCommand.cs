@@ -637,11 +637,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
-#if NETSTANDARD2_0
-    public virtual Task PrepareAsync(CancellationToken cancellationToken = default)
-#else
     public override Task PrepareAsync(CancellationToken cancellationToken = default)
-#endif
         => Prepare(async: true, cancellationToken);
 
     Task Prepare(bool async, CancellationToken cancellationToken = default)

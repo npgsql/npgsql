@@ -52,7 +52,6 @@ sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
     }
 }
 
-#if NET6_0_OR_GREATER
 sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
 {
     readonly bool _dateTimeInfinityConversions;
@@ -100,4 +99,3 @@ sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
         writer.WriteInt32(value.DayNumber - BaseValue.DayNumber);
     }
 }
-#endif

@@ -125,18 +125,5 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
         => obj is PgOutputReplicationOptions other && other.Equals(this);
 
     /// <inheritdoc />
-    public override int GetHashCode()
-    {
-#if NETSTANDARD2_0
-        var hashCode = ProtocolVersion.GetHashCode();
-        hashCode = (hashCode * 397) ^ PublicationNames.GetHashCode();
-        hashCode = (hashCode * 397) ^ Binary.GetHashCode();
-        hashCode = (hashCode * 397) ^ Streaming.GetHashCode();
-        hashCode = (hashCode * 397) ^ Messages.GetHashCode();
-        hashCode = (hashCode * 397) ^ TwoPhase.GetHashCode();
-        return hashCode;
-#else
-        return HashCode.Combine(ProtocolVersion, PublicationNames, Binary, Streaming, Messages, TwoPhase);
-#endif
-    }
+    public override int GetHashCode() => HashCode.Combine(ProtocolVersion, PublicationNames, Binary, Streaming, Messages, TwoPhase);
 }

@@ -62,10 +62,7 @@ sealed partial class AdoTypeInfoResolverFactory
             var matchingArguments =
                 new[]
                 {
-                    typeof(int), typeof(long), typeof(decimal), typeof(DateTime),
-# if NET6_0_OR_GREATER
-                    typeof(DateOnly)
-#endif
+                    typeof(int), typeof(long), typeof(decimal), typeof(DateTime), typeof(DateOnly)
                 };
 
             // If we don't know more than the clr type, default to a Multirange kind over Array as they share the same types.
@@ -235,17 +232,15 @@ sealed partial class AdoTypeInfoResolverFactory
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, CreateListMultirangeConverter(
                         CreateRangeConverter(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
-    #if NET6_0_OR_GREATER
-                mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, CreateArrayMultirangeConverter(
-                            CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)),
-                    isDefault: true);
-                mappings.AddType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, CreateListMultirangeConverter(
-                            CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
-    #endif
+            mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
+                static (options, mapping, _) =>
+                    mapping.CreateInfo(options, CreateArrayMultirangeConverter(
+                        CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)),
+                isDefault: true);
+            mappings.AddType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange,
+                static (options, mapping, _) =>
+                    mapping.CreateInfo(options, CreateListMultirangeConverter(
+                        CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
 
             return mappings;
         }
@@ -310,10 +305,8 @@ sealed partial class AdoTypeInfoResolverFactory
             // datemultirange
             mappings.AddArrayType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange);
             mappings.AddArrayType<List<NpgsqlRange<DateTime>>>(DataTypeNames.DateMultirange);
-    #if NET6_0_OR_GREATER
-                mappings.AddArrayType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange);
-                mappings.AddArrayType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange);
-    #endif
+            mappings.AddArrayType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange);
+            mappings.AddArrayType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange);
 
             return mappings;
         }

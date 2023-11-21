@@ -15,7 +15,6 @@ sealed class NpgsqlEventSource : EventSource
     internal const int CommandStartId = 3;
     internal const int CommandStopId = 4;
 
-#if !NETSTANDARD2_0
     IncrementingPollingCounter? _bytesWrittenPerSecondCounter;
     IncrementingPollingCounter? _bytesReadPerSecondCounter;
 
@@ -31,7 +30,6 @@ sealed class NpgsqlEventSource : EventSource
 
     PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
     PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
-#endif
 
     long _bytesWritten;
     long _bytesRead;
@@ -97,12 +95,10 @@ sealed class NpgsqlEventSource : EventSource
 
     internal void DataSourceCreated(NpgsqlDataSource dataSource)
     {
-#if !NETSTANDARD2_0
         lock (_dataSourcesLock)
         {
             _dataSources.Add(dataSource, null);
         }
-#endif
     }
 
     internal void MultiplexingBatchSent(int numCommands, Stopwatch stopwatch)
@@ -116,7 +112,6 @@ sealed class NpgsqlEventSource : EventSource
         }
     }
 
-#if !NETSTANDARD2_0
     double GetDataSourceCount()
     {
         lock (_dataSourcesLock)
@@ -226,6 +221,4 @@ sealed class NpgsqlEventSource : EventSource
             }
         }
     }
-
-#endif
 }

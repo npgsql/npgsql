@@ -44,11 +44,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         var numBytes = reader.ReadByte();
         Span<byte> bytes = stackalloc byte[numBytes];
         reader.Read(bytes);
-#if NETSTANDARD2_0
-        return (new IPAddress(bytes.ToArray()), mask);
-#else
         return (new IPAddress(bytes), mask);
-#endif
     }
 
     protected override void WriteCore(PgWriter writer, NpgsqlInet value)

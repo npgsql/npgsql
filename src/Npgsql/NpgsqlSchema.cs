@@ -1134,11 +1134,7 @@ FROM pg_constraint c
             {
                 if (reader is not null)
                     await reader.DisposeAsync().ConfigureAwait(false);
-#if NETSTANDARD2_0
-                command.Dispose();
-#else
                 await command.DisposeAsync().ConfigureAwait(false);
-#endif
             }
             else
             {

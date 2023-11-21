@@ -586,7 +586,6 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             isNpgsqlDbTypeInferredFromClrType: false);
     }
 
-#if NET6_0_OR_GREATER
     [Test]
     public Task Date_as_DateOnly()
         => AssertType(new DateOnly(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefaultForReading: false);
@@ -618,7 +617,6 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             "datemultirange",
             NpgsqlDbType.DateMultirange, isDefault: false, skipArrayCheck: true);
     }
-#endif
 
     [Test]
     public async Task Daterange_array_as_array_of_DateInterval()
@@ -673,7 +671,6 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             DbType.Time,
             isDefault: false);
 
-#if NET6_0_OR_GREATER
     [Test]
     public Task Time_as_TimeOnly()
         => AssertType(
@@ -683,7 +680,6 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             NpgsqlDbType.Time,
             DbType.Time,
             isDefaultForReading: false);
-#endif
 
     #endregion Time
 

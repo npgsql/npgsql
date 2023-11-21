@@ -806,7 +806,6 @@ public sealed partial class NpgsqlConnector
             X509Certificate2? cert = null;
             if (Path.GetExtension(certPath).ToUpperInvariant() != ".PFX")
             {
-#if NET5_0_OR_GREATER
                 // It's PEM time
                 var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
                 cert = string.IsNullOrEmpty(password)
@@ -819,13 +818,6 @@ public sealed partial class NpgsqlConnector
                     using var previousCert = cert;
                     cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
                 }
-
-#else
-                // Technically PEM certificates are supported as of .NET 5 but we don't build for the net5.0
-                // TFM anymore since .NET 5 is out of support
-                // This is a breaking change for .NET 5 as of Npgsql 8!
-                throw new NotSupportedException("PEM certificates are only supported with .NET 6 and higher");
-#endif
             }
 
             cert ??= new X509Certificate2(certPath, password);
@@ -884,16 +876,10 @@ public sealed partial class NpgsqlConnector
             {
                 var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
-                var sslProtocols = SslProtocols.None;
-#if NETSTANDARD2_0
-                // On .NET Framework SslProtocols.None can be disabled, see #3718
-                sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
-#endif
-
                 if (async)
-                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, sslProtocols, checkCertificateRevocation).ConfigureAwait(false);
+                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.None, checkCertificateRevocation).ConfigureAwait(false);
                 else
-                    sslStream.AuthenticateAsClient(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
+                    sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.None, checkCertificateRevocation);
 
                 _stream = sslStream;
             }
@@ -987,11 +973,7 @@ public sealed partial class NpgsqlConnector
     async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
         Task<IPAddress[]> GetHostAddressesAsync(CancellationToken ct) =>
-#if NET6_0_OR_GREATER
             Dns.GetHostAddressesAsync(Host, ct);
-#else
-            Dns.GetHostAddressesAsync(Host);
-#endif
 
         // Whether the framework and/or the OS platform support Dns.GetHostAddressesAsync cancellation API or they do not,
         // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteAsync. It stops waiting
@@ -1057,11 +1039,7 @@ public sealed partial class NpgsqlConnector
             // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteAsync. It stops waiting
             // and raises the exception, while the actual task may be left running.
             Task ConnectAsync(CancellationToken ct) =>
-#if NET5_0_OR_GREATER
                 socket.ConnectAsync(endpoint, ct).AsTask();
-#else
-                socket.ConnectAsync(endpoint);
-#endif
             return TaskTimeoutAndCancellation.ExecuteAsync(ConnectAsync, perIpTimeout, cancellationToken);
         }
     }
@@ -1094,34 +1072,9 @@ public sealed partial class NpgsqlConnector
                 ? Settings.TcpKeepAliveInterval
                 : Settings.TcpKeepAliveTime;
 
-#if NETSTANDARD2_0 || NETSTANDARD2_1
-            var timeMilliseconds = timeSeconds * 1000;
-            var intervalMilliseconds = intervalSeconds * 1000;
-
-            // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
-            var uintSize = Marshal.SizeOf(typeof(uint));
-            var inOptionValues = new byte[uintSize * 3];
-            BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-            BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
-            BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
-            var result = 0;
-            try
-            {
-                result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
-            }
-            catch (PlatformNotSupportedException)
-            {
-                throw new PlatformNotSupportedException("Setting TCP Keepalive Time and TCP Keepalive Interval is supported only on Windows, Mono and .NET Core 3.1+. " +
-                    "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
-            }
-
-            if (result != 0)
-                throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
-#else
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, timeSeconds);
             socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, intervalSeconds);
-#endif
         }
     }
 
@@ -1286,9 +1239,7 @@ public sealed partial class NpgsqlConnector
         return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false))!;
     }
 
-#if NET6_0_OR_GREATER
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-#endif
     async ValueTask<IBackendMessage?> ReadMessageLong(
         bool async,
         DataRowLoadingMode dataRowLoadingMode,
@@ -1686,19 +1637,15 @@ public sealed partial class NpgsqlConnector
             else
             {
                 Debug.Assert(caCertificate is null);
-#if NET5_0_OR_GREATER
                 if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
                     certs.ImportFromPemFile(certRootPath);
-#endif
 
                 if (certs.Count == 0)
                     certs.Add(new X509Certificate2(certRootPath));
             }
 
-#if NET5_0_OR_GREATER
             chain.ChainPolicy.CustomTrustStore.AddRange(certs);
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-#endif
 
             chain.ChainPolicy.ExtraStore.AddRange(certs);
 

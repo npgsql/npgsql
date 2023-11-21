@@ -53,7 +53,6 @@ public class DateTimeTests : TestBase
             isDefaultForWriting: false);
     }
 
-#if NET6_0_OR_GREATER
     [Test]
     public Task Date_as_DateOnly()
         => AssertType(new DateOnly(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefaultForReading: false);
@@ -98,7 +97,6 @@ public class DateTimeTests : TestBase
             NpgsqlDbType.DateMultirange,
             isDefaultForReading: false);
     }
-#endif
 
     #endregion
 
@@ -114,7 +112,6 @@ public class DateTimeTests : TestBase
             DbType.Time,
             isDefaultForWriting: false);
 
-#if NET6_0_OR_GREATER
     [Test]
     public Task Time_as_TimeOnly()
         => AssertType(
@@ -124,7 +121,6 @@ public class DateTimeTests : TestBase
             NpgsqlDbType.Time,
             DbType.Time,
             isDefaultForReading: false);
-#endif
 
     #endregion
 

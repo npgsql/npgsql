@@ -2,8 +2,6 @@
   <PropertyGroup>
     <OutputType>exe</OutputType>
     <PublishAot>true</PublishAot>
-    <!-- We need to override TargetFrameworks here to avoid build failures  -->
-    <TargetFrameworks>net8.0</TargetFrameworks>
     <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
     <IlcGenerateDgmlFile>true</IlcGenerateDgmlFile>
     <InvariantGlobalization>true</InvariantGlobalization>
