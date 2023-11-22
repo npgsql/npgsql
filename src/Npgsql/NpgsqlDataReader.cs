@@ -1926,6 +1926,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             {
                 columnLength = buffer.ReadInt32();
                 _column++;
+                Debug.Assert(columnLength >= -1);
+                if (columnLength > 0)
                     buffer.Skip(columnLength);
             }
             columnLength = buffer.ReadInt32();
@@ -1963,7 +1965,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             for (var lastColumnRead = _columns.Count; ordinal >= lastColumnRead; lastColumnRead++)
             {
                 (Buffer.ReadPosition, var lastLen) = _columns[lastColumnRead - 1];
-                if (lastLen is not -1)
+                if (lastLen > 0)
                     buffer.Skip(lastLen);
                 var len = Buffer.ReadInt32();
                 _columns.Add((Buffer.ReadPosition, len));
@@ -2027,31 +2029,33 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
 
             // Seek to the requested column
+            int columnLength;
             var buffer = Buffer;
             // Written as a while to be able to increment _column directly after reading into it.
             while (_column < ordinal - 1)
             {
                 await buffer.Ensure(4, async).ConfigureAwait(false);
-                var len = buffer.ReadInt32();
+                columnLength = buffer.ReadInt32();
                 _column++;
-                if (len != -1)
+                Debug.Assert(columnLength >= -1);
+                if (columnLength > 0)
                 {
                     try
                     {
-                        await buffer.Skip(len, async).ConfigureAwait(false);
+                        await buffer.Skip(columnLength, async).ConfigureAwait(false);
                     }
                     catch
                     {
                         // Leave the reader in a recoverable state.
                         // Resumable: true causes commit to consume without error next time.
-                        PgReader.Init(len, dataFormat, resumable: true);
+                        PgReader.Init(columnLength, dataFormat, resumable: true);
                         throw;
                     }
                 }
             }
 
             await buffer.Ensure(4, async).ConfigureAwait(false);
-            var columnLength = buffer.ReadInt32();
+            columnLength = buffer.ReadInt32();
             _column = ordinal;
 
             PgReader.Init(columnLength, dataFormat, resumableOp);
@@ -2076,6 +2080,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     return false;
                 columnLength = buffer.ReadInt32();
                 _column++;
+                Debug.Assert(columnLength >= -1);
                 if (columnLength > 0)
                 {
                     if (buffer.ReadBytesLeft < columnLength)
