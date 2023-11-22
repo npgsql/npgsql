@@ -2107,7 +2107,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     Task ConsumeRow(bool async)
     {
-        Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
+        Debug.Assert(State is ReaderState.InResult or ReaderState.BeforeResult);
 
         if (!_canConsumeRowNonSequentially)
             return ConsumeRowSequential(async);
@@ -2122,13 +2122,30 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
             else
                 PgReader.Commit(resuming: false);
+
             // Skip over the remaining columns in the row
-            for (; _column < ColumnCount - 1; _column++)
+            var buffer = Buffer;
+            // Written as a while to be able to increment _column directly after reading into it.
+            while (_column < ColumnCount - 1)
             {
-                await Buffer.Ensure(4, async).ConfigureAwait(false);
-                var len = Buffer.ReadInt32();
-                if (len != -1)
-                    await Buffer.Skip(len, async).ConfigureAwait(false);
+                await buffer.Ensure(4, async).ConfigureAwait(false);
+                var columnLength = buffer.ReadInt32();
+                _column++;
+                Debug.Assert(columnLength >= -1);
+                if (columnLength > 0)
+                {
+                    try
+                    {
+                        await buffer.Skip(columnLength, async).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Leave the reader in a recoverable state.
+                        // Resumable: true causes commit to consume without error next time.
+                        PgReader.Init(columnLength, RowDescription![_column].DataFormat, resumable: true);
+                        throw;
+                    }
+                }
             }
         }
     }
