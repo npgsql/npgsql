@@ -2054,11 +2054,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // Skip over unwanted fields
             columnLength = -1;
             var buffer = Buffer;
-            for (; _column < ordinal - 1; _column++)
+            // Written as a while to be able to increment _column directly after reading into it.
+            while (_column < ordinal - 1)
             {
                 if (buffer.ReadBytesLeft < 4)
                     return false;
                 columnLength = buffer.ReadInt32();
+                _column++;
                 if (columnLength > 0)
                 {
                     if (buffer.ReadBytesLeft < columnLength)
