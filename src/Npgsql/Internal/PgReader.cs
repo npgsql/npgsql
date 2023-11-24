@@ -486,7 +486,7 @@ public class PgReader
             return;
         }
 
-        if (FieldOffset != FieldSize)
+        if (FieldOffset != FieldSize && !StreamActive)
             ThrowNotConsumedExactly();
 
         _fieldConsumed = true;
@@ -501,7 +501,7 @@ public class PgReader
         if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
             return ConsumeAsync(FieldRemaining);
 
-        if (FieldOffset != FieldSize)
+        if (FieldOffset != FieldSize && !StreamActive)
             ThrowNotConsumedExactly();
 
         _fieldConsumed = true;
@@ -560,9 +560,10 @@ public class PgReader
     public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
     public ValueTask ConsumeAsync(int? count = null, CancellationToken cancellationToken = default) => Consume(async: true, count, cancellationToken);
 
+    bool StreamActive => _userActiveStream is { IsDisposed: false };
     internal void ThrowIfStreamActive()
     {
-        if (_userActiveStream is { IsDisposed: false})
+        if (StreamActive)
             ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
     }
 
