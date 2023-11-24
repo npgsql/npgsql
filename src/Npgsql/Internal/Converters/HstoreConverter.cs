@@ -147,7 +147,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
                 if (async)
                     await writer.WriteCharsAsync(kv.Value.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
                 else
-                    writer.WriteChars(kv.Key.AsSpan(), _encoding);
+                    writer.WriteChars(kv.Value.AsSpan(), _encoding);
             }
             i += 2;
         }
