@@ -2039,19 +2039,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 _column++;
                 Debug.Assert(columnLength >= -1);
                 if (columnLength > 0)
-                {
-                    try
-                    {
-                        await buffer.Skip(columnLength, async).ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                        // Leave the reader in a recoverable state.
-                        // Resumable: true causes commit to consume without error next time.
-                        PgReader.Init(columnLength, dataFormat, resumable: true);
-                        throw;
-                    }
-                }
+                    await buffer.Skip(columnLength, async).ConfigureAwait(false);
             }
 
             await buffer.Ensure(4, async).ConfigureAwait(false);
@@ -2133,19 +2121,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 _column++;
                 Debug.Assert(columnLength >= -1);
                 if (columnLength > 0)
-                {
-                    try
-                    {
-                        await buffer.Skip(columnLength, async).ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                        // Leave the reader in a recoverable state.
-                        // Resumable: true causes commit to consume without error next time.
-                        PgReader.Init(columnLength, RowDescription![_column].DataFormat, resumable: true);
-                        throw;
-                    }
-                }
+                    await buffer.Skip(columnLength, async).ConfigureAwait(false);
             }
         }
     }
