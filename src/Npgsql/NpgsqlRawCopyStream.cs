@@ -487,6 +487,8 @@ public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     /// Cancels and terminates an ongoing import. Any data already written will be discarded.
     /// </summary>
     public Task CancelAsync() => ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
+
+    public override ValueTask DisposeAsync() => ((NpgsqlRawCopyStream)BaseStream).DisposeAsync();
 }
 
 /// <summary>
