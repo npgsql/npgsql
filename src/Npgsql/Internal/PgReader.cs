@@ -75,7 +75,7 @@ public class PgReader
     internal bool IsCharsRead => _charsReadOffset is not null;
 
     [DoesNotReturn, StackTraceHidden]
-    internal void ThrowAbort(Exception abortReason) => throw _buffer.Connector.Break(abortReason);
+    internal void ThrowAbort(Exception abortReason) => _buffer.ThrowAbort(abortReason);
 
     internal void Revert(int size, int startPos, Size bufferRequirement)
     {

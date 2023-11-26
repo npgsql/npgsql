@@ -25,11 +25,45 @@ using Npgsql.Properties;
 
 namespace Npgsql.Internal;
 
+readonly struct CancellationScope : IDisposable
+{
+    readonly NpgsqlConnector _connector;
+    readonly CancellationTokenRegistration _registration;
+    readonly CancellationToken _previousCancellationToken;
+    readonly bool _previousAttemptPostgresCancellation;
+
+    public CancellationScope(NpgsqlConnector connector, CancellationTokenRegistration registration, CancellationToken previousCancellationToken, bool previousAttemptPostgresCancellation)
+    {
+        _connector = connector;
+        _registration = registration;
+        _previousCancellationToken = previousCancellationToken;
+        _previousAttemptPostgresCancellation = previousAttemptPostgresCancellation;
+    }
+
+    public void Dispose()
+    {
+        if (_connector is null)
+            return;
+
+        _connector.UserCancellationToken = _previousCancellationToken;
+        _connector.AttemptPostgresCancellation = _previousAttemptPostgresCancellation;
+        _registration.Dispose();
+    }
+}
+
+interface IConnectionOperationControl
+{
+    bool Aborted { get; }
+    void Abort(Exception abortReason);
+    TimeSpan Cancel(Exception? cancellationReason, CancellationToken? cancellationToken = null);
+    CancellationToken CurrentCancellationToken { get;}
+}
+
 /// <summary>
 /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
 /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
 /// </summary>
-public sealed partial class NpgsqlConnector
+public sealed partial class NpgsqlConnector : IConnectionOperationControl
 {
     #region Fields and Properties
 
@@ -273,7 +307,7 @@ public sealed partial class NpgsqlConnector
     CancellationTokenRegistration _cancellationTokenRegistration;
     internal bool UserCancellationRequested => _userCancellationRequested;
     internal CancellationToken UserCancellationToken { get; set; }
-    internal bool AttemptPostgresCancellation { get; private set; }
+    internal bool AttemptPostgresCancellation { get; set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
 
     IDisposable? _certificate;
@@ -743,7 +777,8 @@ public sealed partial class NpgsqlConnector
                 RelaxedTextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
             }
 
-            ReadBuffer = new NpgsqlReadBuffer(this, _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
+            ReadBuffer = new NpgsqlReadBuffer(this, DataSource.MetricsReporter,
+                _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
             WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
 
             timeout.CheckAndApply(this);
@@ -1239,6 +1274,8 @@ public sealed partial class NpgsqlConnector
         return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false))!;
     }
 
+    bool ReadingNotifications { get; set; }
+
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
     async ValueTask<IBackendMessage?> ReadMessageLong(
         bool async,
@@ -1269,11 +1306,14 @@ public sealed partial class NpgsqlConnector
 
         PostgresException? error = null;
 
+        if (readingNotifications)
+            ReadingNotifications = true;
         try
         {
             while (true)
             {
-                await ReadBuffer.Ensure(5, async, readingNotifications).ConfigureAwait(false);
+
+                await ReadBuffer.Ensure(5, async).ConfigureAwait(false);
                 var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                 ValidateBackendMessageCode(messageCode);
                 var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1359,7 +1399,8 @@ public sealed partial class NpgsqlConnector
 
                 // Reset flushed bytes after any RFQ or in between potentially long running operations.
                 // Just in case we'll hit that 15 exbibyte limit of a signed long...
-                if (messageCode is BackendMessageCode.ReadyForQuery or BackendMessageCode.CopyData or BackendMessageCode.NotificationResponse)
+                if (messageCode is BackendMessageCode.ReadyForQuery or BackendMessageCode.CopyData
+                    or BackendMessageCode.NotificationResponse)
                     ReadBuffer.ResetFlushedBytes();
 
                 return msg;
@@ -1386,6 +1427,11 @@ public sealed partial class NpgsqlConnector
             if (error != null)
                 ExceptionDispatchInfo.Capture(error).Throw();
             throw;
+        }
+        finally
+        {
+            if (readingNotifications)
+                ReadingNotifications = false;
         }
     }
 
@@ -1741,6 +1787,9 @@ public sealed partial class NpgsqlConnector
     {
         Debug.Assert(BackendProcessId != 0, "PostgreSQL cancellation requested by the backend doesn't support it");
 
+        if (PostgresCancellationPerformed)
+            return true;
+
         lock (CancelLock)
         {
             if (PostgresCancellationPerformed)
@@ -1798,7 +1847,7 @@ public sealed partial class NpgsqlConnector
         CancellationToken cancellationToken = default,
         bool attemptPgCancellation = true)
     {
-        _userCancellationRequested = PostgresCancellationPerformed = false;
+        _readPgCancellationEffect = _userCancellationRequested = PostgresCancellationPerformed = false;
         UserCancellationToken = cancellationToken;
         ReadBuffer.Cts.ResetCts();
 
@@ -1827,7 +1876,7 @@ public sealed partial class NpgsqlConnector
     /// PostgreSQL cancellation will be skipped and client-socket cancellation will occur immediately.
     /// </param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal NestedCancellableScope StartNestedCancellableOperation(
+    internal CancellationScope StartNestedCancellableOperation(
         CancellationToken cancellationToken = default,
         bool attemptPgCancellation = true)
     {
@@ -1841,31 +1890,6 @@ public sealed partial class NpgsqlConnector
         return new(this, registration, currentUserCancellationToken, currentAttemptPostgresCancellation);
     }
 
-    internal readonly struct NestedCancellableScope : IDisposable
-    {
-        readonly NpgsqlConnector _connector;
-        readonly CancellationTokenRegistration _registration;
-        readonly CancellationToken _previousCancellationToken;
-        readonly bool _previousAttemptPostgresCancellation;
-
-        public NestedCancellableScope(NpgsqlConnector connector, CancellationTokenRegistration registration, CancellationToken previousCancellationToken, bool previousAttemptPostgresCancellation)
-        {
-            _connector = connector;
-            _registration = registration;
-            _previousCancellationToken = previousCancellationToken;
-            _previousAttemptPostgresCancellation = previousAttemptPostgresCancellation;
-        }
-
-        public void Dispose()
-        {
-            if (_connector is null)
-                return;
-
-            _connector.UserCancellationToken = _previousCancellationToken;
-            _connector.AttemptPostgresCancellation = _previousAttemptPostgresCancellation;
-            _registration.Dispose();
-        }
-    }
 
     #endregion Cancel
 
@@ -2734,6 +2758,54 @@ public sealed partial class NpgsqlConnector
     }
 
     #endregion Misc
+
+    bool IConnectionOperationControl.Aborted => IsBroken;
+    void IConnectionOperationControl.Abort(Exception abortReason) => Break(abortReason);
+
+    bool _readPgCancellationEffect;
+
+    bool OperationSupportsPostgresCancellation
+        => SupportsPostgresCancellation && State is ConnectorState.Executing or ConnectorState.Fetching or ConnectorState.Replication;
+
+    TimeSpan IConnectionOperationControl.Cancel(Exception? cancellationReason, CancellationToken? cancellationToken)
+    {
+        // If we should attempt PostgreSQL cancellation do it the first time around.
+        if (!_readPgCancellationEffect && AttemptPostgresCancellation && OperationSupportsPostgresCancellation && PerformPostgresCancellation())
+        {
+            // When the timeout is negative the pg cancellation effect read will be skipped and we'll directly abort in the code below.
+            if (Settings.CancellationTimeout >= 0)
+            {
+                _readPgCancellationEffect = true;
+                return TimeSpan.FromMilliseconds(Settings.CancellationTimeout);
+            }
+        }
+
+        // When we have read the pg cancellation effect the subsequent Cancel call with a UserCancellationToken
+        // is due to a read timing out on the previously returned CancellationTimeout.
+        // If we have done the cancellation effect read and we're called by a future read UserCancellationToken would not be present.
+        if (cancellationToken is not { IsCancellationRequested: true } || _readPgCancellationEffect && UserCancellationToken == cancellationToken)
+            cancellationReason = new TimeoutException("Timeout during reading attempt", cancellationReason);
+
+        cancellationReason = new NpgsqlException("Exception while reading from stream", cancellationReason);
+
+        // Return an OCE if there is a cancellationToken (async caller) and it's either cancelled or a user performed explicit cancellation.
+        // Synchronous reads end up with a conventional NpgsqlException(TimeoutException) as we cannot cancel an in-progress sync read.
+        if (cancellationToken is { } token && (token.IsCancellationRequested || _userCancellationRequested))
+        {
+            cancellationReason = new OperationCanceledException(
+                token.IsCancellationRequested ? null : "Read was cancelled out-of-band by user code", cancellationReason, token);
+        }
+
+        // When reading notifications (Wait) there's nothing to cancel, and no breaking of the connection.
+        if (!ReadingNotifications)
+            ((IConnectionOperationControl)this).Abort(cancellationReason);
+        throw cancellationReason;
+    }
+
+    // After a cancellation read was attempted the connection was either broken or we're reading more (due to successful cancellation)
+    // In the latter case CurrentCancellationToken is usually called again, however we shouldn't return the previously cancelled token.
+    CancellationToken IConnectionOperationControl.CurrentCancellationToken
+        => _readPgCancellationEffect ? CancellationToken.None : UserCancellationToken;
 }
 
 #region Enums

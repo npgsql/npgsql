@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -135,7 +136,7 @@ class PgPostmasterMock : IAsyncDisposable
         var clientSocket = await _socket.AcceptAsync();
 
         var stream = new NetworkStream(clientSocket, true);
-        var readBuffer = new NpgsqlReadBuffer(null!, stream, clientSocket, ReadBufferSize, Encoding,
+        var readBuffer = new NpgsqlReadBuffer(stream, clientSocket, ReadBufferSize, Encoding,
             RelaxedEncoding);
         var writeBuffer = new NpgsqlWriteBuffer(null!, stream, clientSocket, WriteBufferSize, Encoding);
 

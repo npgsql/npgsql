@@ -1956,19 +1956,21 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(reader.GetInt32(0), Is.EqualTo(1));
 
         // Attempt to read the second row - simulate blocking and cancellation
-        var cancellationSource = new CancellationTokenSource();
+        var cts = new CancellationTokenSource();
         if (passCancelledToken)
-            cancellationSource.Cancel();
-        var task = reader.ReadAsync(cancellationSource.Token);
-        cancellationSource.Cancel();
+            cts.Cancel();
+        var connProcessId = conn.ProcessID;
+        var task = reader.ReadAsync(cts.Token);
+        cts.Cancel();
 
         var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
-        Assert.That(processId, Is.EqualTo(conn.ProcessID));
+        Assert.That(processId, Is.EqualTo(connProcessId));
 
         // Send no response from server, wait for the cancellation attempt to time out
         var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
-        Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
-        Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
+        Assert.That(exception.InnerException, Is.TypeOf<NpgsqlException>());
+        Assert.That(exception.InnerException?.InnerException, Is.TypeOf<TimeoutException>());
+        Assert.That(exception.CancellationToken, Is.EqualTo(cts.Token));
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
@@ -2001,22 +2003,68 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(reader.GetInt32(0), Is.EqualTo(1));
 
         // Attempt to read the second row - simulate blocking and cancellation
-        var cancellationSource = new CancellationTokenSource();
+        var cts = new CancellationTokenSource();
         if (passCancelledToken)
-            cancellationSource.Cancel();
-        var task = reader.NextResultAsync(cancellationSource.Token);
-        cancellationSource.Cancel();
+            cts.Cancel();
+        var connProcessId = conn.ProcessID;
+        var task = reader.NextResultAsync(cts.Token);
+        cts.Cancel();
 
         var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
-        Assert.That(processId, Is.EqualTo(conn.ProcessID));
+        Assert.That(processId, Is.EqualTo(connProcessId));
 
         // Send no response from server, wait for the cancellation attempt to time out
         var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
-        Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
-        Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
+        Assert.That(exception.InnerException, Is.TypeOf<NpgsqlException>());
+        Assert.That(exception.InnerException?.InnerException, Is.TypeOf<TimeoutException>());
+        Assert.That(exception.CancellationToken, Is.EqualTo(cts.Token));
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
+
+    [Test, Description("Cancels NextResultAsync via NpgsqlCommand.Cancel, with unsuccessful PG cancellation (socket break)")]
+    public async Task NextResultAsync_cancel_hard_explicitly()
+    {
+        if (IsMultiplexing)
+            return; // Multiplexing, cancellation
+
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+        var pgMock = await postmasterMock.WaitForServerConnection();
+        await pgMock
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(Int4Oid))
+            .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
+            .WriteCommandComplete()
+            .FlushAsync();
+
+        using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+
+        // Successfully read the first resultset
+        Assert.True(await reader.ReadAsync());
+        Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+
+        var connProcessId = conn.ProcessID;
+        var task = reader.NextResultAsync();
+        cmd.Cancel();
+
+        var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
+        Assert.That(processId, Is.EqualTo(connProcessId));
+
+        // Send no response from server, wait for the cancellation attempt to time out
+        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        Assert.That(exception.InnerException, Is.TypeOf<NpgsqlException>());
+        Assert.That(exception.InnerException?.InnerException, Is.TypeOf<TimeoutException>());
+        Assert.That(exception.CancellationToken, Is.EqualTo(CancellationToken.None));
+
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+    }
+
 
     [Test, Description("Cancels sequential ReadAsGetFieldValueAsync")]
     public async Task GetFieldValueAsync_sequential_cancel([Values(true, false)] bool passCancelledToken)
@@ -2051,7 +2099,9 @@ LANGUAGE plpgsql VOLATILE";
         cts.Cancel();
 
         var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
-        Assert.That(exception.InnerException, Is.Null);
+        Assert.That(exception.InnerException, Is.TypeOf<NpgsqlException>());
+        Assert.That(exception.InnerException?.InnerException, passCancelledToken ? Is.TypeOf<TaskCanceledException>() : Is.TypeOf<OperationCanceledException>());
+        Assert.That(exception.CancellationToken, Is.EqualTo(cts.Token));
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
@@ -2089,7 +2139,9 @@ LANGUAGE plpgsql VOLATILE";
         cts.Cancel();
 
         var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
-        Assert.That(exception.InnerException, Is.Null);
+        Assert.That(exception.InnerException, Is.TypeOf<NpgsqlException>());
+        Assert.That(exception.InnerException?.InnerException, passCancelledToken ? Is.TypeOf<TaskCanceledException>() : Is.TypeOf<OperationCanceledException>());
+        Assert.That(exception.CancellationToken, Is.EqualTo(cts.Token));
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }

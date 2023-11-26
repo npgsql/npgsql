@@ -2,7 +2,9 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -21,15 +23,17 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
 
+    // Note that mono throws SocketException with the wrong error (see #1330)
+    static SocketError SocketTimeoutErrorCode { get; } = Type.GetType("Mono.Runtime") is null ? SocketError.TimedOut : SocketError.WouldBlock;
+
 #if DEBUG
     internal static readonly bool BufferBoundsChecks = true;
 #else
     internal static readonly bool BufferBoundsChecks = Statics.EnableAssertions;
 #endif
 
-    public NpgsqlConnection Connection => Connector.Connection!;
-    internal readonly NpgsqlConnector Connector;
     internal Stream Underlying { private get; set; }
+    readonly IConnectionOperationControl _connectionOperationControl;
     readonly Socket? _underlyingSocket;
     internal ResettableCancellationTokenSource Cts { get; }
     readonly MetricsReporter? _metricsReporter;
@@ -54,7 +58,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                     value = TimeSpan.Zero;
 
                 Debug.Assert(_underlyingSocket != null);
-
                 _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
                 Cts.Timeout = value;
             }
@@ -103,7 +106,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     #region Constructors
 
     internal NpgsqlReadBuffer(
-        NpgsqlConnector? connector,
+        IConnectionOperationControl connectionOperationControl,
+        MetricsReporter? metricsReporter,
         Stream stream,
         Socket? socket,
         int size,
@@ -112,14 +116,12 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         bool usePool = false)
     {
         if (size < MinimumSize)
-        {
             throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
-        }
 
-        Connector = connector!; // TODO: Clean this up
         Underlying = stream;
+        _connectionOperationControl = connectionOperationControl;
         _underlyingSocket = socket;
-        _metricsReporter = connector?.DataSource.MetricsReporter;
+        _metricsReporter = metricsReporter;
         Cts = new ResettableCancellationTokenSource();
         Buffer = usePool ? ArrayPool<byte>.Shared.Rent(size) : new byte[size];
         Size = Buffer.Length;
@@ -130,18 +132,19 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         PgReader = new PgReader(this);
     }
 
+    // Used by tests.
+    internal NpgsqlReadBuffer(Stream stream, Socket? socket, int size, Encoding textEncoding, Encoding relaxedTextEncoding, bool usePool = false)
+        : this(DummyConnectionOperationControl.Instance, null, stream, socket, size, textEncoding, relaxedTextEncoding, usePool) {}
+
     #endregion
 
     #region I/O
 
-    public ValueTask Ensure(int count, bool async)
-        => Ensure(count, async, readingNotifications: false);
-
     public ValueTask EnsureAsync(int count)
-        => Ensure(count, async: true, readingNotifications: false);
+        => Ensure(count, async: true);
 
     // Can't share due to Span vs Memory difference (can't make a memory out of a span).
-    int ReadWithTimeout(Span<byte> buffer)
+    int ReadUnderlying(Span<byte> buffer)
     {
         while (true)
         {
@@ -152,48 +155,22 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                 _metricsReporter?.ReportBytesRead(read);
                 return read;
             }
+            catch (IOException ex) when ((ex.InnerException as SocketException)?.SocketErrorCode == SocketTimeoutErrorCode)
+            {
+                // Cancel throws if it can't succeed.
+                Timeout = _connectionOperationControl.Cancel(ex);
+            }
             catch (Exception ex)
             {
-                var connector = Connector;
-                switch (ex)
-                {
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                case IOException e when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                {
-                    // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
-                    // TODO: As an optimization, we can still attempt to send a cancellation request, but after
-                    // that immediately break the connection
-                    if (connector.AttemptPostgresCancellation &&
-                        !connector.PostgresCancellationPerformed &&
-                        connector.PerformPostgresCancellation())
-                    {
-                        // Note that if the cancellation timeout is negative, we flow down and break the
-                        // connection immediately.
-                        var cancellationTimeout = connector.Settings.CancellationTimeout;
-                        if (cancellationTimeout >= 0)
-                        {
-                            if (cancellationTimeout > 0)
-                                Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-
-                            continue;
-                        }
-                    }
-
-                    // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
-                    // Break the connection, bubbling up the correct exception type (cancellation or timeout)
-                    throw connector.Break(CreateCancelException(connector));
-                }
-                default:
-                    throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
-                }
+                ThrowAbort(new NpgsqlException("Exception while reading from stream", ex));
             }
         }
     }
 
-    async ValueTask<int> ReadWithTimeoutAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+    async ValueTask<int> ReadUnderlyingAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
-        var finalCt = Timeout != TimeSpan.Zero
+        var linkedToken = Timeout != TimeSpan.Zero || cancellationToken.CanBeCanceled
             ? Cts.Start(cancellationToken)
             : Cts.Reset();
 
@@ -201,200 +178,71 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         {
             try
             {
-                var read = await Underlying.ReadAsync(buffer, finalCt).ConfigureAwait(false);
+                var read = await Underlying.ReadAsync(buffer, linkedToken).ConfigureAwait(false);
                 Cts.Stop();
                 NpgsqlEventSource.Log.BytesRead(read);
                 _metricsReporter?.ReportBytesRead(read);
                 return read;
             }
+            catch (OperationCanceledException ex) when (ex.CancellationToken == linkedToken)
+            {
+                Cts.Stop();
+                // Cancel throws if it can't succeed.
+                Timeout = _connectionOperationControl.Cancel(ex, cancellationToken);
+                // We leave out the token if it's already cancelled as we want to try to read the cancellation response.
+                linkedToken = Cts.Start(cancellationToken.IsCancellationRequested ? CancellationToken.None : cancellationToken);
+            }
             catch (Exception ex)
             {
-                var connector = Connector;
                 Cts.Stop();
-                switch (ex)
-                {
-                // Read timeout
-                case OperationCanceledException:
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                case IOException e when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                {
-                    Debug.Assert(ex is OperationCanceledException);
-
-                    // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
-                    // TODO: As an optimization, we can still attempt to send a cancellation request, but after
-                    // that immediately break the connection
-                    if (connector.AttemptPostgresCancellation &&
-                        !connector.PostgresCancellationPerformed &&
-                        connector.PerformPostgresCancellation())
-                    {
-                        // Note that if the cancellation timeout is negative, we flow down and break the
-                        // connection immediately.
-                        var cancellationTimeout = connector.Settings.CancellationTimeout;
-                        if (cancellationTimeout >= 0)
-                        {
-                            if (cancellationTimeout > 0)
-                                Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-
-                            finalCt = Cts.Start(cancellationToken);
-                            continue;
-                        }
-                    }
-
-                    // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
-                    // Break the connection, bubbling up the correct exception type (cancellation or timeout)
-                    throw connector.Break(CreateCancelException(connector));
-                }
-                default:
-                    throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
-                }
+                ThrowAbort(new NpgsqlException("Exception while reading from stream", ex));
             }
         }
     }
-
-    static Exception CreateCancelException(NpgsqlConnector connector)
-        => !connector.UserCancellationRequested
-            ? NpgsqlTimeoutException()
-            : connector.PostgresCancellationPerformed
-                ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
-                : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken);
-
-    static Exception NpgsqlTimeoutException() => new NpgsqlException("Exception while reading from stream", TimeoutException());
-
-    static Exception TimeoutException() => new TimeoutException("Timeout during reading attempt");
 
     /// <summary>
     /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
     /// not, reads from the socket until enough is available.
     /// </summary>
-    internal ValueTask Ensure(int count, bool async, bool readingNotifications)
+    public ValueTask Ensure(int count, bool async)
     {
-        return count <= ReadBytesLeft ? new() : EnsureLong(this, count, async, readingNotifications);
+        return count <= ReadBytesLeft ? new() : EnsureLong(count, async);
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-        static async ValueTask EnsureLong(
-            NpgsqlReadBuffer buffer,
-            int count,
-            bool async,
-            bool readingNotifications)
+        async ValueTask EnsureLong(int count, bool async)
         {
-            Debug.Assert(count <= buffer.Size);
-            Debug.Assert(count > buffer.ReadBytesLeft);
-            count -= buffer.ReadBytesLeft;
+            Debug.Assert(count <= Size);
+            Debug.Assert(count > ReadBytesLeft);
+            count -= ReadBytesLeft;
 
-            if (buffer.ReadPosition == buffer.FilledBytes)
+            if (ReadPosition == FilledBytes)
             {
-                buffer.ResetPosition();
+                ResetPosition();
             }
-            else if (count > buffer.Size - buffer.FilledBytes)
+            else if (count > Size - FilledBytes)
             {
-                Array.Copy(buffer.Buffer, buffer.ReadPosition, buffer.Buffer, 0, buffer.ReadBytesLeft);
-                buffer.FilledBytes = buffer.ReadBytesLeft;
-                buffer._flushedBytes = unchecked(buffer._flushedBytes + buffer.ReadPosition);
-                buffer.ReadPosition = 0;
+                Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
+                FilledBytes = ReadBytesLeft;
+                _flushedBytes = unchecked(_flushedBytes + ReadPosition);
+                ReadPosition = 0;
             }
 
-            var finalCt = async && buffer.Timeout != TimeSpan.Zero
-                ? buffer.Cts.Start()
-                : buffer.Cts.Reset();
-
-            var totalRead = 0;
             while (count > 0)
             {
-                try
+                var read = async
+                    ? await ReadUnderlyingAsync(Buffer.AsMemory(FilledBytes, Size - FilledBytes),
+                            _connectionOperationControl.CurrentCancellationToken).ConfigureAwait(false)
+                    : ReadUnderlying(Buffer.AsSpan(FilledBytes, Size - FilledBytes));
+
+                if (read == 0)
                 {
-                    var toRead = buffer.Size - buffer.FilledBytes;
-                    var read = async
-                        ? await buffer.Underlying.ReadAsync(buffer.Buffer.AsMemory(buffer.FilledBytes, toRead), finalCt).ConfigureAwait(false)
-                        : buffer.Underlying.Read(buffer.Buffer, buffer.FilledBytes, toRead);
-
-                    if (read == 0)
-                        throw new EndOfStreamException();
-                    count -= read;
-                    buffer.FilledBytes += read;
-                    totalRead += read;
-
-                    // Most of the time, it should be fine to reset cancellation token source, so we can use it again
-                    // It's still possible for cancellation token to cancel between reading and resetting (although highly improbable)
-                    // In this case, we consider it as timed out and fail with OperationCancelledException on next ReadAsync
-                    // Or we consider it not timed out if we have already read everything (count == 0)
-                    // In which case we reinitialize it on the next call to EnsureLong()
-                    if (async && count > 0)
-                        buffer.Cts.RestartTimeoutWithoutReset();
+                    ThrowAbort(new NpgsqlException("Exception while reading from stream", new EndOfStreamException()));
+                    return;
                 }
-                catch (Exception e)
-                {
-                    var connector = buffer.Connector;
 
-                    // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
-                    // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
-                    // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
-                    // _timeoutCts
-                    buffer.Cts.Stop();
-
-                    switch (e)
-                    {
-                    // Read timeout
-                    case OperationCanceledException:
-                    // Note that mono throws SocketException with the wrong error (see #1330)
-                    case IOException when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                    {
-                        Debug.Assert(e is OperationCanceledException ? async : !async);
-
-                        // When reading notifications (Wait), just throw TimeoutException or
-                        // OperationCanceledException immediately.
-                        // Nothing to cancel, and no breaking of the connection.
-                        if (readingNotifications)
-                            throw CreateException(connector);
-
-                        // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
-                        // TODO: As an optimization, we can still attempt to send a cancellation request, but after
-                        // that immediately break the connection
-                        if (connector.AttemptPostgresCancellation &&
-                            !connector.PostgresCancellationPerformed &&
-                            connector.PerformPostgresCancellation())
-                        {
-                            // Note that if the cancellation timeout is negative, we flow down and break the
-                            // connection immediately.
-                            var cancellationTimeout = connector.Settings.CancellationTimeout;
-                            if (cancellationTimeout >= 0)
-                            {
-                                if (cancellationTimeout > 0)
-                                    buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-
-                                if (async)
-                                    finalCt = buffer.Cts.Start();
-
-                                continue;
-                            }
-                        }
-
-                        // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
-                        // Break the connection, bubbling up the correct exception type (cancellation or timeout)
-                        throw connector.Break(CreateException(connector));
-
-                        static Exception CreateException(NpgsqlConnector connector)
-                            => !connector.UserCancellationRequested
-                                ? NpgsqlTimeoutException()
-                                : connector.PostgresCancellationPerformed
-                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
-                                    : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken);
-                    }
-
-                    default:
-                        throw connector.Break(new NpgsqlException("Exception while reading from stream", e));
-                    }
-                }
+                count -= read;
+                FilledBytes += read;
             }
-
-            buffer.Cts.Stop();
-            NpgsqlEventSource.Log.BytesRead(totalRead);
-            buffer._metricsReporter?.ReportBytesRead(totalRead);
-
-            static Exception NpgsqlTimeoutException() => new NpgsqlException("Exception while reading from stream", TimeoutException());
-
-            static Exception TimeoutException() => new TimeoutException("Timeout during reading attempt");
         }
     }
 
@@ -403,7 +251,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     internal NpgsqlReadBuffer AllocateOversize(int count)
     {
         Debug.Assert(count > Size);
-        var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding, usePool: true);
+        var tempBuf = new NpgsqlReadBuffer(_connectionOperationControl, _metricsReporter,
+            Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding, usePool: true);
         if (_underlyingSocket != null)
             tempBuf.Timeout = Timeout;
         CopyTo(tempBuf);
@@ -427,7 +276,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     {
         Debug.Assert(len >= 0);
 
-        if (Connector.IsBroken)
+        if (Aborted)
             return;
 
         if (len > ReadBytesLeft)
@@ -619,7 +468,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             ResetPosition();
         }
 
-        var count = ReadWithTimeout(output);
+        var count = ReadUnderlying(output);
         stream.Advance(count);
         _flushedBytes = unchecked(_flushedBytes + count);
         return count;
@@ -627,10 +476,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     public async ValueTask<int> StreamReadAsync(ColumnStream stream, Memory<byte> output, CancellationToken cancellationToken = default)
     {
-        using var registration = cancellationToken.CanBeCanceled
-            ? Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false)
-            : default;
-
         var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
         if (readFromBuffer > 0)
         {
@@ -647,7 +492,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             ResetPosition();
         }
 
-        var count = await ReadWithTimeoutAsync(output, cancellationToken).ConfigureAwait(false);
+        var count = await ReadUnderlyingAsync(output, cancellationToken).ConfigureAwait(false);
         stream.Advance(count);
         _flushedBytes = unchecked(_flushedBytes + count);
         return count;
@@ -778,6 +623,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region Misc
 
+    bool Aborted => _connectionOperationControl.Aborted;
+    [DoesNotReturn, StackTraceHidden]
+    internal void ThrowAbort(Exception abortReason)
+    {
+        _connectionOperationControl.Abort(abortReason);
+        throw abortReason;
+    }
+
     void ResetPosition()
     {
         _flushedBytes = unchecked(_flushedBytes + FilledBytes);
@@ -795,4 +648,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     #endregion
+
+    sealed class DummyConnectionOperationControl : IConnectionOperationControl
+    {
+        public static DummyConnectionOperationControl Instance => new();
+
+        public bool Aborted { get; }
+        public void Abort(Exception abortReason) => throw new NotImplementedException();
+        public TimeSpan Cancel(Exception? cancellationReason, CancellationToken? cancellationToken) => throw new NotImplementedException();
+        public CancellationToken CurrentCancellationToken { get; }
+    }
 }

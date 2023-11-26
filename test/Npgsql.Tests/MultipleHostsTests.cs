@@ -685,7 +685,8 @@ public class MultipleHostsTests : TestBase
         var query = conn.ExecuteNonQueryAsync("SELECT 1", cancellationToken: cts.Token);
         cts.Cancel();
         var ex = Assert.ThrowsAsync<OperationCanceledException>(async () => await query)!;
-        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+        Assert.That(ex.InnerException, Is.TypeOf<NpgsqlException>());
+        Assert.That(ex.InnerException!.InnerException, Is.TypeOf<OperationCanceledException>());
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
         state = conn.NpgsqlDataSource.GetDatabaseState();

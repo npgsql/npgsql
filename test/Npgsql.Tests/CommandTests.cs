@@ -380,7 +380,8 @@ public class CommandTests : MultiplexingTestBase
         cancellationSource.Cancel();
 
         var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
-        Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
+        Assert.That(exception.InnerException, Is.TypeOf<NpgsqlException>());
+        Assert.That(exception.InnerException!.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
