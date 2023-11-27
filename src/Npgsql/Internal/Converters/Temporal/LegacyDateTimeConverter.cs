@@ -21,8 +21,13 @@ sealed class LegacyDateTimeConverter : PgBufferedConverter<DateTime>
 
     protected override DateTime ReadCore(PgReader reader)
     {
+        if (_timestamp)
+        {
+            return PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Unspecified, _dateTimeInfinityConversions);
+        }
+
         var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);
-        return !_timestamp && (!_dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue)
+        return !_dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue
             ? dateTime.ToLocalTime()
             : dateTime;
     }
