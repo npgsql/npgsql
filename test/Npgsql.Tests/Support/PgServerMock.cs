@@ -228,6 +228,20 @@ class PgServerMock : IDisposable
         return this;
     }
 
+    internal PgServerMock WriteParameterDescription(params FieldDescription[] fields)
+    {
+        CheckDisposed();
+
+        _writeBuffer.WriteByte((byte)BackendMessageCode.ParameterDescription);
+        _writeBuffer.WriteInt32(1 + 4 + 2 + fields.Length * 4);
+        _writeBuffer.WriteUInt16((ushort)fields.Length);
+
+        foreach (var field in fields)
+            _writeBuffer.WriteUInt32(field.TypeOID);
+
+        return this;
+    }
+
     internal PgServerMock WriteNoData()
     {
         CheckDisposed();

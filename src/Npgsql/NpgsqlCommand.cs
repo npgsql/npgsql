@@ -659,6 +659,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
+                batchCommand.ConnectorPreparedOn = connector;
             }
 
             if (logger.IsEnabled(LogLevel.Debug) && needToPrepare)

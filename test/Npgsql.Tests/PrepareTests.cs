@@ -5,6 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+using Npgsql.Internal.Postgres;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -13,6 +16,8 @@ namespace Npgsql.Tests;
 
 public class PrepareTests: TestBase
 {
+    static uint Int4Oid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4).Value;
+
     [Test]
     public void Basic()
     {
@@ -769,6 +774,63 @@ public class PrepareTests: TestBase
         cmd.CommandText = string.Join(';', Enumerable.Range(1, 500).Select(x => $"SELECT {x}"));
         await cmd.PrepareAsync();
         await cmd.UnprepareAsync();
+    }
+
+    [Test]
+    public async Task Explicitly_prepared_batch_sends_prepared_queries()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmaster.ConnectionString);
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmaster.WaitForServerConnection();
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands = { new("SELECT 1"), new("SELECT 2") }
+        };
+
+        var prepareTask = batch.PrepareAsync();
+
+        await server.ExpectMessages(
+            FrontendMessageCode.Parse, FrontendMessageCode.Describe,
+            FrontendMessageCode.Parse, FrontendMessageCode.Describe,
+            FrontendMessageCode.Sync);
+
+        await server
+            .WriteParseComplete()
+            .WriteParameterDescription(new FieldDescription(Int4Oid))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
+            .WriteParseComplete()
+            .WriteParameterDescription(new FieldDescription(Int4Oid))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        await prepareTask;
+
+        for (var i = 0; i < 2; i++)
+            await ExecutePreparedBatch(batch, server);
+
+        async Task ExecutePreparedBatch(NpgsqlBatch batch, PgServerMock server)
+        {
+            var executeBatchTask = batch.ExecuteNonQueryAsync();
+
+            await server.ExpectMessages(
+                FrontendMessageCode.Bind, FrontendMessageCode.Execute,
+                FrontendMessageCode.Bind, FrontendMessageCode.Execute,
+                FrontendMessageCode.Sync);
+
+            await server
+                .WriteBindComplete()
+                .WriteCommandComplete()
+                .WriteBindComplete()
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+            await executeBatchTask;
+        }
     }
 
     NpgsqlConnection OpenConnectionAndUnprepare()
