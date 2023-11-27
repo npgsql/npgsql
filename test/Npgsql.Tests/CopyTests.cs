@@ -510,6 +510,58 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5457")]
+    public async Task MixedOperations()
+    {
+        if (IsMultiplexing)
+            Assert.Ignore("Multiplexing: fails");
+        using var conn = await OpenConnectionAsync();
+
+        var reader = conn.BeginBinaryExport("""
+            COPY (values ('foo', 1), ('bar', null), (null, 2)) TO STDOUT BINARY
+            """);
+        while(reader.StartRow() != -1)
+        {
+            string? col1 = null;
+            if (reader.IsNull)
+                reader.Skip();
+            else
+                col1 = reader.Read<string>();
+            int? col2 = null;
+            if (reader.IsNull)
+                reader.Skip();
+            else
+                col2 = reader.Read<int>();
+        }
+    }
+
+    [Test]
+    public async Task ReadMoreColumnsThanExist()
+    {
+        if (IsMultiplexing)
+            Assert.Ignore("Multiplexing: fails");
+        using var conn = await OpenConnectionAsync();
+
+        var reader = conn.BeginBinaryExport("""
+            COPY (values ('foo', 1), ('bar', null), (null, 2)) TO STDOUT BINARY
+            """);
+        while(reader.StartRow() != -1)
+        {
+            string? col1 = null;
+            if (reader.IsNull)
+                reader.Skip();
+            else
+                col1 = reader.Read<string>();
+            int? col2 = null;
+            if (reader.IsNull)
+                reader.Skip();
+            else
+                col2 = reader.Read<int>();
+
+            Assert.Throws<InvalidOperationException>(() => _ = reader.IsNull);
+        }
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_format_binary_export()
     {
