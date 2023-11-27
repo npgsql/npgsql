@@ -88,7 +88,7 @@ class ReadBufferTests
     public void SetUp()
     {
         var stream = new MockStream();
-        ReadBuffer = new NpgsqlReadBuffer(stream, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
+        ReadBuffer = new NpgsqlReadBuffer(stream, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
         Writer = stream.Writer;
     }
 

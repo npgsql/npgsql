@@ -51,7 +51,7 @@ public abstract class TypeHandlerBenchmarks<T>
     {
         var stream = new EndlessStream();
         _converter = handler ?? throw new ArgumentNullException(nameof(handler));
-        _readBuffer = new NpgsqlReadBuffer(null!, null, stream, null, NpgsqlReadBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
+        _readBuffer = new NpgsqlReadBuffer(stream, NpgsqlReadBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
         _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding);
         _reader = new PgReader(_readBuffer);
         _writer = new PgWriter(new NpgsqlBufferWriter(_writeBuffer));

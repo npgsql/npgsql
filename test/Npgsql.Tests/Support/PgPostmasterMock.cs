@@ -136,8 +136,7 @@ class PgPostmasterMock : IAsyncDisposable
         var clientSocket = await _socket.AcceptAsync();
 
         var stream = new NetworkStream(clientSocket, true);
-        var readBuffer = new NpgsqlReadBuffer(stream, clientSocket, ReadBufferSize, Encoding,
-            RelaxedEncoding);
+        var readBuffer = new NpgsqlReadBuffer(stream, ReadBufferSize, Encoding, RelaxedEncoding);
         var writeBuffer = new NpgsqlWriteBuffer(null!, stream, clientSocket, WriteBufferSize, Encoding);
 
         await readBuffer.EnsureAsync(4);

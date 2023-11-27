@@ -4,7 +4,6 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -34,7 +33,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     internal Stream Underlying { private get; set; }
     readonly IConnectionOperationControl _connectionOperationControl;
-    readonly Socket? _underlyingSocket;
     internal ResettableCancellationTokenSource Cts { get; }
     readonly MetricsReporter? _metricsReporter;
 
@@ -54,11 +52,10 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
                 if (value == TimeSpan.Zero)
                     value = InfiniteTimeSpan;
-                else if (value < TimeSpan.Zero)
+                else if (value < InfiniteTimeSpan)
                     value = TimeSpan.Zero;
 
-                Debug.Assert(_underlyingSocket != null);
-                _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
+                Underlying.ReadTimeout = (int)value.TotalMilliseconds;
                 Cts.Timeout = value;
             }
         }
@@ -109,7 +106,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         IConnectionOperationControl connectionOperationControl,
         MetricsReporter? metricsReporter,
         Stream stream,
-        Socket? socket,
         int size,
         Encoding textEncoding,
         Encoding relaxedTextEncoding,
@@ -120,7 +116,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
         Underlying = stream;
         _connectionOperationControl = connectionOperationControl;
-        _underlyingSocket = socket;
         _metricsReporter = metricsReporter;
         Cts = new ResettableCancellationTokenSource();
         Buffer = usePool ? ArrayPool<byte>.Shared.Rent(size) : new byte[size];
@@ -133,8 +128,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     // Used by tests.
-    internal NpgsqlReadBuffer(Stream stream, Socket? socket, int size, Encoding textEncoding, Encoding relaxedTextEncoding, bool usePool = false)
-        : this(DummyConnectionOperationControl.Instance, null, stream, socket, size, textEncoding, relaxedTextEncoding, usePool) {}
+    internal NpgsqlReadBuffer(Stream stream, int size, Encoding textEncoding, Encoding relaxedTextEncoding, bool usePool = false)
+        : this(DummyConnectionOperationControl.Instance, null, stream, size, textEncoding, relaxedTextEncoding, usePool) {}
 
     #endregion
 
@@ -252,9 +247,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     {
         Debug.Assert(count > Size);
         var tempBuf = new NpgsqlReadBuffer(_connectionOperationControl, _metricsReporter,
-            Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding, usePool: true);
-        if (_underlyingSocket != null)
-            tempBuf.Timeout = Timeout;
+            Underlying, count, TextEncoding, RelaxedTextEncoding, usePool: true);
+        tempBuf.Timeout = Timeout;
         CopyTo(tempBuf);
         ResetPosition();
         return tempBuf;

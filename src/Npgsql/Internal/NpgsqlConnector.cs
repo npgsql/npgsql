@@ -778,7 +778,7 @@ public sealed partial class NpgsqlConnector : IConnectionOperationControl
             }
 
             ReadBuffer = new NpgsqlReadBuffer(this, DataSource.MetricsReporter,
-                _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
+                _stream, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
             WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
 
             timeout.CheckAndApply(this);
