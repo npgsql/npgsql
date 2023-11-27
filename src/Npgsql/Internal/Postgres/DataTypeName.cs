@@ -16,7 +16,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     /// We need to respect this to get to valid names when deriving them (for multirange/arrays etc).
     /// This does not include the namespace.
     /// </remarks>
-    const int NAMEDATALEN = 64 - 1; // Minus null terminator.
+    internal const int NAMEDATALEN = 64 - 1; // Minus null terminator.
 
     readonly string _value;
 
@@ -32,10 +32,11 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             if (fullyQualifiedDataTypeName.AsSpan(schemaEndIndex).EndsWith("[]".AsSpan()))
                 fullyQualifiedDataTypeName = NormalizeName(fullyQualifiedDataTypeName);
 
-            var typeNameLength = fullyQualifiedDataTypeName.Length - schemaEndIndex + 1;
+            var typeNameLength = fullyQualifiedDataTypeName.Length - (schemaEndIndex + 1);
             if (typeNameLength > NAMEDATALEN)
                 throw new ArgumentException(
-                    $"Name is too long and would be truncated to: {fullyQualifiedDataTypeName.Substring(0, fullyQualifiedDataTypeName.Length - typeNameLength + NAMEDATALEN)}");
+                    $"Name is too long and would be truncated to: {fullyQualifiedDataTypeName.Substring(0,
+                        fullyQualifiedDataTypeName.Length - typeNameLength + NAMEDATALEN)}");
         }
 
         _value = fullyQualifiedDataTypeName;
