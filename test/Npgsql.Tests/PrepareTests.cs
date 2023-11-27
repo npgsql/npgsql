@@ -833,6 +833,70 @@ public class PrepareTests: TestBase
         }
     }
 
+    [Test]
+    public async Task Auto_prepared_batch_sends_prepared_queries()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            AutoPrepareMinUsages = 1,
+            MaxAutoPrepare = 10
+        };
+        await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateDataSource(postmaster.ConnectionString);
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmaster.WaitForServerConnection();
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands = { new("SELECT 1"), new("SELECT 2") }
+        };
+
+        var firstBatchExecuteTask = batch.ExecuteNonQueryAsync();
+
+        await server.ExpectMessages(
+            FrontendMessageCode.Parse, FrontendMessageCode.Bind, FrontendMessageCode.Describe, FrontendMessageCode.Execute,
+            FrontendMessageCode.Parse, FrontendMessageCode.Bind, FrontendMessageCode.Describe, FrontendMessageCode.Execute,
+            FrontendMessageCode.Sync);
+
+        await server
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(Int4Oid))
+            .WriteCommandComplete()
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(Int4Oid))
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        await firstBatchExecuteTask;
+
+        for (var i = 0; i < 2; i++)
+            await ExecutePreparedBatch(batch, server);
+
+        async Task ExecutePreparedBatch(NpgsqlBatch batch, PgServerMock server)
+        {
+            var executeBatchTask = batch.ExecuteNonQueryAsync();
+
+            await server.ExpectMessages(
+                FrontendMessageCode.Bind, FrontendMessageCode.Execute,
+                FrontendMessageCode.Bind, FrontendMessageCode.Execute,
+                FrontendMessageCode.Sync);
+
+            await server
+                .WriteBindComplete()
+                .WriteCommandComplete()
+                .WriteBindComplete()
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+            await executeBatchTask;
+        }
+    }
+
     NpgsqlConnection OpenConnectionAndUnprepare()
     {
         var conn = OpenConnection();
