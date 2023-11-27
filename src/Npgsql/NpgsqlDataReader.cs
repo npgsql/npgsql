@@ -364,6 +364,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             for (statementIndex = ++StatementIndex; statementIndex < statements.Count; statementIndex = ++StatementIndex)
             {
                 var statement = statements[statementIndex];
+                Connector.State = ConnectorState.Executing;
 
                 IBackendMessage msg;
                 if (statement.TryGetPrepared(out var preparedStatement))
@@ -670,6 +671,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             for (StatementIndex++; StatementIndex < _statements.Count; StatementIndex++)
             {
                 var statement = _statements[StatementIndex];
+                Connector.State = ConnectorState.Executing;
                 if (statement.TryGetPrepared(out var preparedStatement))
                 {
                     // Row descriptions have already been populated in the statement objects at the

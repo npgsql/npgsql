@@ -148,8 +148,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             try
             {
                 var read = Underlying.Read(buffer);
-                _flushedBytes = unchecked(_flushedBytes + read);
                 NpgsqlEventSource.Log.BytesRead(read);
+                _metricsReporter?.ReportBytesRead(read);
                 return read;
             }
             catch (Exception ex)
@@ -202,9 +202,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             try
             {
                 var read = await Underlying.ReadAsync(buffer, finalCt).ConfigureAwait(false);
-                _flushedBytes = unchecked(_flushedBytes + read);
                 Cts.Stop();
                 NpgsqlEventSource.Log.BytesRead(read);
+                _metricsReporter?.ReportBytesRead(read);
                 return read;
             }
             catch (Exception ex)
@@ -427,6 +427,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     {
         Debug.Assert(len >= 0);
 
+        if (Connector.IsBroken)
+            return;
+
         if (len > ReadBytesLeft)
         {
             len -= ReadBytesLeft;
@@ -598,13 +601,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region Read Complex
 
-    public int Read(bool commandScoped, Span<byte> output)
+    public int StreamRead(ColumnStream stream, Span<byte> output)
     {
         var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
         if (readFromBuffer > 0)
         {
             Buffer.AsSpan(ReadPosition, readFromBuffer).CopyTo(output);
             ReadPosition += readFromBuffer;
+            stream.Advance(readFromBuffer);
             return readFromBuffer;
         }
 
@@ -615,66 +619,46 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             ResetPosition();
         }
 
-        if (commandScoped)
-            return ReadWithTimeout(output);
-
-        try
-        {
-            var read = Underlying.Read(output);
-            _flushedBytes = unchecked(_flushedBytes + read);
-            NpgsqlEventSource.Log.BytesRead(read);
-            return read;
-        }
-        catch (Exception e)
-        {
-            throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
-        }
+        var count = ReadWithTimeout(output);
+        stream.Advance(count);
+        _flushedBytes = unchecked(_flushedBytes + count);
+        return count;
     }
 
-    public ValueTask<int> ReadAsync(bool commandScoped, Memory<byte> output, CancellationToken cancellationToken = default)
+    public async ValueTask<int> StreamReadAsync(ColumnStream stream, Memory<byte> output, CancellationToken cancellationToken = default)
     {
+        using var registration = cancellationToken.CanBeCanceled
+            ? Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false)
+            : default;
+
         var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
         if (readFromBuffer > 0)
         {
             Buffer.AsSpan(ReadPosition, readFromBuffer).CopyTo(output.Span);
             ReadPosition += readFromBuffer;
-            return new ValueTask<int>(readFromBuffer);
+            stream.Advance(readFromBuffer);
+            return readFromBuffer;
         }
 
-        return ReadAsyncLong(this, commandScoped, output, cancellationToken);
-
-        static async ValueTask<int> ReadAsyncLong(NpgsqlReadBuffer buffer, bool commandScoped, Memory<byte> output, CancellationToken cancellationToken)
+        // Only reset if we'll be able to read data, this is to support zero-byte reads.
+        if (output.Length > 0)
         {
-            // Only reset if we'll be able to read data, this is to support zero-byte reads.
-            if (output.Length > 0)
-            {
-                Debug.Assert(buffer.ReadBytesLeft == 0);
-                buffer.ResetPosition();
-            }
-
-            if (commandScoped)
-                return await buffer.ReadWithTimeoutAsync(output, cancellationToken).ConfigureAwait(false);
-
-            try
-            {
-                var read = await buffer.Underlying.ReadAsync(output, cancellationToken).ConfigureAwait(false);
-                buffer._flushedBytes = unchecked(buffer._flushedBytes + read);
-                NpgsqlEventSource.Log.BytesRead(read);
-                return read;
-            }
-            catch (Exception e)
-            {
-                throw buffer.Connector.Break(new NpgsqlException("Exception while reading from stream", e));
-            }
+            Debug.Assert(ReadBytesLeft == 0);
+            ResetPosition();
         }
+
+        var count = await ReadWithTimeoutAsync(output, cancellationToken).ConfigureAwait(false);
+        stream.Advance(count);
+        _flushedBytes = unchecked(_flushedBytes + count);
+        return count;
     }
 
     ColumnStream? _lastStream;
     public ColumnStream CreateStream(int len, bool canSeek)
     {
         if (_lastStream is not { IsDisposed: true })
-            _lastStream = new ColumnStream(Connector);
-        _lastStream.Init(len, canSeek, !Connector.LongRunningConnection);
+            _lastStream = new ColumnStream(this);
+        _lastStream.Init(len, canSeek);
         return _lastStream;
     }
 

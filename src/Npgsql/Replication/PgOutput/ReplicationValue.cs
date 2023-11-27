@@ -13,7 +13,7 @@ namespace Npgsql.Replication.PgOutput;
 /// </summary>
 public class ReplicationValue
 {
-    readonly NpgsqlReadBuffer _readBuffer;
+    readonly NpgsqlConnector _connector;
 
     /// <summary>
     /// The length of the value in bytes.
@@ -29,9 +29,9 @@ public class ReplicationValue
     ColumnInfo _lastInfo;
     bool _isConsumed;
 
-    PgReader PgReader => _readBuffer.PgReader;
+    PgReader PgReader => _connector.ReadBuffer.PgReader;
 
-    internal ReplicationValue(NpgsqlConnector connector) => _readBuffer = connector.ReadBuffer;
+    internal ReplicationValue(NpgsqlConnector connector) => _connector = connector;
 
     internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription)
     {
@@ -109,7 +109,7 @@ public class ReplicationValue
                 $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+        using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
         var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
         await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
@@ -146,7 +146,7 @@ public class ReplicationValue
             throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
+        var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
         return reader.GetStream(canSeek: false);
     }
 

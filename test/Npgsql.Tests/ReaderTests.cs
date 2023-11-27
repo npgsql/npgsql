@@ -1922,7 +1922,7 @@ LANGUAGE plpgsql VOLATILE";
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Executing));
         }
 
         await pgMock.WriteScalarResponseAndFlush(1);
@@ -2292,7 +2292,7 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
         if (_safe)
             throw new Exception("Safe read exception as requested");
 
-        reader.BreakConnection();
+        reader.ThrowAbort(new Exception("Broken"));
         return default;
     }
 }
