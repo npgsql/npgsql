@@ -1938,10 +1938,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         Debug.Assert(ordinal != currentColumn);
         if (ordinal > currentColumn)
         {
-            for (; currentColumn < ordinal - 1; currentColumn++)
+            // Written as a while to be able to increment _column directly after reading into it.
+            while (_column < ordinal - 1)
             {
                 columnLength = buffer.ReadInt32();
-                if (columnLength is not -1)
+                _column++;
+                Debug.Assert(columnLength >= -1);
+                if (columnLength > 0)
                     buffer.Skip(columnLength);
             }
             columnLength = buffer.ReadInt32();
@@ -1979,7 +1982,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             for (var lastColumnRead = _columns.Count; ordinal >= lastColumnRead; lastColumnRead++)
             {
                 (Buffer.ReadPosition, var lastLen) = _columns[lastColumnRead - 1];
-                if (lastLen is not -1)
+                if (lastLen > 0)
                     buffer.Skip(lastLen);
                 var len = Buffer.ReadInt32();
                 _columns.Add((Buffer.ReadPosition, len));
@@ -2045,17 +2048,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
 
             // Seek to the requested column
+            int columnLength;
             var buffer = Buffer;
-            for (; _column < ordinal - 1; _column++)
+            // Written as a while to be able to increment _column directly after reading into it.
+            while (_column < ordinal - 1)
             {
                 await buffer.Ensure(4, async).ConfigureAwait(false);
-                var len = buffer.ReadInt32();
-                if (len != -1)
-                    await buffer.Skip(len, async).ConfigureAwait(false);
+                columnLength = buffer.ReadInt32();
+                _column++;
+                Debug.Assert(columnLength >= -1);
+                if (columnLength > 0)
+                    await buffer.Skip(columnLength, async).ConfigureAwait(false);
             }
 
             await buffer.Ensure(4, async).ConfigureAwait(false);
-            var columnLength = buffer.ReadInt32();
+            columnLength = buffer.ReadInt32();
             _column = ordinal;
 
             PgReader.Init(columnLength, dataFormat, resumableOp);
@@ -2073,11 +2080,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // Skip over unwanted fields
             columnLength = -1;
             var buffer = Buffer;
-            for (; _column < ordinal - 1; _column++)
+            // Written as a while to be able to increment _column directly after reading into it.
+            while (_column < ordinal - 1)
             {
                 if (buffer.ReadBytesLeft < 4)
                     return false;
                 columnLength = buffer.ReadInt32();
+                _column++;
+                Debug.Assert(columnLength >= -1);
                 if (columnLength > 0)
                 {
                     if (buffer.ReadBytesLeft < columnLength)
@@ -2104,7 +2114,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     Task ConsumeRow(bool async)
     {
-        Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
+        Debug.Assert(State is ReaderState.InResult or ReaderState.BeforeResult);
 
         if (!_canConsumeRowNonSequentially)
             return ConsumeRowSequential(async);
@@ -2119,13 +2129,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
             else
                 PgReader.Commit(resuming: false);
+
             // Skip over the remaining columns in the row
-            for (; _column < ColumnCount - 1; _column++)
+            var buffer = Buffer;
+            // Written as a while to be able to increment _column directly after reading into it.
+            while (_column < ColumnCount - 1)
             {
-                await Buffer.Ensure(4, async).ConfigureAwait(false);
-                var len = Buffer.ReadInt32();
-                if (len != -1)
-                    await Buffer.Skip(len, async).ConfigureAwait(false);
+                await buffer.Ensure(4, async).ConfigureAwait(false);
+                var columnLength = buffer.ReadInt32();
+                _column++;
+                Debug.Assert(columnLength >= -1);
+                if (columnLength > 0)
+                    await buffer.Skip(columnLength, async).ConfigureAwait(false);
             }
         }
     }

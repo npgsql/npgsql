@@ -894,6 +894,22 @@ LANGUAGE 'plpgsql'");
         var ts = dr.GetTimeSpan(0);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5439")]
+    public async Task SequentialBufferedSeek()
+    {
+        await using var conn = await OpenConnectionAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """select v.i, jsonb_build_object(), current_timestamp + make_interval(0, 0, 0, 0, 0, 0, v.i), null::jsonb, '{"value": 42}'::jsonb from generate_series(1, 1000) as v(i)""";
+        var rdr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        while (await rdr.ReadAsync()) {
+            var v1 = rdr[0];
+            var v2 = rdr[1];
+            //_ = rdr[2]; // uncomment line for successful execution
+            var v3 = rdr[3];
+            var v4 = rdr[4];
+        }
+    }
+
     [Test]
     public async Task Close_connection_in_middle_of_row()
     {
