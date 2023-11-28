@@ -363,7 +363,7 @@ public class PgReader
     /// <returns>The stream length, if any</returns>
     async ValueTask DisposeUserActiveStream(bool async)
     {
-        if (_userActiveStream is { IsDisposed: false })
+        if (StreamActive)
         {
             if (async)
                 await _userActiveStream.DisposeAsync().ConfigureAwait(false);
@@ -486,7 +486,7 @@ public class PgReader
             return;
         }
 
-        if (FieldOffset != FieldSize)
+        if (FieldOffset != FieldSize && !StreamActive)
             ThrowNotConsumedExactly();
 
         _fieldConsumed = true;
@@ -501,7 +501,7 @@ public class PgReader
         if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
             return ConsumeAsync(FieldRemaining);
 
-        if (FieldOffset != FieldSize)
+        if (FieldOffset != FieldSize && !StreamActive)
             ThrowNotConsumedExactly();
 
         _fieldConsumed = true;
@@ -560,9 +560,11 @@ public class PgReader
     public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
     public ValueTask ConsumeAsync(int? count = null, CancellationToken cancellationToken = default) => Consume(async: true, count, cancellationToken);
 
+    [MemberNotNullWhen(true, nameof(_userActiveStream))]
+    bool StreamActive => _userActiveStream is { IsDisposed: false };
     internal void ThrowIfStreamActive()
     {
-        if (_userActiveStream is { IsDisposed: false})
+        if (StreamActive)
             ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
     }
 
@@ -612,7 +614,7 @@ public class PgReader
             // Shut down any streaming and pooling going on on the column.
             if (_requiresCleanup)
             {
-                if (_userActiveStream is { IsDisposed: false })
+                if (StreamActive)
                     DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
                 if (_pooledArray is not null)
@@ -693,7 +695,7 @@ public class PgReader
             // Shut down any streaming and pooling going on on the column.
             if (_requiresCleanup)
             {
-                if (_userActiveStream is { IsDisposed: false })
+                if (StreamActive)
                     await DisposeUserActiveStream(async: true).ConfigureAwait(false);
 
                 if (_pooledArray is not null)

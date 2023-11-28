@@ -1757,6 +1757,35 @@ LANGUAGE plpgsql VOLATILE";
 
     #endregion GetChars / GetTextReader
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5450")]
+    public async Task EndRead_StreamActive([Values]bool async)
+    {
+        if (IsMultiplexing)
+            return;
+
+        const int columnLength = 1;
+
+        await using var conn = await OpenConnectionAsync();
+        var buffer = conn.Connector!.ReadBuffer;
+        buffer.FilledBytes += columnLength;
+        var reader = buffer.PgReader;
+        reader.Init(columnLength, DataFormat.Binary, resumable: false);
+        if (async)
+            await reader.StartReadAsync(Size.Unknown, CancellationToken.None);
+        else
+            reader.StartRead(Size.Unknown);
+
+        await using (var _ = reader.GetStream())
+        {
+            if (async)
+                Assert.DoesNotThrowAsync(async () => await reader.EndReadAsync());
+            else
+                Assert.DoesNotThrow(() => reader.EndRead());
+        }
+
+        reader.Commit(resuming: false);
+    }
+
     [Test, Description("Tests that everything goes well when a type handler generates a NpgsqlSafeReadException")]
     public async Task SafeReadException()
     {
