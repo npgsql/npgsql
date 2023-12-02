@@ -1694,7 +1694,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
     public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
     {
-        if (!_isSequential)
+        if (_isRowBuffered)
             return IsDBNull(ordinal) ? TrueTask : FalseTask;
 
         return Core(ordinal, cancellationToken);
