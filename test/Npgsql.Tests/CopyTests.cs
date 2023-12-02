@@ -562,6 +562,21 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
     }
 
+    [Test]
+    public async Task StreamingRead()
+    {
+        if (IsMultiplexing)
+            Assert.Ignore("Multiplexing: fails");
+        using var conn = await OpenConnectionAsync();
+
+        var str = new string('a', PgReader.MaxPreparedTextReaderSize + 1);
+        var reader = conn.BeginBinaryExport($"""COPY (values ('{str}')) TO STDOUT BINARY""");
+        while (reader.StartRow() != -1)
+        {
+            using var _ = reader.Read<TextReader>(NpgsqlDbType.Text);
+        }
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_format_binary_export()
     {
