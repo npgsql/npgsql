@@ -12,6 +12,9 @@ namespace Npgsql.Internal;
 
 public class PgReader
 {
+    // We don't want to add a ton of memory pressure for large strings.
+    internal const int MaxPreparedTextReaderSize = 1024 * 64;
+
     readonly NpgsqlReadBuffer _buffer;
 
     bool _resumable;
@@ -210,11 +213,8 @@ public class PgReader
 
     async ValueTask<TextReader> GetTextReader(bool async, Encoding encoding, CancellationToken cancellationToken)
     {
-        // We don't want to add a ton of memory pressure for large strings.
-        const int maxPreparedSize = 1024 * 64;
-
         _requiresCleanup = true;
-        if (CurrentRemaining > _buffer.ReadBytesLeft || CurrentRemaining > maxPreparedSize)
+        if (CurrentRemaining > _buffer.ReadBytesLeft || CurrentRemaining > MaxPreparedTextReaderSize)
             return new StreamReader(GetColumnStream(), encoding, detectEncodingFromByteOrderMarks: false);
 
         if (_preparedTextReader is { IsDisposed: false })
