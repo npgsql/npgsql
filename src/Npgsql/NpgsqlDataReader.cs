@@ -88,7 +88,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Mostly useful for a sequential mode, when the row is already in the buffer.
     /// Should always be true for the non-sequential mode.
     /// </summary>
-    bool _canConsumeRowNonSequentially;
+    bool _isRowBuffered;
 
     /// <summary>
     /// The RowDescription message for the current resultset being processed
@@ -194,7 +194,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
 
         // We have a special case path for SingleRow.
-        if (_behavior.HasFlag(CommandBehavior.SingleRow) || !_canConsumeRowNonSequentially)
+        if (_behavior.HasFlag(CommandBehavior.SingleRow) || !_isRowBuffered)
             return null;
 
         ConsumeRowNonSequential();
@@ -810,7 +810,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var msgRemainder = dataRow.Length - sizeof(short);
         _dataMsgEnd = readPosition + msgRemainder;
         _columnsStartPos = readPosition;
-        _canConsumeRowNonSequentially = msgRemainder <= Buffer.FilledBytes - readPosition;
+        _isRowBuffered = msgRemainder <= Buffer.FilledBytes - readPosition;
+        Debug.Assert(_isRowBuffered || _isSequential);
         _column = -1;
 
         if (_columns.Count > 0)
@@ -1537,8 +1538,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns></returns>
     public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
     {
-        // In non-sequential, we know that the column is already buffered - no I/O will take place
-        if (!_isSequential)
+        // As the row is buffered we know the column is too - no I/O will take place
+        if (_isRowBuffered)
             return Task.FromResult(GetFieldValueCore<T>(ordinal));
 
         // The only statically mapped converter, it always exists.
@@ -1693,7 +1694,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
     public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
     {
-        if (!_isSequential)
+        if (_isRowBuffered)
             return IsDBNull(ordinal) ? TrueTask : FalseTask;
 
         return Core(ordinal, cancellationToken);
@@ -2097,7 +2098,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         Debug.Assert(State is ReaderState.InResult or ReaderState.BeforeResult);
 
-        if (!_canConsumeRowNonSequentially)
+        if (!_isRowBuffered)
             return ConsumeRowSequential(async);
 
         // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
