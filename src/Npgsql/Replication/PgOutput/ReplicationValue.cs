@@ -84,9 +84,43 @@ public class ReplicationValue
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns></returns>
-    public async ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
+    public ValueTask<T> Get<T>(CancellationToken cancellationToken = default) => Get<T>(async: true, cancellationToken);
+
+    /// <summary>
+    /// Gets the value of the specified column as an instance of <see cref="object"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+    /// </param>
+    /// <returns></returns>
+    public ValueTask<object> Get(CancellationToken cancellationToken = default) => Get<object>(cancellationToken);
+
+    /// <summary>
+    /// Retrieves data as a <see cref="Stream"/>.
+    /// </summary>
+    public Stream GetStream() => Get<Stream>(async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Retrieves data as a <see cref="TextReader"/>.
+    /// </summary>
+    public TextReader GetTextReader() => Get<TextReader>(async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+    internal async Task Consume(CancellationToken cancellationToken)
     {
-        CheckActive();
+        if (_isConsumed)
+            return;
+
+        if (!PgReader.Initialized)
+            PgReader.Init(Length, _fieldDescription.DataFormat);
+        await PgReader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await PgReader.CommitAsync().ConfigureAwait(false);
+
+        _isConsumed = true;
+    }
+
+    async ValueTask<T> Get<T>(bool async, CancellationToken cancellationToken)
+    {
+        ThrowIfInitialized();
 
         _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
         var info = _lastInfo;
@@ -109,91 +143,32 @@ public class ReplicationValue
                 $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+        using var registration = async ? _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false) : default;
 
         var reader = PgReader;
         reader.Init(Length, _fieldDescription.DataFormat);
-        await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
-        var result = info.AsObject
-            ? (T)await info.ConverterInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await info.ConverterInfo.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
-        await reader.EndReadAsync().ConfigureAwait(false);
+
+        T result;
+        if (async)
+        {
+            await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
+            result = info.AsObject
+                ? (T)await info.ConverterInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+                : await info.ConverterInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            await reader.EndReadAsync().ConfigureAwait(false);
+        }
+        else
+        {
+            PgReader.StartRead(info.ConverterInfo.BufferRequirement);
+            result = info.AsObject
+                ? (T)info.ConverterInfo.Converter.ReadAsObject(PgReader)
+                : info.ConverterInfo.Converter.UnsafeDowncast<T>().Read(PgReader);
+            PgReader.EndRead();
+        }
         return result;
     }
 
-    /// <summary>
-    /// Gets the value of the specified column as an instance of <see cref="object"/>.
-    /// </summary>
-    /// <param name="cancellationToken">
-    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
-    /// </param>
-    /// <returns></returns>
-    public ValueTask<object> Get(CancellationToken cancellationToken = default) => Get<object>(cancellationToken);
-
-    /// <summary>
-    /// Retrieves data as a <see cref="Stream"/>.
-    /// </summary>
-    public Stream GetStream()
-    {
-        CheckActive();
-
-        switch (Kind)
-        {
-        case TupleDataKind.Null:
-            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
-            break;
-
-        case TupleDataKind.UnchangedToastedValue:
-            throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
-        }
-
-        var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        return reader.GetStream(canSeek: false);
-    }
-
-    /// <summary>
-    /// Retrieves data as a <see cref="TextReader"/>.
-    /// </summary>
-    public TextReader GetTextReader()
-    {
-        CheckActive();
-
-        ref var info = ref _lastInfo;
-        _fieldDescription.GetInfo(typeof(TextReader), ref info);
-
-        switch (Kind)
-        {
-        case TupleDataKind.Null:
-            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
-            break;
-
-        case TupleDataKind.UnchangedToastedValue:
-            throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
-        }
-
-        var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        reader.StartRead(info.ConverterInfo.BufferRequirement);
-        var result = (TextReader)info.ConverterInfo.Converter.ReadAsObject(reader);
-        reader.EndRead();
-        return result;
-    }
-
-    internal async Task Consume(CancellationToken cancellationToken)
-    {
-        if (_isConsumed)
-            return;
-
-        if (!PgReader.Initialized)
-            PgReader.Init(Length, _fieldDescription.DataFormat);
-        await PgReader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        await PgReader.CommitAsync().ConfigureAwait(false);
-
-        _isConsumed = true;
-    }
-
-    void CheckActive()
+    void ThrowIfInitialized()
     {
         if (PgReader.Initialized)
             throw new InvalidOperationException("Column has already been consumed");

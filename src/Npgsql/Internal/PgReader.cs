@@ -72,6 +72,8 @@ public class PgReader
     internal bool Resumable => _resumable;
     public bool IsResumed => Resumable && CurrentOffset > 0;
 
+    internal bool StreamCanSeek { get; set; }
+
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
 
     [MemberNotNullWhen(true, nameof(_charsReadReader))]
@@ -80,7 +82,15 @@ public class PgReader
     // Here for testing purposes
     internal void BreakConnection() => throw _buffer.Connector.Break(new Exception("Broken"));
 
-    internal void Revert(int size, int startPos, Size bufferRequirement)
+    internal void Reset()
+    {
+        if (Initialized)
+            ThrowHelper.ThrowInvalidOperationException("Cannot reset an initialized reader.");
+
+        StreamCanSeek = true;
+    }
+
+    internal void RevertNestedReadScope(int size, int startPos, Size bufferRequirement)
     {
         if (startPos > FieldOffset)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(startPos), "Can't revert forwardly");
@@ -186,11 +196,8 @@ public class PgReader
         CheckBounds(0);
         return result;
     }
-    public Stream GetStream(int? length = null) => GetColumnStream(false, length);
-
-    internal Stream GetStream(bool canSeek, int? length = null) => GetColumnStream(canSeek, length);
-
-    NpgsqlReadBuffer.ColumnStream GetColumnStream(bool canSeek = false, int? length = null)
+    public Stream GetStream(int? length = null) => GetColumnStream(length);
+    NpgsqlReadBuffer.ColumnStream GetColumnStream(int? length = null)
     {
         if (length > CurrentRemaining)
             throw new ArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
@@ -202,7 +209,7 @@ public class PgReader
 
         length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
-        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft, consumeOnDispose: false);
+        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), StreamCanSeek && length <= _buffer.ReadBytesLeft, consumeOnDispose: false);
     }
 
     public TextReader GetTextReader(Encoding encoding)
@@ -215,7 +222,7 @@ public class PgReader
     {
         _requiresCleanup = true;
         if (CurrentRemaining > _buffer.ReadBytesLeft || CurrentRemaining > MaxPreparedTextReaderSize)
-            return new StreamReader(GetColumnStream(), encoding, detectEncodingFromByteOrderMarks: false);
+            return new StreamReader(GetStream(), encoding, detectEncodingFromByteOrderMarks: false);
 
         if (_preparedTextReader is { IsDisposed: false })
         {
@@ -227,7 +234,7 @@ public class PgReader
         _preparedTextReader.Init(
             encoding.GetString(async
                 ? await ReadBytesAsync(CurrentRemaining, cancellationToken).ConfigureAwait(false)
-                : ReadBytes(CurrentRemaining)), GetColumnStream(canSeek: false, 0));
+                : ReadBytes(CurrentRemaining)), GetColumnStream(0));
         return _preparedTextReader;
     }
 
@@ -575,7 +582,7 @@ public class PgReader
     internal void ThrowIfStreamActive()
     {
         if (StreamActive)
-            ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
+            ThrowHelper.ThrowInvalidOperationException("A stream is still open for this reader");
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -810,13 +817,13 @@ public readonly struct NestedReadScope : IDisposable, IAsyncDisposable
 
             _reader.Consume();
         }
-        _reader.Revert(_previousSize, _previousStartPos, _previousBufferRequirement);
+        _reader.RevertNestedReadScope(_previousSize, _previousStartPos, _previousBufferRequirement);
         return new();
 
         static async ValueTask AsyncCore(PgReader reader, int previousSize, int previousStartPos, Size previousBufferRequirement)
         {
             await reader.ConsumeAsync().ConfigureAwait(false);
-            reader.Revert(previousSize, previousStartPos, previousBufferRequirement);
+            reader.RevertNestedReadScope(previousSize, previousStartPos, previousBufferRequirement);
         }
     }
 }
