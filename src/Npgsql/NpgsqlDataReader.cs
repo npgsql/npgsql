@@ -802,7 +802,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // Note that this can happen even in sequential mode, if the row description message is big
         // (see #2003)
         if (!ReferenceEquals(Buffer, Connector.ReadBuffer))
+        {
             Buffer = Connector.ReadBuffer;
+            Buffer.PgReader.StreamCanSeek = !_isSequential;
+        }
         // We assume that the row's number of columns is identical to the description's
         var numColumns = Buffer.ReadInt16();
         if (ColumnCount != numColumns)
@@ -1203,6 +1206,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             ArrayPool<ColumnInfo>.Shared.Return(cache, clearArray: true);
         }
 
+        // Drop any reference to a potential oversized buffer.
+        Buffer = null!;
+        // Reset reader so the next command doesn't inherit our setup.
+        if (!Connector.IsBroken)
+            Connector.ReadBuffer.PgReader.Reset();
+
         State = ReaderState.Closed;
         Command.State = CommandState.Idle;
         Connector.CurrentReader = null;
@@ -1567,16 +1576,19 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
     {
         // As the row is buffered we know the column is too - no I/O will take place
-        if (_isRowBuffered)
+        if (!_isRowBuffered)
+            return Core(ordinal, cancellationToken);
+
+        try
+        {
             return Task.FromResult(GetFieldValueCore<T>(ordinal));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromException<T>(ex);
+        }
 
-        // The only statically mapped converter, it always exists.
-        if (typeof(T) == typeof(Stream))
-            return GetStream(ordinal, cancellationToken);
-
-        return Core(ordinal, cancellationToken).AsTask();
-
-        async ValueTask<T> Core(int ordinal, CancellationToken cancellationToken)
+        async Task<T> Core(int ordinal, CancellationToken cancellationToken)
         {
             ThrowIfNotInResult();
             var field = GetInfo(ordinal, typeof(T), out var converter, out var bufferRequirement, out var asObject);
@@ -1585,29 +1597,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (await SeekToColumnAsync(ordinal, field).ConfigureAwait(false) is -1)
                 return DbNullValueOrThrow<T>(ordinal);
 
-            if (typeof(T) == typeof(TextReader))
-                PgReader.ThrowIfStreamActive();
-
-            Debug.Assert(asObject || converter is PgConverter<T>);
             await PgReader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
             var result = asObject
                 ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
                 : await converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
             await PgReader.EndReadAsync().ConfigureAwait(false);
             return result;
-        }
-
-        async Task<T> GetStream(int ordinal, CancellationToken cancellationToken)
-        {
-            using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-            var field = GetDefaultInfo(ordinal, out _, out _);
-            PgReader.ThrowIfStreamActive();
-
-            if (await SeekToColumnAsync(ordinal, field).ConfigureAwait(false) is -1)
-                return DbNullValueOrThrow<T>(ordinal);
-
-            return (T)(object)PgReader.GetStream(canSeek: !_isSequential);
         }
     }
 
@@ -1622,38 +1617,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     T GetFieldValueCore<T>(int ordinal)
     {
         ThrowIfNotInResult();
-
-        // The only statically mapped converter, it always exists.
-        if (typeof(T) == typeof(Stream))
-            return GetStream(ordinal);
-
         var field = GetInfo(ordinal, typeof(T), out var converter, out var bufferRequirement, out var asObject);
-
-        if (typeof(T) == typeof(TextReader))
-            PgReader.ThrowIfStreamActive();
 
         if (SeekToColumn(ordinal, field) is -1)
             return DbNullValueOrThrow<T>(ordinal);
 
-        Debug.Assert(asObject || converter is PgConverter<T>);
         PgReader.StartRead(bufferRequirement);
         var result = asObject
             ? (T)converter.ReadAsObject(PgReader)
             : converter.UnsafeDowncast<T>().Read(PgReader);
         PgReader.EndRead();
         return result;
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        T GetStream(int ordinal)
-        {
-            var field = GetDefaultInfo(ordinal, out _, out _);
-            PgReader.ThrowIfStreamActive();
-
-            if (SeekToColumn(ordinal, field) is -1)
-                return DbNullValueOrThrow<T>(ordinal);
-
-            return (T)(object)PgReader.GetStream(canSeek: !_isSequential);
-        }
     }
 
     #endregion
@@ -2105,6 +2079,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         if ((uint)ordinal > (uint)ColumnCount)
             ThrowHelper.ThrowIndexOutOfRangeException("Ordinal must be between 0 and " + (ColumnCount - 1));
+
+        // This may have been a stream left open by GetChars or GetBytes, if so ignore.
+        if (PgReader is { Initialized: true, Resumable: false })
+            PgReader.ThrowIfStreamActive();
 
         ref var info = ref ColumnInfoCache![ordinal];
 
