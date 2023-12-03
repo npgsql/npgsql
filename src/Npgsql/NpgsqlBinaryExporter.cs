@@ -140,7 +140,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async ValueTask<int> StartRow(bool async, CancellationToken cancellationToken = default)
     {
-        CheckDisposed();
+        ThrowIfDisposed();
         if (_isConsumed)
             return -1;
 
@@ -248,7 +248,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async ValueTask<T> Read<T>(bool async, NpgsqlDbType? type, CancellationToken cancellationToken)
     {
-        CheckOnRow();
+        ThrowIfNotOnRow();
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
@@ -332,7 +332,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     {
         get
         {
-            CheckOnRow();
+            ThrowIfNotOnRow();
             if (!IsInitializedAndAtStart)
                 return MoveNextColumn(async: false, resumableOp: true).GetAwaiter().GetResult() is -1;
 
@@ -353,7 +353,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async Task Skip(bool async, CancellationToken cancellationToken = default)
     {
-        CheckOnRow();
+        ThrowIfNotOnRow();
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
 
@@ -398,14 +398,14 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         return PgReader.FieldSize;
     }
 
-    void CheckOnRow()
+    void ThrowIfNotOnRow()
     {
-        CheckDisposed();
+        ThrowIfDisposed();
         if (_column is BeforeRow)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
     }
 
-    void CheckDisposed()
+    void ThrowIfDisposed()
     {
         if (_isDisposed)
             ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlBinaryExporter), "The COPY operation has already ended.");
