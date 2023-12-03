@@ -96,6 +96,10 @@ static class ThrowHelper
         => throw new IndexOutOfRangeException(message);
 
     [DoesNotReturn]
+    internal static void ThrowIndexOutOfRangeException(string message, object argument)
+        => throw new IndexOutOfRangeException(string.Format(message, argument));
+
+    [DoesNotReturn]
     internal static void ThrowNotSupportedException(string? message = null)
         => throw new NotSupportedException(message);
 
