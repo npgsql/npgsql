@@ -206,12 +206,14 @@ public sealed class TypeInfoMappingCollection
             var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var converter = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var writingSupported = supportsWriting && innerInfo.SupportsWriting;
             var unboxedType = ComputeUnboxedType(defaultType: mappingType, converter.TypeToConvert, mapping.Type);
+            var readingSupported = innerInfo.SupportsReading && PgTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, unboxedType);
+            var writingSupported = supportsWriting && innerInfo.SupportsWriting;
 
             return new PgTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType)
             {
                 PreferredFormat = preferredFormat,
+                SupportsReading = readingSupported,
                 SupportsWriting = writingSupported
             };
         };
@@ -227,8 +229,9 @@ public sealed class TypeInfoMappingCollection
             var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var resolver = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var writingSupported = supportsWriting && innerInfo.SupportsWriting;
             var unboxedType = ComputeUnboxedType(defaultType: mappingType, resolver.TypeToConvert, mapping.Type);
+            var readingSupported = innerInfo.SupportsReading && PgTypeInfo.GetDefaultSupportsReading(resolver.TypeToConvert, unboxedType);
+            var writingSupported = supportsWriting && innerInfo.SupportsWriting;
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
             PgTypeId? pgTypeId = innerInfo.PgTypeId is not null
@@ -237,6 +240,7 @@ public sealed class TypeInfoMappingCollection
             return new PgResolverTypeInfo(options, resolver, pgTypeId, unboxedType)
             {
                 PreferredFormat = preferredFormat,
+                SupportsReading = readingSupported,
                 SupportsWriting = writingSupported
             };
         };
@@ -811,8 +815,7 @@ public static class TypeInfoMappingHelpers
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName)
         => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
-            PreferredFormat = null,
-            SupportsWriting = true
+            PreferredFormat = null
         };
 
     /// <summary>

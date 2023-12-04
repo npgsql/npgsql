@@ -15,6 +15,8 @@ static class AdoSerializerHelpers
         try
         {
             typeInfo = options.GetTypeInfoInternal(type, pgTypeId);
+            if (typeInfo is { SupportsReading: false })
+                typeInfo = null;
         }
         catch (Exception ex)
         {
@@ -41,6 +43,8 @@ static class AdoSerializerHelpers
         try
         {
             typeInfo = options.GetTypeInfoInternal(type, pgTypeId);
+            if (typeInfo is { SupportsWriting: false })
+                typeInfo = null;
         }
         catch (Exception ex)
         {
