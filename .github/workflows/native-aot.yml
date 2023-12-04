@@ -64,7 +64,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v3.2.0
+        uses: actions/setup-dotnet@v4.0.0
         with:
           dotnet-version: |
             ${{ env.dotnet_sdk_version }}
