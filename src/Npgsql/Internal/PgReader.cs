@@ -99,7 +99,7 @@ public class PgReader
         void Core(int count)
         {
             if (count > CurrentRemaining)
-                ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the current field size.");
+                ThrowHelper.ThrowIndexOutOfRangeException("Attempt to read past the end of the current field size.");
         }
     }
 
@@ -347,11 +347,11 @@ public class PgReader
         // Shut down any streaming going on on the column
         DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
-        if (_buffer.ReadPosition < count)
-            throw new ArgumentOutOfRangeException("Cannot rewind further than the buffer start");
-
         if (CurrentOffset < count)
-            throw new ArgumentOutOfRangeException("Cannot rewind further than the current field offset");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to rewind past the current field start.");
+
+        if (_buffer.ReadPosition < count)
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to rewind past the buffer start, some of this data is no longer part of the underlying buffer.");
 
         _buffer.ReadPosition -= count;
     }
@@ -531,7 +531,9 @@ public class PgReader
             return;
 
         var remaining = count ?? CurrentRemaining;
-        CheckBounds(remaining);
+
+        if (count > CurrentRemaining)
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
 
         var origOffset = FieldOffset;
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
@@ -712,19 +714,14 @@ public class PgReader
         bool ShouldBufferSlow()
         {
             if (byteCount > _buffer.Size)
-                ThrowArgumentOutOfRange();
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(byteCount),
+                    "Buffer requirement is larger than the buffer size, this can never succeed by buffering data but requires a larger buffer size instead.");
             if (byteCount > CurrentRemaining)
-                ThrowArgumentOutOfRangeOfValue();
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(byteCount),
+                    "Buffer requirement is larger than the remaining length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
 
             return true;
         }
-
-        static void ThrowArgumentOutOfRange()
-            => throw new ArgumentOutOfRangeException(nameof(byteCount),
-                "Buffer requirement is larger than the buffer size, this can never succeed by buffering data but requires a larger buffer size instead.");
-        static void ThrowArgumentOutOfRangeOfValue()
-            => throw new ArgumentOutOfRangeException(nameof(byteCount),
-                "Buffer requirement is larger than the remaining length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
     }
 
     public void Buffer(Size bufferRequirement)
