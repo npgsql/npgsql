@@ -492,7 +492,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 else
                     PgReader.Commit(resuming: false);
                 // Finish the current CopyData message
-                await _buf.Skip(checked((int)(_endOfMessagePos - _buf.CumulativeReadPosition)), async).ConfigureAwait(false);
+                await _buf.Skip(async, checked((int)(_endOfMessagePos - _buf.CumulativeReadPosition))).ConfigureAwait(false);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup

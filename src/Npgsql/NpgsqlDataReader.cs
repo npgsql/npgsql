@@ -2063,7 +2063,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 _column++;
                 Debug.Assert(columnLength >= -1);
                 if (columnLength > 0)
-                    await buffer.Skip(columnLength, async).ConfigureAwait(false);
+                    await buffer.Skip(async: true, columnLength).ConfigureAwait(false);
             }
 
             await buffer.Ensure(4, async).ConfigureAwait(false);
@@ -2142,7 +2142,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 _column++;
                 Debug.Assert(columnLength >= -1);
                 if (columnLength > 0)
-                    await buffer.Skip(columnLength, async).ConfigureAwait(false);
+                    await buffer.Skip(async, columnLength).ConfigureAwait(false);
             }
         }
     }

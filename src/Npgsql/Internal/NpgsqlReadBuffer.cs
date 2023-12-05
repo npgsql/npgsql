@@ -422,7 +422,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// <summary>
     /// Skip a given number of bytes.
     /// </summary>
-    public async Task Skip(int len, bool async)
+    public async Task Skip(bool async, int len)
     {
         Debug.Assert(len >= 0);
 

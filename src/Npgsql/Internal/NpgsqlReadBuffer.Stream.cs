@@ -210,7 +210,7 @@ sealed partial class NpgsqlReadBuffer
                 var pos = _buf.CumulativeReadPosition - _startPos;
                 var remaining = checked((int)(CurrentLength - pos));
                 if (remaining > 0)
-                    await _buf.Skip(remaining, async).ConfigureAwait(false);
+                    await _buf.Skip(async, remaining).ConfigureAwait(false);
             }
 
             IsDisposed = true;
