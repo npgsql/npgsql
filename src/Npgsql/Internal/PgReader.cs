@@ -409,7 +409,7 @@ public class PgReader
     internal void StartCharsRead(int dataOffset, ArraySegment<char>? buffer)
     {
         if (!Resumable)
-            ThrowHelper.ThrowInvalidOperationException("Wasn't initialized as resumed");
+            ThrowHelper.ThrowInvalidOperationException("Reader was not initialized as resumable");
 
         _charsReadOffset = dataOffset;
         _charsReadBuffer = buffer;
@@ -427,35 +427,16 @@ public class PgReader
         _charsReadBuffer = null;
     }
 
-    internal PgReader Init(int fieldLength, DataFormat format, bool resumable = false)
+    internal void Init(int fieldSize, DataFormat fieldFormat, bool resumable = false)
     {
         if (Initialized)
-        {
-            if (resumable)
-            {
-                if (Resumable)
-                    return this;
-                _resumable = true;
-            }
-            else
-            {
-                if (!IsAtStart)
-                    ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
-                _resumable = false;
-            }
-        }
-        else
-        {
-            _fieldStartPos = _buffer.CumulativeReadPosition;
-            _fieldConsumed = false;
-        }
+            ThrowHelper.ThrowInvalidOperationException("Already initialized");
 
-        Debug.Assert(!_requiresCleanup, "Reader wasn't properly committed before next init");
-
-        _fieldSize = fieldLength;
-        _fieldFormat = format;
+        _fieldStartPos = _buffer.CumulativeReadPosition;
+        _fieldConsumed = false;
+        _fieldSize = fieldSize;
+        _fieldFormat = fieldFormat;
         _resumable = resumable;
-        return this;
     }
 
     internal void StartRead(Size bufferRequirement)
@@ -567,7 +548,6 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
     }
 
-    internal bool CommitHasIO(bool resuming) => Initialized && !resuming && FieldRemaining > 0;
     [MethodImpl(MethodImplOptions.NoInlining)]
     void Cleanup()
     {
@@ -597,17 +577,20 @@ public class PgReader
         _currentSize = -1;
     }
 
-    internal void Restart(bool resume)
+    internal void Restart(bool resumable)
     {
         if (!Initialized)
             ThrowHelper.ThrowInvalidOperationException("Cannot restart a non-initialized reader.");
 
-        if (resume)
+        // We resume if the reader was initialized as resumable and we're not explicitly restarting as non-resumable.
+        // When the field size is -1 we're always restarting as resumable, to allow rereading null values endlessly.
+        if ((Resumable && resumable) || FieldSize is -1)
         {
-            if (!Resumable)
-                ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
+            _resumable = resumable || FieldSize is -1;
             return;
         }
+
+        // From this point on we're not resuming, we're resetting any remaining state and rewinding our position.
 
         // Shut down any streaming and pooling going on on the column.
         if (_requiresCleanup)
@@ -617,6 +600,7 @@ public class PgReader
             ResetCurrent();
 
         _fieldConsumed = false;
+        _resumable = resumable;
         Seek(0);
 
         Debug.Assert(Initialized);

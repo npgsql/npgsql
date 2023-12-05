@@ -411,10 +411,25 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     /// <summary>
-    /// Does not perform any I/O - assuming that the bytes to be skipped are in the memory buffer.
+    /// Skip a given number of bytes.
     /// </summary>
-    internal void Skip(int len)
+    internal void Skip(int len, bool allowIO = false)
     {
+        Debug.Assert(len >= 0);
+
+        if (allowIO && len > ReadBytesLeft)
+        {
+            len -= ReadBytesLeft;
+            while (len > Size)
+            {
+                ResetPosition();
+                Ensure(Size);
+                len -= Size;
+            }
+            ResetPosition();
+            Ensure(len);
+        }
+
         Debug.Assert(ReadBytesLeft >= len);
         ReadPosition += len;
     }
