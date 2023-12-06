@@ -10,32 +10,21 @@ using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Npgsql.Json.NET.Internal;
 
-sealed class JsonNetJsonConverter<T> : PgStreamingConverter<T?>
+sealed class JsonNetJsonConverter<T>(bool jsonb, Encoding textEncoding, JsonSerializerSettings settings) : PgStreamingConverter<T?>
 {
-    readonly bool _jsonb;
-    readonly Encoding _textEncoding;
-    readonly JsonSerializerSettings _settings;
-
-    public JsonNetJsonConverter(bool jsonb, Encoding textEncoding, JsonSerializerSettings settings)
-    {
-        _jsonb = jsonb;
-        _textEncoding = textEncoding;
-        _settings = settings;
-    }
-
     public override T? Read(PgReader reader)
-        => (T?)JsonNetJsonConverter.Read(async: false, _jsonb, reader, typeof(T), _settings, _textEncoding, CancellationToken.None).GetAwaiter().GetResult();
+        => (T?)JsonNetJsonConverter.Read(async: false, jsonb, reader, typeof(T), settings, textEncoding, CancellationToken.None).GetAwaiter().GetResult();
     public override async ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => (T?)await JsonNetJsonConverter.Read(async: true, _jsonb, reader, typeof(T), _settings, _textEncoding, cancellationToken).ConfigureAwait(false);
+        => (T?)await JsonNetJsonConverter.Read(async: true, jsonb, reader, typeof(T), settings, textEncoding, cancellationToken).ConfigureAwait(false);
 
     public override Size GetSize(SizeContext context, T? value, ref object? writeState)
-        => JsonNetJsonConverter.GetSize(_jsonb, context, typeof(T), _settings, _textEncoding, value, ref writeState);
+        => JsonNetJsonConverter.GetSize(jsonb, context, typeof(T), settings, textEncoding, value, ref writeState);
 
     public override void Write(PgWriter writer, T? value)
-        => JsonNetJsonConverter.Write(_jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();
+        => JsonNetJsonConverter.Write(jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();
 
     public override ValueTask WriteAsync(PgWriter writer, T? value, CancellationToken cancellationToken = default)
-        => JsonNetJsonConverter.Write(_jsonb, async: true, writer, cancellationToken);
+        => JsonNetJsonConverter.Write(jsonb, async: true, writer, cancellationToken);
 }
 
 // Split out to avoid unneccesary code duplication.

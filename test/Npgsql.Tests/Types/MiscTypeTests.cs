@@ -9,7 +9,7 @@ namespace Npgsql.Tests.Types;
 /// <summary>
 /// Tests on PostgreSQL types which don't fit elsewhere
 /// </summary>
-class MiscTypeTests : MultiplexingTestBase
+class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public async Task Boolean()
@@ -192,6 +192,4 @@ class MiscTypeTests : MultiplexingTestBase
         Assert.That(() => cmd.Parameters.Add(new NpgsqlParameter("p", DbType.UInt32) { Value = 8u }),
             Throws.Exception.TypeOf<NotSupportedException>());
     }
-
-    public MiscTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

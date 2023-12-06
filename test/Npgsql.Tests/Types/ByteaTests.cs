@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types;
 /// <summary>
 /// https://www.postgresql.org/docs/current/static/datatype-binary.html
 /// </summary>
-public class ByteaTests : MultiplexingTestBase
+public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     [TestCase(new byte[] { 1, 2, 3, 4, 5 }, "\\x0102030405", TestName = "Bytea")]
@@ -284,14 +284,8 @@ public class ByteaTests : MultiplexingTestBase
         Assert.AreEqual(inVal[1], retVal[1]);
     }
 
-    sealed class NonSeekableStream : MemoryStream
+    sealed class NonSeekableStream(byte[] data) : MemoryStream(data)
     {
         public override bool CanSeek => false;
-
-        public NonSeekableStream(byte[] data) : base(data)
-        {
-        }
     }
-
-    public ByteaTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

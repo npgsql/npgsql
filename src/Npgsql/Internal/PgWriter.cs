@@ -26,40 +26,38 @@ interface IStreamingWriter<T>: IBufferWriter<T>
     ValueTask FlushAsync(CancellationToken cancellationToken = default);
 }
 
-sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
+sealed class NpgsqlBufferWriter(NpgsqlWriteBuffer buffer) : IStreamingWriter<byte>
 {
-    readonly NpgsqlWriteBuffer _buffer;
     int? _lastBufferSize;
-    public NpgsqlBufferWriter(NpgsqlWriteBuffer buffer) => _buffer = buffer;
 
     public void Advance(int count)
     {
-        if (_lastBufferSize < count || _buffer.WriteSpaceLeft < count)
+        if (_lastBufferSize < count || buffer.WriteSpaceLeft < count)
             ThrowHelper.ThrowInvalidOperationException("Cannot advance past the end of the current buffer.");
         _lastBufferSize = null;
-        _buffer.WritePosition += count;
+        buffer.WritePosition += count;
     }
 
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
-        var writePosition = _buffer.WritePosition;
-        var bufferSize = _buffer.Size - writePosition;
+        var writePosition = buffer.WritePosition;
+        var bufferSize = buffer.Size - writePosition;
         if (sizeHint > bufferSize)
             ThrowOutOfMemoryException();
 
         _lastBufferSize = bufferSize;
-        return _buffer.Buffer.AsMemory(writePosition, bufferSize);
+        return buffer.Buffer.AsMemory(writePosition, bufferSize);
     }
 
     public Span<byte> GetSpan(int sizeHint = 0)
     {
-        var writePosition = _buffer.WritePosition;
-        var bufferSize = _buffer.Size - writePosition;
+        var writePosition = buffer.WritePosition;
+        var bufferSize = buffer.Size - writePosition;
         if (sizeHint > bufferSize)
             ThrowOutOfMemoryException();
 
         _lastBufferSize = bufferSize;
-        return _buffer.Buffer.AsSpan(writePosition, bufferSize);
+        return buffer.Buffer.AsSpan(writePosition, bufferSize);
     }
 
     static void ThrowOutOfMemoryException() => throw new OutOfMemoryException("Not enough space left in buffer.");
@@ -67,7 +65,7 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
     public void Flush(TimeSpan timeout = default)
     {
         if (timeout == TimeSpan.Zero)
-            _buffer.Flush();
+            buffer.Flush();
         else
         {
             TimeSpan? originalTimeout = null;
@@ -75,21 +73,21 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
             {
                 if (timeout != TimeSpan.Zero)
                 {
-                    originalTimeout = _buffer.Timeout;
-                    _buffer.Timeout = timeout;
+                    originalTimeout = buffer.Timeout;
+                    buffer.Timeout = timeout;
                 }
-                _buffer.Flush();
+                buffer.Flush();
             }
             finally
             {
                 if (originalTimeout is { } value)
-                    _buffer.Timeout = value;
+                    buffer.Timeout = value;
             }
         }
     }
 
     public ValueTask FlushAsync(CancellationToken cancellationToken = default)
-        => new(_buffer.Flush(async: true, cancellationToken));
+        => new(buffer.Flush(async: true, cancellationToken));
 }
 
 public sealed class PgWriter

@@ -242,17 +242,17 @@ public class PgTypeInfo
     }
 }
 
-public sealed class PgResolverTypeInfo : PgTypeInfo
+public sealed class PgResolverTypeInfo(
+    PgSerializerOptions options,
+    PgConverterResolver converterResolver,
+    PgTypeId? pgTypeId,
+    Type? unboxedType = null)
+    : PgTypeInfo(options,
+        converterResolver.TypeToConvert,
+        pgTypeId is { } typeId ? ResolveDefaultId(options, converterResolver, typeId) : null,
+        unboxedType ?? (converterResolver.TypeToConvert == typeof(object) ? typeof(object) : null))
 {
-    readonly PgConverterResolver _converterResolver;
-
-    public PgResolverTypeInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
-        : base(options,
-            converterResolver.TypeToConvert,
-            pgTypeId is { } typeId ? ResolveDefaultId(options, converterResolver, typeId) : null,
-            // We always mark resolvers with type object as boxing, as they may freely return converters for any type (see PgConverterResolver.Validate).
-            unboxedType ?? (converterResolver.TypeToConvert == typeof(object) ? typeof(object) : null))
-        => _converterResolver = converterResolver;
+    // We always mark resolvers with type object as boxing, as they may freely return converters for any type (see PgConverterResolver.Validate).
 
     // We'll always validate the default resolution, the info will be re-used so there is no real downside.
     static PgConverterResolution ResolveDefaultId(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId typeId)
@@ -260,7 +260,7 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
 
     public PgConverterResolution? GetResolution<T>(T? value, PgTypeId? expectedPgTypeId)
     {
-        return _converterResolver is PgConverterResolver<T> resolverT
+        return converterResolver is PgConverterResolver<T> resolverT
             ? resolverT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
             : ThrowNotSupportedType(typeof(T));
 
@@ -271,27 +271,21 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
     }
 
     public PgConverterResolution? GetResolutionAsObject(object? value, PgTypeId? expectedPgTypeId)
-        => _converterResolver.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+        => converterResolver.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
 
     public PgConverterResolution GetResolution(Field field)
-        => _converterResolver.GetInternal(this, field);
+        => converterResolver.GetInternal(this, field);
 
     public PgConverterResolution GetDefaultResolution(PgTypeId? pgTypeId)
-        => _converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
+        => converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
 
-    public PgConverterResolver GetConverterResolver() => _converterResolver;
+    public PgConverterResolver GetConverterResolver() => converterResolver;
 }
 
-public readonly struct PgConverterResolution
+public readonly struct PgConverterResolution(PgConverter converter, PgTypeId pgTypeId)
 {
-    public PgConverterResolution(PgConverter converter, PgTypeId pgTypeId)
-    {
-        Converter = converter;
-        PgTypeId = pgTypeId;
-    }
-
-    public PgConverter Converter { get; }
-    public PgTypeId PgTypeId { get; }
+    public PgConverter Converter { get; } = converter;
+    public PgTypeId PgTypeId { get; } = pgTypeId;
 
     public PgConverter<T> GetConverter<T>() => (PgConverter<T>)Converter;
 }

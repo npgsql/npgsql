@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
-public abstract class PgStreamingConverter<T> : PgConverter<T>
+public abstract class PgStreamingConverter<T>(bool customDbNullPredicate = false) : PgConverter<T>(customDbNullPredicate)
 {
-    protected PgStreamingConverter(bool customDbNullPredicate = false) : base(customDbNullPredicate) { }
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.None;

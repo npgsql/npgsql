@@ -213,18 +213,18 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
 
 #pragma warning disable 1591
 
-public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
-{
-    public NpgsqlRowUpdatingEventArgs(DataRow dataRow, IDbCommand? command, System.Data.StatementType statementType,
-        DataTableMapping tableMapping)
-        : base(dataRow, command, statementType, tableMapping) {}
-}
+public class NpgsqlRowUpdatingEventArgs(
+    DataRow dataRow,
+    IDbCommand? command,
+    System.Data.StatementType statementType,
+    DataTableMapping tableMapping)
+    : RowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
 
-public class NpgsqlRowUpdatedEventArgs : RowUpdatedEventArgs
-{
-    public NpgsqlRowUpdatedEventArgs(DataRow dataRow, IDbCommand? command, System.Data.StatementType statementType,
-        DataTableMapping tableMapping)
-        : base(dataRow, command, statementType, tableMapping) {}
-}
+public class NpgsqlRowUpdatedEventArgs(
+    DataRow dataRow,
+    IDbCommand? command,
+    System.Data.StatementType statementType,
+    DataTableMapping tableMapping)
+    : RowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
 
 #pragma warning restore 1591

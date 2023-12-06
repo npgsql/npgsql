@@ -133,12 +133,8 @@ class ReadBufferTests
             return count;
         }
 
-        internal class MockStreamWriter
+        internal class MockStreamWriter(MockStream stream)
         {
-            readonly MockStream _stream;
-
-            public MockStreamWriter(MockStream stream) => _stream = stream;
-
             public MockStreamWriter WriteByte(byte b)
             {
                 Span<byte> bytes = stackalloc byte[1];
@@ -149,11 +145,11 @@ class ReadBufferTests
 
             public MockStreamWriter Write(ReadOnlySpan<byte> bytes)
             {
-                if (_stream._filled + bytes.Length > Size)
+                if (stream._filled + bytes.Length > Size)
                     throw new Exception("Mock stream overrun");
-                bytes.CopyTo(new Span<byte>(_stream._data, _stream._filled, bytes.Length));
-                _stream._filled += bytes.Length;
-                _stream._tcs.TrySetResult(new());
+                bytes.CopyTo(new Span<byte>(stream._data, stream._filled, bytes.Length));
+                stream._filled += bytes.Length;
+                stream._tcs.TrySetResult(new());
                 return this;
             }
         }

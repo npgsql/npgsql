@@ -2,13 +2,11 @@ using System;
 
 namespace Npgsql.Internal.Postgres;
 
-public readonly struct Oid: IEquatable<Oid>
+public readonly struct Oid(uint value) : IEquatable<Oid>
 {
-    public Oid(uint value) => Value = value;
-
     public static explicit operator uint(Oid oid) => oid.Value;
     public static implicit operator Oid(uint oid) => new(oid);
-    public uint Value { get; init; }
+    public uint Value { get; init; } = value;
 
     public override string ToString() => Value.ToString();
     public bool Equals(Oid other) => Value == other.Value;

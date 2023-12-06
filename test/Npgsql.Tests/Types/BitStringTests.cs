@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-bit.html
 /// </remarks>
-public class BitStringTests : MultiplexingTestBase
+public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     [TestCase("10110110", TestName = "BitArray")]
@@ -123,6 +123,4 @@ public class BitStringTests : MultiplexingTestBase
     [Test]
     public Task Write_as_string_validation()
         => AssertTypeUnsupportedWrite<string, ArgumentException>("001q0", "bit varying");
-
-    public BitStringTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

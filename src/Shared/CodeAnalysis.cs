@@ -6,28 +6,19 @@ namespace System.Diagnostics.CodeAnalysis
     /// Indicates that the specified method requires the ability to generate new code at runtime,
     /// for example through <see cref="System.Reflection"/>.
     /// </summary>
+    /// <param name="message">
+    /// A message that contains information about the usage of dynamic code.
+    /// </param>
     /// <remarks>
     /// This allows tools to understand which methods are unsafe to call when compiling ahead of time.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class, Inherited = false)]
-    sealed class RequiresDynamicCodeAttribute : Attribute
+    sealed class RequiresDynamicCodeAttribute(string message) : Attribute
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RequiresDynamicCodeAttribute"/> class
-        /// with the specified message.
-        /// </summary>
-        /// <param name="message">
-        /// A message that contains information about the usage of dynamic code.
-        /// </param>
-        public RequiresDynamicCodeAttribute(string message)
-        {
-            Message = message;
-        }
-
         /// <summary>
         /// Gets a message that contains information about the usage of dynamic code.
         /// </summary>
-        public string Message { get; }
+        public string Message { get; } = message;
 
         /// <summary>
         /// Gets or sets an optional URL that contains more information about the method,
@@ -40,13 +31,9 @@ namespace System.Diagnostics.CodeAnalysis
     sealed class SetsRequiredMembersAttribute : Attribute
     {
     }
-    [AttributeUsageAttribute(AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
     sealed class UnscopedRefAttribute : Attribute
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UnscopedRefAttribute"/> class.
-        /// </summary>
-        public UnscopedRefAttribute() { }
     }
 #endif
 }
@@ -59,17 +46,12 @@ namespace System.Runtime.CompilerServices
     { }
 
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true, Inherited = false)]
-    sealed class CompilerFeatureRequiredAttribute : Attribute
+    sealed class CompilerFeatureRequiredAttribute(string featureName) : Attribute
     {
-        public CompilerFeatureRequiredAttribute(string featureName)
-        {
-            FeatureName = featureName;
-        }
-
         /// <summary>
         /// The name of the compiler feature.
         /// </summary>
-        public string FeatureName { get; }
+        public string FeatureName { get; } = featureName;
 
         /// <summary>
         /// If true, the compiler can choose to allow access to the location where this attribute is applied if it does not understand <see cref="FeatureName"/>.

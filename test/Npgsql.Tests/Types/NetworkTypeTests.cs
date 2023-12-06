@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-net-types.html
 /// </remarks>
-class NetworkTypeTests : MultiplexingTestBase
+class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public Task Inet_v4_as_IPAddress()
@@ -128,6 +128,4 @@ class NetworkTypeTests : MultiplexingTestBase
 
         await AssertTypeUnsupportedWrite<PhysicalAddress, ArgumentException>(PhysicalAddress.Parse("08-00-2B-01-02-03-04-05"), "macaddr");
     }
-
-    public NetworkTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

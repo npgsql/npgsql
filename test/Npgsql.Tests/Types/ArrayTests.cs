@@ -20,7 +20,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/arrays.html
 /// </remarks>
-public class ArrayTests : MultiplexingTestBase
+public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     static readonly TestCaseData[] ArrayTestCases =
     {
@@ -396,6 +396,4 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
 
         await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
     }
-
-    public ArrayTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

@@ -235,12 +235,10 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
 
 /// Note that for BIT(1), this resolver will return a bool by default, to align with SqlClient
 /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
-sealed class PolymorphicBitStringConverterResolver : PolymorphicConverterResolver<object>
+sealed class PolymorphicBitStringConverterResolver(PgTypeId bitString) : PolymorphicConverterResolver<object>(bitString)
 {
     BoolBitStringConverter? _boolConverter;
     BitArrayBitStringConverter? _bitArrayConverter;
-
-    public PolymorphicBitStringConverterResolver(PgTypeId bitString) : base(bitString) { }
 
     protected override PgConverter Get(Field? field)
         => field?.TypeModifier is 1
