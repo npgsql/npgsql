@@ -448,7 +448,11 @@ public class PgReader
         Debug.Assert(FieldSize >= 0);
         _fieldBufferRequirement = bufferRequirement;
         if (ShouldBuffer(bufferRequirement))
-            Buffer(bufferRequirement);
+            BufferNoInlined(bufferRequirement);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void BufferNoInlined(Size bufferRequirement)
+            => Buffer(bufferRequirement);
     }
 
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
@@ -525,26 +529,43 @@ public class PgReader
             Consume(offset - CurrentOffset);
     }
 
-    internal async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
+    public void Consume(int? count = null)
     {
         if (count <= 0 || FieldSize < 0 || FieldRemaining == 0)
             return;
 
-        var remaining = count ?? CurrentRemaining;
+        var currentRemaining = CurrentRemaining;
+        var remaining = count ?? currentRemaining;
 
-        if (count > CurrentRemaining)
+        if (count > currentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
 
         var origOffset = FieldOffset;
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
         if (!_buffer.Connector.IsBroken)
-            await _buffer.Skip(async, remaining).ConfigureAwait(false);
+            _buffer.Skip(remaining, allowIO: true);
 
         Debug.Assert(FieldRemaining == FieldSize - origOffset - remaining);
     }
 
-    public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
-    public ValueTask ConsumeAsync(int? count = null, CancellationToken cancellationToken = default) => Consume(async: true, count, cancellationToken);
+    public async ValueTask ConsumeAsync(int? count = null, CancellationToken cancellationToken = default)
+    {
+        if (count <= 0 || FieldSize < 0 || FieldRemaining == 0)
+            return;
+
+        var currentRemaining = CurrentRemaining;
+        var remaining = count ?? currentRemaining;
+
+        if (count > currentRemaining)
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
+
+        var origOffset = FieldOffset;
+        // A breaking exception unwind from a nested scope should not try to consume its remaining data.
+        if (!_buffer.Connector.IsBroken)
+            await _buffer.Skip(async:true, remaining).ConfigureAwait(false);
+
+        Debug.Assert(FieldRemaining == FieldSize - origOffset - remaining);
+    }
 
     [MemberNotNullWhen(true, nameof(_userActiveStream))]
     bool StreamActive => _userActiveStream is { IsDisposed: false };
@@ -612,6 +633,7 @@ public class PgReader
         Debug.Assert(Initialized);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void Commit()
     {
         if (!Initialized)
@@ -627,7 +649,7 @@ public class PgReader
         // We make sure to fuly consume any FieldRemaining in the event of an exception or a nested scope not being disposed.
         Debug.Assert(!HasCurrent);
         if (!_fieldConsumed && FieldRemaining > 0)
-            Consume(async: false).GetAwaiter().GetResult();
+            Consume();
 
         _fieldStartPos = -1;
         Debug.Assert(!Initialized);
@@ -639,6 +661,7 @@ public class PgReader
         // _fieldConsumed = default;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ValueTask CommitAsync()
     {
         if (!Initialized)
@@ -669,7 +692,7 @@ public class PgReader
 
         async ValueTask CommitAsync()
         {
-            await Consume(async: true, count: FieldRemaining).ConfigureAwait(false);
+            await ConsumeAsync().ConfigureAwait(false);
 
             _fieldStartPos = -1;
             Debug.Assert(!Initialized);
