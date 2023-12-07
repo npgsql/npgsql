@@ -1267,6 +1267,84 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
             }, 2);
     }
 
+    [Test(Description = $"Tests whether {nameof(FullUpdateMessage)} instances with unchanged toasted values behave as expected."), Explicit("Massive inserts")]
+    public  Task Update_for_full_replica_identity_with_unchanged_toasted_value()
+        => SafeReplicationTest(
+            async (slotName, tableName, publicationName) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync($$"""
+                                               CREATE TABLE {{tableName}} (id INT PRIMARY KEY, name JSONB NOT NULL, something_else INT NULL);
+                                               ALTER TABLE {{tableName}} REPLICA IDENTITY FULL;
+                                               INSERT INTO {{tableName}} SELECT i, ('{"row_' || i::text || '": [{{string.Join(", ", Enumerable.Range(1, 1024))}}]}')::jsonb, NULL FROM generate_series(1, 15000) s(i);
+                                               CREATE PUBLICATION {{publicationName}} FOR TABLE {{tableName}};
+                                               """);
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                await using var tran = await c.BeginTransactionAsync();
+                await c.ExecuteNonQueryAsync($"""
+                                              UPDATE {tableName} SET name='"val1_updated"' WHERE id = 1;
+                                              UPDATE {tableName} SET something_else = id WHERE id > 1
+                                              """);
+                await tran.CommitAsync();
+
+                using var streamingCts = new CancellationTokenSource();
+                var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                    .GetAsyncEnumerator();
+
+                // Begin Transaction
+                var transactionXid = await AssertTransactionStart(messages);
+
+                // Relation
+                var relationMsg = await NextMessage<RelationMessage>(messages);
+
+                // Update of the first row (updating the jsonb column)
+                var updateMsg = await NextMessage<FullUpdateMessage>(messages);
+                Assert.That(updateMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                Assert.That(updateMsg.Relation, Is.SameAs(relationMsg));
+
+                var newRowColumnEnumerator = updateMsg.NewRow.GetAsyncEnumerator();
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                Assert.That(newRowColumnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                Assert.That(await newRowColumnEnumerator.Current.Get<object>(), Is.EqualTo("\"val1_updated\""));
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                Assert.That(newRowColumnEnumerator.Current.IsDBNull, Is.True);
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.False);
+
+
+                // Update of the following rows (not updating the jsonb column)
+                updateMsg = await NextMessage<FullUpdateMessage>(messages);
+                Assert.That(updateMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                Assert.That(updateMsg.Relation, Is.SameAs(relationMsg));
+
+                newRowColumnEnumerator = updateMsg.NewRow.GetAsyncEnumerator();
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                Assert.That(newRowColumnEnumerator.Current.IsUnchangedToastedValue, Is.True);
+                Assert.That(async () => await newRowColumnEnumerator.Current.Get<object>(),
+                    Throws.TypeOf<InvalidCastException>()
+                        .With.Message.EqualTo("Column 'name' is an unchanged TOASTed value (actual value not sent)."));
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                Assert.That(newRowColumnEnumerator.Current.IsDBNull, Is.False);
+                Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.False);
+
+                // Remaining updates
+                for (var updateCount = 0; updateCount < 14998; updateCount++)
+                    await NextMessage<FullUpdateMessage>(messages);
+
+                // Commit Transaction
+                await AssertTransactionCommit(messages);
+
+                streamingCts.Cancel();
+                Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
+                    .With.InnerException.InstanceOf<PostgresException>()
+                    .And.InnerException.Property(nameof(PostgresException.SqlState))
+                    .EqualTo(PostgresErrorCodes.QueryCanceled));
+                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+            });
+
     #region Non-Test stuff (helper methods, initialization, enums, ...)
 
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
