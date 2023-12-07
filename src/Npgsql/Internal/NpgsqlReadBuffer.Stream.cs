@@ -17,6 +17,7 @@ sealed partial class NpgsqlReadBuffer
         int _read;
         bool _canSeek;
         bool _commandScoped;
+        bool _consumeOnDispose;
         /// Does not throw ODE.
         internal int CurrentLength { get; private set; }
         internal bool IsDisposed { get; private set; }
@@ -28,7 +29,7 @@ sealed partial class NpgsqlReadBuffer
             IsDisposed = true;
         }
 
-        internal void Init(int len, bool canSeek, bool commandScoped)
+        internal void Init(int len, bool canSeek, bool commandScoped, bool consumeOnDispose = true)
         {
             Debug.Assert(!canSeek || _buf.ReadBytesLeft >= len,
                 "Seekable stream constructed but not all data is in buffer (sequential)");
@@ -41,6 +42,7 @@ sealed partial class NpgsqlReadBuffer
             _read = 0;
 
             _commandScoped = commandScoped;
+            _consumeOnDispose = consumeOnDispose;
             IsDisposed = false;
         }
 
@@ -195,17 +197,20 @@ sealed partial class NpgsqlReadBuffer
         }
 
         protected override void Dispose(bool disposing)
-            => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
+        {
+            if (disposing)
+                DisposeCore(async: false).GetAwaiter().GetResult();
+        }
 
         public override ValueTask DisposeAsync()
-            => DisposeAsync(disposing: true, async: true);
+            => DisposeCore(async: true);
 
-        async ValueTask DisposeAsync(bool disposing, bool async)
+        async ValueTask DisposeCore(bool async)
         {
-            if (IsDisposed || !disposing)
+            if (IsDisposed)
                 return;
 
-            if (!_connector.IsBroken)
+            if (_consumeOnDispose && !_connector.IsBroken)
             {
                 var pos = _buf.CumulativeReadPosition - _startPos;
                 var remaining = checked((int)(CurrentLength - pos));

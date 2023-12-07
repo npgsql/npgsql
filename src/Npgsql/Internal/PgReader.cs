@@ -202,7 +202,7 @@ public class PgReader
 
         length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
-        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft);
+        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft, consumeOnDispose: false);
     }
 
     public TextReader GetTextReader(Encoding encoding)
@@ -344,14 +344,15 @@ public class PgReader
 
     public void Rewind(int count)
     {
-        // Shut down any streaming going on on the column
-        DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
-
         if (CurrentOffset < count)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to rewind past the current field start.");
 
         if (_buffer.ReadPosition < count)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to rewind past the buffer start, some of this data is no longer part of the underlying buffer.");
+
+        // Shut down any streaming going on on the column
+        if (StreamActive)
+            DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         _buffer.ReadPosition -= count;
     }
@@ -363,14 +364,10 @@ public class PgReader
     /// <returns>The stream length, if any</returns>
     async ValueTask DisposeUserActiveStream(bool async)
     {
-        if (StreamActive)
-        {
-            if (async)
-                await _userActiveStream.DisposeAsync().ConfigureAwait(false);
-            else
-                _userActiveStream.Dispose();
-        }
-
+        if (async)
+            await (_userActiveStream?.DisposeAsync() ?? new()).ConfigureAwait(false);
+        else
+            _userActiveStream?.Dispose();
         _userActiveStream = null;
     }
 
@@ -540,6 +537,9 @@ public class PgReader
         if (count > currentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
 
+        if (StreamActive)
+            DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
+
         var origOffset = FieldOffset;
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
         if (!_buffer.Connector.IsBroken)
@@ -558,6 +558,9 @@ public class PgReader
 
         if (count > currentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
+
+        if (StreamActive)
+            await DisposeUserActiveStream(async: true).ConfigureAwait(false);
 
         var origOffset = FieldOffset;
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
