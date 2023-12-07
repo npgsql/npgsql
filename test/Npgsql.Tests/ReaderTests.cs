@@ -913,14 +913,33 @@ LANGUAGE 'plpgsql'");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5484")]
     public async Task GetFieldValueAsync_AsyncRead()
     {
-        await using var conn = await OpenConnectionAsync();
-        using var cmd = conn.CreateCommand();
-        var expected = new string('a', conn.Settings.ReadBufferSize + 1);
-        cmd.CommandText = $"""select repeat('a', {conn.Settings.ReadBufferSize+1}) from generate_series(1, 1000)""";
-        var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        if (!IsSequential)
+            return;
+
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var expected = new byte[10000];
+        expected.AsSpan().Fill(1);
+
+        var pgMock = await postmasterMock.WaitForServerConnection();
+        await pgMock
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(ByteaOid))
+            .WriteDataRowWithFlush(expected);
+
+        using var cmd = new NpgsqlCommand("irrelevant", conn);
+        var reader = await cmd.ExecuteReaderAsync(Behavior);
         while (await reader.ReadAsync())
         {
-            Assert.AreEqual(expected, await reader.GetFieldValueAsync<object>(0));
+            var task = reader.GetFieldValueAsync<object>(0);
+            await pgMock
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+            Assert.AreEqual(expected, await task);
         }
     }
 
