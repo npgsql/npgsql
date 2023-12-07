@@ -929,6 +929,27 @@ LANGUAGE 'plpgsql'");
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5430")]
+    public async Task SequentialBufferedSeekReread()
+    {
+        await using var conn = await OpenConnectionAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """select v.i, repeat('1', 10), repeat('2', 10), repeat('3', 10), repeat('4', 10), 1, NULL from generate_series(1, 1000) as v(i)""";
+        var rdr = await cmd.ExecuteReaderAsync(Behavior);
+        while (await rdr.ReadAsync())
+        {
+            _ = rdr[0];
+            _ = rdr[1];
+            //_ = rdr[2];
+            //_ = rdr[3];
+            //_ = rdr[4];
+            //_ = rdr[5]; // uncomment lines for successful execution
+            _ = rdr.IsDBNull(6);
+            _ = rdr[6];
+            Assert.True(rdr.IsDBNull(6));
+        }
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5484")]
     public async Task GetFieldValueAsync_AsyncRead()
     {

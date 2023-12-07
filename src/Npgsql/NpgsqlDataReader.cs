@@ -1992,9 +1992,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var committed = false;
         if (!PgReader.CommitHasIO(reread))
         {
+            var columnLength = PgReader.FieldSize;
             PgReader.Commit(reread);
             committed = true;
-            if (TrySeekBuffered(ordinal, out var columnLength))
+            if (reread)
+            {
+                PgReader.Init(columnLength, dataFormat, columnLength is -1 || resumableOp);
+                return new(columnLength);
+            }
+
+            if (TrySeekBuffered(ordinal, out columnLength))
             {
                 PgReader.Init(columnLength, dataFormat, columnLength is -1 || resumableOp);
                 return new(columnLength);
@@ -2053,12 +2060,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         bool TrySeekBuffered(int ordinal, out int columnLength)
         {
-            if (ordinal == _column)
-            {
-                columnLength = PgReader.FieldSize;
-                return true;
-            }
-
             // Skip over unwanted fields
             columnLength = -1;
             var buffer = Buffer;
