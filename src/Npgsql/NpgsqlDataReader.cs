@@ -1897,83 +1897,31 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         Debug.Assert(_isRowBuffered || _isSequential);
         var reader = PgReader;
+        var column = _column;
 
-        if (_column >= ordinal)
+        // Column rereading rules for sequential mode:
+        // * We never allow rereading if the column didn't get initialized as resumable the previous time
+        // * If it did get initialized as resumable we only allow rereading when either of the following is true:
+        //  - The op is a resumable one again
+        //  - The op isn't resumable but the field is still entirely unconsumed
+        if (_isSequential && (column > ordinal || (column == ordinal && (!reader.Resumable || (!resumableOp && !reader.IsAtStart)))))
+            ThrowInvalidSequentialSeek(column, ordinal);
+
+        if (column == ordinal)
         {
-            // Fast path for rereading after - what would likely be - an IsDBNull call.
-            if (_column == ordinal && reader is { Resumable: true, IsAtStart: true })
-            {
-                reader.Restart(resumableOp);
-                return reader.FieldSize;
-            }
-            return Rewind(ordinal, dataFormat, resumableOp);
+            reader.Restart(resumableOp);
+            return reader.FieldSize;
         }
 
         reader.Commit();
-
-        // We know we need at least one iteration, a do while also helps with optimal codegen.
-        var allowIO = !_isRowBuffered;
-        var buffer = Buffer;
-        var columnLength = 0;
-        do
-        {
-            if (columnLength > 0)
-                buffer.Skip(columnLength, allowIO);
-
-            if (allowIO)
-                buffer.Ensure(sizeof(int));
-            columnLength = buffer.ReadInt32();
-            Debug.Assert(columnLength >= -1);
-            _column++;
-        } while (_column < ordinal);
-
+        var columnLength = BufferSeekToColumn(column, ordinal);
         reader.Init(columnLength, dataFormat, resumableOp);
-        return columnLength;
+        return reader.FieldSize;
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        int Rewind(int ordinal, DataFormat dataFormat, bool resumableOp)
-        {
-            var column = _column;
-            var buffer = Buffer;
-            var reader = buffer.PgReader;
-            if (_isSequential)
-                ThrowIfInvalidSequentialSeek(reader, column, ordinal, resumableOp);
-
-            if (column == ordinal)
-            {
-                reader.Restart(resumableOp);
-                return reader.FieldSize;
-            }
-
-            reader.Commit();
-            Debug.Assert(_isRowBuffered);
-            var columnLength = SeekBackwards(buffer, _columns, ordinal);
-            _column = ordinal;
-            reader.Init(columnLength, dataFormat, resumableOp);
-            return columnLength;
-        }
-
-        // On the first call to SeekBackwards we'll fill up the columns list as we may need seek positions more than once.
-        int SeekBackwards(NpgsqlReadBuffer buffer, List<(int, int)> columns, int ordinal)
-        {
-            // Backfill the first column.
-            if (columns.Count is 0)
-            {
-                buffer.ReadPosition = _columnsStartPos;
-                var len = buffer.ReadInt32();
-                columns.Add((buffer.ReadPosition, len));
-            }
-            for (var lastColumnRead = columns.Count; ordinal >= lastColumnRead; lastColumnRead++)
-            {
-                (buffer.ReadPosition, var lastLen) = columns[lastColumnRead - 1];
-                if (lastLen > 0)
-                    buffer.Skip(lastLen);
-                var len = buffer.ReadInt32();
-                columns.Add((buffer.ReadPosition, len));
-            }
-            (buffer.ReadPosition, var columnLength) = columns[ordinal];
-            return columnLength;
-        }
+        static void ThrowInvalidSequentialSeek(int column, int ordinal)
+            => ThrowHelper.ThrowInvalidOperationException(
+                $"Invalid attempt to read from column ordinal '{ordinal}'. With CommandBehavior.SequentialAccess, " +
+                $"you may only read from column ordinal '{column}' or greater.");
     }
 
     ValueTask<int> SeekToColumnAsync(int ordinal, DataFormat dataFormat, bool resumableOp = false)
@@ -1991,7 +1939,74 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             var reader = PgReader;
             await reader.CommitAsync().ConfigureAwait(false);
+            var columnLength = await BufferSeekToColumnAsync(_column, ordinal).ConfigureAwait(false);
+            reader.Init(columnLength, dataFormat, resumableOp);
+            return columnLength;
+        }
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    int BufferSeekToColumn(int column, int ordinal)
+    {
+        Debug.Assert(column < ordinal || _isRowBuffered);
+
+        var buffer = Buffer;
+        var columnLength = 0;
+
+        if (column >= ordinal)
+        {
+            columnLength = SeekBackwards(buffer, _columns, _columnsStartPos, ordinal);
+            _column = ordinal;
+            return columnLength;
+        }
+
+        // We know we need at least one iteration, a do while also helps with optimal codegen.
+        var allowIO = !_isRowBuffered;
+        do
+        {
+            if (columnLength > 0)
+                buffer.Skip(columnLength, allowIO);
+
+            if (allowIO)
+                buffer.Ensure(sizeof(int));
+            columnLength = buffer.ReadInt32();
+            Debug.Assert(columnLength >= -1);
+            _column++;
+        } while (_column < ordinal);
+
+        return columnLength;
+
+        // On the first call to SeekBackwards we'll fill up the columns list as we may need seek positions more than once.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static int SeekBackwards(NpgsqlReadBuffer buffer, List<(int Offset, int Length)> columns, int columnsStartPos, int ordinal)
+        {
+            // Backfill the first column.
+            if (columns.Count is 0)
+            {
+                buffer.ReadPosition = columnsStartPos;
+                var len = buffer.ReadInt32();
+                columns.Add((buffer.ReadPosition, len));
+            }
+            for (var lastColumnRead = columns.Count; ordinal >= lastColumnRead; lastColumnRead++)
+            {
+                (buffer.ReadPosition, var lastLen) = columns[lastColumnRead - 1];
+                if (lastLen > 0)
+                    buffer.Skip(lastLen);
+                var len = buffer.ReadInt32();
+                columns.Add((buffer.ReadPosition, len));
+            }
+            (buffer.ReadPosition, var columnLength) = columns[ordinal];
+            return columnLength;
+        }
+    }
+
+    ValueTask<int> BufferSeekToColumnAsync(int column, int ordinal)
+    {
+        return column >= ordinal ? new(BufferSeekToColumn(column, ordinal)) : Core(ordinal);
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+        async ValueTask<int> Core(int ordinal)
+        {
             // We know we need at least one iteration, a do while also helps with optimal codegen.
             var buffer = Buffer;
             var columnLength = 0;
@@ -2006,28 +2021,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 _column++;
             } while (_column < ordinal);
 
-            reader.Init(columnLength, dataFormat, resumableOp);
             return columnLength;
         }
-    }
-
-    static void ThrowIfInvalidSequentialSeek(PgReader reader, int column, int ordinal, bool resumableOp)
-    {
-        Debug.Assert(ordinal <= column, "Forward seeking should be handled by the caller");
-
-        // Column rereading rules for sequential mode:
-        // * We never allow rereading if the column didn't get initialized as resumable the previous time
-        // * If it did get initialized as resumable we only allow rereading when either of the following is true:
-        //  - The op is a resumable one again
-        //  - The op isn't resumable but the field is still entirely unconsumed
-        if (ordinal != column || !reader.Resumable || (!resumableOp && !reader.IsAtStart))
-            ThrowInvalidSequentialSeek(column, ordinal);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static void ThrowInvalidSequentialSeek(int column, int ordinal)
-            => ThrowHelper.ThrowInvalidOperationException(
-                $"Invalid attempt to read from column ordinal '{ordinal}'. With CommandBehavior.SequentialAccess, " +
-                $"you may only read from column ordinal '{column}' or greater.");
     }
 
     #endregion
