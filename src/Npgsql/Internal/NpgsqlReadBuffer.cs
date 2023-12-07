@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,37 @@ using Npgsql.Util;
 using static System.Threading.Timeout;
 
 namespace Npgsql.Internal;
+
+readonly struct MessageHeader(BackendMessageCode code, int length)
+{
+    public const int ByteCount = sizeof(byte) + sizeof(int);
+
+    public BackendMessageCode Code { get; } = code;
+    public int Length { get; } = length;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TryParse(ref ReadOnlySpan<byte> source, out MessageHeader header)
+    {
+        const int headerSize = sizeof(byte) + sizeof(int);
+
+        if (source.Length < headerSize)
+        {
+            header = default;
+            return false;
+        }
+
+        ref var first = ref MemoryMarshal.GetReference(source);
+        var code = (BackendMessageCode)first;
+        var length =
+            BitConverter.IsLittleEndian
+                ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Unsafe.Add(ref first, 1)))
+                : Unsafe.ReadUnaligned<int>(ref Unsafe.Add(ref first, 1));
+
+        header = new MessageHeader(code, length - sizeof(int)); // Transmitted length includes itself
+        source = source.Slice(headerSize);
+        return true;
+    }
+}
 
 /// <summary>
 /// A buffer used by Npgsql to read data from the socket efficiently.

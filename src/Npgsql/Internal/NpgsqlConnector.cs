@@ -1399,15 +1399,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal IBackendMessage? ParseResultSetMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool handleCallbacks = false)
-        => code switch
-        {
-            BackendMessageCode.DataRow => _dataRowMessage.Load(len),
-            BackendMessageCode.CommandComplete => _commandCompleteMessage.Load(buf, len),
-            _ => ParseServerMessage(buf, code, len, false, handleCallbacks)
-        };
-
-    internal IBackendMessage? ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage, bool handleCallbacks = true)
+    internal IBackendMessage? ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage = false)
     {
         switch (code)
         {
@@ -1443,18 +1435,12 @@ public sealed partial class NpgsqlConnector
             ReadParameterStatus(buf.GetNullTerminatedBytes(), buf.GetNullTerminatedBytes());
             return null;
         case BackendMessageCode.NoticeResponse:
-            if (handleCallbacks)
-            {
-                var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail, LoggingConfiguration.ExceptionLogger);
-                LogMessages.ReceivedNotice(ConnectionLogger, notice.MessageText, Id);
-                Connection?.OnNotice(notice);
-            }
+            var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail, LoggingConfiguration.ExceptionLogger);
+            LogMessages.ReceivedNotice(ConnectionLogger, notice.MessageText, Id);
+            Connection?.OnNotice(notice);
             return null;
         case BackendMessageCode.NotificationResponse:
-            if (handleCallbacks)
-            {
-                Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
-            }
+            Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
             return null;
 
         case BackendMessageCode.AuthenticationRequest:
