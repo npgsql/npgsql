@@ -18,11 +18,11 @@
     <resheader name="writer">
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
-    <data name="CannotUseSslVerifyWithUserCallback" xml:space="preserve">
-        <value>SslMode.{0} cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
+    <data name="CannotUseSslVerifyWithCustomValidationCallback" xml:space="preserve">
+        <value>SslMode.{0} cannot be used in conjunction with SslClientAuthenticationOptionsCallback overwriting RemoteCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
-    <data name="CannotUseSslRootCertificateWithUserCallback" xml:space="preserve">
-        <value>RootCertificate cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
+    <data name="CannotUseSslRootCertificateWithCustomValidationCallback" xml:space="preserve">
+        <value>RootCertificate cannot be used in conjunction with SslClientAuthenticationOptionsCallback overwriting RemoteCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
     <data name="TransportSecurityDisabled" xml:space="preserve">
         <value>Transport security hasn't been enabled; please call {0} on NpgsqlSlimDataSourceBuilder to enable it.</value>
@@ -69,8 +69,8 @@
     <data name="SyncAndAsyncConnectionInitializersRequired" xml:space="preserve">
         <value>Both sync and async connection initializers must be provided.</value>
     </data>
-    <data name="CannotUseValidationRootCertificateCallbackWithUserCallback" xml:space="preserve">
-        <value>ValidationRootCertificateCallback cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
+    <data name="CannotUseValidationRootCertificateCallbackWithCustomValidationCallback" xml:space="preserve">
+        <value>ValidationRootCertificateCallback cannot be used in conjunction with SslClientAuthenticationOptionsCallback overwriting RemoteCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
     <data name="RecordsNotEnabled" xml:space="preserve">
         <value>Could not read a PostgreSQL record. If you're attempting to read a record as a .NET tuple, call '{0}' on '{1}' or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/types/basic.html and the 8.0 release notes for more details). If you're reading a record as a .NET object array using NpgsqlSlimDataSourceBuilder, call '{2}'.
@@ -106,5 +106,8 @@
     </data>
     <data name="UnmappedRangesNotEnabled" xml:space="preserve">
         <value>Reading and writing unmapped ranges and multiranges requires an explicit opt-in; call '{0}' on '{1}' or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/types/ranges.html and the 8.0 release notes for more details).</value>
+    </data>
+    <data name="SslClientAuthenticationOptionsCallbackWithOtherCallbacksNotSupported" xml:space="preserve">
+        <value>SslClientAuthenticationOptionsCallback is not supported together with UserCertificateValidationCallback and ClientCertificatesCallback</value>
     </data>
 </root>

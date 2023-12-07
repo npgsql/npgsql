@@ -194,6 +194,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </para>
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlDataSourceBuilder UseUserCertificateValidationCallback(RemoteCertificateValidationCallback userCertificateValidationCallback)
     {
         _internalBuilder.UseUserCertificateValidationCallback(userCertificateValidationCallback);
@@ -205,6 +206,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     /// <param name="clientCertificate">The client certificate to be sent to PostgreSQL when opening a connection.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlDataSourceBuilder UseClientCertificate(X509Certificate? clientCertificate)
     {
         _internalBuilder.UseClientCertificate(clientCertificate);
@@ -216,9 +218,26 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     /// <param name="clientCertificates">The client certificate collection to be sent to PostgreSQL when opening a connection.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlDataSourceBuilder UseClientCertificates(X509CertificateCollection? clientCertificates)
     {
         _internalBuilder.UseClientCertificates(clientCertificates);
+        return this;
+    }
+
+    /// <summary>
+    /// When using SSL/TLS, this is a callback that allows customizing SslStream's authentication options.
+    /// </summary>
+    /// <param name="sslClientAuthenticationOptionsCallback">The callback to customize SslStream's authentication options.</param>
+    /// <remarks>
+    /// <para>
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions?view=net-8.0"/>.
+    /// </para>
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseSslClientAuthenticationOptionsCallback(Action<SslClientAuthenticationOptions>? sslClientAuthenticationOptionsCallback)
+    {
+        _internalBuilder.UseSslClientAuthenticationOptionsCallback(sslClientAuthenticationOptionsCallback);
         return this;
     }
 
@@ -239,6 +258,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </para>
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlDataSourceBuilder UseClientCertificatesCallback(Action<X509CertificateCollection>? clientCertificatesCallback)
     {
         _internalBuilder.UseClientCertificatesCallback(clientCertificatesCallback);

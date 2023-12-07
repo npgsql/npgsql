@@ -40,8 +40,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
 
     internal TransportSecurityHandler TransportSecurityHandler { get; }
-    internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
-    internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
+
+    internal Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; }
 
     readonly Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _passwordProviderAsync;
@@ -98,8 +98,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 LoggingConfiguration,
                 TransportSecurityHandler,
                 IntegratedSecurityHandler,
-                UserCertificateValidationCallback,
-                ClientCertificatesCallback,
+                SslClientAuthenticationOptionsCallback,
                 _passwordProvider,
                 _passwordProviderAsync,
                 _periodicPasswordProvider,
