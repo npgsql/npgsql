@@ -910,6 +910,20 @@ LANGUAGE 'plpgsql'");
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5484")]
+    public async Task GetFieldValueAsync_AsyncRead()
+    {
+        await using var conn = await OpenConnectionAsync();
+        using var cmd = conn.CreateCommand();
+        var expected = new string('a', conn.Settings.ReadBufferSize + 1);
+        cmd.CommandText = $"""select repeat('a', {conn.Settings.ReadBufferSize+1}) from generate_series(1, 1000)""";
+        var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        while (await reader.ReadAsync())
+        {
+            Assert.AreEqual(expected, await reader.GetFieldValueAsync<object>(0));
+        }
+    }
+
     [Test]
     public async Task Close_connection_in_middle_of_row()
     {
