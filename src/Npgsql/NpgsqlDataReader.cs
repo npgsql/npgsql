@@ -1461,16 +1461,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             return columnLength;
 
         // Check whether any sequential seek is contractually sound (even though we might be able to satisfy rewinds we make sure we won't).
-        if (_isSequential && PgReader.IsFieldConsumed((int)dataOffset))
+        var reader = PgReader;
+        if (_isSequential && reader.IsFieldConsumed((int)dataOffset))
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
         // Move to offset
-        Debug.Assert(!PgReader.NestedInitialized, "Unexpected nested read active, Seek(0) would seek to the start of the nested data.");
-        var remaining = PgReader.Seek((int)dataOffset);
+        Debug.Assert(!reader.NestedInitialized, "Unexpected nested read active, Seek(0) would seek to the start of the nested data.");
+        var remaining = reader.Seek((int)dataOffset);
 
         // At offset, read into buffer.
         length = Math.Min(length, remaining);
-        PgReader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
+        reader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
         return length;
     }
 
@@ -1597,11 +1598,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (await SeekToColumnAsync(ordinal, field).ConfigureAwait(false) is -1)
                 return DbNullValueOrThrow<T>(ordinal);
 
-            await PgReader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
+            var reader = PgReader;
+            await reader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
             var result = asObject
-                ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
-                : await converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
-            await PgReader.EndReadAsync().ConfigureAwait(false);
+                ? (T)await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+                : await converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            await reader.EndReadAsync().ConfigureAwait(false);
             return result;
         }
     }
@@ -1622,11 +1624,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, field) is -1)
             return DbNullValueOrThrow<T>(ordinal);
 
-        PgReader.StartRead(bufferRequirement);
+        var reader = PgReader;
+        reader.StartRead(bufferRequirement);
         var result = asObject
-            ? (T)converter.ReadAsObject(PgReader)
-            : converter.UnsafeDowncast<T>().Read(PgReader);
-        PgReader.EndRead();
+            ? (T)converter.ReadAsObject(reader)
+            : converter.UnsafeDowncast<T>().Read(reader);
+        reader.EndRead();
         return result;
     }
 
@@ -1646,9 +1649,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, field) is -1)
             return DBNull.Value;
 
-        PgReader.StartRead(bufferRequirement);
-        var result = converter.ReadAsObject(PgReader);
-        PgReader.EndRead();
+        var reader = PgReader;
+        reader.StartRead(bufferRequirement);
+        var result = converter.ReadAsObject(reader);
+        reader.EndRead();
 
         return result;
     }
