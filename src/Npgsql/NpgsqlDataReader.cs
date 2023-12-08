@@ -1441,15 +1441,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer is null)
             return columnLength;
 
+        var reader = PgReader;
         // Move to offset
-        if (_isSequential && PgReader.FieldOffset > dataOffset)
+        if (_isSequential && reader.FieldOffset > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
-        PgReader.Seek((int)dataOffset);
+        reader.Seek((int)dataOffset);
 
         // At offset, read into buffer.
-        length = Math.Min(length, PgReader.FieldRemaining);
-        PgReader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
+        length = Math.Min(length, reader.FieldRemaining);
+        reader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
         return length;
     }
 
@@ -1503,20 +1504,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, format, resumableOp: true) is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(RowDescription[ordinal]);
 
+        var reader = PgReader;
         dataOffset = buffer is null ? 0 : dataOffset;
-        PgReader.InitCharsRead(checked((int)dataOffset),
+        reader.InitCharsRead(checked((int)dataOffset),
             buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null,
             out var previousDataOffset);
 
         if (_isSequential && previousDataOffset > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
-        PgReader.StartRead(bufferRequirement);
+        reader.StartRead(bufferRequirement);
         var result = asObject
-            ? (GetChars)converter.ReadAsObject(PgReader)
-            : ((PgConverter<GetChars>)converter).Read(PgReader);
-        PgReader.AdvanceCharsRead(result.Read);
-        PgReader.EndRead();
+            ? (GetChars)converter.ReadAsObject(reader)
+            : ((PgConverter<GetChars>)converter).Read(reader);
+        reader.AdvanceCharsRead(result.Read);
+        reader.EndRead();
         return result.Read;
     }
 
@@ -1576,11 +1578,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (await SeekToColumnAsync(ordinal, field).ConfigureAwait(false) is -1)
                 return DbNullValueOrThrow<T>(ordinal);
 
-            await PgReader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
+            var reader = PgReader;
+            await reader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
             var result = asObject
-                ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
-                : await converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
-            await PgReader.EndReadAsync().ConfigureAwait(false);
+                ? (T)await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+                : await converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            await reader.EndReadAsync().ConfigureAwait(false);
             return result;
         }
     }
@@ -1601,11 +1604,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, field) is -1)
             return DbNullValueOrThrow<T>(ordinal);
 
-        PgReader.StartRead(bufferRequirement);
+        var reader = PgReader;
+        reader.StartRead(bufferRequirement);
         var result = asObject
-            ? (T)converter.ReadAsObject(PgReader)
-            : converter.UnsafeDowncast<T>().Read(PgReader);
-        PgReader.EndRead();
+            ? (T)converter.ReadAsObject(reader)
+            : converter.UnsafeDowncast<T>().Read(reader);
+        reader.EndRead();
         return result;
     }
 
@@ -1625,9 +1629,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, field) is -1)
             return DBNull.Value;
 
-        PgReader.StartRead(bufferRequirement);
-        var result = converter.ReadAsObject(PgReader);
-        PgReader.EndRead();
+        var reader = PgReader;
+        reader.StartRead(bufferRequirement);
+        var result = converter.ReadAsObject(reader);
+        reader.EndRead();
 
         return result;
     }
