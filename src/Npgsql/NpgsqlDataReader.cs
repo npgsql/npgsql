@@ -1566,11 +1566,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (await SeekToColumnAsync(ordinal, field).ConfigureAwait(false) is -1)
                 return DbNullValueOrThrow<T>(ordinal);
 
-            await PgReader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
+            var reader = PgReader;
+            await reader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
             var result = asObject
-                ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
-                : await converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
-            await PgReader.EndReadAsync().ConfigureAwait(false);
+                ? (T)await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+                : await converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            await reader.EndReadAsync().ConfigureAwait(false);
             return result;
         }
     }
@@ -1591,11 +1592,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, field) is -1)
             return DbNullValueOrThrow<T>(ordinal);
 
-        PgReader.StartRead(bufferRequirement);
+        var reader = PgReader;
+        reader.StartRead(bufferRequirement);
         var result = asObject
-            ? (T)converter.ReadAsObject(PgReader)
-            : converter.UnsafeDowncast<T>().Read(PgReader);
-        PgReader.EndRead();
+            ? (T)converter.ReadAsObject(reader)
+            : converter.UnsafeDowncast<T>().Read(reader);
+        reader.EndRead();
         return result;
     }
 
@@ -1615,9 +1617,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, field) is -1)
             return DBNull.Value;
 
-        PgReader.StartRead(bufferRequirement);
-        var result = converter.ReadAsObject(PgReader);
-        PgReader.EndRead();
+        var reader = PgReader;
+        reader.StartRead(bufferRequirement);
+        var result = converter.ReadAsObject(reader);
+        reader.EndRead();
 
         return result;
     }
