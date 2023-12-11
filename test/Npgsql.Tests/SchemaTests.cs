@@ -10,7 +10,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class SchemaTests : SyncOrAsyncTestBase
+public class SchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase(syncOrAsync)
 {
     [Test]
     public async Task MetaDataCollections()
@@ -583,8 +583,6 @@ CREATE TABLE {table} (color {schema}.{enumName});");
         await using var conn = await dataSource.OpenConnectionAsync();
         Assert.That(() => GetSchema(conn, DbMetaDataCollectionNames.DataTypes), Throws.Nothing);
     }
-
-    public SchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
     // ReSharper disable MethodHasAsyncOverload
     async Task<DataTable> GetSchema(NpgsqlConnection conn)

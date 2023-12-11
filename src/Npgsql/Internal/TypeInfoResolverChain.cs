@@ -4,12 +4,9 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
-sealed class TypeInfoResolverChain : IPgTypeInfoResolver
+sealed class TypeInfoResolverChain(IEnumerable<IPgTypeInfoResolver> resolvers) : IPgTypeInfoResolver
 {
-    readonly IPgTypeInfoResolver[] _resolvers;
-
-    public TypeInfoResolverChain(IEnumerable<IPgTypeInfoResolver> resolvers)
-        => _resolvers = new List<IPgTypeInfoResolver>(resolvers).ToArray();
+    readonly IPgTypeInfoResolver[] _resolvers = new List<IPgTypeInfoResolver>(resolvers).ToArray();
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {

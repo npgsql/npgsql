@@ -518,13 +518,9 @@ public static class NpgsqlCommandExtensions
 /// test reproduces the issue)
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-public class IssueLink : Attribute
+public class IssueLink(string linkAddress) : Attribute
 {
-    public string LinkAddress { get; private set; }
-    public IssueLink(string linkAddress)
-    {
-        LinkAddress = linkAddress;
-    }
+    public string LinkAddress { get; private set; } = linkAddress;
 }
 
 public enum PrepareOrNot

@@ -34,30 +34,27 @@ namespace Npgsql.Tests.Replication;
 // [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 // [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 [NonParallelizable] // These tests aren't designed to be parallelizable
-public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
+public class PgOutputReplicationTests(
+    PgOutputReplicationTests.ProtocolVersion protocolVersion,
+    PgOutputReplicationTests.ReplicationDataMode dataMode,
+    PgOutputReplicationTests.TransactionMode transactionMode)
+    : SafeReplicationTestBase<LogicalReplicationConnection>
 {
-    readonly ulong _protocolVersion;
-    readonly bool? _binary;
-    readonly bool? _streaming;
+    readonly ulong _protocolVersion = (ulong)protocolVersion;
+    readonly bool? _binary = dataMode == ReplicationDataMode.BinaryReplicationDataMode
+        ? true
+        : dataMode == ReplicationDataMode.TextReplicationDataMode
+            ? false
+            : null;
+    readonly bool? _streaming = transactionMode == TransactionMode.StreamingTransactionMode
+        ? true
+        : transactionMode == TransactionMode.NonStreamingTransactionMode
+            ? false
+            : null;
 
     bool IsBinary => _binary ?? false;
     bool IsStreaming => _streaming ?? false;
     ulong Version => _protocolVersion;
-
-    public PgOutputReplicationTests(ProtocolVersion protocolVersion, ReplicationDataMode dataMode, TransactionMode transactionMode)
-    {
-        _protocolVersion = (ulong)protocolVersion;
-        _binary = dataMode == ReplicationDataMode.BinaryReplicationDataMode
-            ? true
-            : dataMode == ReplicationDataMode.TextReplicationDataMode
-                ? false
-                : null;
-        _streaming = transactionMode == TransactionMode.StreamingTransactionMode
-            ? true
-            : transactionMode == TransactionMode.NonStreamingTransactionMode
-                ? false
-                : null;
-    }
 
     [Test]
     public Task CreatePgOutputReplicationSlot()

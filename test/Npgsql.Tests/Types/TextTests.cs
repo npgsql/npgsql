@@ -15,7 +15,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-character.html
 /// </remarks>
-public class TextTests : MultiplexingTestBase
+public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public Task Text_as_string()
@@ -149,6 +149,4 @@ public class TextTests : MultiplexingTestBase
             Assert.AreEqual(testArr2[i], arr2[i]);
         }
     }
-
-    public TextTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

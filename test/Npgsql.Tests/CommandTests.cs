@@ -16,7 +16,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class CommandTests : MultiplexingTestBase
+public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     static uint Int4Oid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4).Value;
     static uint TextOid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Text).Value;
@@ -1594,6 +1594,4 @@ FROM
     }
 
     #endregion Logging
-
-    public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

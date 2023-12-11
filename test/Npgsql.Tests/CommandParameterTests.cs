@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
-public class CommandParameterTests : MultiplexingTestBase
+public class CommandParameterTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     [TestCase(CommandBehavior.Default)]
@@ -208,9 +208,5 @@ public class CommandParameterTests : MultiplexingTestBase
         await using var cmd = new NpgsqlCommand("SELECT $1", conn);
         cmd.Parameters.Add(new NpgsqlParameter<object> { NpgsqlDbType = NpgsqlDbType.Integer, Value = 8 });
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
-    }
-
-    public CommandParameterTests(MultiplexingMode multiplexingMode) : base(multiplexingMode)
-    {
     }
 }

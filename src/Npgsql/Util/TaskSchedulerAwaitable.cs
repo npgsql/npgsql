@@ -6,11 +6,8 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Util;
 
-readonly struct TaskSchedulerAwaitable : ICriticalNotifyCompletion
+readonly struct TaskSchedulerAwaitable(TaskScheduler scheduler) : ICriticalNotifyCompletion
 {
-    readonly TaskScheduler _scheduler;
-    public TaskSchedulerAwaitable(TaskScheduler scheduler) => _scheduler = scheduler;
-
     public void GetResult() {}
     public bool IsCompleted => false;
 
@@ -18,7 +15,7 @@ readonly struct TaskSchedulerAwaitable : ICriticalNotifyCompletion
     {
         var task = Task.Factory.StartNew(continuation, CancellationToken.None,
             TaskCreationOptions.DenyChildAttach,
-            scheduler: _scheduler);
+            scheduler: scheduler);
 
         // Exceptions should never happen as the continuation should be the async statemachine.
         // It normally does its own error handling through the returned task unless it's an async void returning method.

@@ -5,10 +5,8 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
-public abstract class PgBufferedConverter<T> : PgConverter<T>
+public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false) : PgConverter<T>(customDbNullPredicate)
 {
-    protected PgBufferedConverter(bool customDbNullPredicate = false) : base(customDbNullPredicate) { }
-
     protected abstract T ReadCore(PgReader reader);
     protected abstract void WriteCore(PgWriter writer, T value);
 

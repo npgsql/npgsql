@@ -9,11 +9,8 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class FullTextSearchTests : MultiplexingTestBase
+public class FullTextSearchTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
-    public FullTextSearchTests(MultiplexingMode multiplexingMode)
-        : base(multiplexingMode) { }
-
     [Test]
     public Task TsVector()
         => AssertType(

@@ -5,7 +5,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-public class DomainTests : MultiplexingTestBase
+public class DomainTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test, Description("Resolves a domain type handler via the different pathways")]
     public async Task Domain_resolution()
@@ -74,6 +74,4 @@ CREATE TYPE {compositeType} AS (value {domainType});");
     {
         public string? Value { get; set; }
     }
-
-    public DomainTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

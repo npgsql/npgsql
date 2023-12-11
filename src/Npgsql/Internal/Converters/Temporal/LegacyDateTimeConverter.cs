@@ -2,17 +2,8 @@ using System;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class LegacyDateTimeConverter : PgBufferedConverter<DateTime>
+sealed class LegacyDateTimeConverter(bool dateTimeInfinityConversions, bool timestamp) : PgBufferedConverter<DateTime>
 {
-    readonly bool _dateTimeInfinityConversions;
-    readonly bool _timestamp;
-
-    public LegacyDateTimeConverter(bool dateTimeInfinityConversions, bool timestamp)
-    {
-        _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        _timestamp = timestamp;
-    }
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
@@ -21,33 +12,28 @@ sealed class LegacyDateTimeConverter : PgBufferedConverter<DateTime>
 
     protected override DateTime ReadCore(PgReader reader)
     {
-        if (_timestamp)
+        if (timestamp)
         {
-            return PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Unspecified, _dateTimeInfinityConversions);
+            return PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Unspecified, dateTimeInfinityConversions);
         }
 
-        var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);
-        return !_dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue
+        var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, dateTimeInfinityConversions);
+        return !dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue
             ? dateTime.ToLocalTime()
             : dateTime;
     }
 
     protected override void WriteCore(PgWriter writer, DateTime value)
     {
-        if (!_timestamp && value.Kind is DateTimeKind.Local)
+        if (!timestamp && value.Kind is DateTimeKind.Local)
             value = value.ToUniversalTime();
 
-        writer.WriteInt64(PgTimestamp.Encode(value, _dateTimeInfinityConversions));
+        writer.WriteInt64(PgTimestamp.Encode(value, dateTimeInfinityConversions));
     }
 }
 
-sealed class LegacyDateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
+sealed class LegacyDateTimeOffsetConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<DateTimeOffset>
 {
-    readonly bool _dateTimeInfinityConversions;
-
-    public LegacyDateTimeOffsetConverter(bool dateTimeInfinityConversions)
-        => _dateTimeInfinityConversions = dateTimeInfinityConversions;
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
@@ -56,12 +42,12 @@ sealed class LegacyDateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
 
     protected override DateTimeOffset ReadCore(PgReader reader)
     {
-        var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);
-        return !_dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue
+        var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, dateTimeInfinityConversions);
+        return !dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue
             ? dateTime.ToLocalTime()
             : dateTime;
     }
 
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
-        => writer.WriteInt64(PgTimestamp.Encode(value.UtcDateTime, _dateTimeInfinityConversions));
+        => writer.WriteInt64(PgTimestamp.Encode(value.UtcDateTime, dateTimeInfinityConversions));
 }

@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class HstoreTests : MultiplexingTestBase
+public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public Task Hstore()
@@ -63,6 +63,4 @@ public class HstoreTests : MultiplexingTestBase
         TestUtil.MinimumPgVersion(conn, "9.1", "Hstore introduced in PostgreSQL 9.1");
         await TestUtil.EnsureExtensionAsync(conn, "hstore", "9.1");
     }
-
-    public HstoreTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

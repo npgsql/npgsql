@@ -8,7 +8,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-public class CompositeTests : MultiplexingTestBase
+public class CompositeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public async Task Basic()
@@ -557,8 +557,6 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     {
         public int? Foo { get; set; }
     }
-
-    public CompositeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 
     #endregion
 }

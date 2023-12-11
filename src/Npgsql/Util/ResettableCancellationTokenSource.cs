@@ -13,11 +13,11 @@ namespace Npgsql.Util;
 /// we need to make sure that an existing cancellation token source hasn't been cancelled,
 /// every time we start it (see https://github.com/dotnet/runtime/issues/4694).
 /// </remarks>
-sealed class ResettableCancellationTokenSource : IDisposable
+sealed class ResettableCancellationTokenSource(TimeSpan timeout) : IDisposable
 {
     bool isDisposed;
 
-    public TimeSpan Timeout { get; set; }
+    public TimeSpan Timeout { get; set; } = timeout;
 
     CancellationTokenSource _cts = new();
     CancellationTokenRegistration? _registration;
@@ -31,9 +31,9 @@ sealed class ResettableCancellationTokenSource : IDisposable
     bool _isRunning;
 #endif
 
-    public ResettableCancellationTokenSource() => Timeout = InfiniteTimeSpan;
-
-    public ResettableCancellationTokenSource(TimeSpan timeout) => Timeout = timeout;
+    public ResettableCancellationTokenSource() : this(InfiniteTimeSpan)
+    {
+    }
 
     /// <summary>
     /// Set the timeout on the wrapped <see cref="CancellationTokenSource"/>

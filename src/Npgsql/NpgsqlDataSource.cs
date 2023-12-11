@@ -516,16 +516,13 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     #endregion
 
-    sealed class DatabaseStateInfo
+    sealed class DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
     {
-        internal readonly DatabaseState State;
-        internal readonly NpgsqlTimeout Timeout;
+        internal readonly DatabaseState State = state;
+        internal readonly NpgsqlTimeout Timeout = timeout;
         // While the TimeStamp is not strictly required, it does lower the risk of overwriting the current state with an old value
-        internal readonly DateTime TimeStamp;
+        internal readonly DateTime TimeStamp = timeStamp;
 
         public DatabaseStateInfo() : this(default, default, default) { }
-
-        public DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
-            => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
     }
 }

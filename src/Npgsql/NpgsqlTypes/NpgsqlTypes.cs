@@ -17,17 +17,10 @@ namespace NpgsqlTypes;
 /// <remarks>
 /// See https://www.postgresql.org/docs/current/static/datatype-geometric.html
 /// </remarks>
-public struct NpgsqlPoint : IEquatable<NpgsqlPoint>
+public struct NpgsqlPoint(double x, double y) : IEquatable<NpgsqlPoint>
 {
-    public double X { get; set; }
-    public double Y { get; set; }
-
-    public NpgsqlPoint(double x, double y)
-        : this()
-    {
-        X = x;
-        Y = y;
-    }
+    public double X { get; set; } = x;
+    public double Y { get; set; } = y;
 
     // ReSharper disable CompareOfFloatsByEqualityOperator
     public bool Equals(NpgsqlPoint other) => X == other.X && Y == other.Y;
@@ -53,19 +46,11 @@ public struct NpgsqlPoint : IEquatable<NpgsqlPoint>
 /// <remarks>
 /// See https://www.postgresql.org/docs/current/static/datatype-geometric.html
 /// </remarks>
-public struct NpgsqlLine : IEquatable<NpgsqlLine>
+public struct NpgsqlLine(double a, double b, double c) : IEquatable<NpgsqlLine>
 {
-    public double A { get; set; }
-    public double B { get; set; }
-    public double C { get; set; }
-
-    public NpgsqlLine(double a, double b, double c)
-        : this()
-    {
-        A = a;
-        B = b;
-        C = c;
-    }
+    public double A { get; set; } = a;
+    public double B { get; set; } = b;
+    public double C { get; set; } = c;
 
     public override string ToString()
         => string.Format(CultureInfo.InvariantCulture, "{{{0},{1},{2}}}", A, B, C);
@@ -413,25 +398,15 @@ public readonly struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPoly
 /// <summary>
 /// Represents a PostgreSQL Circle type.
 /// </summary>
-public struct NpgsqlCircle : IEquatable<NpgsqlCircle>
+public struct NpgsqlCircle(double x, double y, double radius) : IEquatable<NpgsqlCircle>
 {
-    public double X { get; set; }
-    public double Y { get; set; }
-    public double Radius { get; set; }
+    public double X { get; set; } = x;
+    public double Y { get; set; } = y;
+    public double Radius { get; set; } = radius;
 
     public NpgsqlCircle(NpgsqlPoint center, double radius)
-        : this()
+        : this(center.X, center.Y, radius)
     {
-        X = center.X;
-        Y = center.Y;
-        Radius = radius;
-    }
-
-    public NpgsqlCircle(double x, double y, double radius) : this()
-    {
-        X = x;
-        Y = y;
-        Radius = radius;
     }
 
     public NpgsqlPoint Center
@@ -560,23 +535,17 @@ public readonly record struct NpgsqlCidr
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-oid.html
 /// </remarks>
-public readonly struct NpgsqlTid : IEquatable<NpgsqlTid>
+public readonly struct NpgsqlTid(uint blockNumber, ushort offsetNumber) : IEquatable<NpgsqlTid>
 {
     /// <summary>
     /// Block number
     /// </summary>
-    public uint BlockNumber { get; }
+    public uint BlockNumber { get; } = blockNumber;
 
     /// <summary>
     /// Tuple index within block
     /// </summary>
-    public ushort OffsetNumber { get; }
-
-    public NpgsqlTid(uint blockNumber, ushort offsetNumber)
-    {
-        BlockNumber = blockNumber;
-        OffsetNumber = offsetNumber;
-    }
+    public ushort OffsetNumber { get; } = offsetNumber;
 
     public bool Equals(NpgsqlTid other)
         => BlockNumber == other.BlockNumber && OffsetNumber == other.OffsetNumber;

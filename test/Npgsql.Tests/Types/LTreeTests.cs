@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class LTreeTests : MultiplexingTestBase
+public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public Task LQuery()
@@ -63,6 +63,4 @@ public class LTreeTests : MultiplexingTestBase
         TestUtil.MinimumPgVersion(conn, "13.0");
         await TestUtil.EnsureExtensionAsync(conn, "ltree");
     }
-
-    public LTreeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

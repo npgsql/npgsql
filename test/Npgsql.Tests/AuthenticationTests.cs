@@ -11,7 +11,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class AuthenticationTests : MultiplexingTestBase
+public class AuthenticationTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     [NonParallelizable] // Sets environment variable
@@ -338,11 +338,9 @@ public class AuthenticationTests : MultiplexingTestBase
         static DeferDisposable Defer(Action action) => new(action);
     }
 
-    readonly struct DeferDisposable : IDisposable
+    readonly struct DeferDisposable(Action action) : IDisposable
     {
-        readonly Action _action;
-        public DeferDisposable(Action action) => _action = action;
-        public void Dispose() => _action();
+        public void Dispose() => action();
     }
 
     [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
@@ -531,6 +529,4 @@ public class AuthenticationTests : MultiplexingTestBase
                 Password = null
             }
         };
-
-    public AuthenticationTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

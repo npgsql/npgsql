@@ -35,20 +35,15 @@ public class ListLoggerProvider : ILoggerProvider
     public void Dispose()
         => StopRecording();
 
-    class ListLogger : ILogger
+    class ListLogger(ListLoggerProvider provider) : ILogger
     {
-        readonly ListLoggerProvider _provider;
-
-        public ListLogger(ListLoggerProvider provider)
-            => _provider = provider;
-
         public List<(LogLevel, EventId, string, object?, Exception?)> LoggedEvents { get; }
             = new();
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            if (_provider._recording)
+            if (provider._recording)
             {
                 lock (this)
                 {
@@ -66,7 +61,7 @@ public class ListLoggerProvider : ILoggerProvider
             }
         }
 
-        public bool IsEnabled(LogLevel logLevel) => _provider._recording;
+        public bool IsEnabled(LogLevel logLevel) => provider._recording;
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull
             => new Scope();
@@ -79,14 +74,9 @@ public class ListLoggerProvider : ILoggerProvider
         }
     }
 
-    class RecordingDisposable : IDisposable
+    class RecordingDisposable(ListLoggerProvider provider) : IDisposable
     {
-        readonly ListLoggerProvider _provider;
-
-        public RecordingDisposable(ListLoggerProvider provider)
-            => _provider = provider;
-
         public void Dispose()
-            => _provider.StopRecording();
+            => provider.StopRecording();
     }
 }

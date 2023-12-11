@@ -5,11 +5,9 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
-sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
+sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validatePgTypeIds = true)
+    where TPgTypeId : struct
 {
-    readonly PgSerializerOptions _options;
-    readonly bool _validatePgTypeIds;
-
     // Mostly used for parameter writing, 8ns
     readonly ConcurrentDictionary<Type, PgTypeInfo?> _cacheByClrType = new();
 
@@ -21,12 +19,6 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
     {
         if (typeof(TPgTypeId) != typeof(Oid) && typeof(TPgTypeId) != typeof(DataTypeName))
             throw new InvalidOperationException("Cannot use this type argument.");
-    }
-
-    public TypeInfoCache(PgSerializerOptions options, bool validatePgTypeIds = true)
-    {
-        _options = options;
-        _validatePgTypeIds = validatePgTypeIds;
     }
 
     /// <summary>
@@ -82,7 +74,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         PgTypeInfo? AddByType(Type type)
         {
             // We don't pass PgTypeId as we're interested in default converters here.
-            var info = CreateInfo(type, null, _options, defaultTypeFallback: false, _validatePgTypeIds);
+            var info = CreateInfo(type, null, options, defaultTypeFallback: false, validatePgTypeIds);
 
             return info is null
                 ? null
@@ -94,7 +86,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         PgTypeInfo? AddEntryById(Type? type, TPgTypeId pgTypeId, (Type? Type, PgTypeInfo? Info)[]? infos, bool defaultTypeFallback)
         {
             // We cache negatives (null info) to allow 'object or default' checks to never hit the resolvers after the first lookup.
-            var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback, _validatePgTypeIds);
+            var info = CreateInfo(type, pgTypeId, options, defaultTypeFallback, validatePgTypeIds);
 
             var isDefaultInfo = type is null && info is not null;
             if (infos is null)

@@ -10,14 +10,9 @@ using static NpgsqlTypes.NpgsqlTsQuery.NodeKind;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-sealed class TsQueryConverter<T> : PgStreamingConverter<T>
+sealed class TsQueryConverter<T>(Encoding encoding) : PgStreamingConverter<T>
     where T : NpgsqlTsQuery
 {
-    readonly Encoding _encoding;
-
-    public TsQueryConverter(Encoding encoding)
-        => _encoding = encoding;
-
     public override T Read(PgReader reader)
         => (T)Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -49,8 +44,8 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
                 var prefix = reader.ReadByte() != 0;
 
                 var str = async
-                    ? await reader.ReadNullTerminatedStringAsync(_encoding, cancellationToken).ConfigureAwait(false)
-                    : reader.ReadNullTerminatedString(_encoding);
+                    ? await reader.ReadNullTerminatedStringAsync(encoding, cancellationToken).ConfigureAwait(false)
+                    : reader.ReadNullTerminatedString(encoding);
                 InsertInTree(new NpgsqlTsQueryLexeme(str, weight, prefix), nodes, ref value);
                 continue;
 
@@ -134,7 +129,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
     int GetNodeLength(NpgsqlTsQuery node)
         => node.Kind switch
         {
-            Lexeme when _encoding.GetByteCount(((NpgsqlTsQueryLexeme)node).Text) is var strLen
+            Lexeme when encoding.GetByteCount(((NpgsqlTsQueryLexeme)node).Text) is var strLen
                 => strLen > 2046
                     ? throw new InvalidCastException("Lexeme text too long. Must be at most 2046 encoded bytes.")
                     : 4 + strLen,
@@ -185,9 +180,9 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
                 writer.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
 
                 if (async)
-                    await writer.WriteCharsAsync(lexemeNode.Text.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
+                    await writer.WriteCharsAsync(lexemeNode.Text.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
                 else
-                    writer.WriteChars(lexemeNode.Text.AsMemory().Span, _encoding);
+                    writer.WriteChars(lexemeNode.Text.AsMemory().Span, encoding);
 
                 if (writer.ShouldFlush(sizeof(byte)))
                     await writer.Flush(async, cancellationToken).ConfigureAwait(false);

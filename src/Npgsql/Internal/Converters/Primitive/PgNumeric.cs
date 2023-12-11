@@ -8,28 +8,21 @@ using static Npgsql.Internal.Converters.PgNumeric.Builder;
 
 namespace Npgsql.Internal.Converters;
 
-readonly struct PgNumeric
+readonly struct PgNumeric(ArraySegment<short> digits, short weight, short sign, short scale)
 {
     // numeric digit count + weight + sign + scale
     const int StructureByteCount = 4 * sizeof(short);
     const int DecimalBits = 4;
     const int StackAllocByteThreshold = 64 * sizeof(uint);
 
-    readonly ushort _sign;
-
-    public PgNumeric(ArraySegment<short> digits, short weight, short sign, short scale)
-    {
-        Digits = digits;
-        Weight = weight;
-        _sign = (ushort)sign;
-        Scale = scale;
-    }
+    readonly ushort _sign = (ushort)sign;
 
     /// Big endian array of numeric digits
-    public ArraySegment<short> Digits { get; }
-    public short Weight { get; }
+    public ArraySegment<short> Digits { get; } = digits;
+
+    public short Weight { get; } = weight;
     public short Sign => (short)_sign;
-    public short Scale { get; }
+    public short Scale { get; } = scale;
 
     public int GetByteCount() => GetByteCount(Digits.Count);
     public static int GetByteCount(int digitCount) => StructureByteCount + digitCount * sizeof(short);

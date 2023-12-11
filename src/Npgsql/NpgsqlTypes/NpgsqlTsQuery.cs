@@ -380,16 +380,10 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
         => left is null ? right is not null : !left.Equals(right);
 }
 
-readonly struct NpgsqlTsQueryOperator
+readonly struct NpgsqlTsQueryOperator(char character, short followedByDistance)
 {
-    public readonly char Char;
-    public readonly short FollowedByDistance;
-
-    public NpgsqlTsQueryOperator(char character, short followedByDistance)
-    {
-        Char = character;
-        FollowedByDistance = followedByDistance;
-    }
+    public readonly char Char = character;
+    public readonly short FollowedByDistance = followedByDistance;
 
     public static implicit operator NpgsqlTsQueryOperator(char c) => new(c, 0);
     public static implicit operator char(NpgsqlTsQueryOperator o) => o.Char;

@@ -57,14 +57,13 @@ sealed class GuidUuidConverter : PgBufferedConverter<Guid>
     // | 16   | 2     | Data3 | Native            | Big                   |
     // | 64   | 8     | Data4 | Big               | Big                   |
     [StructLayout(LayoutKind.Explicit)]
-    struct GuidRaw
+    struct GuidRaw(Guid value)
     {
-        [FieldOffset(0)] public Guid Value;
+        [FieldOffset(0)] public Guid Value = value;
         [FieldOffset(0)] public int Data1;
         [FieldOffset(4)] public short Data2;
         [FieldOffset(6)] public short Data3;
         [FieldOffset(8)] public long Data4;
-        public GuidRaw(Guid value) : this() => Value = value;
     }
 #endif
 }

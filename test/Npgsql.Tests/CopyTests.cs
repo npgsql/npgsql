@@ -17,7 +17,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class CopyTests : MultiplexingTestBase
+public class CopyTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     #region Issue 2257
 
@@ -1305,6 +1305,4 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     }
 
     #endregion
-
-    public CopyTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

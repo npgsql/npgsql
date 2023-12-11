@@ -10,7 +10,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-public class EnumTests : MultiplexingTestBase
+public class EnumTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     enum Mood { Sad, Ok, Happy }
     enum AnotherEnum { Value1, Value2 }
@@ -243,6 +243,4 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
         [PgName("label3")]
         Label3
     }
-
-    public EnumTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

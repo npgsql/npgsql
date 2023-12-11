@@ -1841,29 +1841,21 @@ public sealed partial class NpgsqlConnector
         return new(this, registration, currentUserCancellationToken, currentAttemptPostgresCancellation);
     }
 
-    internal readonly struct NestedCancellableScope : IDisposable
+    internal readonly struct NestedCancellableScope(
+        NpgsqlConnector connector,
+        CancellationTokenRegistration registration,
+        CancellationToken previousCancellationToken,
+        bool previousAttemptPostgresCancellation)
+        : IDisposable
     {
-        readonly NpgsqlConnector _connector;
-        readonly CancellationTokenRegistration _registration;
-        readonly CancellationToken _previousCancellationToken;
-        readonly bool _previousAttemptPostgresCancellation;
-
-        public NestedCancellableScope(NpgsqlConnector connector, CancellationTokenRegistration registration, CancellationToken previousCancellationToken, bool previousAttemptPostgresCancellation)
-        {
-            _connector = connector;
-            _registration = registration;
-            _previousCancellationToken = previousCancellationToken;
-            _previousAttemptPostgresCancellation = previousAttemptPostgresCancellation;
-        }
-
         public void Dispose()
         {
-            if (_connector is null)
+            if (connector is null)
                 return;
 
-            _connector.UserCancellationToken = _previousCancellationToken;
-            _connector.AttemptPostgresCancellation = _previousAttemptPostgresCancellation;
-            _registration.Dispose();
+            connector.UserCancellationToken = previousCancellationToken;
+            connector.AttemptPostgresCancellation = previousAttemptPostgresCancellation;
+            registration.Dispose();
         }
     }
 

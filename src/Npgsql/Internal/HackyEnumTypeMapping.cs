@@ -12,16 +12,9 @@ namespace Npgsql.Internal;
 /// <summary>
 /// Hacky temporary measure used by EFCore.PG to extract user-configured enum mappings. Accessed via reflection only.
 /// </summary>
-public sealed class HackyEnumTypeMapping
+public sealed class HackyEnumTypeMapping(Type enumClrType, string pgTypeName, INpgsqlNameTranslator nameTranslator)
 {
-    public HackyEnumTypeMapping(Type enumClrType, string pgTypeName, INpgsqlNameTranslator nameTranslator)
-    {
-        EnumClrType = enumClrType;
-        PgTypeName = pgTypeName;
-        NameTranslator = nameTranslator;
-    }
-
-    public string PgTypeName { get; }
-    public Type EnumClrType { get; }
-    public INpgsqlNameTranslator NameTranslator { get; }
+    public string PgTypeName { get; } = pgTypeName;
+    public Type EnumClrType { get; } = enumClrType;
+    public INpgsqlNameTranslator NameTranslator { get; } = nameTranslator;
 }

@@ -3,35 +3,21 @@ using Npgsql.Internal;
 
 namespace Npgsql.Tests.Support;
 
-class PgCancellationRequest
+class PgCancellationRequest(NpgsqlReadBuffer readBuffer, NpgsqlWriteBuffer writeBuffer, Stream stream, int processId, int secret)
 {
-    readonly NpgsqlReadBuffer _readBuffer;
-    readonly NpgsqlWriteBuffer _writeBuffer;
-    readonly Stream _stream;
-
-    public int ProcessId { get; }
-    public int Secret { get; }
+    public int ProcessId { get; } = processId;
+    public int Secret { get; } = secret;
 
     bool completed;
-
-    public PgCancellationRequest(NpgsqlReadBuffer readBuffer, NpgsqlWriteBuffer writeBuffer, Stream stream, int processId, int secret)
-    {
-        _readBuffer = readBuffer;
-        _writeBuffer = writeBuffer;
-        _stream = stream;
-
-        ProcessId = processId;
-        Secret = secret;
-    }
 
     public void Complete()
     {
         if (completed)
             return;
 
-        _readBuffer.Dispose();
-        _writeBuffer.Dispose();
-        _stream.Dispose();
+        readBuffer.Dispose();
+        writeBuffer.Dispose();
+        stream.Dispose();
 
         completed = true;
     }

@@ -6,37 +6,17 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.GeoJSON.Internal;
 
-sealed class GeoJSONTypeInfoResolverFactory : PgTypeInfoResolverFactory
+sealed class GeoJSONTypeInfoResolverFactory(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
+    : PgTypeInfoResolverFactory
 {
-    readonly GeoJSONOptions _options;
-    readonly bool _geographyAsDefault;
-    readonly CrsMap? _crsMap;
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(options, geographyAsDefault, crsMap);
+    public override IPgTypeInfoResolver? CreateArrayResolver() => new ArrayResolver(options, geographyAsDefault, crsMap);
 
-    public GeoJSONTypeInfoResolverFactory(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
+    class Resolver(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
+        : IPgTypeInfoResolver
     {
-        _options = options;
-        _geographyAsDefault = geographyAsDefault;
-        _crsMap = crsMap;
-    }
-
-    public override IPgTypeInfoResolver CreateResolver() => new Resolver(_options, _geographyAsDefault, _crsMap);
-    public override IPgTypeInfoResolver? CreateArrayResolver() => new ArrayResolver(_options, _geographyAsDefault, _crsMap);
-
-    class Resolver : IPgTypeInfoResolver
-    {
-        readonly GeoJSONOptions _options;
-        readonly bool _geographyAsDefault;
-        readonly CrsMap? _crsMap;
-
         TypeInfoMappingCollection? _mappings;
-        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _options, _geographyAsDefault, _crsMap);
-
-        public Resolver(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
-        {
-            _options = options;
-            _geographyAsDefault = geographyAsDefault;
-            _crsMap = crsMap;
-        }
+        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), options, geographyAsDefault, crsMap);
 
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options);
@@ -83,15 +63,11 @@ sealed class GeoJSONTypeInfoResolverFactory : PgTypeInfoResolverFactory
         }
     }
 
-    sealed class ArrayResolver : Resolver, IPgTypeInfoResolver
+    sealed class ArrayResolver(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
+        : Resolver(options, geographyAsDefault, crsMap), IPgTypeInfoResolver
     {
         TypeInfoMappingCollection? _mappings;
         new TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(base.Mappings));
-
-        public ArrayResolver(GeoJSONOptions options, bool geographyAsDefault, CrsMap? crsMap = null)
-            : base(options, geographyAsDefault, crsMap)
-        {
-        }
 
         public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options);

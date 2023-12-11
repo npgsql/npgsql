@@ -1166,15 +1166,11 @@ public class MultipleHostsTests : TestBase
     static string MultipleHosts(params PgPostmasterMock[] postmasters)
         => string.Join(",", postmasters.Select(p => $"{p.Host}:{p.Port}"));
 
-    class DisposableWrapper : IAsyncDisposable
+    class DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) : IAsyncDisposable
     {
-        readonly IEnumerable<IAsyncDisposable> _disposables;
-
-        public DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) => _disposables = disposables;
-
         public async ValueTask DisposeAsync()
         {
-            foreach (var disposable in _disposables)
+            foreach (var disposable in disposables)
                 await disposable.DisposeAsync();
         }
     }

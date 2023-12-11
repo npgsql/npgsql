@@ -34,27 +34,18 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     DataFormat Format => DataFormat.Binary;
 
-    readonly struct ColumnInfo
+    readonly struct ColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectOrDefaultTypeInfo, DataFormat format)
     {
-        readonly DataFormat _format;
-        public PostgresType PostgresType { get; }
-        public int BufferPos { get; }
+        public PostgresType PostgresType { get; } = postgresType;
+        public int BufferPos { get; } = bufferPos;
         public PgConverterInfo LastConverterInfo { get; init; }
 
-        public PgTypeInfo ObjectOrDefaultTypeInfo { get; }
-        public PgConverterInfo GetObjectOrDefaultInfo() => ObjectOrDefaultTypeInfo.Bind(Field, _format);
+        public PgTypeInfo ObjectOrDefaultTypeInfo { get; } = objectOrDefaultTypeInfo;
+        public PgConverterInfo GetObjectOrDefaultInfo() => ObjectOrDefaultTypeInfo.Bind(Field, format);
 
         Field Field => new("?", ObjectOrDefaultTypeInfo.Options.PortableTypeIds ? PostgresType.DataTypeName : (Oid)PostgresType.OID, -1);
 
-        public PgConverterInfo Bind(PgTypeInfo typeInfo) => typeInfo.Bind(Field, _format);
-
-        public ColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectOrDefaultTypeInfo, DataFormat format)
-        {
-            _format = format;
-            PostgresType = postgresType;
-            BufferPos = bufferPos;
-            ObjectOrDefaultTypeInfo = objectOrDefaultTypeInfo;
-        }
+        public PgConverterInfo Bind(PgTypeInfo typeInfo) => typeInfo.Bind(Field, format);
     }
 
     PgReader PgReader => _outermostReader.Buffer.PgReader;

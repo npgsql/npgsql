@@ -20,7 +20,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class ConnectionTests : MultiplexingTestBase
+public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
     public async Task Basic_lifecycle()
@@ -1765,6 +1765,4 @@ CREATE TABLE record ()");
     }
 
     #endregion Logging tests
-
-    public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }
