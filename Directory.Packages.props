@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(ExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(ExtensionsVersion)" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.6.0" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.7.0" />
 
     <!-- Compatibility -->
     <PackageVersion Include="System.Text.Json" Version="$(SystemVersion)" />
