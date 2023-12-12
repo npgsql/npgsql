@@ -30,6 +30,23 @@ public class LegacyDateTimeTests : TestBase
     }
 
     [Test]
+    public async Task Timestamptz_negative_infinity()
+    {
+        var dto = await AssertType(DateTimeOffset.MinValue, "-infinity", "timestamp with time zone", NpgsqlDbType.TimestampTz,
+            DbType.DateTimeOffset, isDefaultForReading: false);
+        Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
+    }
+
+    [Test]
+    public async Task Timestamptz_infinity()
+    {
+        var dto = await AssertType(
+            DateTimeOffset.MaxValue, "infinity", "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset,
+            isDefaultForReading: false);
+        Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
+    }
+
+    [Test]
     [TestCase(DateTimeKind.Utc, TestName = "Timestamptz_write_utc_DateTime_does_not_convert")]
     [TestCase(DateTimeKind.Unspecified, TestName = "Timestamptz_write_unspecified_DateTime_does_not_convert")]
     public Task Timestamptz_write_utc_DateTime_does_not_convert(DateTimeKind kind)
