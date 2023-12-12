@@ -27,9 +27,9 @@ sealed class LegacyDateTimeConverter : PgBufferedConverter<DateTime>
         }
 
         var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);
-        return !_dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue
-            ? dateTime.ToLocalTime()
-            : dateTime;
+        return (dateTime == DateTime.MinValue || dateTime == DateTime.MaxValue) && _dateTimeInfinityConversions
+            ? dateTime
+            : dateTime.ToLocalTime();
     }
 
     protected override void WriteCore(PgWriter writer, DateTime value)
@@ -57,9 +57,16 @@ sealed class LegacyDateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
     protected override DateTimeOffset ReadCore(PgReader reader)
     {
         var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);
-        return !_dateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue
-            ? dateTime.ToLocalTime()
-            : dateTime;
+
+        if (_dateTimeInfinityConversions)
+        {
+            if (dateTime == DateTime.MinValue)
+                return DateTimeOffset.MinValue;
+            if (dateTime == DateTime.MaxValue)
+                return DateTimeOffset.MaxValue;
+        }
+
+        return dateTime.ToLocalTime();
     }
 
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
