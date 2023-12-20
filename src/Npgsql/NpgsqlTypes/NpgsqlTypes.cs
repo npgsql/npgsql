@@ -131,20 +131,20 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
     public NpgsqlPoint UpperRight
     {
         get => _upperRight;
-        set => (_upperRight, _lowerLeft) = _swapIfNeed(value, _lowerLeft);
+        set => (_upperRight, _lowerLeft) = SwapIfNeed(value, _lowerLeft);
     }
-    private NpgsqlPoint _upperRight;
+    NpgsqlPoint _upperRight;
 
 
     public NpgsqlPoint LowerLeft
     {
         get => _lowerLeft;
-        set => (_upperRight, _lowerLeft) = _swapIfNeed(_upperRight, value);
+        set => (_upperRight, _lowerLeft) = SwapIfNeed(_upperRight, value);
     }
-    private NpgsqlPoint _lowerLeft;
+    NpgsqlPoint _lowerLeft;
 
-    public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this() =>
-        (_upperRight, _lowerLeft) = _swapIfNeed(upperRight, lowerLeft);
+    public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this()
+        => (_upperRight, _lowerLeft) = SwapIfNeed(upperRight, lowerLeft);
 
     public NpgsqlBox(double top, double right, double bottom, double left)
         : this(new NpgsqlPoint(right, top), new NpgsqlPoint(left, bottom)) { }
@@ -172,7 +172,7 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
     public override int GetHashCode()
         => HashCode.Combine(Top, Right, Bottom, LowerLeft);
 
-    private static (NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) _swapIfNeed(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft)
+    static (NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) SwapIfNeed(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft)
     {
         if (upperRight.X < lowerLeft.X)
         {
