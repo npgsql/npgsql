@@ -17,7 +17,7 @@
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.5.0" />
     <PackageVersion Include="NetTopologySuite.IO.PostGIS" Version="2.1.0" />
-    <PackageVersion Include="NodaTime" Version="3.1.9" />
+    <PackageVersion Include="NodaTime" Version="3.1.10" />
     <PackageVersion Include="GeoJSON.Net" Version="1.2.19" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
 
@@ -35,7 +35,7 @@
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.5.0" />
-    <PackageVersion Include="xunit" Version="2.6.3" />
+    <PackageVersion Include="xunit" Version="2.6.4" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.6" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
