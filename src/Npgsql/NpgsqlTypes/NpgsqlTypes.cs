@@ -131,7 +131,7 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
     public NpgsqlPoint UpperRight
     {
         get => _upperRight;
-        set => (_upperRight, _lowerLeft) = SwapIfNeed(value, _lowerLeft);
+        set => SetNewValuesToVerticesAndSwapItIfNeeded(ref value, ref _lowerLeft);
     }
     NpgsqlPoint _upperRight;
 
@@ -139,12 +139,12 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
     public NpgsqlPoint LowerLeft
     {
         get => _lowerLeft;
-        set => (_upperRight, _lowerLeft) = SwapIfNeed(_upperRight, value);
+        set => SetNewValuesToVerticesAndSwapItIfNeeded(ref _upperRight, ref value);
     }
     NpgsqlPoint _lowerLeft;
 
     public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this()
-        => (_upperRight, _lowerLeft) = SwapIfNeed(upperRight, lowerLeft);
+        => SetNewValuesToVerticesAndSwapItIfNeeded(ref upperRight, ref lowerLeft);
 
     public NpgsqlBox(double top, double right, double bottom, double left)
         : this(new NpgsqlPoint(right, top), new NpgsqlPoint(left, bottom)) { }
@@ -172,18 +172,25 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
     public override int GetHashCode()
         => HashCode.Combine(Top, Right, Bottom, LowerLeft);
 
-    static (NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) SwapIfNeed(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft)
+    void SetNewValuesToVerticesAndSwapItIfNeeded(ref NpgsqlPoint upperRightNewValue, ref NpgsqlPoint lowerLeftNewValue)
     {
-        if (upperRight.X < lowerLeft.X)
+        if (upperRightNewValue.X < lowerLeftNewValue.X)
         {
-            (upperRight.X, lowerLeft.X) = (lowerLeft.X, upperRight.X);
+            (_upperRight.X, _lowerLeft.X) = (lowerLeftNewValue.X, upperRightNewValue.X);
         }
-        if (upperRight.Y < lowerLeft.Y)
+        else
         {
-            (upperRight.Y, lowerLeft.Y) = (lowerLeft.Y, upperRight.Y);
+            (_upperRight.X, _lowerLeft.X) = (upperRightNewValue.X, lowerLeftNewValue.X);
         }
 
-        return (upperRight, lowerLeft);
+        if (upperRightNewValue.Y < lowerLeftNewValue.Y)
+        {
+            (_upperRight.Y, _lowerLeft.Y) = (lowerLeftNewValue.Y, upperRightNewValue.Y);
+        }
+        else
+        {
+            (_upperRight.Y, _lowerLeft.Y) = (upperRightNewValue.Y, lowerLeftNewValue.Y);
+        }
     }
 }
 
