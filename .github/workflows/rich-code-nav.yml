@@ -1,12 +1,7 @@
 name: Rich Code Navigation
 
 on:
-  push:
-    branches:
-      - main
-      - stable
-    tags:
-      - '*'
+  workflow_dispatch:
 
 env:
   dotnet_sdk_version: '8.0.100'
@@ -38,7 +33,7 @@ jobs:
         shell: bash
 
       - name: Rich Navigation Indexing
-        uses: microsoft/RichCodeNavIndexer@v0.1
+        uses: microsoft/RichCodeNavIndexer@v0
         with:
           languages: csharp
           repo-token: ${{ github.token }}
