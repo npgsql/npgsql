@@ -503,6 +503,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
 
         _setupMappingsSemaphore.Dispose();
+        MetricsReporter.Dispose(); // TODO: This is probably too early, dispose only when all connections have been closed?
 
         // TODO: async Clear, #4499
         Clear();
