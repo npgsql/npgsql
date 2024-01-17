@@ -202,7 +202,7 @@ static class ReflectionCompositeInfoFactory
             return new KeyValuePair<string, PropertyInfo>(name, x);
         }).ToArray();
 
-        var duplicates = propertiesAndNames.Except(propertiesAndNames.Distinct()).ToArray();
+        var duplicates = propertiesAndNames.GroupBy(x => x.Key).Where(g => g.Count() > 1).ToArray();
         if (duplicates.Length > 0)
             throw new AmbiguousMatchException($"Multiple properties are mapped to the '{duplicates[0].Key}' field.");
 
@@ -230,7 +230,7 @@ static class ReflectionCompositeInfoFactory
             return new KeyValuePair<string, FieldInfo>(name, x);
         }).ToArray();
 
-        var duplicates = clrFieldsAndNames.Except(clrFieldsAndNames.Distinct()).ToArray();
+        var duplicates = clrFieldsAndNames.GroupBy(x => x.Key).Where(g => g.Count() > 1).ToArray();
         if (duplicates.Length > 0)
             throw new AmbiguousMatchException($"Multiple properties are mapped to the '{duplicates[0].Key}' field.");
 
@@ -285,9 +285,9 @@ static class ReflectionCompositeInfoFactory
                 }
             }
 
-            var duplicates = parametersMap.Except(parametersMap.Distinct()).ToArray();
+            var duplicates = parametersMap.GroupBy(x => x).Where(g => g.Count() > 1).ToArray();
             if (duplicates.Length > 0)
-                throw new AmbiguousMatchException($"Multiple constructor parameters are mapped to the '{fields[duplicates[0]].Name}' field.");
+                throw new AmbiguousMatchException($"Multiple constructor parameters are mapped to the '{fields[duplicates[0].Key].Name}' field.");
 
             if (parametersMapped == parameters.Length)
                 return (constructor, parametersMap);
