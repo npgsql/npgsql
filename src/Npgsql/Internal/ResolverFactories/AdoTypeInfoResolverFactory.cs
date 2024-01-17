@@ -56,6 +56,11 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Numeric
             mappings.AddStructType<short>(DataTypeNames.Int2,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<short>()), isDefault: true);
+            // Clr byte/sbyte maps to 'int2' as there is no byte type in PostgreSQL.
+            mappings.AddStructType<byte>(DataTypeNames.Int2,
+                static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<byte>()), isDefault: true);
+            mappings.AddStructType<sbyte>(DataTypeNames.Int2,
+                static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<sbyte>()), isDefault: true);
             mappings.AddStructType<int>(DataTypeNames.Int4,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()), isDefault: true);
             mappings.AddStructType<long>(DataTypeNames.Int8,
@@ -290,7 +295,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>()),
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<byte>(DataTypeNames.Char,
-                static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>()));
+                static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>()),
+                MatchRequirement.DataTypeName);
 
             // Xid8
             mappings.AddStructType<ulong>(DataTypeNames.Xid8,
@@ -321,7 +327,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new PgLsnConverter()),
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<ulong>(DataTypeNames.PgLsn,
-                static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
+                static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()),
+                MatchRequirement.DataTypeName);
 
             return mappings;
         }
@@ -354,6 +361,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Numeric
             mappings.AddStructArrayType<short>(DataTypeNames.Int2);
+            mappings.AddStructArrayType<byte>(DataTypeNames.Int2);
+            mappings.AddStructArrayType<sbyte>(DataTypeNames.Int2);
             mappings.AddStructArrayType<int>(DataTypeNames.Int4);
             mappings.AddStructArrayType<long>(DataTypeNames.Int8);
             mappings.AddStructArrayType<float>(DataTypeNames.Float4);

@@ -20,10 +20,12 @@ public class NumericTypeTests : MultiplexingTestBase
     public async Task Int16()
     {
         await AssertType((short)8, "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16);
+        // Clr byte/sbyte maps to 'int2' as there is no byte type in PostgreSQL, byte[] maps to bytea however.
+        await AssertType((byte)8, "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefaultForReading: false, skipArrayCheck: true);
+        await AssertType((sbyte)8, "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefaultForReading: false);
 
         await AssertType(8,       "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefault: false);
         await AssertType(8L,      "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefault: false);
-        await AssertType((byte)8, "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefault: false);
         await AssertType(8F,      "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefault: false);
         await AssertType(8D,      "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefault: false);
         await AssertType(8M,      "8", "smallint", NpgsqlDbType.Smallint, DbType.Int16, isDefault: false);
