@@ -129,7 +129,19 @@ public class NetTopologySuiteTests : TestBase
                     new DotSpatialAffineCoordinateSequence(new[] { 1d, 2d }, new[] { 3d }, new[] { 4d }),
                     GeometryFactory.Default),
                 "st_makepoint(1,2,3,4)")
-            .SetName("PointXYZM")
+            .SetName("PointXYZM"),
+
+        new TestCaseData(
+                Ordinates.None,
+                new LinearRing(new[]
+                    {
+                        new Coordinate(1d, 1d),
+                        new Coordinate(2d, 2d),
+                        new Coordinate(3d, 3d),
+                        new Coordinate(1d, 1d)
+                    }),
+                "st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])")
+            .SetName("LinearRing")
     };
 
     [Test, TestCaseSource(nameof(TestCases))]
