@@ -194,14 +194,42 @@ public class JsonNetTests : TestBase
         public string? SomeString { get; set; }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5475")]
+    public async Task Read_jarray_from_get_value()
+    {
+        await using var conn = await JsonDataSource.OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand { Connection = conn };
+
+        var json = new JArray(new JObject { { "name", "value1" } });
+
+        cmd.CommandText = $"SELECT @p";
+        cmd.Parameters.Add(new("p", json));
+        await cmd.ExecuteScalarAsync();
+    }
     [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/4537")]
+    public async Task Write_jobject_without_npgsqldbtype()
+    {
+        await using var conn = await JsonDataSource.OpenConnectionAsync();
+        var tableName = await TestUtil.CreateTempTable(conn, "key SERIAL PRIMARY KEY, ingredients json");
+
+        await using var cmd = new NpgsqlCommand { Connection = conn };
+
+        var jsonObject = new JObject
+        {
+            { "name", "value1" },
+            { "amount", 1 },
+            { "unit", "ml" }
+        };
+
+        cmd.CommandText = $"INSERT INTO {tableName} (ingredients) VALUES (@p)";
+        cmd.Parameters.Add(new("p", jsonObject));
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4537")]
     public async Task Write_jobject_array_without_npgsqldbtype()
     {
-        // By default we map JObject to jsonb
-        if (!IsJsonb)
-            return;
-
         await using var conn = await JsonDataSource.OpenConnectionAsync();
         var tableName = await TestUtil.CreateTempTable(conn, "key SERIAL PRIMARY KEY, ingredients json[]");
 

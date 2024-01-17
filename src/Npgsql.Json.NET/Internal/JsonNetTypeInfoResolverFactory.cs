@@ -33,11 +33,10 @@ sealed class JsonNetTypeInfoResolverFactory : PgTypeInfoResolverFactory
             foreach (var dataTypeName in new[] { "jsonb", "json" })
             {
                 var jsonb = dataTypeName == "jsonb";
-                mappings.AddType<JObject>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonNetJsonConverter<JObject>(jsonb, options.TextEncoding, settings)),
-                    isDefault: true);
                 mappings.AddType<JToken>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonNetJsonConverter<JToken>(jsonb, options.TextEncoding, settings)));
+                    mapping.CreateInfo(options, new JsonNetJsonConverter<JToken>(jsonb, options.TextEncoding, settings)), isDefault: true);
+                mappings.AddType<JObject>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonNetJsonConverter<JObject>(jsonb, options.TextEncoding, settings)));
                 mappings.AddType<JArray>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options, new JsonNetJsonConverter<JArray>(jsonb, options.TextEncoding, settings)));
                 mappings.AddType<JValue>(dataTypeName, (options, mapping, _) =>
