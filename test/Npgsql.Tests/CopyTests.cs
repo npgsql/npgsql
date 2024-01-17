@@ -563,6 +563,38 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
+    public async Task ReadZeroSizedColumns()
+    {
+        if (IsMultiplexing)
+            Assert.Ignore("Multiplexing: fails");
+        using var conn = await OpenConnectionAsync();
+
+        var reader = conn.BeginBinaryExport("""
+            COPY (values (1, '', ''), (2, null, ''), (3, '', null)) TO STDOUT BINARY
+            """);
+        while(reader.StartRow() != -1)
+        {
+            int? col1 = null;
+            if (reader.IsNull)
+                reader.Skip();
+            else
+                col1 = reader.Read<int>();
+
+            string? col2 = null;
+            if (reader.IsNull)
+                reader.Skip();
+            else
+                col2 = reader.Read<string>();
+
+            string? col3 = null;
+            if (reader.IsNull)
+                reader.Skip();
+            else
+                col3 = reader.Read<string>();
+        }
+    }
+
+    [Test]
     public async Task StreamingRead()
     {
         if (IsMultiplexing)
