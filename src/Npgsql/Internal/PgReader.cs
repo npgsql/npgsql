@@ -476,7 +476,7 @@ public class PgReader
 
     internal void EndRead()
     {
-        if (_resumable)
+        if (_resumable || StreamActive)
             return;
 
         // If it was upper bound we should consume.
@@ -486,7 +486,7 @@ public class PgReader
             return;
         }
 
-        if (FieldOffset != FieldSize && !StreamActive)
+        if (FieldOffset != FieldSize)
             ThrowNotConsumedExactly();
 
         _fieldConsumed = true;
@@ -494,14 +494,14 @@ public class PgReader
 
     internal ValueTask EndReadAsync()
     {
-        if (_resumable)
+        if (_resumable || StreamActive)
             return new();
 
         // If it was upper bound we should consume.
         if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
             return ConsumeAsync(FieldRemaining);
 
-        if (FieldOffset != FieldSize && !StreamActive)
+        if (FieldOffset != FieldSize)
             ThrowNotConsumedExactly();
 
         _fieldConsumed = true;
