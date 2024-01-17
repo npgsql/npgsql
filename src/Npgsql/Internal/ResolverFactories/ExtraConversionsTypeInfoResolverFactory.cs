@@ -26,10 +26,6 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<int>()));
             mappings.AddStructType<long>(DataTypeNames.Int2,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<long>()));
-            mappings.AddStructType<byte>(DataTypeNames.Int2,
-                static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<byte>()));
-            mappings.AddStructType<sbyte>(DataTypeNames.Int2,
-                static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<sbyte>()));
             mappings.AddStructType<float>(DataTypeNames.Int2,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<float>()));
             mappings.AddStructType<double>(DataTypeNames.Int2,
@@ -161,8 +157,6 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             // Int2
             mappings.AddStructArrayType<int>(DataTypeNames.Int2);
             mappings.AddStructArrayType<long>(DataTypeNames.Int2);
-            mappings.AddStructArrayType<byte>(DataTypeNames.Int2);
-            mappings.AddStructArrayType<sbyte>(DataTypeNames.Int2);
             mappings.AddStructArrayType<float>(DataTypeNames.Int2);
             mappings.AddStructArrayType<double>(DataTypeNames.Int2);
             mappings.AddStructArrayType<decimal>(DataTypeNames.Int2);
