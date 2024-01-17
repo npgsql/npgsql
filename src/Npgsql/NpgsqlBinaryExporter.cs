@@ -255,35 +255,41 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (!IsInitializedAndAtStart)
             await MoveNextColumn(async, resumableOp: false).ConfigureAwait(false);
 
-        if (PgReader.FieldSize is (-1 or 0) and var fieldSize)
+        try
         {
-            // Commit, otherwise we'll have no way of knowing this column is finished.
-            await Commit(async).ConfigureAwait(false);
-            if (fieldSize is -1)
+            var reader = PgReader;
+            if (reader.FieldSize is -1)
                 return DbNullOrThrow();
+
+            var info = GetInfo(type, out var asObject);
+
+            T result;
+            if (async)
+            {
+                await reader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
+                result = asObject
+                    ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+                    : await info.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+                await reader.EndReadAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                reader.StartRead(info.BufferRequirement);
+                result = asObject
+                    ? (T)info.Converter.ReadAsObject(reader)
+                    : info.GetConverter<T>().Read(reader);
+                reader.EndRead();
+            }
+
+            return result;
         }
-
-        var info = GetInfo(type, out var asObject);
-
-        T result;
-        if (async)
+        finally
         {
-            await PgReader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
-            result = asObject
-                ? (T)await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
-                : await info.GetConverter<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
-            await PgReader.EndReadAsync().ConfigureAwait(false);
+            // Don't delay committing the current column, just do it immediately (as opposed to on the next action: Read, IsNull, Skip).
+            // Zero length columns would otherwise create an edge-case where we'd have to immediately commit as we won't know whether we're at the end.
+            // To guarantee the commit happens in that case we would still need this try finally, at which point it's just better to be consistent.
+            await Commit(async).ConfigureAwait(false);
         }
-        else
-        {
-            PgReader.StartRead(info.BufferRequirement);
-            result = asObject
-                ? (T)info.Converter.ReadAsObject(PgReader)
-                : info.GetConverter<T>().Read(PgReader);
-            PgReader.EndRead();
-        }
-
-        return result;
 
         static T DbNullOrThrow()
         {
@@ -360,11 +366,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (!IsInitializedAndAtStart)
             await MoveNextColumn(async, resumableOp: false).ConfigureAwait(false);
 
-        await PgReader.Consume(async, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        // Commit, otherwise we'll have no way of knowing this column is finished.
-        if (PgReader.FieldSize is -1 or 0)
-            await Commit(async).ConfigureAwait(false);
+        await Commit(async).ConfigureAwait(false);
     }
 
     #endregion
