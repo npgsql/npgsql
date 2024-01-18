@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -145,7 +146,7 @@ FROM (
 ) AS t
 JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
-    ns.nspname IN ('information_schema', 'pg_catalog', 'public'{(schemas?.Count() > 0 ? $", {string.Join(", ", schemas)}" : "")}) AND (
+    {(schemas?.Count() > 0 ? $"ns.nspname IN ('information_schema', 'pg_catalog', 'public', {string.Join(", ", schemas)}) AND (" : "(")}
     typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
     (typtype = 'p' AND typname IN ('record', 'void', 'unknown')) OR -- Some special supported pseudo-types
@@ -174,7 +175,7 @@ JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
   (typ.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) AND
-  ns.nspname IN ('information_schema', 'pg_catalog', 'public'{(schemas?.Count() > 0 ? $", {string.Join(", ", schemas)}" : "")}) AND 
+  {(schemas?.Count() > 0 ? $"ns.nspname IN ('information_schema', 'pg_catalog', 'public', {string.Join(", ", schemas)}) AND " : "")}
   attnum > 0 AND     -- Don't load system attributes
   NOT attisdropped
 ORDER BY typ.oid, att.attnum;";
