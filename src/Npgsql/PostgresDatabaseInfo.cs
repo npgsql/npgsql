@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -202,7 +203,9 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
     internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
         var versionQuery = "SELECT version();";
-        var schemasFormatted = conn.Settings.SearchPath?.Split(',').Select(x => $"'{x}'");
+        // Regular expression pattern for valid PostgreSQL schema name
+        var schemaNamePattern = @"^[a-zA-Z_][a-zA-Z0-9_]*$";
+        var schemasFormatted = conn.Settings.SearchPath?.Split(',').Select( x => x.Trim().ToLowerInvariant()).Where( x => Regex.IsMatch(x,schemaNamePattern) ).Select( x => $"'{x.Trim().ToLowerInvariant()}'" );
         var loadTableComposites = conn.DataSource.Configuration.TypeLoading.LoadTableComposites;
         var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites);
         var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites);
