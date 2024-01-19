@@ -1212,6 +1212,24 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     bool _noResetOnClose;
 
     /// <summary>
+    /// Load table composite type definitions, and not just free-standing composite types.
+    /// </summary>
+    [Category("Advanced")]
+    [Description("Load only composite type definitions from schemas in search path (always load from public and catalog).")]
+    [DisplayName("Load Only Composites From SearchPath")]
+    [NpgsqlConnectionStringProperty]
+    public bool LoadOnlyCompositeFromSearchPath
+    {
+        get => _loadOnlyCompositeFromSearchPath;
+        set
+        {
+            _loadOnlyCompositeFromSearchPath = value;
+            SetValue(nameof(LoadOnlyCompositeFromSearchPath), value);
+        }
+    }
+    bool _loadOnlyCompositeFromSearchPath;
+
+    /// <summary>
     /// Set the replication mode of the connection
     /// </summary>
     /// <remarks>

@@ -116,7 +116,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
     /// types).
     /// </remarks>
-    static string GenerateLoadTypesQuery(bool withRange, bool withMultirange, bool loadTableComposites, IEnumerable<string>? schemas)
+    static string GenerateLoadTypesQuery(bool withRange, bool withMultirange, bool loadTableComposites, bool loadOnlyCompositeFromSearchPath, IEnumerable<string>? schemas)
         => $@"
 SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid
 FROM (
@@ -147,7 +147,7 @@ FROM (
 ) AS t
 JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
-    {(schemas?.Count() > 0 ? $"ns.nspname IN ('information_schema', 'pg_catalog', 'public', {string.Join(", ", schemas)}) AND (" : "(")}
+    {(loadOnlyCompositeFromSearchPath && schemas?.Count() > 0 ? $"ns.nspname IN ('information_schema', 'pg_catalog', 'public', {string.Join(", ", schemas)}) AND (" : "(")}
     typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
     (typtype = 'p' AND typname IN ('record', 'void', 'unknown')) OR -- Some special supported pseudo-types
@@ -166,7 +166,7 @@ ORDER BY CASE
        WHEN typtype = 'd' AND elemtyptype = 'a' THEN 6  -- Domains over arrays last
 END;";
 
-    static string GenerateLoadCompositeTypesQuery(bool loadTableComposites, IEnumerable<string>? schemas)
+    static string GenerateLoadCompositeTypesQuery(bool loadTableComposites, bool loadOnlyCompositeFromSearchPath, IEnumerable<string>? schemas)
         => $@"
 -- Load field definitions for (free-standing) composite types
 SELECT typ.oid, att.attname, att.atttypid
@@ -176,7 +176,7 @@ JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
   (typ.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) AND
-  {(schemas?.Count() > 0 ? $"ns.nspname IN ('information_schema', 'pg_catalog', 'public', {string.Join(", ", schemas)}) AND " : "")}
+  {(loadOnlyCompositeFromSearchPath && schemas?.Count() > 0 ? $"ns.nspname IN ('information_schema', 'pg_catalog', 'public', {string.Join(", ", schemas)}) AND " : "")}
   attnum > 0 AND     -- Don't load system attributes
   NOT attisdropped
 ORDER BY typ.oid, att.attnum;";
@@ -207,8 +207,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var schemaNamePattern = @"^[a-zA-Z_][a-zA-Z0-9_]*$";
         var schemasFormatted = conn.Settings.SearchPath?.Split(',').Select( x => x.Trim().ToLowerInvariant()).Where( x => Regex.IsMatch(x,schemaNamePattern) ).Select( x => $"'{x.Trim().ToLowerInvariant()}'" );
         var loadTableComposites = conn.DataSource.Configuration.TypeLoading.LoadTableComposites;
-        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites);
-        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites);
+        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites, schemasFormatted);
+        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites, schemasFormatted);
         var loadEnumFieldsQuery = SupportsEnumTypes
             ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
             : string.Empty;
