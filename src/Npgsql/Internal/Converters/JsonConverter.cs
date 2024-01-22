@@ -48,28 +48,36 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
         if (JsonConverter.TryReadStream(_jsonb, _textEncoding, reader, out var byteCount, out var stream))
         {
             using var _ = stream;
-            if (_jsonTypeInfo is JsonTypeInfo<T> typeInfoOfT)
-                return async
+            return _jsonTypeInfo switch
+            {
+                JsonTypeInfo<JsonDocument> => (T)(object)(async
+                    ? await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false)
+                    : JsonDocument.Parse(stream)),
+
+                JsonTypeInfo<T> typeInfoOfT => async
                     ? await JsonSerializer.DeserializeAsync(stream, typeInfoOfT, cancellationToken).ConfigureAwait(false)
-                    : JsonSerializer.Deserialize(stream, typeInfoOfT);
+                    : JsonSerializer.Deserialize(stream, typeInfoOfT),
 
-            return (T?)(async
-                ? await JsonSerializer.DeserializeAsync(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo, cancellationToken).ConfigureAwait(false)
-                : JsonSerializer.Deserialize(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo));
+                _ => (T?)(async
+                    ? await JsonSerializer.DeserializeAsync(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo, cancellationToken)
+                        .ConfigureAwait(false)
+                    : JsonSerializer.Deserialize(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo))
+            };
         }
-        else
+
+        var (rentedChars, rentedBytes) = await JsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
+        var result = _jsonTypeInfo switch
         {
-            var (rentedChars, rentedBytes) = await JsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
-            var result = _jsonTypeInfo is JsonTypeInfo<T> typeInfoOfT
-                ? JsonSerializer.Deserialize(rentedChars.AsSpan(), typeInfoOfT)
-                : (T?)JsonSerializer.Deserialize(rentedChars.AsSpan(), (JsonTypeInfo<TBase?>)_jsonTypeInfo);
+            JsonTypeInfo<JsonDocument> => (T)(object)JsonDocument.Parse(rentedChars.AsMemory()),
+            JsonTypeInfo<T> typeInfoOfT => JsonSerializer.Deserialize(rentedChars.AsSpan(), typeInfoOfT),
+            _ => (T?)JsonSerializer.Deserialize(rentedChars.AsSpan(), (JsonTypeInfo<TBase?>)_jsonTypeInfo)
+        };
 
-            ArrayPool<char>.Shared.Return(rentedChars.Array!);
-            if (rentedBytes is not null)
-                ArrayPool<byte>.Shared.Return(rentedBytes);
+        ArrayPool<char>.Shared.Return(rentedChars.Array!);
+        if (rentedBytes is not null)
+            ArrayPool<byte>.Shared.Return(rentedBytes);
 
-            return result;
-        }
+        return result;
     }
 
     public override Size GetSize(SizeContext context, T? value, ref object? writeState)
