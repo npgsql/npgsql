@@ -315,7 +315,7 @@ readonly struct PgNumeric
             if (Math.Abs(scale) > MaxDecimalScale)
                 throw new OverflowException("Numeric value does not fit in a System.Decimal");
 
-            if (digitCount == 0)
+            if (digitCount == 0 && !((sign is SignPositive or SignNegative) && scale > 0)) // handle 0 with scale, ie 0.00 
                 return sign switch
                 {
                     SignPositive or SignNegative => decimal.Zero,
@@ -336,7 +336,7 @@ readonly struct PgNumeric
             var digitScale = (weight + 1 - digitCount) * NumericBaseLog10;
             var scaleDifference = scale < 0 ? digitScale : digitScale + scale;
 
-            var digit = digits[digitCount - 1];
+            var digit = digitCount == 0 ? 0 : digits[digitCount - 1];
             if (digitCount == MaxDecimalNumericDigits)
             {
                 // On the max group we adjust the base based on the scale difference, to prevent overflow for valid values.
