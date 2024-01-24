@@ -540,10 +540,9 @@ public sealed partial class NpgsqlConnector
             SslMode sslMode,
             NpgsqlTimeout timeout,
             bool async,
-            CancellationToken cancellationToken,
-            bool isFirstAttempt = true)
+            CancellationToken cancellationToken)
         {
-            await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt).ConfigureAwait(false);
+            await conn.RawOpen(sslMode, timeout, async, cancellationToken).ConfigureAwait(false);
 
             var username = await conn.GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
 
@@ -572,8 +571,7 @@ public sealed partial class NpgsqlConnector
                     sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
                     timeout,
                     async,
-                    cancellationToken,
-                    isFirstAttempt: false).ConfigureAwait(false);
+                    cancellationToken).ConfigureAwait(false);
 
                 return;
             }
@@ -720,7 +718,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken, bool isFirstAttempt = true)
+    async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         try
         {
@@ -769,7 +767,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, isFirstAttempt).ConfigureAwait(false);
+                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout).ConfigureAwait(false);
                     break;
                 }
 
@@ -794,7 +792,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
+    internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async)
     {
         var clientCertificates = new X509Certificate2Collection();
         var certPath = Settings.SslCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;

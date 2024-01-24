@@ -16,7 +16,7 @@ class TransportSecurityHandler
         set => throw new NotSupportedException(string.Format(NpgsqlStrings.TransportSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableTransportSecurity)));
     }
 
-    public virtual Task NegotiateEncryption(bool async, NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool isFirstAttempt)
+    public virtual Task NegotiateEncryption(bool async, NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout)
         => throw new NotSupportedException(string.Format(NpgsqlStrings.TransportSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableTransportSecurity)));
 
     public virtual void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
@@ -30,8 +30,8 @@ sealed class RealTransportSecurityHandler : TransportSecurityHandler
 
     public override Func<X509Certificate2?>? RootCertificateCallback { get; set; }
 
-    public override Task NegotiateEncryption(bool async, NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool isFirstAttempt)
-        => connector.NegotiateEncryption(sslMode, timeout, async, isFirstAttempt);
+    public override Task NegotiateEncryption(bool async, NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout)
+        => connector.NegotiateEncryption(sslMode, timeout, async);
 
     public override void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
             ref bool successfulBind)
