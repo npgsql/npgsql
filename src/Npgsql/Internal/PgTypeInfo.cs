@@ -150,7 +150,7 @@ public class PgTypeInfo
             return true;
         case PgResolverTypeInfo resolverInfo:
             var resolution = resolverInfo.GetResolution(field);
-            if (!HasCachedInfo(resolution.Converter)
+            if (HasCachedInfo(resolution.Converter)
                     ? !CachedCanConvert(format, out bufferRequirements)
                     : !resolution.Converter.CanConvert(format, out bufferRequirements))
             {
@@ -276,8 +276,8 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
     public PgConverterResolution GetResolution(Field field)
         => _converterResolver.GetInternal(this, field);
 
-    public PgConverterResolution GetDefaultResolution(PgTypeId? pgTypeId)
-        => _converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
+    public PgConverterResolution GetDefaultResolution(PgTypeId? expectedPgTypeId)
+        => _converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, expectedPgTypeId ?? PgTypeId);
 
     public PgConverterResolver GetConverterResolver() => _converterResolver;
 }
