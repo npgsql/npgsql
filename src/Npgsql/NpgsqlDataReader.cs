@@ -2008,9 +2008,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var committed = false;
         if (!PgReader.CommitHasIO(reread))
         {
+            var columnLength = PgReader.FieldSize;
             PgReader.Commit(reread);
             committed = true;
-            if (TrySeekBuffered(ordinal, out var columnLength))
+            if (reread)
+            {
+                PgReader.Init(columnLength, dataFormat, columnLength is -1 || resumableOp);
+                return new(columnLength);
+            }
+
+            if (TrySeekBuffered(ordinal, out columnLength))
             {
                 PgReader.Init(columnLength, dataFormat, columnLength is -1 || resumableOp);
                 return new(columnLength);
@@ -2025,12 +2032,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
         }
 
-        return Core(async, !committed, ordinal, dataFormat, resumableOp);
+        return Core(async, reread, !committed, ordinal, dataFormat, resumableOp);
 
 #if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
-        async ValueTask<int> Core(bool async, bool commit, int ordinal, DataFormat dataFormat, bool resumableOp)
+        async ValueTask<int> Core(bool async, bool reread, bool commit, int ordinal, DataFormat dataFormat, bool resumableOp)
         {
             if (commit)
             {
@@ -2041,7 +2048,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     PgReader.Commit(reread);
             }
 
-            if (ordinal == _column)
+            if (reread)
             {
                 PgReader.Init(PgReader.FieldSize, dataFormat, PgReader.FieldSize is -1 || resumableOp);
                 return PgReader.FieldSize;
@@ -2071,12 +2078,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         bool TrySeekBuffered(int ordinal, out int columnLength)
         {
-            if (ordinal == _column)
-            {
-                columnLength = PgReader.FieldSize;
-                return true;
-            }
-
             // Skip over unwanted fields
             columnLength = -1;
             var buffer = Buffer;
@@ -2084,7 +2085,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             while (_column < ordinal - 1)
             {
                 if (buffer.ReadBytesLeft < 4)
+                {
+                    columnLength = -1;
                     return false;
+                }
                 columnLength = buffer.ReadInt32();
                 _column++;
                 Debug.Assert(columnLength >= -1);
