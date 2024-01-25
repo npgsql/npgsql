@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net;
 using System.Net.Security;
@@ -53,8 +54,8 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     public NpgsqlConnectionStringBuilder Settings { get; }
 
-    Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
-    RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
+    Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; }
+
 #pragma warning disable CS0618 // ProvidePasswordCallback is obsolete
     ProvidePasswordCallback? ProvidePasswordCallback { get; }
 #pragma warning restore CS0618
@@ -276,7 +277,11 @@ public sealed partial class NpgsqlConnector
     internal bool AttemptPostgresCancellation { get; private set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
 
+#pragma warning disable CA1859
+    // We're casting to IDisposable to not explicitly reference X509Certificate2 for NativeAOT
+    // TODO: probably pointless now, needs to be rechecked
     IDisposable? _certificate;
+#pragma warning restore CA1859
 
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
@@ -331,10 +336,8 @@ public sealed partial class NpgsqlConnector
     internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection conn)
         : this(dataSource)
     {
-        if (conn.ProvideClientCertificatesCallback is not null)
-            ClientCertificatesCallback = certs => conn.ProvideClientCertificatesCallback(certs);
-        if (conn.UserCertificateValidationCallback is not null)
-            UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+        if (conn.SslClientAuthenticationOptionsCallback is not null)
+            SslClientAuthenticationOptionsCallback = conn.SslClientAuthenticationOptionsCallback;
 
 #pragma warning disable CS0618 // Obsolete
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
@@ -344,8 +347,7 @@ public sealed partial class NpgsqlConnector
     NpgsqlConnector(NpgsqlConnector connector)
         : this(connector.DataSource)
     {
-        ClientCertificatesCallback = connector.ClientCertificatesCallback;
-        UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
+        SslClientAuthenticationOptionsCallback = connector.SslClientAuthenticationOptionsCallback;
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
 
@@ -361,8 +363,7 @@ public sealed partial class NpgsqlConnector
         TransactionLogger = LoggingConfiguration.TransactionLogger;
         CopyLogger = LoggingConfiguration.CopyLogger;
 
-        ClientCertificatesCallback = dataSource.ClientCertificatesCallback;
-        UserCertificateValidationCallback = dataSource.UserCertificateValidationCallback;
+        SslClientAuthenticationOptionsCallback = dataSource.SslClientAuthenticationOptionsCallback;
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
@@ -826,28 +827,13 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            ClientCertificatesCallback?.Invoke(clientCertificates);
-
             var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
             RemoteCertificateValidationCallback? certificateValidationCallback;
             X509Certificate2? caCert;
             string? certRootPath = null;
 
-            if (UserCertificateValidationCallback is not null)
-            {
-                if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
-                    throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
-
-                if (Settings.RootCertificate is not null)
-                    throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
-
-                if (DataSource.TransportSecurityHandler.RootCertificateCallback is not null)
-                    throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback);
-
-                certificateValidationCallback = UserCertificateValidationCallback;
-            }
-            else if (sslMode is SslMode.Prefer or SslMode.Require)
+            if (sslMode is SslMode.Prefer or SslMode.Require)
             {
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
@@ -870,19 +856,31 @@ public sealed partial class NpgsqlConnector
 
             timeout.CheckAndApply(this);
 
+            var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false);
+
+            var sslStreamOptions = new SslClientAuthenticationOptions
+            {
+                TargetHost = Host,
+                ClientCertificates = clientCertificates,
+                EnabledSslProtocols = SslProtocols.None,
+                CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.Offline,
+                RemoteCertificateValidationCallback = certificateValidationCallback
+            };
+
+            SslClientAuthenticationOptionsCallback?.Invoke(sslStreamOptions);
+
             try
             {
-                var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
-
                 if (async)
-                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.None, checkCertificateRevocation).ConfigureAwait(false);
+                    await sslStream.AuthenticateAsClientAsync(sslStreamOptions).ConfigureAwait(false);
                 else
-                    sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.None, checkCertificateRevocation);
+                    sslStream.AuthenticateAsClient(sslStreamOptions);
 
                 _stream = sslStream;
             }
             catch (Exception e)
             {
+                sslStream.Dispose();
                 throw new NpgsqlException("Exception while performing SSL handshake", e);
             }
 

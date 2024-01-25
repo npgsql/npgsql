@@ -1012,27 +1012,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     internal bool IsScramPlus => CheckOpenAndRunInTemporaryScope(c => c.IsScramPlus);
 
     /// <summary>
-    /// Selects the local Secure Sockets Layer (SSL) certificate used for authentication.
+    /// TODO
     /// </summary>
-    /// <remarks>
-    /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.localcertificateselectioncallback(v=vs.110).aspx"/>
-    /// </remarks>
-    public ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; set; }
-
-    /// <summary>
-    /// When using SSL/TLS, this is a callback that allows customizing how the PostgreSQL-provided certificate is verified. This is an
-    /// advanced API, consider using <see cref="SslMode.VerifyFull" /> or <see cref="SslMode.VerifyCA" /> instead.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Cannot be used in conjunction with <see cref="SslMode.Disable" />, <see cref="SslMode.VerifyCA" /> and
-    /// <see cref="SslMode.VerifyFull" />.
-    /// </para>
-    /// <para>
-    /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>.
-    /// </para>
-    /// </remarks>
-    public RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; set; }
+    public Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; set; }
 
     #endregion SSL
 
@@ -1747,8 +1729,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             ? _cloningInstantiator!(_connectionString)
             : _dataSource.CreateConnection();
 
-        conn.ProvideClientCertificatesCallback = ProvideClientCertificatesCallback;
-        conn.UserCertificateValidationCallback = UserCertificateValidationCallback;
+        conn.SslClientAuthenticationOptionsCallback = SslClientAuthenticationOptionsCallback;
 #pragma warning disable CS0618 // Obsolete
         conn.ProvidePasswordCallback = ProvidePasswordCallback;
 #pragma warning restore CS0618
@@ -1773,12 +1754,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         return new NpgsqlConnection(csb.ToString())
         {
-            ProvideClientCertificatesCallback =
-                ProvideClientCertificatesCallback ??
-                (_dataSource?.ClientCertificatesCallback is { } clientCertificatesCallback
-                    ? (ProvideClientCertificatesCallback)(certs => clientCertificatesCallback(certs))
-                    : null),
-            UserCertificateValidationCallback = UserCertificateValidationCallback ?? _dataSource?.UserCertificateValidationCallback,
+            SslClientAuthenticationOptionsCallback = SslClientAuthenticationOptionsCallback ?? _dataSource?.SslClientAuthenticationOptionsCallback,
 #pragma warning disable CS0618 // Obsolete
             ProvidePasswordCallback = ProvidePasswordCallback,
 #pragma warning restore CS0618

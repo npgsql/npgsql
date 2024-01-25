@@ -1002,10 +1002,11 @@ LANGUAGE 'plpgsql'");
         using var _ = CreateTempPool(ConnectionString, out var tempConnectionString);
         await using var clonedConnection = connection.CloneWith(tempConnectionString);
 
-        clonedConnection.UserCertificateValidationCallback!(null!, null, null, SslPolicyErrors.None);
-        Assert.True(userCertificateValidationCallbackCalled);
-        clonedConnection.ProvideClientCertificatesCallback!(null!);
+        var sslClientAuthenticationOptions = new SslClientAuthenticationOptions();
+        clonedConnection.SslClientAuthenticationOptionsCallback!(sslClientAuthenticationOptions);
         Assert.True(clientCertificatesCallbackCalled);
+        sslClientAuthenticationOptions.RemoteCertificateValidationCallback!(null!, null, null, SslPolicyErrors.None);
+        Assert.True(userCertificateValidationCallbackCalled);
 
         bool UserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors errors)
             => userCertificateValidationCallbackCalled = true;
@@ -1023,18 +1024,15 @@ LANGUAGE 'plpgsql'");
     {
         using var pool = CreateTempPool(ConnectionString, out var connectionString);
         using var conn = new NpgsqlConnection(connectionString);
-        ProvideClientCertificatesCallback callback1 = certificates => { };
-        conn.ProvideClientCertificatesCallback = callback1;
-        RemoteCertificateValidationCallback callback2 = (sender, certificate, chain, errors) => true;
-        conn.UserCertificateValidationCallback = callback2;
+        Action<SslClientAuthenticationOptions> callback = _ => { };
+        conn.SslClientAuthenticationOptionsCallback = callback;
 
         conn.Open();
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
         using var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone();
         Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
-        Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
-        Assert.That(conn2.UserCertificateValidationCallback, Is.SameAs(callback2));
+        Assert.That(conn2.SslClientAuthenticationOptionsCallback, Is.SameAs(callback));
         conn2.Open();
         Assert.That(async () => await conn2.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
