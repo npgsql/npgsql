@@ -878,6 +878,18 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslVerifyFullValidation;
             }
 
+            var host = Host;
+
+#if !NET8_0_OR_GREATER
+            // If the host is a valid IP address - replace it with an empty string
+            // We do that because .NET uses targetHost argument to send SNI to the server
+            // RFC explicitly prohibits sending an IP address so some servers might fail
+            // This was already fixed for .NET 8
+            // See #5543 for discussion
+            if (IPAddress.TryParse(host, out _))
+                host = string.Empty;
+#endif
+
             timeout.CheckAndApply(this);
 
             try
@@ -891,9 +903,9 @@ public sealed partial class NpgsqlConnector
 #endif
 
                 if (async)
-                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, sslProtocols, checkCertificateRevocation).ConfigureAwait(false);
+                    await sslStream.AuthenticateAsClientAsync(host, clientCertificates, sslProtocols, checkCertificateRevocation).ConfigureAwait(false);
                 else
-                    sslStream.AuthenticateAsClient(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
+                    sslStream.AuthenticateAsClient(host, clientCertificates, sslProtocols, checkCertificateRevocation);
 
                 _stream = sslStream;
             }
