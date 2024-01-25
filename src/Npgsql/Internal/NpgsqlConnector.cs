@@ -668,7 +668,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 reader.NextResult();
                 reader.Read();
             }
-                
+
             _isTransactionReadOnly = reader.GetString(0) != "off";
 
             var clusterState = UpdateClusterState();
@@ -864,6 +864,18 @@ public sealed partial class NpgsqlConnector : IDisposable
                         certificateValidationCallback = SslVerifyFullValidation;
                     }
 
+                    var host = Host;
+
+#if !NET8_0_OR_GREATER
+                    // If the host is a valid IP address - replace it with an empty string
+                    // We do that because .NET uses targetHost argument to send SNI to the server
+                    // RFC explicitly prohibits sending an IP address so some servers might fail
+                    // This was already fixed for .NET 8
+                    // See #5543 for discussion
+                    if (IPAddress.TryParse(host, out _))
+                        host = string.Empty;
+#endif
+
                     timeout.CheckAndApply(this);
 
                     try
@@ -877,10 +889,10 @@ public sealed partial class NpgsqlConnector : IDisposable
 #endif
 
                         if (async)
-                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
+                            await sslStream.AuthenticateAsClientAsync(host, clientCertificates,
                                 sslProtocols, checkCertificateRevocation);
                         else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates,
+                            sslStream.AuthenticateAsClient(host, clientCertificates,
                                 sslProtocols, checkCertificateRevocation);
 
                         _stream = sslStream;
@@ -2003,7 +2015,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             lock (CleanupLock) { }
             return reason;
         }
-        
+
         try
         {
             // If we're broken while reading prepended messages
@@ -2072,7 +2084,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             Monitor.Exit(CleanupLock);
         }
     }
-        
+
     void FullCleanup()
     {
         lock (CleanupLock)
@@ -2370,7 +2382,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 throw IsBroken
                     ? new NpgsqlException("The connection was previously broken because of the following exception", _breakReason)
                     : new NpgsqlException("The connection is closed");
-            }  
+            }
 
             if (!_userLock!.Wait(0))
             {
