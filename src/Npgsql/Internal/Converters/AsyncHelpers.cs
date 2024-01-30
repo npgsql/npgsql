@@ -87,6 +87,7 @@ static class AsyncHelpers
         if (!typeof(T).IsValueType)
         {
             var value = effectiveConverter.ReadAsObjectAsync(reader, cancellationToken);
+            // Justification: unsafe exact cast used to reduce generic duplication cost.
             return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
         }
 
@@ -102,6 +103,7 @@ static class AsyncHelpers
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
+            // Justification: unsafe exact cast used to reduce generic duplication cost.
             Debug.Assert(task is Task<object>);
             Debug.Assert(completionSource is CompletionSource<T>);
             Unsafe.As<CompletionSource<T>>(completionSource).SetResult((T)new ValueTask<object>(Unsafe.As<Task<object>>(task)).Result);

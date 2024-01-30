@@ -411,13 +411,13 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
             0 => Array.Empty<TElement?>(),
             1 when lengths[0] == 0 => Array.Empty<TElement?>(),
             1 => new TElement?[lengths[0]],
-            2 => new TElement?[lengths[0],lengths[1]],
-            3 => new TElement?[lengths[0],lengths[1], lengths[2]],
-            4 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3]],
-            5 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4]],
-            6 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
-            7 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
-            8 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
+            2 => new TElement?[lengths[0], lengths[1]],
+            3 => new TElement?[lengths[0], lengths[1], lengths[2]],
+            4 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3]],
+            5 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4]],
+            6 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
+            7 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
+            8 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
             _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
         };
 
