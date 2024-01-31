@@ -208,7 +208,11 @@ public class NumericTests : MultiplexingTestBase
         await rdr.ReadAsync();
         var value = rdr.GetFieldValue<decimal>(0);
 
+#if NET7_0_OR_GREATER
         Assert.That(value.Scale, Is.EqualTo(2));
+#else
+        Assert.That(value.ToString(), Is.EqualTo(0.00M.ToString()));
+#endif
     }
 
     public NumericTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
