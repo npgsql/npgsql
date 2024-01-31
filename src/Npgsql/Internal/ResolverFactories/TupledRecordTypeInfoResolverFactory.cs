@@ -15,37 +15,16 @@ sealed class TupledRecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     [RequiresUnreferencedCode("Tupled record resolver may perform reflection on trimmed tuple types.")]
     [RequiresDynamicCode("Tupled records need to construct a generic converter for a statically unknown (value)tuple type.")]
-    class Resolver : IPgTypeInfoResolver
+    class Resolver : DynamicTypeInfoResolver
     {
-        TypeInfoMappingCollection? _mappings;
-        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new());
-
-        public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-            => Mappings.Find(type, dataTypeName, options);
-
-        // Stand-in type, type match predicate does the actual work.
-        static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
+        protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
-            mappings.AddType<Tuple<object>>(DataTypeNames.Record, Factory,
-                mapping => mapping with
-                {
-                    MatchRequirement = MatchRequirement.DataTypeName,
-                    TypeMatchPredicate = type => type is { IsConstructedGenericType: true, FullName: not null }
-                                                 && type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal)
-                });
+            if (!(dataTypeName == DataTypeNames.Record && type is { IsConstructedGenericType: true, FullName: not null } && (
+                    type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal)
+                    || type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal))))
+                return null;
 
-            mappings.AddStructType<ValueTuple<object>>(DataTypeNames.Record, Factory,
-                    mapping => mapping with
-                    {
-                        MatchRequirement = MatchRequirement.DataTypeName,
-                        TypeMatchPredicate = type => type is { IsConstructedGenericType: true, FullName: not null }
-                                                     && type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal)
-                    });
-
-            return mappings;
-        }
-
-        static readonly TypeInfoFactory Factory = static (options, mapping, _) =>
+            return CreateCollection().AddMapping(type, dataTypeName, (options, mapping, _) =>
             {
                 var constructors = mapping.Type.GetConstructors();
                 ConstructorInfo? constructor = null;
@@ -72,7 +51,8 @@ sealed class TupledRecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 var converterType = typeof(RecordConverter<>).MakeGenericType(mapping.Type);
                 var converter = (PgConverter)Activator.CreateInstance(converterType, options, factory)!;
                 return mapping.CreateInfo(options, converter, supportsWriting: false);
-            };
+            });
+        }
 
         static Func<object[], T> CreateFactory<T>(ConstructorInfo constructor, int constructorParameters) => array =>
         {
@@ -84,20 +64,11 @@ sealed class TupledRecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     [RequiresUnreferencedCode("Tupled record resolver may perform reflection on trimmed tuple types.")]
     [RequiresDynamicCode("Tupled records need to construct a generic converter for a statically unknown (value)tuple type.")]
-    sealed class ArrayResolver : Resolver, IPgTypeInfoResolver
+    sealed class ArrayResolver : Resolver
     {
-        TypeInfoMappingCollection? _mappings;
-        new TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(base.Mappings));
-
-        public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-            => Mappings.Find(type, dataTypeName, options);
-
-        static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
-        {
-            mappings.AddArrayType<Tuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
-            mappings.AddStructArrayType<ValueTuple<object>>(DataTypeNames.Record, suppressObjectMapping: true);
-
-            return mappings;
-        }
+        protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+            => type is not null && IsArrayLikeType(type, out var elementType) && IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName)
+                ? base.GetMappings(elementType, elementDataTypeName, options)?.AddArrayMapping(elementType, elementDataTypeName)
+                : null;
     }
 }
