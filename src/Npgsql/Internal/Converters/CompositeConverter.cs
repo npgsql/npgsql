@@ -28,11 +28,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 writeReq = writeReq.Combine(Size.CreateUpperBound(0));
             }
 
-            req = req.Combine(
-                // If a read is Unknown (streaming) we can map it to zero as we just want a minimum buffered size.
-                readReq is { Kind: SizeKind.Unknown } ? Size.Zero : readReq,
-                // For writes Unknown means our size is dependent on the value so we can't ignore it.
-                writeReq);
+            req = req.Combine(readReq, writeReq);
         }
 
         // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
@@ -40,15 +36,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
         _bufferRequirements = req;
 
+        // Return unknown if we hit the limit.
         Size Limit(Size requirement)
         {
             const int maxByteCount = 1024;
-            return requirement switch
-            {
-                { Kind: SizeKind.UpperBound } => Size.CreateUpperBound(Math.Min(maxByteCount, requirement.Value)),
-                { Kind: SizeKind.Exact } => Size.Create(Math.Min(maxByteCount, requirement.Value)),
-                _ => Size.Unknown
-            };
+            return requirement.GetValueOrDefault() > maxByteCount ? requirement.Combine(Size.Unknown) : requirement;
         }
     }
 

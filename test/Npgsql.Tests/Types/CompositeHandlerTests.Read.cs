@@ -19,11 +19,15 @@ public partial class CompositeHandlerTests
     {
         await using var dataSource = await OpenAndMapComposite(composite, schema, nameof(Read), out var name);
         await using var connection = await dataSource.OpenConnectionAsync();
-        await using var command = new NpgsqlCommand($"SELECT ROW({composite.GetValues()})::{name}", connection);
+
+        var literal = $"ROW({composite.GetValues()})::{name}";
+        var arrayLiteral = $"ARRAY[{literal}]::{name}[]";
+        await using var command = new NpgsqlCommand($"SELECT {literal}, {arrayLiteral}", connection);
         await using var reader = command.ExecuteReader();
 
         await reader.ReadAsync();
         assert(() => reader.GetFieldValue<T>(0), composite);
+        assert(() => reader.GetFieldValue<T[]>(1)[0], composite);
     }
 
     [Test]
