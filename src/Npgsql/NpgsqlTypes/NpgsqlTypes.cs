@@ -128,67 +128,33 @@ public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
 /// </remarks>
 public struct NpgsqlBox : IEquatable<NpgsqlBox>
 {
+    NpgsqlPoint _upperRight;
     public NpgsqlPoint UpperRight
     {
         get => _upperRight;
         set
         {
-            if (value.X < _lowerLeft.X)
-            {
-                _upperRight.X = _lowerLeft.X;
-                _lowerLeft.X = value.X;
-            }
-            else
-            {
-                _upperRight.X = value.X;
-            }
-
-            if (value.Y < _lowerLeft.Y)
-            {
-                _upperRight.Y = _lowerLeft.Y;
-                _lowerLeft.Y = value.Y;
-            }
-            else
-            {
-                _upperRight.Y = value.Y;
-            }
+            _upperRight = value;
+            NormalizeBox();
         }
     }
-    private NpgsqlPoint _upperRight;
 
-
+    NpgsqlPoint _lowerLeft;
     public NpgsqlPoint LowerLeft
     {
         get => _lowerLeft;
         set
         {
-            if (value.X > _upperRight.X)
-            {
-                _lowerLeft.X = _upperRight.X;
-                _upperRight.X = value.X;
-            }
-            else
-            {
-                _lowerLeft.X = value.X;
-            }
-
-            if (value.Y > _upperRight.Y)
-            {
-                _lowerLeft.Y = _upperRight.Y;
-                _upperRight.Y = value.Y;
-            }
-            else
-            {
-                _lowerLeft.Y = value.Y;
-            }
+            _lowerLeft = value;
+            NormalizeBox();
         }
     }
-    private NpgsqlPoint _lowerLeft;
 
     public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this()
     {
-        UpperRight = upperRight;
-        LowerLeft = lowerLeft;
+        _upperRight = upperRight;
+        _lowerLeft = lowerLeft;
+        NormalizeBox();
     }
 
     public NpgsqlBox(double top, double right, double bottom, double left)
@@ -216,6 +182,17 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
 
     public override int GetHashCode()
         => HashCode.Combine(Top, Right, Bottom, LowerLeft);
+
+    // Swaps corners for isomorphic boxes, to mirror postgres behavior.
+    // See: https://github.com/postgres/postgres/blob/af2324fabf0020e464b0268be9ef03e8f46ed84b/src/backend/utils/adt/geo_ops.c#L435-L447
+    void NormalizeBox()
+    {
+        if (_upperRight.X < _lowerLeft.X)
+            (_upperRight.X, _lowerLeft.X) = (_lowerLeft.X, _upperRight.X);
+
+        if (_upperRight.Y < _lowerLeft.Y)
+            (_upperRight.Y, _lowerLeft.Y) = (_lowerLeft.Y, _upperRight.Y);
+    }
 }
 
 /// <summary>
