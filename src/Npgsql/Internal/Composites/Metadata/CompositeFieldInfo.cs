@@ -37,6 +37,7 @@ abstract class CompositeFieldInfo
                 return;
             }
             _binaryBufferRequirements = bufferRequirements;
+            Converter = resolution.Converter;
         }
     }
 
@@ -48,7 +49,6 @@ abstract class CompositeFieldInfo
             return Converter;
         }
 
-        // TODO this is effectively static work, we could optimize this away.
         if (!PgTypeInfo.TryBind(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1), DataFormat.Binary, out var converterInfo))
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
 
