@@ -453,18 +453,19 @@ public sealed class PgWriter
     internal ValueTask<NestedWriteScope> BeginNestedWrite(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken)
     {
         Debug.Assert(bufferRequirement != -1);
-        if (ShouldFlush(bufferRequirement))
-            return Core(async, bufferRequirement, byteCount, state, cancellationToken);
 
+        // ShouldFlush depends on the current size for upper bound requirements, so we must set it beforehand.
         _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
+
+        if (ShouldFlush(bufferRequirement))
+            return Core(async, cancellationToken);
 
         return new(new NestedWriteScope());
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-        async ValueTask<NestedWriteScope> Core(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken)
+        async ValueTask<NestedWriteScope> Core(bool async, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
-            _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
             return new();
         }
     }
