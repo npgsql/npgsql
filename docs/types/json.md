@@ -103,7 +103,7 @@ This mapping method is quite powerful, allowing you to read and write nested gra
 
 ## System.Text.Json DOM types
 
-There are cases in which mapping JSON data to POCOs isn't appropriate; for example, your JSON column may not contain a fixed schema and must be inspected to see what it contains; nor these cases, Npgsql supports mapping JSON data to [JsonDocument](https://docs.microsoft.com/dotnet/api/system.text.json.jsondocument) or [JsonElement](https://docs.microsoft.com/dotnet/api/system.text.json.jsonelement) ([see docs](https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/use-dom#use-jsondocument)):
+There are cases in which mapping JSON data to POCOs isn't appropriate; for example, your JSON column may not contain a fixed schema and must be inspected to see what it contains; for these cases, Npgsql supports mapping JSON data to [JsonDocument](https://docs.microsoft.com/dotnet/api/system.text.json.jsondocument) or [JsonElement](https://docs.microsoft.com/dotnet/api/system.text.json.jsonelement) ([see docs](https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/use-dom#use-jsondocument)):
 
 ```c#
 var jsonDocument = JsonDocument.Parse("""{ "a": 8, "b": 9 }""");
