@@ -128,23 +128,34 @@ public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
 /// </remarks>
 public struct NpgsqlBox : IEquatable<NpgsqlBox>
 {
+    NpgsqlPoint _upperRight;
     public NpgsqlPoint UpperRight
     {
         get => _upperRight;
-        set => SetNewValuesToVerticesAndSwapItIfNeeded(ref value, ref _lowerLeft);
+        set
+        {
+            _upperRight = value;
+            NormalizeBox();
+        }
     }
-    NpgsqlPoint _upperRight;
 
-
+    NpgsqlPoint _lowerLeft;
     public NpgsqlPoint LowerLeft
     {
         get => _lowerLeft;
-        set => SetNewValuesToVerticesAndSwapItIfNeeded(ref _upperRight, ref value);
+        set
+        {
+            _lowerLeft = value;
+            NormalizeBox();
+        }
     }
-    NpgsqlPoint _lowerLeft;
 
     public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this()
-        => SetNewValuesToVerticesAndSwapItIfNeeded(ref upperRight, ref lowerLeft);
+    {
+        _upperRight = upperRight;
+        _lowerLeft = lowerLeft;
+        NormalizeBox();
+    }
 
     public NpgsqlBox(double top, double right, double bottom, double left)
         : this(new NpgsqlPoint(right, top), new NpgsqlPoint(left, bottom)) { }
@@ -172,25 +183,15 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
     public override int GetHashCode()
         => HashCode.Combine(Top, Right, Bottom, LowerLeft);
 
-    void SetNewValuesToVerticesAndSwapItIfNeeded(ref NpgsqlPoint upperRightNewValue, ref NpgsqlPoint lowerLeftNewValue)
+    // Swaps corners for isomorphic boxes, to mirror postgres behavior.
+    // See: https://github.com/postgres/postgres/blob/af2324fabf0020e464b0268be9ef03e8f46ed84b/src/backend/utils/adt/geo_ops.c#L435-L447
+    void NormalizeBox()
     {
-        if (upperRightNewValue.X < lowerLeftNewValue.X)
-        {
-            (_upperRight.X, _lowerLeft.X) = (lowerLeftNewValue.X, upperRightNewValue.X);
-        }
-        else
-        {
-            (_upperRight.X, _lowerLeft.X) = (upperRightNewValue.X, lowerLeftNewValue.X);
-        }
+        if (_upperRight.X < _lowerLeft.X)
+            (_upperRight.X, _lowerLeft.X) = (_lowerLeft.X, _upperRight.X);
 
-        if (upperRightNewValue.Y < lowerLeftNewValue.Y)
-        {
-            (_upperRight.Y, _lowerLeft.Y) = (lowerLeftNewValue.Y, upperRightNewValue.Y);
-        }
-        else
-        {
-            (_upperRight.Y, _lowerLeft.Y) = (upperRightNewValue.Y, lowerLeftNewValue.Y);
-        }
+        if (_upperRight.Y < _lowerLeft.Y)
+            (_upperRight.Y, _lowerLeft.Y) = (_lowerLeft.Y, _upperRight.Y);
     }
 }
 

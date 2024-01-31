@@ -58,7 +58,7 @@ class GeometricTypeTests : MultiplexingTestBase
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
 
         await AssertType(
-            swapped with{ UpperRight = new NpgsqlPoint(-20,-10)},
+            swapped with { UpperRight = new NpgsqlPoint(-20,-10) },
             "(-10,-10),(-20,-20)",
             "box",
             NpgsqlDbType.Box,
