@@ -1868,7 +1868,7 @@ override sealed Npgsql.NpgsqlParameter.SourceColumnNullMapping.get -> bool
 override sealed Npgsql.NpgsqlParameter.SourceColumnNullMapping.set -> void
 override sealed Npgsql.NpgsqlParameter.SourceVersion.get -> System.Data.DataRowVersion
 override sealed Npgsql.NpgsqlParameter.SourceVersion.set -> void
-static Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.ConvertToSnakeCase(string! name, System.Globalization.CultureInfo! culture) -> string!
+static Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.ConvertToSnakeCase(string! name, System.Globalization.CultureInfo? culture = null) -> string!
 static Npgsql.NpgsqlCommandBuilder.DeriveParameters(Npgsql.NpgsqlCommand! command) -> void
 static Npgsql.NpgsqlConnection.ClearAllPools() -> void
 static Npgsql.NpgsqlConnection.ClearPool(Npgsql.NpgsqlConnection! connection) -> void

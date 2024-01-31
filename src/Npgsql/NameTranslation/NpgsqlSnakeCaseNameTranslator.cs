@@ -81,7 +81,7 @@ public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
     /// This will be used when converting names to lower case.
     /// If <see langword="null"/> then <see cref="CultureInfo.InvariantCulture"/> will be used.
     /// </param>
-    public static string ConvertToSnakeCase(string name, CultureInfo culture)
+    public static string ConvertToSnakeCase(string name, CultureInfo? culture = null)
     {
         if (string.IsNullOrEmpty(name))
             return name;
@@ -115,7 +115,7 @@ public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
                     builder.Append('_');
                 }
 
-                currentChar = char.ToLower(currentChar, culture);
+                currentChar = char.ToLower(currentChar, culture ?? CultureInfo.InvariantCulture);
                 break;
 
             case UnicodeCategory.LowercaseLetter:
