@@ -315,10 +315,11 @@ readonly struct PgNumeric
             if (Math.Abs(scale) > MaxDecimalScale)
                 throw new OverflowException("Numeric value does not fit in a System.Decimal");
 
-            if (digitCount == 0 && !((sign is SignPositive or SignNegative) && scale > 0)) // handle 0 with scale, ie 0.00 
+            var scaleFactor = new decimal(1, 0, 0, false, (byte)(scale > 0 ? scale : 0));
+            if (digitCount == 0)
                 return sign switch
                 {
-                    SignPositive or SignNegative => decimal.Zero,
+                    SignPositive or SignNegative => decimal.Zero * scaleFactor,
                     SignNan => throw new InvalidCastException("Numeric NaN not supported by System.Decimal"),
                     SignPinf => throw new InvalidCastException("Numeric Infinity not supported by System.Decimal"),
                     SignNinf => throw new InvalidCastException("Numeric -Infinity not supported by System.Decimal"),
@@ -336,7 +337,7 @@ readonly struct PgNumeric
             var digitScale = (weight + 1 - digitCount) * NumericBaseLog10;
             var scaleDifference = scale < 0 ? digitScale : digitScale + scale;
 
-            var digit = digitCount == 0 ? 0 : digits[digitCount - 1];
+            var digit = digits[digitCount - 1];
             if (digitCount == MaxDecimalNumericDigits)
             {
                 // On the max group we adjust the base based on the scale difference, to prevent overflow for valid values.
@@ -360,7 +361,6 @@ readonly struct PgNumeric
                     }
             }
 
-            var scaleFactor = new decimal(1, 0, 0, false, (byte)(scale > 0 ? scale : 0));
             result *= scaleFactor;
             return sign == SignNegative ? -result : result;
         }

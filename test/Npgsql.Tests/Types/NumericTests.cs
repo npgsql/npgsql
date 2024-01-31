@@ -207,7 +207,8 @@ public class NumericTests : MultiplexingTestBase
         using var rdr = await cmd.ExecuteReaderAsync();
         await rdr.ReadAsync();
         var value = rdr.GetFieldValue<decimal>(0);
-        Assert.That(value.ToString(), Is.EqualTo(0.00M.ToString()));
+
+        Assert.That(value.Scale, Is.EqualTo(2));
     }
 
     public NumericTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
