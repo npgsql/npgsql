@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -211,7 +212,7 @@ public class NumericTests : MultiplexingTestBase
 #if NET7_0_OR_GREATER
         Assert.That(value.Scale, Is.EqualTo(2));
 #else
-        Assert.That(value.ToString(), Is.EqualTo(0.00M.ToString()));
+        Assert.That(value.ToString(CultureInfo.InvariantCulture), Is.EqualTo(0.00M.ToString(CultureInfo.InvariantCulture)));
 #endif
     }
 
