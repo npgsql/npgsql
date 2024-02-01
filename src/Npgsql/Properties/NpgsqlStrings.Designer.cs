@@ -177,21 +177,15 @@ namespace Npgsql.Properties {
             }
         }
         
-        internal static string RangeArraysNotEnabled {
-            get {
-                return ResourceManager.GetString("RangeArraysNotEnabled", resourceCulture);
-            }
-        }
-        
         internal static string MultirangesNotEnabled {
             get {
                 return ResourceManager.GetString("MultirangesNotEnabled", resourceCulture);
             }
         }
         
-        internal static string MultirangeArraysNotEnabled {
+        internal static string ArraysNotEnabled {
             get {
-                return ResourceManager.GetString("MultirangeArraysNotEnabled", resourceCulture);
+                return ResourceManager.GetString("ArraysNotEnabled", resourceCulture);
             }
         }
         

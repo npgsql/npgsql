@@ -15,11 +15,14 @@ public sealed class PgSerializerOptions
     [field: ThreadStatic]
     internal static bool IntrospectionCaller { get; set; }
 
+    readonly PgTypeInfoResolverChain _resolverChain;
     readonly Func<string>? _timeZoneProvider;
+    IPgTypeInfoResolver? _typeInfoResolver;
     object? _typeInfoCache;
 
-    internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, Func<string>? timeZoneProvider = null)
+    internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, PgTypeInfoResolverChain? resolverChain = null, Func<string>? timeZoneProvider = null)
     {
+        _resolverChain = resolverChain ?? new();
         _timeZoneProvider = timeZoneProvider;
         DatabaseInfo = databaseInfo;
         UnknownPgType = databaseInfo.GetPostgresType("unknown");
@@ -42,7 +45,11 @@ public sealed class PgSerializerOptions
 
     public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
     public Encoding TextEncoding { get; init; } = Encoding.UTF8;
-    public required IPgTypeInfoResolver TypeInfoResolver { get; init; }
+    public IPgTypeInfoResolver TypeInfoResolver
+    {
+        get => _typeInfoResolver ??= new ChainTypeInfoResolver(_resolverChain);
+        internal init => _typeInfoResolver = value;
+    }
     public bool EnableDateTimeInfinityConversions { get; init; } = true;
 
     public ArrayNullabilityMode ArrayNullabilityMode { get; init; } = ArrayNullabilityMode.Never;
@@ -53,6 +60,10 @@ public sealed class PgSerializerOptions
         typeof(ArraySegment<char>), typeof(ArraySegment<char>?),
         typeof(char), typeof(char?)
     };
+
+    internal bool RangesEnabled => _resolverChain.RangesEnabled;
+    internal bool MultirangesEnabled => _resolverChain.MultirangesEnabled;
+    internal bool ArraysEnabled => _resolverChain.ArraysEnabled;
 
     // We don't verify the kind of pgTypeId we get, it'll throw if it's incorrect.
     // It's up to the caller to call GetCanonicalTypeId if they want to use an oid instead of a DataTypeName.

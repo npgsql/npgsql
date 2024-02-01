@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
+using Npgsql.Properties;
 
 namespace Npgsql.Internal.ResolverFactories;
 
@@ -26,6 +27,17 @@ sealed class JsonDynamicTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     public override IPgTypeInfoResolver CreateResolver() => new Resolver(_jsonbClrTypes, _jsonClrTypes, _serializerOptions);
     public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver(_jsonbClrTypes, _jsonClrTypes, _serializerOptions);
+
+    public static void ThrowIfUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    {
+        if (dataTypeName is { SchemaSpan: "pg_catalog", UnqualifiedNameSpan: "json" or "_json" or "jsonb" or "_jsonb" })
+            throw new NotSupportedException(
+                string.Format(
+                    NpgsqlStrings.DynamicJsonNotEnabled,
+                    type is null || type == typeof(object) ? "<unknown>" : type.Name,
+                    nameof(NpgsqlSlimDataSourceBuilder.EnableDynamicJson),
+                    typeof(TBuilder).Name));
+    }
 
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]

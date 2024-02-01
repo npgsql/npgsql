@@ -11,7 +11,7 @@ namespace Npgsql.Internal.ResolverFactories;
 
 [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
 [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
-sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
+sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 {
     public override IPgTypeInfoResolver CreateResolver() => new EnumResolver();
     public override IPgTypeInfoResolver CreateArrayResolver() => new EnumArrayResolver();

@@ -56,8 +56,9 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
 
     public string UnqualifiedDisplayName => ToDisplayName(UnqualifiedNameSpan);
 
+    internal ReadOnlySpan<char> SchemaSpan => Value.AsSpan(0, _value.IndexOf('.'));
     public string Schema => Value.Substring(0, _value.IndexOf('.'));
-    internal ReadOnlySpan<char> UnqualifiedNameSpan => Value.AsSpan().Slice(_value.IndexOf('.') + 1);
+    internal ReadOnlySpan<char> UnqualifiedNameSpan => Value.AsSpan(_value.IndexOf('.') + 1);
     public string UnqualifiedName => Value.Substring(_value.IndexOf('.') + 1);
     public string Value => _value is null ? ThrowDefaultException() : _value;
 
