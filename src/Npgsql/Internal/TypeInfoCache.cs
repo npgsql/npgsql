@@ -122,8 +122,11 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
             if (pgTypeId is not null && info.PgTypeId != pgTypeId)
                 throw new InvalidOperationException("A Postgres type was passed but the resolved PgTypeInfo does not have an equal PgTypeId.");
 
-            if (type is not null && !info.IsBoxing && info.Type != type)
-                throw new InvalidOperationException($"A CLR type '{type}' was passed but the resolved PgTypeInfo does not have an equal Type: {info.Type}.");
+            if (type is not null && info.Type != type)
+            {
+                if (!info.IsBoxing || (info.IsBoxing && !type.IsAssignableFrom(info.Type)))
+                    throw new InvalidOperationException($"A CLR type '{type}' was passed but the resolved PgTypeInfo does not have an equal Type: {info.Type}.");
+            }
 
             return info;
         }
