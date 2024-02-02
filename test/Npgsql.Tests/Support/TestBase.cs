@@ -368,7 +368,7 @@ public abstract class TestBase
 
     public async Task<InvalidCastException> AssertTypeUnsupportedRead(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
     {
-        dataSource ??= DefaultDataSource;
+        dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
         // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
