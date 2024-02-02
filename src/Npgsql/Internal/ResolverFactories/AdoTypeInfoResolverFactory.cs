@@ -340,9 +340,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             var info = Mappings.Find(type, dataTypeName, options);
 
             Type? elementType = null;
-            if (info is null && dataTypeName is not null &&
-                (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType))
-                && options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresArrayType { Element: var pgElementType })
+            if (info is null && dataTypeName is not null
+                && options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresArrayType { Element: var pgElementType }
+                && (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType)))
             {
                 info = GetEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
                        GetObjectArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options);
