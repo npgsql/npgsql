@@ -380,10 +380,26 @@ public abstract class TestBase
         return Assert.Throws<InvalidCastException>(() => reader.GetValue(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName,
+        NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
         => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, pgTypeName, dataSource);
 
-    public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName,
+        NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
+        where TException : Exception
+    {
+        var result = await AssertTypeUnsupportedReadCore<T, TException>(sqlLiteral, pgTypeName, dataSource);
+
+        // Check the corresponding array type as well
+        if (!skipArrayCheck && !pgTypeName.EndsWith("[]", StringComparison.Ordinal))
+        {
+            await AssertTypeUnsupportedReadCore<T[], TException>(ArrayLiteral(sqlLiteral), pgTypeName + "[]", dataSource);
+        }
+
+        return result;
+    }
+
+    async Task<TException> AssertTypeUnsupportedReadCore<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
         dataSource ??= DataSource;
@@ -398,10 +414,26 @@ public abstract class TestBase
         return Assert.Throws<TException>(() => reader.GetFieldValue<T>(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
-        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName, dataSource);
+    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null,
+        bool skipArrayCheck = false)
+        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName, dataSource, skipArrayCheck: false);
 
-    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
+    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null,
+        NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
+        where TException : Exception
+    {
+        var result = await AssertTypeUnsupportedWriteCore<T, TException>(value, pgTypeName, dataSource);
+
+        // Check the corresponding array type as well
+        if (!skipArrayCheck && !pgTypeName?.EndsWith("[]", StringComparison.Ordinal) == true)
+        {
+            await AssertTypeUnsupportedWriteCore<T[], TException>(new[] { value, value }, pgTypeName + "[]", dataSource);
+        }
+
+        return result;
+    }
+
+    async Task<TException> AssertTypeUnsupportedWriteCore<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
         dataSource ??= DataSource;
