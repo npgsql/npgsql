@@ -84,13 +84,13 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                     builder.AppendResolverFactory(factory);
                 foreach (var factory in _typeMappingResolvers)
                     builder.AppendResolverFactory(factory);
-                return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
+                var chain = builder.Build();
+                return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, chain)
                 {
                     // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
                     PortableTypeIds = true,
                     // Don't throw if our catalog doesn't know the datatypename.
-                    IntrospectionMode = true,
-                    TypeInfoResolver = new TypeInfoResolverChain(builder.Build())
+                    IntrospectionMode = true
                 };
             }
             finally

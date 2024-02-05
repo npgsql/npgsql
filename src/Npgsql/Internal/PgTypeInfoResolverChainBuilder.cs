@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Npgsql.Internal;
@@ -10,7 +11,7 @@ struct PgTypeInfoResolverChainBuilder
     Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addMultirangeResolvers;
     RangeArrayHandler _rangeArrayHandler = RangeArrayHandler.Instance;
     MultirangeArrayHandler _multirangeArrayHandler = MultirangeArrayHandler.Instance;
-    Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _arrayResolvers;
+    Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addArrayResolvers;
 
     public PgTypeInfoResolverChainBuilder()
     {
@@ -66,7 +67,7 @@ struct PgTypeInfoResolverChainBuilder
 
     public void EnableArrays()
     {
-        _arrayResolvers ??= AddResolvers;
+        _addArrayResolvers ??= AddResolvers;
 
         static void AddResolvers(PgTypeInfoResolverChainBuilder instance, List<IPgTypeInfoResolver> resolvers)
         {
@@ -86,7 +87,7 @@ struct PgTypeInfoResolverChainBuilder
         }
     }
 
-    public IEnumerable<IPgTypeInfoResolver> Build(Action<List<IPgTypeInfoResolver>>? configure = null)
+    public PgTypeInfoResolverChain Build(Action<List<IPgTypeInfoResolver>>? configure = null)
     {
         var resolvers = new List<IPgTypeInfoResolver>();
         foreach (var factory in _factories)
@@ -94,9 +95,14 @@ struct PgTypeInfoResolverChainBuilder
         var instance = this;
         _addRangeResolvers?.Invoke(instance, resolvers);
         _addMultirangeResolvers?.Invoke(instance, resolvers);
-        _arrayResolvers?.Invoke(instance, resolvers);
+        _addArrayResolvers?.Invoke(instance, resolvers);
         configure?.Invoke(resolvers);
-        return resolvers;
+        return new(
+            resolvers,
+            rangesEnabled: _addRangeResolvers is not null,
+            multirangesEnabled: _addMultirangeResolvers is not null,
+            arraysEnabled: _addArrayResolvers is not null
+        );
     }
 
     class RangeArrayHandler
@@ -126,4 +132,36 @@ struct PgTypeInfoResolverChainBuilder
 
         public override IPgTypeInfoResolver? CreateMultirangeArrayResolver(PgTypeInfoResolverFactory factory) => factory.CreateMultirangeArrayResolver();
     }
+}
+
+readonly struct PgTypeInfoResolverChain : IEnumerable<IPgTypeInfoResolver>
+{
+    [Flags]
+    enum EnabledFlags
+    {
+        None = 0,
+        Ranges = 1,
+        Multiranges = 2,
+        Arrays = 4
+    }
+
+    readonly EnabledFlags _enabled;
+    readonly List<IPgTypeInfoResolver> _resolvers;
+
+    public PgTypeInfoResolverChain(List<IPgTypeInfoResolver> resolvers, bool rangesEnabled, bool multirangesEnabled, bool arraysEnabled)
+    {
+        _enabled = rangesEnabled ? EnabledFlags.Ranges | _enabled : _enabled;
+        _enabled = multirangesEnabled ? EnabledFlags.Multiranges | _enabled : _enabled;
+        _enabled = arraysEnabled ? EnabledFlags.Arrays | _enabled : _enabled;
+        _resolvers = resolvers;
+    }
+
+    public bool RangesEnabled => _enabled.HasFlag(EnabledFlags.Ranges);
+    public bool MultirangesEnabled => _enabled.HasFlag(EnabledFlags.Multiranges);
+    public bool ArraysEnabled => _enabled.HasFlag(EnabledFlags.Arrays);
+
+    public IEnumerator<IPgTypeInfoResolver> GetEnumerator()
+        => _resolvers?.GetEnumerator() ?? (IEnumerator<IPgTypeInfoResolver>)Array.Empty<IPgTypeInfoResolver>().GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator()
+        => _resolvers?.GetEnumerator() ?? Array.Empty<IPgTypeInfoResolver>().GetEnumerator();
 }
