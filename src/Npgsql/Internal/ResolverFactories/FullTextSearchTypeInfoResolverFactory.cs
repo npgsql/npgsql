@@ -11,9 +11,9 @@ sealed class FullTextSearchTypeInfoResolverFactory : PgTypeInfoResolverFactory
     public override IPgTypeInfoResolver CreateResolver() => new Resolver();
     public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver();
 
-    public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    public static void ThrowIfUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
-        if (type != typeof(object) && (dataTypeName == DataTypeNames.TsQuery || dataTypeName == DataTypeNames.TsVector))
+        if (dataTypeName is { SchemaSpan: "pg_catalog", UnqualifiedNameSpan: "tsquery" or "_tsquery" or "tsvector" or "_tsvector" })
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch), typeof(TBuilder).Name));
 
@@ -23,8 +23,8 @@ sealed class FullTextSearchTypeInfoResolverFactory : PgTypeInfoResolverFactory
         if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType))
             type = elementType;
 
-        if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-            type = type.GetGenericArguments()[0];
+        if (Nullable.GetUnderlyingType(type) is { } underlyingType)
+            type = underlyingType;
 
         if (type == typeof(NpgsqlTsVector) || typeof(NpgsqlTsQuery).IsAssignableFrom(type))
             throw new NotSupportedException(

@@ -13,56 +13,60 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         if (options.IntrospectionMode)
             return null;
 
-        RecordTypeInfoResolverFactory.CheckUnsupported<TBuilder>(type, dataTypeName, options);
-        AdoTypeInfoResolverFactory.ThrowIfRangeUnsupported<TBuilder>(type, dataTypeName, options);
-        AdoTypeInfoResolverFactory.ThrowIfMultirangeUnsupported<TBuilder>(type, dataTypeName, options);
-        FullTextSearchTypeInfoResolverFactory.CheckUnsupported<TBuilder>(type, dataTypeName, options);
-        LTreeTypeInfoResolverFactory.CheckUnsupported<TBuilder>(type, dataTypeName, options);
+        RecordTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
+        FullTextSearchTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
+        LTreeTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
 
-        if (type is null)
-            return null;
+        // The compiler can't see that these method(s) are completely safe, other methods force the attributes on the type(s).
+#pragma warning disable IL3050, IL2026
+        JsonDynamicTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
+#pragma warning restore IL3050, IL2026
 
-        // These checks are here because their resolver types have RUC/RDC
-        if (type != typeof(object))
+        switch (dataTypeName is null ? null : options.DatabaseInfo.GetPostgresType(dataTypeName.GetValueOrDefault()))
         {
-            switch (dataTypeName)
-            {
-            case "pg_catalog.json" or "pg_catalog.jsonb":
-                throw new NotSupportedException(
-                    string.Format(
-                        NpgsqlStrings.DynamicJsonNotEnabled,
-                        type == typeof(object) ? "<unknown>" : type.Name,
-                        nameof(NpgsqlSlimDataSourceBuilder.EnableDynamicJson),
-                        typeof(TBuilder).Name));
-
-            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresEnumType:
+        case PostgresEnumType:
+            // Unmapped enum types never work on object or default.
+            if (type is not null && type != typeof(object))
                 throw new NotSupportedException(
                     string.Format(
                         NpgsqlStrings.UnmappedEnumsNotEnabled,
                         nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
                         typeof(TBuilder).Name));
+            break;
 
-            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresRangeType:
-                throw new NotSupportedException(
-                    string.Format(
-                        NpgsqlStrings.UnmappedRangesNotEnabled,
-                        nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
-                        typeof(TBuilder).Name));
+        case PostgresRangeType when !options.RangesEnabled:
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.RangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), typeof(TBuilder).Name));
+        case PostgresRangeType:
+            throw new NotSupportedException(
+                string.Format(
+                    NpgsqlStrings.UnmappedRangesNotEnabled,
+                    nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
+                    typeof(TBuilder).Name));
 
-            case not null when options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresMultirangeType:
-                throw new NotSupportedException(
-                    string.Format(
-                        NpgsqlStrings.UnmappedRangesNotEnabled,
-                        nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
-                        typeof(TBuilder).Name));
-            }
+        case PostgresMultirangeType when !options.MultirangesEnabled:
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.MultirangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableMultiranges), typeof(TBuilder).Name));
+        case PostgresMultirangeType:
+            throw new NotSupportedException(
+                string.Format(
+                    NpgsqlStrings.UnmappedRangesNotEnabled,
+                    nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
+                    typeof(TBuilder).Name));
+
+        case PostgresArrayType when !options.ArraysEnabled:
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.ArraysNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableArrays), typeof(TBuilder).Name));
         }
 
-        if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) && TypeInfoMappingCollection.IsArrayLikeType(elementType, out _))
-            throw new NotSupportedException("Writing is not supported for jagged collections, use a multidimensional array instead.");
+        if (type is not null)
+        {
+            if (TypeInfoMappingCollection.IsArrayLikeType(type, out var elementType) && TypeInfoMappingCollection.IsArrayLikeType(elementType, out _))
+                throw new NotSupportedException("Writing is not supported for jagged collections, use a multidimensional array instead.");
 
-        if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string) && (dataTypeName is null || dataTypeName.Value.IsArray))
-            throw new NotSupportedException("Writing is not supported for IEnumerable parameters, use an array or List instead.");
+            if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string) && (dataTypeName is null || dataTypeName.Value.IsArray))
+                throw new NotSupportedException("Writing is not supported for IEnumerable parameters, use an array or List instead.");
+        }
 
         return null;
     }

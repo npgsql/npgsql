@@ -31,7 +31,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
-    readonly IPgTypeInfoResolver _resolver;
+    readonly PgTypeInfoResolverChain _resolverChain;
     internal PgSerializerOptions SerializerOptions { get; private set; } = null!; // Initialized at bootstrapping
 
     /// <summary>
@@ -117,8 +117,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Debug.Assert(_passwordProvider is null || _passwordProviderAsync is not null);
 
-        // TODO probably want this on the options so it can devirt unconditionally.
-        _resolver = new TypeInfoResolverChain(resolverChain);
+        _resolverChain = resolverChain;
         _password = settings.Password;
 
         if (_periodicPasswordSuccessRefreshInterval != default)
@@ -249,7 +248,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     TextEncoding = connector.TextEncoding,
-                    TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver()
+                    TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver(),
                 };
 
             NpgsqlDatabaseInfo databaseInfo;
@@ -259,13 +258,13 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             connector.DatabaseInfo = DatabaseInfo = databaseInfo;
             connector.SerializerOptions = SerializerOptions =
-                new(databaseInfo, CreateTimeZoneProvider(connector.Timezone))
+                new(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone))
                 {
                     ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                     EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
                     TextEncoding = connector.TextEncoding,
-                    TypeInfoResolver = _resolver,
-                    DefaultNameTranslator = _defaultNameTranslator
+                    DefaultNameTranslator = _defaultNameTranslator,
+
                 };
 
             IsBootstrapped = true;

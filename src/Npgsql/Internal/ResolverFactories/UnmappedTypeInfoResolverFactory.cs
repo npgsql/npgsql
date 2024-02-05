@@ -11,7 +11,7 @@ namespace Npgsql.Internal.ResolverFactories;
 
 [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
 [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
-sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
+sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 {
     public override IPgTypeInfoResolver CreateResolver() => new EnumResolver();
     public override IPgTypeInfoResolver CreateArrayResolver() => new EnumArrayResolver();
@@ -69,9 +69,9 @@ sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
             var matchedType = type;
-            if (type is not null && !IsTypeOrNullableOfType(type,
+            if ((type is not null && type != typeof(object) && !IsTypeOrNullableOfType(type,
                     static type => type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>),
-                    out matchedType)
+                    out matchedType))
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresRangeType rangeType)
                 return null;
 
@@ -79,7 +79,7 @@ sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 matchedType is null
                     ? options.GetDefaultTypeInfo(rangeType.Subtype)
                     // Input matchedType here as we don't want an NpgsqlRange over Nullable<T> (it has its own nullability tracking, for better or worse)
-                    : options.GetTypeInfo(matchedType.GetGenericArguments()[0], rangeType.Subtype);
+                    : options.GetTypeInfo(matchedType == typeof(object) ? matchedType : matchedType.GetGenericArguments()[0], rangeType.Subtype);
 
             // We have no generic RangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
@@ -88,14 +88,18 @@ sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             subInfo = subInfo.ToNonBoxing();
 
-            matchedType ??= typeof(NpgsqlRange<>).MakeGenericType(subInfo.Type);
+            var converterType = typeof(NpgsqlRange<>).MakeGenericType(subInfo.Type);
 
-            return CreateCollection().AddMapping(matchedType, dataTypeName,
-                (options, mapping, _) => mapping.CreateInfo(options,
-                    (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type),
-                        subInfo.GetResolution().Converter)!,
-                    preferredFormat: subInfo.PreferredFormat, supportsWriting: subInfo.SupportsWriting),
-                mapping => mapping with { MatchRequirement = MatchRequirement.Single });
+            return CreateCollection().AddMapping(matchedType ?? converterType, dataTypeName,
+                (options, mapping, _) =>
+                    new PgTypeInfo(
+                        options,
+                        (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type),
+                            subInfo.GetResolution().Converter)!,
+                        new DataTypeName(mapping.DataTypeName),
+                        unboxedType: matchedType is not null && matchedType != converterType ? converterType : null
+                    ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
+                mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }
 
@@ -106,8 +110,8 @@ sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
             Type? elementType = null;
-            if (!((type is null || IsArrayLikeType(type, out elementType)) &&
-                  IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName)))
+            if ((type is not null && type != typeof(object) && !IsArrayLikeType(type, out elementType))
+                    || !IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName))
                 return null;
 
             var mappings = base.GetMappings(elementType, elementDataTypeName, options);
@@ -123,16 +127,16 @@ sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
             Type? elementType = null;
-            if (type is not null && !IsArrayLikeType(type, out elementType)
+            if ((type is not null && type != typeof(object) && !IsArrayLikeType(type, out elementType))
                 || elementType is not null && !IsTypeOrNullableOfType(elementType,
                     static type => type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>), out _)
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresMultirangeType multirangeType)
                 return null;
 
             var subInfo =
-                elementType is null
+                type is null
                     ? options.GetDefaultTypeInfo(multirangeType.Subrange)
-                    : options.GetTypeInfo(elementType, multirangeType.Subrange);
+                    : options.GetTypeInfo(elementType ?? typeof(object), multirangeType.Subrange);
 
             // We have no generic MultirangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
@@ -141,13 +145,18 @@ sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             subInfo = subInfo.ToNonBoxing();
 
-            type ??= subInfo.Type.MakeArrayType();
+            var converterType = subInfo.Type.MakeArrayType();
 
-            return CreateCollection().AddMapping(type, dataTypeName,
-                (options, mapping, _) => mapping.CreateInfo(options,
-                    (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(type, subInfo.Type), subInfo.GetResolution().Converter)!,
-                    preferredFormat: subInfo.PreferredFormat, supportsWriting: subInfo.SupportsWriting),
-                mapping => mapping with { MatchRequirement = MatchRequirement.Single });
+            return CreateCollection().AddMapping(type ?? converterType, dataTypeName,
+                (options, mapping, _) =>
+                    new PgTypeInfo(
+                        options,
+                        (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(converterType, subInfo.Type),
+                            subInfo.GetResolution().Converter)!,
+                        new DataTypeName(mapping.DataTypeName),
+                        unboxedType: type is not null && type != converterType ? converterType : null
+                    ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
+                mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }
 
@@ -157,8 +166,9 @@ sealed partial class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
     {
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
-            Type? elementType = null;
-            if (!((type is null || IsArrayLikeType(type, out elementType)) && IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName)))
+            var elementType = type == typeof(object) ? type : null;
+            if ((type is not null && type != typeof(object) && !IsArrayLikeType(type, out elementType))
+                || !IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName))
                 return null;
 
             var mappings = base.GetMappings(elementType, elementDataTypeName, options);

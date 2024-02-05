@@ -2,8 +2,6 @@ using System;
 using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
-using Npgsql.PostgresTypes;
-using Npgsql.Properties;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Internal.PgConverterFactory;
@@ -14,71 +12,6 @@ sealed partial class AdoTypeInfoResolverFactory
 {
     public override IPgTypeInfoResolver CreateRangeResolver() => new RangeResolver();
     public override IPgTypeInfoResolver CreateRangeArrayResolver() => new RangeArrayResolver();
-
-    public static void ThrowIfRangeUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-    {
-        var kind = CheckRangeUnsupported(type, dataTypeName, options);
-        switch (kind)
-        {
-        case PostgresTypeKind.Range when kind.Value.HasFlag(PostgresTypeKind.Array):
-            throw new NotSupportedException(
-                string.Format(NpgsqlStrings.RangeArraysNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableArrays), typeof(TBuilder).Name));
-        case PostgresTypeKind.Range:
-            throw new NotSupportedException(
-                string.Format(NpgsqlStrings.RangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), typeof(TBuilder).Name));
-        default:
-            return;
-        }
-    }
-
-    public static PostgresTypeKind? CheckRangeUnsupported(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-    {
-        // Only trigger on well known data type names.
-        var npgsqlDbType = dataTypeName?.ToNpgsqlDbType();
-        if (type != typeof(object))
-        {
-            if (npgsqlDbType?.HasFlag(NpgsqlDbType.Range) != true && npgsqlDbType?.HasFlag(NpgsqlDbType.Multirange) != true)
-                return null;
-
-            if (npgsqlDbType.Value.HasFlag(NpgsqlDbType.Range))
-                return dataTypeName?.IsArray == true
-                    ? PostgresTypeKind.Array | PostgresTypeKind.Range
-                    : PostgresTypeKind.Range;
-
-            return dataTypeName?.IsArray == true
-                ? PostgresTypeKind.Array | PostgresTypeKind.Multirange
-                : PostgresTypeKind.Multirange;
-        }
-
-        if (type == typeof(object))
-            return null;
-
-        if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-            type = type.GetGenericArguments()[0];
-
-        if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
-        {
-            type = type.GetGenericArguments()[0];
-            var matchingArguments =
-                new[]
-                {
-                    typeof(int), typeof(long), typeof(decimal), typeof(DateTime),
-# if NET6_0_OR_GREATER
-                    typeof(DateOnly)
-#endif
-                };
-
-            // If we don't know more than the clr type, default to a Multirange kind over Array as they share the same types.
-            foreach (var argument in matchingArguments)
-                if (argument == type)
-                    return PostgresTypeKind.Range;
-
-            if (type.AssemblyQualifiedName == "System.Numerics.BigInteger,System.Runtime.Numerics")
-                return PostgresTypeKind.Range;
-        }
-
-        return null;
-    }
 
     class RangeResolver : IPgTypeInfoResolver
     {

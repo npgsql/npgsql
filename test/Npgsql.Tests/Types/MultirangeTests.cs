@@ -155,6 +155,11 @@ public class MultirangeTests : TestBase
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
+        exception = await AssertTypeUnsupportedRead("""{["bar","foo"],["moo","zoo"]}""",
+            multirangeTypeName);
+        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+
         exception = await AssertTypeUnsupportedRead<NpgsqlRange<string>>(
             """{["bar","foo"],["moo","zoo"]}""",
             multirangeTypeName);

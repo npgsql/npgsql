@@ -85,14 +85,11 @@
     <data name="RangesNotEnabled" xml:space="preserve">
         <value>Ranges aren't enabled; please call {0} on {1} to enable ranges.</value>
     </data>
-    <data name="RangeArraysNotEnabled" xml:space="preserve">
-        <value>Range arrays aren't enabled; please call {0} on {1} to enable arrays for ranges.</value>
-    </data>
     <data name="MultirangesNotEnabled" xml:space="preserve">
         <value>Multiranges aren't enabled; please call {0} on {1} to enable multiranges.</value>
     </data>
-    <data name="MultirangeArraysNotEnabled" xml:space="preserve">
-        <value>Multirange arrays aren't enabled; please call {0} on {1} to enable arrays for multiranges.</value>
+    <data name="ArraysNotEnabled" xml:space="preserve">
+        <value>Arrays aren't enabled; please call {0} on {1} to enable arrays.</value>
     </data>
     <data name="TimestampTzNoDateTimeUnspecified" xml:space="preserve">
         <value>Cannot write DateTime with Kind={0} to PostgreSQL type '{1}', only UTC is supported. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
