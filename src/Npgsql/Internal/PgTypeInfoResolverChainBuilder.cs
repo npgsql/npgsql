@@ -6,7 +6,7 @@ namespace Npgsql.Internal;
 
 struct PgTypeInfoResolverChainBuilder
 {
-    readonly List<PgTypeInfoResolverFactory> _factories = new();
+    readonly List<(Type ImplementationType, object)> _factories = new();
     Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addRangeResolvers;
     Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addMultirangeResolvers;
     RangeArrayHandler _rangeArrayHandler = RangeArrayHandler.Instance;
@@ -19,24 +19,42 @@ struct PgTypeInfoResolverChainBuilder
 
     public void Clear() => _factories.Clear();
 
-    public void AppendResolverFactory(PgTypeInfoResolverFactory factory) => AddResolverFactory(factory);
-    public void PrependResolverFactory(PgTypeInfoResolverFactory factory) => AddResolverFactory(factory, prepend: true);
+    public void AppendResolverFactory(PgTypeInfoResolverFactory factory)
+        => AddResolverFactory(factory.GetType(), factory);
+    public void AppendResolverFactory<T>(Func<T> factory) where T : PgTypeInfoResolverFactory
+        => AddResolverFactory(typeof(T), Memoize(factory));
 
-    void AddResolverFactory(PgTypeInfoResolverFactory factory, bool prepend = false)
+    public void PrependResolverFactory(PgTypeInfoResolverFactory factory)
+        => AddResolverFactory(factory.GetType(), factory, prepend: true);
+    public void PrependResolverFactory<T>(Func<T> factory) where T : PgTypeInfoResolverFactory
+        => AddResolverFactory(typeof(T), Memoize(factory), prepend: true);
+
+    static Func<PgTypeInfoResolverFactory> Memoize(Func<PgTypeInfoResolverFactory> factory)
     {
-        var type = factory.GetType();
+        PgTypeInfoResolverFactory? instance = null;
+        return () => instance ??= factory();
+    }
 
+    static PgTypeInfoResolverFactory GetInstance((Type, object Instance) factory) => factory.Instance switch
+    {
+        PgTypeInfoResolverFactory f => f,
+        Func<PgTypeInfoResolverFactory> f => f(),
+        _ => throw new ArgumentOutOfRangeException(nameof(factory), factory, null)
+    };
+
+    void AddResolverFactory(Type type, object factory, bool prepend = false)
+    {
         for (var i = 0; i < _factories.Count; i++)
-            if (_factories[i].GetType() == type)
+            if (_factories[i].ImplementationType == type)
             {
                 _factories.RemoveAt(i);
                 break;
             }
 
         if (prepend)
-            _factories.Insert(0, factory);
+            _factories.Insert(0, (type, factory));
         else
-            _factories.Add(factory);
+            _factories.Add((type, factory));
     }
 
     public void EnableRanges()
@@ -47,7 +65,7 @@ struct PgTypeInfoResolverChainBuilder
         static void AddResolvers(PgTypeInfoResolverChainBuilder instance, List<IPgTypeInfoResolver> resolvers)
         {
             foreach (var factory in instance._factories)
-                if (factory.CreateRangeResolver() is { } resolver)
+                if (GetInstance(factory).CreateRangeResolver() is { } resolver)
                     resolvers.Add(resolver);
         }
     }
@@ -60,7 +78,7 @@ struct PgTypeInfoResolverChainBuilder
         static void AddResolvers(PgTypeInfoResolverChainBuilder instance, List<IPgTypeInfoResolver> resolvers)
         {
             foreach (var factory in instance._factories)
-                if (factory.CreateMultirangeResolver() is { } resolver)
+                if (GetInstance(factory).CreateMultirangeResolver() is { } resolver)
                     resolvers.Add(resolver);
         }
     }
@@ -72,17 +90,17 @@ struct PgTypeInfoResolverChainBuilder
         static void AddResolvers(PgTypeInfoResolverChainBuilder instance, List<IPgTypeInfoResolver> resolvers)
         {
             foreach (var factory in instance._factories)
-                if (factory.CreateArrayResolver() is { } resolver)
+                if (GetInstance(factory).CreateArrayResolver() is { } resolver)
                     resolvers.Add(resolver);
 
             if (instance._addRangeResolvers is not null)
                 foreach (var factory in instance._factories)
-                    if (instance._rangeArrayHandler.CreateRangeArrayResolver(factory) is { } resolver)
+                    if (instance._rangeArrayHandler.CreateRangeArrayResolver(GetInstance(factory)) is { } resolver)
                         resolvers.Add(resolver);
 
             if (instance._addMultirangeResolvers is not null)
                 foreach (var factory in instance._factories)
-                    if (instance._multirangeArrayHandler.CreateMultirangeArrayResolver(factory) is { } resolver)
+                    if (instance._multirangeArrayHandler.CreateMultirangeArrayResolver(GetInstance(factory)) is { } resolver)
                         resolvers.Add(resolver);
         }
     }
@@ -91,7 +109,7 @@ struct PgTypeInfoResolverChainBuilder
     {
         var resolvers = new List<IPgTypeInfoResolver>();
         foreach (var factory in _factories)
-            resolvers.Add(factory.CreateResolver());
+            resolvers.Add(GetInstance(factory).CreateResolver());
         var instance = this;
         _addRangeResolvers?.Invoke(instance, resolvers);
         _addMultirangeResolvers?.Invoke(instance, resolvers);
