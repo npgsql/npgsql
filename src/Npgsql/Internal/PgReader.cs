@@ -65,7 +65,7 @@ public class PgReader
     public ValueMetadata Current => new() { Size = CurrentSize, Format = _fieldFormat, BufferRequirement = CurrentBufferRequirement };
     public int CurrentRemaining => HasCurrent ? _currentSize - CurrentOffset : FieldRemaining;
 
-    Size CurrentBufferRequirement => HasCurrent ? _currentBufferRequirement : _fieldBufferRequirement;
+    internal Size CurrentBufferRequirement => HasCurrent ? _currentBufferRequirement : _fieldBufferRequirement;
     int CurrentOffset => FieldOffset - _currentStartPos;
 
     internal bool IsAtStart => FieldOffset is 0;
