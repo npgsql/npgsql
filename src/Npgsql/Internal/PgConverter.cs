@@ -76,8 +76,8 @@ public abstract class PgConverter
     }
 
     [DoesNotReturn]
-    private protected static void ThrowIORequired()
-        => throw new InvalidOperationException("Buffer requirements for format not respected, expected no IO to be required.");
+    private protected void ThrowIORequired(Size bufferRequirement)
+        => throw new InvalidOperationException($"Buffer requirement '{bufferRequirement}' not respected for converter '{GetType().FullName}', expected no IO to be required.");
 
     private protected static bool ThrowInvalidNullValue()
         => throw new ArgumentNullException("value", "Null value given for non-nullable type converter");

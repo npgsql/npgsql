@@ -54,17 +54,18 @@ public readonly struct Size : IEquatable<Size>
 
     public static implicit operator Size(int value) => Create(value);
 
-    string DebuggerDisplay
-        => _kind switch
-        {
-            SizeKind.Exact or SizeKind.UpperBound => $"{_value} ({_kind})",
-            SizeKind.Unknown => "Unknown",
-            _ => throw new ArgumentOutOfRangeException()
-        };
+    string DebuggerDisplay => ToString();
 
     public bool Equals(Size other) => _value == other._value && _kind == other.Kind;
     public override bool Equals(object? obj) => obj is Size other && Equals(other);
     public override int GetHashCode() => HashCode.Combine(_value, (int)_kind);
     public static bool operator ==(Size left, Size right) => left.Equals(right);
     public static bool operator !=(Size left, Size right) => !left.Equals(right);
+
+    public override string ToString() => _kind switch
+    {
+        SizeKind.Exact or SizeKind.UpperBound => $"{_value} ({_kind.ToString()})",
+        SizeKind.Unknown => nameof(SizeKind.Unknown),
+        _ => throw new ArgumentOutOfRangeException()
+    };
 }
