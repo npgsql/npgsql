@@ -272,7 +272,7 @@ public sealed class TypeInfoMappingCollection
         };
 
     Func<Type?, bool> GetArrayTypeMatchPredicate(Func<Type?, bool> elementTypeMatchPredicate)
-        => type => type is null ? elementTypeMatchPredicate(null) : type.IsArray && elementTypeMatchPredicate.Invoke(type.GetElementType()!);
+        => type => type is null ? elementTypeMatchPredicate(null) : type.IsArray && elementTypeMatchPredicate(type.GetElementType()!);
     Func<Type?, bool> GetListTypeMatchPredicate<TElement>(Func<Type?, bool> elementTypeMatchPredicate)
         => type => type is null ? elementTypeMatchPredicate(null)
             // We anti-constrain on IsArray to avoid matching byte/sbyte, short/ushort int/uint
@@ -654,7 +654,10 @@ public sealed class TypeInfoMappingCollection
 
     /// Returns whether type matches any of the types we register pg arrays as.
     [UnconditionalSuppressMessage("Trimming", "IL2070",
-        Justification = "We care about IList<T> implementations if the instantiation is actually rooted by us through a registered mapping.")]
+        Justification = "Checking for IList<T> implementing types requires interface list enumeration which isn't compatible with trimming. " +
+                        "However as long as a concrete IList<T> is rooted somewhere in the app, for instance through an `AddArrayType<T>(...)` mapping, every implementation must keep it.")]
+    // We care about IList<T> implementations if the instantiation is actually rooted by us through an Array mapping.
+    // Dynamic resolvers are a notable counterexample, but they are all correctly marked with RequiresUnreferencedCode.
     public static bool IsArrayLikeType(Type type, [NotNullWhen(true)] out Type? elementType)
     {
         if (type.GetElementType() is { } t)
