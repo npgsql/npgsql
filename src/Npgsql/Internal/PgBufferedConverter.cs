@@ -19,7 +19,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     {
         // We check IsAtStart first to speed up primitive reads.
         if (!reader.IsAtStart && reader.ShouldBufferCurrent())
-            ThrowIORequired();
+            ThrowIORequired(reader.Current.BufferRequirement);
 
         return ReadCore(reader);
     }
@@ -33,7 +33,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     public sealed override void Write(PgWriter writer, T value)
     {
         if (!writer.BufferingWrite && writer.ShouldFlush(writer.CurrentBufferRequirement))
-            ThrowIORequired();
+            ThrowIORequired(writer.Current.BufferRequirement);
 
         WriteCore(writer, value);
     }
