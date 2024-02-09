@@ -29,6 +29,7 @@ struct PgTypeInfoResolverChainBuilder
     public void PrependResolverFactory<T>(Func<T> factory) where T : PgTypeInfoResolverFactory
         => AddResolverFactory(typeof(T), Memoize(factory), prepend: true);
 
+    // Memoize the caller factory so all our actions (_addArrayResolvers etc.) call into the same instance.
     static Func<PgTypeInfoResolverFactory> Memoize(Func<PgTypeInfoResolverFactory> factory)
     {
         PgTypeInfoResolverFactory? instance = null;

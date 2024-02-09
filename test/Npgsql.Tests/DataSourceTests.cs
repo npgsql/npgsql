@@ -1,6 +1,8 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
@@ -306,5 +308,52 @@ public class DataSourceTests : TestBase
 
         await using var command = dataSource.CreateCommand("SHOW application_name");
         Assert.That(await command.ExecuteScalarAsync(), Is.EqualTo("foo"));
+    }
+
+    class Test
+    {
+        public int Id { get; set; }
+    }
+
+    [Test]
+    public async Task ConfigureJsonOptions_is_order_independent()
+    {
+        // Expect failure, no options
+        {
+            var builder = CreateDataSourceBuilder();
+            builder.EnableDynamicJson();
+            await using var dataSource = builder.Build();
+
+            await using var command = dataSource.CreateCommand("SELECT '{\"id\": 1}'::json;");
+            using var reader = await command.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<Test>(0).Id, Is.EqualTo(default(int)));
+        }
+
+        // Expect success, ConfigureJsonOptions before EnableDynamicJson
+        {
+            var builder = CreateDataSourceBuilder();
+            builder.ConfigureJsonOptions(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            builder.EnableDynamicJson();
+            await using var dataSource = builder.Build();
+
+            await using var command = dataSource.CreateCommand("SELECT '{\"id\": 1}'::json;");
+            using var reader = await command.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<Test>(0).Id, Is.EqualTo(1));
+        }
+
+        // Expect success, EnableDynamicJson before ConfigureJsonOptions
+        {
+            var builder = CreateDataSourceBuilder();
+            builder.EnableDynamicJson();
+            builder.ConfigureJsonOptions(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            await using var dataSource = builder.Build();
+
+            await using var command = dataSource.CreateCommand("SELECT '{\"id\": 1}'::json;");
+            using var reader = await command.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<Test>(0).Id, Is.EqualTo(1));
+        }
     }
 }
