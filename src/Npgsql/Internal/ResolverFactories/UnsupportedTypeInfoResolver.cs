@@ -65,7 +65,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
                 throw new NotSupportedException("Writing is not supported for jagged collections, use a multidimensional array instead.");
 
             if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string) && (dataTypeName is null || dataTypeName.Value.IsArray))
-                throw new NotSupportedException("Writing is not supported for IEnumerable parameters, use an array or List instead.");
+                throw new NotSupportedException("Writing is not supported for IEnumerable parameters, use an array or some implementation of IList<T> instead.");
         }
 
         return null;

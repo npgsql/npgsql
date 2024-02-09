@@ -14,9 +14,6 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     readonly PgConverter<TRange> _rangeConverter;
     readonly BufferRequirements _rangeRequirements;
 
-    static MultirangeConverter()
-        => Debug.Assert(typeof(T).IsArray || typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>));
-
     public MultirangeConverter(PgConverter<TRange> rangeConverter)
     {
         if (!rangeConverter.CanConvert(DataFormat.Binary, out var bufferRequirements))

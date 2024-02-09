@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
@@ -156,6 +157,18 @@ SELECT onedim, twodim FROM (VALUES
             new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefaultForReading: false);
 
     [Test]
+    public async Task Write_IList_implementation()
+        => await AssertTypeWrite(
+            ImmutableArray.Create(1, 2, 3), "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+
+    [Test]
+    public void Read_IList_implementation_throws()
+    {
+        Assert.ThrowsAsync<InvalidCastException>(() =>
+            AssertTypeRead("{1,2,3}", "integer[]", ImmutableArray.Create(1, 2, 3), isDefault: false));
+    }
+
+    [Test]
     public async Task Generic_IList()
     {
         await using var conn = await OpenConnectionAsync();
@@ -283,8 +296,14 @@ SELECT onedim, twodim FROM (VALUES
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
-        cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
-        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidCastException>().With.Property("InnerException").Message.Contains("array or List"));
+        cmd.Parameters.AddWithValue("p1", new EnumerableOnly<int>());
+        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidCastException>().With.Property("InnerException").Message.Contains("array or some implementation of IList<T>"));
+    }
+
+    class EnumerableOnly<T> : IEnumerable<T>
+    {
+        public IEnumerator<T> GetEnumerator() => throw new NotImplementedException();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
