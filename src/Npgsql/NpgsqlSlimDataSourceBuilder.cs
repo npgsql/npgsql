@@ -365,7 +365,10 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     void INpgsqlTypeMapper.Reset() => _resolverChainBuilder.Clear();
 
     internal Action<List<IPgTypeInfoResolver>> ConfigureResolverChain { get; set; }
-    internal void AppendResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.AppendResolverFactory(factory);
+    internal void AppendResolverFactory(PgTypeInfoResolverFactory factory)
+        => _resolverChainBuilder.AppendResolverFactory(factory);
+    internal void AppendResolverFactory<T>(Func<T> factory) where T : PgTypeInfoResolverFactory
+        => _resolverChainBuilder.AppendResolverFactory(factory);
 
     internal void AppendDefaultFactories()
     {
@@ -493,7 +496,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        _resolverChainBuilder.AppendResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, JsonSerializerOptions));
+        _resolverChainBuilder.AppendResolverFactory(() => new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, JsonSerializerOptions));
         return this;
     }
 
