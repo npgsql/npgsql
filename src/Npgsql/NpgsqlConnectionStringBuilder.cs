@@ -15,6 +15,10 @@ namespace Npgsql;
 /// Provides a simple way to create and manage the contents of connection strings used by
 /// the <see cref="NpgsqlConnection"/> class.
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2112:ReflectionToRequiresUnreferencedCode",
+    Justification = "Suppressing the same warnings as suppressed in the base DbConnectionStringBuilder. See https://github.com/dotnet/runtime/issues/97057")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2113:ReflectionToRequiresUnreferencedCode",
+    Justification = "Suppressing the same warnings as suppressed in the base DbConnectionStringBuilder. See https://github.com/dotnet/runtime/issues/97057")]
 public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, IDictionary<string, object?>
 {
     #region Fields

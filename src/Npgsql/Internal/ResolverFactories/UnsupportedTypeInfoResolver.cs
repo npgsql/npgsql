@@ -17,10 +17,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         FullTextSearchTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
         LTreeTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
 
-        // The compiler can't see that these method(s) are completely safe, other methods force the attributes on the type(s).
-#pragma warning disable IL3050, IL2026
-        JsonDynamicTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
-#pragma warning restore IL3050, IL2026
+        JsonDynamicTypeInfoResolverFactory.Support.ThrowIfUnsupported<TBuilder>(type, dataTypeName);
 
         switch (dataTypeName is null ? null : options.DatabaseInfo.GetPostgresType(dataTypeName.GetValueOrDefault()))
         {
