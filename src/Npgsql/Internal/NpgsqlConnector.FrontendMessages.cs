@@ -105,9 +105,14 @@ partial class NpgsqlConnector
         }
     }
 
-    internal async Task WriteParse(string sql, byte[] asciiName, List<NpgsqlParameter> inputParameters, bool async, CancellationToken cancellationToken = default)
+    internal async Task WriteParse(string sql, byte[] asciiName, List<NpgsqlParameter> parameters, bool async, CancellationToken cancellationToken = default)
     {
         NpgsqlWriteBuffer.AssertASCIIOnly(asciiName);
+
+        // See https://www.postgresql.org/docs/current/limits.html
+        if (parameters.Count > ushort.MaxValue)
+            ThrowHelper.ThrowArgumentException("Too many parameters in statement (max: 65535).", nameof(parameters));
+        var parameterCount = (ushort)parameters.Count;
 
         int queryByteLen;
         try
@@ -120,39 +125,41 @@ partial class NpgsqlConnector
             throw;
         }
 
-        var writeBuffer = WriteBuffer;
+        var headerLength =
+            sizeof(byte) + // Message code
+            sizeof(int) + // Message length
+            asciiName.Length + sizeof(byte); // Statement name plus null terminator
+
         var messageLength =
-            sizeof(byte)                +         // Message code
-            sizeof(int)                 +         // Length
-            asciiName.Length        +         // Statement name
-            sizeof(byte)                +         // Null terminator for the statement name
-            queryByteLen + sizeof(byte) +         // SQL query length plus null terminator
-            sizeof(ushort)              +         // Number of parameters
-            inputParameters.Count * sizeof(int);  // Parameter OIDs
+            headerLength +
+            queryByteLen + sizeof(byte) + // SQL query length plus null terminator
+            sizeof(ushort) + // Number of parameters
+            parameterCount * sizeof(int); // Parameter OIDs
 
-
-        WriteBuffer.StartMessage(messageLength);
-        if (WriteBuffer.WriteSpaceLeft < 1 + 4 + asciiName.Length + 1)
+        var writeBuffer = WriteBuffer;
+        writeBuffer.StartMessage(messageLength);
+        if (writeBuffer.WriteSpaceLeft < headerLength)
+        {
+            Debug.Assert(writeBuffer.Size >= headerLength, "Write buffer too small for Parse header");
             await Flush(async, cancellationToken).ConfigureAwait(false);
+        }
 
-        WriteBuffer.WriteByte(FrontendMessageCode.Parse);
-        WriteBuffer.WriteInt32(messageLength - 1);
-        WriteBuffer.WriteNullTerminatedString(asciiName);
+        writeBuffer.WriteByte(FrontendMessageCode.Parse);
+        writeBuffer.WriteInt32(messageLength - 1);
+        writeBuffer.WriteNullTerminatedString(asciiName);
 
         await writeBuffer.WriteString(sql, queryByteLen, async, cancellationToken).ConfigureAwait(false);
-
-        if (writeBuffer.WriteSpaceLeft < 1 + 2)
+        if (writeBuffer.WriteSpaceLeft < sizeof(byte) + sizeof(short))
             await Flush(async, cancellationToken).ConfigureAwait(false);
         writeBuffer.WriteByte(0); // Null terminator for the query
-        writeBuffer.WriteUInt16((ushort)inputParameters.Count);
 
+        writeBuffer.WriteUInt16(parameterCount);
         var databaseInfo = DatabaseInfo;
-        foreach (var p in inputParameters)
+        for (var i = 0; i < parameters.Count; i++)
         {
-            if (writeBuffer.WriteSpaceLeft < 4)
+            if (writeBuffer.WriteSpaceLeft < sizeof(uint))
                 await Flush(async, cancellationToken).ConfigureAwait(false);
-
-            writeBuffer.WriteUInt32(databaseInfo.GetOid(p.PgTypeId).Value);
+            writeBuffer.WriteUInt32(databaseInfo.GetOid(parameters[i].PgTypeId).Value);
         }
     }
 
