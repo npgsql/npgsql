@@ -454,7 +454,11 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         try
         {
-            await WriteTrailer(async, cancellationToken).ConfigureAwait(false);
+            // Write trailer
+            if (_buf.WriteSpaceLeft < 2)
+                await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
+            _buf.WriteInt16(-1);
+
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
             _buf.EndCopyMode();
             await _connector.WriteCopyDone(async, cancellationToken).ConfigureAwait(false);
@@ -582,13 +586,6 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         _state = ImporterState.Disposed;
     }
 #pragma warning restore CS8625
-
-    async Task WriteTrailer(bool async, CancellationToken cancellationToken = default)
-    {
-        if (_buf.WriteSpaceLeft < 2)
-            await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
-        _buf.WriteInt16(-1);
-    }
 
     void CheckReady()
     {
