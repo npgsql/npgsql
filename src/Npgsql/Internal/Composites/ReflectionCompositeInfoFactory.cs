@@ -94,7 +94,7 @@ static class ReflectionCompositeInfoFactory
         return new CompositeInfo<T>(compositeFields!, constructorInfo is null ? 0 : constructorParameters.Length, constructor);
 
         static NotSupportedException NotSupportedField(PostgresCompositeType composite, PostgresCompositeType.Field field, bool isField, string name, Type type)
-            => new($"No resolution could be found for ('{type.FullName}', '{field.Type.FullName}'). Mapping: CLR {(isField ? "field" : "property")} '{type.Name}.{name}' <-> Composite field '{composite.Name}.{field.Name}'");
+            => new($"No mapping could be found for ('{type.FullName}', '{field.Type.FullName}'). Mapping: CLR {(isField ? "field" : "property")} '{typeof(T).FullName}.{name}' <-> Composite field '{composite.Name}.{field.Name}'");
     }
 
     static Delegate CreateGetter<T>(FieldInfo info)
