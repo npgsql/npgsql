@@ -26,7 +26,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         get => _typedValue;
         set
         {
-            if (typeof(T) == typeof(object) && (value is null || _typedValue?.GetType() != value.GetType()))
+            if (typeof(T) == typeof(object) && ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
                 ResetBindingInfo();

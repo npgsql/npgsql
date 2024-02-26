@@ -228,6 +228,11 @@ public abstract class NpgsqlDatabaseInfo
 
     internal void ProcessTypes()
     {
+        var unspecified = new PostgresBaseType(DataTypeName.Unspecified, Oid.Unspecified);
+        ByOID[Oid.Unspecified.Value] = unspecified;
+        ByFullName[unspecified.DataTypeName.Value] = unspecified;
+        ByName[unspecified.InternalName] = unspecified;
+
         foreach (var type in GetTypes())
         {
             ByOID[type.OID] = type;

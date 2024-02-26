@@ -48,9 +48,9 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     internal static DataTypeName ValidatedName(string fullyQualifiedDataTypeName)
         => new(fullyQualifiedDataTypeName, validated: true);
 
-    // Includes schema unless it's pg_catalog.
+    // Includes schema unless it's pg_catalog or the name is unspecified.
     public string DisplayName =>
-        Value.StartsWith("pg_catalog", StringComparison.Ordinal)
+        Value.StartsWith("pg_catalog", StringComparison.Ordinal) || Value == Unspecified
             ? UnqualifiedDisplayName
             : Schema + "." + UnqualifiedDisplayName;
 
