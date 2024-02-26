@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -35,7 +36,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// <summary>
     /// The number of columns, as returned from the backend in the CopyInResponse.
     /// </summary>
-    internal int NumColumns { get; private set; }
+    int NumColumns => _params.Length;
 
     bool InMiddleOfRow => _column != -1 && _column != NumColumns;
 
@@ -98,8 +99,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             throw _connector.UnexpectedMessageReceived(msg.Code);
         }
 
-        NumColumns = copyInResponse.NumColumns;
-        _params = new NpgsqlParameter[NumColumns];
+        _params = new NpgsqlParameter[copyInResponse.NumColumns];
         _rowsImported = 0;
         _buf.StartCopyMode();
         WriteHeader();
@@ -132,9 +132,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         CheckReady();
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (_column != -1 && _column != NumColumns)
-            ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
+        if (_column is not -1 && _column != NumColumns)
+            ThrowColumnMismatch();
 
         if (_buf.WriteSpaceLeft < 2)
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -372,9 +371,9 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     async Task WriteNull(bool async, CancellationToken cancellationToken = default)
     {
         CheckReady();
-        cancellationToken.ThrowIfCancellationRequested();
-        if (_column == -1)
-            throw new InvalidOperationException("A row hasn't been started");
+        if (cancellationToken.IsCancellationRequested)
+            cancellationToken.ThrowIfCancellationRequested();
+        CheckColumnIndex();
 
         if (_buf.WriteSpaceLeft < 4)
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -413,8 +412,18 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     void CheckColumnIndex()
     {
-        if (_column >= NumColumns)
-            ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column + 1);
+        if (_column is -1 || _column >= NumColumns)
+            Throw();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void Throw()
+        {
+            if (_column is -1)
+                throw new InvalidOperationException("A row hasn't been started");
+
+            if (_column >= NumColumns)
+                ThrowColumnMismatch();
+        }
     }
 
     #endregion
@@ -583,18 +592,23 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     void CheckReady()
     {
-        switch (_state)
+        if (_state is not ImporterState.Ready and var state)
+            Throw(state);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void Throw(ImporterState state)
         {
-        case ImporterState.Ready:
-            return;
-        case ImporterState.Disposed:
-            throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
-        case ImporterState.Cancelled:
-            throw new InvalidOperationException("The COPY operation has already been cancelled.");
-        case ImporterState.Committed:
-            throw new InvalidOperationException("The COPY operation has already been committed.");
-        default:
-            throw new Exception("Invalid state: " + _state);
+            switch (state)
+            {
+            case ImporterState.Disposed:
+                throw new ObjectDisposedException(typeof(NpgsqlBinaryImporter).FullName, "The COPY operation has already ended.");
+            case ImporterState.Cancelled:
+                throw new InvalidOperationException("The COPY operation has already been cancelled.");
+            case ImporterState.Committed:
+                throw new InvalidOperationException("The COPY operation has already been committed.");
+            default:
+                throw new Exception("Invalid state: " + state);
+            }
         }
     }
 
@@ -611,4 +625,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     }
 
     #endregion Enums
+
+    void ThrowColumnMismatch()
+        => throw new InvalidOperationException($"The binary import operation was started with {NumColumns} column(s), but {_column + 1} value(s) were provided.");
 }
