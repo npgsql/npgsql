@@ -58,13 +58,16 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
-        // TODO we can make a nice thread-static cache for this.
-        using var builder = new CompositeBuilder<T>(_composite);
-        var count = reader.ReadInt32();
-        if (count != _composite.Fields.Count)
-            throw new InvalidOperationException("Cannot read composite type with mismatched number of fields");
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+
+        // TODO we can make a nice thread-static cache for this.
+        using var builder = new CompositeBuilder<T>(_composite);
+
+        var count = reader.ReadInt32();
+        if (count != _composite.Fields.Count)
+            throw new InvalidOperationException("Cannot read composite type with mismatched number of fields.");
+
         foreach (var field in _composite.Fields)
         {
             if (reader.ShouldBuffer(sizeof(uint) + sizeof(int)))
@@ -79,7 +82,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 // We could remove this requirement by storing a dictionary of CompositeInfos keyed by backend.
                 throw new InvalidCastException(
                     $"Cannot read oid {oid} into composite field {field.Name} with oid {field.PgTypeId}. " +
-                    $"This could be caused by a DDL change after this DataSource loaded its types, or a difference between column order of table composites between backends make sure these line up identically.");
+                    $"This could be caused by a DDL change after this DataSource loaded its types, or a difference between column order of table composites between backends, make sure these line up identically.");
 
             if (length is -1)
                 field.ReadDbNull(builder);
