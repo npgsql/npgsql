@@ -5,7 +5,7 @@
     <PackageTags>npgsql;postgresql;postgres;postgis;spatial;nettopologysuite;nts;ado;ado.net;database;sql</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFramework>net6.0</TargetFramework>
-    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
+    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net9.0</TargetFramework>
     <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>
 
