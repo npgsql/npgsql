@@ -26,11 +26,13 @@ public sealed class PgSerializerOptions
         _resolverChain = resolverChain ?? new();
         _timeZoneProvider = timeZoneProvider;
         DatabaseInfo = databaseInfo;
-        UnknownPgType = databaseInfo.GetPostgresType("unknown");
+        UnspecifiedDBNullTypeInfo = new(this, new Converters.Internal.VoidConverter(), DataTypeName.Unspecified, unboxedType: typeof(DBNull));
     }
 
-    // Represents the 'unknown' type, which can be used for reading and writing arbitrary text values.
-    public PostgresType UnknownPgType { get; }
+    internal PgTypeInfo UnspecifiedDBNullTypeInfo { get; }
+
+    PostgresType? _textPgType;
+    internal PostgresType TextPgType => _textPgType ??= DatabaseInfo.GetPostgresType(DataTypeNames.Text);
 
     // Used purely for type mapping, where we don't have a full set of types but resolvers might know enough.
     readonly bool _introspectionInstance;

@@ -368,7 +368,7 @@ public sealed class FieldDescription
                 // For text we'll fall back to any available text converter for the expected clr type or throw.
                 if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
                 {
-                    typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.UnknownPgType, _serializerOptions);
+                    typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
                     converterInfo = typeInfo.Bind(Field, DataFormat);
                     lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
                 }

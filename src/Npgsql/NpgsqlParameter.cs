@@ -40,10 +40,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal string TrimmedName { get; private protected set; } = PositionalName;
     internal const string PositionalName = "";
 
-    internal PgTypeInfo? TypeInfo { get; private set; }
+    private protected PgTypeInfo? TypeInfo { get; private set; }
 
     internal PgTypeId PgTypeId { get; private set; }
-    internal PgConverter? Converter { get; private set; }
+    private protected PgConverter? Converter { get; private set; }
 
     internal DataFormat Format { get; private protected set; }
     private protected Size? WriteSize { get; set; }
@@ -278,7 +278,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         get => _value;
         set
         {
-            if (value is null || _value?.GetType() != value.GetType())
+            if (ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
                 ResetBindingInfo();
@@ -501,6 +501,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
+    internal bool ShouldResetObjectTypeInfo(object? value)
+    {
+        var currentType = TypeInfo?.Type;
+        if (currentType is null || value is null)
+            return false;
+
+        var valueType = value.GetType();
+        // We don't want to reset the type info when the value is a DBNull, we're able to write it out with any type info.
+        return valueType != typeof(DBNull) && currentType != valueType;
+    }
+
     internal void GetResolutionInfo(out PgTypeInfo? typeInfo, out PgConverter? converter, out PgTypeId pgTypeId)
     {
         typeInfo = TypeInfo;
@@ -544,6 +555,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
             }
 
+            var unspecifiedDBNull = false;
             var valueType = StaticValueType;
             if (valueType == typeof(object))
             {
@@ -555,14 +567,23 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 }
 
                 // We treat object typed DBNull values as default info.
+                // Unless we don't have a pgTypeId either, at which point we'll use an 'unspecified' PgTypeInfo to help us write a NULL.
                 if (valueType == typeof(DBNull))
                 {
-                    valueType = null;
-                    pgTypeId ??= options.ToCanonicalTypeId(options.UnknownPgType);
+                    if (pgTypeId is null)
+                    {
+                        unspecifiedDBNull = true;
+                        typeInfo = options.UnspecifiedDBNullTypeInfo;
+                    }
+                    else
+                        valueType = null;
                 }
             }
 
-            TypeInfo = typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+            if (!unspecifiedDBNull)
+                typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+
+            TypeInfo = typeInfo;
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
@@ -570,7 +591,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
         if (!previouslyResolved || typeInfo!.IsResolverInfo)
         {
-            ResetBindingInfo(); // No need for ResetConverterResolution as we'll mutate those fields directly afterwards.
+            ResetBindingInfo();
             var resolution = ResolveConverter(typeInfo!);
             Converter = resolution.Converter;
             PgTypeId = resolution.PgTypeId;
@@ -739,11 +760,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected void ResetTypeInfo()
     {
         TypeInfo = null;
-        ResetConverterResolution();
-    }
-
-    void ResetConverterResolution()
-    {
         _asObject = false;
         Converter = null;
         PgTypeId = default;
