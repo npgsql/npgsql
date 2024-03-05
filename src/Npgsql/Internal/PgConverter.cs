@@ -1,7 +1,7 @@
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -84,7 +84,7 @@ public abstract class PgConverter
         => throw new ArgumentNullException("value", "Null value given for non-nullable type converter");
 
     private protected bool ThrowDbNullPredicateOutOfRange()
-        => throw new ArgumentOutOfRangeException(nameof(DbNullPredicateKind), "Unknown case", DbNullPredicateKind.ToString());
+        => throw new UnreachableException($"Unknown case {DbNullPredicateKind.ToString()}");
 
     protected bool CanConvertBufferedDefault(DataFormat format, out BufferRequirements bufferRequirements)
     {
