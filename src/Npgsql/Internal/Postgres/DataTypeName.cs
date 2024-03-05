@@ -48,9 +48,9 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     internal static DataTypeName ValidatedName(string fullyQualifiedDataTypeName)
         => new(fullyQualifiedDataTypeName, validated: true);
 
-    // Includes schema unless it's pg_catalog.
+    // Includes schema unless it's pg_catalog or the name is unspecified.
     public string DisplayName =>
-        Value.StartsWith("pg_catalog", StringComparison.Ordinal)
+        Value.StartsWith("pg_catalog", StringComparison.Ordinal) || Value == Unspecified
             ? UnqualifiedDisplayName
             : Schema + "." + UnqualifiedDisplayName;
 
@@ -63,11 +63,13 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     public string Value => _value is null ? ThrowDefaultException() : _value;
 
     static string ThrowDefaultException() =>
-        throw new InvalidOperationException($"This operation cannot be performed on a default instance of {nameof(DataTypeName)}.");
+        throw new InvalidOperationException($"This operation cannot be performed on a default value of {nameof(DataTypeName)}.");
 
     public static implicit operator string(DataTypeName value) => value.Value;
 
-    public bool IsDefault => _value is null;
+    // This contains two invalid sql identifiers (schema and name are both separate identifiers, and would both have to be quoted to be valid).
+    // Given this is an invalid name it's fine for us to represent a fully qualified 'unspecified' name with it.
+    public static DataTypeName Unspecified => new("-.-", validated: true);
 
     public bool IsArray => UnqualifiedNameSpan.StartsWith("_".AsSpan(), StringComparison.Ordinal);
 
