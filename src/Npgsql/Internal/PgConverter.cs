@@ -1,7 +1,7 @@
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,7 +33,8 @@ public abstract class PgConverter
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
-            _ => IsDbNullValueAsObject(value, ref writeState) || (value is null && ThrowInvalidNullValue())
+            DbNullPredicate.Custom => IsDbNullValueAsObject(value, ref writeState) || (value is null && ThrowInvalidNullValue()),
+            _ => ThrowDbNullPredicateOutOfRange()
         };
 
     private protected abstract bool IsDbNullValueAsObject(object? value, ref object? writeState);
@@ -82,6 +83,9 @@ public abstract class PgConverter
     private protected static bool ThrowInvalidNullValue()
         => throw new ArgumentNullException("value", "Null value given for non-nullable type converter");
 
+    private protected bool ThrowDbNullPredicateOutOfRange()
+        => throw new UnreachableException($"Unknown case {DbNullPredicateKind.ToString()}");
+
     protected bool CanConvertBufferedDefault(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.Value;
@@ -99,22 +103,18 @@ public abstract class PgConverter<T> : PgConverter
     // Object null semantics as follows, if T is a struct (so excluding nullable) report false for null values, don't throw on the cast.
     // As a result this creates symmetry with IsDbNull when we're dealing with a struct T, as it cannot be passed null at all.
     private protected override bool IsDbNullValueAsObject(object? value, ref object? writeState)
-        => (default(T) is null || value is not null) && IsDbNullValue(Downcast(value), ref writeState);
+        => (default(T) is null || value is not null) && IsDbNullValue((T?)value, ref writeState);
 
     public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
-    {
-        return DbNullPredicateKind switch
+        => DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValue(value, ref writeState) || (value is null && ThrowInvalidNullValue()),
-            _ => ThrowOutOfRange()
+            _ => ThrowDbNullPredicateOutOfRange()
         };
-
-        bool ThrowOutOfRange() => throw new ArgumentOutOfRangeException(nameof(DbNullPredicateKind), "Unknown case", DbNullPredicateKind.ToString());
-    }
 
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
@@ -126,11 +126,7 @@ public abstract class PgConverter<T> : PgConverter
     internal sealed override Type TypeToConvert => typeof(T);
 
     internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
-        => GetSize(context, Downcast(value), ref writeState);
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    [return: NotNullIfNotNull(nameof(value))]
-    static T? Downcast(object? value) => (T?)value;
+        => GetSize(context, (T)value, ref writeState);
 }
 
 static class PgConverterExtensions
