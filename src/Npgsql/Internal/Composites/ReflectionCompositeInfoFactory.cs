@@ -259,7 +259,12 @@ static class ReflectionCompositeInfoFactory
                 clrDefaultConstructor = constructor;
 
             var parametersMap = new int[parameters.Length];
+#if NETSTANDARD2_0
+            for (var i = 0; i < parametersMap.Length; i++)
+                parametersMap[i] = -1;
+#else
             Array.Fill(parametersMap, -1);
+#endif
             for (var i = 0; i < parameters.Length; i++)
             {
                 var clrParameter = parameters[i];
