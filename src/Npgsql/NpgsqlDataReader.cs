@@ -1509,7 +1509,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var result = asObject
             ? (GetChars)converter.ReadAsObject(PgReader)
             : ((PgConverter<GetChars>)converter).Read(PgReader);
-        PgReader.AdvanceCharsRead(result.Read);
         PgReader.EndRead();
         return result.Read;
     }

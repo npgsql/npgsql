@@ -242,11 +242,13 @@ sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableR
         }
         else
         {
-            var consumed = ConsumeChars(textReader, charsOffset - charsRead);
-            Debug.Assert(consumed == charsOffset - charsRead);
+            read = ConsumeChars(textReader, charsOffset - charsRead);
+            Debug.Assert(read == charsOffset - charsRead);
+            reader.AdvanceCharsRead(read);
             read = textReader.ReadBlock(buffer.GetValueOrDefault().Array!, buffer.GetValueOrDefault().Offset, buffer.GetValueOrDefault().Count);
         }
 
+        reader.AdvanceCharsRead(read);
         return new(read);
 
         static int ConsumeChars(TextReader reader, int? count)
