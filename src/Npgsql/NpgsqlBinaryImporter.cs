@@ -549,19 +549,14 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static void Throw(ImporterState state)
-        {
-            switch (state)
+            => throw (state switch
             {
-            case ImporterState.Disposed:
-                throw new ObjectDisposedException(typeof(NpgsqlBinaryImporter).FullName, "The COPY operation has already ended.");
-            case ImporterState.Cancelled:
-                throw new InvalidOperationException("The COPY operation has already been cancelled.");
-            case ImporterState.Committed:
-                throw new InvalidOperationException("The COPY operation has already been committed.");
-            default:
-                throw new Exception("Invalid state: " + state);
-            }
-        }
+                ImporterState.Disposed => new ObjectDisposedException(typeof(NpgsqlBinaryImporter).FullName,
+                    "The COPY operation has already ended."),
+                ImporterState.Cancelled => new InvalidOperationException("The COPY operation has already been cancelled."),
+                ImporterState.Committed => new InvalidOperationException("The COPY operation has already been committed."),
+                _ => new Exception("Invalid state: " + state)
+            });
     }
 
     #endregion
