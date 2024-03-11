@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Npgsql.Internal.Postgres;
@@ -55,11 +56,15 @@ public sealed class PgSerializerOptions
     public ArrayNullabilityMode ArrayNullabilityMode { get; init; } = ArrayNullabilityMode.Never;
     public INpgsqlNameTranslator DefaultNameTranslator { get; init; } = NpgsqlSnakeCaseNameTranslator.Instance;
 
-    public static Type[] WellKnownTextTypes { get; } = {
-        typeof(string), typeof(char[]), typeof(byte[]),
-        typeof(ArraySegment<char>), typeof(ArraySegment<char>?),
-        typeof(char), typeof(char?)
-    };
+    public static bool IsWellKnownTextType(Type type)
+    {
+        type = type.IsValueType ? Nullable.GetUnderlyingType(type) ?? type : type;
+        return Array.IndexOf([
+            typeof(string), typeof(char),
+            typeof(char[]), typeof(ReadOnlyMemory<char>), typeof(ArraySegment<char>),
+            typeof(byte[]), typeof(ReadOnlyMemory<byte>)
+        ], type) != -1 || typeof(Stream).IsAssignableFrom(type);
+    }
 
     internal bool RangesEnabled => _resolverChain.RangesEnabled;
     internal bool MultirangesEnabled => _resolverChain.MultirangesEnabled;

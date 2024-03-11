@@ -73,7 +73,7 @@ sealed class JsonNetPocoTypeInfoResolverFactory : PgTypeInfoResolverFactory
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
             // Match all types except null, object and text types as long as DataTypeName (json/jsonb) is present.
-            if (type is null || type == typeof(object) || Array.IndexOf(PgSerializerOptions.WellKnownTextTypes, type) != -1
+            if (type is null || type == typeof(object) || PgSerializerOptions.IsWellKnownTextType(type)
                              || dataTypeName != JsonbDataTypeName && dataTypeName != JsonDataTypeName)
                 return null;
 

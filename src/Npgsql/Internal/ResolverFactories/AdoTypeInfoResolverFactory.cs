@@ -75,6 +75,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new MoneyConverter<decimal>()), MatchRequirement.DataTypeName);
 
             // Text
+            // Update PgSerializerOptions.IsWellKnownTextType(Type) after any changes to this list.
             mappings.AddType<string>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Text,
