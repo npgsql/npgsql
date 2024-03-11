@@ -104,6 +104,7 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringBitStringConverter()));
 
             // Text
+            // Update PgSerializerOptions.IsWellKnownTextType(Type) after any changes to this list.
             mappings.AddType<char[]>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
