@@ -212,7 +212,7 @@ sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableR
     public GetCharsTextConverter(Encoding encoding) => _encoding = encoding;
 
     public override GetChars Read(PgReader reader)
-        => reader.IsCharsRead
+        => reader.CharsReadActive
             ? ResumableRead(reader)
             : throw new NotSupportedException();
 
@@ -226,28 +226,24 @@ sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableR
     GetChars ResumableRead(PgReader reader)
     {
         reader.GetCharsReadInfo(_encoding, out var charsRead, out var textReader, out var charsOffset, out var buffer);
-        if (charsOffset < charsRead || (buffer is null && charsRead > 0))
+
+        // With variable length encodings, moving backwards based on bytes means we have to start over.
+        if (charsRead > charsOffset)
         {
-            // With variable length encodings, moving backwards based on bytes means we have to start over.
-            reader.ResetCharsRead(out charsRead);
+            reader.RestartCharsRead();
+            charsRead = 0;
         }
 
         // First seek towards the charsOffset.
         // If buffer is null read the entire thing and report the length, see sql client remarks.
         // https://learn.microsoft.com/en-us/dotnet/api/system.data.sqlclient.sqldatareader.getchars
-        int read;
+        var read = ConsumeChars(textReader, buffer is null ? null : charsOffset - charsRead);
+        Debug.Assert(buffer is null || read == charsOffset - charsRead);
+        reader.AdvanceCharsRead(read);
         if (buffer is null)
-        {
-            read = ConsumeChars(textReader, null);
-        }
-        else
-        {
-            read = ConsumeChars(textReader, charsOffset - charsRead);
-            Debug.Assert(read == charsOffset - charsRead);
-            reader.AdvanceCharsRead(read);
-            read = textReader.ReadBlock(buffer.GetValueOrDefault().Array!, buffer.GetValueOrDefault().Offset, buffer.GetValueOrDefault().Count);
-        }
+            return new(read);
 
+        read = textReader.ReadBlock(buffer.GetValueOrDefault().Array!, buffer.GetValueOrDefault().Offset, buffer.GetValueOrDefault().Count);
         reader.AdvanceCharsRead(read);
         return new(read);
 

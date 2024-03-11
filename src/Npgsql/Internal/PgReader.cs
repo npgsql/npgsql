@@ -74,9 +74,6 @@ public class PgReader
 
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
 
-    [MemberNotNullWhen(true, nameof(_charsReadReader))]
-    internal bool IsCharsRead => _charsReadOffset is not null;
-
     // Here for testing purposes
     internal void BreakConnection() => throw _buffer.Connector.Break(new Exception("Broken"));
 
@@ -374,31 +371,23 @@ public class PgReader
         _userActiveStream = null;
     }
 
-    internal bool GetCharsReadInfo(Encoding encoding, out int charsRead, out TextReader reader, out int charsOffset, out ArraySegment<char>? buffer)
+    internal int CharsRead => _charsRead;
+    internal bool CharsReadActive => _charsReadOffset is not null;
+
+    internal void GetCharsReadInfo(Encoding encoding, out int charsRead, out TextReader reader, out int charsOffset, out ArraySegment<char>? buffer)
     {
-        if (!IsCharsRead)
+        if (!CharsReadActive)
             throw new InvalidOperationException("No active chars read");
 
-        if (_charsReadReader is null)
-        {
-            charsRead = 0;
-            reader = _charsReadReader = GetTextReader(encoding);
-            charsOffset = _charsReadOffset ??= 0;
-            buffer = _charsReadBuffer;
-            return true;
-        }
-
         charsRead = _charsRead;
-        reader = _charsReadReader;
-        charsOffset = _charsReadOffset!.Value;
+        reader = _charsReadReader ??= GetTextReader(encoding);
+        charsOffset = _charsReadOffset ?? 0;
         buffer = _charsReadBuffer;
-
-        return false;
     }
 
-    internal void ResetCharsRead(out int charsRead)
+    internal void RestartCharsRead()
     {
-        if (!IsCharsRead)
+        if (!CharsReadActive)
             throw new InvalidOperationException("No active chars read");
 
         switch (_charsReadReader)
@@ -411,24 +400,30 @@ public class PgReader
                 reader.DiscardBufferedData();
                 break;
         }
-        _charsRead = charsRead = 0;
+        _charsRead = 0;
     }
 
-    internal void AdvanceCharsRead(int charsRead)
-    {
-        _charsRead += charsRead;
-        _charsReadOffset = null;
-        _charsReadBuffer = null;
-    }
+    internal void AdvanceCharsRead(int charsRead) => _charsRead += charsRead;
 
-    internal void InitCharsRead(int dataOffset, ArraySegment<char>? buffer, out int? charsRead)
+    internal void StartCharsRead(int dataOffset, ArraySegment<char>? buffer)
     {
         if (!Resumable)
             throw new InvalidOperationException("Wasn't initialized as resumed");
 
-        charsRead = _charsReadReader is null ? null : _charsRead;
         _charsReadOffset = dataOffset;
         _charsReadBuffer = buffer;
+    }
+
+    internal void EndCharsRead()
+    {
+        if (!Resumable)
+            throw new InvalidOperationException("Wasn't initialized as resumed");
+
+        if (!CharsReadActive)
+            throw new InvalidOperationException("No active chars read");
+
+        _charsReadOffset = null;
+        _charsReadBuffer = null;
     }
 
     internal PgReader Init(int fieldLength, DataFormat format, bool resumable = false)

@@ -1497,19 +1497,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (columnLength == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(RowDescription[ordinal]);
 
+        var reader = PgReader;
         dataOffset = buffer is null ? 0 : dataOffset;
-        PgReader.InitCharsRead(checked((int)dataOffset),
-            buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null,
-            out var previousDataOffset);
-
-        if (_isSequential && previousDataOffset > dataOffset)
+        if (_isSequential && reader.CharsRead > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
-        PgReader.StartRead(bufferRequirement);
+        reader.StartCharsRead(checked((int)dataOffset),
+            buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null);
+
+        reader.StartRead(bufferRequirement);
         var result = asObject
-            ? (GetChars)converter.ReadAsObject(PgReader)
-            : ((PgConverter<GetChars>)converter).Read(PgReader);
-        PgReader.EndRead();
+            ? (GetChars)converter.ReadAsObject(reader)
+            : ((PgConverter<GetChars>)converter).Read(reader);
+        reader.EndRead();
+
+        reader.EndCharsRead();
         return result.Read;
     }
 
