@@ -1481,10 +1481,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
     {
         ThrowIfNotInResult();
-        // Check whether we can do resumable reads.
+        // Check whether we have a GetChars implementation for this column type.
         var field = GetInfo(ordinal, typeof(GetChars), out var converter, out var bufferRequirement, out var asObject);
-        if (converter is not IResumableRead { Supported: true })
-            ThrowHelper.ThrowNotSupportedException("The GetChars method is not supported for this column type");
 
         if (dataOffset is < 0 or > int.MaxValue)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(dataOffset), "dataOffset must be between 0 and {0}", int.MaxValue);

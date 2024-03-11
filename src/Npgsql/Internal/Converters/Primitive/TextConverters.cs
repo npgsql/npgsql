@@ -206,7 +206,7 @@ readonly struct GetChars
     public GetChars(int read) => Read = read;
 }
 
-sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableRead
+sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>
 {
     readonly Encoding _encoding;
     public GetCharsTextConverter(Encoding encoding) => _encoding = encoding;
@@ -269,8 +269,6 @@ sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableR
             return totalRead;
         }
     }
-
-    bool IResumableRead.Supported => true;
 }
 
 // Moved out for code size/sharing.
