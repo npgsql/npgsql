@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -35,7 +36,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// <summary>
     /// The number of columns, as returned from the backend in the CopyInResponse.
     /// </summary>
-    internal int NumColumns { get; private set; }
+    int NumColumns => _params.Length;
 
     bool InMiddleOfRow => _column != -1 && _column != NumColumns;
 
@@ -98,8 +99,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             throw _connector.UnexpectedMessageReceived(msg.Code);
         }
 
-        NumColumns = copyInResponse.NumColumns;
-        _params = new NpgsqlParameter[NumColumns];
+        _params = new NpgsqlParameter[copyInResponse.NumColumns];
         _rowsImported = 0;
         _buf.StartCopyMode();
         WriteHeader();
@@ -132,9 +132,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         CheckReady();
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (_column != -1 && _column != NumColumns)
-            ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
+        if (_column is not -1 && _column != NumColumns)
+            ThrowColumnMismatch();
 
         if (_buf.WriteSpaceLeft < 2)
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -154,7 +153,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
     /// specify the type.
     /// </typeparam>
-    public void Write<T>(T value) => Write(async: false, value).GetAwaiter().GetResult();
+    public void Write<T>(T value)
+        => Write(async: false, value, npgsqlDbType: null, dataTypeName: null).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes a single column in the current row.
@@ -168,37 +168,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
     /// specify the type.
     /// </typeparam>
-    public Task WriteAsync<T>(T value, CancellationToken cancellationToken = default) => Write(async: true, value, cancellationToken);
-
-    Task Write<T>(bool async, T value, CancellationToken cancellationToken = default)
-    {
-        CheckColumnIndex();
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-
-        // First row, create the parameter object
-        ref var p = ref _params[_column];
-        if (p is not NpgsqlParameter<T> typedParam)
-            typedParam = new NpgsqlParameter<T>();
-
-        // We only report previous values if anything actually changed, this saves some checks during the write.
-        // For object typed parameters when we don't have any other data we always have to pass the previousParam.
-        // In such cases the runtime type will define the entire postgres type lookup.
-        PgTypeInfo? previousTypeInfo = null;
-        PgConverter? previousConverter = null;
-        PgTypeId previousTypeId = default;
-        if (p is not null && (typeof(T) == typeof(object) || p._npgsqlDbType is not null || p._dataTypeName is not null))
-        {
-            p.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
-            if (ReferenceEquals(p, typedParam))
-                p.ResetDbType();
-        }
-
-        if (!ReferenceEquals(p, typedParam))
-            p = typedParam;
-
-        return Write(async, value, typedParam, previousTypeInfo, previousConverter, previousTypeId, cancellationToken);
-    }
+    public Task WriteAsync<T>(T value, CancellationToken cancellationToken = default)
+        => Write(async: true, value, npgsqlDbType: null, dataTypeName: null, cancellationToken);
 
     /// <summary>
     /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
@@ -212,7 +183,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public void Write<T>(T value, NpgsqlDbType npgsqlDbType) =>
-        Write(async: false, value, npgsqlDbType).GetAwaiter().GetResult();
+        Write(async: false, value, npgsqlDbType, dataTypeName: null).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
@@ -229,38 +200,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public Task WriteAsync<T>(T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
-        => Write(async: true, value, npgsqlDbType, cancellationToken);
-
-    Task Write<T>(bool async, T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
-    {
-        CheckColumnIndex();
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
-
-        // First row, create the parameter objects
-        ref var p = ref _params[_column];
-        if (p is not NpgsqlParameter<T> typedParam)
-            typedParam = new NpgsqlParameter<T> { NpgsqlDbType = npgsqlDbType };
-
-        // We only report previous values if anything actually changed, this saves some checks during the write.
-        PgTypeInfo? previousTypeInfo = null;
-        PgConverter? previousConverter = null;
-        PgTypeId previousTypeId = default;
-        if (p is not null && (p._npgsqlDbType != npgsqlDbType || p._dataTypeName is not null))
-        {
-            p.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
-            if (ReferenceEquals(p, typedParam))
-            {
-                p.ResetDbType();
-                p.NpgsqlDbType = npgsqlDbType;
-            }
-        }
-
-        if (!ReferenceEquals(p, typedParam))
-            p = typedParam;
-
-        return Write(async, value, typedParam, previousTypeInfo, previousConverter, previousTypeId, cancellationToken);
-    }
+        => Write(async: true, value, npgsqlDbType, dataTypeName: null, cancellationToken);
 
     /// <summary>
     /// Writes a single column in the current row as type <paramref name="dataTypeName"/>.
@@ -272,7 +212,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public void Write<T>(T value, string dataTypeName) =>
-        Write(async: false, value, dataTypeName).GetAwaiter().GetResult();
+        Write(async: false, value, npgsqlDbType: null, dataTypeName).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes a single column in the current row as type <paramref name="dataTypeName"/>.
@@ -287,76 +227,90 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
     public Task WriteAsync<T>(T value, string dataTypeName, CancellationToken cancellationToken = default)
-        => Write(async: true, value, dataTypeName, cancellationToken);
+        => Write(async: true, value, npgsqlDbType: null, dataTypeName, cancellationToken);
 
-    Task Write<T>(bool async, T value, string dataTypeName, CancellationToken cancellationToken = default)
+    Task Write<T>(bool async, T value, NpgsqlDbType? npgsqlDbType, string? dataTypeName, CancellationToken cancellationToken = default)
     {
-        CheckColumnIndex();
-        if (cancellationToken.IsCancellationRequested)
-            return Task.FromCanceled(cancellationToken);
+        // Statically handle DBNull for backwards compatibility, generic parameters where T = DBNull normally won't find a mapping.
+        // Also handle null values for object typed parameters, as parameters only accept DBNull.Value when T = object.
+        if (typeof(T) == typeof(DBNull) || (typeof(T) == typeof(object) && value is null))
+            return WriteNull(async, cancellationToken);
 
-        // First row, create the parameter objects
-        ref var p = ref _params[_column];
-        if (p is not NpgsqlParameter<T> typedParam)
-            typedParam = new NpgsqlParameter<T> { DataTypeName = dataTypeName };
+        return Core(async, value, npgsqlDbType, dataTypeName, cancellationToken);
 
-        // We only report previous values if anything actually changed, this saves some checks during the write.
-        PgTypeInfo? previousTypeInfo = null;
-        PgConverter? previousConverter = null;
-        PgTypeId previousTypeId = default;
-        if (p is not null && (p._npgsqlDbType is not null || p._dataTypeName != dataTypeName))
+        async Task Core(bool async, T value, NpgsqlDbType? npgsqlDbType, string? dataTypeName, CancellationToken cancellationToken = default)
         {
-            p.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
-            if (ReferenceEquals(p, typedParam))
+            CheckReady();
+            cancellationToken.ThrowIfCancellationRequested();
+            CheckColumnIndex();
+
+            // Create the parameter objects for the first row or if the value type changes.
+            var newParam = false;
+            if (_params[_column] is not NpgsqlParameter<T> param)
             {
-                p.ResetDbType();
-                p.DataTypeName = dataTypeName;
+                newParam = true;
+                param = new NpgsqlParameter<T>();
+                if (npgsqlDbType is not null)
+                    param._npgsqlDbType = npgsqlDbType;
+                if (dataTypeName is not null)
+                    param._dataTypeName = dataTypeName;
             }
+
+            // We only retrieve previous values if anything actually changed.
+            // For object typed parameters we must do so whenever setting NpgsqlParameter.Value would reset the type info.
+            PgTypeInfo? previousTypeInfo = null;
+            PgConverter? previousConverter = null;
+            PgTypeId previousTypeId = default;
+            if (!newParam && (
+                    (typeof(T) == typeof(object) && param.ShouldResetObjectTypeInfo(value))
+                    || param._npgsqlDbType != npgsqlDbType
+                    || param._dataTypeName != dataTypeName))
+            {
+                param.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
+                if (!newParam)
+                {
+                    param.ResetDbType();
+                    if (npgsqlDbType is not null)
+                        param._npgsqlDbType = npgsqlDbType;
+                    if (dataTypeName is not null)
+                        param._dataTypeName = dataTypeName;
+                }
+            }
+
+            // These actions can reset or change the type info, we'll check afterwards whether we're still consistent with the original values.
+            param.TypedValue = value;
+            param.ResolveTypeInfo(_connector.SerializerOptions);
+
+            if (previousTypeInfo is not null && previousConverter is not null && param.PgTypeId != previousTypeId)
+            {
+                var currentPgTypeId = param.PgTypeId;
+                // We should only rollback values when the stored instance was used. We'll throw before writing the new instance back anyway.
+                // Also always rolling back could set PgTypeInfos that were resolved for a type that doesn't match the T of the NpgsqlParameter.
+                if (!newParam)
+                    param.SetResolutionInfo(previousTypeInfo, previousConverter, previousTypeId);
+                throw new InvalidOperationException($"Write for column {_column} resolves to a different PostgreSQL type: {currentPgTypeId} than the first row resolved to ({previousTypeId}). " +
+                                                    $"Please make sure to use clr types that resolve to the same PostgreSQL type across rows. " +
+                                                    $"Alternatively pass the same NpgsqlDbType or DataTypeName to ensure the PostgreSQL type ends up to be identical." );
+            }
+
+            if (newParam)
+                _params[_column] = param;
+
+            param.Bind(out _, out _);
+
+            try
+            {
+                await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _connector.Break(ex);
+                throw;
+            }
+
+            _column++;
         }
-
-        if (!ReferenceEquals(p, typedParam))
-            p = typedParam;
-
-        return Write(async, value, typedParam, previousTypeInfo, previousConverter, previousTypeId, cancellationToken);
-    }
-
-    async Task Write<T>(bool async, T value, NpgsqlParameter<T> param, PgTypeInfo? previousTypeInfo, PgConverter? previousConverter, PgTypeId previousTypeId, CancellationToken cancellationToken = default)
-    {
-        CheckReady();
-        if (_column == -1)
-            throw new InvalidOperationException("A row hasn't been started");
-
-        // Statically map any DBNull value during importing, generic parameters when T = DBNull normally won't find any mapping.
-        // Also allow null values for object typed parameters, parameters exclusively accept DBNull.Value when T = object.
-        if (typeof(T) == typeof(DBNull) || (typeof(T) == typeof(object) && (value == null || value is DBNull)))
-        {
-            await WriteNull(async, cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
-        param.TypedValue = value;
-        param.ResolveTypeInfo(_connector.SerializerOptions);
-
-        if (previousTypeInfo is not null && previousConverter is not null && param.PgTypeId != previousTypeId)
-        {
-            var currentPgTypeId = param.PgTypeId;
-            param.SetResolutionInfo(previousTypeInfo, previousConverter, previousTypeId);
-            throw new InvalidOperationException($"Write for column {_column} resolves to a different PostgreSQL type: {currentPgTypeId} than the first row resolved to ({previousTypeId}). " +
-                                                $"Please make sure to use clr types that resolve to the same PostgreSQL type across rows. " +
-                                                $"Alternatively pass the same NpgsqlDbType or DataTypeName to ensure the PostgreSQL type ends up to be identical." );
-        }
-
-        param.Bind(out _, out _);
-        try
-        {
-            await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _connector.Break(ex);
-            throw;
-        }
-        _column++;
     }
 
     /// <summary>
@@ -372,9 +326,9 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     async Task WriteNull(bool async, CancellationToken cancellationToken = default)
     {
         CheckReady();
-        cancellationToken.ThrowIfCancellationRequested();
-        if (_column == -1)
-            throw new InvalidOperationException("A row hasn't been started");
+        if (cancellationToken.IsCancellationRequested)
+            cancellationToken.ThrowIfCancellationRequested();
+        CheckColumnIndex();
 
         if (_buf.WriteSpaceLeft < 4)
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -408,13 +362,23 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         await StartRow(async, cancellationToken).ConfigureAwait(false);
         foreach (var value in values)
-            await Write(async, value, cancellationToken).ConfigureAwait(false);
+            await Write(async, value, npgsqlDbType: null, dataTypeName: null, cancellationToken).ConfigureAwait(false);
     }
 
     void CheckColumnIndex()
     {
-        if (_column >= NumColumns)
-            ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column + 1);
+        if (_column is -1 || _column >= NumColumns)
+            Throw();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void Throw()
+        {
+            if (_column is -1)
+                throw new InvalidOperationException("A row hasn't been started");
+
+            if (_column >= NumColumns)
+                ThrowColumnMismatch();
+        }
     }
 
     #endregion
@@ -445,7 +409,11 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         try
         {
-            await WriteTrailer(async, cancellationToken).ConfigureAwait(false);
+            // Write trailer
+            if (_buf.WriteSpaceLeft < 2)
+                await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
+            _buf.WriteInt16(-1);
+
             await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
             _buf.EndCopyMode();
             await _connector.WriteCopyDone(async, cancellationToken).ConfigureAwait(false);
@@ -574,28 +542,21 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     }
 #pragma warning restore CS8625
 
-    async Task WriteTrailer(bool async, CancellationToken cancellationToken = default)
-    {
-        if (_buf.WriteSpaceLeft < 2)
-            await _buf.Flush(async, cancellationToken).ConfigureAwait(false);
-        _buf.WriteInt16(-1);
-    }
-
     void CheckReady()
     {
-        switch (_state)
-        {
-        case ImporterState.Ready:
-            return;
-        case ImporterState.Disposed:
-            throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
-        case ImporterState.Cancelled:
-            throw new InvalidOperationException("The COPY operation has already been cancelled.");
-        case ImporterState.Committed:
-            throw new InvalidOperationException("The COPY operation has already been committed.");
-        default:
-            throw new Exception("Invalid state: " + _state);
-        }
+        if (_state is not ImporterState.Ready and var state)
+            Throw(state);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void Throw(ImporterState state)
+            => throw (state switch
+            {
+                ImporterState.Disposed => new ObjectDisposedException(typeof(NpgsqlBinaryImporter).FullName,
+                    "The COPY operation has already ended."),
+                ImporterState.Cancelled => new InvalidOperationException("The COPY operation has already been cancelled."),
+                ImporterState.Committed => new InvalidOperationException("The COPY operation has already been committed."),
+                _ => new Exception("Invalid state: " + state)
+            });
     }
 
     #endregion
@@ -611,4 +572,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     }
 
     #endregion Enums
+
+    void ThrowColumnMismatch()
+        => throw new InvalidOperationException($"The binary import operation was started with {NumColumns} column(s), but {_column + 1} value(s) were provided.");
 }
