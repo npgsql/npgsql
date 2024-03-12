@@ -15,17 +15,19 @@ namespace Npgsql.Util;
 /// </remarks>
 sealed class ResettableCancellationTokenSource : IDisposable
 {
-    bool isDisposed;
+    bool _isDisposed;
 
     public TimeSpan Timeout { get; set; }
 
     CancellationTokenSource _cts = new();
     CancellationTokenRegistration? _registration;
 
+    bool _suppressRegistrationCancellation;
+
     /// <summary>
     /// Used, so we wouldn't concurently use the cts for the cancellation, while it's being disposed
     /// </summary>
-    readonly object lockObject = new();
+    readonly object _lockObject = new();
 
 #if DEBUG
     bool _isRunning;
@@ -48,12 +50,12 @@ sealed class ResettableCancellationTokenSource : IDisposable
 #if DEBUG
         Debug.Assert(!_isRunning);
 #endif
-        lock (lockObject)
+        lock (_lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
             // we do nothing and return the default token
             // as we're going to fail while reading or writing anyway
-            if (isDisposed)
+            if (_isDisposed)
             {
 #if DEBUG
                 _isRunning = true;
@@ -68,8 +70,20 @@ sealed class ResettableCancellationTokenSource : IDisposable
                 _cts = new CancellationTokenSource(Timeout);
             }
         }
+
         if (cancellationToken.CanBeCanceled)
-            _registration = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), _cts);
+        {
+            if (_registration is { } reg && reg.Token != cancellationToken)
+                reg.Dispose();
+            _suppressRegistrationCancellation = false;
+            _registration = cancellationToken.Register(static state =>
+            {
+                var instance = (ResettableCancellationTokenSource)state!;
+                if (!instance._suppressRegistrationCancellation)
+                    instance.Cancel();
+            }, this);
+        }
+
 #if DEBUG
         _isRunning = true;
 #endif
@@ -82,12 +96,12 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// </summary>
     public void RestartTimeoutWithoutReset()
     {
-        lock (lockObject)
+        lock (_lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
             // we do nothing and return the default token
             // as we're going to fail while reading or writing anyway
-            if (!isDisposed)
+            if (!_isDisposed)
                 _cts.CancelAfter(Timeout);
         }
     }
@@ -100,14 +114,17 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// <returns>The <see cref="CancellationToken"/> from the wrapped <see cref="CancellationTokenSource"/></returns>
     public CancellationToken Reset()
     {
-        _registration?.Dispose();
-        _registration = null;
-        lock (lockObject)
+        if (_registration is { } reg)
+        {
+            reg.Dispose();
+            _registration = null;
+        }
+        lock (_lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
             // we do nothing and return
             // as we're going to fail while reading or writing anyway
-            if (isDisposed)
+            if (_isDisposed)
             {
 #if DEBUG
                 _isRunning = false;
@@ -135,7 +152,7 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// </summary>
     public void ResetCts()
     {
-        if (_cts.IsCancellationRequested)
+        if (!_cts.TryReset())
         {
             _cts.Dispose();
             _cts = new CancellationTokenSource();
@@ -156,13 +173,14 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// </remarks>
     public void Stop()
     {
-        _registration?.Dispose();
-        _registration = null;
-        lock (lockObject)
+        if (_registration is not null)
+            _suppressRegistrationCancellation = true;
+
+        lock (_lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
             // we do nothing
-            if (!isDisposed)
+            if (!_isDisposed)
                 _cts.CancelAfter(InfiniteTimeSpan);
         }
 #if DEBUG
@@ -175,11 +193,11 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// </summary>
     public void Cancel()
     {
-        lock (lockObject)
+        lock (_lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
             // we do nothing
-            if (isDisposed)
+            if (_isDisposed)
                 return;
             _cts.Cancel();
         }
@@ -190,11 +208,11 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// </summary>
     public void CancelAfter(int delay)
     {
-        lock (lockObject)
+        lock (_lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
             // we do nothing
-            if (isDisposed)
+            if (_isDisposed)
                 return;
             _cts.CancelAfter(delay);
         }
@@ -217,14 +235,14 @@ sealed class ResettableCancellationTokenSource : IDisposable
 
     public void Dispose()
     {
-        Debug.Assert(!isDisposed);
+        Debug.Assert(!_isDisposed);
 
-        lock (lockObject)
+        lock (_lockObject)
         {
             _registration?.Dispose();
             _cts.Dispose();
 
-            isDisposed = true;
+            _isDisposed = true;
         }
     }
 }

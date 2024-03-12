@@ -77,8 +77,8 @@ public class PgReader
     [MemberNotNullWhen(true, nameof(_charsReadReader))]
     internal bool IsCharsRead => _charsReadOffset is not null;
 
-    // Here for testing purposes
-    internal void BreakConnection() => throw _buffer.Connector.Break(new Exception("Broken"));
+    [DoesNotReturn, StackTraceHidden]
+    internal void ThrowAbort(Exception abortReason) => _buffer.ThrowAbort(abortReason);
 
     internal void Revert(int size, int startPos, Size bufferRequirement)
     {
@@ -550,9 +550,7 @@ public class PgReader
         CheckBounds(remaining);
 
         var origOffset = FieldOffset;
-        // A breaking exception unwind from a nested scope should not try to consume its remaining data.
-        if (!_buffer.Connector.IsBroken)
-            await _buffer.Skip(remaining, async).ConfigureAwait(false);
+        await _buffer.Skip(remaining, async).ConfigureAwait(false);
 
         Debug.Assert(FieldRemaining == FieldSize - origOffset - remaining);
     }
@@ -800,8 +798,9 @@ public class PgReader
         return new();
     }
 
+    [DoesNotReturn]
     void ThrowNotConsumedExactly() =>
-        throw _buffer.Connector.Break(
+        ThrowAbort(
             new InvalidOperationException(
                 FieldOffset < FieldSize
                     ? $"The read on this field has not consumed all of its bytes (pos: {FieldOffset}, len: {FieldSize})"

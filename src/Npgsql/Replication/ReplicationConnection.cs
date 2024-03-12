@@ -241,8 +241,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         SetTimeouts(CommandTimeout, CommandTimeout);
 
-        _npgsqlConnection.Connector!.LongRunningConnection = true;
-
         ReplicationLogger = _npgsqlConnection.Connector!.LoggingConfiguration.ReplicationLogger;
     }
 
@@ -454,8 +452,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             }
 
             var buf = connector.ReadBuffer;
-
-            columnStream = new NpgsqlReadBuffer.ColumnStream(connector);
+            columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
 
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
 
@@ -490,7 +487,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
                     // dataLen = msg.Length - (code = 1 + walStart = 8 + walEnd = 8 + serverClock = 8)
                     var dataLen = messageLength - 25;
-                    columnStream.Init(dataLen, canSeek: false, commandScoped: false);
+                    columnStream.Init(dataLen, canSeek: false);
 
                     _cachedXLogDataMessage.Populate(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn),
                         sendTime, columnStream);
