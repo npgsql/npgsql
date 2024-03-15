@@ -567,6 +567,7 @@ public class MultipleHostsTests : TestBase
     [Test, NonParallelizable]
     public async Task Offline_state_on_query_execution_pg_non_critical_failure()
     {
+
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
 
@@ -890,7 +891,7 @@ public class MultipleHostsTests : TestBase
     [Test, NonParallelizable]
     public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {
-        PoolManager.Reset();
+        PoolManager.ClearAll();
 
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString)
         {

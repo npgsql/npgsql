@@ -23,7 +23,7 @@ class PoolManagerTests : TestBase
     [Test]
     public void Many_pools()
     {
-        PoolManager.Reset();
+        PoolManager.ClearAll();
         for (var i = 0; i < 15; i++)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -33,7 +33,7 @@ class PoolManagerTests : TestBase
             using var conn = new NpgsqlConnection(connString);
             conn.Open();
         }
-        PoolManager.Reset();
+        PoolManager.ClearAll();
     }
 #endif
 
@@ -43,7 +43,7 @@ class PoolManagerTests : TestBase
         using (var conn = new NpgsqlConnection(ConnectionString))
             conn.Open();
         // Now have one connection in the pool
-        Assert.That(PoolManager.Pools.TryGetValue(ConnectionString, out var pool), Is.True);
+        Assert.That(PoolManager.TryGetPool(ConnectionString, out var pool), Is.True);
         Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
 
         NpgsqlConnection.ClearAllPools();
@@ -62,8 +62,8 @@ class PoolManagerTests : TestBase
                 anotherConn.Open();
             // We have one idle, one busy
 
+            Assert.That(PoolManager.TryGetPool(ConnectionString, out pool), Is.True);
             NpgsqlConnection.ClearAllPools();
-            Assert.That(PoolManager.Pools.TryGetValue(ConnectionString, out pool), Is.True);
             Assert.That(pool!.Statistics.Idle, Is.Zero);
             Assert.That(pool.Statistics.Total, Is.EqualTo(1));
         }
@@ -72,8 +72,8 @@ class PoolManagerTests : TestBase
     }
 
     [SetUp]
-    public void Setup() => PoolManager.Reset();
+    public void Setup() => PoolManager.ClearAll();
 
     [TearDown]
-    public void Teardown() => PoolManager.Reset();
+    public void Teardown() => PoolManager.ClearAll();
 }

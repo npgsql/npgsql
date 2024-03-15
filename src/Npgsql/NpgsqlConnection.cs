@@ -171,7 +171,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     void SetupDataSource()
     {
         // Fast path: a pool already corresponds to this exact version of the connection string.
-        if (PoolManager.Pools.TryGetValue(_connectionString, out _dataSource))
+        if (PoolManager.TryGetPool(_connectionString, out _dataSource))
         {
             Settings = _dataSource.Settings;  // Great, we already have a pool
             return;
@@ -195,7 +195,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // Note that we remove TargetSessionAttributes to make all connection strings that are otherwise identical point to the same pool.
         var canonical = settings.ConnectionStringForMultipleHosts;
 
-        if (PoolManager.Pools.TryGetValue(canonical, out _dataSource))
+        if (PoolManager.TryGetPool(canonical, out _dataSource))
         {
             // If this is a multi-host data source and the user specified a TargetSessionAttributes, create a wrapper in front of the
             // MultiHostDataSource with that TargetSessionAttributes.
@@ -204,7 +204,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
             // The pool was found, but only under the canonical key - we're using a different version
             // for the first time. Map it via our own key for next time.
-            _dataSource = PoolManager.Pools.GetOrAdd(_connectionString, _dataSource);
+            _dataSource = PoolManager.GetOrAddPool(_connectionString, _dataSource);
             return;
         }
 
@@ -214,12 +214,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(canonical);
         dataSourceBuilder.UseLoggerFactory(NpgsqlLoggingConfiguration.GlobalLoggerFactory);
         dataSourceBuilder.EnableParameterLogging(NpgsqlLoggingConfiguration.GlobalIsParameterLoggingEnabled);
+        dataSourceBuilder.CreateLegacyDataSource();
         var newDataSource = dataSourceBuilder.Build();
 
         // See Clone() on the following line:
         _cloningInstantiator = s => new NpgsqlConnection(s);
 
-        _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
+        _dataSource = PoolManager.GetOrAddPool(canonical, newDataSource);
         if (_dataSource == newDataSource)
         {
             Debug.Assert(_dataSource is not MultiHostDataSourceWrapper);
@@ -241,7 +242,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (_dataSource is NpgsqlMultiHostDataSource multiHostDataSource2 && settings.TargetSessionAttributesParsed.HasValue)
             _dataSource = multiHostDataSource2.WithTargetSession(settings.TargetSessionAttributesParsed.Value);
 
-        _dataSource = PoolManager.Pools.GetOrAdd(_connectionString, _dataSource);
+        _dataSource = PoolManager.GetOrAddPool(_connectionString, _dataSource);
     }
 
     internal Task Open(bool async, CancellationToken cancellationToken)
@@ -310,7 +311,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     enlistToTransaction = null;
                 }
                 else
-                    connector = await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
+                    connector = await GetConnector(timeout, async, cancellationToken).ConfigureAwait(false);
 
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
@@ -359,6 +360,29 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             {
                 FullState = ConnectionState.Closed;
                 throw;
+            }
+        }
+    }
+    async Task<NpgsqlConnector> GetConnector(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    {
+        Debug.Assert(_dataSource != null);
+        while (true)
+        {
+            try
+            {
+                return await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
+            }
+            // When using PoolManager (legacy code path setting NpgsqlConnection.ConnectionString), clearing a pool
+            // removes the pool (NpgsqlDataSource) from the PoolManager and disposes it.
+            // This leads to an ObjectDisposedException when calling NpgsqlDataSource.Get() here.
+            // If this happens we reinitialize the pool and add it to the PoolManager by calling SetupDataSource() again.
+            // When not using PoolManager (modern code path creating the NpgsqlConnection from a NpgsqlDataSource;
+            // _dataSource.IsLegacyDataSource is false) we bubble up an eventual ObjectDisposedException as usual.
+            catch (ObjectDisposedException)
+            {
+                if (!_dataSource.IsLegacyDataSource)
+                    throw;
+                SetupDataSource();
             }
         }
     }
@@ -1598,7 +1622,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 Debug.Assert(Settings.Multiplexing);
                 Debug.Assert(_dataSource != null);
 
-                var connector = await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
+                var connector = await GetConnector(timeout, async, cancellationToken).ConfigureAwait(false);
                 Connector = connector;
                 connector.Connection = this;
                 ConnectorBindingScope = scope;
@@ -1850,32 +1874,49 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
 
         using var scope = StartTemporaryBindingScope(out var connector);
-
-        _dataSource!.Bootstrap(
-            connector,
-            NpgsqlTimeout.Infinite,
-            forceReload: true,
-            async: false,
-            CancellationToken.None)
-            .GetAwaiter().GetResult();
+        BootstrapDataSource(connector, async: false).GetAwaiter().GetResult();
     }
 
     /// <summary>
     /// Flushes the type cache for this connection's connection string and reloads the types for this connection only.
     /// Type changes will appear for other connections only after they are re-opened from the pool.
     /// </summary>
-    public async Task ReloadTypesAsync()
+    public Task ReloadTypesAsync()
     {
         CheckReady();
 
         using var scope = StartTemporaryBindingScope(out var connector);
+        return BootstrapDataSource(connector, async: true);
+    }
 
-        await _dataSource!.Bootstrap(
-            connector,
-            NpgsqlTimeout.Infinite,
-            forceReload: true,
-            async: true,
-            CancellationToken.None).ConfigureAwait(false);
+    async Task BootstrapDataSource(NpgsqlConnector connector, bool async)
+    {
+        Debug.Assert(_dataSource != null);
+        while (true)
+        {
+            try
+            {
+                await _dataSource.Bootstrap(
+                    connector,
+                    NpgsqlTimeout.Infinite,
+                    forceReload: true,
+                    async,
+                    CancellationToken.None).ConfigureAwait(false);
+                break;
+            }
+            // When using PoolManager (legacy code path setting NpgsqlConnection.ConnectionString), clearing a pool
+            // removes the pool (NpgsqlDataSource) from the PoolManager and disposes it.
+            // This leads to an ObjectDisposedException when calling NpgsqlDataSource.Get() here.
+            // If this happens we reinitialize the pool and add it to the PoolManager by calling SetupDataSource() again.
+            // When not using PoolManager (modern code path creating the NpgsqlConnection from a NpgsqlDataSource;
+            // _dataSource.IsLegacyDataSource is false) we bubble up an eventual ObjectDisposedException as usual.
+            catch (ObjectDisposedException)
+            {
+                if (!_dataSource.IsLegacyDataSource)
+                    throw;
+                SetupDataSource();
+            }
+        }
     }
 
     /// <summary>

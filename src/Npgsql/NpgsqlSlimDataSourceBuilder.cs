@@ -49,6 +49,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     Action<NpgsqlConnection>? _connectionInitializer;
     Func<NpgsqlConnection, Task>? _connectionInitializerAsync;
 
+    internal bool _isLegacyDataSource;
+
     internal JsonSerializerOptions? JsonSerializerOptions { get; private set; }
 
     internal Action<NpgsqlSlimDataSourceBuilder> ConfigureDefaultFactories { get; set; }
@@ -634,7 +636,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             HackyEnumMappings(),
             DefaultNameTranslator,
             _connectionInitializer,
-            _connectionInitializerAsync);
+            _connectionInitializerAsync,
+            _isLegacyDataSource);
 
         List<HackyEnumTypeMapping> HackyEnumMappings()
         {

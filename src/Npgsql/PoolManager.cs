@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace Npgsql;
 
@@ -11,20 +15,41 @@ namespace Npgsql;
 /// </remarks>
 static class PoolManager
 {
-    internal static ConcurrentDictionary<string, NpgsqlDataSource> Pools { get; } = new();
+    static readonly object LockObject = new();
+    static ConcurrentDictionary<string, NpgsqlDataSource> _pools = new();
+
+    // Keep the IEnumerable API for testing purposes but remove the rest to avoid careless (unlocked) access to the
+    // private dictionary.
+    // ReSharper disable once InconsistentlySynchronizedField
+    internal static IEnumerable<KeyValuePair<string, NpgsqlDataSource>> Pools => _pools.ToImmutableDictionary();
 
     internal static void Clear(string connString)
     {
-        // TODO: Actually remove the pools from here, #3387 (but be careful of concurrency)
-        if (Pools.TryGetValue(connString, out var pool))
-            pool.Clear();
+        lock (LockObject)
+        {
+            var pools = _pools;
+            if (!pools.TryRemove(connString, out var pool))
+                    return;
+
+            pool.Dispose();
+
+            // The same NpgsqlDataSource instance may be referenced via different connection strings
+            // in our dictionary, so we have to make sure that we remove all occurrences
+            foreach (var pair in pools)
+                if (ReferenceEquals(pair.Value, pool))
+                    pools.TryRemove(pair);
+        }
     }
 
     internal static void ClearAll()
     {
-        // TODO: Actually remove the pools from here, #3387 (but be careful of concurrency)
-        foreach (var pool in Pools.Values)
-            pool.Clear();
+        lock (LockObject)
+        {
+            var pools = _pools;
+            _pools = new();
+            foreach (var pool in pools.Values)
+                pool.Dispose();
+        }
     }
 
     static PoolManager()
@@ -35,14 +60,17 @@ static class PoolManager
         AppDomain.CurrentDomain.ProcessExit += (_, _) => ClearAll();
     }
 
-    /// <summary>
-    /// Resets the pool manager to its initial state, for test purposes only.
-    /// Assumes that no other threads are accessing the pool.
-    /// </summary>
-    internal static void Reset()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static NpgsqlDataSource GetOrAddPool(string connectionString, NpgsqlDataSource dataSource)
     {
-        // TODO: Remove once #3387 is implemented
-        ClearAll();
-        Pools.Clear();
+        lock (LockObject)
+        {
+            return _pools.GetOrAdd(connectionString, dataSource);
+        }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TryGetPool(string connectionString, [MaybeNullWhen(false)] out NpgsqlDataSource dataSource)
+        // ReSharper disable once InconsistentlySynchronizedField
+        => _pools.TryGetValue(connectionString, out dataSource);
 }
