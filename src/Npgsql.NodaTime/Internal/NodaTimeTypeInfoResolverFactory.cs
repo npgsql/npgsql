@@ -107,34 +107,27 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
         {
-            // timestamptz
-            mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
-            mappings.AddStructArrayType<ZonedDateTime>(TimestampTzDataTypeName);
-            mappings.AddStructArrayType<OffsetDateTime>(TimestampTzDataTypeName);
-
-            // timestamp
             if (LegacyTimestampBehavior)
             {
+               // timestamp
                 mappings.AddStructArrayType<Instant>(TimestampDataTypeName);
+                mappings.AddStructArrayType<LocalDateTime>(TimestampDataTypeName);
 
-                mappings.AddStructType<Instant>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: true);
-                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: false);
+                // timestamptz
+                mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<ZonedDateTime>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<OffsetDateTime>(TimestampTzDataTypeName);
             }
             else
             {
-                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: true);
-            }
+                // timestamp
+                mappings.AddStructArrayType<LocalDateTime>(TimestampDataTypeName);
 
-            mappings.AddStructArrayType<LocalDateTime>(TimestampDataTypeName);
+                // timestamptz
+                mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<ZonedDateTime>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<OffsetDateTime>(TimestampTzDataTypeName);
+            }
 
             // other
             mappings.AddStructArrayType<LocalDate>(DateDataTypeName);
