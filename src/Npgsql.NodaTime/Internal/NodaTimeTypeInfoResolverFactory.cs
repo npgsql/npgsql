@@ -32,14 +32,14 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (LegacyTimestampBehavior)
             {
                 // timestamptz
-                mappings.AddStructType<Instant>(new DataTypeName("pg_catalog.timestamptz"),
+                mappings.AddStructType<Instant>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
-                mappings.AddStructType<ZonedDateTime>(new DataTypeName("pg_catalog.timestamptz"),
+                mappings.AddStructType<ZonedDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(
                             DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
-                mappings.AddStructType<OffsetDateTime>(new DataTypeName("pg_catalog.timestamptz"),
+                mappings.AddStructType<OffsetDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(
                             DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
@@ -47,12 +47,10 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 // timestamp
                 mappings.AddStructType<Instant>(TimestampDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: true);
+                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
                 mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: false);
+                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)));
             }
             else
             {
@@ -60,10 +58,10 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 mappings.AddStructType<Instant>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
-                mappings.AddStructType<ZonedDateTime>(new DataTypeName("pg_catalog.timestamptz"),
+                mappings.AddStructType<ZonedDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions)));
-                mappings.AddStructType<OffsetDateTime>(new DataTypeName("pg_catalog.timestamptz"),
+                mappings.AddStructType<OffsetDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)));
 
