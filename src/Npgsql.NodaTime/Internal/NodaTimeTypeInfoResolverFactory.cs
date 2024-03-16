@@ -31,47 +31,47 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // timestamp and timestamptz, legacy and non-legacy modes
             if (LegacyTimestampBehavior)
             {
-                // timestamptz
-                mappings.AddStructType<Instant>(new DataTypeName("pg_catalog.timestamptz"),
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: false);
-                mappings.AddStructType<ZonedDateTime>(new DataTypeName("pg_catalog.timestamptz"),
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(
-                            DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
-                mappings.AddStructType<OffsetDateTime>(new DataTypeName("pg_catalog.timestamptz"),
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(
-                            DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
+                // timestamp is the default for writing an Instant.
 
                 // timestamp
                 mappings.AddStructType<Instant>(TimestampDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: true);
+                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
                 mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: false);
-            }
-            else
-            {
+                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)));
+
                 // timestamptz
                 mappings.AddStructType<Instant>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
-                mappings.AddStructType<ZonedDateTime>(new DataTypeName("pg_catalog.timestamptz"),
+                mappings.AddStructType<ZonedDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions)));
-                mappings.AddStructType<OffsetDateTime>(new DataTypeName("pg_catalog.timestamptz"),
+                        mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(
+                            DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
+                mappings.AddStructType<OffsetDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)));
-
+                        mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(
+                            DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
+            }
+            else
+            {
                 // timestamp
                 mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
                     isDefault: true);
+
+                // timestamptz
+                mappings.AddStructType<Instant>(TimestampTzDataTypeName,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+                mappings.AddStructType<ZonedDateTime>(TimestampTzDataTypeName,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions)));
+                mappings.AddStructType<OffsetDateTime>(TimestampTzDataTypeName,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)));
             }
 
             // date
@@ -107,34 +107,27 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
         {
-            // timestamptz
-            mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
-            mappings.AddStructArrayType<ZonedDateTime>(TimestampTzDataTypeName);
-            mappings.AddStructArrayType<OffsetDateTime>(TimestampTzDataTypeName);
-
-            // timestamp
             if (LegacyTimestampBehavior)
             {
+               // timestamp
                 mappings.AddStructArrayType<Instant>(TimestampDataTypeName);
+                mappings.AddStructArrayType<LocalDateTime>(TimestampDataTypeName);
 
-                mappings.AddStructType<Instant>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: true);
-                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: false);
+                // timestamptz
+                mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<ZonedDateTime>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<OffsetDateTime>(TimestampTzDataTypeName);
             }
             else
             {
-                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: true);
-            }
+                // timestamp
+                mappings.AddStructArrayType<LocalDateTime>(TimestampDataTypeName);
 
-            mappings.AddStructArrayType<LocalDateTime>(TimestampDataTypeName);
+                // timestamptz
+                mappings.AddStructArrayType<Instant>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<ZonedDateTime>(TimestampTzDataTypeName);
+                mappings.AddStructArrayType<OffsetDateTime>(TimestampTzDataTypeName);
+            }
 
             // other
             mappings.AddStructArrayType<LocalDate>(DateDataTypeName);
