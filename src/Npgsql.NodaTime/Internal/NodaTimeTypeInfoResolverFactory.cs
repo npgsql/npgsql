@@ -31,6 +31,16 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // timestamp and timestamptz, legacy and non-legacy modes
             if (LegacyTimestampBehavior)
             {
+                // timestamp is the default for writing an Instant.
+
+                // timestamp
+                mappings.AddStructType<Instant>(TimestampDataTypeName,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)));
+
                 // timestamptz
                 mappings.AddStructType<Instant>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
@@ -43,17 +53,15 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(
                             DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
-
-                // timestamp
-                mappings.AddStructType<Instant>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
-                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)));
             }
             else
             {
+                // timestamp
+                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
+                    isDefault: true);
+
                 // timestamptz
                 mappings.AddStructType<Instant>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
@@ -64,12 +72,6 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 mappings.AddStructType<OffsetDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)));
-
-                // timestamp
-                mappings.AddStructType<LocalDateTime>(TimestampDataTypeName,
-                    static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LocalDateTimeConverter(options.EnableDateTimeInfinityConversions)),
-                    isDefault: true);
             }
 
             // date
