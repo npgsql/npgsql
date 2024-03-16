@@ -499,7 +499,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
             }
-            catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
+            catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
             {
                 LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
             }
@@ -511,25 +511,23 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         _connector.EndUserAction();
         Cleanup();
-    }
 
-#pragma warning disable CS8625
-    void Cleanup()
-    {
-        Debug.Assert(!_isDisposed);
-        var connector = _connector;
-
-        if (connector != null)
+        void Cleanup()
         {
-            connector.CurrentCopyOperation = null;
-            _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
-            _connector = null;
-        }
+            Debug.Assert(!_isDisposed);
+            var connector = _connector;
 
-        _buf = null;
-        _isDisposed = true;
+            if (!ReferenceEquals(connector, null))
+            {
+                connector.CurrentCopyOperation = null;
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
+                _connector = null!;
+            }
+
+            _buf = null!;
+            _isDisposed = true;
+        }
     }
-#pragma warning restore CS8625
 
     #endregion
 }
