@@ -34,7 +34,7 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 // timestamptz
                 mappings.AddStructType<Instant>(new DataTypeName("pg_catalog.timestamptz"),
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: false);
+                        mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
                 mappings.AddStructType<ZonedDateTime>(new DataTypeName("pg_catalog.timestamptz"),
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(
