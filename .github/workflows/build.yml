@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.100'
+  dotnet_sdk_version: '9.0.100-preview.1.24101.2'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
@@ -32,20 +32,20 @@ jobs:
         os: [ubuntu-22.04, windows-2022]
         pg_major: [16, 15, 14, 13, 12]
         config: [Release]
-        test_tfm: [net8.0]
+        test_tfm: [net9.0]
         include:
           - os: ubuntu-22.04
             pg_major: 16
             config: Debug
-            test_tfm: net8.0
+            test_tfm: net9.0
           - os: macos-12
             pg_major: 14
             config: Release
-            test_tfm: net8.0
+            test_tfm: net9.0
 #          - os: ubuntu-22.04
 #            pg_major: 17
 #            config: Release
-#            test_tfm: net8.0
+#            test_tfm: net9.0
 #            pg_prerelease: 'PG Prerelease'
 
     outputs:

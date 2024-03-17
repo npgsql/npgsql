@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.100'
+  dotnet_sdk_version: '9.0.100-preview.1.24101.2'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Uncomment and edit the following to use nightly/preview builds 
 #  nuget_config: |
@@ -77,7 +77,7 @@ jobs:
         shell: bash
 
       - name: Build
-        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net8.0 -p:OptimizationPreference=Size
+        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net9.0 -p:OptimizationPreference=Size
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
@@ -92,40 +92,40 @@ jobs:
           sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
 
       - name: Run
-        run: test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests
+        run: test/Npgsql.NativeAotTests/bin/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests
 
       - name: Write binary size to summary
         run: |
-          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
+          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
 
       - name: Dump mstat
-        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f net8.0 -- "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
+        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f net9.0 -- "test/Npgsql.NativeAotTests/obj/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload mstat
         uses: actions/upload-artifact@v4
         with:
           name: npgsql.mstat
-          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat"
+          path: "test/Npgsql.NativeAotTests/obj/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests.mstat"
           retention-days: 3
 
       - name: Upload codedgen dgml
         uses: actions/upload-artifact@v4
         with:
           name: npgsql.codegen.dgml.xml
-          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
+          path: "test/Npgsql.NativeAotTests/obj/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
           retention-days: 3
 
       - name: Upload scan dgml
         uses: actions/upload-artifact@v4
         with:
           name: npgsql.scan.dgml.xml
-          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"
+          path: "test/Npgsql.NativeAotTests/obj/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"
           retention-days: 3
 
       - name: Assert binary size
         run: |
-          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
+          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)"
 
           if (( size > 7340032 )); then
