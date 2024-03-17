@@ -134,6 +134,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region I/O
 
+    public void Ensure(int count)
+        => Ensure(count, async: false, readingNotifications: false).GetAwaiter().GetResult();
+
     public ValueTask Ensure(int count, bool async)
         => Ensure(count, async, readingNotifications: false);
 
