@@ -1,16 +1,18 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using Npgsql.Util;
 
 namespace Npgsql.Internal.Composites;
 
-abstract class CompositeBuilder(StrongBox[] tempBoxes)
+abstract class CompositeBuilder(StrongBox[] tempBoxes, IReadOnlyList<CompositeFieldInfo> fields)
 {
-    protected StrongBox[] _tempBoxes = tempBoxes;
+    protected readonly StrongBox[] _tempBoxes = tempBoxes;
+    protected readonly IReadOnlyList<CompositeFieldInfo> _fields = fields;
     protected int _currentField;
+    protected object? _boxedInstance;
 
     protected abstract void Construct();
-    protected abstract void SetField<TValue>(TValue value);
 
     public void AddValue<TValue>(TValue value)
     {
@@ -30,13 +32,25 @@ abstract class CompositeBuilder(StrongBox[] tempBoxes)
         }
 
         _currentField++;
+
+        void SetField(TValue value)
+        {
+            if (_boxedInstance is null)
+                ThrowHelper.ThrowInvalidOperationException("Not constructed yet, or no more fields were expected.");
+
+            var currentField = _currentField;
+            var fields = _fields;
+            if (currentField > fields.Count - 1)
+                ThrowHelper.ThrowIndexOutOfRangeException($"Cannot set field {value} at position {currentField} - all fields have already been set");
+
+            ((CompositeFieldInfo<TValue>)fields[currentField]).Set(_boxedInstance, value);
+        }
     }
 }
 
-sealed class CompositeBuilder<T>(CompositeInfo<T> compositeInfo) : CompositeBuilder(compositeInfo.CreateTempBoxes()), IDisposable
+sealed class CompositeBuilder<T>(CompositeInfo<T> compositeInfo) : CompositeBuilder(compositeInfo.CreateTempBoxes(), compositeInfo.Fields), IDisposable
 {
     T _instance = default!;
-    object? _boxedInstance;
 
     public T Complete()
     {
@@ -45,17 +59,6 @@ sealed class CompositeBuilder<T>(CompositeInfo<T> compositeInfo) : CompositeBuil
 
         return (T)(_boxedInstance ?? _instance!);
     }
-
-    public void Reset()
-    {
-        _instance = default!;
-        _boxedInstance = null;
-        _currentField = 0;
-        foreach (var box in _tempBoxes)
-            box.Clear();
-    }
-
-    public void Dispose() => Reset();
 
     protected override void Construct()
     {
@@ -87,16 +90,14 @@ sealed class CompositeBuilder<T>(CompositeInfo<T> compositeInfo) : CompositeBuil
         }
     }
 
-    protected override void SetField<TValue>(TValue value)
+    public void Reset()
     {
-        if (_boxedInstance is null)
-            ThrowHelper.ThrowInvalidOperationException("Not constructed yet, or no more fields were expected.");
-
-        var currentField = _currentField;
-        var fields = compositeInfo.Fields;
-        if (currentField > fields.Count - 1)
-            ThrowHelper.ThrowIndexOutOfRangeException($"Cannot set field {value} at position {currentField} - all fields have already been set");
-
-        ((CompositeFieldInfo<TValue>)fields[currentField]).Set(_boxedInstance, value);
+        _instance = default!;
+        _boxedInstance = null;
+        _currentField = 0;
+        foreach (var box in _tempBoxes)
+            box.Clear();
     }
+
+    public void Dispose() { }
 }
