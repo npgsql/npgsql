@@ -783,7 +783,7 @@ public class PgReader
 
     public void Buffer(Size bufferRequirement)
         => Buffer(GetBufferRequirementByteCount(bufferRequirement));
-    public void Buffer(int byteCount) => _buffer.Ensure(byteCount, async: false).GetAwaiter().GetResult();
+    public void Buffer(int byteCount) => _buffer.Ensure(byteCount);
 
     public ValueTask BufferAsync(Size bufferRequirement, CancellationToken cancellationToken)
         => BufferAsync(GetBufferRequirementByteCount(bufferRequirement), cancellationToken);
