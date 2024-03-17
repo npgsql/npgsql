@@ -247,6 +247,7 @@ jobs:
             postgreService=$(brew services list | grep -oe "postgresql@${{ matrix.pg_major }}\S*")
 
             brew services start $postgreService
+            export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
             echo "Check PostgreSQL service is running"
             i=5
             COMMAND='pg_isready'
