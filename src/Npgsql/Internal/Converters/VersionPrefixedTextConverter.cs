@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>, IResumableRead
+sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
 {
     readonly byte _versionPrefix;
     readonly PgConverter<T> _textConverter;
@@ -52,8 +52,6 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>, IResumab
         else
             _textConverter.Write(writer, value);
     }
-
-    bool IResumableRead.Supported => _textConverter is IResumableRead { Supported: true };
 }
 
 static class VersionPrefixedTextConverter

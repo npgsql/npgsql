@@ -178,11 +178,6 @@ static class PgConverterExtensions
     }
 }
 
-interface IResumableRead
-{
-    bool Supported { get; }
-}
-
 public readonly struct SizeContext
 {
     [SetsRequiredMembers]

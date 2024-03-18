@@ -1669,6 +1669,30 @@ LANGUAGE plpgsql VOLATILE";
     }
 
     [Test]
+    public async Task GetChars_AdvanceConsumed()
+    {
+        const string value = "01234567";
+
+        using var conn = await OpenConnectionAsync();
+        using var cmd = new NpgsqlCommand($"SELECT '{value}'", conn);
+        using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        reader.Read();
+
+        var buffer = new char[2];
+        // Don't start at the beginning of the column.
+        reader.GetChars(0, 2, buffer, 0, 2);
+        reader.GetChars(0, 4, buffer, 0, 2);
+        reader.GetChars(0, 6, buffer, 0, 2);
+
+        // Ask for data past the start and the previous point, exercising restart logic.
+        if (!IsSequential)
+        {
+            reader.GetChars(0, 4, buffer, 0, 2);
+            reader.GetChars(0, 6, buffer, 0, 2);
+        }
+    }
+
+    [Test]
     public async Task GetTextReader([Values(true, false)] bool isAsync)
     {
         Func<NpgsqlDataReader, int, Task<TextReader>> textReaderGetter;
