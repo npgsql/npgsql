@@ -74,7 +74,7 @@ class NetworkTypeTests : MultiplexingTestBase
     public Task Inet_v4_string_as_NpgsqlInet()
         => AssertType(
             new NpgsqlInet("192.168.1.1"),
-            "192.168.1.1",
+            "192.168.1.1/32",
             "inet",
             NpgsqlDbType.Inet,
             isDefaultForReading: false);
@@ -101,7 +101,7 @@ class NetworkTypeTests : MultiplexingTestBase
     public Task Inet_v6_string_as_NpgsqlInet()
         => AssertType(
             new NpgsqlInet("2001:1db8:85a3:1142:1000:8a2e:1370:7334"),
-            "2001:1db8:85a3:1142:1000:8a2e:1370:7334",
+            "2001:1db8:85a3:1142:1000:8a2e:1370:7334/128",
             "inet",
             NpgsqlDbType.Inet,
             isDefaultForReading: false);
