@@ -96,6 +96,16 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Configuration = dataSourceConfig;
 
+        if (this is NpgsqlMultiHostDataSource multiHostConnectorPool)
+        {
+            foreach (var hostPool in (multiHostConnectorPool.Pools ?? []))
+                NpgsqlEventSource.Log.DataSourceCreated(hostPool);
+        }
+        else
+        {
+            NpgsqlEventSource.Log.DataSourceCreated(this);
+        }
+
         (var name,
                 LoggingConfiguration,
                 TransportSecurityHandler,
