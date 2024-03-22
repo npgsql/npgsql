@@ -461,12 +461,22 @@ public readonly record struct NpgsqlInet
     }
 
     public NpgsqlInet(string addr)
-        => (Address, Netmask) = addr.Split('/') switch
+    {
+        switch (addr.Split('/'))
         {
-            { Length: 2 } segments => (IPAddress.Parse(segments[0]), byte.Parse(segments[1])),
-            { Length: 1 } segments => (IPAddress.Parse(segments[0]), (byte)32),
-            _ => throw new FormatException("Invalid number of parts in CIDR specification")
-        };
+        case { Length: 2 } segments:
+            (Address, Netmask) = (IPAddress.Parse(segments[0]), byte.Parse(segments[1]));
+            break;
+        case { Length: 1 } segments:
+            var ipAddr = IPAddress.Parse(segments[0]);
+            (Address, Netmask) = (
+                ipAddr,
+                ipAddr.AddressFamily == AddressFamily.InterNetworkV6 ? (byte)128 : (byte)32);
+            break;
+        default:
+            throw new FormatException("Invalid number of parts in CIDR specification");
+        }
+    }
 
     public override string ToString()
         => (Address.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
