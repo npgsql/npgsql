@@ -467,15 +467,10 @@ public readonly record struct NpgsqlInet
             break;
         case { Length: 1 } segments:
             var ipAddr = IPAddress.Parse(segments[0]);
+            CheckAddressFamily(ipAddr);
             (Address, Netmask) = (
                 ipAddr,
-                ipAddr.AddressFamily switch
-                {
-                    AddressFamily.InterNetwork => 32,
-                    AddressFamily.InterNetworkV6 => 128,
-                    _ => throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted",
-                        nameof(ipAddr))
-                });
+                ipAddr.AddressFamily == AddressFamily.InterNetworkV6 ? (byte)128 : (byte)32);
             break;
         default:
             throw new FormatException("Invalid number of parts in CIDR specification");
@@ -498,6 +493,12 @@ public readonly record struct NpgsqlInet
     {
         address = Address;
         netmask = Netmask;
+    }
+
+    static void CheckAddressFamily(IPAddress address)
+    {
+        if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
+            throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
     }
 }
 
