@@ -211,4 +211,43 @@ public class TypesTests
         Assert.That(v.ToString(), Is.EqualTo("2001:1db8:85a3:1142:1000:8a2e:1370:7334/32"));
     }
 #pragma warning restore 618
+
+    [Test]
+    public void NpgsqlInet_parse_ipv4()
+    {
+        var ipv4 = new NpgsqlInet("192.168.1.1/8");
+        Assert.That(ipv4.Address, Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+        Assert.That(ipv4.Netmask, Is.EqualTo(8));
+
+        ipv4 = new NpgsqlInet("192.168.1.1/32");
+        Assert.That(ipv4.Address, Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+        Assert.That(ipv4.Netmask, Is.EqualTo(32));
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/5638")]
+    public void NpgsqlInet_parse_ipv6()
+    {
+        var ipv6 = new NpgsqlInet("2001:0000:130F:0000:0000:09C0:876A:130B/32");
+        Assert.That(ipv6.Address, Is.EqualTo(IPAddress.Parse("2001:0000:130F:0000:0000:09C0:876A:130B")));
+        Assert.That(ipv6.Netmask, Is.EqualTo(32));
+
+        ipv6 = new NpgsqlInet("2001:0000:130F:0000:0000:09C0:876A:130B");
+        Assert.That(ipv6.Address, Is.EqualTo(IPAddress.Parse("2001:0000:130F:0000:0000:09C0:876A:130B")));
+        Assert.That(ipv6.Netmask, Is.EqualTo(128));
+    }
+
+    [Test]
+    public void NpgsqlInet_ToString_ipv4()
+    {
+        Assert.That(new NpgsqlInet("192.168.1.1/8").ToString(), Is.EqualTo("192.168.1.1/8"));
+        Assert.That(new NpgsqlInet("192.168.1.1/32").ToString(), Is.EqualTo("192.168.1.1"));
+    }
+
+    [Test]
+    public void NpgsqlInet_ToString_ipv6()
+    {
+        Assert.That(new NpgsqlInet("2001:0:130f::9c0:876a:130b/32").ToString(), Is.EqualTo("2001:0:130f::9c0:876a:130b/32"));
+        Assert.That(new NpgsqlInet("2001:0:130f::9c0:876a:130b/128").ToString(), Is.EqualTo("2001:0:130f::9c0:876a:130b"));
+    }
 }
