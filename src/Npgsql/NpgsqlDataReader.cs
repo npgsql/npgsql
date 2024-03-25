@@ -459,8 +459,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     continue;
                 }
 
-                if ((Command.IsWrappedByBatch && Command.InternalBatchCommands[StatementIndex]._parameters?.HasOutputParameters == true)
-                        || (!Command.IsWrappedByBatch && StatementIndex == 0 && Command._parameters?.HasOutputParameters == true))
+                if ((Command.IsWrappedByBatch || StatementIndex is 0) && Command.InternalBatchCommands[StatementIndex]._parameters?.HasOutputParameters == true)
                 {
                     // If output parameters are present and this is the first row of the resultset,
                     // we must always read it in non-sequential mode because it will be traversed twice (once
@@ -468,8 +467,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     msg = await Connector.ReadMessage(async).ConfigureAwait(false);
                     ProcessMessage(msg);
                     if (msg.Code == BackendMessageCode.DataRow)
-                        PopulateOutputParameters(
-                            Command.IsWrappedByBatch ? Command.InternalBatchCommands[StatementIndex]._parameters! : Command._parameters!);
+                        PopulateOutputParameters(Command.InternalBatchCommands[StatementIndex]._parameters!);
                 }
                 else
                 {
