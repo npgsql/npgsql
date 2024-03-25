@@ -1425,8 +1425,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             ThrowHelper.ThrowIndexOutOfRangeException("bufferOffset must be between 0 and {0}", buffer.Length - bufferOffset);
 
-        var columnLength = SeekToColumn(ordinal, field.DataFormat, resumableOp: true);
-        if (columnLength == -1)
+        if (SeekToColumn(ordinal, field.DataFormat, resumableOp: true) is var columnLength && columnLength is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
         if (buffer is null)
@@ -1914,9 +1913,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
 
         reader.Commit();
-        var columnLength = BufferSeekToColumn(column, ordinal);
+        var columnLength = BufferSeekToColumn(column, ordinal, !_isRowBuffered);
         reader.Init(columnLength, dataFormat, resumableOp);
-        return reader.FieldSize;
+        return columnLength;
 
         static void ThrowInvalidSequentialSeek(int column, int ordinal)
             => ThrowHelper.ThrowInvalidOperationException(
@@ -1939,29 +1938,26 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             var reader = PgReader;
             await reader.CommitAsync().ConfigureAwait(false);
-            var columnLength = await BufferSeekToColumnAsync(_column, ordinal).ConfigureAwait(false);
+            var columnLength = await BufferSeekToColumnAsync(_column, ordinal, !_isRowBuffered).ConfigureAwait(false);
             reader.Init(columnLength, dataFormat, resumableOp);
             return columnLength;
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    int BufferSeekToColumn(int column, int ordinal)
+    int BufferSeekToColumn(int column, int ordinal, bool allowIO)
     {
-        Debug.Assert(column < ordinal || _isRowBuffered);
-
-        var buffer = Buffer;
-        var columnLength = 0;
+        Debug.Assert(column < ordinal || !allowIO);
 
         if (column >= ordinal)
         {
-            columnLength = SeekBackwards(buffer, _columns, _columnsStartPos, ordinal);
             _column = ordinal;
-            return columnLength;
+            return SeekBackwards(ordinal);
         }
 
         // We know we need at least one iteration, a do while also helps with optimal codegen.
-        var allowIO = !_isRowBuffered;
+        var buffer = Buffer;
+        var columnLength = 0;
         do
         {
             if (columnLength > 0)
@@ -1971,38 +1967,36 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 buffer.Ensure(sizeof(int));
             columnLength = buffer.ReadInt32();
             Debug.Assert(columnLength >= -1);
-            _column++;
-        } while (_column < ordinal);
+        } while (++_column < ordinal);
 
         return columnLength;
 
         // On the first call to SeekBackwards we'll fill up the columns list as we may need seek positions more than once.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        static int SeekBackwards(NpgsqlReadBuffer buffer, List<(int Offset, int Length)> columns, int columnsStartPos, int ordinal)
+        int SeekBackwards(int ordinal)
         {
-            // Backfill the first column.
-            if (columns.Count is 0)
+            var buffer = Buffer;
+            var columns = _columns;
+
+            (buffer.ReadPosition, var columnLength) = columns.Count is 0
+                ? (_columnsStartPos, 0)
+                : columns[Math.Min(columns.Count -1, ordinal)];
+
+            while (columns.Count <= ordinal)
             {
-                buffer.ReadPosition = columnsStartPos;
-                var len = buffer.ReadInt32();
-                columns.Add((buffer.ReadPosition, len));
+                if (columnLength > 0)
+                    buffer.Skip(columnLength);
+                columnLength = buffer.ReadInt32();
+                columns.Add((buffer.ReadPosition, columnLength));
             }
-            for (var lastColumnRead = columns.Count; ordinal >= lastColumnRead; lastColumnRead++)
-            {
-                (buffer.ReadPosition, var lastLen) = columns[lastColumnRead - 1];
-                if (lastLen > 0)
-                    buffer.Skip(lastLen);
-                var len = buffer.ReadInt32();
-                columns.Add((buffer.ReadPosition, len));
-            }
-            (buffer.ReadPosition, var columnLength) = columns[ordinal];
+
             return columnLength;
         }
     }
 
-    ValueTask<int> BufferSeekToColumnAsync(int column, int ordinal)
+    ValueTask<int> BufferSeekToColumnAsync(int column, int ordinal, bool allowIO)
     {
-        return column >= ordinal ? new(BufferSeekToColumn(column, ordinal)) : Core(ordinal);
+        return !allowIO || column >= ordinal ? new(BufferSeekToColumn(column, ordinal, allowIO)) : Core(ordinal);
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
         async ValueTask<int> Core(int ordinal)
@@ -2018,8 +2012,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 await buffer.EnsureAsync(sizeof(int)).ConfigureAwait(false);
                 columnLength = buffer.ReadInt32();
                 Debug.Assert(columnLength >= -1);
-                _column++;
-            } while (_column < ordinal);
+            } while (++_column < ordinal);
 
             return columnLength;
         }
