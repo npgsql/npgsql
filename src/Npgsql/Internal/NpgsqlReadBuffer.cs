@@ -417,7 +417,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// <summary>
     /// Skip a given number of bytes.
     /// </summary>
-    internal void Skip(int len, bool allowIO = false)
+    internal void Skip(int len, bool allowIO)
     {
         Debug.Assert(len >= 0);
 
@@ -434,6 +434,12 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             Ensure(len);
         }
 
+        Debug.Assert(ReadBytesLeft >= len);
+        ReadPosition += len;
+    }
+
+    internal void Skip(int len)
+    {
         Debug.Assert(ReadBytesLeft >= len);
         ReadPosition += len;
     }
