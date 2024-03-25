@@ -129,6 +129,88 @@ END$$");
         Assert.That(reader[1], Is.EqualTo(11));
     }
 
+    [Test]
+    public async Task Batch_positional_parameters_works()
+    {
+        var tempname = await GetTempProcedureName(DataSource);
+        await using var connection = await DataSource.OpenConnectionAsync();
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var batch = new NpgsqlBatch(connection, transaction)
+        {
+            BatchCommands =
+            {
+                new(tempname)
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    Parameters =
+                    {
+                        new() { Value = "" },
+                        new() { DbType = DbType.Int64, Direction = ParameterDirection.Output }
+                    }
+                },
+                new ("COMMIT")
+            }
+        };
+
+        Assert.ThrowsAsync<PostgresException>(() => batch.ExecuteNonQueryAsync());
+    }
+
+    [Test]
+    public async Task Batch_StoredProcedure_output_parameters_works()
+    {
+        // Proper OUT params were introduced in PostgreSQL 14
+        MinimumPgVersion(DataSource, "14.0", "Stored procedure OUT parameters are only support starting with version 14");
+        var sproc = await GetTempProcedureName(DataSource);
+
+        await using var connection = await DataSource.OpenConnectionAsync();
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        var c = connection.CreateCommand();
+        c.CommandText = $"""
+        CREATE OR REPLACE PROCEDURE {sproc}
+        (
+            p_username TEXT,
+            OUT p_user_id BIGINT
+        )
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+            p_user_id = 1;
+        	return;
+        END;
+        $$;
+        """;
+        await c.ExecuteNonQueryAsync();
+
+        await using var batch = new NpgsqlBatch(connection, transaction)
+        {
+            BatchCommands =
+            {
+                new(sproc)
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    Parameters =
+                    {
+                        new() { Value = "" },
+                        new() { NpgsqlDbType = NpgsqlDbType.Bigint, Direction = ParameterDirection.Output}
+                    }
+                },
+                new(sproc)
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    Parameters =
+                    {
+                        new() { Value = "" },
+                        new() { NpgsqlDbType = NpgsqlDbType.Bigint, Direction = ParameterDirection.Output}
+                    }
+                }
+            }
+        };
+
+        await batch.ExecuteNonQueryAsync();
+        Assert.AreEqual(1, batch.BatchCommands[0].Parameters[1].Value);
+        Assert.AreEqual(1, batch.BatchCommands[1].Parameters[1].Value);
+    }
+
     #region DeriveParameters
 
     [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
