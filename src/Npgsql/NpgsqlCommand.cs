@@ -659,7 +659,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateValues: false, CommandType);
+                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateValues: false, batchCommand.CommandType);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
@@ -1400,7 +1400,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     goto case false;
                                 }
 
-                                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
+                                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, batchCommand.CommandType);
                             }
                         }
                         else
@@ -1429,7 +1429,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var batchCommand = InternalBatchCommands[i];
 
-                                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
+                                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, batchCommand.CommandType);
                                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                                 if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1535,7 +1535,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
-                        batchCommand._parameters?.ProcessParameters(dataSource.SerializerOptions, validateValues: true, CommandType);
+                        batchCommand._parameters?.ProcessParameters(dataSource.SerializerOptions, validateValues: true, batchCommand.CommandType);
                         ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
                     }
                 }
