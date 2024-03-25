@@ -459,15 +459,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     continue;
                 }
 
-                if (!Command.IsWrappedByBatch && StatementIndex == 0 && Command._parameters?.HasOutputParameters == true)
+                if ((Command.IsWrappedByBatch && Command.InternalBatchCommands[StatementIndex]._parameters?.HasOutputParameters == true)
+                        || (!Command.IsWrappedByBatch && StatementIndex == 0 && Command._parameters?.HasOutputParameters == true))
                 {
-                    // If output parameters are present and this is the first row of the first resultset,
+                    // If output parameters are present and this is the first row of the resultset,
                     // we must always read it in non-sequential mode because it will be traversed twice (once
                     // here for the parameters, then as a regular row).
                     msg = await Connector.ReadMessage(async).ConfigureAwait(false);
                     ProcessMessage(msg);
                     if (msg.Code == BackendMessageCode.DataRow)
-                        PopulateOutputParameters();
+                        PopulateOutputParameters(
+                            Command.IsWrappedByBatch ? Command.InternalBatchCommands[StatementIndex]._parameters! : Command._parameters!);
                 }
                 else
                 {
@@ -598,12 +600,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
 
-    void PopulateOutputParameters()
+    void PopulateOutputParameters(NpgsqlParameterCollection parameters)
     {
         // The first row in a stored procedure command that has output parameters needs to be traversed twice -
         // once for populating the output parameters and once for the actual result set traversal. So in this
         // case we can't be sequential.
-        Debug.Assert(StatementIndex == 0);
         Debug.Assert(RowDescription != null);
         Debug.Assert(State == ReaderState.BeforeResult);
 
@@ -616,7 +617,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var taken = new List<NpgsqlParameter>();
         for (var i = 0; i < ColumnCount; i++)
         {
-            if (Command.Parameters.TryGetValue(GetName(i), out var p) && p.IsOutputDirection)
+            if (parameters.TryGetValue(GetName(i), out var p) && p.IsOutputDirection)
             {
                 p.Value = GetValue(i);
                 taken.Add(p);
@@ -628,7 +629,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // Not sure where this odd behavior comes from: all output parameters which did not get matched by
         // name now get populated with column values which weren't matched. Keeping this for backwards compat,
         // opened #2252 for investigation.
-        foreach (var p in (IEnumerable<NpgsqlParameter>)Command.Parameters)
+        foreach (var p in (IEnumerable<NpgsqlParameter>)parameters)
         {
             if (!p.IsOutputDirection || taken.Contains(p))
                 continue;
