@@ -326,22 +326,35 @@ partial class NpgsqlConnector
 
     internal async Task WriteQuery(string sql, bool async, CancellationToken cancellationToken = default)
     {
-        var queryByteLen = TextEncoding.GetByteCount(sql);
+        int queryByteLen;
+        try
+        {
+            queryByteLen = TextEncoding.GetByteCount(sql);
+        }
+        catch (Exception e)
+        {
+            Break(e);
+            throw;
+        }
 
-        var len = sizeof(byte) +
-                  sizeof(int) + // Message length (including self excluding code)
-                  queryByteLen + // Query byte length
-                  sizeof(byte);
+        var len =
+            sizeof(byte) + // Message code
+            sizeof(int) + // Message length
+            queryByteLen + // Query byte length
+            sizeof(byte); // Null terminator
 
         WriteBuffer.StartMessage(len);
-        if (WriteBuffer.WriteSpaceLeft < 1 + 4)
+        if (WriteBuffer.WriteSpaceLeft < sizeof(byte) + sizeof(int))
+        {
+            Debug.Assert(WriteBuffer.Size >= sizeof(byte) + sizeof(int), "Write buffer too small for Parse header");
             await Flush(async, cancellationToken).ConfigureAwait(false);
+        }
 
         WriteBuffer.WriteByte(FrontendMessageCode.Query);
         WriteBuffer.WriteInt32(len - 1);
 
         await WriteBuffer.WriteString(sql, queryByteLen, async, cancellationToken).ConfigureAwait(false);
-        if (WriteBuffer.WriteSpaceLeft < 1)
+        if (WriteBuffer.WriteSpaceLeft < sizeof(byte))
             await Flush(async, cancellationToken).ConfigureAwait(false);
         WriteBuffer.WriteByte(0);  // Null terminator
     }
