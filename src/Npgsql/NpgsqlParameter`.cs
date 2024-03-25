@@ -81,6 +81,9 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
+    private protected override void SetOutputValueCore(NpgsqlDataReader reader, int ordinal)
+        => TypedValue = reader.GetFieldValue<T>(ordinal);
+
     private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
     {
         if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing)

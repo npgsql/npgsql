@@ -459,18 +459,34 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     continue;
                 }
 
-                if ((Command.WrappingBatch is not null || StatementIndex is 0) && Command.InternalBatchCommands[StatementIndex]._parameters?.HasOutputParameters == true)
+                if ((Command.WrappingBatch is not null || StatementIndex is 0) && Command.InternalBatchCommands[StatementIndex] is { HasOutputParameters: true } command)
                 {
                     // If output parameters are present and this is the first row of the resultset,
                     // we must always read it in non-sequential mode because it will be traversed twice (once
                     // here for the parameters, then as a regular row).
-                    msg = await Connector.ReadMessage(async).ConfigureAwait(false);
+                    msg = await Connector.ReadMessage(async, dataRowLoadingMode: DataRowLoadingMode.NonSequential).ConfigureAwait(false);
                     ProcessMessage(msg);
                     if (msg.Code == BackendMessageCode.DataRow)
                     {
+                        Debug.Assert(RowDescription != null);
+                        Debug.Assert(State == ReaderState.BeforeResult);
+
+                        // Temporarily set our state to InResult to allow us to read the values
+                        var currentPosition = Buffer.ReadPosition;
+                        State = ReaderState.InResult;
                         try
                         {
-                            PopulateOutputParameters(Command.InternalBatchCommands[StatementIndex]._parameters!);
+                            command.PopulateOutputParameters(this, _commandLogger);
+
+                            // Revert row state.
+                            if (async)
+                                await PgReader.CommitAsync().ConfigureAwait(false);
+                            else
+                                PgReader.Commit();
+
+                            State = ReaderState.BeforeResult; // Set the state back
+                            Buffer.ReadPosition = currentPosition; // Restore position
+                            _column = -1;
                         }
                         catch (Exception e)
                         {
@@ -610,53 +626,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 break;
             }
         }
-    }
-
-
-    void PopulateOutputParameters(NpgsqlParameterCollection parameters)
-    {
-        // The first row in a stored procedure command that has output parameters needs to be traversed twice -
-        // once for populating the output parameters and once for the actual result set traversal. So in this
-        // case we can't be sequential.
-        Debug.Assert(RowDescription != null);
-        Debug.Assert(State == ReaderState.BeforeResult);
-
-        var currentPosition = Buffer.ReadPosition;
-
-        // Temporarily set our state to InResult to allow us to read the values
-        State = ReaderState.InResult;
-
-        var pending = new Queue<object>();
-        var taken = new List<NpgsqlParameter>();
-        for (var i = 0; i < ColumnCount; i++)
-        {
-            if (parameters.TryGetValue(GetName(i), out var p) && p.IsOutputDirection)
-            {
-                p.Value = GetValue(i);
-                taken.Add(p);
-            }
-            else
-                pending.Enqueue(GetValue(i));
-        }
-
-        // Not sure where this odd behavior comes from: all output parameters which did not get matched by
-        // name now get populated with column values which weren't matched. Keeping this for backwards compat,
-        // opened #2252 for investigation.
-        foreach (var p in (IEnumerable<NpgsqlParameter>)parameters)
-        {
-            if (!p.IsOutputDirection || taken.Contains(p))
-                continue;
-
-            if (pending.Count == 0)
-                break;
-            p.Value = pending.Dequeue();
-        }
-
-        PgReader.Commit();
-        State = ReaderState.BeforeResult; // Set the state back
-        Buffer.ReadPosition = currentPosition; // Restore position
-
-        _column = -1;
     }
 
     /// <summary>
