@@ -114,16 +114,7 @@ partial class NpgsqlConnector
             ThrowHelper.ThrowArgumentException("Too many parameters in statement (max: 65535).", nameof(parameters));
         var parameterCount = (ushort)parameters.Count;
 
-        int queryByteLen;
-        try
-        {
-            queryByteLen = TextEncoding.GetByteCount(sql);
-        }
-        catch (Exception e)
-        {
-            Break(e);
-            throw;
-        }
+        var queryByteLen = TextEncoding.GetByteCount(sql);
 
         var headerLength =
             sizeof(byte) + // Message code
@@ -254,19 +245,8 @@ partial class NpgsqlConnector
         if (parameterCount > 0)
         {
             var writer = writeBuffer.GetWriter(DatabaseInfo, async ? FlushMode.NonBlocking : FlushMode.Blocking);
-            try
-            {
-                for (var i = 0; i < parameters.Count; i++)
-                {
-                    var param = parameters[i];
-                    await param.Write(async, writer, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch(Exception ex)
-            {
-                Break(ex);
-                throw;
-            }
+            for (var i = 0; i < parameters.Count; i++)
+                await parameters[i].Write(async, writer, cancellationToken).ConfigureAwait(false);
         }
 
         if (unknownResultTypeList != null)
@@ -326,16 +306,7 @@ partial class NpgsqlConnector
 
     internal async Task WriteQuery(string sql, bool async, CancellationToken cancellationToken = default)
     {
-        int queryByteLen;
-        try
-        {
-            queryByteLen = TextEncoding.GetByteCount(sql);
-        }
-        catch (Exception e)
-        {
-            Break(e);
-            throw;
-        }
+        var queryByteLen = TextEncoding.GetByteCount(sql);
 
         var len =
             sizeof(byte) + // Message code
