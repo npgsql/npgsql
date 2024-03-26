@@ -1294,7 +1294,7 @@ public sealed partial class NpgsqlConnector
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
-                        await ReadBuffer.Skip(len, async).ConfigureAwait(false);
+                        await ReadBuffer.Skip(async, len).ConfigureAwait(false);
                         continue;
                     }
                 }

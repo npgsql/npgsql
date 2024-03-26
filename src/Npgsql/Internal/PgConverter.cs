@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -175,6 +176,12 @@ static class PgConverterExtensions
         }
 
         return size;
+    }
+
+    internal static PgConverter<T> UnsafeDowncast<T>(this PgConverter converter)
+    {
+        Debug.Assert(converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(converter);
     }
 }
 

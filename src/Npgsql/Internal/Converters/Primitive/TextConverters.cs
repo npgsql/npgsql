@@ -263,7 +263,7 @@ sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableR
                 var toRead = count is null ? maxStackAlloc : Math.Min(maxStackAlloc, count.Value - totalRead);
                 var read = reader.ReadBlock(tempCharBuf.Slice(0, toRead));
                 totalRead += read;
-                if (count is not null && read is 0)
+                if (read is 0 && count >= totalRead)
                     throw new EndOfStreamException();
 
                 fin = count is null ? read is 0 : totalRead >= count;
