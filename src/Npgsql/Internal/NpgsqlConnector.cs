@@ -1297,6 +1297,9 @@ public sealed partial class NpgsqlConnector
                         await ReadBuffer.Skip(async, len).ConfigureAwait(false);
                         continue;
                     }
+
+                    // Make sure that the column count is already buffered.
+                    await ReadBuffer.Ensure(sizeof(short), async).ConfigureAwait(false);
                 }
                 else if (len > ReadBuffer.ReadBytesLeft)
                 {
@@ -1406,7 +1409,7 @@ public sealed partial class NpgsqlConnector
         case BackendMessageCode.RowDescription:
             return _rowDescriptionMessage.Load(buf, SerializerOptions);
         case BackendMessageCode.DataRow:
-            return _dataRowMessage.Load(len);
+            return _dataRowMessage.Load(len, buf.ReadInt16());
         case BackendMessageCode.CommandComplete:
             return _commandCompleteMessage.Load(buf, len);
         case BackendMessageCode.ReadyForQuery:

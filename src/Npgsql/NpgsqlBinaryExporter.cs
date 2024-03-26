@@ -169,8 +169,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         await _buf.Ensure(2, async).ConfigureAwait(false);
 
-        var numColumns = _buf.ReadInt16();
-        if (numColumns == -1)
+        var columnCount = _buf.ReadInt16();
+        if (columnCount == -1)
         {
             Expect<CopyDoneMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
             Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
@@ -180,7 +180,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             return -1;
         }
 
-        Debug.Assert(numColumns == NumColumns);
+        Debug.Assert(columnCount == NumColumns);
 
         _column = BeforeColumn;
         _rowsExported++;

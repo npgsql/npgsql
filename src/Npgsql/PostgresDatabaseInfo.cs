@@ -310,7 +310,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         Expect<DataRowMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
         // Note that here and below we don't assign ReadBuffer to a variable
         // because we might allocate oversize buffer
-        conn.ReadBuffer.Skip(2); // Column count
         LongVersion = ReadNonNullableString(conn.ReadBuffer);
         Expect<CommandCompleteMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
         if (isReplicationConnection)
@@ -325,7 +324,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (msg is not DataRowMessage)
                 break;
 
-            conn.ReadBuffer.Skip(2); // Column count
             var nspname = ReadNonNullableString(conn.ReadBuffer);
             var oid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
             Debug.Assert(oid != 0);
@@ -439,7 +437,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (msg is not DataRowMessage)
                 break;
 
-            conn.ReadBuffer.Skip(2); // Column count
             var oid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
             var attname = ReadNonNullableString(conn.ReadBuffer);
             var atttypid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
@@ -501,7 +498,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (msg is not DataRowMessage)
                     break;
 
-                conn.ReadBuffer.Skip(2); // Column count
                 var oid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
                 var enumlabel = ReadNonNullableString(conn.ReadBuffer);
                 if (oid != currentOID)

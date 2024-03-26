@@ -757,10 +757,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
         await Connector.Flush(true, cancellationToken).ConfigureAwait(false);
 
         var rowDescription = Expect<RowDescriptionMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
-        Expect<DataRowMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
+        var msg = Expect<DataRowMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
         var buf = Connector.ReadBuffer;
-        await buf.EnsureAsync(2).ConfigureAwait(false);
-        var results = new object[buf.ReadInt16()];
+        var results = new object[msg.ColumnCount];
         for (var i = 0; i < results.Length; i++)
         {
             await buf.EnsureAsync(4).ConfigureAwait(false);

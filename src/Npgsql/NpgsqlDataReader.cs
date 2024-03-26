@@ -218,7 +218,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 return TrueTask;
             case BackendMessageCode.CommandComplete or BackendMessageCode.EmptyQueryResponse when !_expectErrorBarrier && span.Length >= header.Length:
                 buffer.ReadPosition += MessageHeader.ByteCount;
-                ProcessMessage(Connector.ParseServerMessage(Buffer, BackendMessageCode.CommandComplete, header.Length)!);
+                ProcessMessage(Connector.ParseServerMessage(Buffer, header.Code, header.Length)!);
                 return FalseTask;
             default:
                 return InResultSlow(async, cancellationToken);
@@ -248,14 +248,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 await ConsumeRow(async).ConfigureAwait(false);
 
-                var msg = await ReadMessage(async).ConfigureAwait(false);
+                var msg = await Connector.ReadMessage(async,
+                    _isSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential).ConfigureAwait(false);
 
                 switch (msg.Code)
                 {
                 case BackendMessageCode.DataRow:
                     ProcessMessage(msg);
                     return true;
-
                 case BackendMessageCode.CommandComplete:
                 case BackendMessageCode.EmptyQueryResponse:
                     ProcessMessage(msg);
@@ -273,23 +273,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     State = ReaderState.Consumed;
                 throw;
             }
-        }
-    }
-
-    ValueTask<IBackendMessage> ReadMessage(bool async)
-    {
-        return _isSequential ? ReadMessageSequential(async, Connector) : Connector.ReadMessage(async);
-
-        static async ValueTask<IBackendMessage> ReadMessageSequential(bool async, NpgsqlConnector connector)
-        {
-            var msg = await connector.ReadMessage(async, DataRowLoadingMode.Sequential).ConfigureAwait(false);
-            if (msg.Code is BackendMessageCode.DataRow)
-            {
-                // Make sure that the datarow's column count is already buffered
-                await connector.ReadBuffer.Ensure(sizeof(short), async).ConfigureAwait(false);
-                return msg;
-            }
-            return msg;
         }
     }
 
@@ -465,7 +448,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 }
                 else
                 {
-                    msg = await ReadMessage(async).ConfigureAwait(false);
+                    msg = await Connector.ReadMessage(async,
+                        _isSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential).ConfigureAwait(false);
                     ProcessMessage(msg);
                 }
 
@@ -791,9 +775,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             Buffer.PgReader.StreamCanSeek = !_isSequential;
         }
         // We assume that the row's number of columns is identical to the description's
-        var numColumns = Buffer.ReadInt16();
-        if (ColumnCount != numColumns)
-            ThrowHelper.ThrowArgumentException($"Row's number of columns ({numColumns}) differs from the row description's ({ColumnCount})");
+        if (ColumnCount != dataRow.ColumnCount)
+            ThrowHelper.ThrowArgumentException($"Row's number of columns ({dataRow.ColumnCount}) differs from the row description's ({ColumnCount})");
 
         var readPosition = Buffer.ReadPosition;
         var msgRemainder = dataRow.Length - sizeof(short);
