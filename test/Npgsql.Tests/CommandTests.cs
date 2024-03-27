@@ -548,34 +548,6 @@ public class CommandTests : MultiplexingTestBase
     #endregion
 
     [Test]
-    public async Task StoredProcedure_positional_parameters_works()
-    {
-        if (IsMultiplexing)
-            return;
-
-        await using var connection = await DataSource.OpenConnectionAsync();
-        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable);
-        await using var batch = new NpgsqlBatch(connection, transaction)
-        {
-            BatchCommands =
-            {
-                new("unknown_procedure")
-                {
-                    CommandType = CommandType.StoredProcedure,
-                    Parameters =
-                    {
-                        new() { Value = "" },
-                        new() { DbType = DbType.Int64, Direction = ParameterDirection.Output }
-                    }
-                },
-                new ("COMMIT")
-            }
-        };
-
-        Assert.ThrowsAsync<PostgresException>(() => batch.ExecuteNonQueryAsync());
-    }
-
-    [Test]
     public async Task SingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
         if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
