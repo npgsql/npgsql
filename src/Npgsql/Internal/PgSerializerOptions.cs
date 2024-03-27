@@ -77,28 +77,22 @@ public sealed class PgSerializerOptions
     // This also makes it easier to realize it should be a cached value if infos for different CLR types are requested for the same
     // pgTypeId. Effectively it should be 'impossible' to get the wrong kind via any PgConverterOptions api which is what this is mainly
     // for.
-    PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId, bool defaultTypeFallback)
+    PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId)
         => PortableTypeIds
-            ? Unsafe.As<TypeInfoCache<DataTypeName>>(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this)).GetOrAddInfo(type, pgTypeId?.DataTypeName, defaultTypeFallback)
-            : Unsafe.As<TypeInfoCache<Oid>>(_typeInfoCache ??= new TypeInfoCache<Oid>(this)).GetOrAddInfo(type, pgTypeId?.Oid, defaultTypeFallback);
+            ? Unsafe.As<TypeInfoCache<DataTypeName>>(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this)).GetOrAddInfo(type, pgTypeId?.DataTypeName)
+            : Unsafe.As<TypeInfoCache<Oid>>(_typeInfoCache ??= new TypeInfoCache<Oid>(this)).GetOrAddInfo(type, pgTypeId?.Oid);
 
     public PgTypeInfo? GetDefaultTypeInfo(PostgresType pgType)
-        => GetTypeInfoCore(null, ToCanonicalTypeId(pgType), false);
+        => GetTypeInfoCore(null, ToCanonicalTypeId(pgType));
 
     public PgTypeInfo? GetDefaultTypeInfo(PgTypeId pgTypeId)
-        => GetTypeInfoCore(null, pgTypeId, false);
+        => GetTypeInfoCore(null, pgTypeId);
 
     public PgTypeInfo? GetTypeInfo(Type type, PostgresType pgType)
-        => GetTypeInfoCore(type, ToCanonicalTypeId(pgType), false);
+        => GetTypeInfoCore(type, ToCanonicalTypeId(pgType));
 
     public PgTypeInfo? GetTypeInfo(Type type, PgTypeId? pgTypeId = null)
-        => GetTypeInfoCore(type, pgTypeId, false);
-
-    public PgTypeInfo? GetObjectOrDefaultTypeInfo(PostgresType pgType)
-        => GetTypeInfoCore(typeof(object), ToCanonicalTypeId(pgType), true);
-
-    public PgTypeInfo? GetObjectOrDefaultTypeInfo(PgTypeId pgTypeId)
-        => GetTypeInfoCore(typeof(object), pgTypeId, true);
+        => GetTypeInfoCore(type, pgTypeId);
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
     internal PgTypeId GetCanonicalTypeId(PgTypeId pgTypeId)
