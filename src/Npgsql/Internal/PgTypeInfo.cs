@@ -325,6 +325,4 @@ readonly struct PgConverterInfo
 
     /// Whether Converter.TypeToConvert matches PgTypeInfo.Type, if it doesn't object apis should be used.
     public bool IsBoxingConverter => _typeInfo.IsBoxing;
-
-    public PgConverter<T> GetConverter<T>() => (PgConverter<T>)Converter;
 }

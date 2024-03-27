@@ -291,16 +291,9 @@ static class GeoJSONConverter
             return position;
 
             double ReadDouble(bool littleEndian)
-            {
-                if (littleEndian)
-                {
-                    var doubleValue = reader.ReadDouble();
-                    var value = BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref doubleValue));
-                    return Unsafe.As<long, double>(ref value);
-                }
-
-                return reader.ReadDouble();
-            }
+                => littleEndian
+                    ? BitConverter.Int64BitsToDouble(BinaryPrimitives.ReverseEndianness(BitConverter.DoubleToInt64Bits(reader.ReadDouble())))
+                    : reader.ReadDouble();
         }
     }
 

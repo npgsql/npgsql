@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data.Common;
-using System.Runtime.CompilerServices;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
@@ -32,7 +31,7 @@ public class NpgsqlDbColumn : DbColumn
     }
 
     internal NpgsqlDbColumn Clone() =>
-        Unsafe.As<NpgsqlDbColumn>(MemberwiseClone());
+        (NpgsqlDbColumn)MemberwiseClone();
 
     #region Standard fields
     // ReSharper disable once InconsistentNaming

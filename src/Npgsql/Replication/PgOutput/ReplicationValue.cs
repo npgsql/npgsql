@@ -115,7 +115,7 @@ public class ReplicationValue
         await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
         var result = info.AsObject
             ? (T)await info.ConverterInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await info.ConverterInfo.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            : await info.ConverterInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
     }
