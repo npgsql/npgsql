@@ -499,7 +499,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     // Our consumer may not have read the stream to the end, but it might as well have been us
                     // ourselves bypassing the stream and reading directly from the buffer in StartReplication()
                     if (!columnStream.IsDisposed && columnStream.Position < columnStream.Length && !bypassingStream)
-                        await buf.Skip(checked((int)(columnStream.Length - columnStream.Position)), true).ConfigureAwait(false);
+                        await buf.Skip(async: true, checked((int)(columnStream.Length - columnStream.Position))).ConfigureAwait(false);
 
                     continue;
                 }
@@ -757,10 +757,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
         await Connector.Flush(true, cancellationToken).ConfigureAwait(false);
 
         var rowDescription = Expect<RowDescriptionMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
-        Expect<DataRowMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
+        var msg = Expect<DataRowMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
         var buf = Connector.ReadBuffer;
-        await buf.EnsureAsync(2).ConfigureAwait(false);
-        var results = new object[buf.ReadInt16()];
+        var results = new object[msg.ColumnCount];
         for (var i = 0; i < results.Length; i++)
         {
             await buf.EnsureAsync(4).ConfigureAwait(false);

@@ -150,9 +150,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column >= 0)
         {
             if (async)
-                await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
+                await PgReader.CommitAsync().ConfigureAwait(false);
             else
-                PgReader.Commit(resuming: false);
+                PgReader.Commit();
             _column++;
         }
 
@@ -169,8 +169,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         await _buf.Ensure(2, async).ConfigureAwait(false);
 
-        var numColumns = _buf.ReadInt16();
-        if (numColumns == -1)
+        var columnCount = _buf.ReadInt16();
+        if (columnCount == -1)
         {
             Expect<CopyDoneMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
             Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
@@ -180,7 +180,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             return -1;
         }
 
-        Debug.Assert(numColumns == NumColumns);
+        Debug.Assert(columnCount == NumColumns);
 
         _column = BeforeColumn;
         _rowsExported++;
@@ -266,7 +266,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             reader.StartRead(info.BufferRequirement);
             var result = asObject
                 ? (T)info.Converter.ReadAsObject(reader)
-                : info.GetConverter<T>().Read(reader);
+                : info.Converter.UnsafeDowncast<T>().Read(reader);
             reader.EndRead();
 
             return result;
@@ -276,7 +276,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             // Don't delay committing the current column, just do it immediately (as opposed to on the next action: Read, IsNull, Skip).
             // Zero length columns would otherwise create an edge-case where we'd have to immediately commit as we won't know whether we're at the end.
             // To guarantee the commit happens in that case we would still need this try finally, at which point it's just better to be consistent.
-            reader.Commit(resuming: false);
+            reader.Commit();
         }
     }
 
@@ -300,7 +300,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             await reader.StartReadAsync(info.BufferRequirement, cancellationToken).ConfigureAwait(false);
             var result = asObject
                 ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-                : await info.GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+                : await info.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
             await reader.EndReadAsync().ConfigureAwait(false);
 
             return result;
@@ -310,7 +310,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             // Don't delay committing the current column, just do it immediately (as opposed to on the next action: Read, IsNull, Skip).
             // Zero length columns would otherwise create an edge-case where we'd have to immediately commit as we won't know whether we're at the end.
             // To guarantee the commit happens in that case we would still need this try finally, at which point it's just better to be consistent.
-            await reader.CommitAsync(resuming: false).ConfigureAwait(false);
+            await reader.CommitAsync().ConfigureAwait(false);
         }
     }
 
@@ -380,7 +380,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (!IsInitializedAndAtStart)
             MoveNextColumn(resumableOp: false);
 
-        PgReader.Commit(resuming: false);
+        PgReader.Commit();
     }
 
     /// <summary>
@@ -395,18 +395,18 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (!IsInitializedAndAtStart)
             await MoveNextColumnAsync(resumableOp: false).ConfigureAwait(false);
 
-        await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
+        await PgReader.CommitAsync().ConfigureAwait(false);
     }
 
     #endregion
 
     #region Utilities
 
-    bool IsInitializedAndAtStart => PgReader.Initialized && (PgReader.FieldSize is -1 || PgReader.FieldOffset is 0);
+    bool IsInitializedAndAtStart => PgReader.Initialized && (PgReader.FieldSize is -1 || PgReader.IsAtStart);
 
     int MoveNextColumn(bool resumableOp)
     {
-        PgReader.Commit(resuming: false);
+        PgReader.Commit();
 
         if (_column + 1 == NumColumns)
             ThrowHelper.ThrowInvalidOperationException("No more columns left in the current row");
@@ -419,7 +419,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async ValueTask<int> MoveNextColumnAsync(bool resumableOp)
     {
-        await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
+        await PgReader.CommitAsync().ConfigureAwait(false);
 
         if (_column + 1 == NumColumns)
             ThrowHelper.ThrowInvalidOperationException("No more columns left in the current row");
@@ -488,11 +488,11 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
                 // Be sure to commit the reader.
                 if (async)
-                     await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
+                     await PgReader.CommitAsync().ConfigureAwait(false);
                 else
-                    PgReader.Commit(resuming: false);
+                    PgReader.Commit();
                 // Finish the current CopyData message
-                await _buf.Skip(checked((int)(_endOfMessagePos - _buf.CumulativeReadPosition)), async).ConfigureAwait(false);
+                await _buf.Skip(async, checked((int)(_endOfMessagePos - _buf.CumulativeReadPosition))).ConfigureAwait(false);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup

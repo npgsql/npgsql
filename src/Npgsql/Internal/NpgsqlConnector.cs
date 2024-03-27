@@ -1294,9 +1294,12 @@ public sealed partial class NpgsqlConnector
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
-                        await ReadBuffer.Skip(len, async).ConfigureAwait(false);
+                        await ReadBuffer.Skip(async, len).ConfigureAwait(false);
                         continue;
                     }
+
+                    // Make sure that the column count is already buffered.
+                    await ReadBuffer.Ensure(sizeof(short), async).ConfigureAwait(false);
                 }
                 else if (len > ReadBuffer.ReadBytesLeft)
                 {
@@ -1399,22 +1402,14 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal IBackendMessage? ParseResultSetMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool handleCallbacks = false)
-        => code switch
-        {
-            BackendMessageCode.DataRow => _dataRowMessage.Load(len),
-            BackendMessageCode.CommandComplete => _commandCompleteMessage.Load(buf, len),
-            _ => ParseServerMessage(buf, code, len, false, handleCallbacks)
-        };
-
-    internal IBackendMessage? ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage, bool handleCallbacks = true)
+    internal IBackendMessage? ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage = false)
     {
         switch (code)
         {
         case BackendMessageCode.RowDescription:
             return _rowDescriptionMessage.Load(buf, SerializerOptions);
         case BackendMessageCode.DataRow:
-            return _dataRowMessage.Load(len);
+            return _dataRowMessage.Load(len, buf.ReadInt16());
         case BackendMessageCode.CommandComplete:
             return _commandCompleteMessage.Load(buf, len);
         case BackendMessageCode.ReadyForQuery:
@@ -1443,18 +1438,12 @@ public sealed partial class NpgsqlConnector
             ReadParameterStatus(buf.GetNullTerminatedBytes(), buf.GetNullTerminatedBytes());
             return null;
         case BackendMessageCode.NoticeResponse:
-            if (handleCallbacks)
-            {
-                var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail, LoggingConfiguration.ExceptionLogger);
-                LogMessages.ReceivedNotice(ConnectionLogger, notice.MessageText, Id);
-                Connection?.OnNotice(notice);
-            }
+            var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail, LoggingConfiguration.ExceptionLogger);
+            LogMessages.ReceivedNotice(ConnectionLogger, notice.MessageText, Id);
+            Connection?.OnNotice(notice);
             return null;
         case BackendMessageCode.NotificationResponse:
-            if (handleCallbacks)
-            {
-                Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
-            }
+            Connection?.OnNotification(new NpgsqlNotificationEventArgs(buf));
             return null;
 
         case BackendMessageCode.AuthenticationRequest:

@@ -10,10 +10,12 @@ sealed class DataRowMessage : IBackendMessage
     public BackendMessageCode Code => BackendMessageCode.DataRow;
 
     internal int Length { get; private set; }
+    internal short ColumnCount { get; private set; }
 
-    internal DataRowMessage Load(int len)
+    internal DataRowMessage Load(int len, short columnCount)
     {
         Length = len;
+        ColumnCount = columnCount;
         return this;
     }
 }
