@@ -114,24 +114,27 @@ public class PgTypeInfo
         return new(Converter, PgTypeId.GetValueOrDefault());
     }
 
-    bool CachedCanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
     {
-        if (format is DataFormat.Binary)
+        if (HasCachedInfo(converter))
         {
-            bufferRequirements = _binaryBufferRequirements;
-            return _canBinaryConvert;
+            switch (format)
+            {
+            case DataFormat.Binary:
+                bufferRequirements = _binaryBufferRequirements;
+                return _canBinaryConvert;
+            case DataFormat.Text:
+                bufferRequirements = _textBufferRequirements;
+                return _canTextConvert;
+            }
         }
 
-        bufferRequirements = _textBufferRequirements;
-        return _canTextConvert;
+        return converter.CanConvert(format, out bufferRequirements);
     }
 
     public BufferRequirements? GetBufferRequirements(PgConverter converter, DataFormat format)
     {
-        var success = HasCachedInfo(converter)
-            ? CachedCanConvert(format, out var bufferRequirements)
-            : converter.CanConvert(format, out bufferRequirements);
-
+        var success = CanConvert(converter, format, out var bufferRequirements);
         return success ? bufferRequirements : null;
     }
 
@@ -141,7 +144,7 @@ public class PgTypeInfo
         switch (this)
         {
         case { IsResolverInfo: false }:
-            if (!CachedCanConvert(format, out var bufferRequirements))
+            if (!CanConvert(Converter, format, out var bufferRequirements))
             {
                 info = default;
                 return false;
@@ -150,9 +153,7 @@ public class PgTypeInfo
             return true;
         case PgResolverTypeInfo resolverInfo:
             var resolution = resolverInfo.GetResolution(field);
-            if (HasCachedInfo(resolution.Converter)
-                    ? !CachedCanConvert(format, out bufferRequirements)
-                    : !resolution.Converter.CanConvert(format, out bufferRequirements))
+            if (!CanConvert(resolution.Converter, format, out bufferRequirements))
             {
                 info = default;
                 return false;
@@ -217,27 +218,25 @@ public class PgTypeInfo
         return new(this, converter, bufferRequirements.Write);
     }
 
-    // If we don't have a converter stored we must ask the retrieved one.
     DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
     {
+        // First try to check for preferred support.
         switch (formatPreference)
         {
-        // The common case, no preference means we default to binary if supported.
-        case null or DataFormat.Binary when HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Binary, out bufferRequirements) : converter.CanConvert(DataFormat.Binary, out bufferRequirements):
+        case DataFormat.Binary when CanConvert(converter, DataFormat.Binary, out bufferRequirements):
             return DataFormat.Binary;
-        // In this case we either prefer text or we have no preference and our converter doesn't support binary.
-        case null or DataFormat.Text:
-            var canTextConvert = HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Text, out bufferRequirements) : converter.CanConvert(DataFormat.Text, out bufferRequirements);
-            if (!canTextConvert)
-            {
-                if (formatPreference is null)
-                    throw new InvalidOperationException("Converter doesn't support any data format.");
-                // Rerun without preference.
-                return ResolveFormat(converter, out bufferRequirements);
-            }
+        case DataFormat.Text when CanConvert(converter, DataFormat.Text, out bufferRequirements):
             return DataFormat.Text;
         default:
-            throw new ArgumentOutOfRangeException();
+            // The common case, no preference given (or no match) means we default to binary if supported.
+            if (CanConvert(converter, DataFormat.Binary, out bufferRequirements))
+                return DataFormat.Binary;
+            if (CanConvert(converter, DataFormat.Text, out bufferRequirements))
+                return DataFormat.Text;
+
+            ThrowHelper.ThrowInvalidOperationException("Converter doesn't support any data format.");
+            bufferRequirements = default;
+            return default;
         }
     }
 }
