@@ -306,37 +306,6 @@ sealed class NpgsqlWriteBuffer : IDisposable
         WritePosition += sizeof(long);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteUInt64(ulong value)
-    {
-        CheckBounds<ulong>();
-        Unsafe.WriteUnaligned(ref Buffer[WritePosition], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(value) : value);
-        WritePosition += sizeof(ulong);
-    }
-
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteSingle(float value)
-    {
-        CheckBounds<float>();
-        if (BitConverter.IsLittleEndian)
-            Unsafe.WriteUnaligned(ref Buffer[WritePosition], BinaryPrimitives.ReverseEndianness(Unsafe.As<float, long>(ref value)));
-        else
-            Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);
-        WritePosition += sizeof(float);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void WriteDouble(double value)
-    {
-        CheckBounds<double>();
-        if (BitConverter.IsLittleEndian)
-            Unsafe.WriteUnaligned(ref Buffer[WritePosition], BinaryPrimitives.ReverseEndianness(Unsafe.As<double, long>(ref value)));
-        else
-            Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);
-        WritePosition += sizeof(double);
-    }
-
     [Conditional("DEBUG")]
     unsafe void CheckBounds<T>() where T : unmanaged
     {

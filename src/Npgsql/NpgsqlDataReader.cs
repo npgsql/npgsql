@@ -1575,7 +1575,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             await PgReader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
             var result = asObject
                 ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
-                : await Unsafe.As<PgConverter<T>>(converter).ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
+                : await converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
             await PgReader.EndReadAsync().ConfigureAwait(false);
             return result;
         }
@@ -1628,7 +1628,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         PgReader.StartRead(bufferRequirement);
         var result = asObject
             ? (T)converter.ReadAsObject(PgReader)
-            : Unsafe.As<PgConverter<T>>(converter).Read(PgReader);
+            : converter.UnsafeDowncast<T>().Read(PgReader);
         PgReader.EndRead();
         return result;
 
