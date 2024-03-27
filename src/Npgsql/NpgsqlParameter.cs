@@ -613,7 +613,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
-    internal void Bind(out DataFormat format, out Size size)
+    internal void Bind(out DataFormat format, out Size size, DataFormat? requiredFormat = null)
     {
         if (TypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
@@ -622,19 +622,18 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ThrowHelper.ThrowNotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.DatabaseInfo.GetDataTypeName(PgTypeId).DisplayName}'.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
-        if (WriteSize is not null)
+        if (WriteSize is null)
         {
-            format = Format;
-            size = WriteSize.Value;
-            return;
+            if (_size > 0)
+                HandleSizeTruncation();
+
+            BindCore(requiredFormat);
         }
 
-        if (_size > 0)
-            HandleSizeTruncation();
-
-        BindCore();
         format = Format;
         size = WriteSize!.Value;
+        if (requiredFormat is not null && format != requiredFormat)
+            ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
 
         // Handle Size truncate behavior for a predetermined set of types and pg types.
         // Doesn't matter if we 'box' Value, all supported types are reference types.
@@ -674,7 +673,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    private protected virtual void BindCore(bool allowNullReference = false)
+    private protected virtual void BindCore(DataFormat? formatPreference, bool allowNullReference = false)
     {
         // Pull from Value so we also support object typed generic params.
         var value = Value;
@@ -684,7 +683,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_useSubStream && value is not null)
             value = _subStream = new SubReadStream((Stream)value, _size);
 
-        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat) is { } info)
+        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
@@ -694,6 +693,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             WriteSize = -1;
             _bufferRequirement = default;
         }
+
         Format = dataFormat;
     }
 
