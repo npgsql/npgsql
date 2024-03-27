@@ -75,7 +75,7 @@ static class AsyncHelpers
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
-            // Justification: unsafe exact cast used to reduce generic duplication cost.
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
             Debug.Assert(task is Task<T>);
             Debug.Assert(completionSource is CompletionSource<T?>);
             Unsafe.As<CompletionSource<T?>>(completionSource).SetResult(new T?(new ValueTask<T>(Unsafe.As<Task<T>>(task)).Result));
@@ -87,6 +87,8 @@ static class AsyncHelpers
         if (!typeof(T).IsValueType)
         {
             var value = effectiveConverter.ReadAsObjectAsync(reader, cancellationToken);
+            // Justification: elides the async method bloat/perf cost to transition from object to T (where T : class)
+            Debug.Assert(typeof(T).IsClass);
             return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
         }
 
@@ -102,6 +104,7 @@ static class AsyncHelpers
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
             Debug.Assert(task is Task<object>);
             Debug.Assert(completionSource is CompletionSource<T>);
             Unsafe.As<CompletionSource<T>>(completionSource).SetResult((T)new ValueTask<object>(Unsafe.As<Task<object>>(task)).Result);

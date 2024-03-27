@@ -525,19 +525,13 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         return result;
     }
 
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float ReadSingle()
     {
         CheckBounds(sizeof(float));
-        float result;
-        if (BitConverter.IsLittleEndian)
-        {
-            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]));
-            result = Unsafe.As<int, float>(ref value);
-        }
-        else
-            result = Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
+        var result = BitConverter.IsLittleEndian
+            ? BitConverter.Int32BitsToSingle(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition])))
+            : Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
         ReadPosition += sizeof(float);
         return result;
     }
@@ -546,14 +540,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     public double ReadDouble()
     {
         CheckBounds(sizeof(double));
-        double result;
-        if (BitConverter.IsLittleEndian)
-        {
-            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]));
-            result = Unsafe.As<long, double>(ref value);
-        }
-        else
-            result = Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
+        var result = BitConverter.IsLittleEndian
+            ? BitConverter.Int64BitsToDouble(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition])))
+            : Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
         ReadPosition += sizeof(double);
         return result;
     }

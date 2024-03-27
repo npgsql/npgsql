@@ -79,8 +79,8 @@ public sealed class PgSerializerOptions
     // for.
     PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId, bool defaultTypeFallback)
         => PortableTypeIds
-            ? Unsafe.As<TypeInfoCache<DataTypeName>>(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this)).GetOrAddInfo(type, pgTypeId?.DataTypeName, defaultTypeFallback)
-            : Unsafe.As<TypeInfoCache<Oid>>(_typeInfoCache ??= new TypeInfoCache<Oid>(this)).GetOrAddInfo(type, pgTypeId?.Oid, defaultTypeFallback);
+            ? ((TypeInfoCache<DataTypeName>)(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this))).GetOrAddInfo(type, pgTypeId?.DataTypeName, defaultTypeFallback)
+            : ((TypeInfoCache<Oid>)(_typeInfoCache ??= new TypeInfoCache<Oid>(this))).GetOrAddInfo(type, pgTypeId?.Oid, defaultTypeFallback);
 
     public PgTypeInfo? GetDefaultTypeInfo(PostgresType pgType)
         => GetTypeInfoCore(null, ToCanonicalTypeId(pgType), false);

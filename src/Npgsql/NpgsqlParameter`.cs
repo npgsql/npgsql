@@ -101,8 +101,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         }
 
         var value = TypedValue;
-        Debug.Assert(Converter is PgConverter<T>);
-        if (TypeInfo!.Bind(Unsafe.As<PgConverter<T>>(Converter), value, out var size, out _writeState, out var dataFormat) is { } info)
+        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, out _writeState, out var dataFormat) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
@@ -120,11 +119,10 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         if (_asObject)
             return base.WriteValue(async, writer, cancellationToken);
 
-        Debug.Assert(Converter is PgConverter<T>);
         if (async)
-            return Unsafe.As<PgConverter<T>>(Converter!).WriteAsync(writer, TypedValue!, cancellationToken);
+            return Converter!.UnsafeDowncast<T>().WriteAsync(writer, TypedValue!, cancellationToken);
 
-        Unsafe.As<PgConverter<T>>(Converter!).Write(writer, TypedValue!);
+        Converter!.UnsafeDowncast<T>().Write(writer, TypedValue!);
         return new();
     }
 
