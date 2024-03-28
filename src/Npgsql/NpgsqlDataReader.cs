@@ -1486,29 +1486,28 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
-        // Check whether we can do resumable reads.
+        // Check whether we have a GetChars implementation for this column type.
         var field = GetInfo(ordinal, typeof(GetChars), out var converter, out var bufferRequirement, out var asObject);
-        if (converter is not IResumableRead { Supported: true })
-            throw new NotSupportedException("The GetChars method is not supported for this column type");
 
         var columnLength = SeekToColumn(async: false, ordinal, field, resumableOp: true).GetAwaiter().GetResult();
         if (columnLength == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(CheckRowAndGetField(ordinal));
 
+        var reader = PgReader;
         dataOffset = buffer is null ? 0 : dataOffset;
-        PgReader.InitCharsRead(checked((int)dataOffset),
-            buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null,
-            out var previousDataOffset);
-
-        if (_isSequential && previousDataOffset > dataOffset)
+        if (_isSequential && reader.CharsRead > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
-        PgReader.StartRead(bufferRequirement);
+        reader.StartCharsRead(checked((int)dataOffset),
+            buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null);
+
+        reader.StartRead(bufferRequirement);
         var result = asObject
-            ? (GetChars)converter.ReadAsObject(PgReader)
-            : ((PgConverter<GetChars>)converter).Read(PgReader);
-        PgReader.AdvanceCharsRead(result.Read);
-        PgReader.EndRead();
+            ? (GetChars)converter.ReadAsObject(reader)
+            : ((PgConverter<GetChars>)converter).Read(reader);
+        reader.EndRead();
+
+        reader.EndCharsRead();
         return result.Read;
     }
 
