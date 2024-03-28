@@ -555,9 +555,20 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     public float ReadSingle()
     {
         CheckBounds(sizeof(float));
+#if NETSTANDARD2_0
+        float result;
+        if (BitConverter.IsLittleEndian)
+        {
+            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]));
+            result = Unsafe.As<int, float>(ref value);
+        }
+        else
+            result = Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
+#else
         var result = BitConverter.IsLittleEndian
             ? BitConverter.Int32BitsToSingle(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition])))
             : Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
+#endif
         ReadPosition += sizeof(float);
         return result;
     }
