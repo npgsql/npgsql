@@ -190,7 +190,7 @@ public class PgReader
     NpgsqlReadBuffer.ColumnStream GetColumnStream(bool canSeek = false, int? length = null)
     {
         if (length > CurrentRemaining)
-            throw new ArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
 
         _requiresCleanup = true;
         // This will cause any previously handed out StreamReaders etc to throw, as intended.
@@ -345,10 +345,10 @@ public class PgReader
         DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         if (_buffer.ReadPosition < count)
-            throw new ArgumentOutOfRangeException("Cannot rewind further than the buffer start");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Cannot rewind further than the buffer start");
 
         if (CurrentOffset < count)
-            throw new ArgumentOutOfRangeException("Cannot rewind further than the current field offset");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Cannot rewind further than the current field offset");
 
         _buffer.ReadPosition -= count;
     }
@@ -377,7 +377,7 @@ public class PgReader
     internal void GetCharsReadInfo(Encoding encoding, out int charsRead, out TextReader reader, out int charsOffset, out ArraySegment<char>? buffer)
     {
         if (!CharsReadActive)
-            throw new InvalidOperationException("No active chars read");
+            ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
         charsRead = _charsRead;
         reader = _charsReadReader ??= GetTextReader(encoding);
@@ -388,7 +388,7 @@ public class PgReader
     internal void RestartCharsRead()
     {
         if (!CharsReadActive)
-            throw new InvalidOperationException("No active chars read");
+            ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
         switch (_charsReadReader)
         {
@@ -408,7 +408,7 @@ public class PgReader
     internal void StartCharsRead(int dataOffset, ArraySegment<char>? buffer)
     {
         if (!Resumable)
-            throw new InvalidOperationException("Wasn't initialized as resumed");
+            ThrowHelper.ThrowInvalidOperationException("Wasn't initialized as resumed");
 
         _charsReadOffset = dataOffset;
         _charsReadBuffer = buffer;
@@ -417,10 +417,10 @@ public class PgReader
     internal void EndCharsRead()
     {
         if (!Resumable)
-            throw new InvalidOperationException("Wasn't initialized as resumed");
+            ThrowHelper.ThrowInvalidOperationException("Wasn't initialized as resumed");
 
         if (!CharsReadActive)
-            throw new InvalidOperationException("No active chars read");
+            ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
         _charsReadOffset = null;
         _charsReadBuffer = null;
@@ -506,10 +506,10 @@ public class PgReader
     internal async ValueTask<NestedReadScope> BeginNestedRead(bool async, int size, Size bufferRequirement, CancellationToken cancellationToken = default)
     {
         if (size > CurrentRemaining)
-            throw new ArgumentOutOfRangeException(nameof(size), "Cannot begin a read for a larger size than the current remaining size.");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(size), "Cannot begin a read for a larger size than the current remaining size.");
 
         if (size < 0)
-            throw new ArgumentOutOfRangeException(nameof(size), "Cannot be negative");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(size), "Cannot be negative");
 
         var previousSize = CurrentSize;
         var previousStartPos = _currentStartPos;
@@ -761,19 +761,14 @@ public class PgReader
         bool ShouldBufferSlow()
         {
             if (byteCount > _buffer.Size)
-                ThrowArgumentOutOfRange();
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(byteCount),
+                    "Buffer requirement is larger than the buffer size, this can never succeed by buffering data but requires a larger buffer size instead.");
             if (byteCount > CurrentRemaining)
-                ThrowArgumentOutOfRangeOfValue();
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(byteCount),
+                    "Buffer requirement is larger than the remaining length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
 
             return true;
         }
-
-        static void ThrowArgumentOutOfRange()
-            => throw new ArgumentOutOfRangeException(nameof(byteCount),
-                "Buffer requirement is larger than the buffer size, this can never succeed by buffering data but requires a larger buffer size instead.");
-        static void ThrowArgumentOutOfRangeOfValue()
-            => throw new ArgumentOutOfRangeException(nameof(byteCount),
-                "Buffer requirement is larger than the remaining length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
     }
 
     public void Buffer(Size bufferRequirement)
@@ -823,7 +818,7 @@ public readonly struct NestedReadScope : IDisposable, IAsyncDisposable
     public void Dispose()
     {
         if (_async)
-            throw new InvalidOperationException("Cannot synchronously dispose async scopes, call DisposeAsync instead.");
+            ThrowHelper.ThrowInvalidOperationException("Cannot synchronously dispose async scopes, call DisposeAsync instead.");
         DisposeAsync().GetAwaiter().GetResult();
     }
 
