@@ -569,6 +569,42 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
             npgsqlDbType: null);
     }
 
+    [Test]
+    public async Task CompositeOverRange()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        var rangeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text); CREATE TYPE {rangeType} AS RANGE(subtype={type})");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        dataSourceBuilder.EnableUnmappedTypes();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var composite1 = new SomeComposite
+        {
+            SomeText = "foo",
+            X = 8
+        };
+
+        var composite2 = new SomeComposite
+        {
+            SomeText = "bar",
+            X = 42
+        };
+
+        await AssertType(
+            connection,
+            new NpgsqlRange<SomeComposite>(composite1, composite2),
+            "[\"(8,foo)\",\"(42,bar)\"]",
+            rangeType,
+            npgsqlDbType: null,
+            isDefaultForWriting: false);
+    }
+
     #region Test Types
 
     readonly struct DuplicateOneLongOneBool
