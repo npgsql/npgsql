@@ -91,17 +91,17 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     }
 
     // We ignore allowNullReference, it's just there to control the base implementation.
-    private protected override void BindCore(bool allowNullReference = false)
+    private protected override void BindCore(DataFormat? formatPreference, bool allowNullReference = false)
     {
         if (_asObject)
         {
             // If we're object typed we should not support null.
-            base.BindCore(typeof(T) != typeof(object));
+            base.BindCore(formatPreference, typeof(T) != typeof(object));
             return;
         }
 
         var value = TypedValue;
-        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, out _writeState, out var dataFormat) is { } info)
+        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
@@ -111,6 +111,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
             WriteSize = -1;
             _bufferRequirement = default;
         }
+
         Format = dataFormat;
     }
 
