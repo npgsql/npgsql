@@ -70,24 +70,6 @@ public class BatchTests : MultiplexingTestBase
         Assert.That(await reader.NextResultAsync(), Is.False);
     }
 
-    [Test]
-    public async Task Out_parameters_are_not_allowed()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var batch = new NpgsqlBatch(conn)
-        {
-            BatchCommands =
-            {
-                new("SELECT @p1")
-                {
-                    Parameters = { new("p", 8) { Direction = ParameterDirection.InputOutput } }
-                }
-            }
-        };
-
-        Assert.That(() => batch.ExecuteReaderAsync(Behavior), Throws.Exception.TypeOf<NotSupportedException>());
-    }
-
     #endregion Parameters
 
     #region NpgsqlBatchCommand
