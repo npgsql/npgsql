@@ -379,7 +379,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                     {
                         if (_leftToReadInDataMsg > 0)
                         {
-                            await _readBuf.Skip(_leftToReadInDataMsg, async).ConfigureAwait(false);
+                            await _readBuf.Skip(async, _leftToReadInDataMsg).ConfigureAwait(false);
                         }
                         _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }

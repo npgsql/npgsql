@@ -1856,7 +1856,7 @@ LANGUAGE plpgsql VOLATILE";
                 Assert.DoesNotThrow(() => reader.EndRead());
         }
 
-        reader.Commit(resuming: false);
+        reader.Commit();
     }
 
     [Test, Description("Tests that everything goes well when a type handler generates a NpgsqlSafeReadException")]
