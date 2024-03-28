@@ -152,7 +152,7 @@ WHERE
     ))
 ORDER BY CASE
        WHEN typtype IN ('b', 'e', 'p') THEN 0           -- First base types, enums, pseudo-types
-       WHEN typtype = 'c' THEN 1                        -- Composites after
+       WHEN typtype = 'c' THEN 1                        -- Composites after (fields loaded later in 2nd pass)
        WHEN typtype = 'r' THEN 2                        -- Ranges after
        WHEN typtype = 'm' THEN 3                        -- Multiranges after
        WHEN typtype = 'd' AND elemtyptype <> 'a' THEN 4 -- Domains over non-arrays after
