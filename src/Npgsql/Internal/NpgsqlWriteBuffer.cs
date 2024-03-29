@@ -165,9 +165,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
                 throw Connector.Break(e);
             // Read timeout
             case OperationCanceledException _:
-            // Note that mono throws SocketException with the wrong error (see #1330)
-            case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                    (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+            case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut:
                 Debug.Assert(e is OperationCanceledException ? async : !async);
                 throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
             }

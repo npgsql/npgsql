@@ -160,10 +160,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                 var connector = Connector;
                 switch (ex)
                 {
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                case IOException e when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                {
+                case IOException _ when (ex.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut:                {
                     // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                     // TODO: As an optimization, we can still attempt to send a cancellation request, but after
                     // that immediately break the connection
