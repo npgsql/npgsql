@@ -739,15 +739,16 @@ FROM pg_constraint c
             SupportedJoinOperators.RightOuter;
 
         row["ParameterNameMaxLength"] = 63; // For function out parameters
-        row["ParameterMarkerFormat"] = @"{0}";  // TODO: Not sure
 
         if (NpgsqlCommand.EnableSqlRewriting)
         {
+            row["ParameterMarkerFormat"] = "@{0}";
             row["ParameterMarkerPattern"] = @"@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
             row["ParameterNamePattern"] = @"^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
         }
         else
         {
+            row["ParameterMarkerFormat"] = "${0}";
             row["ParameterMarkerPattern"] = @"$\d+";
             row["ParameterNamePattern"] = @"\d+";
         }
