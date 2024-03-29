@@ -158,15 +158,13 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             catch (Exception ex)
             {
                 var connector = Connector;
-                switch (ex)
+                if (ex is IOException { InnerException: SocketException { SocketErrorCode: SocketError.TimedOut } })
                 {
-                case IOException _ when (ex.InnerException as SocketException)?.SocketErrorCode == SocketError.TimedOut:                {
                     // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                     // TODO: As an optimization, we can still attempt to send a cancellation request, but after
                     // that immediately break the connection
-                    if (connector.AttemptPostgresCancellation &&
-                        !connector.PostgresCancellationPerformed &&
-                        connector.PerformPostgresCancellation())
+                    if (connector is { AttemptPostgresCancellation: true, PostgresCancellationPerformed: false }
+                        && connector.PerformPostgresCancellation())
                     {
                         // Note that if the cancellation timeout is negative, we flow down and break the
                         // connection immediately.
@@ -184,9 +182,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                     // Break the connection, bubbling up the correct exception type (cancellation or timeout)
                     throw connector.Break(CreateCancelException(connector));
                 }
-                default:
-                    throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
-                }
+
+                throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
             }
         }
     }
