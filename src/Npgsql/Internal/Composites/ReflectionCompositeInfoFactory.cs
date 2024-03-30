@@ -151,8 +151,8 @@ static class ReflectionCompositeInfoFactory
     static Expression UnboxAny(Expression expression, Type type)
         => type.IsValueType ? Expression.Unbox(expression, type) : Expression.Convert(expression, type, null);
 
-    [DynamicDependency("TypedValue", typeof(StrongBox<>))]
-    [DynamicDependency("Length", typeof(StrongBox[]))]
+    [DynamicDependency(nameof(StrongBox<object>.TypedValue), typeof(StrongBox<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(StrongBox[]))]
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "DynamicDependencies in place for the System.Linq.Expression.Property calls")]
     static Func<StrongBox[], T> CreateStrongBoxConstructor<T>(ConstructorInfo constructorInfo)
     {
@@ -165,7 +165,7 @@ static class ReflectionCompositeInfoFactory
             .Lambda<Func<StrongBox[], T>>(
                 Expression.Block(
                     Expression.IfThen(
-                        Expression.LessThan(Expression.Property(values, "Length"), parameterCount),
+                        Expression.LessThan(Expression.Property(values, nameof(Array.Length)), parameterCount),
 
                         Expression.Throw(Expression.New(argumentExceptionNameMessageConstructor,
                             Expression.Constant("Passed fewer arguments than there are constructor parameters."), Expression.Constant(values.Name)))
@@ -176,7 +176,7 @@ static class ReflectionCompositeInfoFactory
                                 Expression.ArrayIndex(values, Expression.Constant(i)),
                                 typeof(StrongBox<>).MakeGenericType(parameter.ParameterType)
                             ),
-                            "TypedValue"
+                            nameof(StrongBox<object>.TypedValue)
                         )
                     ))
                 ), values)
