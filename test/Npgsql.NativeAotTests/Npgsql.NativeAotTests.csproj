@@ -9,11 +9,10 @@
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
     <StackTraceSupport>false</StackTraceSupport>
     <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
-    <OptimizationPreference>Size</OptimizationPreference>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
-    <TrimmerRootAssembly Include="../../src/Npgsql/Npgsql.csproj" />
+    <TrimmerRootAssembly Include="../../src/Npgsql/Npgsql.csproj" Condition="'$(RootNpgsql)' == 'True'" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Remove="GitHubActionsTestLogger" />
