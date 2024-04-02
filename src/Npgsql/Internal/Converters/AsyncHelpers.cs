@@ -1,15 +1,16 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
 // Using a function pointer here is safe against assembly unloading as the instance reference that the static pointer method lives on is passed along.
 // As such the instance cannot be collected by the gc which means the entire assembly is prevented from unloading until we're done.
-static class AsyncHelpers
+class AsyncHelpers
 {
+    static AsyncHelpers Instance => new();
+
     static async void AwaitTask(Task task, CompletionSource tcs, Continuation continuation)
     {
         try
@@ -60,46 +61,21 @@ static class AsyncHelpers
         public void Invoke(Task task, CompletionSource tcs) => _continuation(task, tcs);
     }
 
-    public static unsafe ValueTask<T?> ReadAsyncAsNullable<T>(this PgConverter<T?> instance, PgConverter<T> effectiveConverter, PgReader reader, CancellationToken cancellationToken)
-        where T : struct
+    public static unsafe ValueTask<T> UnboxAsync<T>(ValueTask<object> task)
     {
-        // Easy if we have all the data.
-        var task = effectiveConverter.ReadAsync(reader, cancellationToken);
         if (task.IsCompletedSuccessfully)
-            return new(new T?(task.Result));
+            return new(result: (T)task.Result);
 
-        // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
-        var source = new CompletionSource<T?>();
-        AwaitTask(task.AsTask(), source, new(instance, &UnboxAndComplete));
-        return source.Task;
-
-        static void UnboxAndComplete(Task task, CompletionSource completionSource)
-        {
-            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
-            Debug.Assert(task is Task<T>);
-            Debug.Assert(completionSource is CompletionSource<T?>);
-            Unsafe.As<CompletionSource<T?>>(completionSource).SetResult(new T?(new ValueTask<T>(Unsafe.As<Task<T>>(task)).Result));
-        }
-    }
-
-    public static unsafe ValueTask<T> ReadAsObjectAsyncAsT<T>(this PgConverter<T> instance, PgConverter effectiveConverter, PgReader reader, CancellationToken cancellationToken)
-    {
         if (!typeof(T).IsValueType)
         {
-            var value = effectiveConverter.ReadAsObjectAsync(reader, cancellationToken);
-            // Justification: elides the async method bloat/perf cost to transition from object to T (where T : class)
-            Debug.Assert(typeof(T).IsClass);
-            return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
+            Debug.Assert(Unsafe.SizeOf<T>() == sizeof(nint));
+            // Justification: elides the async method bloat/perf cost to transition from object to T
+            return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref task);
         }
-
-        // Easy if we have all the data.
-        var task = effectiveConverter.ReadAsObjectAsync(reader, cancellationToken);
-        if (task.IsCompletedSuccessfully)
-            return new((T)task.Result);
 
         // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
         var source = new CompletionSource<T>();
-        AwaitTask(task.AsTask(), source, new(instance, &UnboxAndComplete));
+        AwaitTask(task.AsTask(), source, new(Instance, &UnboxAndComplete));
         return source.Task;
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
@@ -107,7 +83,27 @@ static class AsyncHelpers
             // Justification: exact type Unsafe.As used to reduce generic duplication cost.
             Debug.Assert(task is Task<object>);
             Debug.Assert(completionSource is CompletionSource<T>);
-            Unsafe.As<CompletionSource<T>>(completionSource).SetResult((T)new ValueTask<object>(Unsafe.As<Task<object>>(task)).Result);
+            Unsafe.As<CompletionSource<T>>(completionSource).SetResult((T)new ValueTask<object>(task: Unsafe.As<Task<object>>(task)).Result);
+        }
+    }
+
+    // Separate method from UnboxAsync as unboxing a boxed (e.g.) int via (T)boxed where T is int? incurs an allocation.
+    public static unsafe ValueTask<T?> ToNullableAsync<T>(ValueTask<T> task) where T : struct
+    {
+        if (task.IsCompletedSuccessfully)
+            return new(result: task.Result);
+
+        // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
+        var source = new CompletionSource<T?>();
+        AwaitTask(task.AsTask(), source, new(Instance, &UnboxAndComplete));
+        return source.Task;
+
+        static void UnboxAndComplete(Task task, CompletionSource completionSource)
+        {
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
+            Debug.Assert(task is Task<T>);
+            Debug.Assert(completionSource is CompletionSource<T?>);
+            Unsafe.As<CompletionSource<T?>>(completionSource).SetResult(new ValueTask<T>(task: Unsafe.As<Task<T>>(task)).Result);
         }
     }
 }

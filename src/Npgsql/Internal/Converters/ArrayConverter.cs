@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -131,6 +132,9 @@ readonly struct PgArrayConverter
         public required int[] Indices { get; init; }
         public required int[]? Lengths { get; init; }
     }
+
+    public ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken)
+        => Read(async: true, reader, cancellationToken);
 
     public async ValueTask<object> Read(bool async, PgReader reader, CancellationToken cancellationToken = default)
     {
@@ -285,8 +289,7 @@ readonly struct PgArrayConverter
     }
 }
 
-// Class constraint exists to make ValueTask<object> to ValueTask<T> reinterpretation safe, don't remove unless that is also removed.
-abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
+abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     protected PgConverterResolution ElemResolution { get; }
     protected Type ElemTypeToConvert { get; }
@@ -307,12 +310,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-    {
-        var value = _pgArrayConverter.Read(async: true, reader, cancellationToken);
-        // Justification: elides the async method bloat/perf cost to transition from object to T (where T : class)
-        Debug.Assert(typeof(T).IsClass);
-        return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
-    }
+        => AsyncHelpers.UnboxAsync<T>(_pgArrayConverter.ReadAsync(reader, cancellationToken));
 
     public override Size GetSize(SizeContext context, T values, ref object? writeState)
         => _pgArrayConverter.GetSize(context, values, ref writeState);
@@ -503,6 +501,79 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     {
         lengths = null;
         return ((IList<TElement?>)collection).Count;
+    }
+
+    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
+        => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices[0]), ref writeState);
+
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
+    {
+        Debug.Assert(indices.Length is 1);
+        if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
+            return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
+
+        SetValue(collection, indices[0], isDbNull ? default : _elemConverter.Read(reader));
+        return new();
+    }
+
+     unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, int[] indices, CancellationToken cancellationToken)
+     {
+         if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
+             return AwaitTask(task, new(this, &SetResult), collection, indices);
+
+         SetValue(collection, indices[0], result);
+         return new();
+
+         // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
+         static void SetResult(Task task, object collection, int[] indices)
+         {
+             SetValue(collection, indices[0], new ValueTask<TElement>((Task<TElement>)task).Result);
+         }
+     }
+
+    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int[] indices, CancellationToken cancellationToken)
+    {
+        Debug.Assert(indices.Length is 1);
+        if (async)
+            return _elemConverter.WriteAsync(writer, GetValue(collection, indices[0])!, cancellationToken);
+
+        _elemConverter.Write(writer, GetValue(collection, indices[0])!);
+        return new();
+    }
+}
+
+sealed class ImmArrayBasedArrayConverter<TElement> : ArrayConverter<ImmutableArray<TElement>>, IElementOperations
+{
+    readonly PgConverter<TElement> _elemConverter;
+
+    public ImmArrayBasedArrayConverter(PgConverterResolution elemResolution, int pgLowerBound = 1)
+        : base(expectedDimensions: 1, elemResolution, pgLowerBound)
+        => _elemConverter = elemResolution.GetConverter<TElement>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static TElement? GetValue(object collection, int index)
+    {
+        // Justification: avoid the cast overhead for per element calls.
+        Debug.Assert(collection is ImmutableArray<TElement?>);
+        return Unsafe.Unbox<ImmutableArray<TElement?>>(collection)[index];
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static void SetValue(object collection, int index, TElement? value)
+    {
+        // Justification: avoid the cast overhead for per element calls.
+        Debug.Assert(collection is ImmutableArray<TElement?>.Builder);
+        var list = Unsafe.As<ImmutableArray<TElement?>.Builder>(collection);
+        list.Insert(index, value);
+    }
+
+    object IElementOperations.CreateCollection(int[] lengths)
+        => ImmutableArray.CreateBuilder<TElement>(lengths.Length is 0 ? 0 : lengths[0]);
+
+    int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
+    {
+        lengths = null;
+        return ((ImmutableArray<TElement?>)collection).Length;
     }
 
     Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)

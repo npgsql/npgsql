@@ -22,7 +22,7 @@ sealed class CastingConverter<T> : PgConverter<T>
     public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader);
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => this.ReadAsObjectAsyncAsT(_effectiveConverter, reader, cancellationToken);
+        => AsyncHelpers.UnboxAsync<T>(_effectiveConverter.ReadAsObjectAsync(reader, cancellationToken));
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => _effectiveConverter.GetSizeAsObject(context, value!, ref writeState);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -337,6 +338,7 @@ public sealed class TypeInfoMappingCollection
 
         AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _));
         AddArrayType(elementMapping, typeof(IList<TElement>), CreateListBasedConverter<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
+        AddArrayType(elementMapping, typeof(ImmutableArray<TElement>), CreateImmArrayBasedConverter<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
 
         void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgTypeInfo, PgConverter> converter, Func<Type?, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
         {
@@ -463,6 +465,10 @@ public sealed class TypeInfoMappingCollection
         // Don't add the object converter for the list based converter.
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(IList<TElement>), typeof(IList<TElement?>),
             CreateListBasedConverter<TElement>, CreateListBasedConverter<TElement?>,
+            listTypeMatchPredicate, nullableListTypeMatchPredicate, suppressObjectMapping: true);
+
+        AddStructArrayType(elementMapping, nullableElementMapping, typeof(ImmutableArray<TElement>), typeof(ImmutableArray<TElement?>),
+            CreateImmArrayBasedConverter<TElement>, CreateImmArrayBasedConverter<TElement?>,
             listTypeMatchPredicate, nullableListTypeMatchPredicate, suppressObjectMapping: true);
     }
 
@@ -703,6 +709,15 @@ public sealed class TypeInfoMappingCollection
     {
         if (!elemInfo.IsBoxing)
             return new ListBasedArrayConverter<IList<TElement>, TElement>(elemInfo.GetResolution());
+
+        ThrowBoxingNotSupported(resolver: false);
+        return default;
+    }
+
+    static ImmArrayBasedArrayConverter<TElement> CreateImmArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    {
+        if (!elemInfo.IsBoxing)
+            return new ImmArrayBasedArrayConverter<TElement>(elemInfo.GetResolution());
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
