@@ -11,8 +11,8 @@ Parameter    | Description                                                      
 Host         | Specifies the host name - and optionally port - on which PostgreSQL is running. Multiple hosts may be specified, [see the docs for more info](failover-and-load-balancing.md). If the value begins with a slash, it is used as the directory for the Unix-domain socket (specifying a `Port` is still required).  | *Required*
 Port         | The TCP port of the PostgreSQL server.                                             | 5432
 Database     | The PostgreSQL database to connect to.                                             | Same as Username
-Username     | The username to connect with. Not required if using IntegratedSecurity.            | PGUSER
-Password     | The password to connect with. Not required if using IntegratedSecurity.            | PGPASSWORD
+Username     | The username to connect with. If not specified, the OS username will be used.      | PGUSER
+Password     | The password to connect with. Not required if using GSS/SSPI.                      | PGPASSWORD
 Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the password is taken. | PGPASSFILE
 
 ## Security and encryption
