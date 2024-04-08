@@ -1232,10 +1232,17 @@ public sealed partial class NpgsqlConnector
 
     void Connect(NpgsqlTimeout timeout)
     {
-        // Note that there aren't any timeout-able or cancellable DNS methods
-        var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
-            ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
-            : IPAddressesToEndpoints(Dns.GetHostAddresses(Host), Port);
+        var isUnixSocket = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath);
+
+        EndPoint[]? endpoints;
+        if (isUnixSocket) endpoints = [new UnixDomainSocketEndPoint(socketPath!)];
+        else
+        {
+            // Note that there aren't any timeout-able or cancellable DNS methods
+            try { endpoints = IPAddressesToEndpoints(Dns.GetHostAddresses(Host), Port); }
+            catch (SocketException ex) { throw new NpgsqlException(ex.Message, ex); }
+        } 
+        
         timeout.Check();
 
         // Give each endpoint an equal share of the remaining time
@@ -1302,8 +1309,11 @@ public sealed partial class NpgsqlConnector
 
     async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
-        Task<IPAddress[]> GetHostAddressesAsync(CancellationToken ct) =>
-            Dns.GetHostAddressesAsync(Host, ct);
+        async Task<IPAddress[]> GetHostAddressesAsync(CancellationToken ct) 
+        {
+            try { return await Dns.GetHostAddressesAsync(Host, ct).ConfigureAwait(false); }
+            catch (SocketException ex) { throw new NpgsqlException(ex.Message, ex); }
+        }
 
         // Whether the framework and/or the OS platform support Dns.GetHostAddressesAsync cancellation API or they do not,
         // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteAsync. It stops waiting
