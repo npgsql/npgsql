@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -92,6 +93,7 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
         => new(_buffer.Flush(async: true, cancellationToken));
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class PgWriter
 {
     readonly IBufferWriter<byte> _writer;
@@ -557,6 +559,7 @@ public sealed class PgWriter
 }
 
 // No-op for now.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public struct NestedWriteScope : IDisposable
 {
     public void Dispose()

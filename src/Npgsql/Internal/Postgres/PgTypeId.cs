@@ -6,6 +6,7 @@ namespace Npgsql.Internal.Postgres;
 /// <summary>
 /// A discriminated union of <see cref="Oid" /> and <see cref="DataTypeName" />.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct PgTypeId: IEquatable<PgTypeId>
 {
     readonly DataTypeName _dataTypeName;

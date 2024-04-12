@@ -12,6 +12,7 @@ namespace Npgsql.Internal;
 /// Base class for implementations which provide information about PostgreSQL and PostgreSQL-like databases
 /// (e.g. type definitions, capabilities...).
 /// </summary>
+[Experimental(NpgsqlDiagnostics.DatabaseInfoExperimental)]
 public abstract class NpgsqlDatabaseInfo
 {
     #region Fields

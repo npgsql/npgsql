@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql.Internal.Postgres;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct Oid: IEquatable<Oid>
 {
     public Oid(uint value) => Value = value;

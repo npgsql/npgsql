@@ -1,8 +1,10 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public enum SizeKind
 {
     Unknown = 0,
@@ -10,6 +12,7 @@ public enum SizeKind
     UpperBound
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly struct Size : IEquatable<Size>
 {

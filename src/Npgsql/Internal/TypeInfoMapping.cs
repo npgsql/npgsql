@@ -19,8 +19,10 @@ namespace Npgsql.Internal;
 /// <param name="resolvedDataTypeName">
 /// Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should follow mapping.DataTypeName.
 /// </param>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public enum MatchRequirement
 {
     /// Match when the clr type and datatype name both match.
@@ -33,6 +35,7 @@ public enum MatchRequirement
 }
 
 /// A factory for well-known PgConverters.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public static class PgConverterFactory
 {
     public static PgConverter<T[]> CreateArrayMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
@@ -55,6 +58,7 @@ public static class PgConverterFactory
 }
 
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct TypeInfoMapping
 {
     public TypeInfoMapping(Type type, string dataTypeName, TypeInfoFactory factory)
@@ -99,6 +103,7 @@ public readonly struct TypeInfoMapping
     }
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class TypeInfoMappingCollection
 {
     readonly TypeInfoMappingCollection? _baseCollection;
@@ -731,6 +736,7 @@ public sealed class TypeInfoMappingCollection
         => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(resolver ? " resolver" : "")} instead.");
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public static class TypeInfoMappingHelpers
 {
     internal static bool TryResolveFullyQualifiedName(PgSerializerOptions options, string dataTypeName, out DataTypeName fqDataTypeName)

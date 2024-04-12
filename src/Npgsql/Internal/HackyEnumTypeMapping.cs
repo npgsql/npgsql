@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Npgsql.Internal;
@@ -8,10 +9,10 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal;
 
-
 /// <summary>
 /// Hacky temporary measure used by EFCore.PG to extract user-configured enum mappings. Accessed via reflection only.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class HackyEnumTypeMapping
 {
     public HackyEnumTypeMapping(Type enumClrType, string pgTypeName, INpgsqlNameTranslator nameTranslator)

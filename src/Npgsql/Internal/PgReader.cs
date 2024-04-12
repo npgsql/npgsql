@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public class PgReader
 {
     // We don't want to add a ton of memory pressure for large strings.
