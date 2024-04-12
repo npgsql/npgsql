@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgBufferedConverter<T> : PgConverter<T>
 {
     protected PgBufferedConverter(bool customDbNullPredicate = false) : base(customDbNullPredicate) { }

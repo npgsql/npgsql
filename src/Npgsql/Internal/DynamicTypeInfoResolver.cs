@@ -6,6 +6,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
 public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 {

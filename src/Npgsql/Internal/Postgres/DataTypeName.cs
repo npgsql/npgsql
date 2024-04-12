@@ -1,11 +1,13 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql.Internal.Postgres;
 
 /// <summary>
 /// Represents the fully-qualified name of a PostgreSQL type.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 [DebuggerDisplay("{DisplayName,nq}")]
 public readonly struct DataTypeName : IEquatable<DataTypeName>
 {
