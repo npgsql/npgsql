@@ -1,6 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Npgsql.Internal.Postgres;
 
 /// Base field type shared between tables and composites.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct Field
 {
     public Field(string name, PgTypeId pgTypeId, int typeModifier)

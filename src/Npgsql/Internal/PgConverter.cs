@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConverter
 {
     internal DbNullPredicate DbNullPredicateKind { get; }

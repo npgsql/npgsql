@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -17,6 +18,7 @@ namespace Npgsql.Internal;
 /// A buffer used by Npgsql to read data from the socket efficiently.
 /// Provides methods which decode different values types and tracks the current position.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties

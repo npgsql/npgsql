@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgTypeInfoResolverFactory
 {
     public abstract IPgTypeInfoResolver CreateResolver();

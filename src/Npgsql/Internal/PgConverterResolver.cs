@@ -1,8 +1,10 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConverterResolver
 {
     private protected PgConverterResolver() { }

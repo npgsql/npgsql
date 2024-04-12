@@ -4,6 +4,7 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public class PgTypeInfo
 {
     readonly bool _canBinaryConvert;

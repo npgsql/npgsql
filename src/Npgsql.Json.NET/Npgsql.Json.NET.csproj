@@ -6,6 +6,7 @@
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFrameworks>
     <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
   </PropertyGroup>
 
   <ItemGroup>
