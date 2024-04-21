@@ -501,10 +501,11 @@ sealed class SqlQueryParser
             {
                 batchCommand = batchCommands[statementIndex];
                 batchCommand.Reset();
+                batchCommand._parameters = parameters;
             }
             else
             {
-                batchCommand = new NpgsqlBatchCommand();
+                batchCommand = new NpgsqlBatchCommand { _parameters = parameters };
                 batchCommands.Add(batchCommand);
             }
         }
