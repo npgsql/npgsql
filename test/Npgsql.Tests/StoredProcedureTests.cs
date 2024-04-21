@@ -191,7 +191,7 @@ END$$");
                     Parameters =
                     {
                         new() { Value = "" },
-                        new() { NpgsqlDbType = NpgsqlDbType.Bigint, Direction = ParameterDirection.Output}
+                        new() { NpgsqlDbType = NpgsqlDbType.Bigint, Direction = ParameterDirection.Output }
                     }
                 },
                 new(sproc)
@@ -200,7 +200,7 @@ END$$");
                     Parameters =
                     {
                         new() { Value = "" },
-                        new() { NpgsqlDbType = NpgsqlDbType.Bigint, Direction = ParameterDirection.Output}
+                        new() { NpgsqlDbType = NpgsqlDbType.Bigint, Direction = ParameterDirection.Output }
                     }
                 }
             }
