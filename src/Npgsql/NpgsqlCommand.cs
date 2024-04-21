@@ -878,7 +878,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     batchCommand = TruncateStatementsToOne();
                     batchCommand.FinalCommandText = CommandText;
                     if (parameters is not null)
+                    {
                         batchCommand.PositionalParameters = parameters.InternalList;
+                        batchCommand._parameters = parameters;
+                    }
                 }
                 else
                 {
@@ -915,8 +918,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 else
                 {
                     parser.ParseRawQuery(batchCommand, standardConformingStrings);
-                    if (batchCommand._parameters?.HasOutputParameters == true)
-                        ThrowHelper.ThrowNotSupportedException("Batches cannot cannot have out parameters");
                     ValidateParameterCount(batchCommand);
                 }
 
@@ -993,6 +994,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             batchCommand ??= TruncateStatementsToOne();
             batchCommand.FinalCommandText = sqlBuilder.ToString();
+            batchCommand._parameters = parameters;
             batchCommand.PositionalParameters.AddRange(inputParameters);
             ValidateParameterCount(batchCommand);
 
