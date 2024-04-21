@@ -630,6 +630,12 @@ sealed class PolymorphicArrayConverter<TBase> : PgStreamingConverter<TBase>
         _nullableElementCollectionConverter = nullableElementCollectionConverter;
     }
 
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.Create(read: sizeof(int) + sizeof(int), write: Size.Unknown);
+        return format is DataFormat.Binary;
+    }
+
     public override TBase Read(PgReader reader)
     {
         _ = reader.ReadInt32();
