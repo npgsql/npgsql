@@ -101,7 +101,6 @@ namespace Npgsql.Tests
                 throw new Exception("Could find username");
 
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
-                IntegratedSecurity = true,
                 Username = username,
                 Password = null
             }.ToString();
@@ -126,7 +125,6 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                IntegratedSecurity = true,
                 Username = null,
                 Password = null
             }.ToString();
@@ -151,7 +149,6 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                IntegratedSecurity = true,
                 Username = null,
                 Password = null,
                 Database = null

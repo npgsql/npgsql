@@ -135,9 +135,6 @@ namespace Npgsql
 #pragma warning disable CA1801 // Review unused parameters
         async Task AuthenticateGSS(bool async)
         {
-            if (!IntegratedSecurity)
-                throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
-
             using (var negotiateStream = new NegotiateStream(new GSSPasswordMessageStream(this), true))
             {
                 try

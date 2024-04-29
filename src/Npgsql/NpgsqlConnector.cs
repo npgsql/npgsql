@@ -321,7 +321,6 @@ namespace Npgsql
         SslMode SslMode => Settings.SslMode;
         bool UseSslStream => Settings.UseSslStream;
         int ConnectionTimeout => Settings.Timeout;
-        bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
 
         int InternalCommandTimeout
