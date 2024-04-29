@@ -1,6 +1,6 @@
 ﻿<Project>
   <PropertyGroup>
-    <VersionPrefix>4.0.13</VersionPrefix>
+    <VersionPrefix>4.0.14</VersionPrefix>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="SourceLink.Create.CommandLine" Version="2.8.1" PrivateAssets="All" /> 

@@ -1,5 +1,5 @@
 image: Visual Studio 2017
-version: 4.0.13-{build}
+version: 4.0.14-{build}
 environment:
   global:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
