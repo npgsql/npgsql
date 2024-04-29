@@ -1206,7 +1206,6 @@ namespace Npgsql.Tests
                 var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
                 {
                     Pooling = false,
-                    IntegratedSecurity = false,
                     Password = null
                 };
                 using (OpenConnection(builder)) {}
