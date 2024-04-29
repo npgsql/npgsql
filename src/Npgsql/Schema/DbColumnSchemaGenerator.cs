@@ -35,7 +35,12 @@ sealed class DbColumnSchemaGenerator
      {(pgVersion.IsGreaterOrEqual(10) ? "attidentity != ''" : "FALSE")} AS isidentity,
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
-     CASE WHEN col.is_updatable = 'YES' THEN true ELSE false END AS is_updatable,
+     CASE WHEN ((cls.relkind = ANY (ARRAY['r'::""char"", 'p'::""char""])) 
+          OR ((cls.relkind = ANY (ARRAY['v'::""char"", 'f'::""char""]))
+          AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false))) 
+  	      AND attr.attidentity NOT IN ('a') THEN 'true'::boolean
+     ELSE 'false'::boolean
+     END AS is_updatable,
      EXISTS (
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
@@ -53,9 +58,6 @@ FROM pg_attribute AS attr
 JOIN pg_type AS typ ON attr.atttypid = typ.oid
 JOIN pg_class AS cls ON cls.oid = attr.attrelid
 JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
-LEFT OUTER JOIN information_schema.columns AS col ON col.table_schema = nspname AND
-     col.table_name = relname AND
-     col.column_name = attname
 WHERE
      atttypid <> 0 AND
      relkind IN ('r', 'v', 'm') AND
@@ -80,9 +82,6 @@ FROM pg_attribute AS attr
 JOIN pg_type AS typ ON attr.atttypid = typ.oid
 JOIN pg_class AS cls ON cls.oid = attr.attrelid
 JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
-LEFT OUTER JOIN information_schema.columns AS col ON col.table_schema = nspname AND
-     col.table_name = relname AND
-     col.column_name = attname
 WHERE
      atttypid <> 0 AND
      relkind IN ('r', 'v', 'm') AND
@@ -119,19 +118,19 @@ ORDER BY attnum";
                 if (f.TableOID != 0)
                     filters.Add($"(attr.attrelid={f.TableOID} AND attr.attnum={f.ColumnAttributeNumber})");
             }
-
+				
             var columnFieldFilter = string.Join(" OR ", filters);
             if (columnFieldFilter != string.Empty)
             {
                 var query = oldQueryMode
                     ? GenerateOldColumnsQuery(columnFieldFilter)
                     : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
-
+	
                 using var scope = new TransactionScope(
                     TransactionScopeOption.Suppress,
                     async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
-
+	
                 await connection.Open(async, cancellationToken).ConfigureAwait(false);
 
                 using var cmd = new NpgsqlCommand(query, connection);
