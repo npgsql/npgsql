@@ -29,6 +29,8 @@ sealed class NpgsqlWriteBuffer : IDisposable
     internal Stream Underlying { private get; set; }
 
     readonly Socket? _underlyingSocket;
+    internal bool MessageLengthValidation { get; set; } = true;
+
     readonly ResettableCancellationTokenSource _timeoutCts;
     readonly MetricsReporter? _metricsReporter;
 
@@ -76,6 +78,9 @@ sealed class NpgsqlWriteBuffer : IDisposable
     readonly Encoder _textEncoder;
 
     internal int WritePosition;
+
+    int _messageBytesFlushed;
+    int? _messageLength;
 
     bool _disposed;
     readonly PgWriter _pgWriter;
@@ -132,6 +137,8 @@ sealed class NpgsqlWriteBuffer : IDisposable
             WritePosition = pos;
         } else if (WritePosition == 0)
             return;
+        else
+            AdvanceMessageBytesFlushed(WritePosition);
 
         var finalCt = async && Timeout > TimeSpan.Zero
             ? _timeoutCts.Start(cancellationToken)
@@ -200,15 +207,19 @@ sealed class NpgsqlWriteBuffer : IDisposable
             Debug.Assert(WritePosition == 5);
 
             WritePosition = 1;
-            WriteInt32(buffer.Length + 4);
+            WriteInt32(checked(buffer.Length + 4));
             WritePosition = 5;
             _copyMode = false;
+            StartMessage(5);
             Flush();
             _copyMode = true;
             WriteCopyDataHeader();  // And ready the buffer after the direct write completes
         }
         else
+        {
             Debug.Assert(WritePosition == 0);
+            AdvanceMessageBytesFlushed(buffer.Length);
+        }
 
         try
         {
@@ -231,15 +242,19 @@ sealed class NpgsqlWriteBuffer : IDisposable
             Debug.Assert(WritePosition == 5);
 
             WritePosition = 1;
-            WriteInt32(memory.Length + 4);
+            WriteInt32(checked(memory.Length + 4));
             WritePosition = 5;
             _copyMode = false;
+            StartMessage(5);
             await Flush(async, cancellationToken).ConfigureAwait(false);
             _copyMode = true;
             WriteCopyDataHeader();  // And ready the buffer after the direct write completes
         }
         else
+        {
             Debug.Assert(WritePosition == 0);
+            AdvanceMessageBytesFlushed(memory.Length);
+        }
 
         try
         {
@@ -537,9 +552,51 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     #region Misc
 
+    internal void StartMessage(int messageLength)
+    {
+        if (!MessageLengthValidation)
+            return;
+
+        if (_messageLength is not null && _messageBytesFlushed != _messageLength && WritePosition != -_messageBytesFlushed + _messageLength)
+            Throw();
+
+        // Add negative WritePosition to compensate for previous message(s) written without flushing.
+        _messageBytesFlushed = -WritePosition;
+        _messageLength = messageLength;
+
+        void Throw()
+        {
+            throw Connector.Break(new OverflowException("Did not write the amount of bytes the message length specified"));
+        }
+    }
+
+    void AdvanceMessageBytesFlushed(int count)
+    {
+        if (!MessageLengthValidation)
+            return;
+
+        if (count < 0 || _messageLength is null || (long)_messageBytesFlushed + count > _messageLength)
+            Throw();
+
+        _messageBytesFlushed += count;
+
+        void Throw()
+        {
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count), "Can't advance by a negative count");
+
+            if (_messageLength is null)
+                throw Connector.Break(new InvalidOperationException("No message was started"));
+
+            if ((long)_messageBytesFlushed + count > _messageLength)
+                throw Connector.Break(new OverflowException("Tried to write more bytes than the message length specified"));
+        }
+    }
+
     internal void Clear()
     {
         WritePosition = 0;
+        _messageLength = null;
     }
 
     /// <summary>
