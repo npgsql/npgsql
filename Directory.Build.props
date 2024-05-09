@@ -1,7 +1,7 @@
 ﻿<Project>
   <!-- Package configuration -->
   <PropertyGroup>
-    <Copyright>Copyright 2022 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2024 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <VersionPrefix>4.1.13</VersionPrefix>
     <NoWarn>NU5105</NoWarn>
