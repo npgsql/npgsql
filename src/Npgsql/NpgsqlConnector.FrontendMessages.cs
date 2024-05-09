@@ -19,6 +19,7 @@ namespace Npgsql
                       sizeof(byte) +       // Statement or portal
                       (name.Length + 1);   // Statement/portal name
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 return FlushAndWrite(len, statementOrPortal, name, async);
 
@@ -46,6 +47,7 @@ namespace Npgsql
             const int len = sizeof(byte) +  // Message code
                             sizeof(int);    // Length
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 return FlushAndWrite(async);
 
@@ -75,6 +77,7 @@ namespace Npgsql
                             sizeof(byte) +       // Null-terminated portal name (always empty for now)
                             sizeof(int);         // Max number of rows
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 return FlushAndWrite(maxRows, async);
 
@@ -102,8 +105,6 @@ namespace Npgsql
             Debug.Assert(statementName.All(c => c < 128));
 
             var queryByteLen = TextEncoding.GetByteCount(sql);
-            if (WriteBuffer.WriteSpaceLeft < 1 + 4 + statementName.Length + 1)
-                await Flush(async);
 
             var messageLength =
                 sizeof(byte)                +         // Message code
@@ -113,6 +114,10 @@ namespace Npgsql
                 queryByteLen + sizeof(byte) +         // SQL query length plus null terminator
                 sizeof(ushort)              +         // Number of parameters
                 inputParameters.Count * sizeof(int);  // Parameter OIDs
+
+            WriteBuffer.StartMessage(messageLength);
+            if (WriteBuffer.WriteSpaceLeft < 1 + 4 + statementName.Length + 1)
+                await Flush(async);
 
             WriteBuffer.WriteByte(FrontendMessageCode.Parse);
             WriteBuffer.WriteInt32(messageLength - 1);
@@ -152,12 +157,6 @@ namespace Npgsql
                 statement.Length + sizeof(byte) +     // Statement name plus null terminator
                 sizeof(ushort);                       // Number of parameter format codes that follow
 
-            if (WriteBuffer.WriteSpaceLeft < headerLength)
-            {
-                Debug.Assert(WriteBuffer.Size >= headerLength, "Write buffer too small for Bind header");
-                await Flush(async);
-            }
-
             var formatCodesSum = 0;
             var paramsLength = 0;
             foreach (var p in inputParameters)
@@ -176,6 +175,13 @@ namespace Npgsql
                 paramsLength                         +                  // Parameter values
                 sizeof(short)                        +                  // Number of result format codes
                 sizeof(short) * (unknownResultTypeList?.Length ?? 1);   // Result format codes
+
+            WriteBuffer.StartMessage(messageLength);
+            if (WriteBuffer.WriteSpaceLeft < headerLength)
+            {
+                Debug.Assert(WriteBuffer.Size >= headerLength, "Write buffer too small for Bind header");
+                await Flush(async);
+            }
 
             WriteBuffer.WriteByte(FrontendMessageCode.Bind);
             WriteBuffer.WriteInt32(messageLength - 1);
@@ -237,6 +243,7 @@ namespace Npgsql
                       sizeof(byte) +               // Statement or portal
                       name.Length + sizeof(byte);  // Statement or portal name plus null terminator
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < 10)
                 return FlushAndWrite(len, type, name, async);
 
@@ -265,14 +272,17 @@ namespace Npgsql
         {
             var queryByteLen = TextEncoding.GetByteCount(sql);
 
+            var len = sizeof(byte) +
+                      sizeof(int) + // Message length (including self excluding code)
+                      queryByteLen + // Query byte length
+                      sizeof(byte);
+
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < 1 + 4)
                 await Flush(async);
 
             WriteBuffer.WriteByte(FrontendMessageCode.Query);
-            WriteBuffer.WriteInt32(
-                sizeof(int)  +        // Message length (including self excluding code)
-                queryByteLen +        // Query byte length
-                sizeof(byte));        // Null terminator
+            WriteBuffer.WriteInt32(len - 1);
 
             await WriteBuffer.WriteString(sql, queryByteLen, async);
             if (WriteBuffer.WriteSpaceLeft < 1)
@@ -287,6 +297,7 @@ namespace Npgsql
             const int len = sizeof(byte) +   // Message code
                             sizeof(int);     // Length
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 await Flush(async);
 
@@ -302,6 +313,7 @@ namespace Npgsql
                             sizeof(int) +   // Length
                             sizeof(byte);   // Error message is always empty (only a null terminator)
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 await Flush(async);
 
@@ -319,6 +331,7 @@ namespace Npgsql
 
             Debug.Assert(backendProcessId != 0);
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 Flush(false).GetAwaiter().GetResult();
 
@@ -333,6 +346,7 @@ namespace Npgsql
             const int len = sizeof(byte) +  // Message code
                             sizeof(int);    // Length
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 Flush(false).GetAwaiter().GetResult();
 
@@ -345,6 +359,7 @@ namespace Npgsql
             const int len = sizeof(int) +  // Length
                             sizeof(int);   // SSL request code
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 Flush(false).GetAwaiter().GetResult();
 
@@ -365,6 +380,7 @@ namespace Npgsql
                        PGUtil.UTF8Encoding.GetByteCount(kvp.Value) + 1;
 
             // Should really never happen, just in case
+            WriteBuffer.StartMessage(len);
             if (len > WriteBuffer.Size)
                 throw new Exception("Startup message bigger than buffer");
 
@@ -388,6 +404,7 @@ namespace Npgsql
 
         internal async Task WritePassword(byte[] payload, int offset, int count, bool async)
         {
+            WriteBuffer.StartMessage(sizeof(byte) + sizeof(int) + count);
             if (WriteBuffer.WriteSpaceLeft < sizeof(byte) + sizeof(int))
                 await WriteBuffer.Flush(async);
             WriteBuffer.WriteByte(FrontendMessageCode.Password);
@@ -412,6 +429,7 @@ namespace Npgsql
                       sizeof(int)                                                +  // Initial response length
                       (initialResponse?.Length ?? 0);                               // Initial response payload
 
+            WriteBuffer.StartMessage(len);
             if (WriteBuffer.WriteSpaceLeft < len)
                 await WriteBuffer.Flush(async);
 
@@ -435,6 +453,7 @@ namespace Npgsql
 
         internal Task WritePregenerated(byte[] data, bool async=false)
         {
+            WriteBuffer.StartMessage(data.Length);
             if (WriteBuffer.WriteSpaceLeft < data.Length)
                 return FlushAndWrite(data, async);
 

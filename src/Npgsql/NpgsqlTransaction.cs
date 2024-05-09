@@ -204,6 +204,9 @@ namespace Npgsql
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
+
+            // Note that creating a savepoint doesn't actually send anything to the backend (only prepends), so strictly speaking we don't
+            // have to start a user action. However, we do this for consistency as if we did (for the checks and exceptions)
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Creating savepoint {name}", _connector.Id);

@@ -861,6 +861,99 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public async Task Parameter_overflow_message_length_throws()
+        {
+            await using var conn = CreateConnection();
+            await conn.OpenAsync();
+            using var cmd = new NpgsqlCommand("SELECT @a, @b, @c, @d, @e, @f, @g, @h", conn);
+
+            var largeParam = new string('A', 1 << 29);
+            cmd.Parameters.AddWithValue("a", largeParam);
+            cmd.Parameters.AddWithValue("b", largeParam);
+            cmd.Parameters.AddWithValue("c", largeParam);
+            cmd.Parameters.AddWithValue("d", largeParam);
+            cmd.Parameters.AddWithValue("e", largeParam);
+            cmd.Parameters.AddWithValue("f", largeParam);
+            cmd.Parameters.AddWithValue("g", largeParam);
+            cmd.Parameters.AddWithValue("h", largeParam);
+
+            Assert.ThrowsAsync<OverflowException>(() => cmd.ExecuteReaderAsync());
+        }
+
+        [Test, NonParallelizable]
+        public async Task Composite_overflow_message_length_throws()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(Composite_overflow_message_length_throws), // Prevent backend type caching in TypeHandlerRegistry
+                Pooling = false
+            };
+
+            await using var connection = CreateConnection(csb.ToString());
+            await connection.OpenAsync();
+            await connection.ExecuteNonQueryAsync(
+                "CREATE TYPE pg_temp.composite_overflow AS (a text, b text, c text, d text, e text, f text, g text, h text)");
+            connection.ReloadTypes();
+            connection.TypeMapper.MapComposite<BigComposite>("composite_overflow");
+
+            var largeString = new string('A', 1 << 29);
+
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT @a";
+            cmd.Parameters.AddWithValue("a", new BigComposite
+            {
+                A = largeString,
+                B = largeString,
+                C = largeString,
+                D = largeString,
+                E = largeString,
+                F = largeString,
+                G = largeString,
+                H = largeString
+            });
+
+            Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+        }
+
+        class BigComposite
+        {
+            public string A { get; set; } = null!;
+            public string B { get; set; } = null!;
+            public string C { get; set; } = null!;
+            public string D { get; set; } = null!;
+            public string E { get; set; } = null!;
+            public string F { get; set; } = null!;
+            public string G { get; set; } = null!;
+            public string H { get; set; } = null!;
+        }
+
+        [Test]
+        public async Task Array_overflow_message_length_throws()
+        {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync();
+
+            var largeString = new string('A', 1 << 29);
+
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT @a";
+            var array = new[]
+            {
+                largeString,
+                largeString,
+                largeString,
+                largeString,
+                largeString,
+                largeString,
+                largeString,
+                largeString
+            };
+            cmd.Parameters.AddWithValue("a", array);
+
+            Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+        }
+
         [Test, Description("CreateCommand before connection open")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/565")]
         public void CreateCommandBeforeConnectionOpen()
