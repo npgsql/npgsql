@@ -223,16 +223,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 
         // Note: savepoint names are PostgreSQL identifiers, and so limited by default to 63 characters.
         // Since we are prepending, we assume below that the statement will always fit in the buffer.
-        _connector.WriteBuffer.WriteByte(FrontendMessageCode.Query);
-        _connector.WriteBuffer.WriteInt32(
-            sizeof(int)  +                               // Message length (including self excluding code)
-            _connector.TextEncoding.GetByteCount("SAVEPOINT ") +
-            _connector.TextEncoding.GetByteCount(name) +
-            sizeof(byte));                               // Null terminator
-
-        _connector.WriteBuffer.WriteString("SAVEPOINT ");
-        _connector.WriteBuffer.WriteString(name);
-        _connector.WriteBuffer.WriteByte(0);
+        _connector.WriteQuery("SAVEPOINT " + name);
 
         _connector.PendingPrependedResponses += 2;
     }
