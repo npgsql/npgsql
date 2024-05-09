@@ -91,6 +91,7 @@ namespace Npgsql.Tests.Support
             var readBuffer = new NpgsqlReadBuffer(null!, stream, clientSocket, ReadBufferSize, Encoding,
                 RelaxedEncoding);
             var writeBuffer = new NpgsqlWriteBuffer(null!, stream, clientSocket, WriteBufferSize, Encoding);
+            writeBuffer.MessageLengthValidation = false;
 
             await readBuffer.EnsureAsync(4);
             var len = readBuffer.ReadInt32();
@@ -103,7 +104,7 @@ namespace Npgsql.Tests.Support
                 {
                     cancellationRequest.Complete();
                 }
-                
+
                 return new ServerOrCancellationRequest(cancellationRequest);
             }
 

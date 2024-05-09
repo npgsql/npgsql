@@ -35,6 +35,7 @@ namespace Npgsql.Tests.Support
             _stream = stream;
             _readBuffer = readBuffer;
             _writeBuffer = writeBuffer;
+            writeBuffer.MessageLengthValidation = false;
         }
 
         internal async Task Startup()

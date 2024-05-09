@@ -39,7 +39,7 @@ namespace Npgsql.Json.NET
                 return await base.Read<T>(buf, len, async, fieldDescription);
             }
 
-            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings);
+            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings)!;
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

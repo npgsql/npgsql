@@ -98,7 +98,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             foreach (var member in _memberHandlers)
                 length += member.ValidateAndGetLength(value, ref lengthCache);
 
-            return lengthCache.Lengths[position] = length;
+            return lengthCache!.Lengths[position] = length;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
