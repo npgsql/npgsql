@@ -984,6 +984,7 @@ $$ LANGUAGE plpgsql;";
     public async Task Multirange_overflow_message_length_throws()
     {
         await using var adminConnection = await OpenConnectionAsync();
+        MinimumPgVersion(adminConnection, "14.0", "Multirange types were introduced in PostgreSQL 14");
         var type = await GetTempTypeName(adminConnection);
         var rangeType = await GetTempTypeName(adminConnection);
 
