@@ -502,6 +502,7 @@ namespace Npgsql
             if (startupMessage.Length > WriteBuffer.Size)
                 throw new Exception("Startup message bigger than buffer");
 
+            WriteBuffer.StartMessage(startupMessage.Length);
             startupMessage.WriteFully(WriteBuffer);
         }
 

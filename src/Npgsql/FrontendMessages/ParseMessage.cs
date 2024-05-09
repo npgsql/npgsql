@@ -81,8 +81,6 @@ namespace Npgsql.FrontendMessages
             Debug.Assert(Statement != null && Statement.All(c => c < 128));
 
             var queryByteLen = _encoding.GetByteCount(Query);
-            if (buf.WriteSpaceLeft < 1 + 4 + Statement.Length + 1)
-                await buf.Flush(async);
 
             var messageLength =
                 1 +                         // Message code
@@ -93,6 +91,10 @@ namespace Npgsql.FrontendMessages
                 1 +                         // Null terminator
                 2 +                         // Number of parameters
                 ParameterTypeOIDs.Count * 4;
+
+            buf.StartMessage(messageLength);
+            if (buf.WriteSpaceLeft < 1 + 4 + Statement.Length + 1)
+                await buf.Flush(async);
 
             buf.WriteByte(Code);
             buf.WriteInt32(messageLength - 1);

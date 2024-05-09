@@ -23,7 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 <!-- Causes issues in Appveyor and Travis
     <PackageReference Include="Microsoft.CodeQuality.Analyzers" Version="2.6.0-beta2" PrivateAssets="All" />
 -->

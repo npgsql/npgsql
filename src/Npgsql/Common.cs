@@ -77,6 +77,7 @@ namespace Npgsql
 
         internal sealed override Task Write(NpgsqlWriteBuffer buf, bool async)
         {
+            buf.StartMessage(Length);
             if (buf.WriteSpaceLeft < Length)
                 return FlushAndWrite(buf, async);
             Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");

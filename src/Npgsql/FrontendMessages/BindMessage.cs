@@ -78,12 +78,6 @@ namespace Npgsql.FrontendMessages
                 Statement.Length + 1 +
                 2;                         // Number of parameter format codes that follow
 
-            if (buf.WriteSpaceLeft < headerLength)
-            {
-                Debug.Assert(buf.Size >= headerLength, "Buffer too small for Bind header");
-                await buf.Flush(async);
-            }
-
             var formatCodesSum = 0;
             var paramsLength = 0;
             foreach (var p in InputParameters)
@@ -102,6 +96,13 @@ namespace Npgsql.FrontendMessages
                 paramsLength +                                                  // Parameter values
                 2 +                                                             // Number of result format codes
                 2 * (UnknownResultTypeList?.Length ?? 1);                       // Result format codes
+
+            buf.StartMessage(messageLength);
+            if (buf.WriteSpaceLeft < headerLength)
+            {
+                Debug.Assert(buf.Size >= headerLength, "Write buffer too small for Bind header");
+                await buf.Flush(async);
+            }
 
             buf.WriteByte(Code);
             buf.WriteInt32(messageLength - 1);

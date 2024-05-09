@@ -56,14 +56,19 @@ namespace Npgsql.FrontendMessages
 
         internal override async Task Write(NpgsqlWriteBuffer buf, bool async)
         {
-            if (buf.WriteSpaceLeft < 1 + 4)
-                await buf.Flush(async);
             var queryByteLen = _encoding.GetByteCount(_query);
 
+            var len = sizeof(byte) +
+                      sizeof(int) + // Message length (including self excluding code)
+                      queryByteLen + // Query byte length
+                      sizeof(byte);
+
+            buf.StartMessage(len);
+            if (buf.WriteSpaceLeft < 1 + 4)
+                await buf.Flush(async);
+            
             buf.WriteByte(Code);
-            buf.WriteInt32(4 +            // Message length (including self excluding code)
-                           queryByteLen + // Query byte length
-                           1);            // Null terminator
+            buf.WriteInt32(len - 1);
 
             await buf.WriteString(_query, queryByteLen, async);
             if (buf.WriteSpaceLeft < 1)
