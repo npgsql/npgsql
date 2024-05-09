@@ -638,6 +638,7 @@ namespace Npgsql.Replication
                 if (buf.WriteSpaceLeft < len)
                     await connector.Flush(async: true, cancellationToken);
 
+                buf.StartMessage(len);
                 buf.WriteByte(FrontendMessageCode.CopyData);
                 buf.WriteInt32(len - 1);
                 buf.WriteByte((byte)'r');  // TODO: enum/const?
