@@ -23,4 +23,5 @@ sealed record NpgsqlDataSourceConfiguration(string? Name,
     List<HackyEnumTypeMapping> HackyEnumMappings,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
-    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);
+    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync,
+    bool IsLegacyDataSource);

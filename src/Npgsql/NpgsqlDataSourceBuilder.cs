@@ -422,6 +422,19 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Use this method to flag a NpgsqlDataSource as legacy data source which means that the
+    /// connection was created by setting the <see cref="NpgsqlConnection.ConnectionString"/>
+    /// property in a <see cref="NpgsqlConnection"/>
+    /// </summary>
+    /// <param name="isLegacyDataSource">If <see langword="true" />, then the NpgsqlDataSource is flagged as legacy data source.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    internal NpgsqlDataSourceBuilder CreateLegacyDataSource(bool isLegacyDataSource = true)
+    {
+        _internalBuilder._isLegacyDataSource = isLegacyDataSource;
+        return this;
+    }
+
+    /// <summary>
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>
     public NpgsqlDataSource Build()
