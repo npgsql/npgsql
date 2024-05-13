@@ -36,11 +36,11 @@ sealed class DbColumnSchemaGenerator
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
      CASE WHEN ((cls.relkind = ANY (ARRAY['r'::""char"", 'p'::""char""])) 
-          OR ((cls.relkind = ANY (ARRAY['v'::""char"", 'f'::""char""]))
-          AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false))) 
-  	      AND attr.attidentity NOT IN ('a') THEN 'true'::boolean
-     ELSE 'false'::boolean
-     END AS is_updatable,
+               OR ((cls.relkind = ANY (ARRAY['v'::""char"", 'f'::""char""]))
+               AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false))) 
+  	           AND attr.attidentity NOT IN ('a') THEN 'true'::boolean
+               ELSE 'false'::boolean
+               END AS is_updatable,
      EXISTS (
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
