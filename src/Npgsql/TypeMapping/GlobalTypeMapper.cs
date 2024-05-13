@@ -84,13 +84,13 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                     builder.AppendResolverFactory(factory);
                 foreach (var factory in _typeMappingResolvers)
                     builder.AppendResolverFactory(factory);
-                return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
+                var chain = builder.Build();
+                return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, chain)
                 {
                     // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
                     PortableTypeIds = true,
                     // Don't throw if our catalog doesn't know the datatypename.
-                    IntrospectionMode = true,
-                    TypeInfoResolver = new TypeInfoResolverChain(builder.Build())
+                    IntrospectionMode = true
                 };
             }
             finally
@@ -291,6 +291,11 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             _userTypeMapper.MapEnum(clrType, pgName, nameTranslator);
+
+            // Temporary hack for EFCore.PG enum mapping compat
+            if (_userTypeMapper.Items.FirstOrDefault(i => i.ClrType == clrType) is UserTypeMapping userTypeMapping)
+                HackyEnumTypeMappings.Add(new(clrType, userTypeMapping.PgTypeName, nameTranslator ?? DefaultNameTranslator));
+
             ResetTypeMappingCache();
             return this;
         }
@@ -307,9 +312,14 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         _lock.EnterWriteLock();
         try
         {
-            var result = _userTypeMapper.UnmapEnum(clrType, pgName, nameTranslator);
+            var removed = _userTypeMapper.UnmapEnum(clrType, pgName, nameTranslator);
+
+            // Temporary hack for EFCore.PG enum mapping compat
+            if (removed && ((List<UserTypeMapping>)_userTypeMapper.Items).FindIndex(m => m.ClrType == clrType) is > -1 and var index)
+                HackyEnumTypeMappings.RemoveAt(index);
+
             ResetTypeMappingCache();
-            return result;
+            return removed;
         }
         finally
         {

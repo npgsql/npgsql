@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 using Npgsql.Util;
 
 namespace Npgsql.Internal;
@@ -8,6 +9,7 @@ namespace Npgsql.Internal;
 /// and the types it contains. When first connecting to a database, Npgsql will attempt to load information
 /// about it via this factory.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public interface INpgsqlDatabaseInfoFactory
 {
     /// <summary>

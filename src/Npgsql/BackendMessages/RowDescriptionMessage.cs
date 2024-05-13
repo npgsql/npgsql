@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -126,15 +127,19 @@ sealed class RowDescriptionMessage : IBackendMessage
         return msg;
     }
 
-    public FieldDescription this[int index]
+    public FieldDescription this[int ordinal]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            Debug.Assert(index < Count);
-            Debug.Assert(_fields[index] != null);
+            if ((uint)ordinal < (uint)Count)
+            {
+                Debug.Assert(_fields[ordinal] != null);
+                return _fields[ordinal]!;
+            }
 
-            return _fields[index]!;
+            ThrowHelper.ThrowIndexOutOfRangeException("Ordinal must be between 0 and " + (Count - 1));
+            return default!;
         }
     }
 
@@ -368,7 +373,7 @@ public sealed class FieldDescription
                 // For text we'll fall back to any available text converter for the expected clr type or throw.
                 if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
                 {
-                    typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.UnknownPgType, _serializerOptions);
+                    typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
                     converterInfo = typeInfo.Bind(Field, DataFormat);
                     lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
                 }

@@ -16,14 +16,14 @@ class ReadBufferTests
         for (byte i = 0; i < 50; i++)
             Writer.WriteByte(i);
 
-        ReadBuffer.Ensure(10, async: false).GetAwaiter().GetResult();
+        ReadBuffer.Ensure(10);
         ReadBuffer.Skip(7);
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(7));
         ReadBuffer.Skip(10);
-        ReadBuffer.Ensure(1, async: false).GetAwaiter().GetResult();
+        ReadBuffer.Ensure(1);
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(18));
         ReadBuffer.Skip(20);
-        ReadBuffer.Ensure(1, async: false).GetAwaiter().GetResult();
+        ReadBuffer.Ensure(1);
         Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(39));
     }
 
@@ -35,7 +35,7 @@ class ReadBufferTests
         Array.Reverse(bytes);
         Writer.Write(bytes);
 
-        ReadBuffer.Ensure(4, async: false).GetAwaiter().GetResult();
+        ReadBuffer.Ensure(4);
         Assert.That(ReadBuffer.ReadSingle(), Is.EqualTo(expected));
     }
 
@@ -47,7 +47,7 @@ class ReadBufferTests
         Array.Reverse(bytes);
         Writer.Write(bytes);
 
-        ReadBuffer.Ensure(8, async: false).GetAwaiter().GetResult();
+        ReadBuffer.Ensure(8);
         Assert.That(ReadBuffer.ReadDouble(), Is.EqualTo(expected));
     }
 
@@ -60,7 +60,7 @@ class ReadBufferTests
             .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("bar")))
             .WriteByte(0);
 
-        ReadBuffer.Ensure(1, async: false);
+        ReadBuffer.Ensure(1);
 
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("foo"));
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("bar"));

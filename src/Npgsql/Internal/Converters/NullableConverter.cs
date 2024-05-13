@@ -24,7 +24,7 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
         => _effectiveConverter.Read(reader);
 
     public override ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => this.ComposingReadAsync(_effectiveConverter, reader, cancellationToken);
+        => this.ReadAsyncAsNullable(_effectiveConverter, reader, cancellationToken);
 
     public override Size GetSize(SizeContext context, [DisallowNull]T? value, ref object? writeState)
         => _effectiveConverter.GetSize(context, value.GetValueOrDefault(), ref writeState);

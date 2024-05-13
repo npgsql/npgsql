@@ -8,6 +8,8 @@
     <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFrameworks>
     <NoWarn>$(NoWarn);CA2017</NoWarn>
+    <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
+    <NoWarn>$(NoWarn);NPG9002</NoWarn> <!-- DatabaseInfo-related APIs are experimental -->
   </PropertyGroup>
 
   <ItemGroup>

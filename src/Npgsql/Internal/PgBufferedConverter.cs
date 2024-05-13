@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgBufferedConverter<T> : PgConverter<T>
 {
     protected PgBufferedConverter(bool customDbNullPredicate = false) : base(customDbNullPredicate) { }
@@ -19,7 +20,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     {
         // We check IsAtStart first to speed up primitive reads.
         if (!reader.IsAtStart && reader.ShouldBufferCurrent())
-            ThrowIORequired();
+            ThrowIORequired(reader.CurrentBufferRequirement);
 
         return ReadCore(reader);
     }
@@ -33,7 +34,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     public sealed override void Write(PgWriter writer, T value)
     {
         if (!writer.BufferingWrite && writer.ShouldFlush(writer.CurrentBufferRequirement))
-            ThrowIORequired();
+            ThrowIORequired(writer.CurrentBufferRequirement);
 
         WriteCore(writer, value);
     }

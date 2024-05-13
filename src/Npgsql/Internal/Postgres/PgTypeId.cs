@@ -6,6 +6,7 @@ namespace Npgsql.Internal.Postgres;
 /// <summary>
 /// A discriminated union of <see cref="Oid" /> and <see cref="DataTypeName" />.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct PgTypeId: IEquatable<PgTypeId>
 {
     readonly DataTypeName _dataTypeName;
@@ -15,8 +16,8 @@ public readonly struct PgTypeId: IEquatable<PgTypeId>
     public PgTypeId(Oid oid) => _oid = oid;
 
     [MemberNotNullWhen(true, nameof(_dataTypeName))]
-    public bool IsDataTypeName => !_dataTypeName.IsDefault;
-    public bool IsOid => _dataTypeName.IsDefault;
+    public bool IsDataTypeName => _dataTypeName != default;
+    public bool IsOid => _dataTypeName == default;
 
     public DataTypeName DataTypeName
         => IsDataTypeName ? _dataTypeName : throw new InvalidOperationException("This value does not describe a DataTypeName.");
@@ -42,4 +43,6 @@ public readonly struct PgTypeId: IEquatable<PgTypeId>
     public override int GetHashCode() => IsOid ? _oid.GetHashCode() : _dataTypeName.GetHashCode();
     public static bool operator ==(PgTypeId left, PgTypeId right) => left.Equals(right);
     public static bool operator !=(PgTypeId left, PgTypeId right) => !left.Equals(right);
+
+    internal bool IsUnspecified => IsOid && _oid == Oid.Unspecified || _dataTypeName == DataTypeName.Unspecified;
 }

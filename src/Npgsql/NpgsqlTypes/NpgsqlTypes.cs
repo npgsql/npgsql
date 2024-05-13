@@ -128,67 +128,33 @@ public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
 /// </remarks>
 public struct NpgsqlBox : IEquatable<NpgsqlBox>
 {
+    NpgsqlPoint _upperRight;
     public NpgsqlPoint UpperRight
     {
         get => _upperRight;
         set
         {
-            if (value.X < _lowerLeft.X)
-            {
-                _upperRight.X = _lowerLeft.X;
-                _lowerLeft.X = value.X;
-            }
-            else
-            {
-                _upperRight.X = value.X;
-            }
-
-            if (value.Y < _lowerLeft.Y)
-            {
-                _upperRight.Y = _lowerLeft.Y;
-                _lowerLeft.Y = value.Y;
-            }
-            else
-            {
-                _upperRight.Y = value.Y;
-            }
+            _upperRight = value;
+            NormalizeBox();
         }
     }
-    private NpgsqlPoint _upperRight;
 
-
+    NpgsqlPoint _lowerLeft;
     public NpgsqlPoint LowerLeft
     {
         get => _lowerLeft;
         set
         {
-            if (value.X > _upperRight.X)
-            {
-                _lowerLeft.X = _upperRight.X;
-                _upperRight.X = value.X;
-            }
-            else
-            {
-                _lowerLeft.X = value.X;
-            }
-
-            if (value.Y > _upperRight.Y)
-            {
-                _lowerLeft.Y = _upperRight.Y;
-                _upperRight.Y = value.Y;
-            }
-            else
-            {
-                _lowerLeft.Y = value.Y;
-            }
+            _lowerLeft = value;
+            NormalizeBox();
         }
     }
-    private NpgsqlPoint _lowerLeft;
 
     public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this()
     {
-        UpperRight = upperRight;
-        LowerLeft = lowerLeft;
+        _upperRight = upperRight;
+        _lowerLeft = lowerLeft;
+        NormalizeBox();
     }
 
     public NpgsqlBox(double top, double right, double bottom, double left)
@@ -216,6 +182,17 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
 
     public override int GetHashCode()
         => HashCode.Combine(Top, Right, Bottom, LowerLeft);
+
+    // Swaps corners for isomorphic boxes, to mirror postgres behavior.
+    // See: https://github.com/postgres/postgres/blob/af2324fabf0020e464b0268be9ef03e8f46ed84b/src/backend/utils/adt/geo_ops.c#L435-L447
+    void NormalizeBox()
+    {
+        if (_upperRight.X < _lowerLeft.X)
+            (_upperRight.X, _lowerLeft.X) = (_lowerLeft.X, _upperRight.X);
+
+        if (_upperRight.Y < _lowerLeft.Y)
+            (_upperRight.Y, _lowerLeft.Y) = (_lowerLeft.Y, _upperRight.Y);
+    }
 }
 
 /// <summary>
@@ -471,9 +448,7 @@ public readonly record struct NpgsqlInet
 
     public NpgsqlInet(IPAddress address, byte netmask)
     {
-        if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
-            throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
-
+        CheckAddressFamily(address);
         Address = address;
         Netmask = netmask;
     }
@@ -484,12 +459,23 @@ public readonly record struct NpgsqlInet
     }
 
     public NpgsqlInet(string addr)
-        => (Address, Netmask) = addr.Split('/') switch
+    {
+        switch (addr.Split('/'))
         {
-            { Length: 2 } segments => (IPAddress.Parse(segments[0]), byte.Parse(segments[1])),
-            { Length: 1 } segments => (IPAddress.Parse(segments[0]), (byte)32),
-            _ => throw new FormatException("Invalid number of parts in CIDR specification")
-        };
+        case { Length: 2 } segments:
+            (Address, Netmask) = (IPAddress.Parse(segments[0]), byte.Parse(segments[1]));
+            break;
+        case { Length: 1 } segments:
+            var ipAddr = IPAddress.Parse(segments[0]);
+            CheckAddressFamily(ipAddr);
+            (Address, Netmask) = (
+                ipAddr,
+                ipAddr.AddressFamily == AddressFamily.InterNetworkV6 ? (byte)128 : (byte)32);
+            break;
+        default:
+            throw new FormatException("Invalid number of parts in CIDR specification");
+        }
+    }
 
     public override string ToString()
         => (Address.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
@@ -507,6 +493,12 @@ public readonly record struct NpgsqlInet
     {
         address = Address;
         netmask = Netmask;
+    }
+
+    static void CheckAddressFamily(IPAddress address)
+    {
+        if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
+            throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
     }
 }
 

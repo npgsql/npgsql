@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConverter
 {
     internal DbNullPredicate DbNullPredicateKind { get; }
@@ -33,7 +35,8 @@ public abstract class PgConverter
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
-            _ => IsDbNullValueAsObject(value, ref writeState) || (value is null && ThrowInvalidNullValue())
+            DbNullPredicate.Custom => IsDbNullValueAsObject(value, ref writeState) || (value is null && ThrowInvalidNullValue()),
+            _ => ThrowDbNullPredicateOutOfRange()
         };
 
     private protected abstract bool IsDbNullValueAsObject(object? value, ref object? writeState);
@@ -76,11 +79,14 @@ public abstract class PgConverter
     }
 
     [DoesNotReturn]
-    private protected static void ThrowIORequired()
-        => throw new InvalidOperationException("Buffer requirements for format not respected, expected no IO to be required.");
+    private protected void ThrowIORequired(Size bufferRequirement)
+        => throw new InvalidOperationException($"Buffer requirement '{bufferRequirement}' not respected for converter '{GetType().FullName}', expected no IO to be required.");
 
     private protected static bool ThrowInvalidNullValue()
         => throw new ArgumentNullException("value", "Null value given for non-nullable type converter");
+
+    private protected bool ThrowDbNullPredicateOutOfRange()
+        => throw new UnreachableException($"Unknown case {DbNullPredicateKind.ToString()}");
 
     protected bool CanConvertBufferedDefault(DataFormat format, out BufferRequirements bufferRequirements)
     {
@@ -99,22 +105,18 @@ public abstract class PgConverter<T> : PgConverter
     // Object null semantics as follows, if T is a struct (so excluding nullable) report false for null values, don't throw on the cast.
     // As a result this creates symmetry with IsDbNull when we're dealing with a struct T, as it cannot be passed null at all.
     private protected override bool IsDbNullValueAsObject(object? value, ref object? writeState)
-        => (default(T) is null || value is not null) && IsDbNullValue(Downcast(value), ref writeState);
+        => (default(T) is null || value is not null) && IsDbNullValue((T?)value, ref writeState);
 
     public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
-    {
-        return DbNullPredicateKind switch
+        => DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValue(value, ref writeState) || (value is null && ThrowInvalidNullValue()),
-            _ => ThrowOutOfRange()
+            _ => ThrowDbNullPredicateOutOfRange()
         };
-
-        bool ThrowOutOfRange() => throw new ArgumentOutOfRangeException(nameof(DbNullPredicateKind), "Unknown case", DbNullPredicateKind.ToString());
-    }
 
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
@@ -126,11 +128,7 @@ public abstract class PgConverter<T> : PgConverter
     internal sealed override Type TypeToConvert => typeof(T);
 
     internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
-        => GetSize(context, Downcast(value), ref writeState);
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    [return: NotNullIfNotNull(nameof(value))]
-    static T? Downcast(object? value) => (T?)value;
+        => GetSize(context, (T)value, ref writeState);
 }
 
 static class PgConverterExtensions
@@ -180,11 +178,13 @@ static class PgConverterExtensions
 
         return size;
     }
-}
 
-interface IResumableRead
-{
-    bool Supported { get; }
+    internal static PgConverter<T> UnsafeDowncast<T>(this PgConverter converter)
+    {
+        // Justification: avoid perf cost of casting to a known base class type per read/write, see callers.
+        Debug.Assert(converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(converter);
+    }
 }
 
 public readonly struct SizeContext

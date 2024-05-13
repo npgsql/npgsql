@@ -55,7 +55,7 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             "timestamp with time zone",
             NpgsqlDbType.TimestampTz,
             DbType.DateTimeOffset,
-            isDefault: false,
+            isDefaultForWriting: false,
             isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]

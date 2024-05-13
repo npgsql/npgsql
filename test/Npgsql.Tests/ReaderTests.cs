@@ -900,13 +900,53 @@ LANGUAGE 'plpgsql'");
         await using var conn = await OpenConnectionAsync();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """select v.i, jsonb_build_object(), current_timestamp + make_interval(0, 0, 0, 0, 0, 0, v.i), null::jsonb, '{"value": 42}'::jsonb from generate_series(1, 1000) as v(i)""";
-        var rdr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        var rdr = await cmd.ExecuteReaderAsync(Behavior);
         while (await rdr.ReadAsync()) {
             var v1 = rdr[0];
             var v2 = rdr[1];
             //_ = rdr[2]; // uncomment line for successful execution
             var v3 = rdr[3];
             var v4 = rdr[4];
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5430")]
+    public async Task SequentialBufferedSeekLong()
+    {
+        await using var conn = await OpenConnectionAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """select v.i, repeat('1', 10), repeat('2', 10), repeat('3', 10), repeat('4', 10), 1, 2 from generate_series(1, 1000) as v(i)""";
+        var rdr = await cmd.ExecuteReaderAsync(Behavior);
+        while (await rdr.ReadAsync())
+        {
+            _ = rdr[0];
+            _ = rdr[1];
+            //_ = rdr[2];
+            //_ = rdr[3];
+            //_ = rdr[4];
+            //_ = rdr[5]; // uncomment lines for successful execution
+            _ = rdr[6];
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5430")]
+    public async Task SequentialBufferedSeekReread()
+    {
+        await using var conn = await OpenConnectionAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """select v.i, repeat('1', 10), repeat('2', 10), repeat('3', 10), repeat('4', 10), 1, NULL from generate_series(1, 1000) as v(i)""";
+        var rdr = await cmd.ExecuteReaderAsync(Behavior);
+        while (await rdr.ReadAsync())
+        {
+            _ = rdr[0];
+            _ = rdr[1];
+            //_ = rdr[2];
+            //_ = rdr[3];
+            //_ = rdr[4];
+            //_ = rdr[5]; // uncomment lines for successful execution
+            _ = rdr.IsDBNull(6);
+            _ = rdr[6];
+            Assert.True(rdr.IsDBNull(6));
         }
     }
 
@@ -1626,6 +1666,30 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(() => reader.GetChars(5, 0, actual, 0, actual.Length + 1), Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
         // Close in the middle of a column
         reader.GetChars(6, 0, actual, 0, 2);
+    }
+
+    [Test]
+    public async Task GetChars_AdvanceConsumed()
+    {
+        const string value = "01234567";
+
+        using var conn = await OpenConnectionAsync();
+        using var cmd = new NpgsqlCommand($"SELECT '{value}'", conn);
+        using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        reader.Read();
+
+        var buffer = new char[2];
+        // Don't start at the beginning of the column.
+        reader.GetChars(0, 2, buffer, 0, 2);
+        reader.GetChars(0, 4, buffer, 0, 2);
+        reader.GetChars(0, 6, buffer, 0, 2);
+
+        // Ask for data past the start and the previous point, exercising restart logic.
+        if (!IsSequential)
+        {
+            reader.GetChars(0, 4, buffer, 0, 2);
+            reader.GetChars(0, 6, buffer, 0, 2);
+        }
     }
 
     [Test]

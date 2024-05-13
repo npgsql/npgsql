@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -92,6 +93,7 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
         => new(_buffer.Flush(async: true, cancellationToken));
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class PgWriter
 {
     readonly IBufferWriter<byte> _writer;
@@ -453,18 +455,19 @@ public sealed class PgWriter
     internal ValueTask<NestedWriteScope> BeginNestedWrite(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken)
     {
         Debug.Assert(bufferRequirement != -1);
-        if (ShouldFlush(bufferRequirement))
-            return Core(async, bufferRequirement, byteCount, state, cancellationToken);
 
+        // ShouldFlush depends on the current size for upper bound requirements, so we must set it beforehand.
         _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
+
+        if (ShouldFlush(bufferRequirement))
+            return Core(async, cancellationToken);
 
         return new(new NestedWriteScope());
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-        async ValueTask<NestedWriteScope> Core(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken)
+        async ValueTask<NestedWriteScope> Core(bool async, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
-            _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
             return new();
         }
     }
@@ -556,6 +559,7 @@ public sealed class PgWriter
 }
 
 // No-op for now.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public struct NestedWriteScope : IDisposable
 {
     public void Dispose()

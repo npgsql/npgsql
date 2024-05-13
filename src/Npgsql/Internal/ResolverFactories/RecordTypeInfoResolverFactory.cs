@@ -10,9 +10,9 @@ sealed class RecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
     public override IPgTypeInfoResolver CreateResolver() => new Resolver();
     public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver();
 
-    public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    public static void ThrowIfUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
-        if (type != typeof(object) && dataTypeName == DataTypeNames.Record)
+        if (dataTypeName is { SchemaSpan: "pg_catalog", UnqualifiedNameSpan: "record" or "_record" })
         {
             throw new NotSupportedException(
                 string.Format(

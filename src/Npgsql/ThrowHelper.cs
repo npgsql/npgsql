@@ -1,7 +1,6 @@
 ﻿using Npgsql.BackendMessages;
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using Npgsql.Internal;
 
 namespace Npgsql;
@@ -61,22 +60,6 @@ static class ThrowHelper
         throw new InvalidCastException("Field is null.");
 
     [DoesNotReturn]
-    internal static void ThrowArgumentOutOfRange_OutOfColumnBounds(string paramName, int columnLength) =>
-        throw new ArgumentOutOfRangeException(paramName, $"The value is out of bounds from the column data, dataOffset must be between 0 and {columnLength}");
-
-    [DoesNotReturn]
-    internal static void ThrowInvalidOperationException_NoPropertyGetter(Type type, MemberInfo property) =>
-        throw new InvalidOperationException($"Composite type '{type}' cannot be written because the '{property}' property has no getter.");
-
-    [DoesNotReturn]
-    internal static void ThrowInvalidOperationException_NoPropertySetter(Type type, MemberInfo property) =>
-        throw new InvalidOperationException($"Composite type '{type}' cannot be read because the '{property}' property has no setter.");
-
-    [DoesNotReturn]
-    internal static void ThrowInvalidOperationException_BinaryImportParametersMismatch(int columnCount, int valueCount) =>
-        throw new InvalidOperationException($"The binary import operation was started with {columnCount} column(s), but {valueCount} value(s) were provided.");
-
-    [DoesNotReturn]
     internal static void ThrowNpgsqlException(string message)
         => throw new NpgsqlException(message);
 
@@ -111,6 +94,10 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowIndexOutOfRangeException(string message)
         => throw new IndexOutOfRangeException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowIndexOutOfRangeException(string message, object argument)
+        => throw new IndexOutOfRangeException(string.Format(message, argument));
 
     [DoesNotReturn]
     internal static void ThrowNotSupportedException(string? message = null)

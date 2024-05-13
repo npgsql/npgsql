@@ -15,6 +15,10 @@ namespace Npgsql;
 /// Provides a simple way to create and manage the contents of connection strings used by
 /// the <see cref="NpgsqlConnection"/> class.
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2112:ReflectionToRequiresUnreferencedCode",
+    Justification = "Suppressing the same warnings as suppressed in the base DbConnectionStringBuilder. See https://github.com/dotnet/runtime/issues/97057")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2113:ReflectionToRequiresUnreferencedCode",
+    Justification = "Suppressing the same warnings as suppressed in the base DbConnectionStringBuilder. See https://github.com/dotnet/runtime/issues/97057")]
 public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, IDictionary<string, object?>
 {
     #region Fields
@@ -773,13 +777,17 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// <summary>
     /// The total maximum lifetime of connections (in seconds). Connections which have exceeded this value will be
     /// destroyed instead of returned from the pool. This is useful in clustered configurations to force load
-    /// balancing between a running server and a server just brought online.
+    /// balancing between a running server and a server just brought online. It can also be useful to prevent
+    /// runaway memory growth of connections at the PostgreSQL server side, because in some cases very long lived
+    /// connections slowly consume more and more memory over time.
+    /// Defaults to 3600 seconds (1 hour).
     /// </summary>
-    /// <value>The time (in seconds) to wait, or 0 to to make connections last indefinitely (the default).</value>
+    /// <value>The time (in seconds) to wait, or 0 to to make connections last indefinitely.</value>
     [Category("Pooling")]
     [Description("The total maximum lifetime of connections (in seconds).")]
     [DisplayName("Connection Lifetime")]
     [NpgsqlConnectionStringProperty("Load Balance Timeout")]
+    [DefaultValue(3600)]
     public int ConnectionLifetime
     {
         get => _connectionLifetime;

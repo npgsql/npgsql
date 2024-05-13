@@ -285,7 +285,7 @@ readonly struct PgArrayConverter
     }
 }
 
-// Class constraint exists to make Unsafe.As<ValueTask<object>, ValueTask<T>> safe, don't remove unless that unsafe cast is also removed.
+// Class constraint exists to make ValueTask<object> to ValueTask<T> reinterpretation safe, don't remove unless that is also removed.
 abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
 {
     protected PgConverterResolution ElemResolution { get; }
@@ -309,6 +309,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         var value = _pgArrayConverter.Read(async: true, reader, cancellationToken);
+        // Justification: elides the async method bloat/perf cost to transition from object to T (where T : class)
+        Debug.Assert(typeof(T).IsClass);
         return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
     }
 
@@ -381,9 +383,11 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
         switch (indices.Length)
         {
         case 1:
+            // Justification: avoid the cast overhead for per element calls.
             Debug.Assert(collection is TElement?[]);
             return Unsafe.As<TElement?[]>(collection)[indices[0]];
         default:
+            // Justification: avoid the cast overhead for per element calls.
             Debug.Assert(collection is Array);
             return (TElement?)Unsafe.As<Array>(collection).GetValue(indices);
         }
@@ -395,10 +399,12 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
         switch (indices.Length)
         {
             case 1:
+                // Justification: avoid the cast overhead for per element calls.
                 Debug.Assert(collection is TElement?[]);
                 Unsafe.As<TElement?[]>(collection)[indices[0]] = value;
                 break;
             default:
+                // Justification: avoid the cast overhead for per element calls.
                 Debug.Assert(collection is Array);
                 Unsafe.As<Array>(collection).SetValue(value, indices);
                 break;
@@ -411,20 +417,19 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
             0 => Array.Empty<TElement?>(),
             1 when lengths[0] == 0 => Array.Empty<TElement?>(),
             1 => new TElement?[lengths[0]],
-            2 => new TElement?[lengths[0],lengths[1]],
-            3 => new TElement?[lengths[0],lengths[1], lengths[2]],
-            4 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3]],
-            5 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4]],
-            6 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
-            7 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
-            8 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
+            2 => new TElement?[lengths[0], lengths[1]],
+            3 => new TElement?[lengths[0], lengths[1], lengths[2]],
+            4 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3]],
+            5 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4]],
+            6 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
+            7 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
+            8 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
             _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
         };
 
     int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
     {
-        Debug.Assert(collection is Array);
-        var array = Unsafe.As<Array>(collection);
+        var array = (Array)collection;
         lengths = GetLengths(array);
         return array.Length;
     }
@@ -452,8 +457,7 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
         // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
         static void SetResult(Task task, object collection, int[] indices)
         {
-            Debug.Assert(task is Task<TElement>);
-            SetValue(collection, indices, new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
+            SetValue(collection, indices, new ValueTask<TElement>((Task<TElement>)task).Result);
         }
     }
 
@@ -478,6 +482,7 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static TElement? GetValue(object collection, int index)
     {
+        // Justification: avoid the cast overhead for per element calls.
         Debug.Assert(collection is IList<TElement?>);
         return Unsafe.As<IList<TElement?>>(collection)[index];
     }
@@ -485,6 +490,7 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static void SetValue(object collection, int index, TElement? value)
     {
+        // Justification: avoid the cast overhead for per element calls.
         Debug.Assert(collection is IList<TElement?>);
         var list = Unsafe.As<IList<TElement?>>(collection);
         list.Insert(index, value);
@@ -495,9 +501,8 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
 
     int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
     {
-        Debug.Assert(collection is IList<TElement?>);
         lengths = null;
-        return Unsafe.As<IList<TElement?>>(collection).Count;
+        return ((IList<TElement?>)collection).Count;
     }
 
     Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
@@ -524,8 +529,7 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
          // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
          static void SetResult(Task task, object collection, int[] indices)
          {
-             Debug.Assert(task is Task<TElement>);
-             SetValue(collection, indices[0], new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
+             SetValue(collection, indices[0], new ValueTask<TElement>((Task<TElement>)task).Result);
          }
      }
 
@@ -622,6 +626,12 @@ sealed class PolymorphicArrayConverter<TBase> : PgStreamingConverter<TBase>
     {
         _structElementCollectionConverter = structElementCollectionConverter;
         _nullableElementCollectionConverter = nullableElementCollectionConverter;
+    }
+
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.Create(read: sizeof(int) + sizeof(int), write: Size.Unknown);
+        return format is DataFormat.Binary;
     }
 
     public override TBase Read(PgReader reader)

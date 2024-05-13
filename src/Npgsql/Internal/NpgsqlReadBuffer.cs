@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -17,6 +18,7 @@ namespace Npgsql.Internal;
 /// A buffer used by Npgsql to read data from the socket efficiently.
 /// Provides methods which decode different values types and tracks the current position.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
@@ -134,6 +136,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region I/O
 
+    public void Ensure(int count)
+        => Ensure(count, async: false, readingNotifications: false).GetAwaiter().GetResult();
+
     public ValueTask Ensure(int count, bool async)
         => Ensure(count, async, readingNotifications: false);
 
@@ -155,18 +160,13 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             catch (Exception ex)
             {
                 var connector = Connector;
-                switch (ex)
-                {
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                case IOException e when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                if (ex is IOException { InnerException: SocketException { SocketErrorCode: SocketError.TimedOut } })
                 {
                     // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                     // TODO: As an optimization, we can still attempt to send a cancellation request, but after
                     // that immediately break the connection
-                    if (connector.AttemptPostgresCancellation &&
-                        !connector.PostgresCancellationPerformed &&
-                        connector.PerformPostgresCancellation())
+                    if (connector is { AttemptPostgresCancellation: true, PostgresCancellationPerformed: false }
+                        && connector.PerformPostgresCancellation())
                     {
                         // Note that if the cancellation timeout is negative, we flow down and break the
                         // connection immediately.
@@ -184,9 +184,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                     // Break the connection, bubbling up the correct exception type (cancellation or timeout)
                     throw connector.Break(CreateCancelException(connector));
                 }
-                default:
-                    throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
-                }
+
+                throw connector.Break(new NpgsqlException("Exception while reading from stream", ex));
             }
         }
     }
@@ -522,19 +521,13 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         return result;
     }
 
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float ReadSingle()
     {
         CheckBounds(sizeof(float));
-        float result;
-        if (BitConverter.IsLittleEndian)
-        {
-            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]));
-            result = Unsafe.As<int, float>(ref value);
-        }
-        else
-            result = Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
+        var result = BitConverter.IsLittleEndian
+            ? BitConverter.Int32BitsToSingle(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition])))
+            : Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
         ReadPosition += sizeof(float);
         return result;
     }
@@ -543,14 +536,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     public double ReadDouble()
     {
         CheckBounds(sizeof(double));
-        double result;
-        if (BitConverter.IsLittleEndian)
-        {
-            var value = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]));
-            result = Unsafe.As<long, double>(ref value);
-        }
-        else
-            result = Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
+        var result = BitConverter.IsLittleEndian
+            ? BitConverter.Int64BitsToDouble(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition])))
+            : Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
         ReadPosition += sizeof(double);
         return result;
     }

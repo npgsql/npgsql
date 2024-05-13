@@ -60,36 +60,35 @@ static class AsyncHelpers
         public void Invoke(Task task, CompletionSource tcs) => _continuation(task, tcs);
     }
 
-    public static unsafe ValueTask<T> ComposingReadAsync<T, TEffective>(this PgConverter<T> instance, PgConverter<TEffective> effectiveConverter, PgReader reader, CancellationToken cancellationToken)
+    public static unsafe ValueTask<T?> ReadAsyncAsNullable<T>(this PgConverter<T?> instance, PgConverter<T> effectiveConverter, PgReader reader, CancellationToken cancellationToken)
+        where T : struct
     {
-        if (!typeof(T).IsValueType && !typeof(TEffective).IsValueType)
-        {
-            var value = effectiveConverter.ReadAsync(reader, cancellationToken);
-            return Unsafe.As<ValueTask<TEffective>, ValueTask<T>>(ref value);
-        }
         // Easy if we have all the data.
         var task = effectiveConverter.ReadAsync(reader, cancellationToken);
         if (task.IsCompletedSuccessfully)
-            return new((T)(object)task.Result!);
+            return new(new T?(task.Result));
 
         // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
-        var source = new CompletionSource<T>();
+        var source = new CompletionSource<T?>();
         AwaitTask(task.AsTask(), source, new(instance, &UnboxAndComplete));
         return source.Task;
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
             Debug.Assert(task is Task<T>);
-            Debug.Assert(completionSource is CompletionSource<T>);
-            Unsafe.As<CompletionSource<T>>(completionSource).SetResult(new ValueTask<T>(Unsafe.As<Task<T>>(task)).Result);
+            Debug.Assert(completionSource is CompletionSource<T?>);
+            Unsafe.As<CompletionSource<T?>>(completionSource).SetResult(new T?(new ValueTask<T>(Unsafe.As<Task<T>>(task)).Result));
         }
     }
 
-    public static unsafe ValueTask<T> ComposingReadAsObjectAsync<T>(this PgConverter<T> instance, PgConverter effectiveConverter, PgReader reader, CancellationToken cancellationToken)
+    public static unsafe ValueTask<T> ReadAsObjectAsyncAsT<T>(this PgConverter<T> instance, PgConverter effectiveConverter, PgReader reader, CancellationToken cancellationToken)
     {
         if (!typeof(T).IsValueType)
         {
             var value = effectiveConverter.ReadAsObjectAsync(reader, cancellationToken);
+            // Justification: elides the async method bloat/perf cost to transition from object to T (where T : class)
+            Debug.Assert(typeof(T).IsClass);
             return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
         }
 
@@ -105,6 +104,7 @@ static class AsyncHelpers
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
             Debug.Assert(task is Task<object>);
             Debug.Assert(completionSource is CompletionSource<T>);
             Unsafe.As<CompletionSource<T>>(completionSource).SetResult((T)new ValueTask<object>(Unsafe.As<Task<object>>(task)).Result);

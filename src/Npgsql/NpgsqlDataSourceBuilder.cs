@@ -82,7 +82,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         {
             instance.AppendDefaultFactories();
             instance.AppendResolverFactory(new ExtraConversionResolverFactory());
-            instance.AppendResolverFactory(new JsonTypeInfoResolverFactory(instance.JsonSerializerOptions));
+            instance.AppendResolverFactory(() => new JsonTypeInfoResolverFactory(instance.JsonSerializerOptions));
             instance.AppendResolverFactory(new RecordTypeInfoResolverFactory());
             instance.AppendResolverFactory(new FullTextSearchTypeInfoResolverFactory());
             instance.AppendResolverFactory(new NetworkTypeInfoResolverFactory());

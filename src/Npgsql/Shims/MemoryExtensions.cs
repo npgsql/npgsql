@@ -1,5 +1,7 @@
 #if !NET7_0_OR_GREATER
-namespace System;
+using System;
+
+namespace Npgsql;
 
 static class MemoryExtensions
 {

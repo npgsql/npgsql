@@ -4,6 +4,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Tests;
 
@@ -693,6 +694,62 @@ public class NpgsqlParameterTest : TestBase
         Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
     }
 
+    [Test]
+    public void DBNull_reuses_type_info([Values]bool generic)
+    {
+        var param = generic ? new NpgsqlParameter<object> { Value = "value" } : new NpgsqlParameter { Value = "value" };
+        param.ResolveTypeInfo(DataSource.SerializerOptions);
+        param.GetResolutionInfo(out var typeInfo, out _, out _);
+        Assert.That(typeInfo, Is.Not.Null);
+
+        // Make sure we don't reset the type info when setting DBNull.
+        param.Value = DBNull.Value;
+        param.GetResolutionInfo(out var secondTypeInfo, out _, out _);
+        Assert.That(secondTypeInfo, Is.SameAs(typeInfo));
+
+        // Make sure we don't resolve a different type info either.
+        param.ResolveTypeInfo(DataSource.SerializerOptions);
+        param.GetResolutionInfo(out var thirdTypeInfo, out _, out _);
+        Assert.That(thirdTypeInfo, Is.SameAs(secondTypeInfo));
+    }
+
+    [Test]
+    public void DBNull_followed_by_non_null_reresolves([Values]bool generic)
+    {
+        var param = generic ? new NpgsqlParameter<object> { Value = DBNull.Value } : new NpgsqlParameter { Value = DBNull.Value };
+        param.ResolveTypeInfo(DataSource.SerializerOptions);
+        param.GetResolutionInfo(out var typeInfo, out _, out var pgTypeId);
+        Assert.That(typeInfo, Is.Not.Null);
+        Assert.That(pgTypeId.IsUnspecified, Is.True);
+
+        param.Value = "value";
+        param.GetResolutionInfo(out var secondTypeInfo, out _, out _);
+        Assert.That(secondTypeInfo, Is.Null);
+
+        // Make sure we don't resolve the same type info either.
+        param.ResolveTypeInfo(DataSource.SerializerOptions);
+        param.GetResolutionInfo(out var thirdTypeInfo, out _, out _);
+        Assert.That(thirdTypeInfo, Is.Not.SameAs(typeInfo));
+    }
+
+    [Test]
+    public void Changing_value_type_reresolves([Values]bool generic)
+    {
+        var param = generic ? new NpgsqlParameter<object> { Value = "value" } : new NpgsqlParameter { Value = "value" };
+        param.ResolveTypeInfo(DataSource.SerializerOptions);
+        param.GetResolutionInfo(out var typeInfo, out _, out _);
+        Assert.That(typeInfo, Is.Not.Null);
+
+        param.Value = 1;
+        param.GetResolutionInfo(out var secondTypeInfo, out _, out _);
+        Assert.That(secondTypeInfo, Is.Null);
+
+        // Make sure we don't resolve a different type info either.
+        param.ResolveTypeInfo(DataSource.SerializerOptions);
+        param.GetResolutionInfo(out var thirdTypeInfo, out _, out _);
+        Assert.That(thirdTypeInfo, Is.Not.SameAs(typeInfo));
+    }
+
 #if NeedsPorting
     [Test]
     [Category ("NotWorking")]
@@ -805,4 +862,11 @@ public class NpgsqlParameterTest : TestBase
         Assert.AreEqual(15, parameter.LocaleId, "#2");
     }
 #endif
+
+    [OneTimeSetUp]
+    public async Task Bootstrap()
+    {
+        // Bootstrap datasource.
+        await using (var _ = await OpenConnectionAsync()) {}
+    }
 }

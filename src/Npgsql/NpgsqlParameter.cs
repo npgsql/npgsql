@@ -40,10 +40,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal string TrimmedName { get; private protected set; } = PositionalName;
     internal const string PositionalName = "";
 
-    internal PgTypeInfo? TypeInfo { get; private set; }
+    private protected PgTypeInfo? TypeInfo { get; private set; }
 
     internal PgTypeId PgTypeId { get; private set; }
-    internal PgConverter? Converter { get; private set; }
+    private protected PgConverter? Converter { get; private set; }
 
     internal DataFormat Format { get; private protected set; }
     private protected Size? WriteSize { get; set; }
@@ -278,7 +278,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         get => _value;
         set
         {
-            if (value is null || _value?.GetType() != value.GetType())
+            if (ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
                 ResetBindingInfo();
@@ -497,6 +497,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
+    internal bool ShouldResetObjectTypeInfo(object? value)
+    {
+        var currentType = TypeInfo?.Type;
+        if (currentType is null || value is null)
+            return false;
+
+        var valueType = value.GetType();
+        // We don't want to reset the type info when the value is a DBNull, we're able to write it out with any type info.
+        return valueType != typeof(DBNull) && currentType != valueType;
+    }
+
     internal void GetResolutionInfo(out PgTypeInfo? typeInfo, out PgConverter? converter, out PgTypeId pgTypeId)
     {
         typeInfo = TypeInfo;
@@ -540,6 +551,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
             }
 
+            var unspecifiedDBNull = false;
             var valueType = StaticValueType;
             if (valueType == typeof(object))
             {
@@ -551,14 +563,23 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 }
 
                 // We treat object typed DBNull values as default info.
+                // Unless we don't have a pgTypeId either, at which point we'll use an 'unspecified' PgTypeInfo to help us write a NULL.
                 if (valueType == typeof(DBNull))
                 {
-                    valueType = null;
-                    pgTypeId ??= options.ToCanonicalTypeId(options.UnknownPgType);
+                    if (pgTypeId is null)
+                    {
+                        unspecifiedDBNull = true;
+                        typeInfo = options.UnspecifiedDBNullTypeInfo;
+                    }
+                    else
+                        valueType = null;
                 }
             }
 
-            TypeInfo = typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+            if (!unspecifiedDBNull)
+                typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+
+            TypeInfo = typeInfo;
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
@@ -566,7 +587,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
         if (!previouslyResolved || typeInfo!.IsResolverInfo)
         {
-            ResetBindingInfo(); // No need for ResetConverterResolution as we'll mutate those fields directly afterwards.
+            ResetBindingInfo();
             var resolution = ResolveConverter(typeInfo!);
             Converter = resolution.Converter;
             PgTypeId = resolution.PgTypeId;
@@ -592,7 +613,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
-    internal void Bind(out DataFormat format, out Size size)
+    internal void Bind(out DataFormat format, out Size size, DataFormat? requiredFormat = null)
     {
         if (TypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
@@ -601,19 +622,18 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ThrowHelper.ThrowNotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.DatabaseInfo.GetDataTypeName(PgTypeId).DisplayName}'.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
-        if (WriteSize is not null)
+        if (WriteSize is null)
         {
-            format = Format;
-            size = WriteSize.Value;
-            return;
+            if (_size > 0)
+                HandleSizeTruncation();
+
+            BindCore(requiredFormat);
         }
 
-        if (_size > 0)
-            HandleSizeTruncation();
-
-        BindCore();
         format = Format;
         size = WriteSize!.Value;
+        if (requiredFormat is not null && format != requiredFormat)
+            ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
 
         // Handle Size truncate behavior for a predetermined set of types and pg types.
         // Doesn't matter if we 'box' Value, all supported types are reference types.
@@ -653,7 +673,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    private protected virtual void BindCore(bool allowNullReference = false)
+    private protected virtual void BindCore(DataFormat? formatPreference, bool allowNullReference = false)
     {
         // Pull from Value so we also support object typed generic params.
         var value = Value;
@@ -663,7 +683,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_useSubStream && value is not null)
             value = _subStream = new SubReadStream((Stream)value, _size);
 
-        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat) is { } info)
+        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
@@ -673,6 +693,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             WriteSize = -1;
             _bufferRequirement = default;
         }
+
         Format = dataFormat;
     }
 
@@ -735,11 +756,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected void ResetTypeInfo()
     {
         TypeInfo = null;
-        ResetConverterResolution();
-    }
-
-    void ResetConverterResolution()
-    {
         _asObject = false;
         Converter = null;
         PgTypeId = default;

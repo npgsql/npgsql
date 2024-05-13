@@ -94,7 +94,7 @@ static class ReflectionCompositeInfoFactory
         return new CompositeInfo<T>(compositeFields!, constructorInfo is null ? 0 : constructorParameters.Length, constructor);
 
         static NotSupportedException NotSupportedField(PostgresCompositeType composite, PostgresCompositeType.Field field, bool isField, string name, Type type)
-            => new($"No resolution could be found for ('{type.FullName}', '{field.Type.FullName}'). Mapping: CLR {(isField ? "field" : "property")} '{type.Name}.{name}' <-> Composite field '{composite.Name}.{field.Name}'");
+            => new($"No mapping could be found for ('{type.FullName}', '{field.Type.FullName}'). Mapping: CLR {(isField ? "field" : "property")} '{typeof(T).FullName}.{name}' <-> Composite field '{composite.Name}.{field.Name}'");
     }
 
     static Delegate CreateGetter<T>(FieldInfo info)
@@ -140,7 +140,7 @@ static class ReflectionCompositeInfoFactory
         var invalidOpExceptionMessageConstructor = typeof(InvalidOperationException).GetConstructor(new []{ typeof(string) })!;
         var body = info.SetMethod is null || !info.SetMethod.IsPublic
             ? (Expression)Expression.Throw(Expression.New(invalidOpExceptionMessageConstructor,
-                Expression.Constant($"No (public) getter for '{info}' on type {typeof(T)}")), info.PropertyType)
+                Expression.Constant($"No (public) setter for '{info}' on type {typeof(T)}")), info.PropertyType)
             : Expression.Call(UnboxAny(instance, typeof(T)), info.SetMethod, value);
 
         return Expression
@@ -249,20 +249,15 @@ static class ReflectionCompositeInfoFactory
     static (ConstructorInfo? ConstructorInfo, int[] ParameterFieldMap) MapBestMatchingConstructor<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(IReadOnlyList<PostgresCompositeType.Field> fields, INpgsqlNameTranslator nameTranslator)
     {
         ConstructorInfo? clrDefaultConstructor = null;
+        Exception? duplicatesException = null;
         foreach (var constructor in typeof(T).GetConstructors().OrderByDescending(x => x.GetParameters().Length))
         {
             var parameters = constructor.GetParameters();
-            if (parameters.Length != fields.Count)
-            {
-                if (parameters.Length == 0)
-                    clrDefaultConstructor = constructor;
+            if (parameters.Length == 0)
+                clrDefaultConstructor = constructor;
 
-                continue;
-            }
-
-            var parametersMapped = 0;
             var parametersMap = new int[parameters.Length];
-
+            Array.Fill(parametersMap, -1);
             for (var i = 0; i < parameters.Length; i++)
             {
                 var clrParameter = parameters[i];
@@ -273,27 +268,30 @@ static class ReflectionCompositeInfoFactory
 
                 for (var pgFieldIndex = 0; pgFieldIndex < fields.Count; pgFieldIndex++)
                 {
-                    var pgField = fields[pgFieldIndex];
-                    if (pgField.Name != name)
-                        continue;
-
-                    parametersMapped++;
-                    parametersMap[i] = pgFieldIndex;
-                    break;
+                    if (fields[pgFieldIndex].Name == name)
+                    {
+                        parametersMap[i] = pgFieldIndex;
+                        break;
+                    }
                 }
             }
 
-            var duplicates = parametersMap.GroupBy(x => x).Where(g => g.Count() > 1).ToArray();
-            if (duplicates.Length > 0)
-                throw new AmbiguousMatchException($"Multiple constructor parameters are mapped to the '{fields[duplicates[0].Key].Name}' field.");
+            if (parametersMap.Any(x => x is -1))
+                continue;
 
-            if (parametersMapped == parameters.Length)
+            var duplicates = parametersMap.GroupBy(x => x).Where(g => g.Count() > 1).ToArray();
+            if (duplicates.Length is 0)
                 return (constructor, parametersMap);
+
+            duplicatesException = new AmbiguousMatchException($"Multiple parameters are mapped to the field '{fields[duplicates[0].Key].Name}' in constructor: {constructor}.");
         }
+
+        if (duplicatesException is not null)
+            throw duplicatesException;
 
         if (clrDefaultConstructor is null && !typeof(T).IsValueType)
             throw new InvalidOperationException($"No parameterless constructor defined for type '{typeof(T)}'.");
 
-        return (clrDefaultConstructor, Array.Empty<int>());
+        return (clrDefaultConstructor, []);
     }
 }

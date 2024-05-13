@@ -28,11 +28,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 writeReq = writeReq.Combine(Size.CreateUpperBound(0));
             }
 
-            req = req.Combine(
-                // If a read is Unknown (streaming) we can map it to zero as we just want a minimum buffered size.
-                readReq is { Kind: SizeKind.Unknown } ? Size.Zero : readReq,
-                // For writes Unknown means our size is dependent on the value so we can't ignore it.
-                writeReq);
+            req = req.Combine(readReq, writeReq);
         }
 
         // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
@@ -40,15 +36,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
         _bufferRequirements = req;
 
+        // Return unknown if we hit the limit.
         Size Limit(Size requirement)
         {
             const int maxByteCount = 1024;
-            return requirement switch
-            {
-                { Kind: SizeKind.UpperBound } => Size.CreateUpperBound(Math.Min(maxByteCount, requirement.Value)),
-                { Kind: SizeKind.Exact } => Size.Create(Math.Min(maxByteCount, requirement.Value)),
-                _ => Size.Unknown
-            };
+            return requirement.GetValueOrDefault() > maxByteCount ? requirement.Combine(Size.Unknown) : requirement;
         }
     }
 
@@ -66,13 +58,16 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
-        // TODO we can make a nice thread-static cache for this.
-        using var builder = new CompositeBuilder<T>(_composite);
-        var count = reader.ReadInt32();
-        if (count != _composite.Fields.Count)
-            throw new InvalidOperationException("Cannot read composite type with mismatched number of fields");
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+
+        // TODO we can make a nice thread-static cache for this.
+        using var builder = new CompositeBuilder<T>(_composite);
+
+        var count = reader.ReadInt32();
+        if (count != _composite.Fields.Count)
+            throw new InvalidOperationException("Cannot read composite type with mismatched number of fields.");
+
         foreach (var field in _composite.Fields)
         {
             if (reader.ShouldBuffer(sizeof(uint) + sizeof(int)))
@@ -87,7 +82,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 // We could remove this requirement by storing a dictionary of CompositeInfos keyed by backend.
                 throw new InvalidCastException(
                     $"Cannot read oid {oid} into composite field {field.Name} with oid {field.PgTypeId}. " +
-                    $"This could be caused by a DDL change after this DataSource loaded its types, or a difference between column order of table composites between backends make sure these line up identically.");
+                    $"This could be caused by a DDL change after this DataSource loaded its types, or a difference between column order of table composites between backends, make sure these line up identically.");
 
             if (length is -1)
                 field.ReadDbNull(builder);

@@ -45,10 +45,12 @@ public class RecordTests : MultiplexingTestBase
         Assert.That(record.Item1, Is.EqualTo(1));
         Assert.That(record.Item2, Is.EqualTo("foo"));
 
-        var array = (object[][])reader[1];
+        var array = reader.GetFieldValue<(int, string)[]>(1);
         Assert.That(array.Length, Is.EqualTo(2));
-        Assert.That(array[0][0], Is.EqualTo(1));
-        Assert.That(array[1][0], Is.EqualTo(1));
+        Assert.That(array[0].Item1, Is.EqualTo(1));
+        Assert.That(array[0].Item2, Is.EqualTo("foo"));
+        Assert.That(array[1].Item1, Is.EqualTo(1));
+        Assert.That(array[1].Item2, Is.EqualTo("foo"));
     }
 
     [Test]
@@ -66,10 +68,12 @@ public class RecordTests : MultiplexingTestBase
         Assert.That(record.Item1, Is.EqualTo(1));
         Assert.That(record.Item2, Is.EqualTo("foo"));
 
-        var array = (object[][])reader[1];
+        var array = reader.GetFieldValue<Tuple<int, string>[]>(1);
         Assert.That(array.Length, Is.EqualTo(2));
-        Assert.That(array[0][0], Is.EqualTo(1));
-        Assert.That(array[1][0], Is.EqualTo(1));
+        Assert.That(array[0].Item1, Is.EqualTo(1));
+        Assert.That(array[0].Item2, Is.EqualTo("foo"));
+        Assert.That(array[1].Item1, Is.EqualTo(1));
+        Assert.That(array[1].Item2, Is.EqualTo("foo"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1238")]

@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net;
 using System.Net.Security;
@@ -29,6 +30,7 @@ namespace Npgsql.Internal;
 /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
 /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed partial class NpgsqlConnector
 {
     #region Fields and Properties
@@ -540,10 +542,9 @@ public sealed partial class NpgsqlConnector
             SslMode sslMode,
             NpgsqlTimeout timeout,
             bool async,
-            CancellationToken cancellationToken,
-            bool isFirstAttempt = true)
+            CancellationToken cancellationToken)
         {
-            await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt).ConfigureAwait(false);
+            await conn.RawOpen(sslMode, timeout, async, cancellationToken).ConfigureAwait(false);
 
             var username = await conn.GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
 
@@ -572,8 +573,7 @@ public sealed partial class NpgsqlConnector
                     sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
                     timeout,
                     async,
-                    cancellationToken,
-                    isFirstAttempt: false).ConfigureAwait(false);
+                    cancellationToken).ConfigureAwait(false);
 
                 return;
             }
@@ -720,7 +720,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken, bool isFirstAttempt = true)
+    async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         try
         {
@@ -769,7 +769,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, isFirstAttempt).ConfigureAwait(false);
+                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout).ConfigureAwait(false);
                     break;
                 }
 
@@ -794,7 +794,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
+    internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async)
     {
         var clientCertificates = new X509Certificate2Collection();
         var certPath = Settings.SslCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
@@ -870,6 +870,18 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslVerifyFullValidation;
             }
 
+            var host = Host;
+
+#if !NET8_0_OR_GREATER
+            // If the host is a valid IP address - replace it with an empty string
+            // We do that because .NET uses targetHost argument to send SNI to the server
+            // RFC explicitly prohibits sending an IP address so some servers might fail
+            // This was already fixed for .NET 8
+            // See #5543 for discussion
+            if (IPAddress.TryParse(host, out _))
+                host = string.Empty;
+#endif
+
             timeout.CheckAndApply(this);
 
             try
@@ -877,9 +889,9 @@ public sealed partial class NpgsqlConnector
                 var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
                 if (async)
-                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.None, checkCertificateRevocation).ConfigureAwait(false);
+                    await sslStream.AuthenticateAsClientAsync(host, clientCertificates, SslProtocols.None, checkCertificateRevocation).ConfigureAwait(false);
                 else
-                    sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.None, checkCertificateRevocation);
+                    sslStream.AuthenticateAsClient(host, clientCertificates, SslProtocols.None, checkCertificateRevocation);
 
                 _stream = sslStream;
             }

@@ -19,8 +19,10 @@ namespace Npgsql.Internal;
 /// <param name="resolvedDataTypeName">
 /// Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should follow mapping.DataTypeName.
 /// </param>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public enum MatchRequirement
 {
     /// Match when the clr type and datatype name both match.
@@ -33,6 +35,7 @@ public enum MatchRequirement
 }
 
 /// A factory for well-known PgConverters.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public static class PgConverterFactory
 {
     public static PgConverter<T[]> CreateArrayMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
@@ -55,6 +58,7 @@ public static class PgConverterFactory
 }
 
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct TypeInfoMapping
 {
     public TypeInfoMapping(Type type, string dataTypeName, TypeInfoFactory factory)
@@ -99,6 +103,7 @@ public readonly struct TypeInfoMapping
     }
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class TypeInfoMappingCollection
 {
     readonly TypeInfoMappingCollection? _baseCollection;
@@ -272,11 +277,12 @@ public sealed class TypeInfoMappingCollection
         };
 
     Func<Type?, bool> GetArrayTypeMatchPredicate(Func<Type?, bool> elementTypeMatchPredicate)
-        => type => type is null ? elementTypeMatchPredicate(null) : type.IsArray && elementTypeMatchPredicate.Invoke(type.GetElementType()!);
-    Func<Type?, bool> GetListTypeMatchPredicate(Func<Type?, bool> elementTypeMatchPredicate)
-        => type => type is null ? elementTypeMatchPredicate(null) : type.IsConstructedGenericType && type.GetGenericTypeDefinition() is { } def
-            && (def == typeof(List<>) || def == typeof(IList<>))
-            && elementTypeMatchPredicate(type.GetGenericArguments()[0]);
+        => type => type is null ? elementTypeMatchPredicate(null) : type.IsArray && elementTypeMatchPredicate(type.GetElementType()!);
+    Func<Type?, bool> GetListTypeMatchPredicate<TElement>(Func<Type?, bool> elementTypeMatchPredicate)
+        => type => type is null ? elementTypeMatchPredicate(null)
+            // We anti-constrain on IsArray to avoid matching byte/sbyte, short/ushort int/uint
+            // with the list mapping of the earlier type when an exact match is probably available.
+            : !type.IsArray && typeof(IList<TElement>).IsAssignableFrom(type) && elementTypeMatchPredicate(typeof(TElement));
 
     public void AddType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
         => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
@@ -330,7 +336,7 @@ public sealed class TypeInfoMappingCollection
     {
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
-        var listTypeMatchPredicate = GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
+        var listTypeMatchPredicate = GetListTypeMatchPredicate<TElement>(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
@@ -370,7 +376,7 @@ public sealed class TypeInfoMappingCollection
     {
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
-        var listTypeMatchPredicate = GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
+        var listTypeMatchPredicate = GetListTypeMatchPredicate<TElement>(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
@@ -427,9 +433,9 @@ public sealed class TypeInfoMappingCollection
             {
                 MatchRequirement = mapping.MatchRequirement,
                 TypeMatchPredicate = mapping.TypeMatchPredicate is not null
-                    ? type => type is null
+                    ? matchType => matchType is null
                         ? mapping.TypeMatchPredicate(null)
-                        : Nullable.GetUnderlyingType(type) is { } underlying && mapping.TypeMatchPredicate(underlying)
+                        : matchType == nullableType && mapping.TypeMatchPredicate(type)
                     : null
             });
     }
@@ -448,10 +454,10 @@ public sealed class TypeInfoMappingCollection
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
         var nullableArrayTypeMatchPredicate = GetArrayTypeMatchPredicate(nullableElementMapping.TypeMatchPredicate ?? (static type =>
-            type is null || (Nullable.GetUnderlyingType(type) is { } underlying && underlying == typeof(TElement))));
-        var listTypeMatchPredicate = GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate  ?? (static type => type is null || type == typeof(TElement)));
-        var nullableListTypeMatchPredicate = GetListTypeMatchPredicate(nullableElementMapping.TypeMatchPredicate ?? (static type =>
-            type is null || (Nullable.GetUnderlyingType(type) is { } underlying && underlying == typeof(TElement))));
+            type is null || type == typeof(TElement?)));
+        var listTypeMatchPredicate = GetListTypeMatchPredicate<TElement>(elementMapping.TypeMatchPredicate  ?? (static type => type is null || type == typeof(TElement)));
+        var nullableListTypeMatchPredicate = GetListTypeMatchPredicate<TElement?>(nullableElementMapping.TypeMatchPredicate ?? (static type =>
+            type is null || type == typeof(TElement?)));
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
@@ -544,9 +550,9 @@ public sealed class TypeInfoMappingCollection
             {
                 MatchRequirement = mapping.MatchRequirement,
                 TypeMatchPredicate = mapping.TypeMatchPredicate is not null
-                    ? type => type is null
+                    ? matchType => matchType is null
                         ? mapping.TypeMatchPredicate(null)
-                        : Nullable.GetUnderlyingType(type) is { } underlying && mapping.TypeMatchPredicate(underlying)
+                        : matchType == nullableType && mapping.TypeMatchPredicate(type)
                     : null
             });
     }
@@ -565,10 +571,10 @@ public sealed class TypeInfoMappingCollection
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
         var nullableArrayTypeMatchPredicate = GetArrayTypeMatchPredicate(nullableElementMapping.TypeMatchPredicate ?? (static type =>
-            type is null || (Nullable.GetUnderlyingType(type) is { } underlying && underlying == typeof(TElement))));
-        var listTypeMatchPredicate = GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate  ?? (static type => type is null || type == typeof(TElement)));
-        var nullableListTypeMatchPredicate = GetListTypeMatchPredicate(nullableElementMapping.TypeMatchPredicate ?? (static type =>
-            type is null || (Nullable.GetUnderlyingType(type) is { } underlying && underlying == typeof(TElement))));
+            type is null || type == typeof(TElement?)));
+        var listTypeMatchPredicate = GetListTypeMatchPredicate<TElement>(elementMapping.TypeMatchPredicate  ?? (static type => type is null || type == typeof(TElement)));
+        var nullableListTypeMatchPredicate = GetListTypeMatchPredicate<TElement?>(nullableElementMapping.TypeMatchPredicate ?? (static type =>
+            type is null || type == typeof(TElement?)));
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
@@ -652,18 +658,36 @@ public sealed class TypeInfoMappingCollection
     }
 
     /// Returns whether type matches any of the types we register pg arrays as.
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "Checking for IList<T> implementing types requires interface list enumeration which isn't compatible with trimming. " +
+                        "However as long as a concrete IList<T> is rooted somewhere in the app, for instance through an `AddArrayType<T>(...)` mapping, every implementation must keep it.")]
+    // We care about IList<T> implementations if the instantiation is actually rooted by us through an Array mapping.
+    // Dynamic resolvers are a notable counterexample, but they are all correctly marked with RequiresUnreferencedCode.
     public static bool IsArrayLikeType(Type type, [NotNullWhen(true)] out Type? elementType)
     {
-        elementType = type switch
+        if (type.GetElementType() is { } t)
         {
-            { IsArray: true } => type.GetElementType(),
-            { IsConstructedGenericType: true } when type.GetGenericTypeDefinition() is { } def &&
-                                                    (def == typeof(List<>) || def == typeof(IList<>))
-                => type.GetGenericArguments()[0],
-            _ => null
-        };
+            elementType = t;
+            return true;
+        }
 
-        return elementType is not null;
+        if (type.IsConstructedGenericType && type.GetGenericTypeDefinition() is var def && (def == typeof(List<>) || def == typeof(IList<>)))
+        {
+            elementType = type.GetGenericArguments()[0];
+            return true;
+        }
+
+        foreach (var inf in type.GetInterfaces())
+        {
+            if (inf.IsConstructedGenericType && inf.GetGenericTypeDefinition() == typeof(IList<>))
+            {
+                elementType = inf.GetGenericArguments()[0];
+                return true;
+            }
+        }
+
+        elementType = null;
+        return false;
     }
 
     static string GetArrayDataTypeName(string dataTypeName)
@@ -712,6 +736,7 @@ public sealed class TypeInfoMappingCollection
         => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(resolver ? " resolver" : "")} instead.");
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public static class TypeInfoMappingHelpers
 {
     internal static bool TryResolveFullyQualifiedName(PgSerializerOptions options, string dataTypeName, out DataTypeName fqDataTypeName)

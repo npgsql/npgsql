@@ -161,8 +161,8 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         static PgTypeId? AsPgTypeId(TPgTypeId? pgTypeId)
             => pgTypeId switch
             {
-                { } id when typeof(TPgTypeId) == typeof(DataTypeName) => new PgTypeId(Unsafe.As<TPgTypeId, DataTypeName>(ref id)),
-                { } id => new PgTypeId(Unsafe.As<TPgTypeId, Oid>(ref id)),
+                { } id when typeof(TPgTypeId) == typeof(DataTypeName) => new((DataTypeName)(object)id),
+                { } id => new((Oid)(object)id),
                 null => null
             };
     }

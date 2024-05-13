@@ -78,6 +78,28 @@ public class JsonTests : MultiplexingTestBase
             isDefault: false,
             comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString());
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5540")]
+    public async Task As_JsonDocument_with_null_root()
+        => await AssertType(
+            JsonDocument.Parse("null"),
+            "null",
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false,
+            comparer: (x, y) => x.RootElement.ValueKind == y.RootElement.ValueKind,
+            skipArrayCheck: true);
+
+    [Test]
+    public async Task As_JsonElement_with_null_root()
+        => await AssertType(
+            JsonDocument.Parse("null").RootElement,
+            "null",
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false,
+            comparer: (x, y) => x.ValueKind == y.ValueKind,
+            skipArrayCheck: true);
+
     [Test]
     public async Task As_JsonDocument_supported_only_with_SystemTextJson()
     {

@@ -19,6 +19,7 @@ partial class NpgsqlConnector
                   (asciiName.Length + 1);   // Statement/portal name
 
         var writeBuffer = WriteBuffer;
+        writeBuffer.StartMessage(len);
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(len, statementOrPortal, asciiName, async, cancellationToken);
 
@@ -48,6 +49,7 @@ partial class NpgsqlConnector
                         sizeof(int);    // Length
 
         var writeBuffer = WriteBuffer;
+        writeBuffer.StartMessage(len);
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(async, cancellationToken);
 
@@ -79,6 +81,7 @@ partial class NpgsqlConnector
                         sizeof(int);         // Max number of rows
 
         var writeBuffer = WriteBuffer;
+        writeBuffer.StartMessage(len);
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(maxRows, async, cancellationToken);
 
@@ -118,9 +121,6 @@ partial class NpgsqlConnector
         }
 
         var writeBuffer = WriteBuffer;
-        if (writeBuffer.WriteSpaceLeft < 1 + 4 + asciiName.Length + 1)
-            await Flush(async, cancellationToken).ConfigureAwait(false);
-
         var messageLength =
             sizeof(byte)                +         // Message code
             sizeof(int)                 +         // Length
@@ -130,9 +130,14 @@ partial class NpgsqlConnector
             sizeof(ushort)              +         // Number of parameters
             inputParameters.Count * sizeof(int);  // Parameter OIDs
 
-        writeBuffer.WriteByte(FrontendMessageCode.Parse);
-        writeBuffer.WriteInt32(messageLength - 1);
-        writeBuffer.WriteNullTerminatedString(asciiName);
+
+        WriteBuffer.StartMessage(messageLength);
+        if (WriteBuffer.WriteSpaceLeft < 1 + 4 + asciiName.Length + 1)
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+
+        WriteBuffer.WriteByte(FrontendMessageCode.Parse);
+        WriteBuffer.WriteInt32(messageLength - 1);
+        WriteBuffer.WriteNullTerminatedString(asciiName);
 
         await writeBuffer.WriteString(sql, queryByteLen, async, cancellationToken).ConfigureAwait(false);
 
@@ -171,12 +176,6 @@ partial class NpgsqlConnector
             sizeof(ushort);                       // Number of parameter format codes that follow
 
         var writeBuffer = WriteBuffer;
-        if (writeBuffer.WriteSpaceLeft < headerLength)
-        {
-            Debug.Assert(writeBuffer.Size >= headerLength, "Write buffer too small for Bind header");
-            await Flush(async, cancellationToken).ConfigureAwait(false);
-        }
-
         var formatCodesSum = 0;
         var paramsLength = 0;
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
@@ -197,8 +196,15 @@ partial class NpgsqlConnector
                             sizeof(short)                        +                  // Number of result format codes
                             sizeof(short) * (unknownResultTypeList?.Length ?? 1);   // Result format codes
 
-        writeBuffer.WriteByte(FrontendMessageCode.Bind);
-        writeBuffer.WriteInt32(messageLength - 1);
+        WriteBuffer.StartMessage(messageLength);
+        if (WriteBuffer.WriteSpaceLeft < headerLength)
+        {
+            Debug.Assert(WriteBuffer.Size >= headerLength, "Write buffer too small for Bind header");
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+        }
+
+        WriteBuffer.WriteByte(FrontendMessageCode.Bind);
+        WriteBuffer.WriteInt32(messageLength - 1);
         Debug.Assert(portal == string.Empty);
         writeBuffer.WriteByte(0);  // Portal is always empty
 
@@ -269,6 +275,7 @@ partial class NpgsqlConnector
                   asciiName.Length + sizeof(byte);  // Statement or portal name plus null terminator
 
         var writeBuffer = WriteBuffer;
+        writeBuffer.StartMessage(len);
         if (writeBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(len, type, asciiName, async, cancellationToken);
 
@@ -296,14 +303,17 @@ partial class NpgsqlConnector
     {
         var queryByteLen = TextEncoding.GetByteCount(sql);
 
+        var len = sizeof(byte) +
+                  sizeof(int) + // Message length (including self excluding code)
+                  queryByteLen + // Query byte length
+                  sizeof(byte);
+
+        WriteBuffer.StartMessage(len);
         if (WriteBuffer.WriteSpaceLeft < 1 + 4)
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
         WriteBuffer.WriteByte(FrontendMessageCode.Query);
-        WriteBuffer.WriteInt32(
-            sizeof(int)  +        // Message length (including self excluding code)
-            queryByteLen +        // Query byte length
-            sizeof(byte));        // Null terminator
+        WriteBuffer.WriteInt32(len - 1);
 
         await WriteBuffer.WriteString(sql, queryByteLen, async, cancellationToken).ConfigureAwait(false);
         if (WriteBuffer.WriteSpaceLeft < 1)
@@ -316,6 +326,7 @@ partial class NpgsqlConnector
         const int len = sizeof(byte) +   // Message code
                         sizeof(int);     // Length
 
+        WriteBuffer.StartMessage(len);
         if (WriteBuffer.WriteSpaceLeft < len)
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
@@ -331,6 +342,7 @@ partial class NpgsqlConnector
                         sizeof(int) +   // Length
                         sizeof(byte);   // Error message is always empty (only a null terminator)
 
+        WriteBuffer.StartMessage(len);
         if (WriteBuffer.WriteSpaceLeft < len)
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
@@ -348,6 +360,7 @@ partial class NpgsqlConnector
 
         Debug.Assert(backendProcessId != 0);
 
+        WriteBuffer.StartMessage(len);
         if (WriteBuffer.WriteSpaceLeft < len)
             Flush(false).GetAwaiter().GetResult();
 
@@ -362,6 +375,7 @@ partial class NpgsqlConnector
         const int len = sizeof(byte) +  // Message code
                         sizeof(int);    // Length
 
+        WriteBuffer.StartMessage(len);
         if (WriteBuffer.WriteSpaceLeft < len)
             Flush(false).GetAwaiter().GetResult();
 
@@ -374,6 +388,7 @@ partial class NpgsqlConnector
         const int len = sizeof(int) +  // Length
                         sizeof(int);   // SSL request code
 
+        WriteBuffer.StartMessage(len);
         if (WriteBuffer.WriteSpaceLeft < len)
             Flush(false).GetAwaiter().GetResult();
 
@@ -394,6 +409,7 @@ partial class NpgsqlConnector
                    NpgsqlWriteBuffer.UTF8Encoding.GetByteCount(kvp.Value) + 1;
 
         // Should really never happen, just in case
+        WriteBuffer.StartMessage(len);
         if (len > WriteBuffer.Size)
             throw new Exception("Startup message bigger than buffer");
 
@@ -417,8 +433,10 @@ partial class NpgsqlConnector
 
     internal async Task WritePassword(byte[] payload, int offset, int count, bool async, CancellationToken cancellationToken = default)
     {
+        WriteBuffer.StartMessage(sizeof(byte) + sizeof(int) + count);
         if (WriteBuffer.WriteSpaceLeft < sizeof(byte) + sizeof(int))
             await WriteBuffer.Flush(async, cancellationToken).ConfigureAwait(false);
+
         WriteBuffer.WriteByte(FrontendMessageCode.Password);
         WriteBuffer.WriteInt32(sizeof(int) + count);
 
@@ -441,6 +459,7 @@ partial class NpgsqlConnector
                   sizeof(int)                                                +  // Initial response length
                   (initialResponse?.Length ?? 0);                               // Initial response payload
 
+        WriteBuffer.StartMessage(len);
         if (WriteBuffer.WriteSpaceLeft < len)
             await WriteBuffer.Flush(async, cancellationToken).ConfigureAwait(false);
 
@@ -464,6 +483,7 @@ partial class NpgsqlConnector
 
     internal Task WritePregenerated(byte[] data, bool async = false, CancellationToken cancellationToken = default)
     {
+        WriteBuffer.StartMessage(data.Length);
         if (WriteBuffer.WriteSpaceLeft < data.Length)
             return FlushAndWrite(data, async, cancellationToken);
 

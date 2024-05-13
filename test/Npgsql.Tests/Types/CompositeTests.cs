@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -504,7 +505,165 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         Assert.That(elemType, Is.SameAs(comp1Type));
     }
 
+    [Test]
+    public async Task DuplicateConstructorParameters()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (long int8, boolean bool)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<DuplicateOneLongOneBool>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await AssertType(
+            connection,
+            new DuplicateOneLongOneBool(true, 1),
+            "(1,t)",
+            type,
+            npgsqlDbType: null));
+        Assert.That(ex!.InnerException, Is.TypeOf<AmbiguousMatchException>());
+    }
+
+    [Test]
+    public async Task PartialConstructorMissingSetter()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (long int8, boolean bool)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<MissingSetterOneLongOneBool>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(async () => await AssertTypeRead(
+            connection,
+            "(1,t)",
+            type,
+            new MissingSetterOneLongOneBool(true, 1)));
+        Assert.That(ex, Is.TypeOf<InvalidOperationException>().With.Message.Contains("No (public) setter for"));
+    }
+
+    [Test]
+    public async Task PartialConstructorWorks()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (long int8, boolean bool)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<OneLongOneBool>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new OneLongOneBool(1) { BooleanValue = true },
+            "(1,t)",
+            type,
+            npgsqlDbType: null);
+    }
+
+    [Test]
+    public async Task CompositeOverRange()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        var rangeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text); CREATE TYPE {rangeType} AS RANGE(subtype={type})");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        dataSourceBuilder.EnableUnmappedTypes();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var composite1 = new SomeComposite
+        {
+            SomeText = "foo",
+            X = 8
+        };
+
+        var composite2 = new SomeComposite
+        {
+            SomeText = "bar",
+            X = 42
+        };
+
+        await AssertType(
+            connection,
+            new NpgsqlRange<SomeComposite>(composite1, composite2),
+            "[\"(8,foo)\",\"(42,bar)\"]",
+            rangeType,
+            npgsqlDbType: null,
+            isDefaultForWriting: false);
+    }
+
     #region Test Types
+
+    readonly struct DuplicateOneLongOneBool
+    {
+        public DuplicateOneLongOneBool(bool boolean, [PgName("boolean")]int @bool)
+        {
+        }
+
+        [PgName("long")]
+        public long LongValue { get; }
+
+        [PgName("boolean")]
+        public bool BooleanValue { get; }
+    }
+
+    readonly struct MissingSetterOneLongOneBool
+    {
+        public MissingSetterOneLongOneBool(long @long)
+        {
+            LongValue = @long;
+        }
+
+        public MissingSetterOneLongOneBool(bool boolean, [PgName("boolean")]int @bool)
+        {
+        }
+
+        [PgName("long")]
+        public long LongValue { get; }
+
+        [PgName("boolean")]
+        public bool BooleanValue { get; }
+    }
+
+    struct OneLongOneBool
+    {
+        public OneLongOneBool(bool boolean, [PgName("boolean")]int @bool)
+        {
+        }
+
+        public OneLongOneBool(long @long)
+        {
+            LongValue = @long;
+        }
+
+        public OneLongOneBool(double other)
+        {
+        }
+
+        public OneLongOneBool(int boolean, [PgName("boolean")]bool @bool)
+        {
+        }
+
+        [PgName("long")]
+        public long LongValue { get; }
+
+        [PgName("boolean")]
+        public bool BooleanValue { get; set; }
+    }
+
 
     record SomeComposite
     {

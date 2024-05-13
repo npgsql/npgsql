@@ -12,6 +12,7 @@ namespace Npgsql.Internal;
 /// Base class for implementations which provide information about PostgreSQL and PostgreSQL-like databases
 /// (e.g. type definitions, capabilities...).
 /// </summary>
+[Experimental(NpgsqlDiagnostics.DatabaseInfoExperimental)]
 public abstract class NpgsqlDatabaseInfo
 {
     #region Fields
@@ -228,6 +229,11 @@ public abstract class NpgsqlDatabaseInfo
 
     internal void ProcessTypes()
     {
+        var unspecified = new PostgresBaseType(DataTypeName.Unspecified, Oid.Unspecified);
+        ByOID[Oid.Unspecified.Value] = unspecified;
+        ByFullName[unspecified.DataTypeName.Value] = unspecified;
+        ByName[unspecified.InternalName] = unspecified;
+
         foreach (var type in GetTypes())
         {
             ByOID[type.OID] = type;

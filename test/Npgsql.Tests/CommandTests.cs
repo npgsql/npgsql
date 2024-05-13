@@ -852,6 +852,177 @@ $$ LANGUAGE plpgsql;";
         }
     }
 
+    [Test]
+    public async Task Parameter_overflow_message_length_throws()
+    {
+        await using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @a, @b, @c, @d, @e, @f, @g, @h", conn);
+
+        var largeParam = new string('A', 1 << 29);
+        cmd.Parameters.AddWithValue("a", largeParam);
+        cmd.Parameters.AddWithValue("b", largeParam);
+        cmd.Parameters.AddWithValue("c", largeParam);
+        cmd.Parameters.AddWithValue("d", largeParam);
+        cmd.Parameters.AddWithValue("e", largeParam);
+        cmd.Parameters.AddWithValue("f", largeParam);
+        cmd.Parameters.AddWithValue("g", largeParam);
+        cmd.Parameters.AddWithValue("h", largeParam);
+
+        Assert.ThrowsAsync<OverflowException>(() => cmd.ExecuteReaderAsync());
+    }
+
+    [Test]
+    public async Task Composite_overflow_message_length_throws()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync(
+            $"CREATE TYPE {type} AS (a text, b text, c text, d text, e text, f text, g text, h text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<BigComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var largeString = new string('A', 1 << 29);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT @a";
+        cmd.Parameters.AddWithValue("a", new BigComposite
+        {
+            A = largeString,
+            B = largeString,
+            C = largeString,
+            D = largeString,
+            E = largeString,
+            F = largeString,
+            G = largeString,
+            H = largeString
+        });
+
+        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+    }
+
+    record BigComposite
+    {
+        public string A { get; set; } = null!;
+        public string B { get; set; } = null!;
+        public string C { get; set; } = null!;
+        public string D { get; set; } = null!;
+        public string E { get; set; } = null!;
+        public string F { get; set; } = null!;
+        public string G { get; set; } = null!;
+        public string H { get; set; } = null!;
+    }
+
+    [Test]
+    public async Task Array_overflow_message_length_throws()
+    {
+        await using var connection = await OpenConnectionAsync();
+
+        var largeString = new string('A', 1 << 29);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT @a";
+        var array = new[]
+        {
+            largeString,
+            largeString,
+            largeString,
+            largeString,
+            largeString,
+            largeString,
+            largeString,
+            largeString
+        };
+        cmd.Parameters.AddWithValue("a", array);
+
+        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+    }
+
+    [Test]
+    public async Task Range_overflow_message_length_throws()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        var rangeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync(
+            $"CREATE TYPE {type} AS (a text, b text, c text, d text, e text, f text, g text, h text);CREATE TYPE {rangeType} AS RANGE(subtype={type})");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<BigComposite>(type);
+        dataSourceBuilder.EnableUnmappedTypes();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var largeString = new string('A', (1 << 28) + 2000000);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT @a";
+        var composite = new BigComposite
+        {
+            A = largeString,
+            B = largeString,
+            C = largeString,
+            D = largeString
+        };
+        var range = new NpgsqlRange<BigComposite>(composite, composite);
+        cmd.Parameters.Add(new NpgsqlParameter
+        {
+            Value = range,
+            ParameterName = "a",
+            DataTypeName = rangeType
+        });
+
+        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+    }
+
+    [Test]
+    public async Task Multirange_overflow_message_length_throws()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        MinimumPgVersion(adminConnection, "14.0", "Multirange types were introduced in PostgreSQL 14");
+        var type = await GetTempTypeName(adminConnection);
+        var rangeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync(
+            $"CREATE TYPE {type} AS (a text, b text, c text, d text, e text, f text, g text, h text);CREATE TYPE {rangeType} AS RANGE(subtype={type})");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<BigComposite>(type);
+        dataSourceBuilder.EnableUnmappedTypes();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var largeString = new string('A', (1 << 28) + 2000000);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT @a";
+        var composite = new BigComposite
+        {
+            A = largeString
+        };
+        var range = new NpgsqlRange<BigComposite>(composite, composite);
+        var multirange = new[]
+        {
+            range,
+            range,
+            range,
+            range
+        };
+        cmd.Parameters.Add(new NpgsqlParameter
+        {
+            Value = multirange,
+            ParameterName = "a",
+            DataTypeName = rangeType + "_multirange"
+        });
+
+        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+    }
+
     [Test, Description("CreateCommand before connection open")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/565")]
     public async Task Create_command_before_connection_open()
@@ -1027,6 +1198,7 @@ $$ LANGUAGE plpgsql;";
             sb.Append('@');
             sb.Append(paramName);
         }
+
         cmd.CommandText = sb.ToString();
 
         if (prepare == PrepareOrNot.Prepared)

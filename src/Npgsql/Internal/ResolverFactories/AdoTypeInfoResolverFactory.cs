@@ -75,6 +75,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new MoneyConverter<decimal>()), MatchRequirement.DataTypeName);
 
             // Text
+            // Update PgSerializerOptions.IsWellKnownTextType(Type) after any changes to this list.
             mappings.AddType<string>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Text,
@@ -340,9 +341,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             var info = Mappings.Find(type, dataTypeName, options);
 
             Type? elementType = null;
-            if (info is null && dataTypeName is not null &&
-                (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType))
-                && options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresArrayType { Element: var pgElementType })
+            if (info is null && dataTypeName is not null
+                && options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresArrayType { Element: var pgElementType }
+                && (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType)))
             {
                 info = GetEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
                        GetObjectArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options);

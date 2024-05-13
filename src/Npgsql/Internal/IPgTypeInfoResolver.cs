@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -6,6 +7,7 @@ namespace Npgsql.Internal;
 /// <summary>
 /// An Npgsql resolver for type info. Used by Npgsql to read and write values to PostgreSQL.
 /// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public interface IPgTypeInfoResolver
 {
     /// <summary>
