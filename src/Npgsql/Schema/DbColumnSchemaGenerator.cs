@@ -118,19 +118,19 @@ ORDER BY attnum";
                 if (f.TableOID != 0)
                     filters.Add($"(attr.attrelid={f.TableOID} AND attr.attnum={f.ColumnAttributeNumber})");
             }
-				
+
             var columnFieldFilter = string.Join(" OR ", filters);
             if (columnFieldFilter != string.Empty)
             {
                 var query = oldQueryMode
                     ? GenerateOldColumnsQuery(columnFieldFilter)
                     : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
-	
+
                 using var scope = new TransactionScope(
                     TransactionScopeOption.Suppress,
                     async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
-	
+
                 await connection.Open(async, cancellationToken).ConfigureAwait(false);
 
                 using var cmd = new NpgsqlCommand(query, connection);
