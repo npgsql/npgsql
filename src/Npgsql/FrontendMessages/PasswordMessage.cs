@@ -113,6 +113,12 @@ namespace Npgsql.FrontendMessages
         {
             if (buf.WriteSpaceLeft < 1 + 5)
                 await buf.Flush(async);
+
+            var headerLength =
+                1 +                   // Message code
+                4 +                   // Message length
+                PayloadLength;
+            buf.StartMessage(headerLength);
             buf.WriteByte(Code);
             buf.WriteInt32(4 + PayloadLength);
 
