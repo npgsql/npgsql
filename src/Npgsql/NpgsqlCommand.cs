@@ -195,11 +195,11 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         }
     }
 
-    string TracingCommandText => IsWrappedByBatch ? GetBatchFullCommandText() : CommandText;
-
     string GetBatchFullCommandText()
     {
         Debug.Assert(IsWrappedByBatch);
+        if (InternalBatchCommands.Count == 0)
+            return string.Empty;
         if (InternalBatchCommands.Count == 1)
             return InternalBatchCommands[0].CommandText;
         // TODO: Potentially cache on connector/command?
@@ -1703,7 +1703,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
-            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, TracingCommandText, CommandType);
+            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType);
     }
 
     internal void TraceReceivedFirstResponse()
