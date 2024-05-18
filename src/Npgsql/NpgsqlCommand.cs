@@ -190,6 +190,26 @@ public sealed class NpgsqlCommand : DbCommand, ICloneable, IComponent
         }
     }
 
+    string GetBatchFullCommandText()
+    {
+        Debug.Assert(IsWrappedByBatch);
+        if (InternalBatchCommands.Count == 0)
+            return string.Empty;
+        if (InternalBatchCommands.Count == 1)
+            return InternalBatchCommands[0].CommandText;
+        // TODO: Potentially cache on connector/command?
+        var sb = new StringBuilder();
+        sb.Append(InternalBatchCommands[0].CommandText);
+        for (var i = 1; i < InternalBatchCommands.Count; i++)
+        {
+            sb
+                .Append(';')
+                .AppendLine()
+                .Append(InternalBatchCommands[i].CommandText);
+        }
+        return sb.ToString();
+    }
+
     /// <summary>
     /// Gets or sets the wait time (in seconds) before terminating the attempt  to execute a command and generating an error.
     /// </summary>
@@ -1507,7 +1527,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 Debug.Assert(_connector is null && conn is not null);
                 conn.Close();
             }
-                    
+
             throw;
         }
     }
@@ -1589,7 +1609,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
-            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText);
+            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText);
     }
 
     internal void TraceReceivedFirstResponse()
