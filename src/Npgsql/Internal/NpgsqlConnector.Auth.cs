@@ -57,7 +57,7 @@ partial class NpgsqlConnector
     async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
     {
         var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
-        if (passwd == null)
+        if (string.IsNullOrEmpty(passwd))
             throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
         var encoded = new byte[Encoding.UTF8.GetByteCount(passwd) + 1];
@@ -114,8 +114,9 @@ partial class NpgsqlConnector
             throw new NpgsqlException("Unable to bind to SCRAM-SHA-256-PLUS, check logs for more information");
         }
 
-        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false) ??
-                     throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
+        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(passwd))
+            throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
         // Assumption: the write buffer is big enough to contain all our outgoing messages
         var clientNonce = GetNonce();
@@ -277,7 +278,7 @@ partial class NpgsqlConnector
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
     {
         var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
-        if (passwd == null)
+        if (string.IsNullOrEmpty(passwd))
             throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
         byte[] result;
