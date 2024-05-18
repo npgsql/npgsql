@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Copyright>Copyright 2024 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
-    <VersionPrefix>4.1.13</VersionPrefix>
+    <VersionPrefix>4.1.14</VersionPrefix>
     <NoWarn>NU5105</NoWarn>
     <WarningsNotAsErrors>nullable</WarningsNotAsErrors>
 
