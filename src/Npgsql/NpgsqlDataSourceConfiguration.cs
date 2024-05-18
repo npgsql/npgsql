@@ -20,7 +20,6 @@ sealed record NpgsqlDataSourceConfiguration(string? Name,
     TimeSpan PeriodicPasswordSuccessRefreshInterval,
     TimeSpan PeriodicPasswordFailureRefreshInterval,
     PgTypeInfoResolverChain ResolverChain,
-    List<HackyEnumTypeMapping> HackyEnumMappings,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
     Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);

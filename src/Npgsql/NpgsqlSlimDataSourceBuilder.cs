@@ -631,25 +631,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
             _resolverChainBuilder.Build(ConfigureResolverChain),
-            HackyEnumMappings(),
             DefaultNameTranslator,
             _connectionInitializer,
             _connectionInitializerAsync);
-
-        List<HackyEnumTypeMapping> HackyEnumMappings()
-        {
-            var mappings = new List<HackyEnumTypeMapping>();
-
-            if (_userTypeMapper.Items.Count > 0)
-                foreach (var userTypeMapping in _userTypeMapper.Items)
-                    if (userTypeMapping is UserTypeMapper.EnumMapping enumMapping)
-                        mappings.Add(new(enumMapping.ClrType, enumMapping.PgTypeName, enumMapping.NameTranslator));
-
-            if (GlobalTypeMapper.Instance.HackyEnumTypeMappings.Count > 0)
-                mappings.AddRange(GlobalTypeMapper.Instance.HackyEnumTypeMappings);
-
-            return mappings;
-        }
     }
 
     void ValidateMultiHost()
