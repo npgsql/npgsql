@@ -1645,6 +1645,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             _commandText = string.Empty;
             CommandType = CommandType.Text;
             _parameters.Clear();
+            _timeout = null;
+            AllResultTypesAreUnknown = false;
+            Debug.Assert(_unknownResultTypeList is null);
             InternalConnection.CachedCommand = this;
             return;
         }
