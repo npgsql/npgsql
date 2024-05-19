@@ -1216,7 +1216,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         if (allResultTypesAreUnknown)
             cmd1.AllResultTypesAreUnknown = true;
         else
-            cmd1.UnknownResultTypeList = [true];
+            cmd1.UnknownResultTypeList = new bool[] { true };
         var tx = conn.BeginTransaction();
         cmd1.Transaction = tx;
         cmd1.Parameters.AddWithValue("p1", 8);
