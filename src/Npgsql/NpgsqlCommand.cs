@@ -1693,7 +1693,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         // Can be null if it's owned by batch
         _parameters?.Clear();
         _timeout = null;
-        _allResultTypesAreUnknown = false;
+        AllResultTypesAreUnknown = false;
+        Debug.Assert(_unknownResultTypeList is null);
         EnableErrorBarriers = false;
     }
 
