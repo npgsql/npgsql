@@ -1011,8 +1011,9 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Parameter_overflow_message_length_throws()
     {
-        await using var conn = CreateConnection();
-        await conn.OpenAsync();
+        // Create a separate dataSource because of Multiplexing (otherwise we can break unrelated queries)
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @a, @b, @c, @d, @e, @f, @g, @h", conn);
 
         var largeParam = new string('A', 1 << 29);
@@ -1076,11 +1077,13 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Array_overflow_message_length_throws()
     {
-        await using var connection = await OpenConnectionAsync();
+        // Create a separate dataSource because of Multiplexing (otherwise we can break unrelated queries)
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         var largeString = new string('A', 1 << 29);
 
-        await using var cmd = connection.CreateCommand();
+        await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT @a";
         var array = new[]
         {
