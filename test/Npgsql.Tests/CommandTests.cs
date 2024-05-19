@@ -1015,8 +1015,8 @@ LANGUAGE 'plpgsql' VOLATILE;";
     [Test]
     public async Task Parameter_overflow_message_length_throws()
     {
-        await using var conn = CreateConnection();
-        await conn.OpenAsync();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        await using var conn = await OpenConnectionAsync(connString);
         await using var cmd = new NpgsqlCommand("SELECT @a, @b, @c, @d, @e, @f, @g, @h", conn);
 
         var largeParam = new string('A', 1 << 29);
@@ -1090,7 +1090,8 @@ LANGUAGE 'plpgsql' VOLATILE;";
     [Test]
     public async Task Array_overflow_message_length_throws()
     {
-        await using var connection = await OpenConnectionAsync();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        await using var connection = await OpenConnectionAsync(connString);
 
         var largeString = new string('A', 1 << 29);
 
