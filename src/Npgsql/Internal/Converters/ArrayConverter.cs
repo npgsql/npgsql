@@ -283,45 +283,6 @@ readonly struct PgArrayConverter
         // We can immediately continue if we didn't reach the end of the last dimension.
         while (++indices[indices.Length - 1] < lastLength || (indices.Length > 1 && CarryIndices(state.Lengths!, indices)));
     }
-}
-
-// Class constraint exists to make ValueTask<object> to ValueTask<T> reinterpretation safe, don't remove unless that is also removed.
-abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
-{
-    protected PgConverterResolution ElemResolution { get; }
-    protected Type ElemTypeToConvert { get; }
-
-    readonly PgArrayConverter _pgArrayConverter;
-
-    private protected ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
-    {
-        if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
-            throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
-
-        ElemResolution = elemResolution;
-        ElemTypeToConvert = elemResolution.Converter.TypeToConvert;
-        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsDbNullable, expectedDimensions,
-            bufferRequirements, elemResolution.PgTypeId, pgLowerBound);
-    }
-
-    public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
-
-    public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-    {
-        var value = _pgArrayConverter.Read(async: true, reader, cancellationToken);
-        // Justification: elides the async method bloat/perf cost to transition from object to T (where T : class)
-        Debug.Assert(typeof(T).IsClass);
-        return Unsafe.As<ValueTask<object>, ValueTask<T>>(ref value);
-    }
-
-    public override Size GetSize(SizeContext context, T values, ref object? writeState)
-        => _pgArrayConverter.GetSize(context, values, ref writeState);
-
-    public override void Write(PgWriter writer, T values)
-        => _pgArrayConverter.Write(async: false, writer, values, CancellationToken.None).GetAwaiter().GetResult();
-
-    public override ValueTask WriteAsync(PgWriter writer, T values, CancellationToken cancellationToken = default)
-        => _pgArrayConverter.Write(async: true, writer, values, cancellationToken);
 
     // Using a function pointer here is safe against assembly unloading as the instance reference that the static pointer method lives on is passed along.
     // As such the instance cannot be collected by the gc which means the entire assembly is prevented from unloading until we're done.
@@ -329,7 +290,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     // 1. Add a virtual method and make AwaitTask call into it (bloating the vtable of all derived types).
     // 2. Using a delegate, meaning we add a static field + an alloc per T + metadata, slightly slower dispatch perf so overall strictly worse as well.
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-    private protected static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, int[] indices)
+    public static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, int[] indices)
     {
         await task.ConfigureAwait(false);
         continuation.Invoke(task, collection, indices);
@@ -338,7 +299,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     }
 
     // Split out into a struct as unsafe and async don't mix, while we do want a nicely typed function pointer signature to prevent mistakes.
-    protected readonly unsafe struct Continuation
+    public readonly unsafe struct Continuation
     {
         public object Handle { get; }
         readonly delegate*<Task, object, int[], void> _continuation;
@@ -353,6 +314,58 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
 
         public void Invoke(Task task, object collection, int[] indices) => _continuation(task, collection, indices);
     }
+}
+
+abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
+{
+    readonly PgArrayConverter _pgArrayConverter;
+
+    private protected ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
+    {
+        if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
+            throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
+
+        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsDbNullable, expectedDimensions,
+            bufferRequirements, elemResolution.PgTypeId, pgLowerBound);
+    }
+
+    public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
+
+    public override unsafe ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+    {
+        // Cheap if we have all the data.
+        var task = _pgArrayConverter.Read(async: true, reader, cancellationToken);
+        if (task.IsCompletedSuccessfully)
+            return new((T)task.Result);
+
+        // Otherwise do these additional allocations (source and task) to allow us to share state machine codegen for all Ts.
+        // We don't use the PoolingCompletionSource here as it would be backed by an IValueTaskSource.
+        // Any ReadAsObjectAsync caller would call AsTask() on it immediately, causing another allocation and indirection.
+        var source = new AsyncHelpers.CompletionSource<T>();
+        AsyncHelpers.OnCompletedWithSource(task.AsTask(), source, new(this, &UnboxAndComplete));
+        return source.Task;
+
+        static void UnboxAndComplete(Task task, AsyncHelpers.CompletionSource completionSource)
+        {
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost when T is a value type (like ReadOnlyMemory<T>).
+            Debug.Assert(task is Task<object>);
+            // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
+            var result = (T)new ValueTask<object>(Unsafe.As<Task<object>>(task)).Result;
+
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
+            Debug.Assert(completionSource is AsyncHelpers.CompletionSource<T>);
+            Unsafe.As<AsyncHelpers.CompletionSource<T>>(completionSource).SetResult(result);
+        }
+    }
+
+    public override Size GetSize(SizeContext context, T values, ref object? writeState)
+        => _pgArrayConverter.GetSize(context, values, ref writeState);
+
+    public override void Write(PgWriter writer, T values)
+        => _pgArrayConverter.Write(async: false, writer, values, CancellationToken.None).GetAwaiter().GetResult();
+
+    public override ValueTask WriteAsync(PgWriter writer, T values, CancellationToken cancellationToken = default)
+        => _pgArrayConverter.Write(async: true, writer, values, cancellationToken);
 
     protected static int[]? GetLengths(Array array)
     {
@@ -449,15 +462,17 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
     unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, int[] indices, CancellationToken cancellationToken)
     {
         if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
-            return AwaitTask(task, new(this, &SetResult), collection, indices);
+            return PgArrayConverter.AwaitTask(task, new(this, &SetResult), collection, indices);
 
         SetValue(collection, indices, result);
         return new();
 
-        // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
         static void SetResult(Task task, object collection, int[] indices)
         {
-            SetValue(collection, indices, new ValueTask<TElement>((Task<TElement>)task).Result);
+            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
+            Debug.Assert(task is Task<TElement>);
+            // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
+            SetValue(collection, indices, new ValueTask<TElement>(task: Unsafe.As<Task<TElement>>(task)).Result);
         }
     }
 
@@ -521,15 +536,17 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
      unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, int[] indices, CancellationToken cancellationToken)
      {
          if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
-             return AwaitTask(task, new(this, &SetResult), collection, indices);
+             return PgArrayConverter.AwaitTask(task, new(this, &SetResult), collection, indices);
 
          SetValue(collection, indices[0], result);
          return new();
 
-         // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
          static void SetResult(Task task, object collection, int[] indices)
          {
-             SetValue(collection, indices[0], new ValueTask<TElement>((Task<TElement>)task).Result);
+             // Justification: exact type Unsafe.As used to reduce generic duplication cost.
+             Debug.Assert(task is Task<TElement>);
+             // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
+             SetValue(collection, indices[0], new ValueTask<TElement>(task: Unsafe.As<Task<TElement>>(task)).Result);
          }
      }
 
