@@ -1217,16 +1217,16 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Description("Load only composite type definitions from schemas in search path (always load from public and catalog).")]
     [DisplayName("Load Only Composites From SearchPath")]
     [NpgsqlConnectionStringProperty]
-    public bool LoadOnlyCompositeFromSearchPath
+    public bool LoadTypesFromSearchPath
     {
-        get => _loadOnlyCompositeFromSearchPath;
+        get => _LoadTypesFromSearchPath;
         set
         {
-            _loadOnlyCompositeFromSearchPath = value;
-            SetValue(nameof(LoadOnlyCompositeFromSearchPath), value);
+            _LoadTypesFromSearchPath = value;
+            SetValue(nameof(LoadTypesFromSearchPath), value);
         }
     }
-    bool _loadOnlyCompositeFromSearchPath;
+    bool _LoadTypesFromSearchPath;
 
     /// <summary>
     /// Set the replication mode of the connection

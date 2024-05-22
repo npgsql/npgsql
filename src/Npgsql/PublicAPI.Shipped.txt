@@ -466,8 +466,8 @@ Npgsql.NpgsqlConnectionStringBuilder.LoadBalanceHosts.get -> bool
 Npgsql.NpgsqlConnectionStringBuilder.LoadBalanceHosts.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.LoadTableComposites.get -> bool
 Npgsql.NpgsqlConnectionStringBuilder.LoadTableComposites.set -> void
-Npgsql.NpgsqlConnectionStringBuilder.LoadOnlyCompositeFromSearchPath.get -> bool
-Npgsql.NpgsqlConnectionStringBuilder.LoadOnlyCompositeFromSearchPath.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.LoadTypesFromSearchPath.get -> bool
+Npgsql.NpgsqlConnectionStringBuilder.LoadTypesFromSearchPath.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.LogParameters.get -> bool
 Npgsql.NpgsqlConnectionStringBuilder.LogParameters.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.MaxAutoPrepare.get -> int
