@@ -1212,11 +1212,15 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     bool _noResetOnClose;
 
     /// <summary>
-    /// Load table composite type definitions, and not just free-standing composite types.
+    /// Load type definitions from search path.
+    /// Significantly speed up initializing connection
+    /// when there are many schemas with types and you do not need but types from specific schema(s).
+    /// Always includes from information_schema, pg_catalog and public,
+    /// and any user defined types in any schema (for extensions).
     /// </summary>
     [Category("Advanced")]
-    [Description("Load only composite type definitions from schemas in search path (always load from public and catalog).")]
-    [DisplayName("Load Only Composites From SearchPath")]
+    [Description("Load type definitions from schemas in search path (always load from public and catalog, and any user defined types).")]
+    [DisplayName("Load Types From SearchPath")]
     [NpgsqlConnectionStringProperty]
     public bool LoadTypesFromSearchPath
     {
