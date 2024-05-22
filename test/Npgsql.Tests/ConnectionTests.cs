@@ -734,7 +734,9 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {extensionSchema} CASCADE");
         await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA IF NOT EXISTS dummy");
         await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {extensionSchema}");
-        await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis CASCADE");
+        await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis_topology");
+        await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis_tiger_geocoder");
+        await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis");
         await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis SCHEMA {extensionSchema}");
         await trans.CommitAsync();
         await conn1.CloseAsync();
@@ -748,6 +750,11 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         using var dataSource = dataSourceBuilder.Build();
         using var conn = await dataSource.OpenConnectionAsync();
         Assert.True(dataSource.DatabaseInfo.BaseTypes.Any(x => x.Name == "geography" && x.Namespace == extensionSchema));
+
+        await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis");
+        await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis");
+        await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_tiger_geocoder");
+        await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_topology");
     }
 
     [Test]
