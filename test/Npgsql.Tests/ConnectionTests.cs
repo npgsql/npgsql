@@ -751,10 +751,10 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         using var conn = await dataSource.OpenConnectionAsync();
         Assert.True(dataSource.DatabaseInfo.BaseTypes.Any(x => x.Name == "geography" && x.Namespace == extensionSchema));
 
-        await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis");
-        await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis");
-        await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_tiger_geocoder");
-        await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_topology");
+        await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis");
+        await conn.ExecuteNonQueryAsync($"CREATE EXTENSION postgis");
+        await conn.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_tiger_geocoder");
+        await conn.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_topology");
     }
 
     [Test]
