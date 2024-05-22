@@ -50,9 +50,9 @@ public readonly struct Size : IEquatable<Size>
             return Unknown;
 
         if (_kind is SizeKind.UpperBound || result._kind is SizeKind.UpperBound)
-            return CreateUpperBound((int)Math.Min((long)(_value + result._value), int.MaxValue));
+            return CreateUpperBound((int)Math.Min((long)_value + result._value, int.MaxValue));
 
-        return Create((int)Math.Min((long)(_value + result._value), int.MaxValue));
+        return Create((int)Math.Min((long)_value + result._value, int.MaxValue));
     }
 
     public static implicit operator Size(int value) => Create(value);
