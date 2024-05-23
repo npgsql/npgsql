@@ -855,8 +855,9 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Parameter_overflow_message_length_throws()
     {
-        await using var conn = CreateConnection();
-        await conn.OpenAsync();
+        // Create a separate dataSource because of Multiplexing (otherwise we can break unrelated queries)
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @a, @b, @c, @d, @e, @f, @g, @h", conn);
 
         var largeParam = new string('A', 1 << 29);
@@ -920,11 +921,13 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Array_overflow_message_length_throws()
     {
-        await using var connection = await OpenConnectionAsync();
+        // Create a separate dataSource because of Multiplexing (otherwise we can break unrelated queries)
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         var largeString = new string('A', 1 << 29);
 
-        await using var cmd = connection.CreateCommand();
+        await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT @a";
         var array = new[]
         {
@@ -1115,11 +1118,15 @@ $$ LANGUAGE plpgsql;";
     }
 
     [Test]
-    public void Command_is_recycled()
+    public void Command_is_recycled([Values] bool allResultTypesAreUnknown)
     {
         using var conn = OpenConnection();
         var cmd1 = conn.CreateCommand();
         cmd1.CommandText = "SELECT @p1";
+        if (allResultTypesAreUnknown)
+            cmd1.AllResultTypesAreUnknown = true;
+        else
+            cmd1.UnknownResultTypeList = [true];
         var tx = conn.BeginTransaction();
         cmd1.Transaction = tx;
         cmd1.Parameters.AddWithValue("p1", 8);
@@ -1132,6 +1139,8 @@ $$ LANGUAGE plpgsql;";
         Assert.That(cmd2.CommandType, Is.EqualTo(CommandType.Text));
         Assert.That(cmd2.Transaction, Is.Null);
         Assert.That(cmd2.Parameters, Is.Empty);
+        Assert.That(cmd2.AllResultTypesAreUnknown, Is.False);
+        Assert.That(cmd2.UnknownResultTypeList, Is.Null);
         // TODO: Leaving this for now, since it'll be replaced by the new batching API
         // Assert.That(cmd2.Statements, Is.Empty);
     }
