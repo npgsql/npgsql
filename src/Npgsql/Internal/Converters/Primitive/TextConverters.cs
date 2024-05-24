@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
+public abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
 {
     readonly Encoding _encoding;
     protected StringBasedTextConverter(Encoding encoding) => _encoding = encoding;
@@ -59,7 +59,7 @@ sealed class ReadOnlyMemoryTextConverter : StringBasedTextConverter<ReadOnlyMemo
     protected override ReadOnlyMemory<char> ConvertFrom(string value) => value.AsMemory();
 }
 
-sealed class StringTextConverter : StringBasedTextConverter<string>
+public sealed class StringTextConverter : StringBasedTextConverter<string>
 {
     public StringTextConverter(Encoding encoding) : base(encoding) { }
     protected override ReadOnlyMemory<char> ConvertTo(string value) => value.AsMemory();

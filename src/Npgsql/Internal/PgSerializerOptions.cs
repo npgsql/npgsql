@@ -46,7 +46,7 @@ public sealed class PgSerializerOptions
 
     /// Whether options should return a portable identifier (data type name) to prevent any generated id (oid) confusion across backends, this comes with a perf penalty.
     internal bool PortableTypeIds { get; init; }
-    internal NpgsqlDatabaseInfo DatabaseInfo { get; }
+    public NpgsqlDatabaseInfo DatabaseInfo { get; }
 
     public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
     public Encoding TextEncoding { get; init; } = Encoding.UTF8;
@@ -107,7 +107,7 @@ public sealed class PgSerializerOptions
         => PortableTypeIds ? DatabaseInfo.GetDataTypeName(pgTypeId) : DatabaseInfo.GetOid(pgTypeId);
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
-    internal PgTypeId ToCanonicalTypeId(PostgresType pgType)
+    public PgTypeId ToCanonicalTypeId(PostgresType pgType)
         => PortableTypeIds ? pgType.DataTypeName : (Oid)pgType.OID;
 
     public PgTypeId GetArrayTypeId(PgTypeId elementTypeId)
