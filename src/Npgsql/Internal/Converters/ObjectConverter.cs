@@ -98,7 +98,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
     }
 
     PgTypeInfo GetTypeInfo(Type type)
-        => _options.GetTypeInfo(type, _pgTypeId)
+        => _options.GetTypeInfoInternal(type, _pgTypeId)
            ?? throw new NotSupportedException($"Writing values of '{type.FullName}' having DataTypeName '{_options.DatabaseInfo.GetPostgresType(_pgTypeId).DisplayName}' is not supported.");
 
     sealed class WriteState
