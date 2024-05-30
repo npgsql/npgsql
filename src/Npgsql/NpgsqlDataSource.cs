@@ -83,8 +83,6 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
 
-    internal List<HackyEnumTypeMapping>? _hackyEnumTypeMappings;
-
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
         NpgsqlDataSourceConfiguration dataSourceConfig)
@@ -108,7 +106,6 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
                 var resolverChain,
-                _hackyEnumTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)

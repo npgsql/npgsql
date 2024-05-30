@@ -20,8 +20,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     readonly ReaderWriterLockSlim _lock = new();
     PgTypeInfoResolverFactory[] _typeMappingResolvers = Array.Empty<PgTypeInfoResolverFactory>();
 
-    internal List<HackyEnumTypeMapping> HackyEnumTypeMappings { get; } = new();
-
     internal IEnumerable<PgTypeInfoResolverFactory> GetPluginResolverFactories()
     {
         var resolvers = new List<PgTypeInfoResolverFactory>();
@@ -185,7 +183,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         {
             _pluginResolverFactories.Clear();
             _userTypeMapper.Items.Clear();
-            HackyEnumTypeMappings.Clear();
         }
         finally
         {
@@ -245,13 +242,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             _userTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
-
-            // Temporary hack for EFCore.PG enum mapping compat
-            if (_userTypeMapper.Items.FirstOrDefault(i => i.ClrType == typeof(TEnum)) is UserTypeMapping userTypeMapping)
-                HackyEnumTypeMappings.Add(new(typeof(TEnum), userTypeMapping.PgTypeName, nameTranslator ?? DefaultNameTranslator));
-
             ResetTypeMappingCache();
-
             return this;
         }
         finally
@@ -267,13 +258,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             var removed = _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
-
-            // Temporary hack for EFCore.PG enum mapping compat
-            if (removed && ((List<UserTypeMapping>)_userTypeMapper.Items).FindIndex(m => m.ClrType == typeof(TEnum)) is > -1 and var index)
-                HackyEnumTypeMappings.RemoveAt(index);
-
             ResetTypeMappingCache();
-
             return removed;
         }
         finally
@@ -291,11 +276,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             _userTypeMapper.MapEnum(clrType, pgName, nameTranslator);
-
-            // Temporary hack for EFCore.PG enum mapping compat
-            if (_userTypeMapper.Items.FirstOrDefault(i => i.ClrType == clrType) is UserTypeMapping userTypeMapping)
-                HackyEnumTypeMappings.Add(new(clrType, userTypeMapping.PgTypeName, nameTranslator ?? DefaultNameTranslator));
-
             ResetTypeMappingCache();
             return this;
         }
@@ -313,11 +293,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             var removed = _userTypeMapper.UnmapEnum(clrType, pgName, nameTranslator);
-
-            // Temporary hack for EFCore.PG enum mapping compat
-            if (removed && ((List<UserTypeMapping>)_userTypeMapper.Items).FindIndex(m => m.ClrType == clrType) is > -1 and var index)
-                HackyEnumTypeMappings.RemoveAt(index);
-
             ResetTypeMappingCache();
             return removed;
         }
