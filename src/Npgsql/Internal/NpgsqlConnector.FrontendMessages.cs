@@ -477,16 +477,7 @@ partial class NpgsqlConnector
 
         WriteBuffer.WriteByte(FrontendMessageCode.Password);
         WriteBuffer.WriteInt32(sizeof(int) + count);
-
-        if (count <= WriteBuffer.WriteSpaceLeft)
-        {
-            // The entire array fits in our WriteBuffer, copy it into the WriteBuffer as usual.
-            WriteBuffer.WriteBytes(payload, offset, count);
-            return;
-        }
-
-        await WriteBuffer.Flush(async, cancellationToken).ConfigureAwait(false);
-        await WriteBuffer.DirectWrite(new ReadOnlyMemory<byte>(payload, offset, count), async, cancellationToken).ConfigureAwait(false);
+        await WriteBuffer.WriteBytesRaw(new ReadOnlyMemory<byte>(payload, offset, count), async, cancellationToken).ConfigureAwait(false);
     }
 
     internal async Task WriteSASLInitialResponse(string mechanism, byte[] initialResponse, bool async, CancellationToken cancellationToken = default)
