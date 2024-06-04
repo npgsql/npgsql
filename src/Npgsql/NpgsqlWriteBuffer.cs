@@ -531,7 +531,7 @@ namespace Npgsql
                 if (_messageLength is null)
                 {
                     Connector.Break();
-                    new InvalidOperationException("No message was started");
+                    throw new InvalidOperationException("No message was started");
                 }
 
                 if ((long)_messageBytesFlushed + count > _messageLength)

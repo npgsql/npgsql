@@ -565,7 +565,7 @@ namespace Npgsql
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
-                    SSLRequestMessage.Instance.WriteFully(WriteBuffer);
+                    await SSLRequestMessage.Instance.Write(WriteBuffer, async);
                     await WriteBuffer.Flush(async);
 
                     await ReadBuffer.Ensure(1, async);
