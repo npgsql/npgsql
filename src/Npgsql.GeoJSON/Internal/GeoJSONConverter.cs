@@ -323,7 +323,7 @@ static class GeoJSONConverter
     {
         var coordinates = value.Coordinates;
         if (NotValid(coordinates, out var hasZ))
-            throw AllOrNoneCoordiantesMustHaveZ(nameof(LineString));
+            throw AllOrNoneCoordinatesMustHaveZ(nameof(LineString));
 
         var length = Size.Create(SizeOfHeaderWithLength + coordinates.Count * SizeOfPoint(hasZ));
         if (GetSrid(value.CRS) != 0)
@@ -344,12 +344,12 @@ static class GeoJSONConverter
         {
             var coordinates = lines[i].Coordinates;
             if (NotValid(coordinates, out var lineHasZ))
-                throw AllOrNoneCoordiantesMustHaveZ(nameof(Polygon));
+                throw AllOrNoneCoordinatesMustHaveZ(nameof(Polygon));
 
             if (hasZ != lineHasZ)
             {
                 if (i == 0) hasZ = lineHasZ;
-                else throw AllOrNoneCoordiantesMustHaveZ(nameof(LineString));
+                else throw AllOrNoneCoordinatesMustHaveZ(nameof(LineString));
             }
 
             length = length.Combine(coordinates.Count * SizeOfPoint(hasZ));
@@ -678,7 +678,7 @@ static class GeoJSONConverter
     static Exception UnknownPostGisType()
         => throw new InvalidOperationException("Invalid PostGIS type");
 
-    static Exception AllOrNoneCoordiantesMustHaveZ(string typeName)
+    static Exception AllOrNoneCoordinatesMustHaveZ(string typeName)
         => new ArgumentException($"The Z coordinate must be specified for all or none elements of {typeName}");
 
     static int GetSrid(ICRSObject crs)

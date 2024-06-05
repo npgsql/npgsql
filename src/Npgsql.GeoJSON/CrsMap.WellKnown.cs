@@ -5,7 +5,7 @@ public partial class CrsMap
     /// <summary>
     /// These entries came from spatial_res_sys. They are used to elide memory allocations
     /// if they are identical to the entries for the current connection. Otherwise,
-    /// memory allocated for overrided entries only (added, removed, or modified).
+    /// memory allocated for overridded entries only (added, removed, or modified).
     /// </summary>
     internal static readonly CrsMapEntry[] WellKnown =
     {

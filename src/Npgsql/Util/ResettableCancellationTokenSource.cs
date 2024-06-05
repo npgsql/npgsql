@@ -23,7 +23,7 @@ sealed class ResettableCancellationTokenSource : IDisposable
     CancellationTokenRegistration? _registration;
 
     /// <summary>
-    /// Used, so we wouldn't concurently use the cts for the cancellation, while it's being disposed
+    /// Used, so we wouldn't concurrently use the cts for the cancellation, while it's being disposed
     /// </summary>
     readonly object lockObject = new();
 

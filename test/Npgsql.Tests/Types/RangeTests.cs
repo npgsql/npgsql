@@ -97,7 +97,7 @@ class RangeTests : MultiplexingTestBase
     {
         var r1 = new NpgsqlRange<int>(0, false, true, 1, false, false);
 
-        //different upper bound (lower bound shoulnd't matter since it is infinite)
+        //different upper bound (lower bound shouldn't matter since it is infinite)
         var r2 = new NpgsqlRange<int>(1, false, true, 2, false, false);
         Assert.IsFalse(r1 == r2);
 

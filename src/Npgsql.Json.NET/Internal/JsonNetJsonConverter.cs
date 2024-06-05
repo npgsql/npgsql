@@ -38,7 +38,7 @@ sealed class JsonNetJsonConverter<T> : PgStreamingConverter<T?>
         => JsonNetJsonConverter.Write(_jsonb, async: true, writer, cancellationToken);
 }
 
-// Split out to avoid unneccesary code duplication.
+// Split out to avoid unnecessary code duplication.
 static class JsonNetJsonConverter
 {
     public const byte JsonbProtocolVersion = 1;
