@@ -270,7 +270,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     }
 
                     // There's almost certainly more buffered outgoing data for the command, after the flush
-                    // occured. Complete the write, which will flush again (and update statistics).
+                    // occurred. Complete the write, which will flush again (and update statistics).
                     try
                     {
                         Flush(conn, ref clonedStats);

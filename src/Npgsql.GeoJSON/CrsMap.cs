@@ -6,13 +6,13 @@ namespace Npgsql.GeoJSON;
 /// </summary>
 public partial class CrsMap
 {
-    readonly CrsMapEntry[]? _overriden;
+    readonly CrsMapEntry[]? _overridden;
 
-    internal CrsMap(CrsMapEntry[]? overriden)
-        => _overriden = overriden;
+    internal CrsMap(CrsMapEntry[]? overridden)
+        => _overridden = overridden;
 
     internal string? GetAuthority(int srid)
-        => GetAuthority(_overriden, srid) ?? GetAuthority(WellKnown, srid);
+        => GetAuthority(_overridden, srid) ?? GetAuthority(WellKnown, srid);
 
     static string? GetAuthority(CrsMapEntry[]? entries, int srid)
     {

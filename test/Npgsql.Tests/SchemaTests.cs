@@ -47,7 +47,7 @@ public class SchemaTests : SyncOrAsyncTestBase
         Assert.That(collections1, Is.EquivalentTo(collections2));
     }
 
-    [Test, Description("Calling GetSchema(collectionName [, restrictions]) case insensive collectionName can be used")]
+    [Test, Description("Calling GetSchema(collectionName [, restrictions]) case insensitive collectionName can be used")]
     public async Task Case_insensitive_collection_name()
     {
         await using var conn = await OpenConnectionAsync();
