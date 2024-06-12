@@ -16,7 +16,7 @@ dataSourceBuilder.UsePeriodicPasswordProvider(
     (settings, cancellationToken) =>  /* async code to fetch the new access token */,
     TimeSpan.FromMinutes(55), // Interval for refreshing the token
     TimeSpan.FromSeconds(5)); // Interval for retrying after a refresh failure
-await using var dataSource = NpgsqlDataSource.Create(connectionString);
+await using var dataSource = dataSourceBuilder.Build();
 ```
 
 This API allows you to provide a minimal async code fragment for fetching the latest auth token, and have Npgsql take care of running it for you as needed.
