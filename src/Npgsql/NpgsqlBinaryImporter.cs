@@ -231,9 +231,11 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     Task Write<T>(bool async, T value, NpgsqlDbType? npgsqlDbType, string? dataTypeName, CancellationToken cancellationToken = default)
     {
-        // Statically handle DBNull for backwards compatibility, generic parameters where T = DBNull normally won't find a mapping.
-        // Also handle null values for object typed parameters, as parameters only accept DBNull.Value when T = object.
-        if (typeof(T) == typeof(DBNull) || (typeof(T) == typeof(object) && value is null))
+        // Handle DBNull:
+        //   1. when T = DBNull for backwards compatibility, DBNull as a type normally won't find a mapping.
+        //   2. when T = object we resolve oid 0 if DBNull is the first value, later column value oids would needlessly be limited to oid 0.
+        // Also handle null values for object typed parameters, these parameters require non null values to be seen as set.
+        if (typeof(T) == typeof(DBNull) || (typeof(T) == typeof(object) && value is null or DBNull))
             return WriteNull(async, cancellationToken);
 
         return Core(async, value, npgsqlDbType, dataTypeName, cancellationToken);
