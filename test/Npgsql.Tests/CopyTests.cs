@@ -387,6 +387,26 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
+    public async Task Import_DBNull_then_other_object()
+    {
+        using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "field TEXT");
+
+        object data = "foo";
+        using (var writer = conn.BeginBinaryImport($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write((object?)DBNull.Value);
+            writer.StartRow();
+            writer.Write(data);
+            var rowsWritten = writer.Complete();
+            Assert.That(rowsWritten, Is.EqualTo(2));
+        }
+
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT field FROM {table} OFFSET 1"), Is.EqualTo(data));
+    }
+
+    [Test]
     public async Task Import_reused_instance_mapping_info_identical_or_throws()
     {
         using var conn = await OpenConnectionAsync();
