@@ -86,7 +86,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
             _streamPrepareMessage = new();
         }
 
-        if (_protocolVersion == PgOutputProtocolVersion.V4)
+        if (_protocolVersion >= PgOutputProtocolVersion.V4)
         {
             _parallelStreamAbortMessage = new();
         }
