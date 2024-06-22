@@ -13,6 +13,7 @@ namespace Npgsql.Replication.PgOutput;
 
 sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
 {
+    readonly PgOutputProtocolVersion _protocolVersion;
     readonly LogicalReplicationConnection _connection;
     readonly PgOutputReplicationSlot _slot;
     readonly PgOutputReplicationOptions _options;
@@ -38,17 +39,20 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
     readonly ReadOnlyArrayBuffer<RelationMessage> _truncateMessageRelations = new();
 
     // V2
-    readonly StreamStartMessage _streamStartMessage = new();
-    readonly StreamStopMessage _streamStopMessage = new();
-    readonly StreamCommitMessage _streamCommitMessage = new();
-    readonly StreamAbortMessage _streamAbortMessage = new();
+    readonly StreamStartMessage _streamStartMessage = null!;
+    readonly StreamStopMessage _streamStopMessage = null!;
+    readonly StreamCommitMessage _streamCommitMessage = null!;
+    readonly StreamAbortMessage _streamAbortMessage = null!;
 
     // V3
-    readonly BeginPrepareMessage _beginPrepareMessage = new();
-    readonly PrepareMessage _prepareMessage = new();
-    readonly CommitPreparedMessage _commitPreparedMessage = new();
-    readonly RollbackPreparedMessage _rollbackPreparedMessage = new();
-    readonly StreamPrepareMessage _streamPrepareMessage = new();
+    readonly BeginPrepareMessage _beginPrepareMessage = null!;
+    readonly PrepareMessage _prepareMessage = null!;
+    readonly CommitPreparedMessage _commitPreparedMessage = null!;
+    readonly RollbackPreparedMessage _rollbackPreparedMessage = null!;
+    readonly StreamPrepareMessage _streamPrepareMessage = null!;
+
+    // V4
+    readonly ParallelStreamAbortMessage _parallelStreamAbortMessage = null!;
 
     #endregion
 
@@ -59,11 +63,38 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
         CancellationToken cancellationToken,
         NpgsqlLogSequenceNumber? walLocation = null)
     {
+        _protocolVersion = options.ProtocolVersion;
         _connection = connection;
         _slot = slot;
         _options = options;
         _baseCancellationToken = cancellationToken;
         _walLocation = walLocation;
+
+
+        if (_protocolVersion >= PgOutputProtocolVersion.V2)
+        {
+            _streamStartMessage = new();
+            _streamStopMessage = new();
+            _streamCommitMessage = new();
+            _streamAbortMessage = new();
+        }
+        if (_protocolVersion >= PgOutputProtocolVersion.V3)
+        {
+            _beginPrepareMessage = new();
+            _prepareMessage = new();
+            _commitPreparedMessage = new();
+            _rollbackPreparedMessage = new();
+            _streamPrepareMessage = new();
+        }
+
+        if (_protocolVersion == PgOutputProtocolVersion.V4)
+        {
+            _parallelStreamAbortMessage = new();
+        }
+        else if (_protocolVersion >= PgOutputProtocolVersion.V2)
+        {
+            _streamAbortMessage = new();
+        }
 
         var connector = _connection.Connector;
         _insertMessage = new(connector);
@@ -395,9 +426,23 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
             }
             case BackendReplicationMessageCode.StreamAbort:
             {
-                await buf.EnsureAsync(8).ConfigureAwait(false);
-                yield return _streamAbortMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
-                    transactionXid: buf.ReadUInt32(), subtransactionXid: buf.ReadUInt32());
+                if (_protocolVersion >= PgOutputProtocolVersion.V4)
+                {
+                    await buf.EnsureAsync(24).ConfigureAwait(false);
+                    yield return _parallelStreamAbortMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
+                        transactionXid: buf.ReadUInt32(),
+                        subtransactionXid: buf.ReadUInt32(),
+                        abortLsn: new(buf.ReadUInt64()),
+                        abortTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc));
+
+                }
+                else
+                {
+                    await buf.EnsureAsync(8).ConfigureAwait(false);
+                    yield return _streamAbortMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
+                        transactionXid: buf.ReadUInt32(), subtransactionXid: buf.ReadUInt32());
+
+                }
                 continue;
             }
             case BackendReplicationMessageCode.BeginPrepare:

@@ -16,47 +16,40 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Replication;
 
-[TestFixture(ProtocolVersion.V1, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-[TestFixture(ProtocolVersion.V1, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-[TestFixture(ProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
-[TestFixture(ProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-[TestFixture(ProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
-// We currently don't execute all possible combinations of settings for efficiency reasons because they don't
-// interact in the current implementation.
-// Feel free to uncomment some or all of the following lines if the implementation changed or you suspect a
-// problem with some combination.
-// [TestFixture(ProtocolVersion.V1, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
-// [TestFixture(ProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-// [TestFixture(ProtocolVersion.V2, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
-// [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-// [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
-// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
-// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V1, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V1, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V4, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V4, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.ParallelStreamingTransactionMode)]
 [NonParallelizable] // These tests aren't designed to be parallelizable
 public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
-    readonly ulong _protocolVersion;
+    readonly PgOutputProtocolVersion _protocolVersion;
     readonly bool? _binary;
-    readonly bool? _streaming;
+    readonly PgOutputStreamingMode? _streamingMode;
 
     bool IsBinary => _binary ?? false;
-    bool IsStreaming => _streaming ?? false;
-    ulong Version => _protocolVersion;
+    bool IsStreaming => _streamingMode.HasValue && _streamingMode.Value != PgOutputStreamingMode.Off;
+    PgOutputProtocolVersion Version => _protocolVersion;
 
-    public PgOutputReplicationTests(ProtocolVersion protocolVersion, ReplicationDataMode dataMode, TransactionMode transactionMode)
+    public PgOutputReplicationTests(PgOutputProtocolVersion protocolVersion, ReplicationDataMode dataMode, TransactionMode transactionMode)
     {
-        _protocolVersion = (ulong)protocolVersion;
+        _protocolVersion = protocolVersion;
         _binary = dataMode == ReplicationDataMode.BinaryReplicationDataMode
             ? true
             : dataMode == ReplicationDataMode.TextReplicationDataMode
                 ? false
                 : null;
-        _streaming = transactionMode == TransactionMode.StreamingTransactionMode
-            ? true
-            : transactionMode == TransactionMode.NonStreamingTransactionMode
-                ? false
-                : null;
+        _streamingMode = transactionMode switch
+        {
+            TransactionMode.DefaultTransactionMode => null,
+            TransactionMode.NonStreamingTransactionMode => PgOutputStreamingMode.Off,
+            TransactionMode.StreamingTransactionMode => PgOutputStreamingMode.On,
+            TransactionMode.ParallelStreamingTransactionMode => PgOutputStreamingMode.Parallel,
+            _ => throw new ArgumentOutOfRangeException(nameof(transactionMode), transactionMode, null)
+        };
     }
 
     [Test]
@@ -805,7 +798,10 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
                 // Rollback Transaction 2
                 if (IsStreaming)
-                    Assert.That(messages.Current, Is.TypeOf<StreamAbortMessage>());
+                    Assert.That(messages.Current,
+                        _streamingMode == PgOutputStreamingMode.On
+                            ? Is.TypeOf<StreamAbortMessage>()
+                            : Is.TypeOf<ParallelStreamAbortMessage>());
 
                 streamingCts.Cancel();
                 await AssertReplicationCancellation(messages);
@@ -1105,7 +1101,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
     {
         // Streaming of prepared transaction is only supported for
         // logical streaming replication protocol >= 3
-        if (_protocolVersion < 3UL)
+        if (_protocolVersion < PgOutputProtocolVersion.V3)
             return Task.CompletedTask;
 
         return SafePgOutputReplicationTest(
@@ -1185,7 +1181,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
     public Task Bug4633()
     {
         // We don't need all the various test cases here since the bug gets triggered in any case
-        if (IsStreaming || IsBinary || Version > 1)
+        if (IsStreaming || IsBinary || Version > PgOutputProtocolVersion.V1)
             return Task.CompletedTask;
 
         return SafePgOutputReplicationTest(
@@ -1468,7 +1464,7 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
     }
 
     PgOutputReplicationOptions GetOptions(string publicationName, bool? messages = null)
-        => new(publicationName, _protocolVersion, _binary, _streaming, messages);
+        => new(publicationName, _protocolVersion, _binary, _streamingMode, messages);
 
     Task SafePgOutputReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
         => SafeReplicationTest(testAction, GetObjectName(memberName));
@@ -1482,8 +1478,8 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
             .Append("_v").Append(_protocolVersion);
         if (_binary.HasValue)
             sb.Append("_b_").Append(BoolToChar(_binary.Value));
-        if (_streaming.HasValue)
-            sb.Append("_s_").Append(BoolToChar(_streaming.Value));
+        if (_streamingMode.HasValue)
+            sb.Append("_s_").Append(_streamingMode.Value);
         return sb.ToString();
     }
 
@@ -1498,15 +1494,25 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
     {
         await using var c = await OpenConnectionAsync();
         TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
-        if (_protocolVersion > 2)
+        if (_protocolVersion > PgOutputProtocolVersion.V3)
+            TestUtil.MinimumPgVersion(c, "16.0", "Logical Streaming Replication Protocol version 4 was introduced in PostgreSQL 16");
+        if (_protocolVersion > PgOutputProtocolVersion.V2)
             TestUtil.MinimumPgVersion(c, "15.0", "Logical Streaming Replication Protocol version 3 was introduced in PostgreSQL 15");
-        if (_protocolVersion > 1)
+        if (_protocolVersion > PgOutputProtocolVersion.V1)
             TestUtil.MinimumPgVersion(c, "14.0", "Logical Streaming Replication Protocol version 2 was introduced in PostgreSQL 14");
         if (IsBinary)
             TestUtil.MinimumPgVersion(c, "14.0", "Sending replication values in binary representation was introduced in PostgreSQL 14");
         if (IsStreaming)
         {
-            TestUtil.MinimumPgVersion(c, "14.0", "Streaming of in-progress transactions was introduced in PostgreSQL 14");
+            switch (_streamingMode)
+            {
+            case PgOutputStreamingMode.On:
+                TestUtil.MinimumPgVersion(c, "14.0", "Streaming of in-progress transactions was introduced in PostgreSQL 14");
+                break;
+            case PgOutputStreamingMode.Parallel:
+                TestUtil.MinimumPgVersion(c, "16.0", "Parallel streaming of in-progress transactions was introduced in PostgreSQL 16");
+                break;
+            }
             var logicalDecodingWorkMem = (string)(await c.ExecuteScalarAsync("SHOW logical_decoding_work_mem"))!;
             if (logicalDecodingWorkMem != "64kB")
             {
@@ -1517,12 +1523,6 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
         }
     }
 
-    public enum ProtocolVersion : ulong
-    {
-        V1 = 1UL,
-        V2 = 2UL,
-        V3 = 3UL,
-    }
     public enum ReplicationDataMode
     {
         DefaultReplicationDataMode,
@@ -1534,6 +1534,7 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
         DefaultTransactionMode,
         NonStreamingTransactionMode,
         StreamingTransactionMode,
+        ParallelStreamingTransactionMode
     }
 
     #endregion Non-Test stuff (helper methods, initialization, ennums, ...)
