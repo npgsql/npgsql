@@ -17,32 +17,109 @@ concurrency:
 env:
   dotnet_sdk_version: '8.0.203'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  AOT_Compat: |
+    param([string]$targetFramework)
+
+    $publishOutput = dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f $targetFramework -p:RootNpgsql=true
+
+    $actualWarningCount = 0
+
+    foreach ($line in $($publishOutput -split "`r`n"))
+    {
+        if ($line -like "*analysis warning IL*")
+        {
+            Write-Host $line
+
+            $actualWarningCount += 1
+        }
+    }
+    
+    $testPassed = 0
+
+    $binaryPath = "test/Npgsql.NativeAotTests/bin/Release/$targetFramework/linux-x64/native/"
+    if (-not (Test-Path -LiteralPath $binaryPath))
+    {
+        $testPassed = 1
+        Write-Host "Could not publish app, output was:"
+        foreach ($line in $($publishOutput -split "`r`n"))
+        {
+            Write-Host $line
+        }
+    }
+    
+    Write-Host "Actual warning count is:", $actualWarningCount
+    $expectedWarningCount = 0
+
+    if ($actualWarningCount -ne $expectedWarningCount)
+    {
+        $testPassed = 2
+        Write-Host "Actual warning count:", $actualWarningCount, "is not as expected. Expected warning count is:", $expectedWarningCount
+    }
+
+    Exit $testPassed
   # Uncomment and edit the following to use nightly/preview builds 
-#  nuget_config: |
-#    <?xml version="1.0" encoding="utf-8"?>
-#    <configuration>
-#
-#        <packageSources>
-#            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-#            <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
-#        </packageSources>
-#
-#        <packageSourceMapping>
-#            <packageSource key="nuget.org">
-#                <package pattern="*" />
-#            </packageSource>
-#            <packageSource key="dotnet8">
-#                <package pattern="runtime.*" />
-#                <package pattern="Microsoft.NETCore.App.Runtime.*" />
-#                <package pattern="Microsoft.AspNetCore.App.Runtime.*" />
-#                <package pattern="Microsoft.NET.ILLink.Tasks" />
-#                <package pattern="Microsoft.DotNet.ILCompiler" />
-#            </packageSource>
-#        </packageSourceMapping>
-#
-#    </configuration>
+  #  nuget_config: |
+  #    <?xml version="1.0" encoding="utf-8"?>
+  #    <configuration>
+  #
+  #        <packageSources>
+  #            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  #            <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
+  #        </packageSources>
+  #
+  #        <packageSourceMapping>
+  #            <packageSource key="nuget.org">
+  #                <package pattern="*" />
+  #            </packageSource>
+  #            <packageSource key="dotnet8">
+  #                <package pattern="runtime.*" />
+  #                <package pattern="Microsoft.NETCore.App.Runtime.*" />
+  #                <package pattern="Microsoft.AspNetCore.App.Runtime.*" />
+  #                <package pattern="Microsoft.NET.ILLink.Tasks" />
+  #                <package pattern="Microsoft.DotNet.ILCompiler" />
+  #            </packageSource>
+  #        </packageSourceMapping>
+  #
+  #    </configuration>
 jobs:
-  build:
+  full:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-22.04 ]
+        pg_major: [ 15 ]
+        tfm: [ net8.0 ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      #      - name: Setup nuget config
+      #        run: echo "$nuget_config" > NuGet.config
+  
+      - name: NuGet Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4.0.0
+        with:
+          dotnet-version: |
+            ${{ env.dotnet_sdk_version }}
+
+      - name: Write script
+        run: echo "$AOT_Compat" > test-aot-compatibility.ps1
+          
+      - name: Publish and check for trimmer warnings
+        run: ./test-aot-compatibility.ps1 ${{ matrix.tfm }}
+        shell: pwsh
+  trimmed:
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -50,10 +127,14 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         pg_major: [15]
+        tfm: [ net8.0 ]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      #      - name: Setup nuget config
+      #        run: echo "$nuget_config" > NuGet.config
 
       - name: NuGet Cache
         uses: actions/cache@v4
@@ -69,15 +150,14 @@ jobs:
           dotnet-version: |
             ${{ env.dotnet_sdk_version }}
 
-#      - name: Setup nuget config
-#        run: echo "$nuget_config" > NuGet.config
-
-      - name: Setup Native AOT prerequisites
-        run: sudo apt-get install clang zlib1g-dev
-        shell: bash
-
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
+          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+          
       - name: Build
-        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net8.0 -p:OptimizationPreference=Size
+        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f ${{ matrix.tfm }} -p:OptimizationPreference=Size
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
@@ -85,14 +165,8 @@ jobs:
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 
-      - name: Start PostgreSQL
-        run: |
-          sudo systemctl start postgresql.service
-          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
-          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-
       - name: Run
-        run: test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests
+        run: test/Npgsql.NativeAotTests/bin/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests
 
       - name: Write binary size to summary
         run: |
@@ -100,35 +174,35 @@ jobs:
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
 
       - name: Dump mstat
-        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f net8.0 -- "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
+        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f ${{ matrix.tfm }} -- "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload mstat
         uses: actions/upload-artifact@v4
         with:
           name: npgsql.mstat
-          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat"
+          path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.mstat"
           retention-days: 3
 
       - name: Upload codedgen dgml
         uses: actions/upload-artifact@v4
         with:
           name: npgsql.codegen.dgml.xml
-          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
+          path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
           retention-days: 3
 
       - name: Upload scan dgml
         uses: actions/upload-artifact@v4
         with:
           name: npgsql.scan.dgml.xml
-          path: "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"
+          path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"
           retention-days: 3
 
       - name: Assert binary size
         run: |
-          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
+          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)"
 
-          if (( size > 7340032 )); then
-            echo "Binary size exceeds 7mb threshold"
+          if (( size > 5242880 )); then
+            echo "Binary size exceeds 5MB threshold"
             exit 1
           fi
