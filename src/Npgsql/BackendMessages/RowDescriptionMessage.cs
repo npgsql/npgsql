@@ -331,8 +331,12 @@ public sealed class FieldDescription
     internal void GetInfo(Type? type, ref ColumnInfo lastColumnInfo)
     {
         Debug.Assert(lastColumnInfo.ConverterInfo.IsDefault || (
-            ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) &&
-            lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType)), "Cache is bleeding over");
+            ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) && (
+                // 'UnknownResultType'
+                DataFormat is DataFormat.Text && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(_serializerOptions.TextPgType) ||
+                // Normal resolution
+                lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
+            ), "Cache is bleeding over");
 
         if (!lastColumnInfo.ConverterInfo.IsDefault && lastColumnInfo.ConverterInfo.TypeToConvert == type)
             return;
