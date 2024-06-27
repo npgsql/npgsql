@@ -364,18 +364,21 @@ public sealed class FieldDescription
         [MethodImpl(MethodImplOptions.NoInlining)]
         void GetInfoSlow(Type? type, out ColumnInfo lastColumnInfo)
         {
-            var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
+            var (typeInfo, exception) = AdoSerializerHelpers.TryGetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
             PgConverterInfo converterInfo;
             switch (DataFormat)
             {
             case DataFormat.Binary:
+                if (typeInfo is null)
+                    throw exception!;
+
                 // If we don't support binary we'll just throw.
                 converterInfo = typeInfo.Bind(Field, DataFormat);
                 lastColumnInfo = new(converterInfo, DataFormat.Binary, typeof(object) == type || converterInfo.IsBoxingConverter);
                 break;
             default:
                 // For text we'll fall back to any available text converter for the expected clr type or throw.
-                if (!typeInfo.TryBind(Field, DataFormat, out converterInfo))
+                if (typeInfo is null || !typeInfo.TryBind(Field, DataFormat, out converterInfo))
                 {
                     typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
                     converterInfo = typeInfo.Bind(Field, DataFormat);

@@ -119,7 +119,7 @@ class MiscTypeTests : MultiplexingTestBase
 
         // Try some alternative text types
         Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo("t"));
-        // Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo("t"));
+        Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo("t"));
 
         // Try as async
         Assert.That(await reader.GetFieldValueAsync<string>(0), Is.EqualTo("t"));
