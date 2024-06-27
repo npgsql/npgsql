@@ -1380,8 +1380,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (SeekToColumn(ordinal, field.DataFormat, resumableOp: true) is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
-        if (PgReader.FieldOffset > 0)
-            PgReader.Rewind(PgReader.FieldOffset);
+        Debug.Assert(!PgReader.NestedInitialized, "Unexpected nested read active, Seek(0) would seek to the start of the nested data.");
+        PgReader.Seek(0);
 
         var reader = CachedFreeNestedDataReader;
         if (reader != null)
@@ -1431,14 +1431,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer is null)
             return columnLength;
 
-        // Move to offset
-        if (_isSequential && PgReader.FieldOffset > dataOffset)
+        // Check whether any sequential seek is contractually sound (even though we might be able to satisfy rewinds we make sure we won't).
+        if (_isSequential && PgReader.IsFieldConsumed((int)dataOffset))
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
-        PgReader.Seek((int)dataOffset);
+        // Move to offset
+        Debug.Assert(!PgReader.NestedInitialized, "Unexpected nested read active, Seek(0) would seek to the start of the nested data.");
+        var remaining = PgReader.Seek((int)dataOffset);
 
         // At offset, read into buffer.
-        length = Math.Min(length, PgReader.FieldRemaining);
+        length = Math.Min(length, remaining);
         PgReader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
         return length;
     }
@@ -1903,14 +1905,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // * If it did get initialized as resumable we only allow rereading when either of the following is true:
         //  - The op is a resumable one again
         //  - The op isn't resumable but the field is still entirely unconsumed
-        if (_isSequential && (column > ordinal || (column == ordinal && (!reader.Resumable || (!resumableOp && !reader.IsAtStart)))))
+        if (_isSequential && (column > ordinal || (column == ordinal && (!reader.Resumable || (!resumableOp && !reader.FieldAtStart)))))
             ThrowInvalidSequentialSeek(column, ordinal);
 
         if (column == ordinal)
-        {
-            reader.Restart(resumableOp);
-            return reader.FieldSize;
-        }
+            return reader.Restart(resumableOp);
 
         reader.Commit();
         var columnLength = BufferSeekToColumn(column, ordinal, !_isRowBuffered);

@@ -13,6 +13,8 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public class PgReader
 {
+    const int UninitializedSentinel = -1;
+
     // We don't want to add a ton of memory pressure for large strings.
     internal const int MaxPreparedTextReaderSize = 1024 * 64;
 
@@ -50,26 +52,34 @@ public class PgReader
     internal PgReader(NpgsqlReadBuffer buffer)
     {
         _buffer = buffer;
-        _fieldStartPos = -1;
-        _currentSize = -1;
+        _fieldStartPos = UninitializedSentinel;
+        _currentSize = UninitializedSentinel;
     }
 
-    internal long FieldStartPos => _fieldStartPos;
-    internal int FieldSize => _fieldSize;
-    internal bool Initialized => _fieldStartPos is not -1;
-    internal int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
-    internal int FieldRemaining => FieldSize - FieldOffset;
+    internal bool Initialized => _fieldStartPos is not UninitializedSentinel;
+    int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
+    int FieldSize => _fieldSize;
+    int FieldRemaining => FieldSize - FieldOffset;
 
-    bool HasCurrent => _currentSize is not -1;
-    int CurrentSize => HasCurrent ? _currentSize : _fieldSize;
+    internal bool FieldIsDbNull => FieldSize is -1;
+    internal bool FieldAtStart => FieldOffset is 0;
+
+    internal bool IsFieldConsumed(int offset) => FieldOffset > offset;
+
+    // TODO refactor out
+    internal long GetFieldStartPos(NpgsqlNestedDataReader nestedDataReader) => _fieldStartPos;
+    // TODO refactor out
+    internal int GetFieldOffset(NpgsqlNestedDataReader nestedDataReader) => FieldOffset;
+
+    internal bool NestedInitialized => _currentSize is not UninitializedSentinel;
+    int CurrentSize => NestedInitialized ? _currentSize : _fieldSize;
 
     public ValueMetadata Current => new() { Size = CurrentSize, Format = _fieldFormat, BufferRequirement = CurrentBufferRequirement };
-    public int CurrentRemaining => HasCurrent ? _currentSize - CurrentOffset : FieldRemaining;
+    public int CurrentRemaining => NestedInitialized ? _currentSize - CurrentOffset : FieldRemaining;
 
-    internal Size CurrentBufferRequirement => HasCurrent ? _currentBufferRequirement : _fieldBufferRequirement;
+    internal Size CurrentBufferRequirement => NestedInitialized ? _currentBufferRequirement : _fieldBufferRequirement;
     int CurrentOffset => FieldOffset - _currentStartPos;
 
-    internal bool IsAtStart => FieldOffset is 0;
     internal bool Resumable => _resumable;
     public bool IsResumed => Resumable && CurrentOffset > 0;
 
@@ -514,12 +524,15 @@ public class PgReader
     public ValueTask<NestedReadScope> BeginNestedReadAsync(int size, Size bufferRequirement, CancellationToken cancellationToken = default)
         => BeginNestedRead(async: true, size, bufferRequirement, cancellationToken);
 
-    internal void Seek(int offset)
+    /// Seek origin is the start of Current, e.g. Seek(0) rewinds to the start.
+    internal int Seek(int offset)
     {
         if (CurrentOffset > offset)
             Rewind(CurrentOffset - offset);
         else if (CurrentOffset < offset)
             Consume(offset - CurrentOffset);
+
+        return FieldRemaining;
     }
 
     public void Consume(int? count = null)
@@ -600,20 +613,20 @@ public class PgReader
     {
         _currentStartPos = 0;
         _currentBufferRequirement = default;
-        _currentSize = -1;
+        _currentSize = UninitializedSentinel;
     }
 
-    internal void Restart(bool resumable)
+    internal int Restart(bool resumable)
     {
         if (!Initialized)
             ThrowHelper.ThrowInvalidOperationException("Cannot restart a non-initialized reader.");
 
         // We resume if the reader was initialized as resumable and we're not explicitly restarting as non-resumable.
-        // When the field size is -1 we're always restarting as resumable, to allow rereading null values endlessly.
-        if ((Resumable && resumable) || FieldSize is -1)
+        // When the field size is DbNullFieldSize (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
+        if ((Resumable && resumable) || FieldIsDbNull)
         {
-            _resumable = resumable || FieldSize is -1;
-            return;
+            _resumable = resumable || FieldIsDbNull;
+            return FieldSize;
         }
 
         // From this point on we're not resuming, we're resetting any remaining state and rewinding our position.
@@ -622,7 +635,7 @@ public class PgReader
         if (_requiresCleanup)
             Cleanup();
 
-        if (HasCurrent)
+        if (NestedInitialized)
             ResetCurrent();
 
         _fieldConsumed = false;
@@ -630,6 +643,7 @@ public class PgReader
         Seek(0);
 
         Debug.Assert(Initialized);
+        return FieldSize;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -642,15 +656,15 @@ public class PgReader
         if (_requiresCleanup)
             Cleanup();
 
-        if (HasCurrent)
+        if (NestedInitialized)
             ResetCurrent();
 
         // We make sure to fuly consume any FieldRemaining in the event of an exception or a nested scope not being disposed.
-        Debug.Assert(!HasCurrent);
+        Debug.Assert(!NestedInitialized);
         if (!_fieldConsumed && FieldRemaining > 0)
             Consume();
 
-        _fieldStartPos = -1;
+        _fieldStartPos = UninitializedSentinel;
         Debug.Assert(!Initialized);
 
         // These will always be re-initialized by Init()
@@ -670,15 +684,15 @@ public class PgReader
         if (_requiresCleanup)
             Cleanup();
 
-        if (HasCurrent)
+        if (NestedInitialized)
             ResetCurrent();
 
         // We make sure to fuly consume any FieldRemaining in the event of an exception or a nested scope not being disposed.
-        Debug.Assert(!HasCurrent);
+        Debug.Assert(!NestedInitialized);
         if (!_fieldConsumed && FieldRemaining > 0)
             return CommitAsync();
 
-        _fieldStartPos = -1;
+        _fieldStartPos = UninitializedSentinel;
         Debug.Assert(!Initialized);
 
         // These will always be re-initialized by Init()
@@ -693,7 +707,7 @@ public class PgReader
         {
             await ConsumeAsync().ConfigureAwait(false);
 
-            _fieldStartPos = -1;
+            _fieldStartPos = UninitializedSentinel;
             Debug.Assert(!Initialized);
 
             // These will always be re-initialized by Init()

@@ -258,7 +258,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         var reader = PgReader;
         try
         {
-            if (reader.FieldSize is -1)
+            if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
             var info = GetInfo(typeof(T), type, out var asObject);
@@ -292,7 +292,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         var reader = PgReader;
         try
         {
-            if (reader.FieldSize is -1)
+            if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
             var info = GetInfo(typeof(T), type, out var asObject);
@@ -364,9 +364,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         {
             ThrowIfNotOnRow();
             if (!IsInitializedAndAtStart)
-                return MoveNextColumn(resumableOp: true) is -1;
+                MoveNextColumn(resumableOp: true);
 
-            return PgReader.FieldSize is - 1;
+            return PgReader.FieldIsDbNull;
         }
     }
 
@@ -402,9 +402,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     #region Utilities
 
-    bool IsInitializedAndAtStart => PgReader.Initialized && (PgReader.FieldSize is -1 || PgReader.IsAtStart);
+    bool IsInitializedAndAtStart => PgReader.Initialized && (PgReader.FieldIsDbNull || PgReader.FieldAtStart);
 
-    int MoveNextColumn(bool resumableOp)
+    void MoveNextColumn(bool resumableOp)
     {
         PgReader.Commit();
 
@@ -414,10 +414,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _buf.Ensure(sizeof(int));
         var columnLen = _buf.ReadInt32();
         PgReader.Init(columnLen, DataFormat.Binary, resumableOp);
-        return PgReader.FieldSize;
     }
 
-    async ValueTask<int> MoveNextColumnAsync(bool resumableOp)
+    async ValueTask MoveNextColumnAsync(bool resumableOp)
     {
         await PgReader.CommitAsync().ConfigureAwait(false);
 
@@ -427,7 +426,6 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         await _buf.Ensure(sizeof(int), async: true).ConfigureAwait(false);
         var columnLen = _buf.ReadInt32();
         PgReader.Init(columnLen, DataFormat.Binary, resumableOp);
-        return PgReader.FieldSize;
     }
 
     void ThrowIfNotOnRow()

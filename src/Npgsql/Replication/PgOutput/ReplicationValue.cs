@@ -185,10 +185,11 @@ public class ReplicationValue
         if (_isConsumed)
             return;
 
-        if (!PgReader.Initialized)
-            PgReader.Init(Length, _fieldDescription.DataFormat);
-        await PgReader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        await PgReader.CommitAsync().ConfigureAwait(false);
+        var reader = PgReader;
+        if (!reader.Initialized)
+            reader.Init(Length, _fieldDescription.DataFormat);
+        await reader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await reader.CommitAsync().ConfigureAwait(false);
 
         _isConsumed = true;
     }
