@@ -504,7 +504,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// types.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    public NpgsqlSlimDataSourceBuilder EnableJson()
+    public NpgsqlSlimDataSourceBuilder EnableJsonTypes()
     {
         _resolverChainBuilder.AppendResolverFactory(() => new JsonTypeInfoResolverFactory(JsonSerializerOptions));
         return this;
