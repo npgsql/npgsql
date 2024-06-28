@@ -111,7 +111,8 @@ public class ReplicationValue
 
         using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-        var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
+        var reader = PgReader;
+        reader.Init(Length, _fieldDescription.DataFormat);
         await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
         var result = info.AsObject
             ? (T)await info.ConverterInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
@@ -146,7 +147,8 @@ public class ReplicationValue
             throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
+        var reader = PgReader;
+        reader.Init(Length, _fieldDescription.DataFormat);
         return reader.GetStream(canSeek: false);
     }
 
@@ -170,7 +172,8 @@ public class ReplicationValue
             throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
 
-        var reader = PgReader.Init(Length, _fieldDescription.DataFormat);
+        var reader = PgReader;
+        reader.Init(Length, _fieldDescription.DataFormat);
         reader.StartRead(info.ConverterInfo.BufferRequirement);
         var result = (TextReader)info.ConverterInfo.Converter.ReadAsObject(reader);
         reader.EndRead();
@@ -182,10 +185,11 @@ public class ReplicationValue
         if (_isConsumed)
             return;
 
-        if (!PgReader.Initialized)
-            PgReader.Init(Length, _fieldDescription.DataFormat);
-        await PgReader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        await PgReader.CommitAsync(resuming: false).ConfigureAwait(false);
+        var reader = PgReader;
+        if (!reader.Initialized)
+            reader.Init(Length, _fieldDescription.DataFormat);
+        await reader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await reader.CommitAsync().ConfigureAwait(false);
 
         _isConsumed = true;
     }

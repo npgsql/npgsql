@@ -411,8 +411,29 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     /// <summary>
-    /// Does not perform any I/O - assuming that the bytes to be skipped are in the memory buffer.
+    /// Skip a given number of bytes.
     /// </summary>
+    internal void Skip(int len, bool allowIO)
+    {
+        Debug.Assert(len >= 0);
+
+        if (allowIO && len > ReadBytesLeft)
+        {
+            len -= ReadBytesLeft;
+            while (len > Size)
+            {
+                ResetPosition();
+                Ensure(Size);
+                len -= Size;
+            }
+            ResetPosition();
+            Ensure(len);
+        }
+
+        Debug.Assert(ReadBytesLeft >= len);
+        ReadPosition += len;
+    }
+
     internal void Skip(int len)
     {
         Debug.Assert(ReadBytesLeft >= len);
@@ -422,7 +443,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// <summary>
     /// Skip a given number of bytes.
     /// </summary>
-    public async Task Skip(int len, bool async)
+    public async Task Skip(bool async, int len)
     {
         Debug.Assert(len >= 0);
 
@@ -658,11 +679,11 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     ColumnStream? _lastStream;
-    public ColumnStream CreateStream(int len, bool canSeek)
+    public ColumnStream CreateStream(int len, bool canSeek, bool consumeOnDispose = true)
     {
         if (_lastStream is not { IsDisposed: true })
             _lastStream = new ColumnStream(Connector);
-        _lastStream.Init(len, canSeek, !Connector.LongRunningConnection);
+        _lastStream.Init(len, canSeek, !Connector.LongRunningConnection, consumeOnDispose);
         return _lastStream;
     }
 

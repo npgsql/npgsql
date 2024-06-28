@@ -13,6 +13,8 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public class PgReader
 {
+    const int UninitializedSentinel = -1;
+
     // We don't want to add a ton of memory pressure for large strings.
     internal const int MaxPreparedTextReaderSize = 1024 * 64;
 
@@ -50,28 +52,36 @@ public class PgReader
     internal PgReader(NpgsqlReadBuffer buffer)
     {
         _buffer = buffer;
-        _fieldStartPos = -1;
-        _currentSize = -1;
+        _fieldStartPos = UninitializedSentinel;
+        _currentSize = UninitializedSentinel;
     }
 
-    internal long FieldStartPos => _fieldStartPos;
-    internal int FieldSize => _fieldSize;
-    internal bool Initialized => _fieldStartPos is not -1;
-    internal int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
-    internal int FieldRemaining => FieldSize - FieldOffset;
+    internal bool Initialized => _fieldStartPos is not UninitializedSentinel;
+    int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
+    int FieldSize => _fieldSize;
+    int FieldRemaining => FieldSize - FieldOffset;
 
-    bool HasCurrent => _currentSize is not -1;
-    int CurrentSize => HasCurrent ? _currentSize : _fieldSize;
+    internal bool FieldIsDbNull => FieldSize is -1;
+    internal bool FieldAtStart => FieldOffset is 0;
+
+    internal bool IsFieldConsumed(int offset) => FieldOffset > offset;
+
+    // TODO refactor out
+    internal long GetFieldStartPos(NpgsqlNestedDataReader nestedDataReader) => _fieldStartPos;
+    // TODO refactor out
+    internal int GetFieldOffset(NpgsqlNestedDataReader nestedDataReader) => FieldOffset;
+
+    internal bool NestedInitialized => _currentSize is not UninitializedSentinel;
+    int CurrentSize => NestedInitialized ? _currentSize : _fieldSize;
 
     public ValueMetadata Current => new() { Size = CurrentSize, Format = _fieldFormat, BufferRequirement = CurrentBufferRequirement };
-    public int CurrentRemaining => HasCurrent ? _currentSize - CurrentOffset : FieldRemaining;
+    public int CurrentRemaining => NestedInitialized ? _currentSize - CurrentOffset : FieldRemaining;
 
-    internal Size CurrentBufferRequirement => HasCurrent ? _currentBufferRequirement : _fieldBufferRequirement;
+    internal Size CurrentBufferRequirement => NestedInitialized ? _currentBufferRequirement : _fieldBufferRequirement;
     int CurrentOffset => FieldOffset - _currentStartPos;
 
-    internal bool IsAtStart => FieldOffset is 0;
     internal bool Resumable => _resumable;
-    public bool IsResumed => Resumable && CurrentSize != CurrentRemaining;
+    public bool IsResumed => Resumable && CurrentOffset > 0;
 
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
 
@@ -96,8 +106,8 @@ public class PgReader
         [MethodImpl(MethodImplOptions.NoInlining)]
         void Core(int count)
         {
-            if (count > FieldRemaining)
-                ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the field.");
+            if (count > CurrentRemaining)
+                ThrowHelper.ThrowIndexOutOfRangeException("Attempt to read past the end of the current field size.");
         }
     }
 
@@ -200,7 +210,7 @@ public class PgReader
 
         length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
-        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft);
+        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft, consumeOnDispose: false);
     }
 
     public TextReader GetTextReader(Encoding encoding)
@@ -342,14 +352,15 @@ public class PgReader
 
     public void Rewind(int count)
     {
-        // Shut down any streaming going on on the column
-        DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
+        if (CurrentOffset < count)
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to rewind past the current field start.");
 
         if (_buffer.ReadPosition < count)
-            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Cannot rewind further than the buffer start");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to rewind past the buffer start, some of this data is no longer part of the underlying buffer.");
 
-        if (CurrentOffset < count)
-            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Cannot rewind further than the current field offset");
+        // Shut down any streaming going on on the column
+        if (StreamActive)
+            DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         _buffer.ReadPosition -= count;
     }
@@ -361,14 +372,10 @@ public class PgReader
     /// <returns>The stream length, if any</returns>
     async ValueTask DisposeUserActiveStream(bool async)
     {
-        if (StreamActive)
-        {
-            if (async)
-                await _userActiveStream.DisposeAsync().ConfigureAwait(false);
-            else
-                _userActiveStream.Dispose();
-        }
-
+        if (async)
+            await (_userActiveStream?.DisposeAsync() ?? new()).ConfigureAwait(false);
+        else
+            _userActiveStream?.Dispose();
         _userActiveStream = null;
     }
 
@@ -409,7 +416,7 @@ public class PgReader
     internal void StartCharsRead(int dataOffset, ArraySegment<char>? buffer)
     {
         if (!Resumable)
-            ThrowHelper.ThrowInvalidOperationException("Wasn't initialized as resumed");
+            ThrowHelper.ThrowInvalidOperationException("Reader was not initialized as resumable");
 
         _charsReadOffset = dataOffset;
         _charsReadBuffer = buffer;
@@ -427,32 +434,16 @@ public class PgReader
         _charsReadBuffer = null;
     }
 
-    internal PgReader Init(int fieldLength, DataFormat format, bool resumable = false)
+    internal void Init(int fieldSize, DataFormat fieldFormat, bool resumable = false)
     {
         if (Initialized)
-        {
-            if (resumable)
-            {
-                if (Resumable)
-                    return this;
-                _resumable = true;
-            }
-            else
-            {
-                if (!IsAtStart)
-                    ThrowHelper.ThrowInvalidOperationException("Cannot be initialized to be non-resumable until a commit is issued.");
-                _resumable = false;
-            }
-        }
-
-        Debug.Assert(!_requiresCleanup, "Reader wasn't properly committed before next init");
+            ThrowHelper.ThrowInvalidOperationException("Already initialized");
 
         _fieldStartPos = _buffer.CumulativeReadPosition;
-        _fieldFormat = format;
-        _fieldSize = fieldLength;
-        _resumable = resumable;
         _fieldConsumed = false;
-        return this;
+        _fieldSize = fieldSize;
+        _fieldFormat = fieldFormat;
+        _resumable = resumable;
     }
 
     internal void StartRead(Size bufferRequirement)
@@ -460,7 +451,11 @@ public class PgReader
         Debug.Assert(FieldSize >= 0);
         _fieldBufferRequirement = bufferRequirement;
         if (ShouldBuffer(bufferRequirement))
-            Buffer(bufferRequirement);
+            BufferNoInlined(bufferRequirement);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void BufferNoInlined(Size bufferRequirement)
+            => Buffer(bufferRequirement);
     }
 
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
@@ -529,32 +524,60 @@ public class PgReader
     public ValueTask<NestedReadScope> BeginNestedReadAsync(int size, Size bufferRequirement, CancellationToken cancellationToken = default)
         => BeginNestedRead(async: true, size, bufferRequirement, cancellationToken);
 
-    internal void Seek(int offset)
+    /// Seek origin is the start of Current, e.g. Seek(0) rewinds to the start.
+    internal int Seek(int offset)
     {
         if (CurrentOffset > offset)
             Rewind(CurrentOffset - offset);
         else if (CurrentOffset < offset)
             Consume(offset - CurrentOffset);
+
+        return FieldRemaining;
     }
 
-    internal async ValueTask Consume(bool async, int? count = null, CancellationToken cancellationToken = default)
+    public void Consume(int? count = null)
     {
         if (count <= 0 || FieldSize < 0 || FieldRemaining == 0)
             return;
 
-        var remaining = count ?? CurrentRemaining;
-        CheckBounds(remaining);
+        var currentRemaining = CurrentRemaining;
+        var remaining = count ?? currentRemaining;
+
+        if (count > currentRemaining)
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
+
+        if (StreamActive)
+            DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         var origOffset = FieldOffset;
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
         if (!_buffer.Connector.IsBroken)
-            await _buffer.Skip(remaining, async).ConfigureAwait(false);
+            _buffer.Skip(remaining, allowIO: true);
 
         Debug.Assert(FieldRemaining == FieldSize - origOffset - remaining);
     }
 
-    public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
-    public ValueTask ConsumeAsync(int? count = null, CancellationToken cancellationToken = default) => Consume(async: true, count, cancellationToken);
+    public async ValueTask ConsumeAsync(int? count = null, CancellationToken cancellationToken = default)
+    {
+        if (count <= 0 || FieldSize < 0 || FieldRemaining == 0)
+            return;
+
+        var currentRemaining = CurrentRemaining;
+        var remaining = count ?? currentRemaining;
+
+        if (count > currentRemaining)
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
+
+        if (StreamActive)
+            await DisposeUserActiveStream(async: true).ConfigureAwait(false);
+
+        var origOffset = FieldOffset;
+        // A breaking exception unwind from a nested scope should not try to consume its remaining data.
+        if (!_buffer.Connector.IsBroken)
+            await _buffer.Skip(async:true, remaining).ConfigureAwait(false);
+
+        Debug.Assert(FieldRemaining == FieldSize - origOffset - remaining);
+    }
 
     [MemberNotNullWhen(true, nameof(_userActiveStream))]
     bool StreamActive => _userActiveStream is { IsDisposed: false };
@@ -564,169 +587,134 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
     }
 
-    internal bool CommitHasIO(bool resuming) => Initialized && !resuming && FieldRemaining > 0;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    void Cleanup()
+    {
+        if (StreamActive)
+            DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void Commit(bool resuming)
+        if (_pooledArray is not null)
+        {
+            ArrayPool.Return(_pooledArray);
+            _pooledArray = null;
+        }
+
+        if (_charsReadReader is not null)
+        {
+            _charsReadReader.Dispose();
+            _charsReadReader = null;
+            _charsRead = default;
+        }
+
+        _requiresCleanup = false;
+    }
+
+    void ResetCurrent()
+    {
+        _currentStartPos = 0;
+        _currentBufferRequirement = default;
+        _currentSize = UninitializedSentinel;
+    }
+
+    internal int Restart(bool resumable)
     {
         if (!Initialized)
-            return;
+            ThrowHelper.ThrowInvalidOperationException("Cannot restart a non-initialized reader.");
 
-        if (resuming)
+        // We resume if the reader was initialized as resumable and we're not explicitly restarting as non-resumable.
+        // When the field size is DbNullFieldSize (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
+        if ((Resumable && resumable) || FieldIsDbNull)
         {
-            if (!Resumable)
-                ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
-            return;
+            _resumable = resumable || FieldIsDbNull;
+            return FieldSize;
         }
 
-        // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
-        // Also shut down any streaming, pooled arrays etc.
-        if (_requiresCleanup || (!_fieldConsumed && FieldRemaining > 0))
-        {
-            CommitSlow();
-            return;
-        }
+        // From this point on we're not resuming, we're resetting any remaining state and rewinding our position.
 
-        _fieldStartPos = -1;
-        Debug.Assert(!Initialized);
+        // Shut down any streaming and pooling going on on the column.
+        if (_requiresCleanup)
+            Cleanup();
 
-        // These will always be re-initialized by Init()
-        // _fieldSize = default;
-        // _fieldFormat = default;
-        // _resumable = default;
-        // _fieldCompleted = default;
+        if (NestedInitialized)
+            ResetCurrent();
 
-        if (HasCurrent)
-        {
-            _currentStartPos = 0;
-            _currentBufferRequirement = default;
-            _currentSize = -1;
-            Debug.Assert(!HasCurrent);
-        }
+        _fieldConsumed = false;
+        _resumable = resumable;
+        Seek(0);
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        void CommitSlow()
-        {
-            // Shut down any streaming and pooling going on on the column.
-            if (_requiresCleanup)
-            {
-                if (StreamActive)
-                    DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
-
-                if (_pooledArray is not null)
-                {
-                    ArrayPool.Return(_pooledArray);
-                    _pooledArray = null;
-                }
-
-                if (_charsReadReader is not null)
-                {
-                    _charsReadReader.Dispose();
-                    _charsReadReader = null;
-                    _charsRead = default;
-                }
-                _requiresCleanup = false;
-            }
-
-            Consume(async: false, count: FieldRemaining).GetAwaiter().GetResult();
-
-            _fieldStartPos = -1;
-            Debug.Assert(!Initialized);
-
-            // These will always be re-initialized by Init()
-            // _fieldSize = default;
-            // _fieldFormat = default;
-            // _resumable = default;
-            // _fieldCompleted = default;
-
-            if (HasCurrent)
-            {
-                _currentStartPos = 0;
-                _currentBufferRequirement = default;
-                _currentSize = -1;
-                Debug.Assert(!HasCurrent);
-            }
-        }
+        Debug.Assert(Initialized);
+        return FieldSize;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal ValueTask CommitAsync(bool resuming)
+    internal void Commit()
     {
         if (!Initialized)
-            return new();
+            return;
 
-        if (resuming)
-        {
-            if (!Resumable)
-                ThrowHelper.ThrowInvalidOperationException("Cannot resume a non-resumable read.");
-            return new();
-        }
+        // Shut down any streaming and pooling going on on the column.
+        if (_requiresCleanup)
+            Cleanup();
 
-        // We don't rely on CurrentRemaining, just to make sure we consume fully in the event of a nested scope not being disposed.
-        // Also shut down any streaming, pooled arrays etc.
-        if (_requiresCleanup || (!_fieldConsumed && FieldRemaining > 0))
-            return CommitSlow();
+        if (NestedInitialized)
+            ResetCurrent();
 
-        _fieldStartPos = -1;
+        // We make sure to fuly consume any FieldRemaining in the event of an exception or a nested scope not being disposed.
+        Debug.Assert(!NestedInitialized);
+        if (!_fieldConsumed && FieldRemaining > 0)
+            Consume();
+
+        _fieldStartPos = UninitializedSentinel;
         Debug.Assert(!Initialized);
 
         // These will always be re-initialized by Init()
         // _fieldSize = default;
         // _fieldFormat = default;
         // _resumable = default;
-        // _fieldCompleted = default;
+        // _fieldConsumed = default;
+    }
 
-        if (HasCurrent)
-        {
-            _currentStartPos = 0;
-            _currentBufferRequirement = default;
-            _currentSize = -1;
-            Debug.Assert(!HasCurrent);
-        }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ValueTask CommitAsync()
+    {
+        if (!Initialized)
+            return new();
+
+        // Shut down any streaming and pooling going on on the column.
+        if (_requiresCleanup)
+            Cleanup();
+
+        if (NestedInitialized)
+            ResetCurrent();
+
+        // We make sure to fuly consume any FieldRemaining in the event of an exception or a nested scope not being disposed.
+        Debug.Assert(!NestedInitialized);
+        if (!_fieldConsumed && FieldRemaining > 0)
+            return CommitAsync();
+
+        _fieldStartPos = UninitializedSentinel;
+        Debug.Assert(!Initialized);
+
+        // These will always be re-initialized by Init()
+        // _fieldSize = default;
+        // _fieldFormat = default;
+        // _resumable = default;
+        // _fieldConsumed = default;
 
         return new();
 
-        async ValueTask CommitSlow()
+        async ValueTask CommitAsync()
         {
-            // Shut down any streaming and pooling going on on the column.
-            if (_requiresCleanup)
-            {
-                if (StreamActive)
-                    await DisposeUserActiveStream(async: true).ConfigureAwait(false);
+            await ConsumeAsync().ConfigureAwait(false);
 
-                if (_pooledArray is not null)
-                {
-                    ArrayPool.Return(_pooledArray);
-                    _pooledArray = null;
-                }
-
-                if (_charsReadReader is not null)
-                {
-                    _charsReadReader.Dispose();
-                    _charsReadReader = null;
-                    _charsRead = default;
-                }
-                _requiresCleanup = false;
-            }
-
-            await Consume(async: true, count: FieldRemaining).ConfigureAwait(false);
-
-            _fieldStartPos = -1;
+            _fieldStartPos = UninitializedSentinel;
             Debug.Assert(!Initialized);
 
             // These will always be re-initialized by Init()
             // _fieldSize = default;
             // _fieldFormat = default;
             // _resumable = default;
-            // _fieldCompleted = default;
-
-            if (HasCurrent)
-            {
-                _currentStartPos = 0;
-                _currentBufferRequirement = default;
-                _currentSize = -1;
-                Debug.Assert(!HasCurrent);
-            }
+            // _fieldConsumed = default;
         }
     }
 
