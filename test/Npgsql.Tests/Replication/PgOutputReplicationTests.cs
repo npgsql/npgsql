@@ -125,12 +125,27 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 Assert.That(insertMsg.Relation, Is.SameAs(relationMsg));
                 var columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
                 Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                var postgresType = columnEnumerator.Current.GetPostgresType();
+                Assert.That(postgresType.FullName, Is.EqualTo("pg_catalog.integer"));
+                Assert.That(columnEnumerator.Current.GetDataTypeName(), Is.EqualTo("integer"));
+                Assert.That(columnEnumerator.Current.GetFieldName(), Is.EqualTo("id"));
                 if (IsBinary)
+                {
+                    Assert.That(columnEnumerator.Current.GetFieldType(), Is.EqualTo(typeof(int)));
                     Assert.That(await columnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                }
                 else
+                {
+                    Assert.That(columnEnumerator.Current.GetFieldType(), Is.EqualTo(typeof(string)));
                     Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+                }
 
                 Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                postgresType = columnEnumerator.Current.GetPostgresType();
+                Assert.That(postgresType.FullName, Is.EqualTo("pg_catalog.text"));
+                Assert.That(columnEnumerator.Current.GetDataTypeName(), Is.EqualTo("text"));
+                Assert.That(columnEnumerator.Current.GetFieldType(), Is.EqualTo(typeof(string)));
+                Assert.That(columnEnumerator.Current.GetFieldName(), Is.EqualTo("name"));
                 Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
                 Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("val1"));
                 Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
