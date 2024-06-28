@@ -2082,7 +2082,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     PgConverter GetInfo(int ordinal, Type type, out DataFormat format, out Size bufferRequirement, out bool asObject)
     {
         if ((uint)ordinal > (uint)ColumnCount)
-            ThrowHelper.ThrowIndexOutOfRangeException("Ordinal must be between 0 and " + (ColumnCount - 1));
+            ThrowHelper.ThrowIndexOutOfRangeException("Ordinal must be between 0 and {0}", ColumnCount - 1);
 
         // This may have been a stream left open by GetChars or GetBytes, if so ignore.
         if (PgReader is { Initialized: true, Resumable: false })
