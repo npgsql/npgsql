@@ -37,6 +37,8 @@ static class IndicesExtensions
                 ThrowHelper.ThrowIndexOutOfRangeException("Cannot index into a 0-dimensional array.");
                 return ref Unsafe.NullRef<int>();
             case 1:
+                Debug.Assert(index is 0);
+                Debug.Assert(indices.Many is null);
                 return ref indices.One;
             default:
                 return ref indices.Many![index];
