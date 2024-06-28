@@ -65,7 +65,7 @@ public class ArrayTests : MultiplexingTestBase
         cmd.Parameters.AddWithValue("p", new int[1, 1, 1, 1, 1, 1, 1, 1, 1]); // 9 dimensions
         Assert.That(
             () => cmd.ExecuteScalarAsync(),
-            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("values (Parameter 'Postgres arrays can have at most 8 dimensions.')"));
+            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'values')"));
     }
 
     [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
