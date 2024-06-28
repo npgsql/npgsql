@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -332,8 +331,7 @@ public sealed class FieldDescription
     {
         Debug.Assert(lastColumnInfo.ConverterInfo.IsDefault || (
             ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) && (
-                // 'UnknownResultType'
-                DataFormat is DataFormat.Text && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(_serializerOptions.TextPgType) ||
+                IsUnknowResultType() && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(_serializerOptions.TextPgType) ||
                 // Normal resolution
                 lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
@@ -368,24 +366,37 @@ public sealed class FieldDescription
             PgConverterInfo converterInfo;
             switch (DataFormat)
             {
-            case DataFormat.Binary:
+            case DataFormat.Text when IsUnknowResultType():
+                // Either we succeed binding the returned typeInfo against DataFormat.Text or we try to do a fallback.
+                if (typeInfo?.TryBind(Field, DataFormat.Text, out converterInfo) == true)
+                {
+                    lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
+                    break;
+                }
+
+                // Try to resolve some 'pg_catalog.text' type info for the expected clr type.
+                typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
+
+                // We start binding to DataFormat.Binary as it's the broadest supported format.
+                // The format however is irrelevant as 'pg_catalog.text' data is identical across either.
+                // Given we did a resolution against 'pg_catalog.text' and not the actual field type we're in reinterpretation territory anyway.
+                if (!typeInfo.TryBind(Field, DataFormat.Binary, out converterInfo))
+                    converterInfo = typeInfo.Bind(Field, DataFormat.Text);
+
+                lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
+
+                break;
+            case DataFormat.Binary or DataFormat.Text:
                 if (typeInfo is null)
                     throw exception!;
 
-                // If we don't support binary we'll just throw.
+                // If we don't support the DataFormat we'll just throw.
                 converterInfo = typeInfo.Bind(Field, DataFormat);
-                lastColumnInfo = new(converterInfo, DataFormat.Binary, typeof(object) == type || converterInfo.IsBoxingConverter);
+                lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
                 break;
             default:
-                // For text we'll fall back to any available text converter for the expected clr type or throw.
-                if (typeInfo is null || !typeInfo.TryBind(Field, DataFormat, out converterInfo))
-                {
-                    typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
-                    converterInfo = typeInfo.Bind(Field, DataFormat);
-                    lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
-                }
-                else
-                    lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(DataFormat), "Unknown data format", DataFormat);
+                lastColumnInfo = default;
                 break;
             }
 
@@ -393,7 +404,12 @@ public sealed class FieldDescription
             // When passed in an unsupported type it allows the error to be more specific, instead of just having object/null to deal with.
             if (_objectOrDefaultInfo.ConverterInfo.IsDefault && type is not null)
                 _ = ObjectOrDefaultInfo;
+
         }
+
+        // DataFormat.Text today exclusively signals that we executed with an UnknownResultTypeList.
+        // If we ever want to fully support DataFormat.Text we'll need to flow UnknownResultType status separately.
+        bool IsUnknowResultType() => DataFormat is DataFormat.Text;
     }
 
     /// <summary>
