@@ -107,6 +107,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
         if (Binary != null)
             yield return new KeyValuePair<string, string?>("binary", Binary.Value ? "on" : "off");
         if (StreamingMode != null)
+        {
             yield return new KeyValuePair<string, string?>("streaming", StreamingMode.Value switch
             {
                 PgOutputStreamingMode.Off => "off",
@@ -114,6 +115,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
                 PgOutputStreamingMode.Parallel => "parallel",
                 _ => throw new ArgumentOutOfRangeException($"Unknown {nameof(PgOutputStreamingMode)} value: {StreamingMode.Value}")
             });
+        }
         if (Messages != null)
             yield return new KeyValuePair<string, string?>("messages", Messages.Value ? "on" : "off");
         if (TwoPhase != null)

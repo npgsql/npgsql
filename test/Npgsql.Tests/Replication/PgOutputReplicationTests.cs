@@ -798,10 +798,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
                 // Rollback Transaction 2
                 if (IsStreaming)
+                {
                     Assert.That(messages.Current,
                         _streamingMode == PgOutputStreamingMode.On
                             ? Is.TypeOf<StreamAbortMessage>()
                             : Is.TypeOf<ParallelStreamAbortMessage>());
+                }
 
                 streamingCts.Cancel();
                 await AssertReplicationCancellation(messages);
