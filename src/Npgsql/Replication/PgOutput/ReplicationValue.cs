@@ -77,6 +77,12 @@ public class ReplicationValue
     public Type GetFieldType() => _fieldDescription.FieldType;
 
     /// <summary>
+    /// Gets the name of the specified column.
+    /// </summary>
+    /// <returns>The name of the specified column.</returns>
+    public string GetFieldName() => _fieldDescription.Name;
+
+    /// <summary>
     /// Gets the value of the specified column as a type.
     /// </summary>
     /// <typeparam name="T">The type of the value to be returned.</typeparam>
