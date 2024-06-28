@@ -794,6 +794,7 @@ FROM pg_constraint c
         // TODO: Support type name restriction
         try
         {
+            var serializerOptions = connector.SerializerOptions;
             PgSerializerOptions.IntrospectionCaller = true;
 
             var types = new List<PostgresType>();
@@ -802,7 +803,7 @@ FROM pg_constraint c
             types.AddRange(connector.DatabaseInfo.CompositeTypes);
             foreach (var baseType in types)
             {
-                if (connector.SerializerOptions.GetDefaultTypeInfo(baseType) is not { } info)
+                if (serializerOptions.GetTypeInfoInternal(null, serializerOptions.ToCanonicalTypeId(baseType)) is not { } info)
                     continue;
 
                 var row = table.Rows.Add();
@@ -817,7 +818,7 @@ FROM pg_constraint c
 
             foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
             {
-                if (connector.SerializerOptions.GetDefaultTypeInfo(arrayType) is not { } info)
+                if (serializerOptions.GetTypeInfoInternal(null, serializerOptions.ToCanonicalTypeId(arrayType)) is not { } info)
                     continue;
 
                 var row = table.Rows.Add();
@@ -836,7 +837,7 @@ FROM pg_constraint c
 
             foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
             {
-                if (connector.SerializerOptions.GetDefaultTypeInfo(rangeType) is not { } info)
+                if (serializerOptions.GetTypeInfoInternal(null, serializerOptions.ToCanonicalTypeId(rangeType)) is not { } info)
                     continue;
 
                 var row = table.Rows.Add();
@@ -856,7 +857,7 @@ FROM pg_constraint c
             foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
             {
                 var subtypeType = multirangeType.Subrange.Subtype;
-                if (connector.SerializerOptions.GetDefaultTypeInfo(multirangeType) is not { } info)
+                if (serializerOptions.GetTypeInfoInternal(null, serializerOptions.ToCanonicalTypeId(multirangeType)) is not { } info)
                     continue;
 
                 var row = table.Rows.Add();
@@ -876,7 +877,7 @@ FROM pg_constraint c
             foreach (var domainType in connector.DatabaseInfo.DomainTypes)
             {
                 var representationalType = domainType.GetRepresentationalType();
-                if (connector.SerializerOptions.GetDefaultTypeInfo(representationalType) is not { } info)
+                if (serializerOptions.GetTypeInfoInternal(null, serializerOptions.ToCanonicalTypeId(representationalType)) is not { } info)
                     continue;
 
                 var row = table.Rows.Add();

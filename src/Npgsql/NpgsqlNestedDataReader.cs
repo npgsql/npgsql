@@ -380,14 +380,16 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             if (i >= _columns.Count)
             {
                 var pgType = SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
-                _columns.Add(new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgType, SerializerOptions), Format));
+                var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
+                _columns.Add(new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format));
             }
             else
             {
                 var pgType = _columns[i].PostgresType.OID == typeOid
                     ? _columns[i].PostgresType
                     : SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
-                _columns[i] = new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgType, SerializerOptions), Format);
+                var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
+                _columns[i] = new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format);
             }
 
             var columnLen = PgReader.ReadInt32();
@@ -517,7 +519,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             }
         }
 
-        var converterInfo = column.Bind(AdoSerializerHelpers.GetTypeInfoForReading(type, column.PostgresType, SerializerOptions));
+        var converterInfo = column.Bind(AdoSerializerHelpers.GetTypeInfoForReading(type, SerializerOptions.ToCanonicalTypeId(column.PostgresType), SerializerOptions));
         _columns[ordinal] = column with { LastConverterInfo = converterInfo };
         asObject = converterInfo.IsBoxingConverter;
         return converterInfo;

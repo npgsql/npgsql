@@ -341,7 +341,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 // Handle plugin types via lookup.
                 : GetRepresentationalOrDefault(npgsqlDbType.Value.ToUnqualifiedDataTypeNameOrThrow());
         }
-        var info = options.GetTypeInfo(type, pgTypeId)
+        var info = options.GetTypeInfoInternal(type, pgTypeId)
                    ?? throw new NotSupportedException($"Reading is not supported for type '{type}'{(npgsqlDbType is null ? "" : $" and NpgsqlDbType '{npgsqlDbType}'")}");
 
         // Binary export has no type info so we only do caller-directed interpretation of data.
