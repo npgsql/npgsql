@@ -995,17 +995,16 @@ public sealed partial class NpgsqlConnector
             : IPAddressesToEndpoints(await TaskTimeoutAndCancellation.ExecuteAsync(GetHostAddressesAsync, timeout, cancellationToken).ConfigureAwait(false),
                 Port);
 
-        // Give each IP an equal share of the remaining time
-        var perIpTimespan = default(TimeSpan);
-        var perIpTimeout = timeout;
+        // Give each endpoint an equal share of the remaining time
+        var perEndpointTimeout = default(TimeSpan);
         if (timeout.IsSet)
-        {
-            perIpTimespan = new TimeSpan(timeout.CheckAndGetTimeLeft().Ticks / endpoints.Length);
-            perIpTimeout = new NpgsqlTimeout(perIpTimespan);
-        }
+            perEndpointTimeout = timeout.CheckAndGetTimeLeft() / endpoints.Length;
 
         for (var i = 0; i < endpoints.Length; i++)
         {
+            var endpointTimeout = timeout.IsSet ? new NpgsqlTimeout(perEndpointTimeout) : timeout;
+            Debug.Assert(timeout.IsSet == endpointTimeout.IsSet);
+
             var endpoint = endpoints[i];
             ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
             var protocolType =
@@ -1016,7 +1015,7 @@ public sealed partial class NpgsqlConnector
             var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
             try
             {
-                await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken).ConfigureAwait(false);
+                await OpenSocketConnectionAsync(socket, endpoint, endpointTimeout, cancellationToken).ConfigureAwait(false);
                 SetSocketOptions(socket);
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
