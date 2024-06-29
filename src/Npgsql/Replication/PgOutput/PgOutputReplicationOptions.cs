@@ -18,9 +18,29 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
     /// <param name="twoPhase">Enable streaming of prepared transactions</param>
-    public PgOutputReplicationOptions(string publicationName, PgOutputProtocolVersion protocolVersion, bool? binary = null, PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
-        : this(new List<string> { publicationName ?? throw new ArgumentNullException(nameof(publicationName)) }, protocolVersion, binary, streamingMode, messages, twoPhase)
-    { }
+    [Obsolete]
+    public PgOutputReplicationOptions(string publicationName, ulong protocolVersion, bool? binary = null,
+        PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
+        : this([publicationName ?? throw new ArgumentNullException(nameof(publicationName))], (PgOutputProtocolVersion)protocolVersion,
+            binary, streamingMode, messages, twoPhase)
+    {
+    }
+
+    /// <summary>
+    /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
+    /// </summary>
+    /// <param name="publicationName">The publication names to include into the stream</param>
+    /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
+    /// <param name="binary">Send values in binary representation</param>
+    /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
+    /// <param name="messages">Write logical decoding messages into the replication stream</param>
+    /// <param name="twoPhase">Enable streaming of prepared transactions</param>
+    public PgOutputReplicationOptions(string publicationName, PgOutputProtocolVersion protocolVersion, bool? binary = null,
+        PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
+        : this([publicationName ?? throw new ArgumentNullException(nameof(publicationName))], protocolVersion, binary, streamingMode,
+            messages, twoPhase)
+    {
+    }
 
     /// <summary>
     /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
@@ -31,7 +51,24 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
     /// <param name="twoPhase">Enable streaming of prepared transactions</param>
-    public PgOutputReplicationOptions(IEnumerable<string> publicationNames, PgOutputProtocolVersion protocolVersion, bool? binary = null, PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
+    [Obsolete]
+    public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion, bool? binary = null,
+        PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
+        : this(publicationNames, (PgOutputProtocolVersion)protocolVersion, binary, streamingMode, messages, twoPhase)
+    {
+    }
+
+    /// <summary>
+    /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
+    /// </summary>
+    /// <param name="publicationNames">The publication names to include into the stream</param>
+    /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
+    /// <param name="binary">Send values in binary representation</param>
+    /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
+    /// <param name="messages">Write logical decoding messages into the replication stream</param>
+    /// <param name="twoPhase">Enable streaming of prepared transactions</param>
+    public PgOutputReplicationOptions(IEnumerable<string> publicationNames, PgOutputProtocolVersion protocolVersion, bool? binary = null,
+        PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
     {
         var publicationNamesList = new List<string>(publicationNames);
         if (publicationNamesList.Count < 1)
@@ -78,6 +115,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// <see cref="PgOutputStreamingMode.Parallel"/> works as of logical streaming replication protocol version 4 (PostgreSQL 16+),
     /// </remarks>
     // See: https://github.com/postgres/postgres/commit/464824323e57dc4b397e8b05854d779908b55304
+    // and https://github.com/postgres/postgres/commit/216a784829c2c5f03ab0c43e009126cbb819e9b2
     public PgOutputStreamingMode? StreamingMode { get; }
 
     /// <summary>
