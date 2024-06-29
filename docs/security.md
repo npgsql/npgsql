@@ -8,20 +8,28 @@ If a `Password` is not specified and your PostgreSQL is configured to request a 
 
 ### Auth token rotation and dynamic password
 
-In some cloud scenarios, logging into PostgreSQL is done with an auth token that is rotated every time interval (e.g. one hour). Starting with version 7.0, Npgsql has a built-in periodic password provider mechanism, which allows refreshing the password with zero effort:
+In some cloud scenarios, logging into PostgreSQL is done with an auth token that is rotated every time interval (e.g. one hour). Npgsql has a built-in periodic password provider mechanism, which allows using an up-to-date access token with zero effort:
 
 ```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
+dataSourceBuilder.UsePasswordProvider(
+    passwordProvider: _ => throw new NotSupportedException(),
+    passwordProviderAsync: (builder, token) => /* code to fetch the new access token */);
+await using var dataSource = dataSourceBuilder.Build();
+```
+
+Every time a new physical connection needs to be opened to PostgreSQL, either the synchronous `passwordProvider` or the asynchronous `passwordProviderAsync` will be called (depending whether you used `Open()` or `OpenAsync()`). Since modern .NET applications are encouraged to always use synchronous I/O, it's good practice to simply throw in the synchronous password provider, as above.
+
+Note that since the password provider is invoked *every* time a physical connection is opened, it shouldn't take too long; typically, this would call into a cloud provider API (e.g. Azure Managed Identity), which itself implements a caching mechanism. However, if no such caching is done and the code could take a while, you can instead instruct Npgsql to cache the auth token for a given amount of time:
+
+```csharp
 dataSourceBuilder.UsePeriodicPasswordProvider(
     (settings, cancellationToken) =>  /* async code to fetch the new access token */,
     TimeSpan.FromMinutes(55), // Interval for refreshing the token
     TimeSpan.FromSeconds(5)); // Interval for retrying after a refresh failure
-await using var dataSource = dataSourceBuilder.Build();
 ```
 
-This API allows you to provide a minimal async code fragment for fetching the latest auth token, and have Npgsql take care of running it for you as needed.
-
-If, instead, you prefer to manage this yourself, you can simply inject a new password at any time into a working data source:
+Finally, if you already have code running when the auth token changes, you can simply inject it manually at any time into a working data source:
 
 ```csharp
 dataSource.Password = <new password>;
