@@ -18,7 +18,7 @@ dataSourceBuilder.UsePasswordProvider(
 await using var dataSource = dataSourceBuilder.Build();
 ```
 
-Every time a new physical connection needs to be opened to PostgreSQL, either the synchronous `passwordProvider` or the asynchronous `passwordProviderAsync` will be called (depending whether you used `Open()` or `OpenAsync()`). Since modern .NET applications are encouraged to always use synchronous I/O, it's good practice to simply throw in the synchronous password provider, as above.
+Every time a new physical connection needs to be opened to PostgreSQL, either the synchronous `passwordProvider` or the asynchronous `passwordProviderAsync` will be called (depending whether you used `Open()` or `OpenAsync()`). Since modern .NET applications are encouraged to always use asynchronous I/O, it's good practice to simply throw in the synchronous password provider, as above.
 
 Note that since the password provider is invoked *every* time a physical connection is opened, it shouldn't take too long; typically, this would call into a cloud provider API (e.g. Azure Managed Identity), which itself implements a caching mechanism. However, if no such caching is done and the code could take a while, you can instead instruct Npgsql to cache the auth token for a given amount of time:
 
