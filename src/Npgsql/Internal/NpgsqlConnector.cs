@@ -1276,6 +1276,12 @@ public sealed partial class NpgsqlConnector
                 // We've read all the prepended response.
                 // Allow cancellation to proceed.
                 ReadingPrependedMessagesMRE.Set();
+
+                // User requested cancellation but it hasn't been performed yet.
+                // This might happen if the cancellation is requested while we're reading prepended responses
+                // because we shouldn't cancel them and otherwise might deadlock.
+                if (UserCancellationRequested && !PostgresCancellationPerformed)
+                    PerformDelayedUserCancellation();
             }
             catch (Exception e)
             {
@@ -1686,7 +1692,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal void PerformUserCancellation()
+    internal void PerformImmediateUserCancellation()
     {
         var connection = Connection;
         if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader || UserCancellationRequested)
@@ -1706,6 +1712,11 @@ public sealed partial class NpgsqlConnector
 
         try
         {
+            // Set the flag first before waiting on ReadingPrependedMessagesMRE.
+            // That way we're making sure that in case we're racing with ReadingPrependedMessagesMRE.Set
+            // that it's going to read the new value of the flag and request cancellation
+            _userCancellationRequested = true;
+
             // Wait before we've read all responses for the prepended queries
             // as we can't gracefully handle their cancellation.
             // Break makes sure that it's going to be set even if we fail while reading them.
@@ -1715,30 +1726,57 @@ public sealed partial class NpgsqlConnector
             if (!ReadingPrependedMessagesMRE.Wait(0))
                 return;
 
-            _userCancellationRequested = true;
-
-            if (AttemptPostgresCancellation && SupportsPostgresCancellation)
-            {
-                var cancellationTimeout = Settings.CancellationTimeout;
-                if (PerformPostgresCancellation() && cancellationTimeout >= 0)
-                {
-                    if (cancellationTimeout > 0)
-                    {
-                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-                        ReadBuffer.Cts.CancelAfter(cancellationTimeout);
-                    }
-
-                    return;
-                }
-            }
-
-            ReadBuffer.Timeout = _cancelImmediatelyTimeout;
-            ReadBuffer.Cts.Cancel();
+            PerformUserCancellation();
         }
         finally
         {
             Monitor.Exit(CancelLock);
         }
+    }
+
+    void PerformDelayedUserCancellation()
+    {
+        // Take the lock first to make sure there is no concurrent Break.
+        // We should be safe to take it as Break only take it to set the state.
+        lock (SyncObj)
+        {
+            // The connector is dead, exit gracefully.
+            if (!IsConnected)
+                return;
+            // The connector is still alive, take the CancelLock before exiting SingleUseLock.
+            // If a break will happen after, it's going to wait for the cancellation to complete.
+            Monitor.Enter(CancelLock);
+        }
+
+        try
+        {
+            PerformUserCancellation();
+        }
+        finally
+        {
+            Monitor.Exit(CancelLock);
+        }
+    }
+
+    void PerformUserCancellation()
+    {
+        if (AttemptPostgresCancellation && SupportsPostgresCancellation)
+        {
+            var cancellationTimeout = Settings.CancellationTimeout;
+            if (PerformPostgresCancellation() && cancellationTimeout >= 0)
+            {
+                if (cancellationTimeout > 0)
+                {
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                    ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                }
+
+                return;
+            }
+        }
+
+        ReadBuffer.Timeout = _cancelImmediatelyTimeout;
+        ReadBuffer.Cts.Cancel();
     }
 
     /// <summary>
@@ -1823,7 +1861,7 @@ public sealed partial class NpgsqlConnector
 
         AttemptPostgresCancellation = attemptPgCancellation;
         return _cancellationTokenRegistration =
-            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformImmediateUserCancellation(), this);
     }
 
     /// <summary>
@@ -1855,7 +1893,7 @@ public sealed partial class NpgsqlConnector
         var currentAttemptPostgresCancellation = AttemptPostgresCancellation;
         AttemptPostgresCancellation = attemptPgCancellation;
 
-        var registration = cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+        var registration = cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformImmediateUserCancellation(), this);
 
         return new(this, registration, currentUserCancellationToken, currentAttemptPostgresCancellation);
     }
