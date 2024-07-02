@@ -34,6 +34,10 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
 
+#if NET7_0_OR_GREATER
+    Action<NegotiateAuthenticationClientOptions>? _negotiateOptionsCallback;
+#endif
+
     IntegratedSecurityHandler _integratedSecurityHandler = new();
 
     Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
@@ -288,6 +292,20 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         _passwordProviderAsync = passwordProviderAsync;
         return this;
     }
+
+#if NET7_0_OR_GREATER
+    /// <summary>
+    /// When using Kerberos, this is a callback that allows customizing default settings for Kerberos authentication.
+    /// </summary>
+    /// <param name="negotiateOptionsCallback">The callback containing logic to customize Kerberos authentication settings.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder UseNegotiateOptionsCallback(Action<NegotiateAuthenticationClientOptions>? negotiateOptionsCallback)
+    {
+        _negotiateOptionsCallback = negotiateOptionsCallback;
+
+        return this;
+    }
+#endif
 
     #endregion Authentication
 
@@ -602,7 +620,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         var config = PrepareConfiguration();
         var connectionStringBuilder = ConnectionStringBuilder.Clone();
 
-        if (ConnectionStringBuilder.Host!.Contains(","))
+        if (ConnectionStringBuilder.Host!.Contains(','))
         {
             ValidateMultiHost();
 
@@ -667,7 +685,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _resolverChainBuilder.Build(ConfigureResolverChain),
             DefaultNameTranslator,
             _connectionInitializer,
-            _connectionInitializerAsync);
+            _connectionInitializerAsync
+#if NET7_0_OR_GREATER
+            ,_negotiateOptionsCallback
+#endif
+            );
     }
 
     void ValidateMultiHost()

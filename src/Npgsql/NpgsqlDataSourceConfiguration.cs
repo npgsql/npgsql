@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -22,4 +21,8 @@ sealed record NpgsqlDataSourceConfiguration(string? Name,
     PgTypeInfoResolverChain ResolverChain,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
-    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);
+    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync
+#if NET7_0_OR_GREATER
+    ,Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback
+#endif
+    );

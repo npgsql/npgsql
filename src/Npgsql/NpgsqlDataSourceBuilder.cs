@@ -325,6 +325,19 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         return this;
     }
 
+#if NET7_0_OR_GREATER
+    /// <summary>
+    /// When using Kerberos, this is a callback that allows customizing default settings for Kerberos authentication.
+    /// </summary>
+    /// <param name="negotiateOptionsCallback">The callback containing logic to customize Kerberos authentication settings.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseNegotiateOptionsCallback(Action<NegotiateAuthenticationClientOptions>? negotiateOptionsCallback)
+    {
+        _internalBuilder.UseNegotiateOptionsCallback(negotiateOptionsCallback);
+        return this;
+    }
+#endif
+
     #endregion Authentication
 
     #region Type mapping

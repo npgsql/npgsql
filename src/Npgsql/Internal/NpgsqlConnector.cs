@@ -61,6 +61,10 @@ public sealed partial class NpgsqlConnector
     ProvidePasswordCallback? ProvidePasswordCallback { get; }
 #pragma warning restore CS0618
 
+#if NET7_0_OR_GREATER
+    Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback { get; }
+#endif
+
     public Encoding TextEncoding { get; private set; } = default!;
 
     /// <summary>
@@ -365,6 +369,10 @@ public sealed partial class NpgsqlConnector
 
         ClientCertificatesCallback = dataSource.ClientCertificatesCallback;
         UserCertificateValidationCallback = dataSource.UserCertificateValidationCallback;
+
+#if NET7_0_OR_GREATER
+        NegotiateOptionsCallback = dataSource.NegotiateOptionsCallback;
+#endif
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;

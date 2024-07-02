@@ -334,7 +334,10 @@ partial class NpgsqlConnector
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 
-        using var authContext = new NegotiateAuthentication(new NegotiateAuthenticationClientOptions{ TargetName = targetName});
+        var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
+        NegotiateOptionsCallback?.Invoke(clientOptions);
+
+        using var authContext = new NegotiateAuthentication(clientOptions);
         var data = authContext.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
         Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
         await WritePassword(data, 0, data.Length, async, UserCancellationToken).ConfigureAwait(false);

@@ -43,6 +43,10 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 
+#if NET7_0_OR_GREATER
+    internal Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback { get; }
+#endif
+
     readonly Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _passwordProviderAsync;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
@@ -108,7 +112,11 @@ public abstract class NpgsqlDataSource : DbDataSource
                 var resolverChain,
                 _defaultNameTranslator,
                 ConnectionInitializer,
-                ConnectionInitializerAsync)
+                ConnectionInitializerAsync
+#if NET7_0_OR_GREATER
+                ,NegotiateOptionsCallback
+#endif
+                )
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
