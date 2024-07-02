@@ -18,7 +18,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
     /// <param name="twoPhase">Enable streaming of prepared transactions</param>
-    [Obsolete]
+    [Obsolete("Please switch to the overloads that take a PgOutputProtocolVersion value instead.")]
     public PgOutputReplicationOptions(string publicationName, ulong protocolVersion, bool? binary = null,
         PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
         : this([publicationName ?? throw new ArgumentNullException(nameof(publicationName))], (PgOutputProtocolVersion)protocolVersion,
@@ -51,7 +51,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
     /// <param name="twoPhase">Enable streaming of prepared transactions</param>
-    [Obsolete]
+    [Obsolete("Please switch to the overloads that take a PgOutputProtocolVersion value instead.")]
     public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion, bool? binary = null,
         PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
         : this(publicationNames, (PgOutputProtocolVersion)protocolVersion, binary, streamingMode, messages, twoPhase)
