@@ -371,7 +371,7 @@ public sealed partial class NpgsqlConnector
         UserCertificateValidationCallback = dataSource.UserCertificateValidationCallback;
 
 #if NET7_0_OR_GREATER
-        NegotiateOptionsCallback = dataSource.NegotiateOptionsCallback;
+        NegotiateOptionsCallback = dataSource.Configuration.NegotiateOptionsCallback;
 #endif
 
         State = ConnectorState.Closed;
