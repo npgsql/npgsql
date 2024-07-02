@@ -1659,7 +1659,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (connector is null)
             return;
 
-        connector.PerformUserCancellation();
+        connector.PerformImmediateUserCancellation();
     }
 
     #endregion Cancel
