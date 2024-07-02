@@ -298,6 +298,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// When using Kerberos, this is a callback that allows customizing default settings for Kerberos authentication.
     /// </summary>
     /// <param name="negotiateOptionsCallback">The callback containing logic to customize Kerberos authentication settings.</param>
+    /// <remarks>
+    /// <para>
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.negotiateauthenticationclientoptions?view=net-7.0"/>.
+    /// </para>
+    /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder UseNegotiateOptionsCallback(Action<NegotiateAuthenticationClientOptions>? negotiateOptionsCallback)
     {
