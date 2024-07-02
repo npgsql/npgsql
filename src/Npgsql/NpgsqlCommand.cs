@@ -1497,7 +1497,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     NpgsqlEventSource.Log.CommandStart(CommandText);
                     startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
-                    TraceCommandStart(connector);
+                    TraceCommandStart(connector.Settings);
+                    TraceCommandEnrich(connector);
 
                     // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                     connector.ResetCancellation();
@@ -1568,6 +1569,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
 
                 State = CommandState.InProgress;
+
+                TraceCommandStart(conn.Settings);
 
                 // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
                 // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
@@ -1704,19 +1707,23 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     #region Tracing
 
-    internal void TraceCommandStart(NpgsqlConnector connector)
+    internal void TraceCommandStart(NpgsqlConnectionStringBuilder settings)
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
-            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType);
+            CurrentActivity = NpgsqlActivitySource.CommandStart(settings, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType);
+    }
+
+    internal void TraceCommandEnrich(NpgsqlConnector connector)
+    {
+        if (CurrentActivity is not null)
+            NpgsqlActivitySource.Enrich(CurrentActivity, connector);
     }
 
     internal void TraceReceivedFirstResponse()
     {
         if (CurrentActivity is not null)
-        {
             NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity);
-        }
     }
 
     internal void TraceCommandStop()
