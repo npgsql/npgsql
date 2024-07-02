@@ -108,7 +108,11 @@ public abstract class NpgsqlDataSource : DbDataSource
                 var resolverChain,
                 _defaultNameTranslator,
                 ConnectionInitializer,
-                ConnectionInitializerAsync)
+                ConnectionInitializerAsync
+#if NET7_0_OR_GREATER
+                ,_
+#endif
+                )
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
