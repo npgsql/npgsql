@@ -71,6 +71,9 @@ static class NpgsqlActivitySource
 
     internal static void Enrich(Activity activity, NpgsqlConnector connector)
     {
+        if (!activity.IsAllDataRequested)
+            return;
+
         activity.SetTag("db.system", "postgresql");
         activity.SetTag("db.connection_string", connector.UserFacingConnectionString);
         activity.SetTag("db.user", connector.InferredUserName);
@@ -103,6 +106,9 @@ static class NpgsqlActivitySource
 
     internal static void ReceivedFirstResponse(Activity activity)
     {
+        if (!activity.IsAllDataRequested)
+            return;
+
         var activityEvent = new ActivityEvent("received-first-response");
         activity.AddEvent(activityEvent);
     }
