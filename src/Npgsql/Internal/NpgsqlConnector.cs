@@ -1031,7 +1031,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         // Give each endpoint an equal share of the remaining time
         var perEndpointTimeout = default(TimeSpan);
         if (timeout.IsSet)
-            perEndpointTimeout = timeout.CheckAndGetTimeLeft() / endpoints.Length;
+            perEndpointTimeout = TimeSpan.FromTicks(timeout.CheckAndGetTimeLeft().Ticks / endpoints.Length);
 
         for (var i = 0; i < endpoints.Length; i++)
         {
