@@ -9,13 +9,13 @@ namespace Npgsql.Internal;
 
 static class AdoSerializerHelpers
 {
-    public static PgTypeInfo GetTypeInfoForReading(Type type, PostgresType postgresType, PgSerializerOptions options)
+    public static PgTypeInfo GetTypeInfoForReading(Type? type, PostgresType postgresType, PgSerializerOptions options)
     {
         PgTypeInfo? typeInfo = null;
         Exception? inner = null;
         try
         {
-            typeInfo = type == typeof(object) ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType);
+            typeInfo = type is null ? options.GetDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType);
         }
         catch (Exception ex)
         {
