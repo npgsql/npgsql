@@ -20,18 +20,24 @@ static class NpgsqlActivitySource
 
     internal static bool IsEnabled => Source.HasListeners();
 
-    internal static Activity? CommandStart(NpgsqlConnector connector, string sql)
+    internal static Activity? CommandStart(NpgsqlConnectionStringBuilder settings, string sql)
     {
-        var settings = connector.Settings;
         var activity = Source.StartActivity(settings.Database!, ActivityKind.Client);
-        if (activity is not { IsAllDataRequested: true })
-            return activity;
+        if (activity is { IsAllDataRequested: true })
+            activity.SetTag("db.statement", sql);
+        return activity;
+    }
 
+    internal static void Enrich(Activity activity, NpgsqlConnector connector)
+    {
+        if (!activity.IsAllDataRequested)
+            return;
+
+        var settings = connector.Settings;
         activity.SetTag("db.system", "postgresql");
         activity.SetTag("db.connection_string", connector.UserFacingConnectionString);
         activity.SetTag("db.user", settings.Username);
         activity.SetTag("db.name", settings.Database);
-        activity.SetTag("db.statement", sql);
         activity.SetTag("db.connection_id", connector.Id);
 
         var endPoint = connector.ConnectedEndPoint;
@@ -54,12 +60,13 @@ static class NpgsqlActivitySource
         default:
             throw new ArgumentOutOfRangeException("Invalid endpoint type: " + endPoint.GetType());
         }
-
-        return activity;
     }
 
     internal static void ReceivedFirstResponse(Activity activity)
     {
+        if (!activity.IsAllDataRequested)
+            return;
+
         var activityEvent = new ActivityEvent("received-first-response");
         activity.AddEvent(activityEvent);
     }
