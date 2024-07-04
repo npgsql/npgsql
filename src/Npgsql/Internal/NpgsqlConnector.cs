@@ -1462,15 +1462,15 @@ public sealed partial class NpgsqlConnector
             var authType = (AuthenticationRequestType)buf.ReadInt32();
             return authType switch
             {
-                AuthenticationRequestType.AuthenticationOk                => AuthenticationOkMessage.Instance,
-                AuthenticationRequestType.AuthenticationCleartextPassword => AuthenticationCleartextPasswordMessage.Instance,
-                AuthenticationRequestType.AuthenticationMD5Password       => AuthenticationMD5PasswordMessage.Load(buf),
-                AuthenticationRequestType.AuthenticationGSS               => AuthenticationGSSMessage.Instance,
-                AuthenticationRequestType.AuthenticationSSPI              => AuthenticationSSPIMessage.Instance,
-                AuthenticationRequestType.AuthenticationGSSContinue       => AuthenticationGSSContinueMessage.Load(buf, len),
-                AuthenticationRequestType.AuthenticationSASL              => new AuthenticationSASLMessage(buf),
-                AuthenticationRequestType.AuthenticationSASLContinue      => new AuthenticationSASLContinueMessage(buf, len - 4),
-                AuthenticationRequestType.AuthenticationSASLFinal         => new AuthenticationSASLFinalMessage(buf, len - 4),
+                AuthenticationRequestType.Ok                => AuthenticationOkMessage.Instance,
+                AuthenticationRequestType.CleartextPassword => AuthenticationCleartextPasswordMessage.Instance,
+                AuthenticationRequestType.MD5Password       => AuthenticationMD5PasswordMessage.Load(buf),
+                AuthenticationRequestType.GSS               => AuthenticationGSSMessage.Instance,
+                AuthenticationRequestType.SSPI              => AuthenticationSSPIMessage.Instance,
+                AuthenticationRequestType.GSSContinue       => AuthenticationGSSContinueMessage.Load(buf, len),
+                AuthenticationRequestType.SASL              => new AuthenticationSASLMessage(buf),
+                AuthenticationRequestType.SASLContinue      => new AuthenticationSASLContinueMessage(buf, len - 4),
+                AuthenticationRequestType.SASLFinal         => new AuthenticationSASLFinalMessage(buf, len - 4),
                 _ => throw new NotSupportedException($"Authentication method not supported (Received: {authType})")
             };
 

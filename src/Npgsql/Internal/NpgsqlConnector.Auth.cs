@@ -24,28 +24,28 @@ partial class NpgsqlConnector
             var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
             switch (msg.AuthRequestType)
             {
-            case AuthenticationRequestType.AuthenticationOk:
+            case AuthenticationRequestType.Ok:
                 return;
 
-            case AuthenticationRequestType.AuthenticationCleartextPassword:
+            case AuthenticationRequestType.CleartextPassword:
                 await AuthenticateCleartext(username, async, cancellationToken).ConfigureAwait(false);
                 break;
 
-            case AuthenticationRequestType.AuthenticationMD5Password:
+            case AuthenticationRequestType.MD5Password:
                 await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
                 break;
 
-            case AuthenticationRequestType.AuthenticationSASL:
+            case AuthenticationRequestType.SASL:
                 await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
                     cancellationToken).ConfigureAwait(false);
                 break;
 
-            case AuthenticationRequestType.AuthenticationGSS:
-            case AuthenticationRequestType.AuthenticationSSPI:
+            case AuthenticationRequestType.GSS:
+            case AuthenticationRequestType.SSPI:
                 await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this).ConfigureAwait(false);
                 return;
 
-            case AuthenticationRequestType.AuthenticationGSSContinue:
+            case AuthenticationRequestType.GSSContinue:
                 throw new NpgsqlException("Can't start auth cycle with AuthenticationGSSContinue");
 
             default:
@@ -125,7 +125,7 @@ partial class NpgsqlConnector
         await Flush(async, cancellationToken).ConfigureAwait(false);
 
         var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async).ConfigureAwait(false), this);
-        if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
+        if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.SASLContinue)
             throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
         var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload, ConnectionLogger);
         if (!firstServerMsg.Nonce.StartsWith(clientNonce, StringComparison.Ordinal))
@@ -161,7 +161,7 @@ partial class NpgsqlConnector
         await Flush(async, cancellationToken).ConfigureAwait(false);
 
         var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async).ConfigureAwait(false), this);
-        if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
+        if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.SASLFinal)
             throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
 
         var scramFinalServerMsg = AuthenticationSCRAMServerFinalMessage.Load(saslFinalServerMsg.Payload, ConnectionLogger);
@@ -342,7 +342,7 @@ partial class NpgsqlConnector
         while (true)
         {
             var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
-            if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
+            if (response.AuthRequestType == AuthenticationRequestType.Ok)
                 break;
             if (response is not AuthenticationGSSContinueMessage gssMsg)
                 throw new NpgsqlException($"Received unexpected authentication request message {response.AuthRequestType}");
