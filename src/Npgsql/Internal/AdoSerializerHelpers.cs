@@ -12,13 +12,10 @@ static class AdoSerializerHelpers
     public static PgTypeInfo GetTypeInfoForReading(Type type, PostgresType postgresType, PgSerializerOptions options)
     {
         var (typeInfo, exception) = TryGetTypeInfoForReading(type, postgresType, options);
-        if (typeInfo is null)
-            throw exception!;
-
-        return typeInfo;
+        return typeInfo ?? throw exception!;
     }
 
-    public static (PgTypeInfo? TypeInfo , Exception? Exception) TryGetTypeInfoForReading(Type type, PostgresType postgresType, PgSerializerOptions options)
+    static (PgTypeInfo? TypeInfo , Exception? Exception) TryGetTypeInfoForReading(Type type, PostgresType postgresType, PgSerializerOptions options)
     {
         PgTypeInfo? typeInfo = null;
         Exception? inner = null;

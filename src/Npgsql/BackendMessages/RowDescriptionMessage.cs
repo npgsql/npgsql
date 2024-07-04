@@ -331,7 +331,7 @@ public sealed class FieldDescription
     {
         Debug.Assert(lastColumnInfo.ConverterInfo.IsDefault || (
             ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) && (
-                IsUnknowResultType() && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(_serializerOptions.TextPgType) ||
+                IsUnknownResultType() && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(_serializerOptions.TextPgType) ||
                 // Normal resolution
                 lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
@@ -362,20 +362,13 @@ public sealed class FieldDescription
         [MethodImpl(MethodImplOptions.NoInlining)]
         void GetInfoSlow(Type? type, out ColumnInfo lastColumnInfo)
         {
-            var (typeInfo, exception) = AdoSerializerHelpers.TryGetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
             PgConverterInfo converterInfo;
             switch (DataFormat)
             {
-            case DataFormat.Text when IsUnknowResultType():
-                // Either we succeed binding the returned typeInfo against DataFormat.Text or we try to do a fallback.
-                if (typeInfo?.TryBind(Field, DataFormat.Text, out converterInfo) == true)
-                {
-                    lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
-                    break;
-                }
-
+            case DataFormat.Text when IsUnknownResultType():
+            {
                 // Try to resolve some 'pg_catalog.text' type info for the expected clr type.
-                typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
+                var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
 
                 // We start binding to DataFormat.Binary as it's the broadest supported format.
                 // The format however is irrelevant as 'pg_catalog.text' data is identical across either.
@@ -386,16 +379,18 @@ public sealed class FieldDescription
                 lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
 
                 break;
+            }
             case DataFormat.Binary or DataFormat.Text:
-                if (typeInfo is null)
-                    throw exception!;
+            {
+                var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
 
                 // If we don't support the DataFormat we'll just throw.
                 converterInfo = typeInfo.Bind(Field, DataFormat);
                 lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
                 break;
+            }
             default:
-                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(DataFormat), "Unknown data format", DataFormat);
+                ThrowHelper.ThrowUnreachableException("Unknown data format {0}", DataFormat);
                 lastColumnInfo = default;
                 break;
             }
@@ -409,7 +404,7 @@ public sealed class FieldDescription
 
         // DataFormat.Text today exclusively signals that we executed with an UnknownResultTypeList.
         // If we ever want to fully support DataFormat.Text we'll need to flow UnknownResultType status separately.
-        bool IsUnknowResultType() => DataFormat is DataFormat.Text;
+        bool IsUnknownResultType() => DataFormat is DataFormat.Text;
     }
 
     /// <summary>
