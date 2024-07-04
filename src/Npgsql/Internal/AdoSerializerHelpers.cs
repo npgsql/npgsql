@@ -11,6 +11,12 @@ static class AdoSerializerHelpers
 {
     public static PgTypeInfo GetTypeInfoForReading(Type type, PostgresType postgresType, PgSerializerOptions options)
     {
+        var (typeInfo, exception) = TryGetTypeInfoForReading(type, postgresType, options);
+        return typeInfo ?? throw exception!;
+    }
+
+    static (PgTypeInfo? TypeInfo , Exception? Exception) TryGetTypeInfoForReading(Type type, PostgresType postgresType, PgSerializerOptions options)
+    {
         PgTypeInfo? typeInfo = null;
         Exception? inner = null;
         try
@@ -21,12 +27,11 @@ static class AdoSerializerHelpers
         {
             inner = ex;
         }
-        return typeInfo ?? ThrowReadingNotSupported(type, postgresType.DisplayName, inner);
+        return typeInfo is not null ? (typeInfo, null) : (null, ThrowReadingNotSupported(type, postgresType.DisplayName, inner));
 
         // InvalidCastException thrown to align with ADO.NET convention.
-        [DoesNotReturn]
-        static PgTypeInfo ThrowReadingNotSupported(Type? type, string displayName, Exception? inner = null)
-            => throw new InvalidCastException($"Reading{(type is null ? "" : $" as '{type.FullName}'")} is not supported for fields having DataTypeName '{displayName}'", inner);
+        static Exception ThrowReadingNotSupported(Type? type, string displayName, Exception? inner = null)
+            => new InvalidCastException($"Reading{(type is null ? "" : $" as '{type.FullName}'")} is not supported for fields having DataTypeName '{displayName}'", inner);
     }
 
     public static PgTypeInfo GetTypeInfoForWriting(Type? type, PgTypeId? pgTypeId, PgSerializerOptions options, NpgsqlDbType? npgsqlDbType = null)

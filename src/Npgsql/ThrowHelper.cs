@@ -1,5 +1,6 @@
 ﻿using Npgsql.BackendMessages;
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal;
 
@@ -18,6 +19,10 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowArgumentOutOfRangeException(string paramName, string message, object argument)
         => throw new ArgumentOutOfRangeException(paramName, string.Format(message, argument));
+
+    [DoesNotReturn]
+    internal static void ThrowUnreachableException(string message, object argument)
+        => throw new UnreachableException(string.Format(message, argument));
 
     [DoesNotReturn]
     internal static void ThrowInvalidOperationException()
