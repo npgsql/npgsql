@@ -13,16 +13,19 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
     /// </summary>
     /// <param name="publicationName">The publication names to include into the stream</param>
-    /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
+    /// <param name="protocolVersion">The version of the logical streaming replication protocol.
+    /// Passing in unsupported protocol version numbers may lead to runtime errors.</param>
     /// <param name="binary">Send values in binary representation</param>
-    /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
+    /// <param name="streaming">Enable streaming of in-progress transactions.
+    /// Setting this to <see langword="true"/> sets <see cref="PgOutputReplicationOptions.StreamingMode"/>
+    /// to <see cref="PgOutputStreamingMode.On"/>.</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
     /// <param name="twoPhase">Enable streaming of prepared transactions</param>
-    [Obsolete("Please switch to the overloads that take a PgOutputProtocolVersion value instead.")]
-    public PgOutputReplicationOptions(string publicationName, ulong protocolVersion, bool? binary = null,
-        PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
+    [Obsolete("Please switch to the overloads that take PgOutputProtocolVersion and PgOutputStreamingMode values instead.")]
+    public PgOutputReplicationOptions(string publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null,
+        bool? messages = null, bool? twoPhase = null)
         : this([publicationName ?? throw new ArgumentNullException(nameof(publicationName))], (PgOutputProtocolVersion)protocolVersion,
-            binary, streamingMode, messages, twoPhase)
+            binary, streaming.HasValue ? streaming.Value ? PgOutputStreamingMode.On : PgOutputStreamingMode.Off : null, messages, twoPhase)
     {
     }
 
@@ -46,15 +49,19 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
     /// </summary>
     /// <param name="publicationNames">The publication names to include into the stream</param>
-    /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
+    /// <param name="protocolVersion">The version of the logical streaming replication protocol.
+    /// Passing in unsupported protocol version numbers may lead to runtime errors.</param>
     /// <param name="binary">Send values in binary representation</param>
-    /// <param name="streamingMode">Enable streaming of in-progress transactions</param>
+    /// <param name="streaming">Enable streaming of in-progress transactions.
+    /// Setting this to <see langword="true"/> sets <see cref="PgOutputReplicationOptions.StreamingMode"/>
+    /// to <see cref="PgOutputStreamingMode.On"/>.</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
     /// <param name="twoPhase">Enable streaming of prepared transactions</param>
-    [Obsolete("Please switch to the overloads that take a PgOutputProtocolVersion value instead.")]
+    [Obsolete("Please switch to the overloads that take PgOutputProtocolVersion and PgOutputStreamingMode values instead.")]
     public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion, bool? binary = null,
-        PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null)
-        : this(publicationNames, (PgOutputProtocolVersion)protocolVersion, binary, streamingMode, messages, twoPhase)
+        bool? streaming = null, bool? messages = null, bool? twoPhase = null)
+        : this(publicationNames, (PgOutputProtocolVersion)protocolVersion, binary,
+            streaming.HasValue ? streaming.Value ? PgOutputStreamingMode.On : PgOutputStreamingMode.Off : null, messages, twoPhase)
     {
     }
 
