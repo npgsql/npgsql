@@ -1345,15 +1345,13 @@ $$;");
         };
         await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString);
         await using var dataSource = CreateDataSource(postmaster.ConnectionString);
-        await using var firstConn = await dataSource.OpenConnectionAsync();
-        await using var secondConn = await dataSource.OpenConnectionAsync();
 
-        var firstQuery = firstConn.ExecuteScalarAsync("SELECT data");
+        var firstQuery = dataSource.ExecuteScalarAsync("SELECT data");
 
         var server = await postmaster.WaitForServerConnection();
         await server.ExpectExtendedQuery();
 
-        var secondQuery = secondConn.ExecuteScalarAsync("SELECT other_data");
+        var secondQuery = dataSource.ExecuteScalarAsync("SELECT other_data");
         await server.ExpectExtendedQuery();
 
         var data = new byte[10000];

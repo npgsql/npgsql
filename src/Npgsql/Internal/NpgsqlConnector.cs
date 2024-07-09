@@ -334,17 +334,20 @@ public sealed partial class NpgsqlConnector
 
     #region Constructors
 
-    internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection conn)
+    internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection? conn)
         : this(dataSource)
     {
-        if (conn.ProvideClientCertificatesCallback is not null)
-            ClientCertificatesCallback = certs => conn.ProvideClientCertificatesCallback(certs);
-        if (conn.UserCertificateValidationCallback is not null)
-            UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+        if (conn is not null)
+        {
+            if (conn.ProvideClientCertificatesCallback is not null)
+                ClientCertificatesCallback = certs => conn.ProvideClientCertificatesCallback(certs);
+            if (conn.UserCertificateValidationCallback is not null)
+                UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
 
 #pragma warning disable CS0618 // Obsolete
-        ProvidePasswordCallback = conn.ProvidePasswordCallback;
+            ProvidePasswordCallback = conn.ProvidePasswordCallback;
 #pragma warning restore CS0618
+        }
     }
 
     NpgsqlConnector(NpgsqlConnector connector)
@@ -355,7 +358,7 @@ public sealed partial class NpgsqlConnector
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
 
-    NpgsqlConnector(NpgsqlDataSource dataSource)
+    internal NpgsqlConnector(NpgsqlDataSource dataSource)
     {
         Debug.Assert(dataSource.OwnsConnectors);
 
@@ -396,7 +399,7 @@ public sealed partial class NpgsqlConnector
             // Note: the in-flight channel can probably be single-writer, but that doesn't actually do anything
             // at this point. And we currently rely on being able to complete the channel at any point (from
             // Break). We may want to revisit this if an optimized, SingleWriter implementation is introduced.
-            var commandsInFlightChannel = Channel.CreateUnbounded<NpgsqlCommand>(
+            var commandsInFlightChannel = Channel.CreateUnbounded<MultiplexingNpgsqlCommand>(
                 new UnboundedChannelOptions { SingleReader = true });
             CommandsInFlightReader = commandsInFlightChannel.Reader;
             CommandsInFlightWriter = commandsInFlightChannel.Writer;
@@ -1101,8 +1104,8 @@ public sealed partial class NpgsqlConnector
 
     #region I/O
 
-    readonly ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
-    internal readonly ChannelWriter<NpgsqlCommand>? CommandsInFlightWriter;
+    readonly ChannelReader<MultiplexingNpgsqlCommand>? CommandsInFlightReader;
+    internal readonly ChannelWriter<MultiplexingNpgsqlCommand>? CommandsInFlightWriter;
 
     internal volatile int CommandsInFlightCount;
 
@@ -1114,7 +1117,7 @@ public sealed partial class NpgsqlConnector
         Debug.Assert(Settings.Multiplexing);
         Debug.Assert(CommandsInFlightReader != null);
 
-        NpgsqlCommand? command = null;
+        MultiplexingNpgsqlCommand? command = null;
         var commandsRead = 0;
 
         try
@@ -1151,11 +1154,13 @@ public sealed partial class NpgsqlConnector
                 // returned to the pool, it is *never* written to unless properly dequeued from the Idle channel.
                 if (Interlocked.Add(ref CommandsInFlightCount, -commandsRead) == 0)
                 {
+                    var sw = new SpinWait();
                     // There's a race condition where the continuation of an asynchronous multiplexing write may not
                     // have executed yet, and the flush may still be in progress. We know all I/O has already
                     // been sent - because the reader has already consumed the entire resultset. So we wait until
                     // the connector's write lock has been released (long waiting will never occur here).
-                    SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
+                    while (MultiplexAsyncWritingLock != 0 && !IsBroken)
+                        sw.SpinOnce();
 
                     ResetReadBuffer();
                     DataSource.Return(this);
@@ -1689,7 +1694,7 @@ public sealed partial class NpgsqlConnector
     internal void PerformUserCancellation()
     {
         var connection = Connection;
-        if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader || UserCancellationRequested)
+        if (connection is null || UserCancellationRequested)
             return;
 
         // Take the lock first to make sure there is no concurrent Break.
@@ -2067,11 +2072,9 @@ public sealed partial class NpgsqlConnector
                         // On the other hand leaving the state Open could indicate to the user that the connection is functional.
                         // (see https://github.com/npgsql/npgsql/issues/3705#issuecomment-839908772)
                         Connection = null;
-                        if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
-                            Return();
+                        Return();
                         connection.EnlistedTransaction = null;
                         connection.Connector = null;
-                        connection.ConnectorBindingScope = ConnectorBindingScope.None;
                     }
 
                     connection.FullState = ConnectionState.Broken;
@@ -2229,8 +2232,6 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     internal async Task Reset(bool async)
     {
-        bool endBindingScope;
-
         // We start user action in case a keeplive happens concurrently, or a concurrent user command (bug)
         using (StartUserAction(attemptPgCancellation: false))
         {
@@ -2247,21 +2248,17 @@ public sealed partial class NpgsqlConnector
             switch (TransactionStatus)
             {
             case TransactionStatus.Idle:
-                // There is an undisposed transaction on multiplexing connection
-                endBindingScope = Connection?.ConnectorBindingScope == ConnectorBindingScope.Transaction;
                 break;
             case TransactionStatus.Pending:
                 // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
                 // Just clear the transaction state.
                 ProcessNewTransactionStatus(TransactionStatus.Idle);
                 ClearTransaction();
-                endBindingScope = true;
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
                 await Rollback(async).ConfigureAwait(false);
                 ClearTransaction();
-                endBindingScope = true;
                 break;
             default:
                 ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
@@ -2285,13 +2282,6 @@ public sealed partial class NpgsqlConnector
             }
 
             DataReader.UnbindIfNecessary();
-        }
-
-        if (endBindingScope)
-        {
-            // Connection is null if a connection enlisted in a TransactionScope was closed before the
-            // TransactionScope completed - the connector is still enlisted, but has no connection.
-            Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
     }
 
