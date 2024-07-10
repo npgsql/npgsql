@@ -2016,9 +2016,6 @@ public sealed partial class NpgsqlConnector
         LogMessages.ClosedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
     }
 
-    internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
-        => DataSource.TryRemovePendingEnlistedConnector(this, transaction);
-
     internal void Return() => DataSource.Return(this);
 
     /// <summary>
