@@ -311,11 +311,11 @@ public class SystemTransactionTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4963")]
-    public void Single_unpooled_closed_connection()
+    public void Single_closed_connection_in_transaction_scope([Values] bool pooling)
     {
         using var dataSource = CreateDataSource(csb =>
         {
-            csb.Pooling = false;
+            csb.Pooling = pooling;
             csb.Enlist = true;
         });
 
@@ -325,19 +325,19 @@ public class SystemTransactionTests : TestBase
         {
             cmd.ExecuteNonQuery();
             conn.Close();
-            Assert.That(dataSource.Statistics.Total, Is.EqualTo(1));
+            Assert.That(pooling ? dataSource.Statistics.Busy : dataSource.Statistics.Total, Is.EqualTo(1));
             scope.Complete();
         }
 
-        Assert.That(dataSource.Statistics.Total, Is.EqualTo(0));
+        Assert.That(pooling ? dataSource.Statistics.Busy : dataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5783")]
-    public void Single_unpooled_closed_connection_multiple_hosts()
+    public void Single_closed_connection_in_transaction_scope_multiple_hosts([Values] bool pooling)
     {
         using var dataSource = CreateDataSource(csb =>
         {
-            csb.Pooling = false;
+            csb.Pooling = pooling;
             csb.Enlist = true;
             csb.Host = "localhost,127.0.0.1";
         });
@@ -348,11 +348,11 @@ public class SystemTransactionTests : TestBase
         {
             cmd.ExecuteNonQuery();
             conn.Close();
-            Assert.That(dataSource.Statistics.Total, Is.EqualTo(1));
+            Assert.That(pooling ? dataSource.Statistics.Busy : dataSource.Statistics.Total, Is.EqualTo(1));
             scope.Complete();
         }
 
-        Assert.That(dataSource.Statistics.Total, Is.EqualTo(0));
+        Assert.That(pooling ? dataSource.Statistics.Busy : dataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test]
