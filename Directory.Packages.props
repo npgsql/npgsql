@@ -10,7 +10,7 @@
     <PackageVersion Include="OpenTelemetry.API" Version="1.7.0" />
 
     <!-- Compatibility -->
-    <PackageVersion Include="System.Text.Json" Version="$(SystemVersion)" />
+    <PackageVersion Include="System.Text.Json" Version="8.0.4" />
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="$(SystemVersion) " />
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
 
