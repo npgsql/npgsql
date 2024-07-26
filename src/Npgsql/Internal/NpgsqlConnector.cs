@@ -2053,11 +2053,6 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            // If we're broken while reading prepended messages
-            // the cancellation request might still be waiting on the MRE.
-            // Unblock it.
-            ReadingPrependedMessagesMRE.Set();
-
             LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
 
             // Note that we may be reading and writing from the same connector concurrently, so safely set
