@@ -396,6 +396,8 @@ Npgsql.NpgsqlConnection.Port.get -> int
 Npgsql.NpgsqlConnection.PostgresParameters.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Npgsql.NpgsqlConnection.PostgreSqlVersion.get -> System.Version!
 Npgsql.NpgsqlConnection.ProcessID.get -> int
+Npgsql.NpgsqlConnection.ProvideClientCertificatesCallback.get -> Npgsql.ProvideClientCertificatesCallback?
+Npgsql.NpgsqlConnection.ProvideClientCertificatesCallback.set -> void
 Npgsql.NpgsqlConnection.ProvidePasswordCallback.get -> Npgsql.ProvidePasswordCallback?
 Npgsql.NpgsqlConnection.ProvidePasswordCallback.set -> void
 Npgsql.NpgsqlConnection.ReloadTypes() -> void
@@ -403,6 +405,8 @@ Npgsql.NpgsqlConnection.ReloadTypesAsync() -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlConnection.Timezone.get -> string!
 Npgsql.NpgsqlConnection.TypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlConnection.UnprepareAll() -> void
+Npgsql.NpgsqlConnection.UserCertificateValidationCallback.get -> System.Net.Security.RemoteCertificateValidationCallback?
+Npgsql.NpgsqlConnection.UserCertificateValidationCallback.set -> void
 Npgsql.NpgsqlConnection.UserName.get -> string?
 Npgsql.NpgsqlConnection.Wait() -> void
 Npgsql.NpgsqlConnection.Wait(int timeout) -> bool

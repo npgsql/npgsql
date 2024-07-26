@@ -341,10 +341,34 @@ public sealed partial class NpgsqlConnector
     internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection conn)
         : this(dataSource)
     {
-        if (conn.SslClientAuthenticationOptionsCallback is not null)
-            SslClientAuthenticationOptionsCallback = conn.SslClientAuthenticationOptionsCallback;
-
+        var sslClientAuthenticationOptionsCallback = conn.SslClientAuthenticationOptionsCallback;
 #pragma warning disable CS0618 // Obsolete
+        var provideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
+        var userCertificateValidationCallback = conn.UserCertificateValidationCallback;
+        if (provideClientCertificatesCallback is not null ||
+            userCertificateValidationCallback is not null)
+        {
+            if (sslClientAuthenticationOptionsCallback is not null)
+                throw new NotSupportedException(NpgsqlStrings.SslClientAuthenticationOptionsCallbackWithOtherCallbacksNotSupported);
+
+            sslClientAuthenticationOptionsCallback = options =>
+            {
+                if (provideClientCertificatesCallback is not null)
+                {
+                    options.ClientCertificates ??= new X509Certificate2Collection();
+                    provideClientCertificatesCallback.Invoke(options.ClientCertificates);
+                }
+
+                if (userCertificateValidationCallback is not null)
+                {
+                    options.RemoteCertificateValidationCallback = userCertificateValidationCallback;
+                }
+            };
+        }
+
+        if (sslClientAuthenticationOptionsCallback is not null)
+            SslClientAuthenticationOptionsCallback = sslClientAuthenticationOptionsCallback;
+
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
 #pragma warning restore CS0618
     }

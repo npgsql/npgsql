@@ -27,7 +27,3 @@ Npgsql.Replication.PgOutput.PgOutputStreamingMode
 Npgsql.Replication.PgOutput.PgOutputStreamingMode.Off = 0 -> Npgsql.Replication.PgOutput.PgOutputStreamingMode
 Npgsql.Replication.PgOutput.PgOutputStreamingMode.On = 1 -> Npgsql.Replication.PgOutput.PgOutputStreamingMode
 Npgsql.Replication.PgOutput.PgOutputStreamingMode.Parallel = 2 -> Npgsql.Replication.PgOutput.PgOutputStreamingMode
-*REMOVED*Npgsql.NpgsqlConnection.ProvideClientCertificatesCallback.get -> Npgsql.ProvideClientCertificatesCallback?
-*REMOVED*Npgsql.NpgsqlConnection.ProvideClientCertificatesCallback.set -> void
-*REMOVED*Npgsql.NpgsqlConnection.UserCertificateValidationCallback.get -> System.Net.Security.RemoteCertificateValidationCallback?
-*REMOVED*Npgsql.NpgsqlConnection.UserCertificateValidationCallback.set -> void

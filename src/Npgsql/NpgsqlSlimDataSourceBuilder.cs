@@ -690,14 +690,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             {
                 if (_clientCertificatesCallback is not null)
                 {
-                    var clientCertificates = options.ClientCertificates;
-                    if (clientCertificates is null)
-                    {
-                        // Shouldn't ever happen
-                        options.ClientCertificates = clientCertificates = new X509Certificate2Collection();
-                    }
-
-                    _clientCertificatesCallback.Invoke(clientCertificates);
+                    options.ClientCertificates ??= new X509Certificate2Collection();
+                    _clientCertificatesCallback.Invoke(options.ClientCertificates);
                 }
 
                 if (_userCertificateValidationCallback is not null)
