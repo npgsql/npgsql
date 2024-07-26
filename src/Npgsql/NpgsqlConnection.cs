@@ -1017,6 +1017,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <remarks>
     /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.localcertificateselectioncallback(v=vs.110).aspx"/>
     /// </remarks>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; set; }
 
     /// <summary>
@@ -1032,7 +1033,18 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>.
     /// </para>
     /// </remarks>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; set; }
+
+    /// <summary>
+    /// When using SSL/TLS, this is a callback that allows customizing SslStream's authentication options.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions?view=net-8.0"/>.
+    /// </para>
+    /// </remarks>
+    public Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; set; }
 
     #endregion SSL
 
@@ -1747,9 +1759,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             ? _cloningInstantiator!(_connectionString)
             : _dataSource.CreateConnection();
 
+        conn.SslClientAuthenticationOptionsCallback = SslClientAuthenticationOptionsCallback;
+#pragma warning disable CS0618 // Obsolete
         conn.ProvideClientCertificatesCallback = ProvideClientCertificatesCallback;
         conn.UserCertificateValidationCallback = UserCertificateValidationCallback;
-#pragma warning disable CS0618 // Obsolete
         conn.ProvidePasswordCallback = ProvidePasswordCallback;
 #pragma warning restore CS0618
         conn._userFacingConnectionString = _userFacingConnectionString;
@@ -1773,13 +1786,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         return new NpgsqlConnection(csb.ToString())
         {
-            ProvideClientCertificatesCallback =
-                ProvideClientCertificatesCallback ??
-                (_dataSource?.ClientCertificatesCallback is { } clientCertificatesCallback
-                    ? (ProvideClientCertificatesCallback)(certs => clientCertificatesCallback(certs))
-                    : null),
-            UserCertificateValidationCallback = UserCertificateValidationCallback ?? _dataSource?.UserCertificateValidationCallback,
+            SslClientAuthenticationOptionsCallback = SslClientAuthenticationOptionsCallback ?? _dataSource?.SslClientAuthenticationOptionsCallback,
 #pragma warning disable CS0618 // Obsolete
+            ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
+            UserCertificateValidationCallback = UserCertificateValidationCallback,
             ProvidePasswordCallback = ProvidePasswordCallback,
 #pragma warning restore CS0618
         };

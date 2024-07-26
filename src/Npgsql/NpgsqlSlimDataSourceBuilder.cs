@@ -33,6 +33,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
+    Action<SslClientAuthenticationOptions>? _sslClientAuthenticationOptionsCallback;
 
 #if NET7_0_OR_GREATER
     Action<NegotiateAuthenticationClientOptions>? _negotiateOptionsCallback;
@@ -143,6 +144,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </para>
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseUserCertificateValidationCallback(
         RemoteCertificateValidationCallback userCertificateValidationCallback)
     {
@@ -156,6 +158,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     /// <param name="clientCertificate">The client certificate to be sent to PostgreSQL when opening a connection.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseClientCertificate(X509Certificate? clientCertificate)
     {
         if (clientCertificate is null)
@@ -170,8 +173,26 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     /// <param name="clientCertificates">The client certificate collection to be sent to PostgreSQL when opening a connection.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseClientCertificates(X509CertificateCollection? clientCertificates)
         => UseClientCertificatesCallback(clientCertificates is null ? null : certs => certs.AddRange(clientCertificates));
+
+    /// <summary>
+    /// When using SSL/TLS, this is a callback that allows customizing SslStream's authentication options.
+    /// </summary>
+    /// <param name="sslClientAuthenticationOptionsCallback">The callback to customize SslStream's authentication options.</param>
+    /// <remarks>
+    /// <para>
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions?view=net-8.0"/>.
+    /// </para>
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder UseSslClientAuthenticationOptionsCallback(Action<SslClientAuthenticationOptions>? sslClientAuthenticationOptionsCallback)
+    {
+        _sslClientAuthenticationOptionsCallback = sslClientAuthenticationOptionsCallback;
+
+        return this;
+    }
 
     /// <summary>
     /// Specifies a callback to modify the collection of SSL/TLS client certificates which Npgsql will send to PostgreSQL for
@@ -190,6 +211,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </para>
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseClientCertificatesCallback(Action<X509CertificateCollection>? clientCertificatesCallback)
     {
         _clientCertificatesCallback = clientCertificatesCallback;
@@ -655,7 +677,31 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     {
         ConnectionStringBuilder.PostProcessAndValidate();
 
-        if (!_transportSecurityHandler.SupportEncryption && (_userCertificateValidationCallback is not null || _clientCertificatesCallback is not null))
+        var sslClientAuthenticationOptionsCallback = _sslClientAuthenticationOptionsCallback;
+        var hasCertificateCallbacks = _userCertificateValidationCallback is not null || _clientCertificatesCallback is not null;
+        if (sslClientAuthenticationOptionsCallback is not null && hasCertificateCallbacks)
+        {
+            throw new NotSupportedException(NpgsqlStrings.SslClientAuthenticationOptionsCallbackWithOtherCallbacksNotSupported);
+        }
+
+        if (sslClientAuthenticationOptionsCallback is null && hasCertificateCallbacks)
+        {
+            sslClientAuthenticationOptionsCallback = options =>
+            {
+                if (_clientCertificatesCallback is not null)
+                {
+                    options.ClientCertificates ??= new X509Certificate2Collection();
+                    _clientCertificatesCallback.Invoke(options.ClientCertificates);
+                }
+
+                if (_userCertificateValidationCallback is not null)
+                {
+                    options.RemoteCertificateValidationCallback = _userCertificateValidationCallback;
+                }
+            };
+        }
+
+        if (!_transportSecurityHandler.SupportEncryption && sslClientAuthenticationOptionsCallback is not null)
         {
             throw new InvalidOperationException(NpgsqlStrings.TransportSecurityDisabled);
         }
@@ -680,8 +726,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
             _transportSecurityHandler,
             _integratedSecurityHandler,
-            _userCertificateValidationCallback,
-            _clientCertificatesCallback,
+            sslClientAuthenticationOptionsCallback,
             _passwordProvider,
             _passwordProviderAsync,
             _periodicPasswordProvider,
