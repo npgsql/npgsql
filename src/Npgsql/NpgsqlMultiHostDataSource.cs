@@ -151,7 +151,36 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             _ => preferredType == TargetSessionAttributes.Any
         };
 
-    static bool IsOnline(DatabaseState state, TargetSessionAttributes preferredType) => state != DatabaseState.Offline;
+    static bool IsUnpreferred(DatabaseState state, TargetSessionAttributes preferredType)
+        => state switch
+        {
+            DatabaseState.Offline => false,
+            DatabaseState.UnknownAfterError => true,
+            DatabaseState.Unknown => true, // We will check compatibility again after refreshing the database state
+
+            DatabaseState.PrimaryReadWrite when preferredType is
+                    TargetSessionAttributes.Primary or
+                    TargetSessionAttributes.PreferPrimary or
+                    TargetSessionAttributes.ReadWrite or
+                    TargetSessionAttributes.PreferStandby
+                => true,
+
+            DatabaseState.PrimaryReadOnly when preferredType is
+                    TargetSessionAttributes.Primary or
+                    TargetSessionAttributes.PreferPrimary or
+                    TargetSessionAttributes.ReadOnly or
+                    TargetSessionAttributes.PreferStandby
+                => true,
+
+            DatabaseState.Standby when preferredType is
+                    TargetSessionAttributes.Standby or
+                    TargetSessionAttributes.PreferStandby or
+                    TargetSessionAttributes.ReadOnly or
+                    TargetSessionAttributes.PreferPrimary
+                => true,
+
+            _ => preferredType == TargetSessionAttributes.Any
+        };
 
     async ValueTask<NpgsqlConnector?> TryGetIdleOrNew(
         NpgsqlConnection conn,
@@ -163,7 +192,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         IList<Exception> exceptions,
         CancellationToken cancellationToken)
     {
-        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator = preferred ? IsPreferred : IsOnline;
+        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator = preferred ? IsPreferred : IsUnpreferred;
 
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
@@ -240,7 +269,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         IList<Exception> exceptions,
         CancellationToken cancellationToken)
     {
-        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator = preferred ? IsPreferred : IsOnline;
+        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator = preferred ? IsPreferred : IsUnpreferred;
 
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
@@ -418,7 +447,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
             // Can't get valid preferred connector. Try to get an unpreferred connector, if supported.
             if ((preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby)
-                && TryGetValidConnector(list, preferredType, IsOnline, out connector))
+                && TryGetValidConnector(list, preferredType, IsUnpreferred, out connector))
             {
                 return true;
             }
