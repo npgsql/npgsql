@@ -67,6 +67,8 @@ public sealed partial class NpgsqlConnector
 
     public Encoding TextEncoding { get; private set; } = default!;
 
+    internal bool StateOnDbInfoOnly { get; set; }
+
     /// <summary>
     /// Same as <see cref="TextEncoding"/>, except that it does not throw an exception if an invalid char is
     /// encountered (exception fallback), but rather replaces it with a question mark character (replacement
@@ -370,6 +372,8 @@ public sealed partial class NpgsqlConnector
             SslClientAuthenticationOptionsCallback = sslClientAuthenticationOptionsCallback;
 
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
+
+        StateOnDbInfoOnly = AppContext.TryGetSwitch("Npgsql.StateOnDbInfoOnly", out var enabled) && enabled;
 #pragma warning restore CS0618
     }
 
@@ -378,6 +382,7 @@ public sealed partial class NpgsqlConnector
     {
         SslClientAuthenticationOptionsCallback = connector.SslClientAuthenticationOptionsCallback;
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
+        StateOnDbInfoOnly = AppContext.TryGetSwitch("Npgsql.StateOnDbInfoOnly", out var enabled) && enabled;
     }
 
     NpgsqlConnector(NpgsqlDataSource dataSource)
@@ -429,6 +434,8 @@ public sealed partial class NpgsqlConnector
             if (_isKeepAliveEnabled)
                 throw new NotImplementedException("Keepalive not yet implemented for multiplexing");
         }
+
+        StateOnDbInfoOnly = AppContext.TryGetSwitch("Npgsql.StateOnDbInfoOnly", out var enabled) && enabled;
     }
 
     #endregion
@@ -2764,14 +2771,23 @@ public sealed partial class NpgsqlConnector
             return;
 
         case "default_transaction_read_only":
+        {
+            if (StateOnDbInfoOnly)
+                return;
+
             _isTransactionReadOnly = value == "on";
             UpdateDatabaseState();
             return;
+        }
 
         case "in_hot_standby":
+        {
+            if(StateOnDbInfoOnly)
+                return;
             _isHotStandBy = value == "on";
             UpdateDatabaseState();
             return;
+        }
         }
     }
 
