@@ -33,4 +33,8 @@
     <None Include="$(MSBuildThisFileDirectory)postgresql.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-hh2w-p6rv-4g7w" />
+  </ItemGroup>
+
 </Project>
