@@ -976,6 +976,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (EnableStoredProcedureCompatMode && parameter.Direction == ParameterDirection.Output)
                         continue;
 
+                    if (parameter.Direction == ParameterDirection.ReturnValue)
+                        continue;
+
                     if (isFirstParam)
                         isFirstParam = false;
                     else

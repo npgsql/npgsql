@@ -143,6 +143,25 @@ $$ LANGUAGE plpgsql");
         Assert.That(command.Parameters["c"].Value, Is.EqualTo(-1));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5793")]
+    public async Task ReturnValue_parameter_ignored()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var funcName = await GetTempFunctionName(conn);
+        await conn.ExecuteNonQueryAsync(@$"CREATE FUNCTION {funcName}() RETURNS integer AS 'SELECT 8;' LANGUAGE 'sql'");
+        await using var cmd = new NpgsqlCommand(funcName, conn) { CommandType = CommandType.StoredProcedure };
+        var param = new NpgsqlParameter
+        {
+            ParameterName = "@ReturnValue",
+            NpgsqlDbType = NpgsqlDbType.Integer,
+            Direction = ParameterDirection.ReturnValue,
+            Value = 0
+        };
+        cmd.Parameters.Add(param);
+        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
+        Assert.That(param.Value, Is.EqualTo(0));
+    }
+
     [Test]
     public async Task CommandBehavior_SchemaOnly_support_function_call()
     {
