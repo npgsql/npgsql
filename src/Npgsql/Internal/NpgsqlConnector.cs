@@ -8,7 +8,6 @@ using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.ExceptionServices;
@@ -932,51 +931,6 @@ public sealed partial class NpgsqlConnector
             throw;
         }
     }
-
-#if NETSTANDARD2_0
-    static readonly object disableSystemDefaultTlsVersionsLock = new();
-
-    // volatile shouldn't be necessary since lock guarantees acquire/release semantics, but just in case
-    static volatile bool disableSystemDefaultTlsVersionsChecked;
-    static bool disableSystemDefaultTlsVersions;
-
-    static bool DisableSystemDefaultTlsVersions
-    {
-        get
-        {
-            if (!disableSystemDefaultTlsVersionsChecked)
-            {
-                lock (disableSystemDefaultTlsVersionsLock)
-                {
-                    if (!disableSystemDefaultTlsVersionsChecked)
-                    {
-                        try
-                        {
-                            var spmType = typeof(ServicePointManager);
-                            var disableDefaultProperty = spmType.GetProperty("DisableSystemDefaultTlsVersions", BindingFlags.Static | BindingFlags.NonPublic);
-                            if (disableDefaultProperty is not null)
-                            {
-                                disableSystemDefaultTlsVersions = (bool)disableDefaultProperty.GetValue(null);
-                            }
-                            else
-                            {
-                                disableSystemDefaultTlsVersions = true;
-                            }
-                        }
-                        catch
-                        {
-                            disableSystemDefaultTlsVersions = true;
-                        }
-
-                        disableSystemDefaultTlsVersionsChecked = true;
-                    }
-                }
-            }
-
-            return disableSystemDefaultTlsVersions;
-        }
-    }
-#endif
 
     void Connect(NpgsqlTimeout timeout)
     {
