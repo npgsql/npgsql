@@ -901,9 +901,10 @@ public sealed partial class NpgsqlConnector
                 var sslProtocols = SslProtocols.None;
 #if NETSTANDARD2_0
                 // On .NET Framework SslProtocols.None can be disabled, see #3718
-                sslProtocols = DisableSystemDefaultTlsVersions
-                    ? SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12
-                    : SslProtocols.None;
+                if (DisableSystemDefaultTlsVersions)
+                {
+                    sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
+                }
 #endif
 
                 if (async)
