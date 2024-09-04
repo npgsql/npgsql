@@ -883,9 +883,12 @@ public sealed partial class NpgsqlConnector : IDisposable
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
                         var sslProtocols = SslProtocols.None;
-                        // On .NET Framework SslProtocols.None can be disabled, see #3718
 #if NETSTANDARD2_0
+                        // On .NET Framework SslProtocols.None can be disabled, see #3718
+                        if (DisableSystemDefaultTlsVersions)
+                        {
                             sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
+                        }
 #endif
 
                         if (async)
