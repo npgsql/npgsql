@@ -1979,9 +1979,6 @@ public sealed partial class NpgsqlConnector : IDisposable
         LogMessages.ClosedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
     }
 
-    internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
-        => DataSource.TryRemovePendingEnlistedConnector(this, transaction);
-
     internal void Return() => DataSource.Return(this);
 
     /// <inheritdoc />
