@@ -310,13 +310,15 @@ public class SystemTransactionTests : TestBase
         scope.Complete();
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4963")]
-    public void Single_unpooled_closed_connection()
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4963"), IssueLink("https://github.com/npgsql/npgsql/issues/5783")]
+    public void Single_closed_connection_in_transaction_scope([Values] bool pooling, [Values] bool multipleHosts)
     {
         using var dataSource = CreateDataSource(csb =>
         {
-            csb.Pooling = false;
+            csb.Pooling = pooling;
             csb.Enlist = true;
+            csb.Host = multipleHosts ? "localhost,127.0.0.1" : csb.Host;
         });
 
         using (var scope = new TransactionScope())
@@ -325,11 +327,11 @@ public class SystemTransactionTests : TestBase
         {
             cmd.ExecuteNonQuery();
             conn.Close();
-            Assert.That(dataSource.Statistics.Total, Is.EqualTo(1));
+            Assert.That(pooling ? dataSource.Statistics.Busy : dataSource.Statistics.Total, Is.EqualTo(1));
             scope.Complete();
         }
 
-        Assert.That(dataSource.Statistics.Total, Is.EqualTo(0));
+        Assert.That(pooling ? dataSource.Statistics.Busy : dataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test]
