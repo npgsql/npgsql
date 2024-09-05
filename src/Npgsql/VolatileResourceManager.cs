@@ -17,6 +17,7 @@ namespace Npgsql;
 sealed class VolatileResourceManager : ISinglePhaseNotification
 {
     NpgsqlConnector _connector;
+    NpgsqlDataSource _dataSource;
     Transaction _transaction;
     readonly string _txId;
     NpgsqlTransaction _localTx = null!;
@@ -31,6 +32,7 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
     internal VolatileResourceManager(NpgsqlConnection connection, Transaction transaction)
     {
         _connector = connection.Connector!;
+        _dataSource = connection.NpgsqlDataSource;
         _transaction = transaction;
         // _tx gets disposed by System.Transactions at some point, but we want to be able to log its local ID
         _txId = transaction.TransactionInformation.LocalIdentifier;
@@ -277,8 +279,10 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
         {
             // We're here for connections which were closed before their TransactionScope completes.
             // These need to be closed now.
-            // We should return the connector to the pool only if we've successfully removed it from the pending list
-            if (_connector.TryRemovePendingEnlistedConnector(_transaction))
+            // We should return the connector to the pool only if we've successfully removed it from the pending list.
+            // Note that we remove it from the NpgsqlDataSource bound to connection and not to connector
+            // because of NpgsqlMultiHostDataSource which has its own list to which connection adds connectors.
+            if (_dataSource.TryRemovePendingEnlistedConnector(_connector, _transaction))
                 _connector.Return();
         }
 

@@ -49,7 +49,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 poolSettings.Host = host.ToString();
 
             _pools[i] = settings.Pooling
-                ? new PoolingDataSource(poolSettings, dataSourceConfig, this)
+                ? new PoolingDataSource(poolSettings, dataSourceConfig)
                 : new UnpooledDataSource(poolSettings, dataSourceConfig);
         }
 
