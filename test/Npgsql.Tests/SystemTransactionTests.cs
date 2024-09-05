@@ -295,6 +295,34 @@ public class SystemTransactionTests : TestBase
     }
 
     [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4963"), IssueLink("https://github.com/npgsql/npgsql/issues/5783")]
+    public void Single_closed_connection_in_transaction_scope([Values] bool pooling, [Values] bool multipleHosts)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            Pooling = pooling,
+            Enlist = true
+        };
+        if (multipleHosts)
+            csb.Host = "localhost,127.0.0.1";
+
+        ConnectorSource pool;
+
+        using (var scope = new TransactionScope())
+        using (var conn = OpenConnection(csb))
+        using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+        {
+            cmd.ExecuteNonQuery();
+            pool = conn.Pool;
+            conn.Close();
+            Assert.That(pooling ? pool.Statistics.Busy : pool.Statistics.Total, Is.EqualTo(1));
+            scope.Complete();
+        }
+
+        Assert.That(pooling ? pool.Statistics.Busy :pool.Statistics.Total, Is.EqualTo(0));
+    }
+
+    [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
     public void Break_connector_while_in_transaction_scope_with_rollback([Values] bool pooling)
     {

@@ -47,8 +47,8 @@ sealed class MultiplexingConnectorPool : ConnectorPool
     const int MultiplexingCommandChannelBound = 4096;
 
     internal MultiplexingConnectorPool(
-        NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
-        : base(settings, connString, parentPool)
+        NpgsqlConnectionStringBuilder settings, string connString)
+        : base(settings, connString)
     {
         Debug.Assert(Settings.Multiplexing);
 

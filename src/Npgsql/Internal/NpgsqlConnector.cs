@@ -1980,9 +1980,6 @@ public sealed partial class NpgsqlConnector : IDisposable
         FullCleanup();
     }
 
-    internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
-        => _connectorSource.TryRemovePendingEnlistedConnector(this, transaction);
-
     internal void Return() => _connectorSource.Return(this);
 
     /// <inheritdoc />

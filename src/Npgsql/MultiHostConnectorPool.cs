@@ -37,7 +37,7 @@ sealed class MultiHostConnectorPool : ConnectorSource
                 poolSettings.Host = host.ToString();
 
             _pools[i] = settings.Pooling
-                ? new ConnectorPool(poolSettings, poolSettings.ConnectionString, this)
+                ? new ConnectorPool(poolSettings, poolSettings.ConnectionString)
                 : new UnpooledConnectorSource(poolSettings, poolSettings.ConnectionString);
         }
     }
