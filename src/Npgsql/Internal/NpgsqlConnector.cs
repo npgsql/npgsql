@@ -1332,6 +1332,12 @@ public sealed partial class NpgsqlConnector : IDisposable
                     // We've read all the prepended response.
                     // Allow cancellation to proceed.
                     connector.ReadingPrependedMessagesMRE.Set();
+
+                    // User requested cancellation but it hasn't been performed yet.
+                    // This might happen if the cancellation is requested while we're reading prepended responses
+                    // because we shouldn't cancel them and otherwise might deadlock.
+                    if (connector.UserCancellationRequested && !connector.PostgresCancellationPerformed)
+                        connector.PerformDelayedUserCancellation();
                 }
                 catch (Exception e)
                 {
@@ -1714,7 +1720,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
     }
 
-    internal void PerformUserCancellation()
+    internal void PerformImmediateUserCancellation()
     {
         var connection = Connection;
         if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader || UserCancellationRequested)
@@ -1734,41 +1740,71 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         try
         {
-            // Wait before we've read all responses for the prepended queries
-            // as we can't gracefully handle their cancellation.
-            // Break makes sure that it's going to be set even if we fail while reading them.
+            // Set the flag first before waiting on ReadingPrependedMessagesMRE.
+            // That way we're making sure that in case we're racing with ReadingPrependedMessagesMRE.Set
+            // that it's going to read the new value of the flag and request cancellation
+            _userCancellationRequested = true;
 
+            // Check whether we've read all responses for the prepended queries
+            // as we can't gracefully handle their cancellation.
             // We don't wait indefinitely to avoid deadlocks from synchronous CancellationToken.Register
             // See #5032
             if (!ReadingPrependedMessagesMRE.Wait(0))
                 return;
 
-            _userCancellationRequested = true;
-
-            if (AttemptPostgresCancellation && SupportsPostgresCancellation)
-            {
-                var cancellationTimeout = Settings.CancellationTimeout;
-                if (PerformPostgresCancellation() && cancellationTimeout >= 0)
-                {
-                    if (cancellationTimeout > 0)
-                    {
-                        UserTimeout = cancellationTimeout;
-                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-                        ReadBuffer.Cts.CancelAfter(cancellationTimeout);
-                    }
-
-                    return;
-                }
-            }
-
-            UserTimeout = -1;
-            ReadBuffer.Timeout = _cancelImmediatelyTimeout;
-            ReadBuffer.Cts.Cancel();
+            PerformUserCancellationUnsynchronized();
         }
         finally
         {
             Monitor.Exit(CancelLock);
         }
+    }
+
+    void PerformDelayedUserCancellation()
+    {
+        // Take the lock first to make sure there is no concurrent Break.
+        // We should be safe to take it as Break only take it to set the state.
+        lock (SyncObj)
+        {
+            // The connector is dead, exit gracefully.
+            if (!IsConnected)
+                return;
+            // The connector is still alive, take the CancelLock before exiting SingleUseLock.
+            // If a break will happen after, it's going to wait for the cancellation to complete.
+            Monitor.Enter(CancelLock);
+        }
+
+        try
+        {
+            PerformUserCancellationUnsynchronized();
+        }
+        finally
+        {
+            Monitor.Exit(CancelLock);
+        }
+    }
+
+    void PerformUserCancellationUnsynchronized()
+    {
+        if (AttemptPostgresCancellation && SupportsPostgresCancellation)
+        {
+            var cancellationTimeout = Settings.CancellationTimeout;
+            if (PerformPostgresCancellation() && cancellationTimeout >= 0)
+            {
+                if (cancellationTimeout > 0)
+                {
+                    UserTimeout = cancellationTimeout;
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                    ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                }
+
+                return;
+            }
+        }
+
+        UserTimeout = -1;
+        ReadBuffer.Timeout = _cancelImmediatelyTimeout;
+        ReadBuffer.Cts.Cancel();
     }
 
     /// <summary>
@@ -1853,7 +1889,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         AttemptPostgresCancellation = attemptPgCancellation;
         return _cancellationTokenRegistration =
-            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformImmediateUserCancellation(), this);
     }
 
     /// <summary>
@@ -1884,7 +1920,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         AttemptPostgresCancellation = attemptPgCancellation;
 
         return _cancellationTokenRegistration =
-            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformImmediateUserCancellation(), this);
     }
 
     #endregion Cancel
@@ -2016,11 +2052,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         try
         {
-            // If we're broken while reading prepended messages
-            // the cancellation request might still be waiting on the MRE.
-            // Unblock it.
-            ReadingPrependedMessagesMRE.Set();
-
             LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
 
             // Note that we may be reading and writing from the same connector concurrently, so safely set

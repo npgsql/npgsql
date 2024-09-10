@@ -382,7 +382,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// <summary>
     /// Cancels an ongoing export.
     /// </summary>
-    public void Cancel() => _connector.PerformUserCancellation();
+    public void Cancel() => _connector.PerformImmediateUserCancellation();
 
     /// <summary>
     /// Async cancels an ongoing export.
