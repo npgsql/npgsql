@@ -327,7 +327,7 @@ public sealed class FieldDescription
     {
         Debug.Assert(lastColumnInfo.ConverterInfo.IsDefault || (
             ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) && (
-                IsUnknownResultType() && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(_serializerOptions.TextPgType) ||
+                IsUnknownResultType() && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.TextPgTypeId ||
                 // Normal resolution
                 lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
@@ -364,7 +364,7 @@ public sealed class FieldDescription
             case DataFormat.Text when IsUnknownResultType():
             {
                 // Try to resolve some 'pg_catalog.text' type info for the expected clr type.
-                var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgType, _serializerOptions);
+                var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgTypeId, _serializerOptions);
 
                 // We start binding to DataFormat.Binary as it's the broadest supported format.
                 // The format however is irrelevant as 'pg_catalog.text' data is identical across either.
@@ -378,7 +378,7 @@ public sealed class FieldDescription
             }
             case DataFormat.Binary or DataFormat.Text:
             {
-                var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), PostgresType, _serializerOptions);
+                var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), _serializerOptions.ToCanonicalTypeId(PostgresType), _serializerOptions);
 
                 // If we don't support the DataFormat we'll just throw.
                 converterInfo = typeInfo.Bind(Field, DataFormat);

@@ -75,11 +75,10 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresRangeType rangeType)
                 return null;
 
-            var subInfo =
-                matchedType is null
-                    ? options.GetDefaultTypeInfo(rangeType.Subtype)
-                    // Input matchedType here as we don't want an NpgsqlRange over Nullable<T> (it has its own nullability tracking, for better or worse)
-                    : options.GetTypeInfo(matchedType == typeof(object) ? matchedType : matchedType.GetGenericArguments()[0], rangeType.Subtype);
+            // Input matchedType here as we don't want an NpgsqlRange over Nullable<T> (it has its own nullability tracking, for better or worse)
+            var subInfo = options.GetTypeInfoInternal(
+                matchedType is null ? null : matchedType == typeof(object) ? matchedType : matchedType.GetGenericArguments()[0],
+                options.ToCanonicalTypeId(rangeType.Subtype));
 
             // We have no generic RangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
@@ -133,10 +132,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresMultirangeType multirangeType)
                 return null;
 
-            var subInfo =
-                type is null
-                    ? options.GetDefaultTypeInfo(multirangeType.Subrange)
-                    : options.GetTypeInfo(elementType ?? typeof(object), multirangeType.Subrange);
+            var subInfo = options.GetTypeInfoInternal(type is null ? null : elementType ?? typeof(object), options.ToCanonicalTypeId(multirangeType.Subrange));
 
             // We have no generic MultirangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
