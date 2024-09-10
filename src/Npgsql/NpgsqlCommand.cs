@@ -1488,6 +1488,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         break;
                     }
 
+                    // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+                    // We do it before changing the state because we only allow sending cancellation request if State == InProgress
+                    connector.ResetCancellation();
+
                     State = CommandState.InProgress;
 
                     if (logger.IsEnabled(LogLevel.Information))
@@ -1502,9 +1506,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
                     TraceCommandStart(connector.Settings);
                     TraceCommandEnrich(connector);
-
-                    // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-                    connector.ResetCancellation();
 
                     // We do not wait for the entire send to complete before proceeding to reading -
                     // the sending continues in parallel with the user's reading. Waiting for the
@@ -1666,7 +1667,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (connector is null)
             return;
 
-        connector.PerformUserCancellation();
+        connector.PerformImmediateUserCancellation();
     }
 
     #endregion Cancel
