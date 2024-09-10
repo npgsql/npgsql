@@ -86,8 +86,8 @@ public sealed class PgSerializerOptions
     internal PgTypeInfo? GetTypeInfoInternal(Type? type, PgTypeId? pgTypeId)
         => GetTypeInfoCore(type, pgTypeId, false);
 
-    internal PgTypeInfo? GetObjectOrDefaultTypeInfo(PgTypeId pgTypeId)
-        => GetTypeInfoCore(typeof(object), GetCanonicalTypeId(pgTypeId), true);
+    internal PgTypeInfo? GetObjectOrDefaultTypeInfoInternal(PgTypeId pgTypeId)
+        => GetTypeInfoCore(typeof(object), pgTypeId, true);
 
     public PgTypeInfo? GetDefaultTypeInfo(Type type)
         => GetTypeInfoCore(type, null, false);

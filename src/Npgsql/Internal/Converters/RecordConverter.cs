@@ -45,7 +45,7 @@ sealed class RecordConverter<T> : PgStreamingConverter<T>
                 ?? throw new NotSupportedException($"Reading isn't supported for record field {i} (unknown type OID {typeOid}");
 
             var pgTypeId = _options.ToCanonicalTypeId(postgresType);
-            var typeInfo = _options.GetObjectOrDefaultTypeInfo(pgTypeId)
+            var typeInfo = _options.GetObjectOrDefaultTypeInfoInternal(pgTypeId)
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 
