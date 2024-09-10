@@ -30,13 +30,13 @@ public class ResolveHandler
 
     [Benchmark]
     public PgTypeInfo? ResolveDefault()
-        => _serializerOptions.GetDefaultTypeInfo(new Oid(23)); // int4
+        => _serializerOptions.GetTypeInfoInternal(null, new Oid(23)); // int4
 
     [Benchmark]
     public PgTypeInfo? ResolveType()
-        => _serializerOptions.GetTypeInfo(typeof(int));
+        => _serializerOptions.GetTypeInfoInternal(typeof(int), null);
 
     [Benchmark]
     public PgTypeInfo? ResolveBoth()
-        => _serializerOptions.GetTypeInfo(typeof(int), new Oid(23)); // int4
+        => _serializerOptions.GetTypeInfoInternal(typeof(int), new Oid(23)); // int4
 }

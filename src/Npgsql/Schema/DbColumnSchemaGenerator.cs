@@ -35,9 +35,9 @@ sealed class DbColumnSchemaGenerator
      {(pgVersion.IsGreaterOrEqual(10) ? "attidentity != ''" : "FALSE")} AS isidentity,
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
-     CASE WHEN ((cls.relkind = ANY (ARRAY['r'::""char"", 'p'::""char""])) 
+     CASE WHEN ((cls.relkind = ANY (ARRAY['r'::""char"", 'p'::""char""]))
                OR ((cls.relkind = ANY (ARRAY['v'::""char"", 'f'::""char""]))
-               AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false))) 
+               AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false)))
   	           AND attr.attidentity NOT IN ('a') THEN 'true'::boolean
                ELSE 'false'::boolean
                END AS is_updatable,
@@ -260,7 +260,7 @@ ORDER BY attnum";
         var serializerOptions = _connection.Connector!.SerializerOptions;
 
         column.NpgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
-        if (serializerOptions.GetObjectOrDefaultTypeInfo(column.PostgresType) is { } typeInfo)
+        if (serializerOptions.GetObjectOrDefaultTypeInfoInternal(serializerOptions.ToCanonicalTypeId(column.PostgresType)) is { } typeInfo)
         {
             column.DataType = typeInfo.Type;
             column.IsLong = column.PostgresType.DataTypeName == DataTypeNames.Bytea;
