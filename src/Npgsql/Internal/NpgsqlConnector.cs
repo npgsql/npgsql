@@ -1717,16 +1717,14 @@ public sealed partial class NpgsqlConnector
             // that it's going to read the new value of the flag and request cancellation
             _userCancellationRequested = true;
 
-            // Wait before we've read all responses for the prepended queries
+            // Check whether we've read all responses for the prepended queries
             // as we can't gracefully handle their cancellation.
-            // Break makes sure that it's going to be set even if we fail while reading them.
-
             // We don't wait indefinitely to avoid deadlocks from synchronous CancellationToken.Register
             // See #5032
             if (!ReadingPrependedMessagesMRE.Wait(0))
                 return;
 
-            PerformUserCancellation();
+            PerformUserCancellationUnsynchronized();
         }
         finally
         {
@@ -1750,7 +1748,7 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            PerformUserCancellation();
+            PerformUserCancellationUnsynchronized();
         }
         finally
         {
@@ -1758,7 +1756,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    void PerformUserCancellation()
+    void PerformUserCancellationUnsynchronized()
     {
         if (AttemptPostgresCancellation && SupportsPostgresCancellation)
         {
