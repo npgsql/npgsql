@@ -3,6 +3,8 @@ Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.get -> System.Act
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.set -> void
 Npgsql.NpgsqlDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlMetricsOptions
+Npgsql.NpgsqlMetricsOptions.NpgsqlMetricsOptions() -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableGeometricTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableJsonTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableNetworkTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
