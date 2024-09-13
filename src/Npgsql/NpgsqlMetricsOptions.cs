@@ -6,5 +6,4 @@
 /// </summary>
 public class NpgsqlMetricsOptions
 {
-
 }

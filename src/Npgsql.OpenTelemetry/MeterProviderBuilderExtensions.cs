@@ -12,7 +12,7 @@ public static class MeterProviderBuilderExtensions
     /// <summary>
     /// Subscribes to the Npgsql metrics reporter to enable OpenTelemetry metrics.
     /// </summary>
-    public static MeterProviderBuilder AddNpgsql(
+    public static MeterProviderBuilder AddNpgsqlInstrumentation(
         this MeterProviderBuilder builder,
         Action<NpgsqlMetricsOptions>? options = null)
         => builder.AddMeter("Npgsql");
