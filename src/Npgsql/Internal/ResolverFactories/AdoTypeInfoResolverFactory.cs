@@ -499,7 +499,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Probe if there is any mapping at all for this element type.
             var elementId = options.ToCanonicalTypeId(pgElementType);
-            if (options.GetDefaultTypeInfo(elementId) is null)
+            if (options.GetTypeInfoInternal(null, elementId) is null)
                 return null;
 
             var mappings = new TypeInfoMappingCollection();

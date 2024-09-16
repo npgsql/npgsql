@@ -228,7 +228,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// Adds the specified <see cref="NpgsqlParameter"/> object to the <see cref="NpgsqlParameterCollection"/>.
     /// </summary>
     /// <param name="value">The <see cref="NpgsqlParameter"/> to add to the collection.</param>
-    /// <returns>The index of the new <see cref="NpgsqlParameter"/> object.</returns>
+    /// <returns>The parameter that was added.</returns>
     public NpgsqlParameter Add(NpgsqlParameter value)
     {
         if (value is null)
@@ -315,7 +315,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// </summary>
     /// <param name="parameterName">The name of the parameter.</param>
     /// <param name="parameterType">One of the <see cref="DbType"/> values.</param>
-    /// <returns>The index of the new <see cref="NpgsqlParameter"/> object.</returns>
+    /// <returns>The parameter that was added.</returns>
     public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType)
         => Add(new NpgsqlParameter(parameterName, parameterType));
 
@@ -326,7 +326,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <param name="parameterName">The name of the parameter.</param>
     /// <param name="parameterType">One of the <see cref="DbType"/> values.</param>
     /// <param name="size">The length of the column.</param>
-    /// <returns>The index of the new <see cref="NpgsqlParameter"/> object.</returns>
+    /// <returns>The parameter that was added.</returns>
     public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType, int size)
         => Add(new NpgsqlParameter(parameterName, parameterType, size));
 
@@ -338,7 +338,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <param name="parameterType">One of the <see cref="DbType"/> values.</param>
     /// <param name="size">The length of the column.</param>
     /// <param name="sourceColumn">The name of the source column.</param>
-    /// <returns>The index of the new <see cref="NpgsqlParameter"/> object.</returns>
+    /// <returns>The parameter that was added.</returns>
     public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn)
         => Add(new NpgsqlParameter(parameterName, parameterType, size, sourceColumn));
 

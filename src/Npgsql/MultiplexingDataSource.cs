@@ -33,9 +33,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     internal MultiplexingDataSource(
         NpgsqlConnectionStringBuilder settings,
-        NpgsqlDataSourceConfiguration dataSourceConfig,
-        NpgsqlMultiHostDataSource? parentPool = null)
-        : base(settings, dataSourceConfig, parentPool)
+        NpgsqlDataSourceConfiguration dataSourceConfig)
+        : base(settings, dataSourceConfig)
     {
         Debug.Assert(Settings.Multiplexing);
 
@@ -183,7 +182,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             {
                 stats.Reset();
                 connector.FlagAsNotWritableForMultiplexing();
-                command.TraceCommandStart(connector);
+                command.TraceCommandEnrich(connector);
 
                 // Read queued commands and write them to the connector's buffer, for as long as we're
                 // under our write threshold and timer delay.
@@ -270,7 +269,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     }
 
                     // There's almost certainly more buffered outgoing data for the command, after the flush
-                    // occured. Complete the write, which will flush again (and update statistics).
+                    // occurred. Complete the write, which will flush again (and update statistics).
                     try
                     {
                         Flush(conn, ref clonedStats);

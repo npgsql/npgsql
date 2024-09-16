@@ -499,7 +499,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     // Our consumer may not have read the stream to the end, but it might as well have been us
                     // ourselves bypassing the stream and reading directly from the buffer in StartReplication()
                     if (!columnStream.IsDisposed && columnStream.Position < columnStream.Length && !bypassingStream)
-                        await buf.Skip(checked((int)(columnStream.Length - columnStream.Position)), true).ConfigureAwait(false);
+                        await buf.Skip(async: true, checked((int)(columnStream.Length - columnStream.Position))).ConfigureAwait(false);
 
                     continue;
                 }

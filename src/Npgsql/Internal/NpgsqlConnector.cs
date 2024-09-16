@@ -55,11 +55,15 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     public NpgsqlConnectionStringBuilder Settings { get; }
 
-    Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
-    RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
+    Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; }
+
 #pragma warning disable CS0618 // ProvidePasswordCallback is obsolete
     ProvidePasswordCallback? ProvidePasswordCallback { get; }
 #pragma warning restore CS0618
+
+#if NET7_0_OR_GREATER
+    Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback { get; }
+#endif
 
     public Encoding TextEncoding { get; private set; } = default!;
 
@@ -278,7 +282,11 @@ public sealed partial class NpgsqlConnector
     internal bool AttemptPostgresCancellation { get; private set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
 
+#pragma warning disable CA1859
+    // We're casting to IDisposable to not explicitly reference X509Certificate2 for NativeAOT
+    // TODO: probably pointless now, needs to be rechecked
     IDisposable? _certificate;
+#pragma warning restore CA1859
 
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
@@ -333,12 +341,34 @@ public sealed partial class NpgsqlConnector
     internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection conn)
         : this(dataSource)
     {
-        if (conn.ProvideClientCertificatesCallback is not null)
-            ClientCertificatesCallback = certs => conn.ProvideClientCertificatesCallback(certs);
-        if (conn.UserCertificateValidationCallback is not null)
-            UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
-
+        var sslClientAuthenticationOptionsCallback = conn.SslClientAuthenticationOptionsCallback;
 #pragma warning disable CS0618 // Obsolete
+        var provideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
+        var userCertificateValidationCallback = conn.UserCertificateValidationCallback;
+        if (provideClientCertificatesCallback is not null ||
+            userCertificateValidationCallback is not null)
+        {
+            if (sslClientAuthenticationOptionsCallback is not null)
+                throw new NotSupportedException(NpgsqlStrings.SslClientAuthenticationOptionsCallbackWithOtherCallbacksNotSupported);
+
+            sslClientAuthenticationOptionsCallback = options =>
+            {
+                if (provideClientCertificatesCallback is not null)
+                {
+                    options.ClientCertificates ??= new X509Certificate2Collection();
+                    provideClientCertificatesCallback.Invoke(options.ClientCertificates);
+                }
+
+                if (userCertificateValidationCallback is not null)
+                {
+                    options.RemoteCertificateValidationCallback = userCertificateValidationCallback;
+                }
+            };
+        }
+
+        if (sslClientAuthenticationOptionsCallback is not null)
+            SslClientAuthenticationOptionsCallback = sslClientAuthenticationOptionsCallback;
+
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
 #pragma warning restore CS0618
     }
@@ -346,8 +376,7 @@ public sealed partial class NpgsqlConnector
     NpgsqlConnector(NpgsqlConnector connector)
         : this(connector.DataSource)
     {
-        ClientCertificatesCallback = connector.ClientCertificatesCallback;
-        UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
+        SslClientAuthenticationOptionsCallback = connector.SslClientAuthenticationOptionsCallback;
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
 
@@ -363,8 +392,11 @@ public sealed partial class NpgsqlConnector
         TransactionLogger = LoggingConfiguration.TransactionLogger;
         CopyLogger = LoggingConfiguration.CopyLogger;
 
-        ClientCertificatesCallback = dataSource.ClientCertificatesCallback;
-        UserCertificateValidationCallback = dataSource.UserCertificateValidationCallback;
+        SslClientAuthenticationOptionsCallback = dataSource.SslClientAuthenticationOptionsCallback;
+
+#if NET7_0_OR_GREATER
+        NegotiateOptionsCallback = dataSource.Configuration.NegotiateOptionsCallback;
+#endif
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
@@ -769,7 +801,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout).ConfigureAwait(false);
+                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
                     break;
                 }
 
@@ -794,7 +826,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async)
+    internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         var clientCertificates = new X509Certificate2Collection();
         var certPath = Settings.SslCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
@@ -804,7 +836,7 @@ public sealed partial class NpgsqlConnector
             var password = Settings.SslPassword;
 
             X509Certificate2? cert = null;
-            if (Path.GetExtension(certPath).ToUpperInvariant() != ".PFX")
+            if (!string.Equals(Path.GetExtension(certPath), ".pfx", StringComparison.OrdinalIgnoreCase))
             {
                 // It's PEM time
                 var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
@@ -828,28 +860,13 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            ClientCertificatesCallback?.Invoke(clientCertificates);
-
             var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
             RemoteCertificateValidationCallback? certificateValidationCallback;
             X509Certificate2? caCert;
             string? certRootPath = null;
 
-            if (UserCertificateValidationCallback is not null)
-            {
-                if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
-                    throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
-
-                if (Settings.RootCertificate is not null)
-                    throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
-
-                if (DataSource.TransportSecurityHandler.RootCertificateCallback is not null)
-                    throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback);
-
-                certificateValidationCallback = UserCertificateValidationCallback;
-            }
-            else if (sslMode is SslMode.Prefer or SslMode.Require)
+            if (sslMode is SslMode.Prefer or SslMode.Require)
             {
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
@@ -884,19 +901,48 @@ public sealed partial class NpgsqlConnector
 
             timeout.CheckAndApply(this);
 
+            var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false);
+
+            var sslStreamOptions = new SslClientAuthenticationOptions
+            {
+                TargetHost = host,
+                ClientCertificates = clientCertificates,
+                EnabledSslProtocols = SslProtocols.None,
+                CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.Offline,
+                RemoteCertificateValidationCallback = certificateValidationCallback
+            };
+
+            if (SslClientAuthenticationOptionsCallback is not null)
+            {
+                SslClientAuthenticationOptionsCallback.Invoke(sslStreamOptions);
+
+                // User changed remote certificate validation callback
+                // Check whether the change doesn't lead to unexpected behavior
+                if (sslStreamOptions.RemoteCertificateValidationCallback != certificateValidationCallback)
+                {
+                    if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+                        throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslVerifyWithCustomValidationCallback, sslMode));
+
+                    if (Settings.RootCertificate is not null)
+                        throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithCustomValidationCallback);
+
+                    if (DataSource.TransportSecurityHandler.RootCertificateCallback is not null)
+                        throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithCustomValidationCallback);
+                }
+            }
+
             try
             {
-                var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
-
                 if (async)
-                    await sslStream.AuthenticateAsClientAsync(host, clientCertificates, SslProtocols.None, checkCertificateRevocation).ConfigureAwait(false);
+                    await sslStream.AuthenticateAsClientAsync(sslStreamOptions, cancellationToken).ConfigureAwait(false);
                 else
-                    sslStream.AuthenticateAsClient(host, clientCertificates, SslProtocols.None, checkCertificateRevocation);
+                    sslStream.AuthenticateAsClient(sslStreamOptions);
 
                 _stream = sslStream;
             }
             catch (Exception e)
             {
+                sslStream.Dispose();
                 throw new NpgsqlException("Exception while performing SSL handshake", e);
             }
 
@@ -995,17 +1041,16 @@ public sealed partial class NpgsqlConnector
             : IPAddressesToEndpoints(await TaskTimeoutAndCancellation.ExecuteAsync(GetHostAddressesAsync, timeout, cancellationToken).ConfigureAwait(false),
                 Port);
 
-        // Give each IP an equal share of the remaining time
-        var perIpTimespan = default(TimeSpan);
-        var perIpTimeout = timeout;
+        // Give each endpoint an equal share of the remaining time
+        var perEndpointTimeout = default(TimeSpan);
         if (timeout.IsSet)
-        {
-            perIpTimespan = new TimeSpan(timeout.CheckAndGetTimeLeft().Ticks / endpoints.Length);
-            perIpTimeout = new NpgsqlTimeout(perIpTimespan);
-        }
+            perEndpointTimeout = timeout.CheckAndGetTimeLeft() / endpoints.Length;
 
         for (var i = 0; i < endpoints.Length; i++)
         {
+            var endpointTimeout = timeout.IsSet ? new NpgsqlTimeout(perEndpointTimeout) : timeout;
+            Debug.Assert(timeout.IsSet == endpointTimeout.IsSet);
+
             var endpoint = endpoints[i];
             ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
             var protocolType =
@@ -1016,7 +1061,7 @@ public sealed partial class NpgsqlConnector
             var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
             try
             {
-                await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken).ConfigureAwait(false);
+                await OpenSocketConnectionAsync(socket, endpoint, endpointTimeout, cancellationToken).ConfigureAwait(false);
                 SetSocketOptions(socket);
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
@@ -1269,6 +1314,12 @@ public sealed partial class NpgsqlConnector
                 // We've read all the prepended response.
                 // Allow cancellation to proceed.
                 ReadingPrependedMessagesMRE.Set();
+
+                // User requested cancellation but it hasn't been performed yet.
+                // This might happen if the cancellation is requested while we're reading prepended responses
+                // because we shouldn't cancel them and otherwise might deadlock.
+                if (UserCancellationRequested && !PostgresCancellationPerformed)
+                    PerformDelayedUserCancellation();
             }
             catch (Exception e)
             {
@@ -1296,7 +1347,7 @@ public sealed partial class NpgsqlConnector
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
-                        await ReadBuffer.Skip(len, async).ConfigureAwait(false);
+                        await ReadBuffer.Skip(async, len).ConfigureAwait(false);
                         continue;
                     }
                 }
@@ -1463,15 +1514,15 @@ public sealed partial class NpgsqlConnector
             var authType = (AuthenticationRequestType)buf.ReadInt32();
             return authType switch
             {
-                AuthenticationRequestType.AuthenticationOk                => AuthenticationOkMessage.Instance,
-                AuthenticationRequestType.AuthenticationCleartextPassword => AuthenticationCleartextPasswordMessage.Instance,
-                AuthenticationRequestType.AuthenticationMD5Password       => AuthenticationMD5PasswordMessage.Load(buf),
-                AuthenticationRequestType.AuthenticationGSS               => AuthenticationGSSMessage.Instance,
-                AuthenticationRequestType.AuthenticationSSPI              => AuthenticationSSPIMessage.Instance,
-                AuthenticationRequestType.AuthenticationGSSContinue       => AuthenticationGSSContinueMessage.Load(buf, len),
-                AuthenticationRequestType.AuthenticationSASL              => new AuthenticationSASLMessage(buf),
-                AuthenticationRequestType.AuthenticationSASLContinue      => new AuthenticationSASLContinueMessage(buf, len - 4),
-                AuthenticationRequestType.AuthenticationSASLFinal         => new AuthenticationSASLFinalMessage(buf, len - 4),
+                AuthenticationRequestType.Ok                => AuthenticationOkMessage.Instance,
+                AuthenticationRequestType.CleartextPassword => AuthenticationCleartextPasswordMessage.Instance,
+                AuthenticationRequestType.MD5Password       => AuthenticationMD5PasswordMessage.Load(buf),
+                AuthenticationRequestType.GSS               => AuthenticationGSSMessage.Instance,
+                AuthenticationRequestType.SSPI              => AuthenticationSSPIMessage.Instance,
+                AuthenticationRequestType.GSSContinue       => AuthenticationGSSContinueMessage.Load(buf, len),
+                AuthenticationRequestType.SASL              => new AuthenticationSASLMessage(buf),
+                AuthenticationRequestType.SASLContinue      => new AuthenticationSASLContinueMessage(buf, len - 4),
+                AuthenticationRequestType.SASLFinal         => new AuthenticationSASLFinalMessage(buf, len - 4),
                 _ => throw new NotSupportedException($"Authentication method not supported (Received: {authType})")
             };
 
@@ -1679,7 +1730,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal void PerformUserCancellation()
+    internal void PerformImmediateUserCancellation()
     {
         var connection = Connection;
         if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader || UserCancellationRequested)
@@ -1699,39 +1750,69 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            // Wait before we've read all responses for the prepended queries
-            // as we can't gracefully handle their cancellation.
-            // Break makes sure that it's going to be set even if we fail while reading them.
+            // Set the flag first before waiting on ReadingPrependedMessagesMRE.
+            // That way we're making sure that in case we're racing with ReadingPrependedMessagesMRE.Set
+            // that it's going to read the new value of the flag and request cancellation
+            _userCancellationRequested = true;
 
+            // Check whether we've read all responses for the prepended queries
+            // as we can't gracefully handle their cancellation.
             // We don't wait indefinitely to avoid deadlocks from synchronous CancellationToken.Register
             // See #5032
             if (!ReadingPrependedMessagesMRE.Wait(0))
                 return;
 
-            _userCancellationRequested = true;
-
-            if (AttemptPostgresCancellation && SupportsPostgresCancellation)
-            {
-                var cancellationTimeout = Settings.CancellationTimeout;
-                if (PerformPostgresCancellation() && cancellationTimeout >= 0)
-                {
-                    if (cancellationTimeout > 0)
-                    {
-                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-                        ReadBuffer.Cts.CancelAfter(cancellationTimeout);
-                    }
-
-                    return;
-                }
-            }
-
-            ReadBuffer.Timeout = _cancelImmediatelyTimeout;
-            ReadBuffer.Cts.Cancel();
+            PerformUserCancellationUnsynchronized();
         }
         finally
         {
             Monitor.Exit(CancelLock);
         }
+    }
+
+    void PerformDelayedUserCancellation()
+    {
+        // Take the lock first to make sure there is no concurrent Break.
+        // We should be safe to take it as Break only take it to set the state.
+        lock (SyncObj)
+        {
+            // The connector is dead, exit gracefully.
+            if (!IsConnected)
+                return;
+            // The connector is still alive, take the CancelLock before exiting SingleUseLock.
+            // If a break will happen after, it's going to wait for the cancellation to complete.
+            Monitor.Enter(CancelLock);
+        }
+
+        try
+        {
+            PerformUserCancellationUnsynchronized();
+        }
+        finally
+        {
+            Monitor.Exit(CancelLock);
+        }
+    }
+
+    void PerformUserCancellationUnsynchronized()
+    {
+        if (AttemptPostgresCancellation && SupportsPostgresCancellation)
+        {
+            var cancellationTimeout = Settings.CancellationTimeout;
+            if (PerformPostgresCancellation() && cancellationTimeout >= 0)
+            {
+                if (cancellationTimeout > 0)
+                {
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                    ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                }
+
+                return;
+            }
+        }
+
+        ReadBuffer.Timeout = _cancelImmediatelyTimeout;
+        ReadBuffer.Cts.Cancel();
     }
 
     /// <summary>
@@ -1816,7 +1897,7 @@ public sealed partial class NpgsqlConnector
 
         AttemptPostgresCancellation = attemptPgCancellation;
         return _cancellationTokenRegistration =
-            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+            cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformImmediateUserCancellation(), this);
     }
 
     /// <summary>
@@ -1848,7 +1929,7 @@ public sealed partial class NpgsqlConnector
         var currentAttemptPostgresCancellation = AttemptPostgresCancellation;
         AttemptPostgresCancellation = attemptPgCancellation;
 
-        var registration = cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformUserCancellation(), this);
+        var registration = cancellationToken.Register(static c => ((NpgsqlConnector)c!).PerformImmediateUserCancellation(), this);
 
         return new(this, registration, currentUserCancellationToken, currentAttemptPostgresCancellation);
     }
@@ -1971,9 +2052,6 @@ public sealed partial class NpgsqlConnector
         LogMessages.ClosedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
     }
 
-    internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
-        => DataSource.TryRemovePendingEnlistedConnector(this, transaction);
-
     internal void Return() => DataSource.Return(this);
 
     /// <summary>
@@ -2008,11 +2086,6 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            // If we're broken while reading prepended messages
-            // the cancellation request might still be waiting on the MRE.
-            // Unblock it.
-            ReadingPrependedMessagesMRE.Set();
-
             LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
 
             // Note that we may be reading and writing from the same connector concurrently, so safely set

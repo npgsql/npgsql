@@ -31,8 +31,6 @@ class PoolingDataSource : NpgsqlDataSource
     /// </summary>
     private protected readonly NpgsqlConnector?[] Connectors;
 
-    readonly NpgsqlMultiHostDataSource? _parentPool;
-
     /// <summary>
     /// Reader side for the idle connector channel. Contains nulls in order to release waiting attempts after
     /// a connector has been physically closed/broken.
@@ -76,14 +74,11 @@ class PoolingDataSource : NpgsqlDataSource
 
     internal PoolingDataSource(
         NpgsqlConnectionStringBuilder settings,
-        NpgsqlDataSourceConfiguration dataSourceConfig,
-        NpgsqlMultiHostDataSource? parentPool = null)
+        NpgsqlDataSourceConfiguration dataSourceConfig)
         : base(settings, dataSourceConfig)
     {
         if (settings.MaxPoolSize < settings.MinPoolSize)
             throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");
-
-        _parentPool = parentPool;
 
         // We enforce Max Pool Size, so no need to to create a bounded channel (which is less efficient)
         // On the consuming side, we have the multiplexing write loop but also non-multiplexing Rents
@@ -399,11 +394,6 @@ class PoolingDataSource : NpgsqlDataSource
         if (numConnectors == MinConnections)
             UpdatePruningTimer();
     }
-
-    internal override bool TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
-        => _parentPool is null
-            ? base.TryRemovePendingEnlistedConnector(connector, transaction)
-            : _parentPool.TryRemovePendingEnlistedConnector(connector, transaction);
 
     #region Pruning
 

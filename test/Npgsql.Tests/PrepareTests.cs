@@ -462,7 +462,7 @@ public class PrepareTests: TestBase
 
         // SQL overloading is a pretty rare/exotic scenario. Handling it properly would involve keying
         // prepared statements not just by SQL but also by the parameter types, which would pointlessly
-        // increase allocations. Instead, the second execution simply reuns unprepared
+        // increase allocations. Instead, the second execution simply reruns unprepared
         AssertNumPreparedStatements(conn, 1);
         conn.UnprepareAll();
     }
@@ -659,7 +659,7 @@ public class PrepareTests: TestBase
         using (var conn = OpenConnectionAndUnprepare())
         using (var cmd = new NpgsqlCommand("SELECT @p", conn))
         {
-            throw new NotImplementedException("Problem: currentl setting NpgsqlParameter.Value clears/invalidates...");
+            throw new NotImplementedException("Problem: current setting NpgsqlParameter.Value clears/invalidates...");
             cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Integer));
             cmd.Prepare(true);
 

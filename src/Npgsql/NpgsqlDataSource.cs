@@ -40,8 +40,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
 
     internal TransportSecurityHandler TransportSecurityHandler { get; }
-    internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
-    internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
+
+    internal Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; }
 
     readonly Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _passwordProviderAsync;
@@ -83,8 +83,6 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
 
-    internal List<HackyEnumTypeMapping>? _hackyEnumTypeMappings;
-
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
         NpgsqlDataSourceConfiguration dataSourceConfig)
@@ -100,18 +98,20 @@ public abstract class NpgsqlDataSource : DbDataSource
                 LoggingConfiguration,
                 TransportSecurityHandler,
                 IntegratedSecurityHandler,
-                UserCertificateValidationCallback,
-                ClientCertificatesCallback,
+                SslClientAuthenticationOptionsCallback,
                 _passwordProvider,
                 _passwordProviderAsync,
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
                 var resolverChain,
-                _hackyEnumTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
-                ConnectionInitializerAsync)
+                ConnectionInitializerAsync
+#if NET7_0_OR_GREATER
+                ,_
+#endif
+                )
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 

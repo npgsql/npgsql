@@ -721,7 +721,7 @@ public sealed class NpgsqlTsQueryFollowedBy : NpgsqlTsQueryBinOp
 }
 
 /// <summary>
-/// Represents an empty tsquery. Shold only be used as top node.
+/// Represents an empty tsquery. Should only be used as top node.
 /// </summary>
 public sealed class NpgsqlTsQueryEmpty : NpgsqlTsQuery
 {

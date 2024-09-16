@@ -111,8 +111,23 @@ class MiscTypeTests : MultiplexingTestBase
         cmd.UnknownResultTypeList = new[] { true, false };
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
+
         Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
         Assert.That(reader.GetString(0), Is.EqualTo("t"));
+        Assert.That(reader.GetValue(0), Is.EqualTo("t"));
+        Assert.That(reader.GetFieldValue<object>(0), Is.EqualTo("t"));
+
+        // Try some alternative text types
+        Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo("t"));
+        Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo("t"));
+
+        // Try as async
+        Assert.That(await reader.GetFieldValueAsync<string>(0), Is.EqualTo("t"));
+        Assert.That(await reader.GetFieldValueAsync<object>(0), Is.EqualTo("t"));
+        Assert.That(await reader.GetFieldValueAsync<byte[]>(0), Is.EqualTo("t"));
+        Assert.That(await reader.GetFieldValueAsync<char[]>(0), Is.EqualTo("t"));
+
+        // Normal binary column
         Assert.That(reader.GetInt32(1), Is.EqualTo(8));
     }
 

@@ -44,11 +44,12 @@ sealed class RecordConverter<T> : PgStreamingConverter<T>
                 _options.DatabaseInfo.GetPostgresType(typeOid).GetRepresentationalType()
                 ?? throw new NotSupportedException($"Reading isn't supported for record field {i} (unknown type OID {typeOid}");
 
-            var typeInfo = _options.GetObjectOrDefaultTypeInfo(postgresType)
+            var pgTypeId = _options.ToCanonicalTypeId(postgresType);
+            var typeInfo = _options.GetObjectOrDefaultTypeInfoInternal(pgTypeId)
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 
-            var converterInfo = typeInfo.Bind(new Field("?", _options.ToCanonicalTypeId(postgresType), -1), DataFormat.Binary);
+            var converterInfo = typeInfo.Bind(new Field("?", pgTypeId, -1), DataFormat.Binary);
             var scope = await reader.BeginNestedRead(async, length, converterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
             try
             {

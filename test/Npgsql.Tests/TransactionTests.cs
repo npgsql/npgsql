@@ -14,7 +14,7 @@ namespace Npgsql.Tests;
 
 public class TransactionTests : MultiplexingTestBase
 {
-    [Test, Description("Basic insert within a commited transaction")]
+    [Test, Description("Basic insert within a committed transaction")]
     public async Task Commit([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
         if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
@@ -43,7 +43,7 @@ public class TransactionTests : MultiplexingTestBase
             Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
-    [Test, Description("Basic insert within a commited transaction")]
+    [Test, Description("Basic insert within a committed transaction")]
     public async Task CommitAsync([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
         if (prepare == PrepareOrNot.Prepared && IsMultiplexing)

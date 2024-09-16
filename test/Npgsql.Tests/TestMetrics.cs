@@ -46,7 +46,7 @@ internal sealed class TestMetrics : IDisposable
     }
 
     /// <summary>
-    /// Incremnent the Iterations value by one.
+    /// Increment the Iterations value by one.
     /// </summary>
     public void IncrementIterations()
     {
@@ -102,7 +102,7 @@ internal sealed class TestMetrics : IDisposable
 
     /// <summary>
     /// Calculate the number of iterations accumulated per second.
-    /// Equivelent to calling IterationsPer(new TimeSpan(0, 0, 1)).
+    /// Equivalent to calling IterationsPer(new TimeSpan(0, 0, 1)).
     /// </summary>
     /// <returns>The number of iterations accumulated per second.</returns>
     public double IterationsPerSecond()
@@ -122,7 +122,7 @@ internal sealed class TestMetrics : IDisposable
 
     /// <summary>
     /// Calculate the number of iterations accumulated per CPU second.
-    /// Equivelent to calling IterationsPerCPU(new TimeSpan(0, 0, 1)).
+    /// Equivalent to calling IterationsPerCPU(new TimeSpan(0, 0, 1)).
     /// </summary>
     /// <param name="timeSpan"></param>
     /// <returns>The number of iterations accumulated per CPU second.</returns>

@@ -1,1 +1,31 @@
 ﻿#nullable enable
+Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.get -> System.Action<System.Net.Security.SslClientAuthenticationOptions!>?
+Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.set -> void
+Npgsql.NpgsqlDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlMetricsOptions
+Npgsql.NpgsqlMetricsOptions.NpgsqlMetricsOptions() -> void
+Npgsql.NpgsqlSlimDataSourceBuilder.EnableGeometricTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.EnableJsonTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.EnableNetworkTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.Replication.PgOutput.ReplicationValue.GetFieldName() -> string!
+Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage
+Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage.AbortLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage.AbortTimestamp.get -> System.DateTime
+Npgsql.Replication.PgOutput.PgOutputProtocolVersion
+Npgsql.Replication.PgOutput.PgOutputProtocolVersion.V1 = 1 -> Npgsql.Replication.PgOutput.PgOutputProtocolVersion
+Npgsql.Replication.PgOutput.PgOutputProtocolVersion.V2 = 2 -> Npgsql.Replication.PgOutput.PgOutputProtocolVersion
+Npgsql.Replication.PgOutput.PgOutputProtocolVersion.V3 = 3 -> Npgsql.Replication.PgOutput.PgOutputProtocolVersion
+Npgsql.Replication.PgOutput.PgOutputProtocolVersion.V4 = 4 -> Npgsql.Replication.PgOutput.PgOutputProtocolVersion
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, Npgsql.Replication.PgOutput.PgOutputProtocolVersion protocolVersion, bool? binary = null, Npgsql.Replication.PgOutput.PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null) -> void
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, Npgsql.Replication.PgOutput.PgOutputProtocolVersion protocolVersion, bool? binary = null, Npgsql.Replication.PgOutput.PgOutputStreamingMode? streamingMode = null, bool? messages = null, bool? twoPhase = null) -> void
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.ProtocolVersion.get -> Npgsql.Replication.PgOutput.PgOutputProtocolVersion
+*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.ProtocolVersion.get -> ulong
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.StreamingMode.get -> Npgsql.Replication.PgOutput.PgOutputStreamingMode?
+*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.Streaming.get -> bool?
+Npgsql.Replication.PgOutput.PgOutputStreamingMode
+Npgsql.Replication.PgOutput.PgOutputStreamingMode.Off = 0 -> Npgsql.Replication.PgOutput.PgOutputStreamingMode
+Npgsql.Replication.PgOutput.PgOutputStreamingMode.On = 1 -> Npgsql.Replication.PgOutput.PgOutputStreamingMode
+Npgsql.Replication.PgOutput.PgOutputStreamingMode.Parallel = 2 -> Npgsql.Replication.PgOutput.PgOutputStreamingMode

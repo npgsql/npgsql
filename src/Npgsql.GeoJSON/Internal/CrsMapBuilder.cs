@@ -5,7 +5,7 @@ namespace Npgsql.GeoJSON.Internal;
 struct CrsMapBuilder
 {
     CrsMapEntry[] _overrides;
-    int _overridenIndex;
+    int _overriddenIndex;
     int _wellKnownIndex;
 
     internal void Add(in CrsMapEntry entry)
@@ -33,21 +33,21 @@ struct CrsMapBuilder
 
     void AddCore(in CrsMapEntry entry)
     {
-        var index = _overridenIndex + 1;
+        var index = _overriddenIndex + 1;
         if (_overrides == null)
             _overrides = new CrsMapEntry[4];
         else
         if (_overrides.Length == index)
             Array.Resize(ref _overrides, _overrides.Length << 1);
 
-        _overrides[_overridenIndex] = entry;
-        _overridenIndex = index;
+        _overrides[_overriddenIndex] = entry;
+        _overriddenIndex = index;
     }
 
     internal CrsMap Build()
     {
-        if (_overrides != null && _overrides.Length < _overridenIndex)
-            Array.Resize(ref _overrides, _overridenIndex);
+        if (_overrides != null && _overrides.Length < _overriddenIndex)
+            Array.Resize(ref _overrides, _overriddenIndex);
 
         return new CrsMap(_overrides);
     }

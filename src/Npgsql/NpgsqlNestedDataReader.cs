@@ -67,12 +67,12 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         _outerNestedReader = outerNestedReader;
         _depth = depth;
         _compositeType = compositeType;
-        _startPos = PgReader.FieldStartPos;
+        _startPos = PgReader.GetFieldStartPos(this);
     }
 
     internal void Init(PostgresCompositeType? compositeType)
     {
-        _startPos = PgReader.FieldStartPos;
+        _startPos = PgReader.GetFieldStartPos(this);
         _columns.Clear();
         _numRows = 0;
         _nextRowIndex = 0;
@@ -102,13 +102,13 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (_numRows > 0)
             PgReader.ReadInt32(); // Length of first row
 
-        _nextRowBufferPos = PgReader.FieldOffset;
+        _nextRowBufferPos = PgReader.GetFieldOffset(this);
     }
 
     internal void InitSingleRow()
     {
         _numRows = 1;
-        _nextRowBufferPos = PgReader.FieldOffset;
+        _nextRowBufferPos = PgReader.GetFieldOffset(this);
     }
 
     /// <inheritdoc />
@@ -150,7 +150,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     /// <inheritdoc />
     public override bool IsClosed
         => _readerState == ReaderState.Closed || _readerState == ReaderState.Disposed
-                                              || _outermostReader.IsClosed || PgReader.FieldStartPos != _startPos;
+                                              || _outermostReader.IsClosed || PgReader.GetFieldStartPos(this) != _startPos;
 
     /// <inheritdoc />
     public override int RecordsAffected => -1;
@@ -376,18 +376,20 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         for (var i = 0; i < numColumns; i++)
         {
             var typeOid = PgReader.ReadUInt32();
-            var bufferPos = PgReader.FieldOffset;
+            var bufferPos = PgReader.GetFieldOffset(this);
             if (i >= _columns.Count)
             {
                 var pgType = SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
-                _columns.Add(new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgType, SerializerOptions), Format));
+                var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
+                _columns.Add(new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format));
             }
             else
             {
                 var pgType = _columns[i].PostgresType.OID == typeOid
                     ? _columns[i].PostgresType
                     : SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
-                _columns[i] = new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgType, SerializerOptions), Format);
+                var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
+                _columns[i] = new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format);
             }
 
             var columnLen = PgReader.ReadInt32();
@@ -396,7 +398,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         }
         _columns.RemoveRange(numColumns, _columns.Count - numColumns);
 
-        _nextRowBufferPos = PgReader.FieldOffset;
+        _nextRowBufferPos = PgReader.GetFieldOffset(this);
 
         _readerState = ReaderState.OnRow;
         return true;
@@ -517,7 +519,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             }
         }
 
-        var converterInfo = column.Bind(AdoSerializerHelpers.GetTypeInfoForReading(type, column.PostgresType, SerializerOptions));
+        var converterInfo = column.Bind(AdoSerializerHelpers.GetTypeInfoForReading(type, SerializerOptions.ToCanonicalTypeId(column.PostgresType), SerializerOptions));
         _columns[ordinal] = column with { LastConverterInfo = converterInfo };
         asObject = converterInfo.IsBoxingConverter;
         return converterInfo;

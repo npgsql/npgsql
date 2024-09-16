@@ -33,6 +33,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
+    Action<SslClientAuthenticationOptions>? _sslClientAuthenticationOptionsCallback;
+
+#if NET7_0_OR_GREATER
+    Action<NegotiateAuthenticationClientOptions>? _negotiateOptionsCallback;
+#endif
 
     IntegratedSecurityHandler _integratedSecurityHandler = new();
 
@@ -139,6 +144,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </para>
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseUserCertificateValidationCallback(
         RemoteCertificateValidationCallback userCertificateValidationCallback)
     {
@@ -152,6 +158,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     /// <param name="clientCertificate">The client certificate to be sent to PostgreSQL when opening a connection.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseClientCertificate(X509Certificate? clientCertificate)
     {
         if (clientCertificate is null)
@@ -166,8 +173,26 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     /// <param name="clientCertificates">The client certificate collection to be sent to PostgreSQL when opening a connection.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseClientCertificates(X509CertificateCollection? clientCertificates)
         => UseClientCertificatesCallback(clientCertificates is null ? null : certs => certs.AddRange(clientCertificates));
+
+    /// <summary>
+    /// When using SSL/TLS, this is a callback that allows customizing SslStream's authentication options.
+    /// </summary>
+    /// <param name="sslClientAuthenticationOptionsCallback">The callback to customize SslStream's authentication options.</param>
+    /// <remarks>
+    /// <para>
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions?view=net-8.0"/>.
+    /// </para>
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder UseSslClientAuthenticationOptionsCallback(Action<SslClientAuthenticationOptions>? sslClientAuthenticationOptionsCallback)
+    {
+        _sslClientAuthenticationOptionsCallback = sslClientAuthenticationOptionsCallback;
+
+        return this;
+    }
 
     /// <summary>
     /// Specifies a callback to modify the collection of SSL/TLS client certificates which Npgsql will send to PostgreSQL for
@@ -186,6 +211,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </para>
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    [Obsolete("Use UseSslClientAuthenticationOptionsCallback")]
     public NpgsqlSlimDataSourceBuilder UseClientCertificatesCallback(Action<X509CertificateCollection>? clientCertificatesCallback)
     {
         _clientCertificatesCallback = clientCertificatesCallback;
@@ -288,6 +314,25 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         _passwordProviderAsync = passwordProviderAsync;
         return this;
     }
+
+#if NET7_0_OR_GREATER
+    /// <summary>
+    /// When using Kerberos, this is a callback that allows customizing default settings for Kerberos authentication.
+    /// </summary>
+    /// <param name="negotiateOptionsCallback">The callback containing logic to customize Kerberos authentication settings.</param>
+    /// <remarks>
+    /// <para>
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.negotiateauthenticationclientoptions?view=net-7.0"/>.
+    /// </para>
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder UseNegotiateOptionsCallback(Action<NegotiateAuthenticationClientOptions>? negotiateOptionsCallback)
+    {
+        _negotiateOptionsCallback = negotiateOptionsCallback;
+
+        return this;
+    }
+#endif
 
     #endregion Authentication
 
@@ -478,6 +523,39 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Sets up network mappings. This allows mapping PhysicalAddress, IPAddress, NpgsqlInet and NpgsqlCidr types
+    /// to PostgreSQL <c>macaddr</c>, <c>macaddr8</c>, <c>inet</c> and <c>cidr</c> types.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder EnableNetworkTypes()
+    {
+        _resolverChainBuilder.AppendResolverFactory(new NetworkTypeInfoResolverFactory());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up network mappings. This allows mapping types like NpgsqlPoint and NpgsqlPath
+    /// to PostgreSQL <c>point</c>, <c>path</c> and so on types.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder EnableGeometricTypes()
+    {
+        _resolverChainBuilder.AppendResolverFactory(new GeometricTypeInfoResolverFactory());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up System.Text.Json mappings. This allows mapping JsonDocument and JsonElement types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder EnableJsonTypes()
+    {
+        _resolverChainBuilder.AppendResolverFactory(() => new JsonTypeInfoResolverFactory(JsonSerializerOptions));
+        return this;
+    }
+
+    /// <summary>
     /// Sets up dynamic System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
     /// types, as well as <see cref="JsonNode" /> and its derived types.
     /// </summary>
@@ -490,6 +568,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <remarks>
     /// Due to the dynamic nature of these mappings, they are not compatible with NativeAOT or trimming.
     /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     public NpgsqlSlimDataSourceBuilder EnableDynamicJson(
@@ -568,7 +647,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         var config = PrepareConfiguration();
         var connectionStringBuilder = ConnectionStringBuilder.Clone();
 
-        if (ConnectionStringBuilder.Host!.Contains(","))
+        if (ConnectionStringBuilder.Host!.Contains(','))
         {
             ValidateMultiHost();
 
@@ -598,7 +677,31 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     {
         ConnectionStringBuilder.PostProcessAndValidate();
 
-        if (!_transportSecurityHandler.SupportEncryption && (_userCertificateValidationCallback is not null || _clientCertificatesCallback is not null))
+        var sslClientAuthenticationOptionsCallback = _sslClientAuthenticationOptionsCallback;
+        var hasCertificateCallbacks = _userCertificateValidationCallback is not null || _clientCertificatesCallback is not null;
+        if (sslClientAuthenticationOptionsCallback is not null && hasCertificateCallbacks)
+        {
+            throw new NotSupportedException(NpgsqlStrings.SslClientAuthenticationOptionsCallbackWithOtherCallbacksNotSupported);
+        }
+
+        if (sslClientAuthenticationOptionsCallback is null && hasCertificateCallbacks)
+        {
+            sslClientAuthenticationOptionsCallback = options =>
+            {
+                if (_clientCertificatesCallback is not null)
+                {
+                    options.ClientCertificates ??= new X509Certificate2Collection();
+                    _clientCertificatesCallback.Invoke(options.ClientCertificates);
+                }
+
+                if (_userCertificateValidationCallback is not null)
+                {
+                    options.RemoteCertificateValidationCallback = _userCertificateValidationCallback;
+                }
+            };
+        }
+
+        if (!_transportSecurityHandler.SupportEncryption && sslClientAuthenticationOptionsCallback is not null)
         {
             throw new InvalidOperationException(NpgsqlStrings.TransportSecurityDisabled);
         }
@@ -623,33 +726,20 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
             _transportSecurityHandler,
             _integratedSecurityHandler,
-            _userCertificateValidationCallback,
-            _clientCertificatesCallback,
+            sslClientAuthenticationOptionsCallback,
             _passwordProvider,
             _passwordProviderAsync,
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
             _resolverChainBuilder.Build(ConfigureResolverChain),
-            HackyEnumMappings(),
             DefaultNameTranslator,
             _connectionInitializer,
-            _connectionInitializerAsync);
-
-        List<HackyEnumTypeMapping> HackyEnumMappings()
-        {
-            var mappings = new List<HackyEnumTypeMapping>();
-
-            if (_userTypeMapper.Items.Count > 0)
-                foreach (var userTypeMapping in _userTypeMapper.Items)
-                    if (userTypeMapping is UserTypeMapper.EnumMapping enumMapping)
-                        mappings.Add(new(enumMapping.ClrType, enumMapping.PgTypeName, enumMapping.NameTranslator));
-
-            if (GlobalTypeMapper.Instance.HackyEnumTypeMappings.Count > 0)
-                mappings.AddRange(GlobalTypeMapper.Instance.HackyEnumTypeMappings);
-
-            return mappings;
-        }
+            _connectionInitializerAsync
+#if NET7_0_OR_GREATER
+            ,_negotiateOptionsCallback
+#endif
+            );
     }
 
     void ValidateMultiHost()

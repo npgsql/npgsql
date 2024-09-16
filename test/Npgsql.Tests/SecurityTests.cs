@@ -294,16 +294,19 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    public async Task DataSource_UserCertificateValidationCallback_is_invoked([Values] bool acceptCertificate)
+    public async Task DataSource_SslClientAuthenticationOptionsCallback_is_invoked([Values] bool acceptCertificate)
     {
         var callbackWasInvoked = false;
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.ConnectionStringBuilder.SslMode = SslMode.Require;
-        dataSourceBuilder.UseUserCertificateValidationCallback((_, _, _, _) =>
+        dataSourceBuilder.UseSslClientAuthenticationOptionsCallback(options =>
         {
-            callbackWasInvoked = true;
-            return acceptCertificate;
+            options.RemoteCertificateValidationCallback = (_, _, _, _) =>
+            {
+                callbackWasInvoked = true;
+                return acceptCertificate;
+            };
         });
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = dataSource.CreateConnection();
@@ -316,11 +319,11 @@ public class SecurityTests : TestBase
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
-        Assert.That(callbackWasInvoked);
+        Assert.IsTrue(callbackWasInvoked);
     }
 
     [Test]
-    public async Task Connection_UserCertificateValidationCallback_is_invoked([Values] bool acceptCertificate)
+    public async Task Connection_SslClientAuthenticationOptionsCallback_is_invoked([Values] bool acceptCertificate)
     {
         var callbackWasInvoked = false;
 
@@ -328,10 +331,13 @@ public class SecurityTests : TestBase
         dataSourceBuilder.ConnectionStringBuilder.SslMode = SslMode.Require;
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = dataSource.CreateConnection();
-        connection.UserCertificateValidationCallback = (_, _, _, _) =>
+        connection.SslClientAuthenticationOptionsCallback = options =>
         {
-            callbackWasInvoked = true;
-            return acceptCertificate;
+            options.RemoteCertificateValidationCallback = (_, _, _, _) =>
+            {
+                callbackWasInvoked = true;
+                return acceptCertificate;
+            };
         };
 
         if (acceptCertificate)
@@ -342,7 +348,7 @@ public class SecurityTests : TestBase
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
-        Assert.That(callbackWasInvoked);
+        Assert.IsTrue(callbackWasInvoked);
     }
 
     [Test]
@@ -350,10 +356,13 @@ public class SecurityTests : TestBase
     {
         using var dataSource = CreateDataSource(csb => csb.SslMode = sslMode);
         using var connection = dataSource.CreateConnection();
-        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+        connection.SslClientAuthenticationOptionsCallback = options =>
+        {
+            options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+        };
 
         var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
-        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode)));
+        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithCustomValidationCallback, sslMode)));
     }
 
     [Test]
@@ -365,10 +374,13 @@ public class SecurityTests : TestBase
             csb.RootCertificate = "foo";
         });
         using var connection = dataSource.CreateConnection();
-        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+        connection.SslClientAuthenticationOptionsCallback = options =>
+        {
+            options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+        };
 
         var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
-        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback)));
+        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithCustomValidationCallback)));
     }
 
     [Test]

@@ -107,7 +107,7 @@ partial class NpgsqlConnector
             if (_leftToRead == 0)
             {
                 var response = ExpectAny<AuthenticationRequestMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-                if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
+                if (response.AuthRequestType == AuthenticationRequestType.Ok)
                     throw new AuthenticationCompleteException();
                 var gssMsg = response as AuthenticationGSSContinueMessage;
                 if (gssMsg == null)

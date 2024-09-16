@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Text;
 using Npgsql.Internal.Postgres;
 using Npgsql.NameTranslation;
@@ -34,7 +33,7 @@ public sealed class PgSerializerOptions
     internal PgTypeInfo UnspecifiedDBNullTypeInfo { get; }
 
     PostgresType? _textPgType;
-    internal PostgresType TextPgType => _textPgType ??= DatabaseInfo.GetPostgresType(DataTypeNames.Text);
+    internal PgTypeId TextPgTypeId => ToCanonicalTypeId(_textPgType ??= DatabaseInfo.GetPostgresType(DataTypeNames.Text));
 
     // Used purely for type mapping, where we don't have a full set of types but resolvers might know enough.
     readonly bool _introspectionInstance;
@@ -84,23 +83,20 @@ public sealed class PgSerializerOptions
             ? ((TypeInfoCache<DataTypeName>)(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this))).GetOrAddInfo(type, pgTypeId?.DataTypeName, defaultTypeFallback)
             : ((TypeInfoCache<Oid>)(_typeInfoCache ??= new TypeInfoCache<Oid>(this))).GetOrAddInfo(type, pgTypeId?.Oid, defaultTypeFallback);
 
-    public PgTypeInfo? GetDefaultTypeInfo(PostgresType pgType)
-        => GetTypeInfoCore(null, ToCanonicalTypeId(pgType), false);
-
-    public PgTypeInfo? GetDefaultTypeInfo(PgTypeId pgTypeId)
-        => GetTypeInfoCore(null, pgTypeId, false);
-
-    public PgTypeInfo? GetTypeInfo(Type type, PostgresType pgType)
-        => GetTypeInfoCore(type, ToCanonicalTypeId(pgType), false);
-
-    public PgTypeInfo? GetTypeInfo(Type type, PgTypeId? pgTypeId = null)
+    internal PgTypeInfo? GetTypeInfoInternal(Type? type, PgTypeId? pgTypeId)
         => GetTypeInfoCore(type, pgTypeId, false);
 
-    public PgTypeInfo? GetObjectOrDefaultTypeInfo(PostgresType pgType)
-        => GetTypeInfoCore(typeof(object), ToCanonicalTypeId(pgType), true);
-
-    public PgTypeInfo? GetObjectOrDefaultTypeInfo(PgTypeId pgTypeId)
+    internal PgTypeInfo? GetObjectOrDefaultTypeInfoInternal(PgTypeId pgTypeId)
         => GetTypeInfoCore(typeof(object), pgTypeId, true);
+
+    public PgTypeInfo? GetDefaultTypeInfo(Type type)
+        => GetTypeInfoCore(type, null, false);
+
+    public PgTypeInfo? GetDefaultTypeInfo(PgTypeId pgTypeId)
+        => GetTypeInfoCore(null, GetCanonicalTypeId(pgTypeId), false);
+
+    public PgTypeInfo? GetTypeInfo(Type type, PgTypeId pgTypeId)
+        => GetTypeInfoCore(type, GetCanonicalTypeId(pgTypeId), false);
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
     internal PgTypeId GetCanonicalTypeId(PgTypeId pgTypeId)

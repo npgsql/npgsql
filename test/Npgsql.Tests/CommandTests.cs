@@ -300,7 +300,6 @@ public class CommandTests : MultiplexingTestBase
     #region Cancel
 
     [Test, Description("Basic cancellation scenario")]
-    [Ignore("Flaky, see https://github.com/npgsql/npgsql/issues/5070")]
     public async Task Cancel()
     {
         if (IsMultiplexing)
@@ -340,7 +339,6 @@ public class CommandTests : MultiplexingTestBase
     }
 
     [Test, Description("Cancels an async query with the cancellation token, with successful PG cancellation")]
-    [Explicit("Flaky due to #5033")]
     public async Task Cancel_async_soft()
     {
         if (IsMultiplexing)
@@ -359,6 +357,48 @@ public class CommandTests : MultiplexingTestBase
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+    }
+
+    [Test, Description("Cancels an async query with the cancellation token and prepended query, with successful PG cancellation")]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/5191")]
+    public async Task Cancel_async_soft_with_prepended_query()
+    {
+        if (IsMultiplexing)
+            return; // Multiplexing, cancellation
+
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        var processId = conn.ProcessID;
+
+        await using var tx = await conn.BeginTransactionAsync();
+        await using var cmd = CreateSleepCommand(conn);
+        using var cancellationSource = new CancellationTokenSource();
+        var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
+
+        await server.ExpectSimpleQuery("BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED");
+        cancellationSource.Cancel();
+        await server
+            .WriteCommandComplete()
+            .WriteReadyForQuery(TransactionStatus.InTransactionBlock)
+            .FlushAsync();
+
+         Assert.That((await postmasterMock.WaitForCancellationRequest()).ProcessId,
+            Is.EqualTo(processId));
+
+         await server
+             .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+             .WriteReadyForQuery()
+             .FlushAsync();
+
+        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
+        Assert.That(exception.InnerException,
+            Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
+        Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
+
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
     }
 
     [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]

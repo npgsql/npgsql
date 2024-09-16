@@ -34,6 +34,7 @@ static class ReflectionCompositeInfoFactory
             var fieldIndex = parameterFieldMap[i];
             var pgField = pgFields[fieldIndex];
             var parameter = constructorParameters[i];
+            var reprTypeId = options.ToCanonicalTypeId(pgField.Type.GetRepresentationalType());
             PgTypeInfo pgTypeInfo;
             Delegate getter;
             if (propertyMap.TryGetValue(fieldIndex, out var property) && property.GetMethod is not null)
@@ -41,7 +42,7 @@ static class ReflectionCompositeInfoFactory
                 if (property.PropertyType != parameter.ParameterType)
                     throw new InvalidOperationException($"Could not find a matching getter for constructor parameter {parameter.Name} and type {parameter.ParameterType} mapped to composite field {pgFields[fieldIndex].Name}.");
 
-                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type.GetRepresentationalType()) ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
+                pgTypeInfo = options.GetTypeInfoInternal(property.PropertyType, reprTypeId) ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
                 getter = CreateGetter<T>(property);
             }
             else if (fieldMap.TryGetValue(fieldIndex, out var field))
@@ -49,7 +50,7 @@ static class ReflectionCompositeInfoFactory
                 if (field.FieldType != parameter.ParameterType)
                     throw new InvalidOperationException($"Could not find a matching getter for constructor parameter {parameter.Name} and type {parameter.ParameterType} mapped to composite field {pgFields[fieldIndex].Name}.");
 
-                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type.GetRepresentationalType()) ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
+                pgTypeInfo = options.GetTypeInfoInternal(field.FieldType, reprTypeId) ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
                 getter = CreateGetter<T>(field);
             }
             else
@@ -65,19 +66,20 @@ static class ReflectionCompositeInfoFactory
                 continue;
 
             var pgField = pgFields[fieldIndex];
+            var reprTypeId = options.ToCanonicalTypeId(pgField.Type.GetRepresentationalType());
             PgTypeInfo pgTypeInfo;
             Delegate getter;
             Delegate setter;
             if (propertyMap.TryGetValue(fieldIndex, out var property))
             {
-                pgTypeInfo = options.GetTypeInfo(property.PropertyType, pgField.Type.GetRepresentationalType())
+                pgTypeInfo = options.GetTypeInfoInternal(property.PropertyType, reprTypeId)
                              ?? throw NotSupportedField(pgType, pgField, isField: false, property.Name, property.PropertyType);
                 getter = CreateGetter<T>(property);
                 setter = CreateSetter<T>(property);
             }
             else if (fieldMap.TryGetValue(fieldIndex, out var field))
             {
-                pgTypeInfo = options.GetTypeInfo(field.FieldType, pgField.Type.GetRepresentationalType())
+                pgTypeInfo = options.GetTypeInfoInternal(field.FieldType, reprTypeId)
                              ?? throw NotSupportedField(pgType, pgField, isField: true, field.Name, field.FieldType);
                 getter = CreateGetter<T>(field);
                 setter = CreateSetter<T>(field);
@@ -151,8 +153,8 @@ static class ReflectionCompositeInfoFactory
     static Expression UnboxAny(Expression expression, Type type)
         => type.IsValueType ? Expression.Unbox(expression, type) : Expression.Convert(expression, type, null);
 
-    [DynamicDependency("TypedValue", typeof(StrongBox<>))]
-    [DynamicDependency("Length", typeof(StrongBox[]))]
+    [DynamicDependency(nameof(StrongBox<object>.TypedValue), typeof(StrongBox<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(StrongBox[]))]
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "DynamicDependencies in place for the System.Linq.Expression.Property calls")]
     static Func<StrongBox[], T> CreateStrongBoxConstructor<T>(ConstructorInfo constructorInfo)
     {
@@ -165,7 +167,7 @@ static class ReflectionCompositeInfoFactory
             .Lambda<Func<StrongBox[], T>>(
                 Expression.Block(
                     Expression.IfThen(
-                        Expression.LessThan(Expression.Property(values, "Length"), parameterCount),
+                        Expression.LessThan(Expression.Property(values, nameof(Array.Length)), parameterCount),
 
                         Expression.Throw(Expression.New(argumentExceptionNameMessageConstructor,
                             Expression.Constant("Passed fewer arguments than there are constructor parameters."), Expression.Constant(values.Name)))
@@ -176,7 +178,7 @@ static class ReflectionCompositeInfoFactory
                                 Expression.ArrayIndex(values, Expression.Constant(i)),
                                 typeof(StrongBox<>).MakeGenericType(parameter.ParameterType)
                             ),
-                            "TypedValue"
+                            nameof(StrongBox<object>.TypedValue)
                         )
                     ))
                 ), values)
