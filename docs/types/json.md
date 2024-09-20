@@ -46,7 +46,7 @@ With this mapping style, you're fully responsible for serializing/deserializing 
 
 If your column JSON contains documents with a stable schema, you can map them to your own .NET types (or POCOs). The provider will use System.Text.Json APIs under the hood to serialize instances of your types to JSON documents before sending them to the database, and to deserialize documents coming back from the database. This effectively allows mapping an arbitrary .NET type - or object graph - to a single column in the database.
 
-Starting with Npgsql 8.0, to use this feature, you must first enable it by calling <xref:Npgsql.INpgsqlTypeMapperExtensions.EnableDynamicJson> on your <xref:Npgsql.NpgsqlDataSourceBuilder>, or, if you're not yet using data sources, on `NpgsqlConnection.GlobalTypeMapper`:
+Starting with Npgsql 8.0, to use this feature, you must first enable it by calling <xref:Npgsql.TypeMapping.INpgsqlTypeMapper.EnableDynamicJson*> on your <xref:Npgsql.NpgsqlDataSourceBuilder>, or, if you're not yet using data sources, on `NpgsqlConnection.GlobalTypeMapper`:
 
 ### [NpgsqlDataSource](#tab/datasource)
 
