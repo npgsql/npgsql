@@ -36,7 +36,7 @@ dotnet counters monitor Npgsql -p <PID>
 
 Note that Npgsql emits multiple *dimensions* with the metrics, e.g. the connection states (idle or used). In addition, an identifier for the connection pool - or data source - is emitted with every metric, allowing you to separately track e.g. multiple databases accessed in the same applications. By default, the `pool.name` will be the connection string, but it can be useful to give your data sources a name for easier and more consistent tracking:
 
-```c#
+```csharp
 var builder = new NpgsqlDataSourceBuilder("Host=localhost;Username=test;Password=test")
 {
     Name = "CustomersDB"

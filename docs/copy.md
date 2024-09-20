@@ -11,7 +11,7 @@ This mode uses the efficient PostgreSQL binary format to transfer data in and ou
 > [!WARNING]
 > It is the your responsibility to read and write the correct type! If you use COPY to write an int32 into a string field you may get an exception, or worse, silent data corruption. It is also highly recommended to use the overload of `Write()` which accepts an `NpgsqlDbType`, allowing you to unambiguously specify exactly what type you want to write. Test your code thoroughly.
 
-```c#
+```csharp
 // Import two columns to table data
 using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int2) FROM STDIN (FORMAT BINARY)"))
 {
@@ -46,7 +46,7 @@ using (var reader = Conn.BeginBinaryExport("COPY data (field_text, field_int2) T
 
 This mode uses the PostgreSQL text or csv format to transfer data in and out of the database. It is the user's responsibility to format the text or CSV appropriately, Npgsql simply provides a TextReader or Writer. This mode is less efficient than binary copy, and is suitable mainly if you already have the data in a CSV or compatible text format and don't care about performance.
 
-```c#
+```csharp
 using (var writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN")) {
     writer.Write("HELLO\t1\n");
     writer.Write("GOODBYE\t2\n");
@@ -64,7 +64,7 @@ In this mode, data transfer is binary, but Npgsql does no encoding or decoding w
 
 Example:
 
-```c#
+```csharp
 int len;
 var data = new byte[10000];
 // Export table1 to data array

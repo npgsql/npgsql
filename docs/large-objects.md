@@ -6,7 +6,7 @@ With the Large Objects feature, objects are instead stored in a separate system 
 
 ## Example
 
-```c#
+```csharp
 // Retrieve a Large Object Manager for this connection
 var manager = new NpgsqlLargeObjectManager(Conn);
 

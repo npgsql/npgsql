@@ -68,13 +68,13 @@ By default, when logging SQL statements, Npgsql does not log parameter values, s
 
 ### [Console Program](#tab/console)
 
-```c#
+```csharp
 dataSourceBuilder.EnableParameterLogging();
 ```
 
 ### [ASP.NET Program](#tab/aspnet)
 
-```c#
+```csharp
 builder.Services.AddNpgsqlDataSource(
     "Host=localhost;Username=test;Password=test",
     builder => builder.EnableParameterLogging());
@@ -82,7 +82,7 @@ builder.Services.AddNpgsqlDataSource(
 
 ### [Without DbDataSource](#tab/without-dbdatasource)
 
-```c#
+```csharp
 NpgsqlLoggingConfiguration.InitializeLogging(loggerFactory, parameterLoggingEnabled: true);
 ```
 
@@ -95,7 +95,7 @@ NpgsqlLoggingConfiguration.InitializeLogging(loggerFactory, parameterLoggingEnab
 
 Prior to 7.0, Npgsql had its own, custom logging API. To use this, statically inject a logging provider implementing the `INpgsqlLoggingProvider` interface as follows:
 
-```c#
+```csharp
 NpgsqlLogManager.Provider = new ???
 ```
 
@@ -108,7 +108,7 @@ It's trivial to create a logging provider that passes log messages to whatever l
 Npgsql comes with one built-in logging provider: `ConsoleLoggingProvider`. It simply dumps all log messages with a given level or above to standard output.
 You can set it up by including the following line at the beginning of your application:
 
-```c#
+```csharp
 NpgsqlLogManager.Provider = new ConsoleLoggingProvider(<min level>, <print level?>, <print connector id?>);
 ```
 
@@ -120,7 +120,7 @@ You can also have log levels and connector IDs logged.
 The following provider is used in the Npgsql unit tests to pass log messages to [NLog](http://nlog-project.org/).
 You're welcome to copy-paste it into your project, or to use it as a starting point for implementing your own custom provider.
 
-```c#
+```csharp
 class NLogLoggingProvider : INpgsqlLoggingProvider
 {
     public NpgsqlLogger CreateLogger(string name)

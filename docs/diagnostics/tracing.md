@@ -9,7 +9,7 @@
 
 To make Npgsql emit tracing data, reference the [Npgsql.OpenTelemetry](https://www.nuget.org/packages/Npgsql.OpenTelemetry) NuGet package from your application, and set up tracing as follows:
 
-```c#
+```csharp
 using var tracerProvider = Sdk.CreateTracerProviderBuilder()
     .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("npgsql-tester"))
     .SetSampler(new AlwaysOnSampler())

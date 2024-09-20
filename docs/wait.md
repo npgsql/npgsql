@@ -24,7 +24,7 @@ To receive notifications outside a synchronous request-response cycle, call `Npg
 until a single notification is received (note that a version with a timeout as well as an async version exist). Note that the notification
 is still delivered via the `Notification` event as before.
 
-```c#
+```csharp
 var conn = new NpgsqlConnection(ConnectionString);
 conn.Open();
 conn.Notification += (o, e) => Console.WriteLine("Received notification");

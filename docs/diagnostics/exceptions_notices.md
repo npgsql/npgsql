@@ -16,6 +16,6 @@ Finally, PostgreSQL also raises "notices", which contain non-critical informatio
 
 Npgsql logs notices in the *debug* logging level. To deal with notices programmatically, Npgsql also exposes the <xref:Npgsql.NpgsqlConnection.Notice> event, which you can hook into for any further processing:
 
-```c#
+```csharp
 conn.Notice += (_, args) => Console.WriteLine(args.Notice.MessageText);
 ```

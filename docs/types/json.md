@@ -17,7 +17,7 @@ Npgsql allows you to map PostgreSQL JSON columns in three different ways:
 
 The simplest form of mapping to JSON is as a regular .NET string:
 
-```c#
+```csharp
 // Write a string to a json column:
 await using var command1 = new NpgsqlCommand("INSERT INTO test (data) VALUES ($1)", conn)
 {
@@ -53,7 +53,7 @@ Starting with Npgsql 8.0, to use this feature, you must first enable it by calli
 > [!NOTE]
 > `NpgsqlDataSource` was introduced in Npgsql 7.0, and is the recommended way to manage type mapping. If you're using an older version, see the other methods.
 
-```c#
+```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
 dataSourceBuilder.EnableDynamicJson();
 await using var dataSource = dataSourceBuilder.Build();
@@ -63,7 +63,7 @@ await using var dataSource = dataSourceBuilder.Build();
 
 If you're not yet using `NpgsqlDataSource`, you can configure mappings globally for all connections in your application:
 
-```c#
+```csharp
 NpgsqlConnection.GlobalTypeMapper.EnableDynamicJson();
 ```
 
@@ -73,7 +73,7 @@ For this to work, you must place this code at the beginning of your application,
 
 Once you've enabled the feature, you can simply read and write instances of your POCOs directly; when writing, specify `NpgsqlDbType.Jsonb` to let Npgsql know you intend for it to get sent as JSON data:
 
-```c#
+```csharp
 // Write a POCO to a jsonb column:
 var myPoco1 = new MyPoco { A = 8, B = 9 };
 
@@ -105,7 +105,7 @@ This mapping method is quite powerful, allowing you to read and write nested gra
 
 There are cases in which mapping JSON data to POCOs isn't appropriate; for example, your JSON column may not contain a fixed schema and must be inspected to see what it contains; for these cases, Npgsql supports mapping JSON data to [JsonDocument](https://docs.microsoft.com/dotnet/api/system.text.json.jsondocument) or [JsonElement](https://docs.microsoft.com/dotnet/api/system.text.json.jsonelement) ([see docs](https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/use-dom#use-jsondocument)):
 
-```c#
+```csharp
 var jsonDocument = JsonDocument.Parse("""{ "a": 8, "b": 9 }""");
 
 // Write a JsonDocument:
@@ -131,7 +131,7 @@ If you're writing a very performance-sensitive application, using System.Text.Js
 
 Utf8JsonReader requires JSON data as raw, UTF8-encoded binary data; fortunately, Npgsql allows reading `jsonb` as binary data, and if your PostgreSQL `client_encoding` is set to UTF8 (the default), you can feed data directly from PostgreSQL to Utf8JsonReader:
 
-```c#
+```csharp
 await using var command2 = new NpgsqlCommand("SELECT data FROM test", conn);
 await using var reader = await command2.ExecuteReaderAsync();
 while (await reader.ReadAsync())
@@ -159,7 +159,7 @@ To use Json.NET, add the [Npgsql.Json.NET package](https://www.nuget.org/package
 > [!NOTE]
 > `NpgsqlDataSource` was introduced in Npgsql 7.0, and is the recommended way to manage type mapping. If you're using an older version, see the other methods.
 
-```c#
+```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
 dataSourceBuilder.UseJsonNet();
 await using var dataSource = dataSourceBuilder.Build();
@@ -169,7 +169,7 @@ await using var dataSource = dataSourceBuilder.Build();
 
 If you're using an older version of Npgsql which doesn't yet support `NpgsqlDataSource`, you can configure mappings globally for all connections in your application:
 
-```c#
+```csharp
 NpgsqlConnection.GlobalTypeMapper.UseJsonNet();
 ```
 
@@ -179,7 +179,7 @@ For this to work, you must place this code at the beginning of your application,
 
 Once you've enabled the feature, you can simply read and write instances of your POCOs directly; when writing, specify `NpgsqlDbType.Jsonb` to let Npgsql know you intend for it to get sent as JSON data:
 
-```c#
+```csharp
 // Write a POCO to a jsonb column:
 var myPoco1 = new MyPoco { A = 8, B = 9 };
 

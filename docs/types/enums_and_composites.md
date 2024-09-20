@@ -43,7 +43,7 @@ Once your types are defined both in PostgreSQL and in C#, you can now configure 
 > [!NOTE]
 > `NpgsqlDataSource` was introduced in Npgsql 7.0, and is the recommended way to manage type mapping. If you're using an older version, see the other methods.
 
-```c#
+```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
 dataSourceBuilder.MapEnum<Mood>();
 dataSourceBuilder.MapComposite<InventoryItem>();
@@ -54,7 +54,7 @@ await using var dataSource = dataSourceBuilder.Build();
 
 If you're using an older version of Npgsql which doesn't yet support `NpgsqlDataSource`, you can configure mappings globally for all connections in your application:
 
-```c#
+```csharp
 NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>();
 NpgsqlConnection.GlobalTypeMapper.MapComposite<InventoryItem>();
 ```
@@ -68,7 +68,7 @@ For this to work, you must place this code at the beginning of your application,
 
 Older versions of Npgsql supported configuring a type mapping on an individual connection, as follows:
 
-```c#
+```csharp
 var conn = new NpgsqlConnection(...);
 conn.TypeMapper.MapEnum<Mood>();
 conn.TypeMapper.MapComposite<InventoryItem>();
@@ -82,7 +82,7 @@ Whatever the method used, your CLR types `Mood` and `InventoryItem` are now mapp
 
 Once your mapping is in place, you can read and write your CLR types as usual:
 
-```c#
+```csharp
 // Writing
 await using (var cmd = new NpgsqlCommand("INSERT INTO some_table (my_enum, my_composite) VALUES ($1, $2)", conn))
 {
@@ -109,13 +109,13 @@ Note that your PostgreSQL enum and composites types (`mood` and `inventory_data`
 
 CLR type and field names are usually Pascal case (e.g. `InventoryData`), whereas in PostgreSQL they are snake case (e.g. `inventory_data`). To help make the mapping for enums and composites seamless, pluggable name translators are used translate all names. The default translation scheme is `NpgsqlSnakeCaseNameTranslator`, which maps names like `SomeType` to `some_type`, but you can specify others. The default name translator can be set for all your connections via `NpgsqlConnection.GlobalTypeMapper.DefaultNameTranslator`, or for a specific connection for `NpgsqlConnection.TypeMapper.DefaultNameTranslator`. You also have the option of specifying a name translator when setting up a mapping:
 
-```c#
+```csharp
 NpgsqlConnection.GlobalTypeMapper.MapComposite<InventoryData>("inventory_data", new NpgsqlNullNameTranslator());
 ```
 
 Finally, you may control mappings on a field-by-field basis via the `[PgName]` attribute. This overrides the name translator.
 
-```c#
+```csharp
 public enum Mood
 {
     [PgName("depressed")]
@@ -132,7 +132,7 @@ In some cases, it may be desirable to interact with PostgreSQL enums without a p
 
 Npgsql allows reading and writing enums as simple strings:
 
-```c#
+```csharp
 // Writing enum as string
 await using (var cmd = new NpgsqlCommand("INSERT INTO some_table (my_enum) VALUES ($1)", conn))
 {

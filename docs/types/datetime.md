@@ -30,7 +30,7 @@ For almost all applications, the range of the .NET native types (or the NodaTime
 
 In PostgreSQL, `timestamp with time zone` represents a UTC timestamp, while `timestamp without time zone` represents a local or unspecified time zone. Starting with 6.0, Npgsql maps UTC DateTime to `timestamp with time zone`, and Local/Unspecified DateTime to `timestamp without time zone`; trying to send a non-UTC DateTime as `timestamptz` will throw an exception, etc. Npgsql also supports reading and writing DateTimeOffset to `timestamp with time zone`, but only with Offset=0. Prior to 6.0, `timestamp with time zone` would be converted to a local timestamp when read - see below for more details. The precise improvements and breaking changes are detailed in the [6.0 breaking changes](../release-notes/6.0.md#timestamp-rationalization-and-improvements); to revert to the pre-6.0 behavior, add the following at the start of your application, before any Npgsql operations are invoked:
 
-```c#
+```csharp
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 ```
 
@@ -40,7 +40,7 @@ Use of the `time with time zone` type is discouraged, [see the PostgreSQL docume
 
 PostgreSQL supports the special values `-infinity` and `infinity` for the timestamp and date types ([see docs](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-DATETIME-SPECIAL-VALUES)); these can be useful to represent a value which is earlier or later than any other value. Starting with Npgsql 6.0, these special values are mapped to the `MinValue` and `MaxValue` value on the corresponding .NET types (`DateTime` and `DateOnly`, NodaTime `Instant` and `LocalDate`). To opt out of this behavior, set the following AppContext switch at the start of your application:
 
-```c#
+```csharp
 AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
 ```
 

@@ -29,7 +29,7 @@ One simple way to do this is to append ::TEXT in your query (e.g. `SELECT 3::TEX
 If you don't want to modify your query, Npgsql also includes an API for requesting types as text.
 The following code returns all the columns in the resultset as text:
 
-```c#
+```csharp
 await using (var cmd = new NpgsqlCommand(...)) {
   cmd.AllResultTypesAreUnknown = true;
   await using var reader = await cmd.ExecuteReaderAsync();
@@ -39,7 +39,7 @@ await using (var cmd = new NpgsqlCommand(...)) {
 
 You can also specify text only for some columns in your resultset:
 
-```c#
+```csharp
 await using (var cmd = new NpgsqlCommand(...)) {
   // Only the second field will be fetched as text
   cmd.UnknownResultTypeList = new[] { false, true };
@@ -52,7 +52,7 @@ await using (var cmd = new NpgsqlCommand(...)) {
 
 When sending a JSONB parameter, you must explicitly specify its type to be JSONB with NpgsqlDbType:
 
-```c#
+```csharp
 await using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES (@p)", conn)) {
   cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, jsonText);
 }

@@ -11,7 +11,7 @@ Npgsql allows you to specify multiple servers in your connection string as follo
 
 ### [Npgsql 7.0+](#tab/7)
 
-```c#
+```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder("Host=server1,server2;Username=test;Password=test");
 await using var dataSource = dataSourceBuilder.BuildMultiHost();
 await using var connection = await dataSource.OpenConnectionAsync();
@@ -19,7 +19,7 @@ await using var connection = await dataSource.OpenConnectionAsync();
 
 ### [Older versions](#tab/old)
 
-```c#
+```csharp
 await using var connection = new NpgsqlConnection("Host=server1,server2;Username=test;Password=test");
 ```
 
@@ -38,7 +38,7 @@ In the failover scenario above, if `server1` goes down, `server2` is typically p
 
 ### [Npgsql 7.0+](#tab/7)
 
-```c#
+```csharp
 await using var connection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
 ```
 
@@ -46,7 +46,7 @@ This makes Npgsql return connections only to the primary server, regardless of w
 
 You can also get a separate data source which will only return connections to a specific server type. For example, you can create a primary-only data sources in your application startup, and use that data source as usual:
 
-```c#
+```csharp
 // At startup:
 _primaryDataSource = dataSource.WithTargetSession(TargetSessionAttributes.Primary);
 
@@ -56,7 +56,7 @@ await using var connection = await _primaryDataSource.OpenConnectionAsync();
 
 ### [Older versions](#tab/old)
 
-```c#
+```csharp
 await using var connection = new NpgsqlConnection("Host=server1,server2;Username=test;Password=test;Target Session Attributes=primary");
 ```
 
@@ -72,7 +72,7 @@ You can tell Npgsql that you *prefer* a connection to a standby:
 
 ### [Npgsql 7.0+](#tab/7)
 
-```c#
+```csharp
 // At startup:
 _preferStandbyDatASource = dataSource.WithTargetSession(TargetSessionAttributes.PreferStandby);
 
@@ -82,7 +82,7 @@ await using var connection = await _preferStandbyDatASource.OpenConnectionAsync(
 
 ### [Older versions](#tab/old)
 
-```c#
+```csharp
 await using var connection = new NpgsqlConnection("Host=server1,server2;Username=test;Password=test;Target Session Attributes=prefer-standby");
 ```
 

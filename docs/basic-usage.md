@@ -106,7 +106,7 @@ Note that each execute method involves a database roundtrip. To execute multiple
 
 When sending data values to the database, always consider using parameters rather than including the values in the SQL as follows:
 
-```c#
+```csharp
 await using var cmd = new NpgsqlCommand("INSERT INTO table (col1) VALUES ($1), ($2)", conn)
 {
     Parameters =
@@ -133,7 +133,7 @@ Starting with Npgsql 6.0, the recommended placeholder style is *positional* (`$1
 
 For legacy and compatibility reasons, Npgsql also supports *named placeholders*. This allows the above code to be written as follows:
 
-```c#
+```csharp
 await using var cmd = new NpgsqlCommand("INSERT INTO table (col1) VALUES (@p1), (@p2)", conn)
 {
     Parameters =
@@ -205,7 +205,7 @@ Note that if you open and close connections to the same database inside an ambie
 
 Let's say you need to execute two SQL statements for some reason. This can naively be done as follows:
 
-```c#
+```csharp
 await using var cmd = new NpgsqlCommand("INSERT INTO table (col1) VALUES ('foo')", conn);
 await cmd.ExecuteNonQueryAsync();
 
@@ -217,7 +217,7 @@ The above code needlessly performs two roundtrips to the database: your program 
 
 Instead, you can ask Npgsql to send the two SQL statements in a single roundtrip, by using batching:
 
-```c#
+```csharp
 await using var batch = new NpgsqlBatch(conn)
 {
     BatchCommands =
@@ -239,7 +239,7 @@ An <xref:Npgsql.NpgsqlBatch> simply contains a list of `NpgsqlBatchCommands`, ea
 
 Prior to Npgsql 6.0, `NpgsqlBatch` did not yet exist, and batching could be done as follows:
 
-```c#
+```csharp
 await using var cmd = new NpgsqlCommand("INSERT INTO table (col1) VALUES ('foo'); SELECT * FROM table", conn);
 await using var reader = await cmd.ExecuteReaderAsync();
 ```
@@ -252,7 +252,7 @@ PostgreSQL supports [stored (or server-side) functions](https://www.postgresql.o
 
 Once a function or procedure has been defined, calling it is a simple matter of executing a regular command:
 
-```c#
+```csharp
 // For functions
 using var cmd = new NpgsqlCommand("SELECT my_func(1, 2)", conn);
 using var reader = cmd.ExecuteReader();
@@ -271,7 +271,7 @@ You can replace the parameter values above with regular placeholders (e.g. `$1`)
 
 In some other databases, calling a stored procedures involves setting the command's `CommandType`:
 
-```c#
+```csharp
 using var command1 = new NpgsqlCommand("my_procedure", connection)
 {
     CommandType = CommandType.StoredProcedure,
@@ -293,7 +293,7 @@ Note that if `CommandType.StoredProcedure` is set and your parameter instances h
 
 In SQL Server (and possibly other databases), functions can have output parameters, input/output parameters, and a return value, which can be either a scalar or a table (TVF). To call functions with special parameter types, the `Direction` property must be set on the appropriate `DbParameter`. PostgreSQL functions, on the hand, always return a single table - they can all be considered TVFs. Somewhat confusingly, PostgreSQL does allow your functions to be defined with input/and output parameters:
 
-```c#
+```csharp
 CREATE FUNCTION dup(in int, out f1 int, out f2 text)
     AS $$ SELECT $1, CAST($1 AS text) || ' is text' $$
     LANGUAGE SQL;
@@ -301,7 +301,7 @@ CREATE FUNCTION dup(in int, out f1 int, out f2 text)
 
 However, the above syntax is nothing more than a definition of the function's resultset, and is identical to the following ([see the PostgreSQL docs](https://www.postgresql.org/docs/current/static/sql-createfunction.html)):
 
-```c#
+```csharp
 CREATE FUNCTION dup(int) RETURNS TABLE(f1 int, f2 text)
     AS $$ SELECT $1, CAST($1 AS text) || ' is text' $$
     LANGUAGE SQL;
@@ -311,7 +311,7 @@ In other words, PostgreSQL functions don't have output parameters that are disti
 
 However, to help portability, Npgsql does provide support for output parameters as follows:
 
-```c#
+```csharp
 using (var cmd = new NpgsqlCommand("SELECT my_func()", conn))
 {
     cmd.Parameters.Add(new NpgsqlParameter("p_out", DbType.String) { Direction = ParameterDirection.Output });

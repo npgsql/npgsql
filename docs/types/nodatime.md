@@ -21,7 +21,7 @@ To avoid forcing a dependency on the NetTopologySuite library for users not usin
 > [!NOTE]
 > `NpgsqlDataSource` was introduced in Npgsql 7.0, and is the recommended way to manage type mapping. If you're using an older version, see the other methods.
 
-```c#
+```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
 dataSourceBuilder.UseNodaTime();
 await using var dataSource = dataSourceBuilder.Build();
@@ -31,7 +31,7 @@ await using var dataSource = dataSourceBuilder.Build();
 
 If you're using an older version of Npgsql which doesn't yet support `NpgsqlDataSource`, you can configure mappings globally for all connections in your application:
 
-```c#
+```csharp
 NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
 ```
 
@@ -44,7 +44,7 @@ For this to work, you must place this code at the beginning of your application,
 
 Older versions of Npgsql supported configuring a type mapping on an individual connection, as follows:
 
-```c#
+```csharp
 var conn = new NpgsqlConnection(...);
 conn.TypeMapper.UseNodaTime();
 ```
@@ -55,7 +55,7 @@ conn.TypeMapper.UseNodaTime();
 
 Once the plugin is set up, you can transparently read and write NodaTime objects:
 
-```c#
+```csharp
 // Write NodaTime Instant to PostgreSQL "timestamp with time zone" (UTC)
 await using (var cmd = new NpgsqlCommand(@"INSERT INTO mytable (my_timestamptz) VALUES ($1)", conn))
 {
@@ -97,7 +97,7 @@ daterange                       | [DateInterval](https://nodatime.org/3.0.x/api/
 
 PostgreSQL supports the special values `-infinity` and `infinity` for the timestamp and date types ([see docs](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-DATETIME-SPECIAL-VALUES)); these can be useful to represent a value which is earlier or later than any other value. Starting with Npgsql 6.0, these special values are mapped to the `MinValue` and `MaxValue` value on the corresponding .NET types (`Instant` and `LocalDate`). To opt out of this behavior, set the following AppContext switch at the start of your application:
 
-```c#
+```csharp
 AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
 ```
 

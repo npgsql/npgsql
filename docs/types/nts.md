@@ -13,7 +13,7 @@ To avoid forcing a dependency on the NetTopologySuite library for users not usin
 > [!NOTE]
 > `NpgsqlDataSource` was introduced in Npgsql 7.0, and is the recommended way to manage type mapping. If you're using an older version, see the other methods.
 
-```c#
+```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
 dataSourceBuilder.UseNetTopologySuite();
 await using var dataSource = dataSourceBuilder.Build();
@@ -23,7 +23,7 @@ await using var dataSource = dataSourceBuilder.Build();
 
 If you're using an older version of Npgsql which doesn't yet support `NpgsqlDataSource`, you can configure mappings globally for all connections in your application:
 
-```c#
+```csharp
 NpgsqlConnection.GlobalTypeMapper.UseNetTopologySuite();
 ```
 
@@ -36,7 +36,7 @@ For this to work, you must place this code at the beginning of your application,
 
 Older versions of Npgsql supported configuring a type mapping on an individual connection, as follows:
 
-```c#
+```csharp
 var conn = new NpgsqlConnection(...);
 conn.TypeMapper.UseNetTopologySuite();
 ```
@@ -45,13 +45,13 @@ conn.TypeMapper.UseNetTopologySuite();
 
 By default the plugin handles only ordinates provided by the `DefaultCoordinateSequenceFactory` of `GeometryServiceProvider.Instance`. If `GeometryServiceProvider` is initialized automatically the X and Y ordinates are handled. To change the behavior specify the `handleOrdinates` parameter like in the following example:
 
-```c#
+```csharp
 dataSourceBuilder.UseNetTopologySuite(handleOrdinates: Ordinates.XYZ);
 ```
 
 To process the M ordinate, you must initialize `GeometryServiceProvider.Instance` to a new `NtsGeometryServices` instance with `coordinateSequenceFactory` set to a `DotSpatialAffineCoordinateSequenceFactory`. Or you can specify the factory when calling `UseNetTopologySuite`.
 
-```c#
+```csharp
 // Place this at the beginning of your program to use the specified settings everywhere (recommended)
 GeometryServiceProvider.Instance = new NtsGeometryServices(
     new DotSpatialAffineCoordinateSequenceFactory(Ordinates.XYM),
@@ -67,7 +67,7 @@ dataSourceBuilder.UseNetTopologySuite.UseNetTopologySuite(
 
 When reading PostGIS values from the database, Npgsql will automatically return the appropriate NetTopologySuite types: `Point`, `LineString`, and so on. Npgsql will also automatically recognize NetTopologySuite's types in parameters, and will automatically send the corresponding PostGIS type to the database. The following code demonstrates a roundtrip of a NetTopologySuite `Point` to the database:
 
-```c#
+```csharp
 await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (geom GEOMETRY)");
 
 await using (var cmd = new NpgsqlCommand("INSERT INTO data (geom) VALUES ($1)", conn))
@@ -92,7 +92,7 @@ PostGIS has two types: `geometry` (for Cartesian coordinates) and `geography` (f
 
 Npgsql uses the same NetTopologySuite types to represent both `geometry` and `geography` - the `Point` type represents a point in either Cartesian or geodetic space. You usually don't need to worry about this distinction because PostgreSQL will usually cast types back and forth as needed. However, it's worth noting that Npgsql sends Cartesian `geometry` by default, because that's the usual requirement. You have the option of telling Npgsql to send `geography` instead by specifying `NpgsqlDbType.Geography`:
 
-```c#
+```csharp
 await using (var cmd = new NpgsqlCommand("INSERT INTO data (geog) VALUES ($1)", conn))
 {
     cmd.Parameters.Add(new() { Value = point, NpgsqlDbType = NpgsqlDbType.Geography });
@@ -102,6 +102,6 @@ await using (var cmd = new NpgsqlCommand("INSERT INTO data (geog) VALUES ($1)", 
 
 If you prefer to use `geography` everywhere by default, you can also specify that when setting up the plugin:
 
-```c#
+```csharp
 dataSourceBuilder.UseNetTopologySuite(geographyAsDefault: true);
 ```

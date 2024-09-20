@@ -16,7 +16,7 @@ When you execute a command, Npgsql executes a roundtrip to the database. If you 
 
 You can batch multiple SQL statements in a single roundtrip:
 
-```c#
+```csharp
 var batch = new NpgsqlBatch(connection)
 {
     BatchCommands = { new("SELECT ..."), new("SELECT ...") }
