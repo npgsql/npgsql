@@ -1,7 +1,4 @@
----
-layout: doc
-title: Installation
----
+# Installation
 
 ## Offical Packages
 
