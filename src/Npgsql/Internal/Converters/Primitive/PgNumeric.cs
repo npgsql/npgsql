@@ -356,7 +356,7 @@ readonly struct PgNumeric
                     while (scaleDifference > 0)
                     {
                         var scaleChunk = Math.Min(MaxUIntScale, scaleDifference);
-                        result *= UIntPowers10[scaleChunk];
+                        scaleFactor *= UIntPowers10[scaleChunk];
                         scaleDifference -= scaleChunk;
                     }
             }
