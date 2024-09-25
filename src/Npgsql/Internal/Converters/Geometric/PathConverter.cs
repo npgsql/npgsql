@@ -32,7 +32,7 @@ sealed class PathConverter : PgStreamingConverter<NpgsqlPath>
         for (var i = 0; i < numPoints; i++)
         {
             if (reader.ShouldBuffer(sizeof(double) * 2))
-                await reader.Buffer(async, sizeof(byte) + sizeof(int), cancellationToken).ConfigureAwait(false);
+                await reader.Buffer(async, sizeof(double) * 2, cancellationToken).ConfigureAwait(false);
 
             result.Add(new NpgsqlPoint(reader.ReadDouble(), reader.ReadDouble()));
         }
