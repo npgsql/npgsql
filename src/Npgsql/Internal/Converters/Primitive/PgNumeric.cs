@@ -351,14 +351,24 @@ readonly struct PgNumeric
                 result += digit;
 
                 if (scaleDifference < 0)
-                    result /= UIntPowers10[-scaleDifference];
+                {
+                    // Doesn't look like we can loop even once, but just to be on a safe side
+                    while (scaleDifference < 0)
+                    {
+                        var scaleChunk = Math.Min(MaxUIntScale, -scaleDifference);
+                        result /= UIntPowers10[scaleChunk];
+                        scaleDifference += scaleChunk;
+                    }
+                }
                 else
+                {
                     while (scaleDifference > 0)
                     {
                         var scaleChunk = Math.Min(MaxUIntScale, scaleDifference);
-                        result *= UIntPowers10[scaleChunk];
+                        scaleFactor *= UIntPowers10[scaleChunk];
                         scaleDifference -= scaleChunk;
                     }
+                }
             }
 
             result *= scaleFactor;
