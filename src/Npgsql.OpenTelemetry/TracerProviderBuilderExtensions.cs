@@ -15,5 +15,14 @@ public static class TracerProviderBuilderExtensions
     public static TracerProviderBuilder AddNpgsql(
         this TracerProviderBuilder builder,
         Action<NpgsqlTracingOptions>? options = null)
-        => builder.AddSource("Npgsql");
+    {
+        if (options is not null)
+        {
+            var newTracingOptions = new NpgsqlTracingOptions();
+            options(newTracingOptions);
+            NpgsqlTracingOptions.Current = newTracingOptions;
+        }
+
+        return builder.AddSource("Npgsql");
+    }
 }

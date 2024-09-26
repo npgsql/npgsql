@@ -46,10 +46,12 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     int? _timeout;
     internal NpgsqlParameterCollection? _parameters;
 
+    internal NpgsqlBatch? WrappingBatch { get; }
+
     /// <summary>
     /// Whether this <see cref="NpgsqlCommand" /> is wrapped by an <see cref="NpgsqlBatch" />.
     /// </summary>
-    internal bool IsWrappedByBatch { get; }
+    internal bool IsWrappedByBatch => WrappingBatch is not null;
 
     internal List<NpgsqlBatchCommand> InternalBatchCommands { get; }
 
@@ -142,13 +144,13 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Used when this <see cref="NpgsqlCommand"/> instance is wrapped inside an <see cref="NpgsqlBatch"/>.
     /// </summary>
-    internal NpgsqlCommand(int batchCommandCapacity, NpgsqlConnection? connection = null)
+    internal NpgsqlCommand(NpgsqlBatch batch, int batchCommandCapacity, NpgsqlConnection? connection = null)
     {
         GC.SuppressFinalize(this);
         InternalBatchCommands = new List<NpgsqlBatchCommand>(batchCommandCapacity);
         InternalConnection = connection;
         CommandType = CommandType.Text;
-        IsWrappedByBatch = true;
+        WrappingBatch = batch;
 
         // These can/should never be used in this mode
         _commandText = null!;
@@ -161,8 +163,8 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Used when this <see cref="NpgsqlCommand"/> instance is wrapped inside an <see cref="NpgsqlBatch"/>.
     /// </summary>
-    internal NpgsqlCommand(NpgsqlConnector connector, int batchCommandCapacity)
-        : this(batchCommandCapacity)
+    internal NpgsqlCommand(NpgsqlBatch batch, NpgsqlConnector connector, int batchCommandCapacity)
+        : this(batch, batchCommandCapacity)
         => _connector = connector;
 
     internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
@@ -1716,13 +1718,32 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
-            CurrentActivity = NpgsqlActivitySource.CommandStart(settings, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType);
+        {
+            var tracingSettings = NpgsqlTracingOptions.Current;
+            var enableTracing = IsWrappedByBatch
+                ? tracingSettings?.FilterNpgsqlBatch?.Invoke(WrappingBatch!)
+                : tracingSettings?.FilterNpgsqlCommand?.Invoke(this);
+            if (enableTracing != false)
+            {
+                var spanName = IsWrappedByBatch
+                    ? tracingSettings?.ProvideSpanNameForNpgsqlBatch?.Invoke(WrappingBatch!)
+                    : tracingSettings?.ProvideSpanNameForNpgsqlCommand?.Invoke(this);
+                CurrentActivity = NpgsqlActivitySource.CommandStart(settings, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType, spanName);
+            }
+        }
     }
 
     internal void TraceCommandEnrich(NpgsqlConnector connector)
     {
         if (CurrentActivity is not null)
+        {
             NpgsqlActivitySource.Enrich(CurrentActivity, connector);
+            var tracingSettings = NpgsqlTracingOptions.Current;
+            if (IsWrappedByBatch)
+                tracingSettings?.EnrichWithNpgsqlBatch?.Invoke(CurrentActivity, WrappingBatch!);
+            else
+                tracingSettings?.EnrichWithNpgsqlCommand?.Invoke(CurrentActivity, this);
+        }
     }
 
     internal void TraceReceivedFirstResponse()
