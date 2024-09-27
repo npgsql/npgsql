@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
@@ -310,6 +311,29 @@ CREATE TYPE {compositeType} AS (ints int4[])");
             compositeType,
             npgsqlDbType: null,
             comparer: (actual, expected) => actual.Ints!.SequenceEqual(expected.Ints!));
+    }
+
+    [Test]
+    public async Task Composite_containing_IPAddress()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {compositeType} AS (address inet)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeWithIPAddress>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithIPAddress { Address = IPAddress.Loopback },
+            @"(127.0.0.1)",
+            compositeType,
+            npgsqlDbType: null,
+            comparer: (actual, expected) => actual.Address!.Equals(expected.Address));
     }
 
     [Test]
@@ -686,6 +710,11 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     class SomeCompositeWithArray
     {
         public int[]? Ints { get; set; }
+    }
+
+    class SomeCompositeWithIPAddress
+    {
+        public IPAddress? Address { get; set; }
     }
 
     class SomeCompositeWithConverterResolverType
