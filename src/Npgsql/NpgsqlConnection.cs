@@ -1796,6 +1796,31 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     }
 
     /// <summary>
+    /// Clones this connection, replacing its connection string with the given one.
+    /// This allows creating a new connection with the same security information
+    /// (password, SSL callbacks) while changing other connection parameters (e.g.
+    /// database or pooling)
+    /// </summary>
+    public async ValueTask<NpgsqlConnection> CloneWithAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        CheckDisposed();
+        var csb = new NpgsqlConnectionStringBuilder(connectionString);
+        csb.Password ??= _dataSource is null ? null : await _dataSource.GetPassword(async: true, cancellationToken).ConfigureAwait(false);
+        if (csb.PersistSecurityInfo && !Settings.PersistSecurityInfo)
+            csb.PersistSecurityInfo = false;
+
+        return new NpgsqlConnection(csb.ToString())
+        {
+            SslClientAuthenticationOptionsCallback = SslClientAuthenticationOptionsCallback ?? _dataSource?.SslClientAuthenticationOptionsCallback,
+#pragma warning disable CS0618 // Obsolete
+            ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
+            UserCertificateValidationCallback = UserCertificateValidationCallback,
+            ProvidePasswordCallback = ProvidePasswordCallback,
+#pragma warning restore CS0618
+        };
+    }
+
+    /// <summary>
     /// This method changes the current database by disconnecting from the actual
     /// database and connecting to the specified.
     /// </summary>

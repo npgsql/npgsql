@@ -945,7 +945,7 @@ LANGUAGE 'plpgsql'");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2725")]
-    public void Clone_with_PersistSecurityInfo()
+    public async Task Clone_with_PersistSecurityInfo([Values] bool async)
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
@@ -958,20 +958,24 @@ LANGUAGE 'plpgsql'");
         // First un-persist, should work
         builder.PersistSecurityInfo = false;
         var connStringWithoutPersist = builder.ToString();
-        using var clonedWithoutPersist = connWithPersist.CloneWith(connStringWithoutPersist);
+        using var clonedWithoutPersist = async
+            ? await connWithPersist.CloneWithAsync(connStringWithoutPersist)
+            : connWithPersist.CloneWith(connStringWithoutPersist);
         clonedWithoutPersist.Open();
 
         Assert.That(clonedWithoutPersist.ConnectionString, Does.Not.Contain("Password="));
 
         // Then attempt to re-persist, should not work
-        using var clonedConn = clonedWithoutPersist.CloneWith(connStringWithPersist);
+        using var clonedConn = async
+            ? await clonedWithoutPersist.CloneWithAsync(connStringWithPersist)
+            : clonedWithoutPersist.CloneWith(connStringWithPersist);
         clonedConn.Open();
 
         Assert.That(clonedConn.ConnectionString, Does.Not.Contain("Password="));
     }
 
     [Test]
-    public async Task CloneWith_and_data_source_with_password()
+    public async Task CloneWith_and_data_source_with_password([Values] bool async)
     {
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
         // Set the password via the data source property later to make sure that's picked up by CloneWith
@@ -984,12 +988,14 @@ LANGUAGE 'plpgsql'");
 
         // Test that the up-to-date password gets copied to the clone, as if we opened the original connection instead of cloning it
         using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString) { Password = null }, out var tempConnectionString);
-        await using var clonedConnection = connection.CloneWith(tempConnectionString);
+        await using var clonedConnection = async
+            ? await connection.CloneWithAsync(tempConnectionString)
+            : connection.CloneWith(tempConnectionString);
         await clonedConnection.OpenAsync();
     }
 
     [Test]
-    public async Task CloneWith_and_data_source_with_auth_callbacks()
+    public async Task CloneWith_and_data_source_with_auth_callbacks([Values] bool async)
     {
         var (userCertificateValidationCallbackCalled, clientCertificatesCallbackCalled) = (false, false);
 
@@ -1003,7 +1009,9 @@ LANGUAGE 'plpgsql'");
         await using var connection = dataSource.CreateConnection();
 
         using var _ = CreateTempPool(ConnectionString, out var tempConnectionString);
-        await using var clonedConnection = connection.CloneWith(tempConnectionString);
+        await using var clonedConnection = async
+            ? await connection.CloneWithAsync(tempConnectionString)
+            : connection.CloneWith(tempConnectionString);
 
         var sslClientAuthenticationOptions = new SslClientAuthenticationOptions();
         clonedConnection.SslClientAuthenticationOptionsCallback!(sslClientAuthenticationOptions);
