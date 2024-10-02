@@ -18,6 +18,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         LTreeTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
 
         JsonDynamicTypeInfoResolverFactory.Support.ThrowIfUnsupported<TBuilder>(type, dataTypeName);
+        JsonSourceGeneratedTypeInfoResolverFactory.Support.ThrowIfUnsupported<TBuilder>(type, dataTypeName);
 
         switch (dataTypeName is null ? null : options.DatabaseInfo.GetPostgresType(dataTypeName.GetValueOrDefault()))
         {

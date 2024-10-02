@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
@@ -218,6 +219,17 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    public INpgsqlTypeMapper EnableSourceGeneratedJson(
+        Dictionary<Type, JsonSerializerContext>? jsonbClrTypes = null,
+        Dictionary<Type, JsonSerializerContext>? jsonClrTypes = null)
+    {
+        AddTypeInfoResolverFactory(new JsonSourceGeneratedTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes));
+        return this;
+    }
+
+    /// <inheritdoc />
     [RequiresUnreferencedCode("The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
     [RequiresDynamicCode("The mapping of PostgreSQL records as .NET tuples requires dynamic code usage which is incompatible with NativeAOT.")]
     public INpgsqlTypeMapper EnableRecordsAsTuples()
@@ -304,12 +316,12 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
     /// <inheritdoc />
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types which can require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
-    public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => MapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types which can require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
-    public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />

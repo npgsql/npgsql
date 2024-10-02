@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -150,6 +152,27 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSourceBuilder EnableDynamicJson(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null)
     {
         _internalBuilder.EnableDynamicJson(jsonbClrTypes, jsonClrTypes);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up Source Generated System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types, as well as <see cref="JsonNode" /> and its derived types.
+    /// </summary>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    /// <remarks>
+    /// With source generated mapping ConfigureJsonOptions has no effect
+    /// </remarks>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    public NpgsqlDataSourceBuilder EnableSourceGeneratedJson(Dictionary<Type, JsonSerializerContext>? jsonbClrTypes = null, Dictionary<Type, JsonSerializerContext>? jsonClrTypes = null)
+    {
+        _internalBuilder.EnableSourceGeneratedJson(jsonbClrTypes, jsonClrTypes);
         return this;
     }
 
@@ -479,6 +502,12 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     INpgsqlTypeMapper INpgsqlTypeMapper.EnableDynamicJson(Type[]? jsonbClrTypes, Type[]? jsonClrTypes)
         => EnableDynamicJson(jsonbClrTypes, jsonClrTypes);
+    
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode(
+        "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableSourceGeneratedJson(Dictionary<Type, JsonSerializerContext>? jsonbClrTypes, Dictionary<Type, JsonSerializerContext>? jsonClrTypes)
+        => EnableSourceGeneratedJson(jsonbClrTypes, jsonClrTypes);
 
     [RequiresUnreferencedCode(
         "The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]

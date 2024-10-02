@@ -587,6 +587,7 @@ Npgsql.NpgsqlDataSourceBuilder.ConnectionStringBuilder.get -> Npgsql.NpgsqlConne
 Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
 Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.set -> void
 Npgsql.NpgsqlDataSourceBuilder.EnableDynamicJson(System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.EnableSourceGeneratedJson(System.Collections.Generic.Dictionary<System.Type!, System.Text.Json.Serialization.JsonSerializerContext!>? jsonbClrTypes = null, System.Collections.Generic.Dictionary<System.Type!, System.Text.Json.Serialization.JsonSerializerContext!>? jsonClrTypes = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.EnableParameterLogging(bool parameterLoggingEnabled = true) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.EnableRecordsAsTuples() -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.EnableUnmappedTypes() -> Npgsql.NpgsqlDataSourceBuilder!
@@ -735,6 +736,7 @@ Npgsql.NpgsqlSlimDataSourceBuilder.DefaultNameTranslator.get -> Npgsql.INpgsqlNa
 Npgsql.NpgsqlSlimDataSourceBuilder.DefaultNameTranslator.set -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableArrays() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableDynamicJson(System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.EnableSourceGeneratedJson(System.Collections.Generic.Dictionary<System.Type!, System.Text.Json.Serialization.JsonSerializerContext!>? jsonbClrTypes = null, System.Collections.Generic.Dictionary<System.Type!, System.Text.Json.Serialization.JsonSerializerContext!>? jsonClrTypes = null) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableExtraConversions() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableFullTextSearch() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity() -> Npgsql.NpgsqlSlimDataSourceBuilder!
@@ -1193,6 +1195,7 @@ Npgsql.TypeMapping.INpgsqlTypeMapper.ConfigureJsonOptions(System.Text.Json.JsonS
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.set -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.EnableDynamicJson(System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.INpgsqlTypeMapper.EnableSourceGeneratedJson(System.Collections.Generic.Dictionary<System.Type!, System.Text.Json.Serialization.JsonSerializerContext!>? jsonbClrTypes = null, System.Collections.Generic.Dictionary<System.Type!, System.Text.Json.Serialization.JsonSerializerContext!>? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.EnableRecordsAsTuples() -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.EnableUnmappedTypes() -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!

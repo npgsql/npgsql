@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Npgsql.Internal;
 using Npgsql.Internal.ResolverFactories;
 using Npgsql.NameTranslation;
@@ -87,7 +89,7 @@ public interface INpgsqlTypeMapper
     /// </param>
     [RequiresDynamicCode("Calling MapEnum with a Type can require creating new generic types or methods. This may not work when AOT compiling.")]
     INpgsqlTypeMapper MapEnum(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type clrType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type clrType,
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
 
@@ -104,7 +106,7 @@ public interface INpgsqlTypeMapper
     /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     bool UnmapEnum(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type clrType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type clrType,
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
 
@@ -170,7 +172,7 @@ public interface INpgsqlTypeMapper
     /// </param>
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types which can require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     INpgsqlTypeMapper MapComposite(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]  Type clrType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type clrType,
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null);
 
@@ -223,6 +225,22 @@ public interface INpgsqlTypeMapper
     [RequiresDynamicCode(
         "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     INpgsqlTypeMapper EnableDynamicJson(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null);
+
+    /// <summary>
+    /// Sets up Source Generated System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types, as well as <see cref="JsonNode" /> and its derived types.
+    /// </summary>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode(
+        "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper EnableSourceGeneratedJson(Dictionary<Type, JsonSerializerContext>? jsonbClrTypes = null, Dictionary<Type, JsonSerializerContext>? jsonClrTypes = null);
+
 
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <see cref="ValueTuple" /> or <see cref="Tuple" />.

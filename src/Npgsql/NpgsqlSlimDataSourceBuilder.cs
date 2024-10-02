@@ -5,6 +5,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -82,7 +83,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder(string? connectionString = null)
         : this(new NpgsqlConnectionStringBuilder(connectionString))
-    {}
+    { }
 
     internal NpgsqlSlimDataSourceBuilder(NpgsqlConnectionStringBuilder connectionStringBuilder)
     {
@@ -580,6 +581,26 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Sets up Source Generated System.Text.Json mappings. This allows mapping arbitrary .NET types to PostgreSQL <c>json</c> and <c>jsonb</c>
+    /// types, as well as <see cref="JsonNode" /> and its derived types.
+    /// </summary>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    public NpgsqlSlimDataSourceBuilder EnableSourceGeneratedJson(
+        Dictionary<Type, JsonSerializerContext>? jsonbClrTypes = null,
+        Dictionary<Type, JsonSerializerContext>? jsonClrTypes = null)
+    {
+        _resolverChainBuilder.AppendResolverFactory(() => new JsonSourceGeneratedTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes));
+        return this;
+    }
+
+    /// <summary>
     /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <see cref="ValueTuple" /> or <see cref="Tuple" />.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
@@ -737,7 +758,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _connectionInitializer,
             _connectionInitializerAsync
 #if NET7_0_OR_GREATER
-            ,_negotiateOptionsCallback
+            , _negotiateOptionsCallback
 #endif
             );
     }
@@ -760,6 +781,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
     INpgsqlTypeMapper INpgsqlTypeMapper.EnableDynamicJson(Type[]? jsonbClrTypes, Type[]? jsonClrTypes)
         => EnableDynamicJson(jsonbClrTypes, jsonClrTypes);
+
+    [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
+    [RequiresDynamicCode(
+        "Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.EnableSourceGeneratedJson(Dictionary<Type, JsonSerializerContext>? jsonbClrTypes, Dictionary<Type, JsonSerializerContext>? jsonClrTypes)
+        => EnableSourceGeneratedJson(jsonbClrTypes, jsonClrTypes);
 
     [RequiresUnreferencedCode(
         "The mapping of PostgreSQL records as .NET tuples requires reflection usage which is incompatible with trimming.")]
