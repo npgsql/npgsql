@@ -61,7 +61,8 @@ sealed class PreparedStatementManager
         if (BySql.TryGetValue(sql, out var pStatement))
         {
             Debug.Assert(pStatement.State != PreparedState.Unprepared);
-            if (pStatement.IsExplicit)
+            // If statement is invalidated, fall through below where we replace it with another
+            if (pStatement.IsExplicit && pStatement.State != PreparedState.Invalidated)
             {
                 // Great, we've found an explicit prepared statement.
                 // We just need to check that the parameter types correspond, since prepared statements are
@@ -78,8 +79,10 @@ sealed class PreparedStatementManager
                 // Found a candidate for autopreparation. Remove it and prepare explicitly.
                 RemoveCandidate(pStatement);
                 break;
+            // The statement is invalidated. Just replace it with a new one.
+            case PreparedState.Invalidated:
+            // The statement has already been autoprepared. We need to "promote" it to explicit.
             case PreparedState.Prepared:
-                // The statement has already been autoprepared. We need to "promote" it to explicit.
                 statementBeingReplaced = pStatement;
                 break;
             case PreparedState.Unprepared:
