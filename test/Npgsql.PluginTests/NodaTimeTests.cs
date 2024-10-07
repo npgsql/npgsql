@@ -770,6 +770,31 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5867")]
+    public async Task Normalize_period_on_write()
+    {
+        var value = Period.FromTicks(-3675048768766);
+        var expected = value.Normalize();
+        var expectedAfterRoundtripBuilder = expected.ToBuilder();
+        // Postgres doesn't support nanoseconds, trim them to microseconds
+        expectedAfterRoundtripBuilder.Nanoseconds -= expected.Nanoseconds % 1000;
+        var expectedAfterRoundtrip = expectedAfterRoundtripBuilder.Build();
+
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT $1, $2", conn);
+        cmd.Parameters.AddWithValue(value);
+        cmd.Parameters.AddWithValue(expected);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        var dbValue = reader.GetFieldValue<Period>(0);
+        var dbExpected = reader.GetFieldValue<Period>(1);
+
+        Assert.That(dbValue, Is.EqualTo(dbExpected));
+        Assert.That(dbValue, Is.EqualTo(expectedAfterRoundtrip));
+    }
+
     #endregion Interval
 
     #region Support
