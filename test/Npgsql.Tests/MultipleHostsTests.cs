@@ -878,12 +878,12 @@ public class MultipleHostsTests : TestBase
         await secondServer.SendMockState(Primary);
 
         await Task.Delay(TimeSpan.FromSeconds(10));
-        Assert.That(firstDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.Unknown));
+        Assert.That(firstDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.UnknownAfterError));
         Assert.That(secondDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.Unknown));
 
         await conn.OpenAsync();
         Assert.That(conn.Port, Is.EqualTo(secondPostmaster.Port));
-        Assert.That(firstDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.Standby));
+        Assert.That(firstDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.UnknownAfterError));
         Assert.That(secondDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadWrite));
     }
 
