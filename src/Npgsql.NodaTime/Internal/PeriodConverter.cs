@@ -33,6 +33,8 @@ sealed class PeriodConverter : PgBufferedConverter<Period>
 
     protected override void WriteCore(PgWriter writer, Period value)
     {
+        // We have to normalize the value as otherwise we might get a value with 0 everything except for ticks, which we ignore
+        value = value.Normalize();
         // Note that the end result must be long
         // see #3438
         var microsecondsInDay =
