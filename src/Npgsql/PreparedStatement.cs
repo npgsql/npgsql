@@ -26,7 +26,8 @@ sealed class PreparedStatement
 
     internal PreparedState State { get; set; }
 
-    internal bool IsPrepared => State == PreparedState.Prepared;
+    // Invalidated statement is still prepared and allocated on PG's side
+    internal bool IsPrepared => State is PreparedState.Prepared or PreparedState.Invalidated;
 
     /// <summary>
     /// If true, the user explicitly requested this statement be prepared. It does not get closed as part of

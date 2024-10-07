@@ -737,7 +737,7 @@ public class PrepareTests: TestBase
     }
 
     [Test]
-    public async Task Explicitly_prepared_statement_invalidation()
+    public async Task Explicitly_prepared_statement_invalidation([Values] bool prepareAfterError, [Values] bool unprepareAfterError)
     {
         await using var dataSource = CreateDataSource(csb =>
         {
@@ -755,12 +755,30 @@ public class PrepareTests: TestBase
         // Since we've changed the table schema, the next execution of the prepared statement will error with 0A000
         var exception = Assert.ThrowsAsync<PostgresException>(() => command.ExecuteNonQueryAsync())!;
         Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.FeatureNotSupported)); // cached plan must not change result type
+        Assert.IsFalse(command.IsPrepared);
+
+        if (unprepareAfterError)
+        {
+            // Just check that calling unprepare after error doesn't break anything
+            await command.UnprepareAsync();
+            Assert.IsFalse(command.IsPrepared);
+        }
+
+        if (prepareAfterError)
+        {
+            // If we explicitly prepare after error, we should replace the previous prepared statement with a new one
+            await command.PrepareAsync();
+            Assert.IsTrue(command.IsPrepared);
+        }
 
         // However, Npgsql should invalidate the prepared statement in this case, so the next execution should work
         Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
 
-        // The command is unprepared, though. It's the user's responsibility to re-prepare if they wish.
-        Assert.False(command.IsPrepared);
+        if (!prepareAfterError)
+        {
+            // The command is unprepared, though. It's the user's responsibility to re-prepare if they wish.
+            Assert.False(command.IsPrepared);
+        }
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4920")]
