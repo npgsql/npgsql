@@ -256,11 +256,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
         OID = msg.OID;
     }
 
-    internal void ResetPreparation()
-    {
-        PreparedStatement = null;
-        ConnectorPreparedOn = null;
-    }
+    internal void ResetPreparation() => ConnectorPreparedOn = null;
 
     /// <summary>
     /// Returns the <see cref="CommandText"/>.
