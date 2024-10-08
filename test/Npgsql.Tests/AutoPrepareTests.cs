@@ -168,6 +168,10 @@ public class AutoPrepareTests : TestBase
 
         // cmd1's statement is no longer valid (has been closed), make sure it still works (will run unprepared)
         cmd2.ExecuteScalar();
+
+        // Trigger autoprepare on a different query to confirm we didn't leave replaced statement in a bad state
+        using var cmd3 = new NpgsqlCommand("SELECT 2", conn);
+        cmd3.ExecuteNonQuery(); cmd3.ExecuteNonQuery();
     }
 
     [Test]
