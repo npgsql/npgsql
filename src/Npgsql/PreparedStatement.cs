@@ -22,7 +22,20 @@ sealed class PreparedStatement
 
     internal int Usages;
 
-    internal PreparedState State { get; set; }
+    PreparedState state;
+
+    internal string? InvalidateStackTrace;
+
+    internal PreparedState State
+    {
+        get => state;
+        set
+        {
+            if (value == PreparedState.Invalidated)
+                InvalidateStackTrace = Environment.StackTrace;
+            state = value;
+        }
+    }
 
     // Invalidated statement is still prepared and allocated on PG's side
     internal bool IsPrepared => State is PreparedState.Prepared or PreparedState.Invalidated;
