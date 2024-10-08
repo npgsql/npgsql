@@ -717,11 +717,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             continue;
 
                         var pStatement = batchCommand.PreparedStatement!;
+                        var replacedStatement = pStatement.StatementBeingReplaced;
 
-                        if (pStatement.StatementBeingReplaced != null)
+                        if (replacedStatement != null)
                         {
                             Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
-                            pStatement.StatementBeingReplaced.CompleteUnprepare();
+                            replacedStatement.CompleteUnprepare();
+
+                            if (!replacedStatement.IsExplicit)
+                                connector.PreparedStatementManager.AutoPrepared[replacedStatement.AutoPreparedSlotIndex] = null;
+
                             pStatement.StatementBeingReplaced = null;
                         }
 
