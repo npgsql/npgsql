@@ -203,7 +203,7 @@ sealed class PreparedStatementManager
             default:
                 throw new Exception(
                     $"Invalid {nameof(PreparedState)} state {slot.State} encountered when scanning prepared statement slots. Statement is {slot.Sql}."
-                    + Environment.NewLine + slot.InvalidateStackTrace);
+                    + Environment.NewLine + slot.UnpreparedStackTrace);
             }
         }
 

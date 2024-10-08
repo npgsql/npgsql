@@ -24,15 +24,15 @@ sealed class PreparedStatement
 
     PreparedState state;
 
-    internal string? InvalidateStackTrace;
+    internal string? UnpreparedStackTrace;
 
     internal PreparedState State
     {
         get => state;
         set
         {
-            if (value == PreparedState.Invalidated)
-                InvalidateStackTrace = Environment.StackTrace;
+            if (value == PreparedState.Unprepared)
+                UnpreparedStackTrace = Environment.StackTrace;
             state = value;
         }
     }
