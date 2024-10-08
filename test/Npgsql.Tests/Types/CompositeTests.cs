@@ -313,6 +313,32 @@ CREATE TYPE {compositeType} AS (ints int4[])");
     }
 
     [Test]
+    public async Task Composite_containing_enum_type()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var enumType = await GetTempTypeName(adminConnection);
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {enumType} AS enum ('value1', 'value2', 'value3');
+CREATE TYPE {compositeType} AS (enum_value {enumType});");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeWithEnum>(compositeType);
+        dataSourceBuilder.MapEnum<SomeCompositeWithEnum.TestEnum>(enumType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithEnum { EnumValue = SomeCompositeWithEnum.TestEnum.Value2 },
+            @"(value2)",
+            compositeType,
+            npgsqlDbType: null,
+            comparer: (actual, expected) => actual.EnumValue == expected.EnumValue);
+    }
+
+    [Test]
     public async Task Composite_containing_converter_resolver_type()
     {
         await using var adminConnection = await OpenConnectionAsync();
@@ -686,6 +712,18 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     class SomeCompositeWithArray
     {
         public int[]? Ints { get; set; }
+    }
+
+    class SomeCompositeWithEnum
+    {
+        public enum TestEnum
+        {
+            Value1,
+            Value2,
+            Value3
+        }
+
+        public TestEnum EnumValue { get; set; }
     }
 
     class SomeCompositeWithConverterResolverType

@@ -21,14 +21,17 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var readReq = field.BinaryReadRequirement;
             var writeReq = field.BinaryWriteRequirement;
 
-            // If so we cannot depend on its buffer size being fixed.
+            // If field is nullable we cannot depend on its buffer size being fixed.
             if (field.IsDbNullable)
             {
                 readReq = readReq.Combine(Size.CreateUpperBound(0));
                 writeReq = writeReq.Combine(Size.CreateUpperBound(0));
             }
 
-            req = req.Combine(readReq, writeReq);
+            var readSuccess = req.Read.TryCombine(readReq, out readReq);
+            var writeSuccess = req.Write.TryCombine(writeReq, out writeReq);
+            // If we fail to combine due to overflow return unknown.
+            req = BufferRequirements.Create(readSuccess ? readReq : Size.Unknown, writeSuccess ? writeReq : Size.Unknown);
         }
 
         // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
@@ -37,7 +40,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         _bufferRequirements = req;
 
         // Return unknown if we hit the limit.
-        Size Limit(Size requirement)
+        static Size Limit(Size requirement)
         {
             const int maxByteCount = 1024;
             return requirement.GetValueOrDefault() > maxByteCount ? requirement.Combine(Size.Unknown) : requirement;

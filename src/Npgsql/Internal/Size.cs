@@ -44,15 +44,40 @@ public readonly struct Size : IEquatable<Size>
     public static Size Unknown { get; } = new(SizeKind.Unknown, 0);
     public static Size Zero { get; } = new(SizeKind.Exact, 0);
 
-    public Size Combine(Size result)
+    public bool TryCombine(Size other, out Size result)
     {
-        if (_kind is SizeKind.Unknown || result._kind is SizeKind.Unknown)
+        if (_kind is SizeKind.Unknown || other._kind is SizeKind.Unknown)
+        {
+            result = Unknown;
+            return true;
+        }
+
+        var sum = unchecked(_value + other._value);
+        if ((_value >= 0 && sum < other._value) || (_value < 0 && sum > other._value))
+        {
+            result = default;
+            return false;
+        }
+
+        if (_kind is SizeKind.UpperBound || other._kind is SizeKind.UpperBound)
+        {
+            result = CreateUpperBound(sum);
+            return true;
+        }
+
+        result = Create(sum);
+        return true;
+    }
+
+    public Size Combine(Size other)
+    {
+        if (_kind is SizeKind.Unknown || other._kind is SizeKind.Unknown)
             return Unknown;
 
-        if (_kind is SizeKind.UpperBound || result._kind is SizeKind.UpperBound)
-            return CreateUpperBound(checked(_value + result._value));
+        if (_kind is SizeKind.UpperBound || other._kind is SizeKind.UpperBound)
+            return CreateUpperBound(checked(_value + other._value));
 
-        return Create(checked(_value + result._value));
+        return Create(checked(_value + other._value));
     }
 
     public static implicit operator Size(int value) => Create(value);
