@@ -100,7 +100,7 @@ public class NpgsqlBatch : DbBatch
     public NpgsqlBatch(NpgsqlConnection? connection = null, NpgsqlTransaction? transaction = null)
     {
         GC.SuppressFinalize(this);
-        Command = new(DefaultBatchCommandsSize);
+        Command = new(this, DefaultBatchCommandsSize);
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
 
         Connection = connection;
@@ -110,14 +110,14 @@ public class NpgsqlBatch : DbBatch
     internal NpgsqlBatch(NpgsqlConnector connector)
     {
         GC.SuppressFinalize(this);
-        Command = new(connector, DefaultBatchCommandsSize);
+        Command = new(this, connector, DefaultBatchCommandsSize);
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
     }
 
-    private protected NpgsqlBatch(NpgsqlDataSourceCommand command)
+    private protected NpgsqlBatch(Func<NpgsqlConnection, NpgsqlBatch, NpgsqlCommand> commandFactory, NpgsqlConnection connection)
     {
         GC.SuppressFinalize(this);
-        Command = command;
+        Command = commandFactory(connection, this);
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
     }
 
