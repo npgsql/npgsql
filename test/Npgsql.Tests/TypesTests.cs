@@ -194,6 +194,20 @@ public class TypesTests
         => Assert.That(new NpgsqlPolygon { new(1, 2) }, Is.EqualTo(new NpgsqlPolygon(new NpgsqlPoint(1, 2))));
 
     [Test]
+    public void NpgsqlPath_default()
+    {
+        NpgsqlPath defaultPath = default;
+        Assert.IsFalse(defaultPath.Equals(new NpgsqlPath { new(1, 2) }));
+    }
+
+    [Test]
+    public void NpgsqlPolygon_default()
+    {
+        NpgsqlPolygon defaultPolygon = default;
+        Assert.IsFalse(defaultPolygon.Equals(new NpgsqlPolygon { new(1, 2) }));
+    }
+
+    [Test]
     public void Bug1011018()
     {
         var p = new NpgsqlParameter();

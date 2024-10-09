@@ -200,7 +200,7 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
 /// </summary>
 public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 {
-    readonly List<NpgsqlPoint> _points;
+    List<NpgsqlPoint> _points;
     public bool Open { get; set; }
 
     public NpgsqlPath()
@@ -231,23 +231,25 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 
     public NpgsqlPoint this[int index]
     {
-        get => _points[index];
-        set => _points[index] = value;
+        get => Ensure()[index];
+        set => Ensure()[index] = value;
     }
 
-    public int Capacity => _points.Capacity;
-    public int Count => _points.Count;
+    public int Capacity => Ensure().Capacity;
+    public int Count => _points?.Count ?? 0;
     public bool IsReadOnly => false;
 
-    public int IndexOf(NpgsqlPoint item) => _points.IndexOf(item);
-    public void Insert(int index, NpgsqlPoint item) => _points.Insert(index, item);
-    public void RemoveAt(int index) => _points.RemoveAt(index);
-    public void Add(NpgsqlPoint item) => _points.Add(item);
-    public void Clear() =>  _points.Clear();
-    public bool Contains(NpgsqlPoint item) => _points.Contains(item);
-    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) =>  _points.CopyTo(array, arrayIndex);
-    public bool Remove(NpgsqlPoint item) =>  _points.Remove(item);
-    public IEnumerator<NpgsqlPoint> GetEnumerator() =>  _points.GetEnumerator();
+    List<NpgsqlPoint> Ensure() => _points ??= new();
+
+    public int IndexOf(NpgsqlPoint item) => Ensure().IndexOf(item);
+    public void Insert(int index, NpgsqlPoint item) => Ensure().Insert(index, item);
+    public void RemoveAt(int index) => Ensure().RemoveAt(index);
+    public void Add(NpgsqlPoint item) => Ensure().Add(item);
+    public void Clear() => Ensure().Clear();
+    public bool Contains(NpgsqlPoint item) => Ensure().Contains(item);
+    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) => Ensure().CopyTo(array, arrayIndex);
+    public bool Remove(NpgsqlPoint item) => Ensure().Remove(item);
+    public IEnumerator<NpgsqlPoint> GetEnumerator() => Ensure().GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public bool Equals(NpgsqlPath other)
@@ -287,12 +289,12 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
         var sb = new StringBuilder();
         sb.Append(Open ? '[' : '(');
         int i;
-        for (i = 0; i < _points.Count; i++)
+        for (i = 0; i < Count; i++)
         {
             var p = _points[i];
             sb.AppendFormat(CultureInfo.InvariantCulture, "({0},{1})", p.X, p.Y);
             if (i < _points.Count - 1)
-                sb.Append(",");
+                sb.Append(',');
         }
         sb.Append(Open ? ']' : ')');
         return sb.ToString();
@@ -302,9 +304,9 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 /// <summary>
 /// Represents a PostgreSQL Polygon type.
 /// </summary>
-public readonly struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
+public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
 {
-    readonly List<NpgsqlPoint> _points;
+    List<NpgsqlPoint> _points;
 
     public NpgsqlPolygon()
         => _points = new();
@@ -319,23 +321,25 @@ public readonly struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPoly
 
     public NpgsqlPoint this[int index]
     {
-        get => _points[index];
-        set => _points[index] = value;
+        get => Ensure()[index];
+        set => Ensure()[index] = value;
     }
 
-    public int Capacity => _points.Capacity;
-    public int Count => _points.Count;
+    public int Capacity => Ensure().Capacity;
+    public int Count => _points?.Count ?? 0;
     public bool IsReadOnly => false;
 
-    public int IndexOf(NpgsqlPoint item) => _points.IndexOf(item);
-    public void Insert(int index, NpgsqlPoint item) => _points.Insert(index, item);
-    public void RemoveAt(int index) =>  _points.RemoveAt(index);
-    public void Add(NpgsqlPoint item) =>  _points.Add(item);
-    public void Clear() =>  _points.Clear();
-    public bool Contains(NpgsqlPoint item) => _points.Contains(item);
-    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) => _points.CopyTo(array, arrayIndex);
-    public bool Remove(NpgsqlPoint item) => _points.Remove(item);
-    public IEnumerator<NpgsqlPoint> GetEnumerator() => _points.GetEnumerator();
+    List<NpgsqlPoint> Ensure() => _points ??= new();
+
+    public int IndexOf(NpgsqlPoint item) => Ensure().IndexOf(item);
+    public void Insert(int index, NpgsqlPoint item) => Ensure().Insert(index, item);
+    public void RemoveAt(int index) => Ensure().RemoveAt(index);
+    public void Add(NpgsqlPoint item) => Ensure().Add(item);
+    public void Clear() => Ensure().Clear();
+    public bool Contains(NpgsqlPoint item) => Ensure().Contains(item);
+    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) => Ensure().CopyTo(array, arrayIndex);
+    public bool Remove(NpgsqlPoint item) => Ensure().Remove(item);
+    public IEnumerator<NpgsqlPoint> GetEnumerator() => Ensure().GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public bool Equals(NpgsqlPolygon other)
@@ -374,7 +378,7 @@ public readonly struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPoly
         var sb = new StringBuilder();
         sb.Append('(');
         int i;
-        for (i = 0; i < _points.Count; i++)
+        for (i = 0; i < Count; i++)
         {
             var p = _points[i];
             sb.AppendFormat(CultureInfo.InvariantCulture, "({0},{1})", p.X, p.Y);
@@ -478,8 +482,8 @@ public readonly record struct NpgsqlInet
     }
 
     public override string ToString()
-        => (Address.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
-           (Address.AddressFamily == AddressFamily.InterNetworkV6 && Netmask == 128)
+        => (Address?.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
+           (Address?.AddressFamily == AddressFamily.InterNetworkV6 && Netmask == 128)
             ? Address.ToString()
             : $"{Address}/{Netmask}";
 
