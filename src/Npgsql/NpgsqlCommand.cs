@@ -1724,7 +1724,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 ? tracingSettings?.FilterNpgsqlBatch?.Invoke(WrappingBatch!)
                 : tracingSettings?.FilterNpgsqlCommand?.Invoke(this);
             if (enableTracing != false)
-                CurrentActivity = NpgsqlActivitySource.CommandStart(settings, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType);
+            {
+                var spanName = IsWrappedByBatch
+                    ? tracingSettings?.ProvideSpanNameForNpgsqlBatch?.Invoke(WrappingBatch!)
+                    : tracingSettings?.ProvideSpanNameForNpgsqlCommand?.Invoke(this);
+                CurrentActivity = NpgsqlActivitySource.CommandStart(settings, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType, spanName);
+            }
         }
     }
 

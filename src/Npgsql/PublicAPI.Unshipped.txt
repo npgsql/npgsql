@@ -19,6 +19,10 @@ Npgsql.NpgsqlTracingOptions.FilterNpgsqlBatch.get -> System.Func<Npgsql.NpgsqlBa
 Npgsql.NpgsqlTracingOptions.FilterNpgsqlBatch.set -> void
 Npgsql.NpgsqlTracingOptions.FilterNpgsqlCommand.get -> System.Func<Npgsql.NpgsqlCommand!, bool>?
 Npgsql.NpgsqlTracingOptions.FilterNpgsqlCommand.set -> void
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlBatch.get -> System.Func<Npgsql.NpgsqlBatch!, string?>?
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlBatch.set -> void
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlCommand.get -> System.Func<Npgsql.NpgsqlCommand!, string?>?
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlCommand.set -> void
 Npgsql.Replication.PgOutput.ReplicationValue.GetFieldName() -> string!
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage.AbortLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
