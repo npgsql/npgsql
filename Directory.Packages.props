@@ -12,7 +12,7 @@
     <!-- Compatibility -->
     <PackageVersion Include="System.Threading.Channels" Version="$(SystemVersion)" />
     <PackageVersion Include="System.Collections.Immutable" Version="$(SystemVersion)" />
-    <PackageVersion Include="System.Text.Json" Version="8.0.4" />
+    <PackageVersion Include="System.Text.Json" Version="8.0.5" />
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="$(SystemVersion) " />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="1.1.1" />
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
