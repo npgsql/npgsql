@@ -201,6 +201,9 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
 public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 {
     List<NpgsqlPoint> _points;
+
+    List<NpgsqlPoint> Points => _points ??= new();
+
     public bool Open { get; set; }
 
     public NpgsqlPath()
@@ -231,25 +234,23 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 
     public NpgsqlPoint this[int index]
     {
-        get => Ensure()[index];
-        set => Ensure()[index] = value;
+        get => Points[index];
+        set => Points[index] = value;
     }
 
-    public int Capacity => Ensure().Capacity;
+    public int Capacity => Points.Capacity;
     public int Count => _points?.Count ?? 0;
     public bool IsReadOnly => false;
 
-    List<NpgsqlPoint> Ensure() => _points ??= new();
-
-    public int IndexOf(NpgsqlPoint item) => Ensure().IndexOf(item);
-    public void Insert(int index, NpgsqlPoint item) => Ensure().Insert(index, item);
-    public void RemoveAt(int index) => Ensure().RemoveAt(index);
-    public void Add(NpgsqlPoint item) => Ensure().Add(item);
-    public void Clear() => Ensure().Clear();
-    public bool Contains(NpgsqlPoint item) => Ensure().Contains(item);
-    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) => Ensure().CopyTo(array, arrayIndex);
-    public bool Remove(NpgsqlPoint item) => Ensure().Remove(item);
-    public IEnumerator<NpgsqlPoint> GetEnumerator() => Ensure().GetEnumerator();
+    public int IndexOf(NpgsqlPoint item) => Points.IndexOf(item);
+    public void Insert(int index, NpgsqlPoint item) => Points.Insert(index, item);
+    public void RemoveAt(int index) => Points.RemoveAt(index);
+    public void Add(NpgsqlPoint item) => Points.Add(item);
+    public void Clear() => Points.Clear();
+    public bool Contains(NpgsqlPoint item) => Points.Contains(item);
+    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) => Points.CopyTo(array, arrayIndex);
+    public bool Remove(NpgsqlPoint item) => Points.Remove(item);
+    public IEnumerator<NpgsqlPoint> GetEnumerator() => Points.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public bool Equals(NpgsqlPath other)
@@ -308,6 +309,8 @@ public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
 {
     List<NpgsqlPoint> _points;
 
+    List<NpgsqlPoint> Points => _points ??= new();
+
     public NpgsqlPolygon()
         => _points = new();
 
@@ -321,25 +324,23 @@ public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
 
     public NpgsqlPoint this[int index]
     {
-        get => Ensure()[index];
-        set => Ensure()[index] = value;
+        get => Points[index];
+        set => Points[index] = value;
     }
 
-    public int Capacity => Ensure().Capacity;
+    public int Capacity => Points.Capacity;
     public int Count => _points?.Count ?? 0;
     public bool IsReadOnly => false;
 
-    List<NpgsqlPoint> Ensure() => _points ??= new();
-
-    public int IndexOf(NpgsqlPoint item) => Ensure().IndexOf(item);
-    public void Insert(int index, NpgsqlPoint item) => Ensure().Insert(index, item);
-    public void RemoveAt(int index) => Ensure().RemoveAt(index);
-    public void Add(NpgsqlPoint item) => Ensure().Add(item);
-    public void Clear() => Ensure().Clear();
-    public bool Contains(NpgsqlPoint item) => Ensure().Contains(item);
-    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) => Ensure().CopyTo(array, arrayIndex);
-    public bool Remove(NpgsqlPoint item) => Ensure().Remove(item);
-    public IEnumerator<NpgsqlPoint> GetEnumerator() => Ensure().GetEnumerator();
+    public int IndexOf(NpgsqlPoint item) => Points.IndexOf(item);
+    public void Insert(int index, NpgsqlPoint item) => Points.Insert(index, item);
+    public void RemoveAt(int index) => Points.RemoveAt(index);
+    public void Add(NpgsqlPoint item) => Points.Add(item);
+    public void Clear() => Points.Clear();
+    public bool Contains(NpgsqlPoint item) => Points.Contains(item);
+    public void CopyTo(NpgsqlPoint[] array, int arrayIndex) => Points.CopyTo(array, arrayIndex);
+    public bool Remove(NpgsqlPoint item) => Points.Remove(item);
+    public IEnumerator<NpgsqlPoint> GetEnumerator() => Points.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public bool Equals(NpgsqlPolygon other)
