@@ -159,6 +159,32 @@ $$ LANGUAGE plpgsql");
         Assert.AreEqual(0, i);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5820")]
+    public async Task Output_param_cast_error()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var function = await GetTempFunctionName(conn);
+        await conn.ExecuteNonQueryAsync(@$"
+CREATE FUNCTION {function} (INOUT param_in int4, OUT param_out interval) AS $$
+BEGIN
+    param_out = interval '5 years';
+END
+$$ LANGUAGE plpgsql");
+        await using var cmd = new NpgsqlCommand(function, conn);
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.Parameters.Add(new NpgsqlParameter("param_in", DbType.Int32)
+        {
+            Direction = ParameterDirection.InputOutput,
+            Value = 1
+        });
+        cmd.Parameters.Add(new NpgsqlParameter("param_out", NpgsqlDbType.Interval)
+        {
+            Direction = ParameterDirection.Output
+        });
+        Assert.ThrowsAsync<InvalidCastException>(cmd.ExecuteNonQueryAsync);
+        Assert.DoesNotThrowAsync(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
+    }
+
     #region DeriveParameters
 
     [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
