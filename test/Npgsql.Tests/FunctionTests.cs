@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Data;
+using System.Threading.Tasks;
+using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests;
@@ -122,5 +124,31 @@ public class FunctionTests : TestBase
         Assert.That(command.Parameters["a"].Value, Is.EqualTo(4));
         Assert.That(command.Parameters["b"].Value, Is.EqualTo(5));
         Assert.That(command.Parameters["c"].Value, Is.EqualTo(-1));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5820")]
+    public async Task Output_param_cast_error()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = TestUtil.GetTempFunctionName(conn, out var function);
+        await conn.ExecuteNonQueryAsync(@$"
+CREATE OR REPLACE FUNCTION {function} (INOUT param_in int4, OUT param_out interval) AS $$
+BEGIN
+    param_out = interval '5 years';
+END
+$$ LANGUAGE plpgsql");
+        await using var cmd = new NpgsqlCommand(function, conn);
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.Parameters.Add(new NpgsqlParameter("param_in", DbType.Int32)
+        {
+            Direction = ParameterDirection.InputOutput,
+            Value = 1
+        });
+        cmd.Parameters.Add(new NpgsqlParameter("param_out", NpgsqlDbType.Interval)
+        {
+            Direction = ParameterDirection.Output
+        });
+        Assert.ThrowsAsync<InvalidCastException>(cmd.ExecuteNonQueryAsync);
+        Assert.DoesNotThrowAsync(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
     }
 }

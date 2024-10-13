@@ -479,7 +479,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     msg = await Connector.ReadMessage(async);
                     ProcessMessage(msg);
                     if (msg.Code == BackendMessageCode.DataRow)
-                        PopulateOutputParameters();
+                    {
+                        try
+                        {
+                            PopulateOutputParameters();
+                        }
+                        catch (Exception)
+                        {
+                            // TODO: ideally we should flow down to global exception filter and consume there
+                            await Consume(async);
+                            throw;
+                        }
+                    }
                 }
                 else
                 {
@@ -517,6 +528,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 // Prevent the command or batch from by recycled (by the connection) when it's disposed. This is important since
                 // the exception is very likely to escape the using statement of the command, and by that time some other user may
                 // already be using the recycled instance.
+                // TODO: we probably should do than even if it's not PostgresException (error from PopulateOutputParameters)
                 if (!Command.IsWrappedByBatch)
                 {
                     Command.IsCached = false;
