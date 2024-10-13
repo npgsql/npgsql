@@ -1,24 +1,19 @@
 <Project>
-  <PropertyGroup>
-    <SystemVersion>8.0.0</SystemVersion>
-    <ExtensionsVersion>$(SystemVersion)</ExtensionsVersion>
-  </PropertyGroup>
-  
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(ExtensionsVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(ExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
     <PackageVersion Include="OpenTelemetry.API" Version="1.7.0" />
 
     <!-- Compatibility -->
     <PackageVersion Include="System.Text.Json" Version="8.0.5" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="$(SystemVersion) " />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.5.0" />
     <PackageVersion Include="NetTopologySuite.IO.PostGIS" Version="2.1.0" />
     <PackageVersion Include="NodaTime" Version="3.1.11" />
-    <PackageVersion Include="GeoJSON.Net" Version="1.2.19" />
+    <PackageVersion Include="GeoJSON.Net" Version="1.4.1" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
 
     <!-- Build -->
@@ -30,8 +25,8 @@
     
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="3.14.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(ExtensionsVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(ExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.5.0" />
@@ -39,11 +34,11 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.7" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(ExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.12" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.10" />
 
     <!-- NativeAOT -->

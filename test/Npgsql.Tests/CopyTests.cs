@@ -977,7 +977,7 @@ INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'000000
             // This must be large enough to cause Postgres to queue up CopyData messages.
             var stream = conn.BeginRawBinaryCopy("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY");
             var buffer = new byte[32];
-            await stream.ReadAsync(buffer, 0, buffer.Length);
+            await stream.ReadExactlyAsync(buffer, 0, buffer.Length);
             stream.Cancel();
             Assert.DoesNotThrowAsync(async () => await stream.DisposeAsync());
         }
