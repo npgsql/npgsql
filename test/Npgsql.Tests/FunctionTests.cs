@@ -195,6 +195,10 @@ $$ LANGUAGE plpgsql");
             Direction = ParameterDirection.InputOutput,
             Value = 1
         });
+        cmd.Parameters.Add(new NpgsqlParameter("param_out", NpgsqlDbType.Interval)
+        {
+            Direction = ParameterDirection.Output
+        });
         Assert.ThrowsAsync<InvalidCastException>(cmd.ExecuteNonQueryAsync);
         Assert.DoesNotThrowAsync(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
     }
