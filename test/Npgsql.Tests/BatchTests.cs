@@ -723,7 +723,6 @@ LANGUAGE 'plpgsql'");
 
         await using (var reader = await batch.ExecuteReaderAsync(Behavior))
         {
-
             var e = Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())!;
             Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
         }

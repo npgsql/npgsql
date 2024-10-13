@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.203'
+  dotnet_sdk_version: '9.0.100-rc.2.24474.11'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
