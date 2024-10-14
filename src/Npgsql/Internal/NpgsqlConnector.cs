@@ -785,7 +785,9 @@ public sealed partial class NpgsqlConnector
 
             if (Settings.SslNegotiation == SslNegotiation.Direct)
             {
-                Debug.Assert(sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull);
+                // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but just on the off case
+                if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
+                    throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
                 await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
                 if (ReadBuffer.ReadBytesLeft > 0)
                     throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
