@@ -838,7 +838,7 @@ public sealed partial class NpgsqlConnector
 
     static SslNegotiation GetSslNegotiation(NpgsqlConnectionStringBuilder settings)
     {
-        if (settings.UserProvidesSslNegotiation is { } userProvidedSslNegotiation)
+        if (settings.UserProvidedSslNegotiation is { } userProvidedSslNegotiation)
             return userProvidedSslNegotiation;
 
         if (PostgresEnvironment.SslNegotiation is { } sslNegotiationEnv)

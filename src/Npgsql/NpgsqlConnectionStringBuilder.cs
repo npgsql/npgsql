@@ -481,7 +481,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     SslNegotiation? _sslNegotiation;
 
-    internal SslNegotiation? UserProvidesSslNegotiation => _sslNegotiation;
+    internal SslNegotiation? UserProvidedSslNegotiation => _sslNegotiation;
 
     /// <summary>
     /// Location of a client certificate to be sent to the server.
