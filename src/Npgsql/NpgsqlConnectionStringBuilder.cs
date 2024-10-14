@@ -471,7 +471,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [NpgsqlConnectionStringProperty]
     public SslNegotiation SslNegotiation
     {
-        get => _sslNegotiation;
+        get => _sslNegotiation ?? SslNegotiation.Postgres;
         set
         {
             _sslNegotiation = value;
@@ -479,7 +479,9 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
     }
 
-    SslNegotiation _sslNegotiation;
+    SslNegotiation? _sslNegotiation;
+
+    internal SslNegotiation? UserProvidesSslNegotiation => _sslNegotiation;
 
     /// <summary>
     /// Location of a client certificate to be sent to the server.

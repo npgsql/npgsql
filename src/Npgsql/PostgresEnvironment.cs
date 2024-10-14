@@ -48,6 +48,8 @@ static class PostgresEnvironment
 
     internal static string? TargetSessionAttributes => Environment.GetEnvironmentVariable("PGTARGETSESSIONATTRS");
 
+    internal static string? SslNegotiation => Environment.GetEnvironmentVariable("PGSSLNEGOTIATION");
+
     static string? GetHomeDir()
         => Environment.GetEnvironmentVariable(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "APPDATA" : "HOME");
 

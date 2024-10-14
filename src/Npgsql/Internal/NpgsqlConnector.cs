@@ -783,7 +783,7 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if (Settings.SslNegotiation == SslNegotiation.Direct)
+            if (GetSslNegotiation(Settings) == SslNegotiation.Direct)
             {
                 // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but just on the off case
                 if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
@@ -834,6 +834,20 @@ public sealed partial class NpgsqlConnector
 
             throw;
         }
+    }
+
+    static SslNegotiation GetSslNegotiation(NpgsqlConnectionStringBuilder settings)
+    {
+        if (settings.UserProvidesSslNegotiation is { } userProvidedSslNegotiation)
+            return userProvidedSslNegotiation;
+
+        if (PostgresEnvironment.SslNegotiation is { } sslNegotiationEnv)
+        {
+            if (Enum.TryParse<SslNegotiation>(sslNegotiationEnv, ignoreCase: true, out var sslNegotiation))
+                return sslNegotiation;
+        }
+
+        return SslNegotiation.Postgres;
     }
 
     internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
