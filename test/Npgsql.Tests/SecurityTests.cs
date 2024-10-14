@@ -526,6 +526,9 @@ public class SecurityTests : TestBase
     [NonParallelizable] // Sets environment variable
     public async Task Direct_ssl_via_env_requires_correct_sslmode([Values(SslMode.Disable, SslMode.Allow, SslMode.Prefer, SslMode.Require)] SslMode sslMode)
     {
+        await using var adminConn = await OpenConnectionAsync();
+        MinimumPgVersion(adminConn, "17.0");
+
         using var _ = SetEnvironmentVariable("PGSSLNEGOTIATION", nameof(SslNegotiation.Direct));
         await using var dataSource = CreateDataSource(csb =>
         {
