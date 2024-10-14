@@ -20,7 +20,6 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
-using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Properties;
 
@@ -281,6 +280,8 @@ public sealed partial class NpgsqlConnector
     internal CancellationToken UserCancellationToken { get; set; }
     internal bool AttemptPostgresCancellation { get; private set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
+
+    static readonly SslApplicationProtocol _alpnProtocol = new("postgresql");
 
 #pragma warning disable CA1859
     // We're casting to IDisposable to not explicitly reference X509Certificate2 for NativeAOT
@@ -782,7 +783,16 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if ((sslMode is SslMode.Prefer && DataSource.TransportSecurityHandler.SupportEncryption) ||
+            if (Settings.SslNegotiation == SslNegotiation.Direct)
+            {
+                // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but just on the off case
+                if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
+                    throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
+                await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
+                if (ReadBuffer.ReadBytesLeft > 0)
+                    throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
+            }
+            else if ((sslMode is SslMode.Prefer && DataSource.TransportSecurityHandler.SupportEncryption) ||
                 sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
             {
                 WriteSslRequest();
@@ -909,7 +919,11 @@ public sealed partial class NpgsqlConnector
                 ClientCertificates = clientCertificates,
                 EnabledSslProtocols = SslProtocols.None,
                 CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.Offline,
-                RemoteCertificateValidationCallback = certificateValidationCallback
+                RemoteCertificateValidationCallback = certificateValidationCallback,
+                ApplicationProtocols = new List<SslApplicationProtocol>
+                {
+                    _alpnProtocol
+                }
             };
 
             if (SslClientAuthenticationOptionsCallback is not null)
