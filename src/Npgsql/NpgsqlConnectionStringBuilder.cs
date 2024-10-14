@@ -467,7 +467,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Category("Security")]
     [Description("Controls how SSL encryption is negotiated with the server, if SSL is used.")]
     [DisplayName("SSL Negotiation")]
-    [DefaultValue(SslNegotiation.Direct)]
+    [DefaultValue(SslNegotiation.Postgres)]
     [NpgsqlConnectionStringProperty]
     public SslNegotiation SslNegotiation
     {
