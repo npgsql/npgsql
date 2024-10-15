@@ -319,6 +319,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         // Then load the types
         Expect<RowDescriptionMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
         IBackendMessage msg;
+        var unknownPostgresTypes = new List<PostgresTypeDefinition>();
         while (true)
         {
             msg = await conn.ReadMessage(async).ConfigureAwait(false);
@@ -335,93 +336,28 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             var len = conn.ReadBuffer.ReadInt32();
             var elemtypoid = len == -1 ? 0 : uint.Parse(conn.ReadBuffer.ReadString(len), NumberFormatInfo.InvariantInfo);
 
-            switch (typtype)
-            {
-            case 'b': // Normal base type
-                var baseType = new PostgresBaseType(nspname, typname, oid);
-                byOID[baseType.OID] = baseType;
-                continue;
-
-            case 'a': // Array
-            {
-                Debug.Assert(elemtypoid > 0);
-                if (!byOID.TryGetValue(elemtypoid, out var elementPostgresType))
-                {
-                    _connectionLogger.LogTrace("Array type '{ArrayTypeName}' refers to unknown element with OID {ElementTypeOID}, skipping",
-                        typname, elemtypoid);
-                    continue;
-                }
-
-                var arrayType = new PostgresArrayType(nspname, typname, oid, elementPostgresType);
-                byOID[arrayType.OID] = arrayType;
-                continue;
-            }
-
-            case 'r': // Range
-            {
-                Debug.Assert(elemtypoid > 0);
-                if (!byOID.TryGetValue(elemtypoid, out var subtypePostgresType))
-                {
-                    _connectionLogger.LogTrace("Range type '{RangeTypeName}' refers to unknown subtype with OID {ElementTypeOID}, skipping",
-                        typname, elemtypoid);
-                    continue;
-                }
-
-                var rangeType = new PostgresRangeType(nspname, typname, oid, subtypePostgresType);
-                byOID[rangeType.OID] = rangeType;
-                continue;
-            }
-
-            case 'm': // Multirange
-                Debug.Assert(elemtypoid > 0);
-                if (!byOID.TryGetValue(elemtypoid, out var type))
-                {
-                    _connectionLogger.LogTrace("Multirange type '{MultirangeTypeName}' refers to unknown range with OID {ElementTypeOID}, skipping",
-                        typname, elemtypoid);
-                    continue;
-                }
-
-                if (type is not PostgresRangeType rangePostgresType)
-                {
-                    _connectionLogger.LogTrace("Multirange type '{MultirangeTypeName}' refers to non-range type '{TypeName}', skipping",
-                        typname, type.Name);
-                    continue;
-                }
-
-                var multirangeType = new PostgresMultirangeType(nspname, typname, oid, rangePostgresType);
-                byOID[multirangeType.OID] = multirangeType;
-                continue;
-
-            case 'e': // Enum
-                var enumType = new PostgresEnumType(nspname, typname, oid);
-                byOID[enumType.OID] = enumType;
-                continue;
-
-            case 'c': // Composite
-                var compositeType = new PostgresCompositeType(nspname, typname, oid);
-                byOID[compositeType.OID] = compositeType;
-                continue;
-
-            case 'd': // Domain
-                Debug.Assert(elemtypoid > 0);
-                if (!byOID.TryGetValue(elemtypoid, out var basePostgresType))
-                {
-                    _connectionLogger.LogTrace("Domain type '{DomainTypeName}' refers to unknown base type with OID {ElementTypeOID}, skipping",
-                        typname, elemtypoid);
-                    continue;
-                }
-
-                var domainType = new PostgresDomainType(nspname, typname, oid, basePostgresType, typnotnull);
-                byOID[domainType.OID] = domainType;
-                continue;
-
-            case 'p': // pseudo-type (record, void)
-                goto case 'b'; // Hack this as a base type
-
-            default:
-                throw new ArgumentOutOfRangeException($"Unknown typtype for type '{typname}' in pg_type: {typtype}");
-            }
+            var postgresTypeDefinition = new PostgresTypeDefinition(nspname, oid, typname, typtype, typnotnull, elemtypoid);
+            if (!TryAddPostgresType(postgresTypeDefinition, byOID))
+                unknownPostgresTypes.Add(postgresTypeDefinition);
         }
+
+        while (unknownPostgresTypes.Count > 0)
+        {
+            var hasChanges = false;
+            for (var i = unknownPostgresTypes.Count - 1; i >= 0; i--)
+            {
+                var unknownPostgresType = unknownPostgresTypes[i];
+                if (TryAddPostgresType(unknownPostgresType, byOID))
+                {
+                    unknownPostgresTypes.RemoveAt(i);
+                    hasChanges = true;
+                }
+            }
+
+            if (!hasChanges)
+                break;
+        }
+
         Expect<CommandCompleteMessage>(msg, conn);
         if (isReplicationConnection)
             Expect<ReadyForQueryMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
@@ -546,4 +482,119 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)
             => buffer.ReadString(buffer.ReadInt32());
     }
+
+    bool TryAddPostgresType(PostgresTypeDefinition postgresTypeDefinition, Dictionary<uint, PostgresType> byOID)
+    {
+        switch (postgresTypeDefinition.Type)
+        {
+        case 'b': // Normal base type
+            var baseType = new PostgresBaseType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID);
+            byOID[baseType.OID] = baseType;
+            return true;
+
+        case 'a': // Array
+        {
+            Debug.Assert(postgresTypeDefinition.ElemTypeOID > 0);
+            if (!byOID.TryGetValue(postgresTypeDefinition.ElemTypeOID, out var elementPostgresType))
+            {
+                _connectionLogger.LogTrace("Array type '{ArrayTypeName}' refers to unknown element with OID {ElementTypeOID}, skipping",
+                    postgresTypeDefinition.Name, postgresTypeDefinition.ElemTypeOID);
+                return false;
+            }
+
+            var arrayType = new PostgresArrayType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, elementPostgresType);
+            byOID[arrayType.OID] = arrayType;
+            return true;
+        }
+
+        case 'r': // Range
+        {
+            Debug.Assert(postgresTypeDefinition.ElemTypeOID > 0);
+            if (!byOID.TryGetValue(postgresTypeDefinition.ElemTypeOID, out var subtypePostgresType))
+            {
+                _connectionLogger.LogTrace("Range type '{RangeTypeName}' refers to unknown subtype with OID {ElementTypeOID}, skipping",
+                    postgresTypeDefinition.Name, postgresTypeDefinition.ElemTypeOID);
+                return false;
+            }
+
+            var rangeType = new PostgresRangeType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, subtypePostgresType);
+            byOID[rangeType.OID] = rangeType;
+            return true;
+        }
+
+        case 'm': // Multirange
+            Debug.Assert(postgresTypeDefinition.ElemTypeOID > 0);
+            if (!byOID.TryGetValue(postgresTypeDefinition.ElemTypeOID, out var type))
+            {
+                _connectionLogger.LogTrace("Multirange type '{MultirangeTypeName}' refers to unknown range with OID {ElementTypeOID}, skipping",
+                    postgresTypeDefinition.Name, postgresTypeDefinition.ElemTypeOID);
+                return false;
+            }
+
+            if (type is not PostgresRangeType rangePostgresType)
+            {
+                _connectionLogger.LogTrace("Multirange type '{MultirangeTypeName}' refers to non-range type '{TypeName}', skipping",
+                    postgresTypeDefinition.Name, type.Name);
+                return false;
+            }
+
+            var multirangeType = new PostgresMultirangeType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, rangePostgresType);
+            byOID[multirangeType.OID] = multirangeType;
+            return true;
+
+        case 'e': // Enum
+            var enumType = new PostgresEnumType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID);
+            byOID[enumType.OID] = enumType;
+            return true;
+
+        case 'c': // Composite
+            var compositeType = new PostgresCompositeType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID);
+            byOID[compositeType.OID] = compositeType;
+            return true;
+
+        case 'd': // Domain
+            Debug.Assert(postgresTypeDefinition.ElemTypeOID > 0);
+            if (!byOID.TryGetValue(postgresTypeDefinition.ElemTypeOID, out var basePostgresType))
+            {
+                _connectionLogger.LogTrace("Domain type '{DomainTypeName}' refers to unknown base type with OID {ElementTypeOID}, skipping",
+                    postgresTypeDefinition.Name, postgresTypeDefinition.ElemTypeOID);
+                return false;
+            }
+
+            var domainType = new PostgresDomainType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, basePostgresType, postgresTypeDefinition.NotNull);
+            byOID[domainType.OID] = domainType;
+            return true;
+
+        case 'p': // pseudo-type (record, void)
+            goto case 'b'; // Hack this as a base type
+
+        default:
+            throw new ArgumentOutOfRangeException($"Unknown typtype for type '{postgresTypeDefinition.Name}' in pg_type: {postgresTypeDefinition.Type}");
+        }
+    }
+}
+
+readonly struct PostgresTypeDefinition
+{
+    public PostgresTypeDefinition(string ns, uint oid, string name, char type, bool notNull, uint elemTypeOID)
+    {
+        Namespace = ns;
+        OID = oid;
+        Name = name;
+        Type = type;
+        NotNull = notNull;
+        ElemTypeOID = elemTypeOID;
+    }
+
+    public readonly string Namespace;
+
+    public readonly uint OID;
+
+    public readonly string Name;
+
+    public readonly char Type;
+
+    public readonly bool NotNull;
+
+    public readonly uint ElemTypeOID;
 }

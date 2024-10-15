@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -73,6 +74,29 @@ CREATE TYPE {compositeType} AS (value {domainType});");
     class SomeComposite
     {
         public string? Value { get; set; }
+    }
+
+    [Test]
+    public async Task Domain_over_range()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        var rangeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE DOMAIN {type} AS integer; CREATE TYPE {rangeType} AS RANGE(subtype={type})");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.EnableUnmappedTypes();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new NpgsqlRange<int>(1, 2),
+            "[1,2]",
+            rangeType,
+            npgsqlDbType: null,
+            isDefaultForWriting: false);
     }
 
     public DomainTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
