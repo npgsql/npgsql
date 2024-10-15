@@ -522,6 +522,33 @@ public class SecurityTests : TestBase
         }
     }
 
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public async Task Direct_ssl_via_env_requires_correct_sslmode()
+    {
+        await using var adminConn = await OpenConnectionAsync();
+        MinimumPgVersion(adminConn, "17.0");
+
+        // NonParallelizable attribute doesn't work with parameters that well
+        foreach (var sslMode in new[] { SslMode.Disable, SslMode.Allow, SslMode.Prefer, SslMode.Require })
+        {
+            using var _ = SetEnvironmentVariable("PGSSLNEGOTIATION", nameof(SslNegotiation.Direct));
+            await using var dataSource = CreateDataSource(csb =>
+            {
+                csb.SslMode = sslMode;
+            });
+            if (sslMode is SslMode.Disable or SslMode.Allow or SslMode.Prefer)
+            {
+                var ex = Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync())!;
+                Assert.That(ex.Message, Is.EqualTo("SSL Mode has to be Require or higher to be used with direct SSL Negotiation"));
+            }
+            else
+            {
+                await using var conn = await dataSource.OpenConnectionAsync();
+            }
+        }
+    }
+
     #region Setup / Teardown / Utils
 
     [OneTimeSetUp]

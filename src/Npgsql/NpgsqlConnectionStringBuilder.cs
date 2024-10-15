@@ -467,19 +467,18 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Category("Security")]
     [Description("Controls how SSL encryption is negotiated with the server, if SSL is used.")]
     [DisplayName("SSL Negotiation")]
-    [DefaultValue(SslNegotiation.Postgres)]
     [NpgsqlConnectionStringProperty]
     public SslNegotiation SslNegotiation
     {
-        get => _sslNegotiation;
+        get => UserProvidedSslNegotiation ?? SslNegotiation.Postgres;
         set
         {
-            _sslNegotiation = value;
+            UserProvidedSslNegotiation = value;
             SetValue(nameof(SslNegotiation), value);
         }
     }
 
-    SslNegotiation _sslNegotiation;
+    internal SslNegotiation? UserProvidedSslNegotiation { get; private set; }
 
     /// <summary>
     /// Location of a client certificate to be sent to the server.

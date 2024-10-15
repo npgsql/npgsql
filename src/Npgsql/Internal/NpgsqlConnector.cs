@@ -783,9 +783,9 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if (Settings.SslNegotiation == SslNegotiation.Direct)
+            if (GetSslNegotiation(Settings) == SslNegotiation.Direct)
             {
-                // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but just on the off case
+                // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but since we also allow environment variables...
                 if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
                     throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
                 await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
@@ -834,6 +834,20 @@ public sealed partial class NpgsqlConnector
 
             throw;
         }
+    }
+
+    static SslNegotiation GetSslNegotiation(NpgsqlConnectionStringBuilder settings)
+    {
+        if (settings.UserProvidedSslNegotiation is { } userProvidedSslNegotiation)
+            return userProvidedSslNegotiation;
+
+        if (PostgresEnvironment.SslNegotiation is { } sslNegotiationEnv)
+        {
+            if (Enum.TryParse<SslNegotiation>(sslNegotiationEnv, ignoreCase: true, out var sslNegotiation))
+                return sslNegotiation;
+        }
+
+        return SslNegotiation.Postgres;
     }
 
     internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
