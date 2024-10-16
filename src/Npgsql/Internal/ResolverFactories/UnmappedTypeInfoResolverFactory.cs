@@ -78,7 +78,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Input matchedType here as we don't want an NpgsqlRange over Nullable<T> (it has its own nullability tracking, for better or worse)
             var subInfo = options.GetTypeInfoInternal(
                 matchedType is null ? null : matchedType == typeof(object) ? matchedType : matchedType.GetGenericArguments()[0],
-                options.ToCanonicalTypeId(rangeType.Subtype));
+                options.ToCanonicalTypeId(rangeType.Subtype.GetRepresentationalType()));
 
             // We have no generic RangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
