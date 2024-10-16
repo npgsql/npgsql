@@ -38,7 +38,7 @@ jobs:
             pg_major: 17
             config: Debug
             test_tfm: net8.0
-          - os: macos-14
+          - os: macos-15
             pg_major: 16
             config: Release
             test_tfm: net8.0
