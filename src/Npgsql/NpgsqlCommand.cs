@@ -1827,8 +1827,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             for (var i = 0; i < positionalParameters.Count; i++)
             {
                 var value = positionalParameters[i].Value;
-                object? stringValue = null;
-                parameters[i] = TryFormatArgumentIfNullOrEnumerable(value, ref stringValue)
+                parameters[i] = TryFormatArgumentIfNullOrEnumerable(value, out var stringValue)
                     ? stringValue
                     : value!;
             }
@@ -1836,7 +1835,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             return parameters;
         }
 
-        static bool TryFormatArgumentIfNullOrEnumerable([NotNullWhen(true)] object? value, [NotNullWhen(true)] ref object? stringValue)
+        static bool TryFormatArgumentIfNullOrEnumerable([NotNullWhen(true)] object? value, [NotNullWhen(true)] out string? stringValue)
         {
             const string DbNullValue = "NULL";
             const string ClrNullValue = "(null)";
@@ -1856,23 +1855,30 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (value is not string && value is IEnumerable enumerable)
             {
                 var vsb = new StringBuilder(256);
-                bool first = true;
+                var count = 0;
                 vsb.Append('[');
                 foreach (object? e in enumerable)
                 {
-                    if (!first)
+                    if (count > 9)
+                    {
+                        vsb.Append(", ...");
+                        break;
+                    }
+
+                    if (count > 0)
                     {
                         vsb.Append(", ");
                     }
 
                     vsb.Append(e != null ? e.ToString() : ClrNullValue);
-                    first = false;
+                    count++;
                 }
                 vsb.Append(']');
                 stringValue = vsb.ToString();
                 return true;
             }
 
+            stringValue = null;
             return false;
         }
     }

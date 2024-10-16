@@ -1497,13 +1497,14 @@ FROM
     }
 
     [Test]
-    public async Task Log_ExecuteScalar_single_statement__Should_unwrap_array_and_write_nulls()
+    public async Task Log_ExecuteScalar_single_statement__Should_unwrap_array_and_truncate_and_write_nulls()
     {
         await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider);
         await using var conn = await dataSource.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1, $2, $3, $4, $5", conn);
+        await using var cmd = new NpgsqlCommand("SELECT $1, $2, $3, $4, $5, $6", conn);
         cmd.Parameters.Add(new NpgsqlParameter<int>() { TypedValue = 1024 });
         cmd.Parameters.Add(new NpgsqlParameter<int[]>() { TypedValue = [1, 2, 3], NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Integer });
+        cmd.Parameters.Add(new NpgsqlParameter<int[]>() { TypedValue = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int?[]>() { TypedValue = [1, null], NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int?>() { TypedValue = null });
         cmd.Parameters.Add(new() { NpgsqlDbType = NpgsqlDbType.Integer, Value = DBNull.Value });
@@ -1515,10 +1516,10 @@ FROM
 
         var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
         Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed")
-            .And.Contains("SELECT $1, $2, $3, $4, $5")
-            .And.Contains("Parameters: [1024, [1, 2, 3], [1, (null)], (null), NULL]"));
-        AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2, $3, $4, $5");
-        AssertLoggingStateContains(executingCommandEvent, "Parameters", new object[] { 1024, "[1, 2, 3]", "[1, (null)]", "(null)", "NULL" });
+            .And.Contains("SELECT $1, $2, $3, $4, $5, $6")
+            .And.Contains("Parameters: [1024, [1, 2, 3], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...], [1, (null)], (null), NULL]"));
+        AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2, $3, $4, $5, $6");
+        AssertLoggingStateContains(executingCommandEvent, "Parameters", new object[] { 1024, "[1, 2, 3]", "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...]", "[1, (null)]", "(null)", "NULL" });
 
         if (!IsMultiplexing)
             AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
