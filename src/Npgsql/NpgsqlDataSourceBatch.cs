@@ -9,7 +9,11 @@ namespace Npgsql;
 sealed class NpgsqlDataSourceBatch : NpgsqlBatch
 {
     internal NpgsqlDataSourceBatch(NpgsqlConnection connection)
-        : base(new NpgsqlDataSourceCommand(DefaultBatchCommandsSize, connection))
+        : this(new NpgsqlDataSourceCommand(DefaultBatchCommandsSize, connection))
+    {
+    }
+
+    internal NpgsqlDataSourceBatch(NpgsqlDataSourceCommand command) : base(command)
     {
     }
 

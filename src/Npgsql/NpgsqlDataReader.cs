@@ -1210,20 +1210,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (isDisposing)
             State = ReaderState.Disposed;
 
-        if (_connection?.ConnectorBindingScope == ConnectorBindingScope.Reader)
+        // TODO: Make MultiplexingNpgsqlDataReader?
+        if (Command is MultiplexingNpgsqlCommand)
         {
             UnbindIfNecessary();
-
-            // TODO: Refactor... Use proper scope
-            _connection.Connector = null;
-            Connector.Connection = null;
-            _connection.ConnectorBindingScope = ConnectorBindingScope.None;
-
-            // If the reader is being closed as part of the connection closing, we don't apply
-            // the reader's CommandBehavior.CloseConnection
-            if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
-                _connection.Close();
-
             Connector.ReaderCompleted.SetResult(null);
         }
         else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)

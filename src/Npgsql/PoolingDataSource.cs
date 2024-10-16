@@ -256,7 +256,7 @@ class PoolingDataSource : NpgsqlDataSource
     }
 
     internal sealed override async ValueTask<NpgsqlConnector?> OpenNewConnector(
-        NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        NpgsqlConnection? conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         // As long as we're under max capacity, attempt to increase the connector count and open a new connection.
         for (var numConnectors = _numConnectors; numConnectors < MaxConnections; numConnectors = _numConnectors)

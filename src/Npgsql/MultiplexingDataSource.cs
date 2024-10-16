@@ -17,8 +17,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     readonly bool _autoPrepare;
 
-    readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
-    internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
+    readonly ChannelReader<MultiplexingNpgsqlCommand> _multiplexCommandReader;
+    internal ChannelWriter<MultiplexingNpgsqlCommand> MultiplexCommandWriter { get; }
 
     readonly Task _multiplexWriteLoop;
 
@@ -44,7 +44,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
         _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
 
-        var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
+        var multiplexCommandChannel = Channel.CreateBounded<MultiplexingNpgsqlCommand>(
             new BoundedChannelOptions(MultiplexingCommandChannelBound)
             {
                 FullMode = BoundedChannelFullMode.Wait,
@@ -80,7 +80,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
         while (true)
         {
             NpgsqlConnector? connector;
-            NpgsqlCommand? command;
+            MultiplexingNpgsqlCommand? command;
 
             try
             {
@@ -107,19 +107,15 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     }
 
                     connector = await OpenNewConnector(
-                        command.InternalConnection!,
+                        conn: null,
                         new NpgsqlTimeout(TimeSpan.FromSeconds(Settings.Timeout)),
                         async: true,
                         CancellationToken.None).ConfigureAwait(false);
 
                     if (connector != null)
                     {
-                        // Managed to created a new connector
-                        connector.Connection = null;
-
                         // See increment under over-capacity mode below
                         Interlocked.Increment(ref connector.CommandsInFlightCount);
-
                         break;
                     }
 
@@ -214,7 +210,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool WriteCommand(NpgsqlConnector connector, NpgsqlCommand command, ref MultiplexingStats stats)
+        bool WriteCommand(NpgsqlConnector connector, MultiplexingNpgsqlCommand command, ref MultiplexingStats stats)
         {
             // Note: this method *never* awaits on I/O - doing so would suspend all outgoing multiplexing commands
             // for the entire pool. In the normal/fast case, writing the command is purely synchronous (serialize
@@ -363,6 +359,12 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
         // ReSharper disable once FunctionNeverReturns
     }
+
+    public override NpgsqlCommand CreateCommand(string? commandText = null)
+        => new MultiplexingNpgsqlCommand(this) { CommandText = commandText };
+
+    public override NpgsqlBatch CreateBatch()
+        => new NpgsqlDataSourceBatch(new MultiplexingNpgsqlCommand(this));
 
     protected override void DisposeBase()
     {

@@ -46,8 +46,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     ConnectionState _fullState;
 
     /// <summary>
-    /// The physical connection to the database. This is <see langword="null"/> when the connection is closed,
-    /// and also when it is open in multiplexing mode and unbound (e.g. not in a transaction).
+    /// The physical connection to the database. This is <see langword="null"/> when the connection is closed.
     /// </summary>
     internal NpgsqlConnector? Connector { get; set; }
 
@@ -102,12 +101,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     internal const int TimeoutLimit = 1024;
 
-    /// <summary>
-    /// Tracks when this connection was bound to a physical connector (e.g. at open-time, when a transaction
-    /// was started...).
-    /// </summary>
-    internal ConnectorBindingScope ConnectorBindingScope { get; set; }
-
     ILogger _connectionLogger = default!; // Initialized in Open, shouldn't be used otherwise
 
     static readonly StateChangeEventArgs ClosedToOpenEventArgs = new(ConnectionState.Closed, ConnectionState.Open);
@@ -139,7 +132,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         Connector = connector;
         connector.Connection = this;
-        ConnectorBindingScope = ConnectorBindingScope.Connection;
         FullState = ConnectionState.Open;
     }
 
@@ -260,37 +252,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (_connectionLogger.IsEnabled(LogLevel.Trace))
             LogMessages.OpeningConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
 
-        if (Settings.Multiplexing)
-        {
-            if (Settings.Enlist && Transaction.Current != null)
-            {
-                // TODO: Keep in mind that the TransactionScope can be disposed
-                ThrowHelper.ThrowNotSupportedException();
-            }
-
-            // We're opening in multiplexing mode, without a transaction. We don't actually do anything.
-
-            // If we've never connected with this connection string, open a physical connector in order to generate
-            // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-            if (!_dataSource.IsBootstrapped)
-            {
-                FullState = ConnectionState.Connecting;
-                return PerformMultiplexingStartupCheck(async, cancellationToken);
-            }
-
-            if (_connectionLogger.IsEnabled(LogLevel.Debug))
-                LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
-            FullState = ConnectionState.Open;
-
-            return Task.CompletedTask;
-        }
-
         return OpenAsync(async, cancellationToken);
 
         async Task OpenAsync(bool async, CancellationToken cancellationToken)
         {
-            Debug.Assert(!Settings.Multiplexing);
-
             FullState = ConnectionState.Connecting;
             NpgsqlConnector? connector = null;
             try
@@ -315,7 +280,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
 
-                ConnectorBindingScope = ConnectorBindingScope.Connection;
                 connector.Connection = this;
                 Connector = connector;
 
@@ -328,7 +292,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             catch
             {
                 FullState = ConnectionState.Closed;
-                ConnectorBindingScope = ConnectorBindingScope.None;
                 Connector = null;
                 EnlistedTransaction = null;
 
@@ -338,26 +301,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     connector.Return();
                 }
 
-                throw;
-            }
-        }
-
-        async Task PerformMultiplexingStartupCheck(bool async, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-
-                _ = await StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken).ConfigureAwait(false);
-                EndBindingScope(ConnectorBindingScope.Connection);
-
-                LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
-
-                FullState = ConnectionState.Open;
-            }
-            catch
-            {
-                FullState = ConnectionState.Closed;
                 throw;
             }
         }
@@ -632,7 +575,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
         => BeginTransaction(async: false, level, CancellationToken.None).GetAwaiter().GetResult();
 
-    async ValueTask<NpgsqlTransaction> BeginTransaction(bool async, IsolationLevel level, CancellationToken cancellationToken)
+    ValueTask<NpgsqlTransaction> BeginTransaction(bool async, IsolationLevel level, CancellationToken cancellationToken)
     {
         if (level == IsolationLevel.Chaos)
             ThrowHelper.ThrowNotSupportedException($"Unsupported IsolationLevel: {nameof(IsolationLevel.Chaos)}");
@@ -642,27 +585,17 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             ThrowHelper.ThrowInvalidOperationException("A transaction is already in progress; nested/concurrent transactions aren't supported.");
 
         // There was a committed/rolled back transaction, but it was not disposed
-        var connector = ConnectorBindingScope == ConnectorBindingScope.Transaction
-            ? Connector
-            : await StartBindingScope(ConnectorBindingScope.Transaction, NpgsqlTimeout.Infinite, async, cancellationToken).ConfigureAwait(false);
+        var connector = Connector;
 
         Debug.Assert(connector != null);
 
-        try
-        {
-            // Note that beginning a transaction doesn't actually send anything to the backend (only prepends).
-            // But we start a user action to check the cancellation token and generate exceptions
-            using var _ = connector.StartUserAction(cancellationToken);
+        // Note that beginning a transaction doesn't actually send anything to the backend (only prepends).
+        // But we start a user action to check the cancellation token and generate exceptions
+        using var _ = connector.StartUserAction(cancellationToken);
 
-            connector.Transaction ??= new NpgsqlTransaction(connector);
-            connector.Transaction.Init(level);
-            return connector.Transaction;
-        }
-        catch
-        {
-            EndBindingScope(ConnectorBindingScope.Transaction);
-            throw;
-        }
+        connector.Transaction ??= new NpgsqlTransaction(connector);
+        connector.Transaction.Init(level);
+        return new(connector.Transaction);
     }
 
     /// <summary>
@@ -733,14 +666,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
 
         CheckReady();
-        var connector = StartBindingScope(ConnectorBindingScope.Transaction);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         EnlistedTransaction = transaction;
         if (transaction == null)
-        {
-            EndBindingScope(ConnectorBindingScope.Transaction);
             return;
-        }
 
         // Until #1378 is implemented, we have no recovery, and so no need to enlist as a durable resource manager
         // (or as promotable single phase).
@@ -807,28 +738,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             throw new ArgumentOutOfRangeException("Unknown connection state: " + FullState);
         }
 
-        // TODO: The following shouldn't exist - we need to flow down the regular path to close any
-        // open reader / COPY. See test CloseDuringRead with multiplexing.
-        if (Settings.Multiplexing && ConnectorBindingScope == ConnectorBindingScope.None)
-        {
-            // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
-            // and assignment but actual perf impact should be negligible (measure).
-            Debug.Assert(Connector == null);
-            ReleaseCloseLock();
-
-            FullState = ConnectionState.Closed;
-            LogMessages.ClosedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
-
-            return Task.CompletedTask;
-        }
-
         return CloseAsync(async);
     }
 
     async Task CloseAsync(bool async)
     {
         Debug.Assert(Connector != null);
-        Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None);
 
         try
         {
@@ -839,16 +754,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             {
                 // This method could re-enter connection.Close() due to an underlying connection failure.
                 await connector.CloseOngoingOperations(async).ConfigureAwait(false);
-
-                if (ConnectorBindingScope == ConnectorBindingScope.None)
-                {
-                    Debug.Assert(Settings.Multiplexing);
-                    Debug.Assert(Connector is null);
-
-                    FullState = ConnectionState.Closed;
-                    LogMessages.ClosedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
-                    return;
-                }
             }
 
             Debug.Assert(connector.IsReady || connector.IsBroken, $"Connector is not ready or broken during close, it's {connector.State}");
@@ -885,23 +790,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     connector.Transaction?.UnbindIfNecessary();
                 }
 
-                if (Settings.Multiplexing)
-                {
-                    // We've already closed ongoing operations rolled back any transaction and the connector is already in the pool,
-                    // so we must be unbound. Nothing to do.
-                    Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None,
-                        $"When closing a multiplexed connection, the connection was supposed to be unbound, but {nameof(ConnectorBindingScope)} was {ConnectorBindingScope}");
-                }
-                else
-                {
-                    connector.Connection = null;
-                    connector.Return();
-                }
+                connector.Connection = null;
+                connector.Return();
             }
 
             LogMessages.ClosedConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString, connector.Id);
             Connector = null;
-            ConnectorBindingScope = ConnectorBindingScope.None;
             FullState = ConnectionState.Closed;
         }
         finally
@@ -1088,9 +982,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         {
             CheckOpen();
 
-            return TryGetBoundConnector(out var connector)
-                ? connector.BackendProcessId
-                : throw new InvalidOperationException("No bound physical connection (using multiplexing)");
+            var connector = Connector;
+            Debug.Assert(connector is not null);
+            return connector.BackendProcessId;
         }
     }
 
@@ -1151,7 +1045,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
         CheckReady();
-        var connector = StartBindingScope(ConnectorBindingScope.Copy);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         LogMessages.StartingBinaryImport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
@@ -1166,7 +1061,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         catch
         {
             connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
             throw;
         }
     }
@@ -1202,7 +1096,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
         CheckReady();
-        var connector = StartBindingScope(ConnectorBindingScope.Copy);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         LogMessages.StartingBinaryExport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
@@ -1217,7 +1112,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         catch
         {
             connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
             throw;
         }
     }
@@ -1259,7 +1153,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
         CheckReady();
-        var connector = StartBindingScope(ConnectorBindingScope.Copy);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         LogMessages.StartingTextImport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
@@ -1275,7 +1170,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         catch
         {
             connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
             throw;
         }
     }
@@ -1317,7 +1211,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
         CheckReady();
-        var connector = StartBindingScope(ConnectorBindingScope.Copy);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         LogMessages.StartingTextExport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
@@ -1333,7 +1228,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         catch
         {
             connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
             throw;
         }
     }
@@ -1375,7 +1269,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
 
         CheckReady();
-        var connector = StartBindingScope(ConnectorBindingScope.Copy);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         LogMessages.StartingRawCopy(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
@@ -1396,7 +1291,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         catch
         {
             connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
             throw;
         }
     }
@@ -1563,115 +1457,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     }
 
     #endregion State checks
-
-    #region Connector binding
-
-    /// <summary>
-    /// Checks whether the connection is currently bound to a connector, and if so, returns it via
-    /// <paramref name="connector"/>.
-    /// </summary>
-    internal bool TryGetBoundConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
-    {
-        if (ConnectorBindingScope == ConnectorBindingScope.None)
-        {
-            Debug.Assert(Connector == null, $"Binding scope is None but {Connector} exists");
-            connector = null;
-            return false;
-        }
-        Debug.Assert(Connector != null, $"Binding scope is {ConnectorBindingScope} but {Connector} is null");
-        Debug.Assert(Connector.Connection == this, $"Bound connector {Connector} does not reference this connection");
-        connector = Connector;
-        return true;
-    }
-
-    /// <summary>
-    /// Binds this connection to a physical connector. This happens when opening a non-multiplexing connection,
-    /// or when starting a transaction on a multiplexed connection.
-    /// </summary>
-    internal ValueTask<NpgsqlConnector> StartBindingScope(
-        ConnectorBindingScope scope, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
-    {
-        // If the connection is around bound at a higher scope, we do nothing (e.g. copy operation started
-        // within a transaction on a multiplexing connection).
-        // Note that if we're in an ambient transaction, that means we're already bound and so we do nothing here.
-        if (ConnectorBindingScope != ConnectorBindingScope.None)
-        {
-            Debug.Assert(Connector != null, $"Connection bound with scope {ConnectorBindingScope} but has no connector");
-            Debug.Assert(scope != ConnectorBindingScope, $"Binding scopes aren't reentrant ({ConnectorBindingScope})");
-            return new ValueTask<NpgsqlConnector>(Connector);
-        }
-
-        return StartBindingScopeAsync();
-
-        async ValueTask<NpgsqlConnector> StartBindingScopeAsync()
-        {
-            try
-            {
-                Debug.Assert(Settings.Multiplexing);
-                Debug.Assert(_dataSource != null);
-
-                var connector = await _dataSource.Get(this, timeout, async, cancellationToken).ConfigureAwait(false);
-                Connector = connector;
-                connector.Connection = this;
-                ConnectorBindingScope = scope;
-                return connector;
-            }
-            catch
-            {
-                FullState = ConnectionState.Broken;
-                throw;
-            }
-        }
-    }
-
-    internal NpgsqlConnector StartBindingScope(ConnectorBindingScope scope)
-        => StartBindingScope(scope, NpgsqlTimeout.Infinite, async: false, CancellationToken.None)
-            .GetAwaiter().GetResult();
-
-    internal EndScopeDisposable StartTemporaryBindingScope(out NpgsqlConnector connector)
-    {
-        connector = StartBindingScope(ConnectorBindingScope.Temporary);
-        return new EndScopeDisposable(this);
-    }
-
-    internal T CheckOpenAndRunInTemporaryScope<T>(Func<NpgsqlConnector, T> func)
-    {
-        CheckOpen();
-
-        using var _ = StartTemporaryBindingScope(out var connector);
-        var result = func(connector);
-        return result;
-    }
-
-    /// <summary>
-    /// Ends binding scope to the physical connection and returns it to the pool. Only useful with multiplexing on.
-    /// </summary>
-    /// <remarks>
-    /// After this method is called, under no circumstances the physical connection (connector) should ever be used if multiplexing is on.
-    /// See #3249.
-    /// </remarks>
-    internal void EndBindingScope(ConnectorBindingScope scope)
-    {
-        Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None || FullState == ConnectionState.Broken,
-            $"Ending binding scope {scope} but connection's scope is null");
-
-        if (scope != ConnectorBindingScope)
-            return;
-
-        Debug.Assert(Connector != null, $"Ending binding scope {scope} but connector is null");
-        Debug.Assert(_dataSource != null, $"Ending binding scope {scope} but _pool is null");
-        Debug.Assert(Settings.Multiplexing, $"Ending binding scope {scope} but multiplexing is disabled");
-
-        // TODO: If enlisted transaction scope is still active, need to AddPendingEnlistedConnector, just like Close
-        var connector = Connector;
-        Connector = null;
-        connector.Connection = null;
-        connector.Transaction?.UnbindIfNecessary();
-        connector.Return();
-        ConnectorBindingScope = ConnectorBindingScope.None;
-    }
-
-    #endregion Connector binding
 
     #region Schema operations
 
@@ -1884,7 +1669,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckReady();
 
-        using var scope = StartTemporaryBindingScope(out var connector);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         _dataSource!.Bootstrap(
             connector,
@@ -1903,7 +1689,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckReady();
 
-        using var scope = StartTemporaryBindingScope(out var connector);
+        var connector = Connector;
+        Debug.Assert(connector is not null);
 
         await _dataSource!.Bootstrap(
             connector,
@@ -1929,49 +1716,15 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         remove => Disposed -= value;
     }
 
+    internal T CheckOpenAndRunInTemporaryScope<T>(Func<NpgsqlConnector, T> func)
+    {
+        CheckOpen();
+        var connector = Connector;
+        Debug.Assert(connector is not null);
+        return func(connector);
+    }
+
     #endregion Misc
-}
-
-enum ConnectorBindingScope
-{
-    /// <summary>
-    /// The connection is currently not bound to a connector.
-    /// </summary>
-    None,
-
-    /// <summary>
-    /// The connection is bound to its connector for the scope of the entire connection
-    /// (i.e. non-multiplexed connection).
-    /// </summary>
-    Connection,
-
-    /// <summary>
-    /// The connection is bound to its connector for the scope of a transaction.
-    /// </summary>
-    Transaction,
-
-    /// <summary>
-    /// The connection is bound to its connector for the scope of a COPY operation.
-    /// </summary>
-    Copy,
-
-    /// <summary>
-    /// The connection is bound to its connector for the scope of a single reader.
-    /// </summary>
-    Reader,
-
-    /// <summary>
-    /// The connection is bound to its connector for an unspecified, temporary scope; the code that initiated
-    /// the binding is also responsible to unbind it.
-    /// </summary>
-    Temporary
-}
-
-readonly struct EndScopeDisposable : IDisposable
-{
-    readonly NpgsqlConnection _connection;
-    public EndScopeDisposable(NpgsqlConnection connection) => _connection = connection;
-    public void Dispose() => _connection.EndBindingScope(ConnectorBindingScope.Temporary);
 }
 
 #region Delegates

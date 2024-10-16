@@ -518,7 +518,6 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (!ReferenceEquals(connector, null))
             {
                 connector.CurrentCopyOperation = null;
-                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
                 _connector = null!;
             }
 
