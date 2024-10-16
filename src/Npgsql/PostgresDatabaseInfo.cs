@@ -355,7 +355,11 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             }
 
             if (!hasChanges)
+            {
+                _connectionLogger.LogWarning("Unable to load '{UnknownTypeCount}' Postgres types while loading database info.",
+                    unknownPostgresTypes.Count);
                 break;
+            }
         }
 
         Expect<CommandCompleteMessage>(msg, conn);
