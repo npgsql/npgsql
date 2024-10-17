@@ -1,9 +1,11 @@
+using System;
 using NodaTime;
 using Npgsql.Internal;
+using Npgsql.NodaTime.Properties;
 
 namespace Npgsql.NodaTime.Internal;
 
-sealed class PeriodConverter : PgBufferedConverter<Period>
+sealed class PeriodConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<Period>
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
@@ -16,6 +18,15 @@ sealed class PeriodConverter : PgBufferedConverter<Period>
         var microsecondsInDay = reader.ReadInt64();
         var days = reader.ReadInt32();
         var totalMonths = reader.ReadInt32();
+
+        if (microsecondsInDay == long.MaxValue && days == int.MaxValue && totalMonths == int.MaxValue)
+            return dateTimeInfinityConversions
+                ? Period.MaxValue
+                : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue);
+        if (microsecondsInDay == long.MinValue && days == int.MinValue && totalMonths == int.MinValue)
+            return dateTimeInfinityConversions
+                ? Period.MinValue
+                : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue);
 
         // NodaTime will normalize most things (i.e. nanoseconds to milliseconds, seconds...)
         // but it will not normalize months to years.
@@ -33,6 +44,25 @@ sealed class PeriodConverter : PgBufferedConverter<Period>
 
     protected override void WriteCore(PgWriter writer, Period value)
     {
+        if (dateTimeInfinityConversions)
+        {
+            if (value == Period.MaxValue)
+            {
+                writer.WriteInt64(long.MaxValue); // microseconds
+                writer.WriteInt32(int.MaxValue); // days
+                writer.WriteInt32(int.MaxValue); // months
+                return;
+            }
+
+            if (value == Period.MinValue)
+            {
+                writer.WriteInt64(long.MinValue); // microseconds
+                writer.WriteInt32(int.MinValue); // days
+                writer.WriteInt32(int.MinValue); // months
+                return;
+            }
+        }
+
         // We have to normalize the value as otherwise we might get a value with 0 everything except for ticks, which we ignore
         value = value.Normalize();
         // Note that the end result must be long

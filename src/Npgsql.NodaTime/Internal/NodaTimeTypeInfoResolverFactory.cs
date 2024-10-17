@@ -89,7 +89,7 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // interval
             mappings.AddType<Period>(IntervalDataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new PeriodConverter()), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new PeriodConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
             mappings.AddStructType<Duration>(IntervalDataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new DurationConverter()));
 
