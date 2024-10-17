@@ -17,6 +17,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Properties;
+using System.Collections;
 
 namespace Npgsql;
 
@@ -1812,7 +1813,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     LogMessages.ExecutingCommandWithParameters(
                         logger,
                         singleCommand.FinalCommandText!,
-                        ParametersDbNullAsString(singleCommand),
+                        GetParametersForLogging(singleCommand),
                         connector.Id);
                 }
                 else
@@ -1820,7 +1821,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     LogMessages.CommandExecutionCompletedWithParameters(
                         logger,
                         singleCommand.FinalCommandText!,
-                        ParametersDbNullAsString(singleCommand),
+                        GetParametersForLogging(singleCommand),
                         connector.QueryLogStopWatch.ElapsedMilliseconds,
                         connector.Id);
                 }
@@ -1839,7 +1840,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 var commands = new (string, object[])[InternalBatchCommands.Count];
                 for (var i = 0; i < InternalBatchCommands.Count; i++)
-                    commands[i] = (InternalBatchCommands[i].FinalCommandText!, ParametersDbNullAsString(InternalBatchCommands[i]));
+                    commands[i] = (InternalBatchCommands[i].FinalCommandText!, GetParametersForLogging(InternalBatchCommands[i]));
 
                 if (executing)
                     LogMessages.ExecutingBatchWithParameters(logger, commands, connector.Id);
@@ -1858,13 +1859,66 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
         }
 
-        object[] ParametersDbNullAsString(NpgsqlBatchCommand c)
+        static object[] GetParametersForLogging(NpgsqlBatchCommand c)
         {
             var positionalParameters = c.CurrentParametersReadOnly;
             var parameters = new object[positionalParameters.Count];
             for (var i = 0; i < positionalParameters.Count; i++)
-                parameters[i] = positionalParameters[i].Value == DBNull.Value ? "NULL" : positionalParameters[i].Value!;
+            {
+                var value = positionalParameters[i].Value;
+                parameters[i] = TryFormatArgumentIfNullOrEnumerable(value, out var stringValue)
+                    ? stringValue
+                    : value!;
+            }
+
             return parameters;
+        }
+
+        static bool TryFormatArgumentIfNullOrEnumerable([NotNullWhen(true)] object? value, [NotNullWhen(true)] out string? stringValue)
+        {
+            const string DbNullValue = "NULL";
+            const string ClrNullValue = "(null)";
+
+            if (value is null)
+            {
+                stringValue = ClrNullValue;
+                return true;
+            }
+
+            if (value == DBNull.Value)
+            {
+                stringValue = DbNullValue;
+                return true;
+            }
+
+            if (value is not string && value is IEnumerable enumerable)
+            {
+                var vsb = new StringBuilder(256);
+                var count = 0;
+                vsb.Append('[');
+                foreach (object? e in enumerable)
+                {
+                    if (count > 9)
+                    {
+                        vsb.Append(", ...");
+                        break;
+                    }
+
+                    if (count > 0)
+                    {
+                        vsb.Append(", ");
+                    }
+
+                    vsb.Append(e != null ? e.ToString() : ClrNullValue);
+                    count++;
+                }
+                vsb.Append(']');
+                stringValue = vsb.ToString();
+                return true;
+            }
+
+            stringValue = null;
+            return false;
         }
     }
 
