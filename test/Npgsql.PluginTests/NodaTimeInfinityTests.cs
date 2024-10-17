@@ -1,11 +1,11 @@
 using System;
+using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.Tests;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
-using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.PluginTests;
 
@@ -278,6 +278,86 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
             Assert.That(reader.GetFieldValue<LocalDate>(1), Is.EqualTo(LocalDate.MinIsoValue));
             Assert.That(reader.GetFieldValue<DateTime>(2), Is.EqualTo(DateTime.MaxValue));
             Assert.That(reader.GetFieldValue<DateTime>(3), Is.EqualTo(DateTime.MinValue));
+        }
+    }
+
+    [Test]
+    public async Task Interval_write()
+    {
+        await using var conn = await OpenConnectionAsync();
+        TestUtil.MinimumPgVersion(conn, "17.0", "Infinity values for intervals were introduced in PostgreSQL 17");
+        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+        {
+            Parameters = { new() { Value = Period.MinValue, NpgsqlDbType = NpgsqlDbType.Interval } }
+        };
+
+        // While Period.MinValue technically isn't outside of supported values by postgres, we can't reasonably convert it
+        if (Statics.DisableDateTimeInfinityConversions)
+        {
+            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<OverflowException>());
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            await conn.OpenAsync();
+        }
+        else
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("-infinity"));
+
+        cmd.Parameters[0].Value = Period.MaxValue;
+
+        // While Period.MaxValue technically isn't outside of supported values by postgres, we can't reasonably convert it
+        if (Statics.DisableDateTimeInfinityConversions)
+            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<OverflowException>());
+        else
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("infinity"));
+    }
+
+    [Test]
+    public async Task Interval_read()
+    {
+        await using var conn = await OpenConnectionAsync();
+        TestUtil.MinimumPgVersion(conn, "17.0", "Infinity values for intervals were introduced in PostgreSQL 17");
+
+        await using var cmd = new NpgsqlCommand("SELECT '-infinity'::interval, 'infinity'::interval", conn);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        if (Statics.DisableDateTimeInfinityConversions)
+        {
+            Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+        }
+        else
+        {
+            Assert.That(reader[0], Is.EqualTo(Period.MinValue));
+            Assert.That(reader[1], Is.EqualTo(Period.MaxValue));
+        }
+    }
+
+    [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
+    public async Task Interval_convert_infinity()
+    {
+        if (Statics.DisableDateTimeInfinityConversions)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+        TestUtil.MinimumPgVersion(conn, "17.0", "Infinity values for intervals were introduced in PostgreSQL 17");
+        await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (i1 INTERVAL, i2 INTERVAL)");
+
+        using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2)", conn))
+        {
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Interval, Period.MaxValue);
+            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Interval, Period.MinValue);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        using (var cmd = new NpgsqlCommand("SELECT i1::TEXT, i2::TEXT, i1, i2 FROM data", conn))
+        using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            await reader.ReadAsync();
+            Assert.That(reader.GetValue(0), Is.EqualTo("infinity"));
+            Assert.That(reader.GetValue(1), Is.EqualTo("-infinity"));
+            Assert.That(reader.GetFieldValue<Period>(2), Is.EqualTo(Period.MaxValue));
+            Assert.That(reader.GetFieldValue<Period>(3), Is.EqualTo(Period.MinValue));
         }
     }
 
