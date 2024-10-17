@@ -62,6 +62,16 @@ class NetworkTypeTests : MultiplexingTestBase
             isDefaultForWriting: false);
 
     [Test]
+    public Task IPNetwork_as_cidr()
+        => AssertType(
+            new IPNetwork(IPAddress.Parse("192.168.1.0"), 24),
+            "192.168.1.0/24",
+            "cidr",
+            NpgsqlDbType.Cidr,
+            isDefaultForWriting: false,
+            isDefaultForReading: false);
+
+    [Test]
     public Task Inet_v4_as_NpgsqlInet()
         => AssertType(
             new NpgsqlInet(IPAddress.Parse("192.168.1.1"), 24),
