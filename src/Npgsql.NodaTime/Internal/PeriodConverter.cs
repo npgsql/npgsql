@@ -5,13 +5,8 @@ using Npgsql.NodaTime.Properties;
 
 namespace Npgsql.NodaTime.Internal;
 
-sealed class PeriodConverter : PgBufferedConverter<Period>
+sealed class PeriodConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<Period>
 {
-    readonly bool _dateTimeInfinityConversions;
-
-    public PeriodConverter(bool dateTimeInfinityConversions)
-        => _dateTimeInfinityConversions = dateTimeInfinityConversions;
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int));
@@ -25,11 +20,11 @@ sealed class PeriodConverter : PgBufferedConverter<Period>
         var totalMonths = reader.ReadInt32();
 
         if (microsecondsInDay == long.MaxValue && days == int.MaxValue && totalMonths == int.MaxValue)
-            return _dateTimeInfinityConversions
+            return dateTimeInfinityConversions
                 ? Period.MaxValue
                 : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue);
         if (microsecondsInDay == long.MinValue && days == int.MinValue && totalMonths == int.MinValue)
-            return _dateTimeInfinityConversions
+            return dateTimeInfinityConversions
                 ? Period.MinValue
                 : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue);
 
@@ -49,7 +44,7 @@ sealed class PeriodConverter : PgBufferedConverter<Period>
 
     protected override void WriteCore(PgWriter writer, Period value)
     {
-        if (_dateTimeInfinityConversions)
+        if (dateTimeInfinityConversions)
         {
             if (value == Period.MaxValue)
             {
