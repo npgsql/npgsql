@@ -24,4 +24,7 @@
     <data name="CannotReadIntervalWithMonthsAsDuration" xml:space="preserve">
         <value>Cannot read PostgreSQL interval with non-zero months to NodaTime Duration. Try reading as a NodaTime Period instead.</value>
     </data>
+    <data name="CannotWritePeriodDueToOverflow" xml:space="preserve">
+        <value>Cannot write NodaTime's Period because it's out of range for the PG interval type.</value>
+    </data>
 </root>
