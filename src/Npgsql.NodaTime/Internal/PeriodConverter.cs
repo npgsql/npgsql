@@ -67,12 +67,20 @@ sealed class PeriodConverter(bool dateTimeInfinityConversions) : PgBufferedConve
         value = value.Normalize();
         // Note that the end result must be long
         // see #3438
-        var microsecondsInDay =
-            (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
-            value.Nanoseconds / 1000; // Take the microseconds, discard the nanosecond remainder
+        long microsecondsInDay;
+        int days;
+        int months;
+        checked
+        {
+            microsecondsInDay =
+                (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
+                value.Nanoseconds / 1000; // Take the microseconds, discard the nanosecond remainder
+            days = value.Weeks * 7 + value.Days;
+            months = value.Years * 12 + value.Months;
+        }
 
         writer.WriteInt64(microsecondsInDay);
-        writer.WriteInt32(value.Weeks * 7 + value.Days); // days
-        writer.WriteInt32(value.Years * 12 + value.Months); // months
+        writer.WriteInt32(days);
+        writer.WriteInt32(months);
     }
 }

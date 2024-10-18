@@ -795,6 +795,16 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         Assert.That(dbValue, Is.EqualTo(expectedAfterRoundtrip));
     }
 
+    [Test]
+    public async Task Period_write_throw_on_overflow()
+    {
+        var periodBuilder = new PeriodBuilder
+        {
+            Years = int.MaxValue
+        };
+        await AssertTypeUnsupportedWrite<Period, OverflowException>(periodBuilder.Build(), "interval");
+    }
+
     #endregion Interval
 
     #region Support
