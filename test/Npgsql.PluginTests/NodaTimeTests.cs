@@ -802,7 +802,9 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         {
             Years = int.MaxValue
         };
-        await AssertTypeUnsupportedWrite<Period, OverflowException>(periodBuilder.Build(), "interval");
+        var ex = await AssertTypeUnsupportedWrite<Period, ArgumentException>(periodBuilder.Build(), "interval");
+        Assert.That(ex.Message, Is.EqualTo(NpgsqlNodaTimeStrings.CannotWritePeriodDueToOverflow));
+        Assert.That(ex.InnerException, Is.TypeOf<OverflowException>());
     }
 
     #endregion Interval

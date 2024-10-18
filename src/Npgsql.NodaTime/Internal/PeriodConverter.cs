@@ -70,13 +70,20 @@ sealed class PeriodConverter(bool dateTimeInfinityConversions) : PgBufferedConve
         long microsecondsInDay;
         int days;
         int months;
-        checked
+        try
         {
-            microsecondsInDay =
-                (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
-                value.Nanoseconds / 1000; // Take the microseconds, discard the nanosecond remainder
-            days = value.Weeks * 7 + value.Days;
-            months = value.Years * 12 + value.Months;
+            checked
+            {
+                microsecondsInDay =
+                    (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
+                    value.Nanoseconds / 1000; // Take the microseconds, discard the nanosecond remainder
+                days = value.Weeks * 7 + value.Days;
+                months = value.Years * 12 + value.Months;
+            }
+        }
+        catch (OverflowException ex)
+        {
+            throw new ArgumentException(NpgsqlNodaTimeStrings.CannotWritePeriodDueToOverflow, ex);
         }
 
         writer.WriteInt64(microsecondsInDay);
