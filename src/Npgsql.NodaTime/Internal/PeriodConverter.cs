@@ -65,14 +65,24 @@ sealed class PeriodConverter(bool dateTimeInfinityConversions) : PgBufferedConve
 
         // We have to normalize the value as otherwise we might get a value with 0 everything except for ticks, which we ignore
         value = value.Normalize();
-        // Note that the end result must be long
-        // see #3438
-        var microsecondsInDay =
-            (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
-            value.Nanoseconds / 1000; // Take the microseconds, discard the nanosecond remainder
 
-        writer.WriteInt64(microsecondsInDay);
-        writer.WriteInt32(value.Weeks * 7 + value.Days); // days
-        writer.WriteInt32(value.Years * 12 + value.Months); // months
+        try
+        {
+            checked
+            {
+                // Note that the end result must be long
+                // see #3438
+                var microsecondsInDay =
+                    (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
+                    value.Nanoseconds / 1000; // Take the microseconds, discard the nanosecond remainder
+                writer.WriteInt64(microsecondsInDay);
+                writer.WriteInt32(value.Weeks * 7 + value.Days); // days
+                writer.WriteInt32(value.Years * 12 + value.Months); // months
+            }
+        }
+        catch (OverflowException ex)
+        {
+            throw new ArgumentException(NpgsqlNodaTimeStrings.CannotWritePeriodDueToOverflow, ex);
+        }
     }
 }
