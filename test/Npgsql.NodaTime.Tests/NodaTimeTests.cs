@@ -797,7 +797,14 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
         {
             Years = int.MaxValue
         };
-        var ex = await AssertTypeUnsupportedWrite<Period, ArgumentException>(periodBuilder.Build(), "interval");
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT $1", conn);
+        cmd.Parameters.Add(new NpgsqlParameter
+        {
+            Value = periodBuilder.Build(),
+            DataTypeName = "interval"
+        });
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await cmd.ExecuteNonQueryAsync())!;
         Assert.That(ex.Message, Is.EqualTo(NpgsqlNodaTimeStrings.CannotWritePeriodDueToOverflow));
         Assert.That(ex.InnerException, Is.TypeOf<OverflowException>());
     }
