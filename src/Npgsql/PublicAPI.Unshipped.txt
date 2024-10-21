@@ -13,6 +13,18 @@ Npgsql.NpgsqlSlimDataSourceBuilder.EnableJsonTypes() -> Npgsql.NpgsqlSlimDataSou
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableNetworkTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlTracingOptions.EnrichWithNpgsqlBatch.get -> System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlBatch!>?
+Npgsql.NpgsqlTracingOptions.EnrichWithNpgsqlBatch.set -> void
+Npgsql.NpgsqlTracingOptions.EnrichWithNpgsqlCommand.get -> System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlCommand!>?
+Npgsql.NpgsqlTracingOptions.EnrichWithNpgsqlCommand.set -> void
+Npgsql.NpgsqlTracingOptions.FilterNpgsqlBatch.get -> System.Func<Npgsql.NpgsqlBatch!, bool>?
+Npgsql.NpgsqlTracingOptions.FilterNpgsqlBatch.set -> void
+Npgsql.NpgsqlTracingOptions.FilterNpgsqlCommand.get -> System.Func<Npgsql.NpgsqlCommand!, bool>?
+Npgsql.NpgsqlTracingOptions.FilterNpgsqlCommand.set -> void
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlBatch.get -> System.Func<Npgsql.NpgsqlBatch!, string?>?
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlBatch.set -> void
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlCommand.get -> System.Func<Npgsql.NpgsqlCommand!, string?>?
+Npgsql.NpgsqlTracingOptions.ProvideSpanNameForNpgsqlCommand.set -> void
 Npgsql.Replication.PgOutput.ReplicationValue.GetFieldName() -> string!
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage.AbortLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber

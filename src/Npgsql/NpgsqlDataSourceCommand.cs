@@ -15,8 +15,8 @@ sealed class NpgsqlDataSourceCommand : NpgsqlCommand
     }
 
     // For NpgsqlBatch only
-    internal NpgsqlDataSourceCommand(int batchCommandCapacity, NpgsqlConnection connection)
-        : base(batchCommandCapacity, connection)
+    internal NpgsqlDataSourceCommand(NpgsqlBatch batch, int batchCommandCapacity, NpgsqlConnection connection)
+        : base(batch, batchCommandCapacity, connection)
     {
     }
 
