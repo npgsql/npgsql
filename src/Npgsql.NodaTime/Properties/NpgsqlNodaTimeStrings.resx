@@ -21,4 +21,7 @@
     <data name="CannotReadInfinityValue" xml:space="preserve">
         <value>Cannot read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled.</value>
     </data>
+    <data name="CannotWritePeriodDueToOverflow" xml:space="preserve">
+        <value>Cannot write NodaTime's Period because it's out of range for the PG interval type.</value>
+    </data>
 </root>

@@ -2,6 +2,7 @@
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
+using Npgsql.NodaTime.Properties;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -665,6 +666,18 @@ public class NodaTimeTests : TestBase
 
         Assert.That(dbValue, Is.EqualTo(dbExpected));
         Assert.That(dbValue, Is.EqualTo(expectedAfterRoundtrip));
+    }
+
+    [Test]
+    public async Task Period_write_throw_on_overflow()
+    {
+        var periodBuilder = new PeriodBuilder
+        {
+            Years = int.MaxValue
+        };
+        var ex = await AssertTypeUnsupportedWrite<Period, ArgumentException>(periodBuilder.Build(), "interval");
+        Assert.That(ex.Message, Is.EqualTo(NpgsqlNodaTimeStrings.CannotWritePeriodDueToOverflow));
+        Assert.That(ex.InnerException, Is.TypeOf<OverflowException>());
     }
 
     #endregion Interval
