@@ -571,8 +571,8 @@ Npgsql.NpgsqlDataReader.ReaderClosed -> System.EventHandler?
 Npgsql.NpgsqlDataReader.Rows.get -> ulong
 Npgsql.NpgsqlDataReader.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
 Npgsql.NpgsqlDataSource
-Npgsql.NpgsqlDataSource.CreateBatch() -> Npgsql.NpgsqlBatch!
-Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommand!
+virtual Npgsql.NpgsqlDataSource.CreateBatch() -> Npgsql.NpgsqlBatch!
+virtual Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommand!
 Npgsql.NpgsqlDataSource.CreateConnection() -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlDataSource.OpenConnection() -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>

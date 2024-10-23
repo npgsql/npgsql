@@ -1547,7 +1547,7 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_async_throws_on_second_open()
     {
-        // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync (if there was no completed bootstrap beforehand)
+        // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync
         // or on NpgsqlCommand.ExecuteReaderAsync.
         // We've already tested the first case in PhysicalConnectionInitializer_async_throws above, testing the second one below.
         var count = 0;
@@ -1565,18 +1565,8 @@ CREATE TABLE record ()");
         await using var conn1 = dataSource.CreateConnection();
         Assert.DoesNotThrowAsync(async () => await conn1.OpenAsync());
 
-        // We start a transaction specifically for multiplexing (to bind a connector to the connection)
-        await using var tx = await conn1.BeginTransactionAsync();
-
         await using var conn2 = dataSource.CreateConnection();
-        Exception exception;
-        if (IsMultiplexing)
-        {
-            await conn2.OpenAsync();
-            exception = Assert.ThrowsAsync<Exception>(async () => await conn2.BeginTransactionAsync())!;
-        }
-        else
-            exception = Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync())!;
+        var exception = Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync())!;
         Assert.That(exception.Message, Is.EqualTo("INTENTIONAL FAILURE"));
     }
 

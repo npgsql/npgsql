@@ -199,13 +199,13 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// Creates a command ready for use against this <see cref="NpgsqlDataSource" />.
     /// </summary>
     /// <param name="commandText">An optional SQL for the command.</param>
-    public new NpgsqlCommand CreateCommand(string? commandText = null)
+    public new virtual NpgsqlCommand CreateCommand(string? commandText = null)
         => new NpgsqlDataSourceCommand(CreateConnection()) { CommandText = commandText };
 
     /// <summary>
     /// Creates a batch ready for use against this <see cref="NpgsqlDataSource" />.
     /// </summary>
-    public new NpgsqlBatch CreateBatch()
+    public new virtual NpgsqlBatch CreateBatch()
         => new NpgsqlDataSourceBatch(CreateConnection());
 
     /// <summary>
@@ -367,7 +367,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal abstract bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector);
 
     internal abstract ValueTask<NpgsqlConnector?> OpenNewConnector(
-        NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
+        NpgsqlConnection? conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
 
     internal abstract void Return(NpgsqlConnector connector);
 

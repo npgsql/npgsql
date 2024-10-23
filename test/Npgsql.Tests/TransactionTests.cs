@@ -564,6 +564,7 @@ public class TransactionTests : MultiplexingTestBase
             return;
 
         using var conn = await OpenConnectionAsync();
+        Assert.That(conn.Connector, Is.Not.Null);
         await using (var tx = await conn.BeginTransactionAsync())
         {
             Assert.That(conn.Connector, Is.Not.Null);
@@ -572,7 +573,7 @@ public class TransactionTests : MultiplexingTestBase
             Assert.That(conn.Connector, Is.Not.Null);
         }
 
-        Assert.That(conn.Connector, Is.Null);
+        Assert.That(conn.Connector, Is.Not.Null);
     }
 
     [Test]
