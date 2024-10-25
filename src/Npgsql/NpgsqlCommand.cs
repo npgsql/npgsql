@@ -1051,70 +1051,121 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task WriteExecute(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
         {
-            NpgsqlBatchCommand? batchCommand = null;
-
-            var syncCaller = !async;
-            for (var i = 0; i < InternalBatchCommands.Count; i++)
+            try
             {
-                // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
-                if (syncCaller && ShouldSchedule(ref async, i))
-                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
+                NpgsqlBatchCommand? batchCommand = null;
 
-                batchCommand = InternalBatchCommands[i];
-                var pStatement = batchCommand.PreparedStatement;
-
-                Debug.Assert(batchCommand.FinalCommandText is not null);
-
-                if (pStatement == null || batchCommand.IsPreparing)
+                var syncCaller = !async;
+                for (var i = 0; i < InternalBatchCommands.Count; i++)
                 {
-                    // The statement should either execute unprepared, or is being auto-prepared.
-                    // Send Parse, Bind, Describe
+                    // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
+                    if (syncCaller && ShouldSchedule(ref async, i))
+                        await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
-                    // We may have a prepared statement that replaces an existing statement - close the latter first.
-                    if (pStatement?.StatementBeingReplaced != null)
-                        await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async, cancellationToken).ConfigureAwait(false);
+                    batchCommand = InternalBatchCommands[i];
+                    var pStatement = batchCommand.PreparedStatement;
 
-                    await connector.WriteParse(batchCommand.FinalCommandText, batchCommand.StatementName,
-                        batchCommand.CurrentParametersReadOnly, async, cancellationToken).ConfigureAwait(false);
+                    Debug.Assert(batchCommand.FinalCommandText is not null);
 
-                    await connector.WriteBind(
-                        batchCommand.CurrentParametersReadOnly,
-                        string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
-                        i == 0 ? UnknownResultTypeList : null,
-                        async, cancellationToken).ConfigureAwait(false);
+                    if (pStatement == null || batchCommand.IsPreparing)
+                    {
+                        // The statement should either execute unprepared, or is being auto-prepared.
+                        // Send Parse, Bind, Describe
 
-                    await connector.WriteDescribe(StatementOrPortal.Portal, Array.Empty<byte>(), async, cancellationToken).ConfigureAwait(false);
+                        // We may have a prepared statement that replaces an existing statement - close the latter first.
+                        if (pStatement?.StatementBeingReplaced != null)
+                            await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async,
+                                cancellationToken).ConfigureAwait(false);
+
+                        await connector.WriteParse(batchCommand.FinalCommandText, batchCommand.StatementName,
+                            batchCommand.CurrentParametersReadOnly, async, cancellationToken).ConfigureAwait(false);
+
+                        await connector.WriteBind(
+                            batchCommand.CurrentParametersReadOnly,
+                            string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
+                            i == 0 ? UnknownResultTypeList : null,
+                            async, cancellationToken).ConfigureAwait(false);
+
+                        await connector.WriteDescribe(StatementOrPortal.Portal, Array.Empty<byte>(), async, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // The statement is already prepared, only a Bind is needed
+                        await connector.WriteBind(
+                            batchCommand.CurrentParametersReadOnly,
+                            string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
+                            i == 0 ? UnknownResultTypeList : null,
+                            async, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    await connector.WriteExecute(0, async, cancellationToken).ConfigureAwait(false);
+
+                    if (batchCommand.AppendErrorBarrier ?? EnableErrorBarriers)
+                        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+
+                    pStatement?.RefreshLastUsed();
                 }
-                else
+
+                if (batchCommand is null || !(batchCommand.AppendErrorBarrier ?? EnableErrorBarriers))
                 {
-                    // The statement is already prepared, only a Bind is needed
-                    await connector.WriteBind(
-                        batchCommand.CurrentParametersReadOnly,
-                        string.Empty, batchCommand.StatementName, AllResultTypesAreUnknown,
-                        i == 0 ? UnknownResultTypeList : null,
-                        async, cancellationToken).ConfigureAwait(false);
-                }
-
-                await connector.WriteExecute(0, async, cancellationToken).ConfigureAwait(false);
-
-                if (batchCommand.AppendErrorBarrier ?? EnableErrorBarriers)
                     await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+                }
 
-                pStatement?.RefreshLastUsed();
+                if (flush)
+                    await connector.Flush(async, cancellationToken).ConfigureAwait(false);
             }
-
-            if (batchCommand is null || !(batchCommand.AppendErrorBarrier ?? EnableErrorBarriers))
+            catch(Exception ex)
             {
-                await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+                connector.Break(ex);
+                throw;
             }
-
-            if (flush)
-                await connector.Flush(async, cancellationToken).ConfigureAwait(false);
         }
 
         async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
         {
-            var wroteSomething = false;
+            try
+            {
+                var wroteSomething = false;
+                var syncCaller = !async;
+                for (var i = 0; i < InternalBatchCommands.Count; i++)
+                {
+                    if (syncCaller && ShouldSchedule(ref async, i))
+                        await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
+
+                    var batchCommand = InternalBatchCommands[i];
+
+                    if (batchCommand.PreparedStatement?.State == PreparedState.Prepared)
+                        continue; // Prepared, we already have the RowDescription
+
+                    await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName,
+                        batchCommand.CurrentParametersReadOnly,
+                        async, cancellationToken).ConfigureAwait(false);
+                    await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
+                    wroteSomething = true;
+                }
+
+                if (wroteSomething)
+                {
+                    await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+                    if (flush)
+                        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch(Exception ex)
+            {
+                connector.Break(ex);
+                throw;
+            }
+        }
+    }
+
+    async Task SendDeriveParameters(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            BeginSend(connector);
+
             var syncCaller = !async;
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
@@ -1123,75 +1174,60 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 var batchCommand = InternalBatchCommands[i];
 
-                if (batchCommand.PreparedStatement?.State == PreparedState.Prepared)
-                    continue; // Prepared, we already have the RowDescription
-
-                await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName,
-                    batchCommand.CurrentParametersReadOnly,
-                    async, cancellationToken).ConfigureAwait(false);
-                await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
-                wroteSomething = true;
+                await connector.WriteParse(batchCommand.FinalCommandText!, Array.Empty<byte>(), NpgsqlBatchCommand.EmptyParameters, async, cancellationToken).ConfigureAwait(false);
+                await connector.WriteDescribe(StatementOrPortal.Statement, Array.Empty<byte>(), async, cancellationToken).ConfigureAwait(false);
             }
 
-            if (wroteSomething)
-            {
-                await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
-                if (flush)
-                    await connector.Flush(async, cancellationToken).ConfigureAwait(false);
-            }
+            await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+            await connector.Flush(async, cancellationToken).ConfigureAwait(false);
         }
-    }
-
-    async Task SendDeriveParameters(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
-    {
-        BeginSend(connector);
-
-        var syncCaller = !async;
-        for (var i = 0; i < InternalBatchCommands.Count; i++)
+        catch(Exception ex)
         {
-            if (syncCaller && ShouldSchedule(ref async, i))
-                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
-
-            var batchCommand = InternalBatchCommands[i];
-
-            await connector.WriteParse(batchCommand.FinalCommandText!, Array.Empty<byte>(), NpgsqlBatchCommand.EmptyParameters, async, cancellationToken).ConfigureAwait(false);
-            await connector.WriteDescribe(StatementOrPortal.Statement, Array.Empty<byte>(), async, cancellationToken).ConfigureAwait(false);
+            connector.Break(ex);
+            throw;
         }
-
-        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
-        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
     async Task SendPrepare(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
     {
-        BeginSend(connector);
-
-        var syncCaller = !async;
-        for (var i = 0; i < InternalBatchCommands.Count; i++)
+        try
         {
-            if (syncCaller && ShouldSchedule(ref async, i))
-                await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
+            BeginSend(connector);
 
-            var batchCommand = InternalBatchCommands[i];
-            var pStatement = batchCommand.PreparedStatement;
+            var syncCaller = !async;
+            for (var i = 0; i < InternalBatchCommands.Count; i++)
+            {
+                if (syncCaller && ShouldSchedule(ref async, i))
+                    await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
-            // A statement may be already prepared, already in preparation (i.e. same statement twice
-            // in the same command), or we can't prepare (overloaded SQL)
-            if (!batchCommand.IsPreparing)
-                continue;
+                var batchCommand = InternalBatchCommands[i];
+                var pStatement = batchCommand.PreparedStatement;
 
-            // We may have a prepared statement that replaces an existing statement - close the latter first.
-            var statementToClose = pStatement!.StatementBeingReplaced;
-            if (statementToClose != null)
-                await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async, cancellationToken).ConfigureAwait(false);
+                // A statement may be already prepared, already in preparation (i.e. same statement twice
+                // in the same command), or we can't prepare (overloaded SQL)
+                if (!batchCommand.IsPreparing)
+                    continue;
 
-            await connector.WriteParse(batchCommand.FinalCommandText!, pStatement.Name!, batchCommand.CurrentParametersReadOnly, async,
-                cancellationToken).ConfigureAwait(false);
-            await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async, cancellationToken).ConfigureAwait(false);
+                // We may have a prepared statement that replaces an existing statement - close the latter first.
+                var statementToClose = pStatement!.StatementBeingReplaced;
+                if (statementToClose != null)
+                    await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async, cancellationToken)
+                        .ConfigureAwait(false);
+
+                await connector.WriteParse(batchCommand.FinalCommandText!, pStatement.Name!, batchCommand.CurrentParametersReadOnly, async,
+                    cancellationToken).ConfigureAwait(false);
+                await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+            await connector.Flush(async, cancellationToken).ConfigureAwait(false);
         }
-
-        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
-        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
+        catch(Exception ex)
+        {
+            connector.Break(ex);
+            throw;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1213,19 +1249,28 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     async Task SendClose(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
     {
-        BeginSend(connector);
-
-        foreach (var batchCommand in InternalBatchCommands)
+        try
         {
-            if (!batchCommand.IsPrepared)
-                continue;
-            // No need to force async here since each statement takes no more than 20 bytes
-            await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
-            batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
-        }
+            BeginSend(connector);
 
-        await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
-        await connector.Flush(async, cancellationToken).ConfigureAwait(false);
+            foreach (var batchCommand in InternalBatchCommands)
+            {
+                if (!batchCommand.IsPrepared)
+                    continue;
+                // No need to force async here since each statement takes no more than 20 bytes
+                await connector.WriteClose(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken)
+                    .ConfigureAwait(false);
+                batchCommand.PreparedStatement!.State = PreparedState.BeingUnprepared;
+            }
+
+            await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);
+            await connector.Flush(async, cancellationToken).ConfigureAwait(false);
+        }
+        catch(Exception ex)
+        {
+            connector.Break(ex);
+            throw;
+        }
     }
 
     #endregion
