@@ -135,6 +135,30 @@ public class DataSourceTests : TestBase
     }
 
     [Test]
+    public void Clear()
+    {
+        using var dataSource = NpgsqlDataSource.Create(ConnectionString);
+        var connection1 = dataSource.OpenConnection();
+        var connection2 = dataSource.OpenConnection();
+        connection1.Close();
+
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 2, Idle: 1, Busy: 1)));
+
+        dataSource.Clear();
+
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
+
+        var connection3 = dataSource.OpenConnection();
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 2, Idle: 0, Busy: 2)));
+
+        connection2.Close();
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
+
+        connection3.Close();
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 1, Busy: 0)));
+    }
+
+    [Test]
     public void Dispose()
     {
         using var dataSource = NpgsqlDataSource.Create(ConnectionString);

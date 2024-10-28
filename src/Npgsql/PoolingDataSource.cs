@@ -335,7 +335,7 @@ class PoolingDataSource : NpgsqlDataSource
         Debug.Assert(written);
     }
 
-    internal override void Clear()
+    public override void Clear()
     {
         Interlocked.Increment(ref _clearCounter);
 
