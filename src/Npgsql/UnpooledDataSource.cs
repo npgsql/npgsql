@@ -6,13 +6,9 @@ using Npgsql.Util;
 
 namespace Npgsql;
 
-sealed class UnpooledDataSource : NpgsqlDataSource
+sealed class UnpooledDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
+    : NpgsqlDataSource(settings, dataSourceConfig)
 {
-    public UnpooledDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
-        : base(settings, dataSourceConfig)
-    {
-    }
-
     volatile int _numConnectors;
 
     internal override (int Total, int Idle, int Busy) Statistics => (_numConnectors, 0, _numConnectors);
@@ -46,5 +42,7 @@ sealed class UnpooledDataSource : NpgsqlDataSource
         connector.Close();
     }
 
-    internal override void Clear() {}
+    public override void Clear()
+    {
+    }
 }

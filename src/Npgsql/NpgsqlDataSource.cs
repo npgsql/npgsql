@@ -209,6 +209,12 @@ public abstract class NpgsqlDataSource : DbDataSource
         => new NpgsqlDataSourceBatch(CreateConnection());
 
     /// <summary>
+    /// If the data source pools connections, clears any idle connections and flags any busy connections to be closed as soon as they're
+    /// returned to the pool.
+    /// </summary>
+    public abstract void Clear();
+
+    /// <summary>
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionString" />.
     /// </summary>
     public static NpgsqlDataSource Create(string connectionString)
@@ -370,8 +376,6 @@ public abstract class NpgsqlDataSource : DbDataSource
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
 
     internal abstract void Return(NpgsqlConnector connector);
-
-    internal abstract void Clear();
 
     internal abstract bool OwnsConnectors { get; }
 
