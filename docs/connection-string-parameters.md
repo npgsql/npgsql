@@ -26,6 +26,7 @@ SSL Key                      | Location of a client key for a client certificate
 SSL Password                 | Password for a key for a client certificate.                                                                                                |
 Root Certificate             | Location of a CA certificate used to validate the server certificate.                                                                       | PGSSLROOTCERT
 Check Certificate Revocation | Whether to check the certificate revocation list during authentication.                                                                     | false
+SSL Negotiation              | Controls how SSL encryption is negotiated with the server, if SSL is used. Introduced in 9.0. [See docs for possible values and more info](security.md). | PGSSLNEGOTIATION
 Channel Binding              | Control whether channel binding is used when authenticating with SASL. Introduced in 8.0.                                                   | Prefer
 Persist Security Info        | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. | false
 Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md).                                             | postgres
@@ -42,7 +43,7 @@ Minimum Pool Size           | The minimum connection pool size.          | 0
 Maximum Pool Size           | The maximum connection pool size.          | 100 since 3.1, 20 previously
 Connection Idle Lifetime    | The time (in seconds) to wait before closing idle connections in the pool if the count of all connections exceeds `Minimum Pool Size`. Introduced in 3.1. | 300
 Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `Connection Idle Lifetime`). Introduced in 3.1. | 10
-Connection Lifetime         | The total maximum lifetime of connections (in seconds). Connections which have exceeded this value will be destroyed instead of returned from the pool. This is useful in clustered configurations to force load balancing between a running server and a server just brought online. | 0 (disabled)
+Connection Lifetime         | The total maximum lifetime of connections (in seconds). Connections which have exceeded this value will be destroyed instead of returned from the pool. This is useful in clustered configurations to force load balancing between a running server and a server just brought online. | 3600 (1 hour), in Npgsql 8.0 and before - 0 (disabled)
 
 ## Timeouts and keepalive
 
@@ -126,3 +127,4 @@ PGSSLROOTCERT        | Behaves the same as the [sslrootcert](https://www.postgre
 PGCLIENTENCODING     | Behaves the same as the [client_encoding](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-CLIENT-ENCODING) connection parameter.
 PGTZ                 | Sets the default time zone. (Equivalent to SET timezone TO ....)
 PGOPTIONS            | Behaves the same as the [options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS) connection parameter.
+PGSSLNEGOTIATION     | Behaves the same as the [sslnegotiation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLNEGOTIATION) connection parameter.
