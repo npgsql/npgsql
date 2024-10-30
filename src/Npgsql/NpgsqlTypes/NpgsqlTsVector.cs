@@ -21,7 +21,7 @@ public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquata
             return;
         }
 
-        _lexemes = new List<Lexeme>(lexemes);
+        _lexemes = [..lexemes];
 
         if (_lexemes.Count == 0)
             return;
@@ -167,7 +167,7 @@ public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquata
         goto WaitWord;
 
         StartPosInfo:
-        wordEntryPositions = new List<Lexeme.WordEntryPos>();
+        wordEntryPositions = [];
 
         InPosInfo:
         var digitPos = pos;
@@ -321,7 +321,7 @@ public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquata
         {
             Text = text;
             if (wordEntryPositions != null)
-                WordEntryPositions = noCopy ? wordEntryPositions : new List<WordEntryPos>(wordEntryPositions);
+                WordEntryPositions = noCopy ? wordEntryPositions : [..wordEntryPositions];
             else
                 WordEntryPositions = null;
         }
@@ -343,7 +343,7 @@ public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquata
                 return list;
 
             // Don't change the original list, as the user might inspect it later if he holds a reference to the lexeme's list
-            list = new List<WordEntryPos>(list);
+            list = [..list];
 
             list.Sort((x, y) => x.Pos.CompareTo(y.Pos));
 

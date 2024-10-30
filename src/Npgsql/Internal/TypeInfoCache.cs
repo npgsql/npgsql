@@ -102,7 +102,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
                 // Also add defaults by their info type to save a future resolver lookup + resize.
                 infos = isDefaultInfo
                     ? new [] { (type, info), (info!.Type, info) }
-                    : new [] { (type, info) };
+                    : [(type, info)];
 
                 if (_cacheByPgTypeId.TryAdd(pgTypeId, infos))
                     return info;

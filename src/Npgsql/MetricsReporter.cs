@@ -31,7 +31,7 @@ sealed class MetricsReporter : IDisposable
     readonly NpgsqlDataSource _dataSource;
     readonly KeyValuePair<string, object?> _poolNameTag;
 
-    static readonly List<MetricsReporter> Reporters = new();
+    static readonly List<MetricsReporter> Reporters = [];
 
     CommandCounters _commandCounters;
 

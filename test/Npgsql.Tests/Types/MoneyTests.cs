@@ -7,8 +7,8 @@ namespace Npgsql.Tests.Types;
 
 public class MoneyTests : TestBase
 {
-    static readonly object[] MoneyValues = new[]
-    {
+    static readonly object[] MoneyValues =
+    [
         new object[] { "$1.22", 1.22M },
         new object[] { "$1,000.22", 1000.22M },
         new object[] { "$1,000,000.22", 1000000.22M },
@@ -18,8 +18,8 @@ public class MoneyTests : TestBase
 
         new object[] { "$92,233,720,368,547,758.07", +92233720368547758.07M },
         new object[] { "-$92,233,720,368,547,758.08", -92233720368547758.08M },
-        new object[] { "-$92,233,720,368,547,758.08", -92233720368547758.08M },
-    };
+        new object[] { "-$92,233,720,368,547,758.08", -92233720368547758.08M }
+    ];
 
     [Test]
     [TestCaseSource(nameof(MoneyValues))]
@@ -41,11 +41,11 @@ public class MoneyTests : TestBase
         await AssertTypeUnsupportedRead<double>("8", "money");
     }
 
-    static readonly object[] WriteWithLargeScaleCases = new[]
-    {
+    static readonly object[] WriteWithLargeScaleCases =
+    [
         new object[] { "0.004::money", 0.004M, 0.00M },
-        new object[] { "0.005::money", 0.005M, 0.01M },
-    };
+        new object[] { "0.005::money", 0.005M, 0.01M }
+    ];
 
     [Test]
     [TestCaseSource(nameof(WriteWithLargeScaleCases))]

@@ -11,11 +11,11 @@ public class JsonPathTests : MultiplexingTestBase
     public JsonPathTests(MultiplexingMode multiplexingMode)
         : base(multiplexingMode) { }
 
-    static readonly object[] ReadWriteCases = new[]
-    {
+    static readonly object[] ReadWriteCases =
+    [
         new object[] { "'$'", "$" },
-        new object[] { "'$\"varname\"'", "$\"varname\"" },
-    };
+        new object[] { "'$\"varname\"'", "$\"varname\"" }
+    ];
 
     [Test]
     [TestCase("$")]

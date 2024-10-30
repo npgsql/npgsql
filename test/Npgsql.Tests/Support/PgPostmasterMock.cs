@@ -21,7 +21,7 @@ class PgPostmasterMock : IAsyncDisposable
     static readonly Encoding RelaxedEncoding = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
 
     readonly Socket _socket;
-    readonly List<PgServerMock> _allServers = new();
+    readonly List<PgServerMock> _allServers = [];
     bool _acceptingClients;
     Task? _acceptClientsTask;
     int _processIdCounter;

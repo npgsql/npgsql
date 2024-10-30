@@ -50,8 +50,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public string ConnectionString => _internalBuilder.ConnectionString;
 
     internal static void ResetGlobalMappings(bool overwrite)
-        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new PgTypeInfoResolverFactory[]
-        {
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers([
             overwrite ? new AdoTypeInfoResolverFactory() : AdoTypeInfoResolverFactory.Instance,
             new ExtraConversionResolverFactory(),
             new JsonTypeInfoResolverFactory(),
@@ -59,8 +58,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new FullTextSearchTypeInfoResolverFactory(),
             new NetworkTypeInfoResolverFactory(),
             new GeometricTypeInfoResolverFactory(),
-            new LTreeTypeInfoResolverFactory(),
-        }, static () =>
+            new LTreeTypeInfoResolverFactory()
+        ], static () =>
         {
             var builder = new PgTypeInfoResolverChainBuilder();
             builder.EnableRanges();

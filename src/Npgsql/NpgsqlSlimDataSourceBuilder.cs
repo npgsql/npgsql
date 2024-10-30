@@ -69,7 +69,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public string ConnectionString => ConnectionStringBuilder.ToString();
 
     static NpgsqlSlimDataSourceBuilder()
-        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new PgTypeInfoResolverFactory[] { new AdoTypeInfoResolverFactory() });
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers([new AdoTypeInfoResolverFactory()]);
 
     /// <summary>
     /// A diagnostics name used by Npgsql when generating tracing, logging and metrics.

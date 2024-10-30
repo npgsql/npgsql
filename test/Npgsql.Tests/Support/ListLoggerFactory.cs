@@ -43,7 +43,7 @@ public class ListLoggerProvider : ILoggerProvider
             => _provider = provider;
 
         public List<(LogLevel, EventId, string, object?, Exception?)> LoggedEvents { get; }
-            = new();
+            = [];
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)

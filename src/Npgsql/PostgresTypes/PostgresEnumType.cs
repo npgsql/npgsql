@@ -16,7 +16,7 @@ public class PostgresEnumType : PostgresType
     /// </summary>
     public IReadOnlyList<string> Labels => MutableLabels;
 
-    internal List<string> MutableLabels { get; } = new();
+    internal List<string> MutableLabels { get; } = [];
 
     /// <summary>
     /// Constructs a representation of a PostgreSQL enum data type.

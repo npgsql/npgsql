@@ -15,44 +15,44 @@ namespace Npgsql.Tests.Types;
 public sealed class DateTimeInfinityTests : TestBase, IDisposable
 {
     static readonly TestCaseData[] TimestampDateTimeValues =
-    {
+    [
         new TestCaseData(DateTime.MinValue.AddYears(1), "0002-01-01 00:00:00", "0002-01-01 00:00:00")
             .SetName("MinValue_AddYear"),
         new TestCaseData(DateTime.MinValue, "0001-01-01 00:00:00", "-infinity")
             .SetName("MinValue"),
         new TestCaseData(DateTime.MaxValue, "9999-12-31 23:59:59.999999", "infinity")
-            .SetName("MaxValue"),
-    };
+            .SetName("MaxValue")
+    ];
 
     static readonly TestCaseData[] TimestampTzDateTimeValues =
-    {
+    [
         new TestCaseData(DateTime.MinValue.AddYears(1), "0002-01-01 00:00:00+00", "0002-01-01 00:00:00+00")
             .SetName("MinValue_AddYear"),
         new TestCaseData(DateTime.MinValue, "0001-01-01 00:00:00+00", "-infinity")
             .SetName("MinValue"),
         new TestCaseData(DateTime.MaxValue, "9999-12-31 23:59:59.999999+00", "infinity")
-            .SetName("MaxValue"),
-    };
+            .SetName("MaxValue")
+    ];
 
     static readonly TestCaseData[] TimestampTzDateTimeOffsetValues =
-    {
+    [
         new TestCaseData(DateTimeOffset.MinValue.ToUniversalTime().AddYears(1), "0002-01-01 00:00:00+00", "0002-01-01 00:00:00+00")
             .SetName("MinValue_AddYear"),
         new TestCaseData(DateTimeOffset.MinValue, "0001-01-01 00:00:00+00", "-infinity")
             .SetName("MinValue"),
         new TestCaseData(DateTimeOffset.MaxValue, "9999-12-31 23:59:59.999999+00", "infinity")
-            .SetName("MaxValue"),
-    };
+            .SetName("MaxValue")
+    ];
 
     static readonly TestCaseData[] DateDateTimeValues =
-    {
+    [
         new TestCaseData(DateTime.MinValue.AddYears(1), "0002-01-01", "0002-01-01")
             .SetName("MinValue_AddYear"),
         new TestCaseData(DateTime.MinValue, "0001-01-01", "-infinity")
             .SetName("MinValue"),
         new TestCaseData(DateTime.MaxValue, "9999-12-31", "infinity")
-            .SetName("MaxValue"),
-    };
+            .SetName("MaxValue")
+    ];
 
     // As we can't roundtrip DateTime.MaxValue due to precision differences with postgres we are lenient with equality for this particular value.
     static readonly Func<DateTime, DateTime, bool> MaxValuePrecisionLenientComparer =
@@ -86,14 +86,14 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
             isDefault: false);
 
     static readonly TestCaseData[] DateOnlyDateTimeValues =
-    {
+    [
         new TestCaseData(DateOnly.MinValue.AddYears(1), "0002-01-01", "0002-01-01")
             .SetName("MinValue_AddYear"),
         new TestCaseData(DateOnly.MinValue, "0001-01-01", "-infinity")
             .SetName("MinValue"),
         new TestCaseData(DateOnly.MaxValue, "9999-12-31", "infinity")
-            .SetName("MaxValue"),
-    };
+            .SetName("MaxValue")
+    ];
 
     [Test, TestCaseSource(nameof(DateOnlyDateTimeValues))]
     public Task Date_DateOnly(DateOnly dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)

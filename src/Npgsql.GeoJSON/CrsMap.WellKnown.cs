@@ -8,7 +8,7 @@ public partial class CrsMap
     /// memory allocated for overridden entries only (added, removed, or modified).
     /// </summary>
     internal static readonly CrsMapEntry[] WellKnown =
-    {
+    [
         new(2000, 2180, "EPSG"),
         new(2188, 2217, "EPSG"),
         new(2219, 2220, "EPSG"),
@@ -584,6 +584,6 @@ public partial class CrsMap
         new(32601, 32667, "EPSG"),
         new(32701, 32761, "EPSG"),
         new(32766, 32766, "EPSG"),
-        new(900913, 900913, "spatialreferencing.org"),
-    };
+        new(900913, 900913, "spatialreferencing.org")
+    ];
 }

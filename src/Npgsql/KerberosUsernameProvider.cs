@@ -104,7 +104,7 @@ sealed class KerberosUsernameProvider
 
     static string? FindInPath(string name)
     {
-        foreach (var p in Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? Array.Empty<string>())
+        foreach (var p in Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? [])
         {
             var path = Path.Combine(p, name);
             if (File.Exists(path))

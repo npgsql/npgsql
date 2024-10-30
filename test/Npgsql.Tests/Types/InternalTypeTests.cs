@@ -60,13 +60,14 @@ public class InternalTypeTests : MultiplexingTestBase
 
     #region NpgsqlLogSequenceNumber / PgLsn
 
-    static readonly TestCaseData[] EqualsObjectCases = {
+    static readonly TestCaseData[] EqualsObjectCases =
+    [
         new TestCaseData(new NpgsqlLogSequenceNumber(1ul), null).Returns(false),
         new TestCaseData(new NpgsqlLogSequenceNumber(1ul), new object()).Returns(false),
         new TestCaseData(new NpgsqlLogSequenceNumber(1ul), 1ul).Returns(false), // no implicit cast
         new TestCaseData(new NpgsqlLogSequenceNumber(1ul), "0/0").Returns(false), // no implicit cast/parsing
-        new TestCaseData(new NpgsqlLogSequenceNumber(1ul), new NpgsqlLogSequenceNumber(1ul)).Returns(true),
-    };
+        new TestCaseData(new NpgsqlLogSequenceNumber(1ul), new NpgsqlLogSequenceNumber(1ul)).Returns(true)
+    ];
 
     [Test, TestCaseSource(nameof(EqualsObjectCases))]
     public bool NpgsqlLogSequenceNumber_equals(NpgsqlLogSequenceNumber lsn, object? obj)

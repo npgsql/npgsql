@@ -127,7 +127,7 @@ public class DateTimeTests : TestBase
     #region Time with timezone
 
     static readonly TestCaseData[] TimeTzValues =
-    {
+    [
         new TestCaseData(new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)), "13:03:45.51+02")
             .SetName("Timezone"),
         new TestCaseData(new DateTimeOffset(1, 1, 2, 1, 0, 45, 510, TimeSpan.FromHours(-3)), "01:00:45.51-03")
@@ -135,8 +135,8 @@ public class DateTimeTests : TestBase
         new TestCaseData(new DateTimeOffset(1212720130000, TimeSpan.Zero), "09:41:12.013+00")
             .SetName("Utc"),
         new TestCaseData(new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0)), "01:00:00+02")
-            .SetName("Before_utc_zero"),
-    };
+            .SetName("Before_utc_zero")
+    ];
 
     [Test, TestCaseSource(nameof(TimeTzValues))]
     public Task TimeTz_as_DateTimeOffset(DateTimeOffset time, string sqlLiteral)
@@ -147,14 +147,14 @@ public class DateTimeTests : TestBase
     #region Timestamp
 
     static readonly TestCaseData[] TimestampValues =
-    {
+    [
         new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "1998-04-12 13:26:38")
             .SetName("Timestamp_pre2000"),
         new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Unspecified), "2015-01-27 08:45:12.345")
             .SetName("Timestamp_post2000"),
         new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Unspecified), "2013-07-25 00:00:00")
             .SetName("Timestamp_date_only")
-    };
+    ];
 
     [Test, TestCaseSource(nameof(TimestampValues))]
     public async Task Timestamp_as_DateTime(DateTime dateTime, string sqlLiteral)
@@ -245,14 +245,14 @@ public class DateTimeTests : TestBase
     // Note that the below text representations are local (according to TimeZone, which is set to Europe/Berlin in this test class),
     // because that's how PG does timestamptz *text* representation.
     static readonly TestCaseData[] TimestampTzWriteValues =
-    {
+    [
         new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "1998-04-12 15:26:38+02")
             .SetName("Timestamptz_write_pre2000"),
         new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc), "2015-01-27 09:45:12.345+01")
             .SetName("Timestamptz_write_post2000"),
         new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Utc), "2013-07-25 02:00:00+02")
             .SetName("Timestamptz_write_date_only")
-    };
+    ];
 
     [Test, TestCaseSource(nameof(TimestampTzWriteValues))]
     public async Task Timestamptz_as_DateTime(DateTime dateTime, string sqlLiteral)
@@ -391,11 +391,10 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Cannot_mix_DateTime_Kinds_in_array()
-        => AssertTypeUnsupportedWrite<DateTime[], ArgumentException>(new[]
-        {
+        => AssertTypeUnsupportedWrite<DateTime[], ArgumentException>([
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
-            new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local),
-        });
+            new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local)
+        ]);
 
 
     [Test]
@@ -410,8 +409,7 @@ public class DateTimeTests : TestBase
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
 
-        await AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>[], ArgumentException>(new[]
-        {
+        await AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>[], ArgumentException>([
             new NpgsqlRange<DateTime>(
                 new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
                 new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
@@ -438,8 +436,8 @@ public class DateTimeTests : TestBase
                 new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
             new NpgsqlRange<DateTime>(
                 new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Local),
-                new DateTime(1998, 4, 13, 15, 26, 38, DateTimeKind.Local)),
-        });
+                new DateTime(1998, 4, 13, 15, 26, 38, DateTimeKind.Local))
+        ]);
     }
 
     [Test]
@@ -493,7 +491,7 @@ public class DateTimeTests : TestBase
     #region Interval
 
     static readonly TestCaseData[] IntervalValues =
-    {
+    [
         new TestCaseData(new TimeSpan(0, 2, 3, 4, 5), "02:03:04.005")
             .SetName("Interval_time_only"),
         new TestCaseData(new TimeSpan(1, 2, 3, 4, 5), "1 day 02:03:04.005")
@@ -502,7 +500,7 @@ public class DateTimeTests : TestBase
             .SetName("Interval_with_many_days"),
         new TestCaseData(new TimeSpan(new TimeSpan(2, 3, 4).Ticks + 10), "02:03:04.000001")
             .SetName("Interval_with_microsecond")
-    };
+    ];
 
     [Test, TestCaseSource(nameof(IntervalValues))]
     public Task Interval_as_TimeSpan(TimeSpan timeSpan, string sqlLiteral)

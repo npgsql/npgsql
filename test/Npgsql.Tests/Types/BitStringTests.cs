@@ -69,7 +69,7 @@ public class BitStringTests : MultiplexingTestBase
     {
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        var expected = new[] { new BitArray(new[] { true, false, true }), new BitArray(new[] { false }) };
+        var expected = new[] { new BitArray([true, false, true]), new BitArray([false]) };
         var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Varbit) { Value = expected };
         cmd.Parameters.Add(p);
         p.Value = expected;

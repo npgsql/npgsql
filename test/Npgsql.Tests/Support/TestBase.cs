@@ -427,7 +427,7 @@ public abstract class TestBase
         // Check the corresponding array type as well
         if (!skipArrayCheck && !pgTypeName?.EndsWith("[]", StringComparison.Ordinal) == true)
         {
-            await AssertTypeUnsupportedWriteCore<T[], TException>(new[] { value, value }, pgTypeName + "[]", dataSource);
+            await AssertTypeUnsupportedWriteCore<T[], TException>([value, value], pgTypeName + "[]", dataSource);
         }
 
         return result;

@@ -14,60 +14,55 @@ namespace Npgsql.PluginTests;
 public class NetTopologySuiteTests : TestBase
 {
     static readonly TestCaseData[] TestCases =
-    {
+    [
         new TestCaseData(Ordinates.None, new Point(1d, 2500d), "st_makepoint(1,2500)")
             .SetName("Point"),
 
-        new TestCaseData(Ordinates.None, new MultiPoint(new[] { new Point(new Coordinate(1d, 1d)) }), "st_multi(st_makepoint(1, 1))")
+        new TestCaseData(Ordinates.None, new MultiPoint([new Point(new Coordinate(1d, 1d))]), "st_multi(st_makepoint(1, 1))")
             .SetName("MultiPoint"),
 
         new TestCaseData(
                 Ordinates.None,
-                new LineString(new[] { new Coordinate(1d, 1d), new Coordinate(1d, 2500d) }),
+                new LineString([new Coordinate(1d, 1d), new Coordinate(1d, 2500d)]),
                 "st_makeline(st_makepoint(1,1),st_makepoint(1,2500))")
             .SetName("LineString"),
 
         new TestCaseData(
                 Ordinates.None,
-                new MultiLineString(new[]
-                {
-                    new LineString(new[]
-                    {
+                new MultiLineString([
+                    new LineString([
                         new Coordinate(1d, 1d),
                         new Coordinate(1d, 2500d)
-                    })
-                }),
+                    ])
+                ]),
                 "st_multi(st_makeline(st_makepoint(1,1),st_makepoint(1,2500)))")
             .SetName("MultiLineString"),
 
         new TestCaseData(
                 Ordinates.None,
                 new Polygon(
-                    new LinearRing(new[]
-                    {
+                    new LinearRing([
                         new Coordinate(1d, 1d),
                         new Coordinate(2d, 2d),
                         new Coordinate(3d, 3d),
                         new Coordinate(1d, 1d)
-                    })
+                    ])
                 ),
                 "st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))")
             .SetName("Polygon"),
 
         new TestCaseData(
                 Ordinates.None,
-                new MultiPolygon(new[]
-                {
+                new MultiPolygon([
                     new Polygon(
-                        new LinearRing(new[]
-                        {
+                        new LinearRing([
                             new Coordinate(1d, 1d),
                             new Coordinate(2d, 2d),
                             new Coordinate(3d, 3d),
                             new Coordinate(1d, 1d)
-                        })
+                        ])
                     )
-                }),
+                ]),
                 "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))")
             .SetName("MultiPolygon"),
 
@@ -76,47 +71,40 @@ public class NetTopologySuiteTests : TestBase
 
         new TestCaseData(
                 Ordinates.None,
-                new GeometryCollection(new Geometry[]
-                {
+                new GeometryCollection([
                     new Point(new Coordinate(1d, 1d)),
-                    new MultiPolygon(new[]
-                    {
+                    new MultiPolygon([
                         new Polygon(
-                            new LinearRing(new[]
-                            {
+                            new LinearRing([
                                 new Coordinate(1d, 1d),
                                 new Coordinate(2d, 2d),
                                 new Coordinate(3d, 3d),
                                 new Coordinate(1d, 1d)
-                            })
+                            ])
                         )
-                    })
-                }),
+                    ])
+                ]),
                 "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))))")
             .SetName("Collection"),
 
         new TestCaseData(
                 Ordinates.None,
-                new GeometryCollection(new Geometry[]
-                {
+                new GeometryCollection([
                     new Point(new Coordinate(1d, 1d)),
-                    new GeometryCollection(new Geometry[]
-                    {
+                    new GeometryCollection([
                         new Point(new Coordinate(1d, 1d)),
-                        new MultiPolygon(new[]
-                        {
+                        new MultiPolygon([
                             new Polygon(
-                                new LinearRing(new[]
-                                {
+                                new LinearRing([
                                     new Coordinate(1d, 1d),
                                     new Coordinate(2d, 2d),
                                     new Coordinate(3d, 3d),
                                     new Coordinate(1d, 1d)
-                                })
+                                ])
                             )
-                        })
-                    })
-                }),
+                        ])
+                    ])
+                ]),
                 "st_collect(st_makepoint(1,1),st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))))")
             .SetName("CollectionNested"),
 
@@ -126,23 +114,22 @@ public class NetTopologySuiteTests : TestBase
         new TestCaseData(
                 Ordinates.XYZM,
                 new Point(
-                    new DotSpatialAffineCoordinateSequence(new[] { 1d, 2d }, new[] { 3d }, new[] { 4d }),
+                    new DotSpatialAffineCoordinateSequence([1d, 2d], [3d], [4d]),
                     GeometryFactory.Default),
                 "st_makepoint(1,2,3,4)")
             .SetName("PointXYZM"),
 
         new TestCaseData(
                 Ordinates.None,
-                new LinearRing(new[]
-                    {
-                        new Coordinate(1d, 1d),
+                new LinearRing([
+                    new Coordinate(1d, 1d),
                         new Coordinate(2d, 2d),
                         new Coordinate(3d, 3d),
                         new Coordinate(1d, 1d)
-                    }),
+                ]),
                 "st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])")
             .SetName("LinearRing")
-    };
+    ];
 
     [Test, TestCaseSource(nameof(TestCases))]
     public async Task Read(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
@@ -221,53 +208,45 @@ public class NetTopologySuiteTests : TestBase
         await adminConnection.ExecuteNonQueryAsync($"INSERT INTO {table} DEFAULT VALUES");
 
         var point = new Point(new Coordinate(1d, 1d));
-        var lineString = new LineString(new[] { new Coordinate(1d, 1d), new Coordinate(1d, 2500d) });
+        var lineString = new LineString([new Coordinate(1d, 1d), new Coordinate(1d, 2500d)]);
         var polygon = new Polygon(
-            new LinearRing(new[]
-            {
+            new LinearRing([
                 new Coordinate(1d, 1d),
                 new Coordinate(2d, 2d),
                 new Coordinate(3d, 3d),
                 new Coordinate(1d, 1d)
-            })
+            ])
         );
-        var multiPoint = new MultiPoint(new[] { new Point(new Coordinate(1d, 1d)) });
-        var multiLineString = new MultiLineString(new[]
-        {
-            new LineString(new[]
-            {
+        var multiPoint = new MultiPoint([new Point(new Coordinate(1d, 1d))]);
+        var multiLineString = new MultiLineString([
+            new LineString([
                 new Coordinate(1d, 1d),
                 new Coordinate(1d, 2500d)
-            })
-        });
-        var multiPolygon = new MultiPolygon(new[]
-        {
+            ])
+        ]);
+        var multiPolygon = new MultiPolygon([
             new Polygon(
-                new LinearRing(new[]
-                {
+                new LinearRing([
                     new Coordinate(1d, 1d),
                     new Coordinate(2d, 2d),
                     new Coordinate(3d, 3d),
                     new Coordinate(1d, 1d)
-                })
+                ])
             )
-        });
-        var collection = new GeometryCollection(new Geometry[]
-        {
+        ]);
+        var collection = new GeometryCollection([
             new Point(new Coordinate(1d, 1d)),
-            new MultiPolygon(new[]
-            {
+            new MultiPolygon([
                 new Polygon(
-                    new LinearRing(new[]
-                    {
+                    new LinearRing([
                         new Coordinate(1d, 1d),
                         new Coordinate(2d, 2d),
                         new Coordinate(3d, 3d),
                         new Coordinate(1d, 1d)
-                    })
+                    ])
                 )
-            })
-        });
+            ])
+        ]);
 
         await Task.WhenAll(Enumerable.Range(0, 30).Select(i => Task.Run(async () =>
         {

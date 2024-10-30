@@ -477,10 +477,10 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     static readonly TestCaseData[] DBNullValues =
-    {
+    [
         new TestCaseData(DBNull.Value).SetName("DBNull.Value"),
         new TestCaseData(null).SetName("null")
-    };
+    ];
 
     [Test, TestCaseSource(nameof(DBNullValues))]
     public async Task Import_dbnull(DBNull? value)
@@ -773,12 +773,13 @@ INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'000000
 
         using var reader = conn.BeginBinaryExport($"COPY {table} (bits, bitvector, bitarray) TO STDIN BINARY");
         reader.StartRow();
-        Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { false, false, false, false, false, false, false, true, true, false, true })));
+        Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray([false, false, false, false, false, false, false, true, true, false, true
+        ])));
         Assert.That(reader.Read<BitVector32>(), Is.EqualTo(new BitVector32(0b00000001101000000000000000000000)));
         Assert.That(reader.Read<BitArray[]>(), Is.EqualTo(new[]
         {
-            new BitArray(new[] { true, false, true }),
-            new BitArray(new[] { true, true, true })
+            new BitArray([true, false, true]),
+            new BitArray([true, true, true])
         }));
     }
 

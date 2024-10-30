@@ -10,8 +10,8 @@ namespace Npgsql.Tests.Types;
 
 public class NumericTests : MultiplexingTestBase
 {
-    static readonly object[] ReadWriteCases = new[]
-    {
+    static readonly object[] ReadWriteCases =
+    [
         new object[] { "0.0000000000000000000000000001::numeric", 0.0000000000000000000000000001M },
         new object[] { "0.000000000000000000000001::numeric", 0.000000000000000000000001M },
         new object[] { "0.00000000000000000001::numeric", 0.00000000000000000001M },
@@ -84,8 +84,8 @@ public class NumericTests : MultiplexingTestBase
         new object[] { "3649072683783772919700000000", 3649072683783772919700000000M },
         new object[] { "1234567844445555.000000000", 1234567844445555.000000000M },
         new object[] { "11112222000000000000", 11112222000000000000M },
-        new object[] { "0::numeric", 0M },
-    };
+        new object[] { "0::numeric", 0M }
+    ];
 
     [Test]
     [TestCaseSource(nameof(ReadWriteCases))]

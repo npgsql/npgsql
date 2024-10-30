@@ -424,7 +424,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// Gets the <see cref="NpgsqlParameterCollection"/>.
     /// </summary>
     /// <value>The parameters of the SQL statement or function (stored procedure). The default is an empty collection.</value>
-    public new NpgsqlParameterCollection Parameters => _parameters ??= new();
+    public new NpgsqlParameterCollection Parameters => _parameters ??= [];
 
     #endregion
 
@@ -1083,7 +1083,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         i == 0 ? UnknownResultTypeList : null,
                         async, cancellationToken).ConfigureAwait(false);
 
-                    await connector.WriteDescribe(StatementOrPortal.Portal, Array.Empty<byte>(), async, cancellationToken).ConfigureAwait(false);
+                    await connector.WriteDescribe(StatementOrPortal.Portal, [], async, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1154,8 +1154,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             var batchCommand = InternalBatchCommands[i];
 
-            await connector.WriteParse(batchCommand.FinalCommandText!, Array.Empty<byte>(), NpgsqlBatchCommand.EmptyParameters, async, cancellationToken).ConfigureAwait(false);
-            await connector.WriteDescribe(StatementOrPortal.Statement, Array.Empty<byte>(), async, cancellationToken).ConfigureAwait(false);
+            await connector.WriteParse(batchCommand.FinalCommandText!, [], NpgsqlBatchCommand.EmptyParameters, async, cancellationToken).ConfigureAwait(false);
+            await connector.WriteDescribe(StatementOrPortal.Statement, [], async, cancellationToken).ConfigureAwait(false);
         }
 
         await connector.WriteSync(async, cancellationToken).ConfigureAwait(false);

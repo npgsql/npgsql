@@ -119,7 +119,7 @@ public sealed class TypeInfoMappingCollection
         => _baseCollection = baseCollection;
 
     public TypeInfoMappingCollection(IEnumerable<TypeInfoMapping> items)
-        => _items = new(items);
+        => _items = [..items];
 
     public IReadOnlyList<TypeInfoMapping> Items => _items;
 

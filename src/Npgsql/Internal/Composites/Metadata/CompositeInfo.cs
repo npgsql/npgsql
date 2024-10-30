@@ -35,7 +35,7 @@ sealed class CompositeInfo<T>
             throw new InvalidOperationException($"Missing composite fields to map to the required {constructorParameters} constructor parameters.");
 
         _fields = fields;
-        var arguments = constructorParameters is 0 ? Array.Empty<CompositeFieldInfo>() : new CompositeFieldInfo[constructorParameters];
+        var arguments = constructorParameters is 0 ? [] : new CompositeFieldInfo[constructorParameters];
         foreach (var field in fields)
         {
             if (field.ConstructorParameterIndex is { } index)
@@ -56,7 +56,7 @@ sealed class CompositeInfo<T>
     /// <returns></returns>
     public StrongBox[] CreateTempBoxes()
     {
-        var valueCache = _lastConstructorFieldIndex + 1 is 0 ? Array.Empty<StrongBox>() : new StrongBox[_lastConstructorFieldIndex + 1];
+        var valueCache = _lastConstructorFieldIndex + 1 is 0 ? [] : new StrongBox[_lastConstructorFieldIndex + 1];
         var fields = _fields;
 
         for (var i = 0; i < valueCache.Length; i++)

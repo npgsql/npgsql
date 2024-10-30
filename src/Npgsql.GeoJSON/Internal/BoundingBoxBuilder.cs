@@ -48,6 +48,6 @@ sealed class BoundingBoxBuilder
 
     internal double[] Build()
         => _hasAltitude
-            ? new[] { _minLongitude, _minLatitude, _minAltitude, _maxLongitude, _maxLatitude, _maxAltitude }
-            : new[] { _minLongitude, _minLatitude, _maxLongitude, _maxLatitude };
+            ? [_minLongitude, _minLatitude, _minAltitude, _maxLongitude, _maxLatitude, _maxAltitude]
+            : [_minLongitude, _minLatitude, _maxLongitude, _maxLatitude];
 }

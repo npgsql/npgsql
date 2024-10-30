@@ -46,7 +46,7 @@ sealed class TupledRecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
                 var factory = typeof(Resolver).GetMethod(nameof(CreateFactory), BindingFlags.Static | BindingFlags.NonPublic)!
                     .MakeGenericMethod(mapping.Type)
-                    .Invoke(null, new object[] { constructor, constructor.GetParameters().Length });
+                    .Invoke(null, [constructor, constructor.GetParameters().Length]);
 
                 var converterType = typeof(RecordConverter<>).MakeGenericType(mapping.Type);
                 var converter = (PgConverter)Activator.CreateInstance(converterType, options, factory)!;

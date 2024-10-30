@@ -166,13 +166,13 @@ sealed class CharTextConverter : PgBufferedConverter<char>
 
     public override Size GetSize(SizeContext context, char value, ref object? writeState)
     {
-        Span<char> spanValue = stackalloc char[] { value };
+        Span<char> spanValue = [value];
         return _encoding.GetByteCount(spanValue);
     }
 
     protected override void WriteCore(PgWriter writer, char value)
     {
-        Span<char> spanValue = stackalloc char[] { value };
+        Span<char> spanValue = [value];
         writer.WriteChars(spanValue, _encoding);
     }
 }

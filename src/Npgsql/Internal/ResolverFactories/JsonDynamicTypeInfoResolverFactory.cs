@@ -63,8 +63,8 @@ sealed class JsonDynamicTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
         public Resolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
         {
-            _jsonbClrTypes = jsonbClrTypes ?? Array.Empty<Type>();
-            _jsonClrTypes = jsonClrTypes ?? Array.Empty<Type>();
+            _jsonbClrTypes = jsonbClrTypes ?? [];
+            _jsonClrTypes = jsonClrTypes ?? [];
             _serializerOptions = serializerOptions;
         }
 

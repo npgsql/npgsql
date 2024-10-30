@@ -13,7 +13,7 @@ namespace Npgsql;
 /// <inheritdoc/>
 public sealed class NpgsqlBatchCommand : DbBatchCommand
 {
-    internal static readonly List<NpgsqlParameter> EmptyParameters = new();
+    internal static readonly List<NpgsqlParameter> EmptyParameters = [];
 
     string _commandText;
 
@@ -39,7 +39,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
 
     internal NpgsqlParameterCollection? _parameters;
     /// <inheritdoc cref="DbBatchCommand.Parameters"/>
-    public new NpgsqlParameterCollection Parameters => _parameters ??= new();
+    public new NpgsqlParameterCollection Parameters => _parameters ??= [];
 
 
 #if NET8_0_OR_GREATER
@@ -149,7 +149,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// </remarks>
     internal List<NpgsqlParameter> PositionalParameters
     {
-        get => _inputParameters ??= _ownedInputParameters ??= new();
+        get => _inputParameters ??= _ownedInputParameters ??= [];
         set => _inputParameters = value;
     }
 
@@ -198,7 +198,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// <summary>
     /// Holds the server-side (prepared) ASCII statement name. Empty string for non-prepared statements.
     /// </summary>
-    internal byte[] StatementName => PreparedStatement?.Name ?? Array.Empty<byte>();
+    internal byte[] StatementName => PreparedStatement?.Name ?? [];
 
     /// <summary>
     /// Whether this statement has already been prepared (including automatic preparation).

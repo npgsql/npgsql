@@ -40,8 +40,8 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
 
     public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = NpgsqlSnakeCaseNameTranslator.Instance;
 
-    UserTypeMapper(IEnumerable<UserTypeMapping> mappings) => _mappings = new List<UserTypeMapping>(mappings);
-    public UserTypeMapper() => _mappings = new();
+    UserTypeMapper(IEnumerable<UserTypeMapping> mappings) => _mappings = [..mappings];
+    public UserTypeMapper() => _mappings = [];
 
     public UserTypeMapper Clone() => new(_mappings) { DefaultNameTranslator = DefaultNameTranslator };
 
@@ -65,9 +65,9 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
         if (!clrType.IsEnum || !clrType.IsValueType)
             throw new ArgumentException("Type must be a concrete Enum", nameof(clrType));
 
-        var openMethod = typeof(UserTypeMapper).GetMethod(nameof(MapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var openMethod = typeof(UserTypeMapper).GetMethod(nameof(MapEnum), [typeof(string), typeof(INpgsqlNameTranslator)])!;
         var method = openMethod.MakeGenericMethod(clrType);
-        method.Invoke(this, new object?[] { pgName, nameTranslator });
+        method.Invoke(this, [pgName, nameTranslator]);
         return this;
     }
 
@@ -107,11 +107,11 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
 
         var openMethod = typeof(UserTypeMapper).GetMethod(
             clrType.IsValueType ? nameof(MapStructComposite) : nameof(MapComposite),
-            new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+            [typeof(string), typeof(INpgsqlNameTranslator)])!;
 
         var method = openMethod.MakeGenericMethod(clrType);
 
-        method.Invoke(this, new object?[] { pgName, nameTranslator });
+        method.Invoke(this, [pgName, nameTranslator]);
 
         return this;
     }
@@ -145,8 +145,8 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
         => type.GetCustomAttribute<PgNameAttribute>()?.PgName
            ?? nameTranslator.TranslateTypeName(type.Name);
 
-    public override IPgTypeInfoResolver CreateResolver() => new Resolver(new(_mappings));
-    public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver(new(_mappings));
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver([.._mappings]);
+    public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver([.._mappings]);
 
     class Resolver : IPgTypeInfoResolver
     {

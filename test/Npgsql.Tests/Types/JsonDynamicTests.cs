@@ -150,7 +150,7 @@ public class JsonDynamicTests : MultiplexingTestBase
     public async Task Poco_does_not_stomp_GetValue_string()
     {
         var dataSource = CreateDataSourceBuilder()
-            .EnableDynamicJson(new[] {typeof(WeatherForecast)}, new[] {typeof(WeatherForecast)})
+            .EnableDynamicJson([typeof(WeatherForecast)], [typeof(WeatherForecast)])
             .Build();
         var sqlLiteral =
             IsJsonb
@@ -193,9 +193,9 @@ public class JsonDynamicTests : MultiplexingTestBase
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         if (IsJsonb)
-            dataSourceBuilder.EnableDynamicJson(jsonbClrTypes: new[] { typeof(WeatherForecast) });
+            dataSourceBuilder.EnableDynamicJson(jsonbClrTypes: [typeof(WeatherForecast)]);
         else
-            dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
+            dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(
@@ -224,7 +224,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             return;
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
+        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType<WeatherForecast>(
@@ -251,7 +251,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             return;
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
+        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
         await using var dataSource = dataSourceBuilder.Build();
 
         var value = new ExtendedDerivedWeatherForecast()
@@ -292,7 +292,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             return;
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: new[] { typeof(ExtendedDerivedWeatherForecast) });
+        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(ExtendedDerivedWeatherForecast)]);
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(

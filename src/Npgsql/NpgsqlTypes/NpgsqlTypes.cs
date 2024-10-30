@@ -202,16 +202,16 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 {
     List<NpgsqlPoint> _points;
 
-    List<NpgsqlPoint> Points => _points ??= new();
+    List<NpgsqlPoint> Points => _points ??= [];
 
     public bool Open { get; set; }
 
     public NpgsqlPath()
-        => _points = new();
+        => _points = [];
 
     public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open)
     {
-        _points = new List<NpgsqlPoint>(points);
+        _points = [..points];
         Open = open;
     }
 
@@ -220,7 +220,7 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 
     public NpgsqlPath(bool open) : this()
     {
-        _points = new List<NpgsqlPoint>();
+        _points = [];
         Open = open;
     }
 
@@ -309,13 +309,13 @@ public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
 {
     List<NpgsqlPoint> _points;
 
-    List<NpgsqlPoint> Points => _points ??= new();
+    List<NpgsqlPoint> Points => _points ??= [];
 
     public NpgsqlPolygon()
-        => _points = new();
+        => _points = [];
 
     public NpgsqlPolygon(IEnumerable<NpgsqlPoint> points)
-        => _points = new List<NpgsqlPoint>(points);
+        => _points = [..points];
 
     public NpgsqlPolygon(params NpgsqlPoint[] points) : this((IEnumerable<NpgsqlPoint>) points) {}
 

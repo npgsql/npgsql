@@ -466,15 +466,15 @@ public static class PostgresErrorCodes
     #endregion Class XX - Internal Error
 
     static readonly string[] CriticalFailureCodes =
-    {
+    [
         "53", // Insufficient resources
         AdminShutdown, // Self explanatory
         CrashShutdown, // Self explanatory
         CannotConnectNow, // Database is starting up
         "58", // System errors, external to PG (server is dying)
         "F0", // Configuration file error
-        "XX", // Internal error (database is dying)
-    };
+        "XX" // Internal error (database is dying)
+    ];
 
     internal static bool IsCriticalFailure(PostgresException e, bool clusterError = true)
     {

@@ -7,7 +7,7 @@ namespace Npgsql;
 
 sealed class SqlQueryParser
 {
-    static NpgsqlParameterCollection EmptyParameters { get; } = new();
+    static NpgsqlParameterCollection EmptyParameters { get; } = [];
 
     readonly Dictionary<string, int> _paramIndexMap = new(StringComparer.OrdinalIgnoreCase);
     readonly StringBuilder _rewrittenSql = new();

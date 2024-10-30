@@ -15,7 +15,7 @@ namespace Npgsql.Tests.Types;
 class RangeTests : MultiplexingTestBase
 {
     static readonly TestCaseData[] RangeTestCases =
-    {
+    [
         new TestCaseData(new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", NpgsqlDbType.IntegerRange)
             .SetName("IntegerRange"),
         new TestCaseData(new NpgsqlRange<long>(1, true, 10, false), "[1,10)", "int8range", NpgsqlDbType.BigIntRange)
@@ -50,7 +50,7 @@ class RangeTests : MultiplexingTestBase
             .SetName("InfiniteLowerBound"),
         new TestCaseData(new NpgsqlRange<decimal>(1, true, false, 10, false, true), "[1,)", "numrange", NpgsqlDbType.NumericRange)
             .SetName("InfiniteUpperBound")
-    };
+    ];
 
     // See more test cases in DateTimeTests
     [Test, TestCaseSource(nameof(RangeTestCases))]
@@ -438,28 +438,28 @@ class RangeTests : MultiplexingTestBase
         new object[][]
         {
             // (2018-05-17, 2018-05-18)
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, false) },
+            [new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, false)],
 
             // [2018-05-17, 2018-05-18]
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, true, false) },
+            [new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, true, false)],
 
             // [2018-05-17, 2018-05-18)
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, false, false) },
+            [new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, false, false)],
 
             // (2018-05-17, 2018-05-18]
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, true, false) },
+            [new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, true, false)],
 
             // (,)
-            new object[] { new NpgsqlRange<DateTime>(default, false, true, default, false, true) },
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, true) },
+            [new NpgsqlRange<DateTime>(default, false, true, default, false, true)],
+            [new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, true)],
 
             // (2018-05-17,)
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, default, false, true) },
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, true) },
+            [new NpgsqlRange<DateTime>(May_17_2018, false, false, default, false, true)],
+            [new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, true)],
 
             // (,2018-05-18)
-            new object[] { new NpgsqlRange<DateTime>(default, false, true, May_18_2018, false, false) },
-            new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, false) }
+            [new NpgsqlRange<DateTime>(default, false, true, May_18_2018, false, false)],
+            [new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, false)]
         };
 
     #endregion

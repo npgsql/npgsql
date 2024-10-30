@@ -481,7 +481,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         if (!isReplicationConnection)
             Expect<ReadyForQueryMessage>(await conn.ReadMessage(async).ConfigureAwait(false), conn);
 
-        return new(byOID.Values);
+        return [..byOID.Values];
 
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)
             => buffer.ReadString(buffer.ReadInt32());

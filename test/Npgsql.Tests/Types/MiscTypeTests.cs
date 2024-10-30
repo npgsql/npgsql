@@ -108,7 +108,7 @@ class MiscTypeTests : MultiplexingTestBase
 
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT TRUE, 8", conn);
-        cmd.UnknownResultTypeList = new[] { true, false };
+        cmd.UnknownResultTypeList = [true, false];
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 

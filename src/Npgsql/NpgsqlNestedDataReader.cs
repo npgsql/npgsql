@@ -29,7 +29,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     int _nextRowBufferPos;
     ReaderState _readerState;
 
-    readonly List<ColumnInfo> _columns = new();
+    readonly List<ColumnInfo> _columns = [];
     long _startPos;
 
     DataFormat Format => DataFormat.Binary;
