@@ -7,7 +7,7 @@ public sealed class ExperimentalAttribute : Attribute
 {
     /// <summary>Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.ExperimentalAttribute" /> class, specifying the ID that the compiler will use when reporting a use of the API the attribute applies to.</summary>
     /// <param name="diagnosticId">The ID that the compiler will use when reporting a use of the API the attribute applies to.</param>
-    public ExperimentalAttribute(string diagnosticId) => this.DiagnosticId = diagnosticId;
+    public ExperimentalAttribute(string diagnosticId) => DiagnosticId = diagnosticId;
 
     /// <summary>Gets the ID that the compiler will use when reporting a use of the API the attribute applies to.</summary>
     /// <returns>The unique diagnostic ID.</returns>
