@@ -1400,7 +1400,7 @@ LANGUAGE plpgsql VOLATILE";
         reader.GetBytes(4, 0, actual, 0, 2);
         Assert.That(reader.GetBytes(4, expected.Length - 1, actual, 0, 2), Is.EqualTo(1),
             "Length greater than data length");
-        Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+        Assert.That(actual[0], Is.EqualTo(expected[^1]), "Length greater than data length");
         Assert.That(() => reader.GetBytes(4, 0, actual, 0, actual.Length + 1),
             Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
         // Close in the middle of a column
@@ -1662,7 +1662,7 @@ LANGUAGE plpgsql VOLATILE";
         // Jump to another column from the middle of the column
         reader.GetChars(5, 0, actual, 0, 2);
         Assert.That(reader.GetChars(5, expected.Length - 1, actual, 0, 2), Is.EqualTo(1), "Length greater than data length");
-        Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+        Assert.That(actual[0], Is.EqualTo(expected[^1]), "Length greater than data length");
         Assert.That(() => reader.GetChars(5, 0, actual, 0, actual.Length + 1), Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
         // Close in the middle of a column
         reader.GetChars(6, 0, actual, 0, 2);

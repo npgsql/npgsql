@@ -502,7 +502,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
 
             // There are no more queries, we're done. Read the RFQ.
-            if (_statements.Count is 0 || !(_statements[_statements.Count - 1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
+            if (_statements.Count is 0 || !(_statements[^1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
                 Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async).ConfigureAwait(false), Connector);
 
             State = ReaderState.Consumed;

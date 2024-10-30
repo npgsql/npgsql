@@ -395,8 +395,8 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
         if (!lowerInclusive && !lowerExclusive)
             throw new FormatException("Malformed range literal. Missing left parenthesis or bracket.");
 
-        var upperInclusive = value[value.Length - 1] == UpperInclusiveBound;
-        var upperExclusive = value[value.Length - 1] == UpperExclusiveBound;
+        var upperInclusive = value[^1] == UpperInclusiveBound;
+        var upperExclusive = value[^1] == UpperExclusiveBound;
 
         if (!upperInclusive && !upperExclusive)
             throw new FormatException("Malformed range literal. Missing right parenthesis or bracket.");
