@@ -174,8 +174,7 @@ public class BugTests : TestBase
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1700")]
     public void Bug1700()
-    {
-        Assert.That(() =>
+        => Assert.That(() =>
         {
             using var conn = OpenConnection();
             using var tx = conn.BeginTransaction();
@@ -197,7 +196,6 @@ public class BugTests : TestBase
             // Note, we never get here
             tx.Commit();
         }, Throws.InvalidOperationException.With.Message.EqualTo("Some problem parsing the returned data"));
-    }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1964")]
     public void Bug1964()

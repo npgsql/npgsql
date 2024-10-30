@@ -406,14 +406,10 @@ class RangeTests : MultiplexingTestBase
         string? Value { get; }
 
         SimpleType(string? value)
-        {
-            Value = value;
-        }
+            => Value = value;
 
         public override string? ToString()
-        {
-            return Value;
-        }
+            => Value;
 
         class SimpleTypeConverter : TypeConverter
         {

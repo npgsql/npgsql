@@ -1734,9 +1734,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </param>
     /// <returns>The collection specified.</returns>
     public override Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
-    {
-        return NpgsqlSchema.GetSchema(async: true, this, collectionName, restrictions, cancellationToken);
-    }
+        => NpgsqlSchema.GetSchema(async: true, this, collectionName, restrictions, cancellationToken);
 
     #endregion Schema operations
 

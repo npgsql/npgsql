@@ -22,8 +22,6 @@ public class ConnectionCreationBenchmarks
     class Config : ManualConfig
     {
         public Config()
-        {
-            AddColumn(StatisticColumn.OperationsPerSecond);
-        }
+            => AddColumn(StatisticColumn.OperationsPerSecond);
     }
 }

@@ -41,9 +41,7 @@ sealed class AuthenticationMD5PasswordMessage  : AuthenticationRequestMessage
     }
 
     AuthenticationMD5PasswordMessage(byte[] salt)
-    {
-        Salt = salt;
-    }
+        => Salt = salt;
 }
 
 sealed class AuthenticationGSSMessage : AuthenticationRequestMessage
@@ -69,9 +67,7 @@ sealed class AuthenticationGSSContinueMessage : AuthenticationRequestMessage
     }
 
     AuthenticationGSSContinueMessage(byte[] authenticationData)
-    {
-        AuthenticationData = authenticationData;
-    }
+        => AuthenticationData = authenticationData;
 }
 
 sealed class AuthenticationSSPIMessage : AuthenticationRequestMessage

@@ -533,9 +533,7 @@ public sealed class NpgsqlTsQueryNot : NpgsqlTsQuery
     /// <param name="child"></param>
     public NpgsqlTsQueryNot(NpgsqlTsQuery child)
         : base(NodeKind.Not)
-    {
-        Child = child;
-    }
+        => Child = child;
 
     internal override void WriteCore(StringBuilder sb, bool first = false)
     {

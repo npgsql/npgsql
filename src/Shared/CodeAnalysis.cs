@@ -20,9 +20,7 @@ namespace System.Diagnostics.CodeAnalysis
         /// A message that contains information about the usage of dynamic code.
         /// </param>
         public RequiresDynamicCodeAttribute(string message)
-        {
-            Message = message;
-        }
+            => Message = message;
 
         /// <summary>
         /// Gets a message that contains information about the usage of dynamic code.

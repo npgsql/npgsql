@@ -168,8 +168,6 @@ public class ConnectionOpenCloseBenchmarks
     class Config : ManualConfig
     {
         public Config()
-        {
-            AddColumn(StatisticColumn.OperationsPerSecond);
-        }
+            => AddColumn(StatisticColumn.OperationsPerSecond);
     }
 }

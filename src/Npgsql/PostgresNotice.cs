@@ -198,7 +198,5 @@ public sealed class NpgsqlNoticeEventArgs : EventArgs
     public PostgresNotice Notice { get; }
 
     internal NpgsqlNoticeEventArgs(PostgresNotice notice)
-    {
-        Notice = notice;
-    }
+        => Notice = notice;
 }

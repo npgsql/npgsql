@@ -191,8 +191,7 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
         where T : class
     {
         internal override void AddMapping(TypeInfoMappingCollection mappings)
-        {
-            mappings.AddType<T>(PgTypeName, (options, mapping, _) =>
+            => mappings.AddType<T>(PgTypeName, (options, mapping, _) =>
             {
                 var pgType = mapping.GetPgType(options);
                 if (pgType is not PostgresCompositeType compositeType)
@@ -201,7 +200,6 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
                 return mapping.CreateInfo(options, new CompositeConverter<T>(
                     ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, nameTranslator, options)));
             }, isDefault: true);
-        }
 
         internal override void AddArrayMapping(TypeInfoMappingCollection mappings) => mappings.AddArrayType<T>(PgTypeName);
     }
@@ -214,8 +212,7 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
         where T : struct
     {
         internal override void AddMapping(TypeInfoMappingCollection mappings)
-        {
-            mappings.AddStructType<T>(PgTypeName, (options, mapping, dataTypeNameMatch) =>
+            => mappings.AddStructType<T>(PgTypeName, (options, mapping, dataTypeNameMatch) =>
             {
                 var pgType = mapping.GetPgType(options);
                 if (pgType is not PostgresCompositeType compositeType)
@@ -224,7 +221,6 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
                 return mapping.CreateInfo(options, new CompositeConverter<T>(
                     ReflectionCompositeInfoFactory.CreateCompositeInfo<T>(compositeType, nameTranslator, options)));
             }, isDefault: true);
-        }
 
         internal override void AddArrayMapping(TypeInfoMappingCollection mappings) => mappings.AddStructArrayType<T>(PgTypeName);
     }

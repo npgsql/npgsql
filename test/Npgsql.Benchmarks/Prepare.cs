@@ -54,9 +54,7 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
 
     [GlobalCleanup]
     public void GlobalCleanup()
-    {
-        _conn.Dispose();
-    }
+        => _conn.Dispose();
 
     public Prepare()
     {
