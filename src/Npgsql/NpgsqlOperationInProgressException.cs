@@ -16,9 +16,7 @@ public sealed class NpgsqlOperationInProgressException : NpgsqlException
     /// </param>
     public NpgsqlOperationInProgressException(NpgsqlCommand command)
         : base("A command is already in progress: " + command.CommandText)
-    {
-        CommandInProgress = command;
-    }
+        => CommandInProgress = command;
 
     internal NpgsqlOperationInProgressException(ConnectorState state)
         : base($"The connection is already in state '{state}'")

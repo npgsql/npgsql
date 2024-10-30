@@ -428,15 +428,9 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
     public override bool CanSeek => false;
 
-    public override long Seek(long offset, SeekOrigin origin)
-    {
-        throw new NotSupportedException();
-    }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
-    public override void SetLength(long value)
-    {
-        throw new NotSupportedException();
-    }
+    public override void SetLength(long value) => throw new NotSupportedException();
 
     public override long Length => throw new NotSupportedException();
 

@@ -41,17 +41,13 @@ internal sealed class TestMetrics : IDisposable
     /// <param name="reportOnStop">Report metrics to stdout when stopped.</param>
     /// <returns>A new running TestMetrics object.</returns>
     public static TestMetrics Start(TimeSpan allowedTime, bool reportOnStop)
-    {
-        return new(allowedTime, reportOnStop);
-    }
+        => new(allowedTime, reportOnStop);
 
     /// <summary>
     /// Increment the Iterations value by one.
     /// </summary>
     public void IncrementIterations()
-    {
-        Iterations++;
-    }
+        => Iterations++;
 
     /// <summary>
     /// Stop the internal stop watch and record elapsed CPU times.
@@ -81,9 +77,7 @@ internal sealed class TestMetrics : IDisposable
     /// Stop the internal stop watch and record elapsed CPU times.
     /// </summary>
     public void Dispose()
-    {
-        Stop();
-    }
+        => Stop();
 
     /// <summary>
     /// Report whether ElapsedClockTime has met or exceeded the maximum run time.
@@ -96,9 +90,7 @@ internal sealed class TestMetrics : IDisposable
     /// <param name="timeSpan"></param>
     /// <returns>The number of iterations accumulated per the time span provided.</returns>
     public double IterationsPer(TimeSpan timeSpan)
-    {
-        return (double)Iterations / ((double)stopwatch.Elapsed.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
-    }
+        => (double)Iterations / ((double)stopwatch.Elapsed.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
 
     /// <summary>
     /// Calculate the number of iterations accumulated per second.
@@ -106,9 +98,7 @@ internal sealed class TestMetrics : IDisposable
     /// </summary>
     /// <returns>The number of iterations accumulated per second.</returns>
     public double IterationsPerSecond()
-    {
-        return IterationsPer(new TimeSpan(0, 0, 1));
-    }
+        => IterationsPer(new TimeSpan(0, 0, 1));
 
     /// <summary>
     /// Calculate the number of iterations accumulated per the CPU time span provided.
@@ -116,9 +106,7 @@ internal sealed class TestMetrics : IDisposable
     /// <param name="timeSpan"></param>
     /// <returns>The number of iterations accumulated per the CPU time span provided.</returns>
     public double IterationsPerCPU(TimeSpan timeSpan)
-    {
-        return (double)Iterations / ((double)ElapsedTotalCPUTime.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
-    }
+        => (double)Iterations / ((double)ElapsedTotalCPUTime.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
 
     /// <summary>
     /// Calculate the number of iterations accumulated per CPU second.
@@ -127,9 +115,7 @@ internal sealed class TestMetrics : IDisposable
     /// <param name="timeSpan"></param>
     /// <returns>The number of iterations accumulated per CPU second.</returns>
     public double IterationsPerCPUSecond()
-    {
-        return IterationsPerCPU(new TimeSpan(0, 0, 1));
-    }
+        => IterationsPerCPU(new TimeSpan(0, 0, 1));
 
     /// <summary>
     /// Elapsed time since start.

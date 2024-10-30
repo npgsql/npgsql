@@ -16,15 +16,13 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
 
     [Test]
     public async Task Timestamp_as_ZonedDateTime()
-    {
-        await AssertType(
+        => await AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InZoneLeniently(DateTimeZoneProviders.Tzdb[TimeZone]),
             "1998-04-12 13:26:38.789+02",
             "timestamp with time zone",
             NpgsqlDbType.TimestampTz,
             DbType.DateTimeOffset,
             isNpgsqlDbTypeInferredFromClrType: false, isDefault: false);
-    }
 
     [Test]
     public Task Timestamp_as_Instant()

@@ -649,9 +649,7 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     readonly struct MissingSetterOneLongOneBool
     {
         public MissingSetterOneLongOneBool(long @long)
-        {
-            LongValue = @long;
-        }
+            => LongValue = @long;
 
         public MissingSetterOneLongOneBool(bool boolean, [PgName("boolean")]int @bool)
         {
@@ -671,9 +669,7 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         }
 
         public OneLongOneBool(long @long)
-        {
-            LongValue = @long;
-        }
+            => LongValue = @long;
 
         public OneLongOneBool(double other)
         {

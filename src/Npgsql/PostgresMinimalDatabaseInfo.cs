@@ -118,10 +118,8 @@ sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
 
     internal PostgresMinimalDatabaseInfo(NpgsqlConnector conn)
         : base(conn)
-    {
-        HasIntegerDateTimes = !conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) ||
-                              intDateTimes == "on";
-    }
+        => HasIntegerDateTimes = !conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) ||
+                                 intDateTimes == "on";
 
     // TODO, split database info and type catalog.
     internal PostgresMinimalDatabaseInfo()

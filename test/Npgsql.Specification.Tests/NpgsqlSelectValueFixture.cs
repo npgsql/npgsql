@@ -10,8 +10,7 @@ namespace Npgsql.Specification.Tests;
 public class NpgsqlSelectValueFixture : NpgsqlDbFactoryFixture, ISelectValueFixture, IDeleteFixture, IDisposable
 {
     public NpgsqlSelectValueFixture()
-    {
-        Utility.ExecuteNonQuery(this, @"
+        => Utility.ExecuteNonQuery(this, @"
 DROP TABLE IF EXISTS select_value;
 CREATE TABLE select_value
 (
@@ -39,7 +38,6 @@ INSERT INTO select_value VALUES
 (4, NULL, false, '0001-01-01', '0001-01-01', '0001-01-01', 0.000000000000001, 2.23e-308, '33221100-5544-7766-9988-aabbccddeeff', -32768, -2147483648, -9223372036854775808, 1.18e-38, NULL, '00:00:00'),
 (5, NULL, true, '9999-12-31', '9999-12-31 23:59:59.999', '9999-12-31 23:59:59.999 +14:00', 99999999999999999999.999999999999999, 1.79e308, 'ccddeeff-aabb-8899-7766-554433221100', 32767, 2147483647, 9223372036854775807, 3.40e38, NULL, '23:59:59.999');
 ");
-    }
 
     public void Dispose() => Utility.ExecuteNonQuery(this, "DROP TABLE IF EXISTS select_value;");
 

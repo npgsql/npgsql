@@ -163,10 +163,8 @@ SELECT onedim, twodim FROM (VALUES
 
     [Test]
     public void Read_IList_implementation_throws()
-    {
-        Assert.ThrowsAsync<InvalidCastException>(() =>
+        => Assert.ThrowsAsync<InvalidCastException>(() =>
             AssertTypeRead("{1,2,3}", "integer[]", ImmutableArray.Create(1, 2, 3), isDefault: false));
-    }
 
     [Test]
     public async Task Generic_IList()

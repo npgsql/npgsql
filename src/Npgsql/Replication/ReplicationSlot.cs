@@ -6,9 +6,7 @@
 public abstract class ReplicationSlot
 {
     internal ReplicationSlot(string name)
-    {
-        Name = name;
-    }
+        => Name = name;
 
     /// <summary>
     /// The name of the newly-created replication slot.

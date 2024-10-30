@@ -414,9 +414,7 @@ public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquata
             internal short Value { get; }
 
             internal WordEntryPos(short value)
-            {
-                Value = value;
-            }
+                => Value = value;
 
             /// <summary>
             /// Creates a WordEntryPos with a given position and weight.
