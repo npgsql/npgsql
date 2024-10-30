@@ -5,17 +5,8 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class RecordConverter<T> : PgStreamingConverter<T>
+sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? factory = null) : PgStreamingConverter<T>
 {
-    readonly PgSerializerOptions _options;
-    readonly Func<object[], T>? _factory;
-
-    public RecordConverter(PgSerializerOptions options, Func<object[], T>? factory = null)
-    {
-        _options = options;
-        _factory = factory;
-    }
-
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -41,11 +32,11 @@ sealed class RecordConverter<T> : PgStreamingConverter<T>
                 continue;
 
             var postgresType =
-                _options.DatabaseInfo.GetPostgresType(typeOid).GetRepresentationalType()
+                options.DatabaseInfo.GetPostgresType(typeOid).GetRepresentationalType()
                 ?? throw new NotSupportedException($"Reading isn't supported for record field {i} (unknown type OID {typeOid}");
 
-            var pgTypeId = _options.ToCanonicalTypeId(postgresType);
-            var typeInfo = _options.GetObjectOrDefaultTypeInfoInternal(pgTypeId)
+            var pgTypeId = options.ToCanonicalTypeId(postgresType);
+            var typeInfo = options.GetObjectOrDefaultTypeInfoInternal(pgTypeId)
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 
@@ -64,7 +55,7 @@ sealed class RecordConverter<T> : PgStreamingConverter<T>
             }
         }
 
-        return _factory is null ? (T)(object)result : _factory(result);
+        return factory is null ? (T)(object)result : factory(result);
     }
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)

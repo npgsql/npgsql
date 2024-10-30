@@ -5,40 +5,23 @@ using Npgsql.Internal.Converters;
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
-public class Int16 : TypeHandlerBenchmarks<short>
-{
-    public Int16() : base(new Int2Converter<short>()) { }
-}
+public class Int16() : TypeHandlerBenchmarks<short>(new Int2Converter<short>());
 
 [Config(typeof(Config))]
-public class Int32 : TypeHandlerBenchmarks<int>
-{
-    public Int32() : base(new Int4Converter<int>()) { }
-}
+public class Int32() : TypeHandlerBenchmarks<int>(new Int4Converter<int>());
 
 [Config(typeof(Config))]
-public class Int64 : TypeHandlerBenchmarks<long>
-{
-    public Int64() : base(new Int8Converter<long>()) { }
-}
+public class Int64() : TypeHandlerBenchmarks<long>(new Int8Converter<long>());
 
 [Config(typeof(Config))]
-public class Single : TypeHandlerBenchmarks<float>
-{
-    public Single() : base(new RealConverter<float>()) { }
-}
+public class Single() : TypeHandlerBenchmarks<float>(new RealConverter<float>());
 
 [Config(typeof(Config))]
-public class Double : TypeHandlerBenchmarks<double>
-{
-    public Double() : base(new DoubleConverter<double>()) { }
-}
+public class Double() : TypeHandlerBenchmarks<double>(new DoubleConverter<double>());
 
 [Config(typeof(Config))]
-public class Numeric : TypeHandlerBenchmarks<decimal>
+public class Numeric() : TypeHandlerBenchmarks<decimal>(new DecimalNumericConverter<decimal>())
 {
-    public Numeric() : base(new DecimalNumericConverter<decimal>()) { }
-
     protected override IEnumerable<decimal> ValuesOverride() =>
     [
         0.0000000000000000000000000001M,
@@ -60,7 +43,4 @@ public class Numeric : TypeHandlerBenchmarks<decimal>
 }
 
 [Config(typeof(Config))]
-public class Money : TypeHandlerBenchmarks<decimal>
-{
-    public Money() : base(new MoneyConverter<decimal>()) { }
-}
+public class Money() : TypeHandlerBenchmarks<decimal>(new MoneyConverter<decimal>());

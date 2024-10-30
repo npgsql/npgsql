@@ -187,17 +187,11 @@ static class PgConverterExtensions
     }
 }
 
-public readonly struct SizeContext
+[method: SetsRequiredMembers]
+public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
 {
-    [SetsRequiredMembers]
-    public SizeContext(DataFormat format, Size bufferRequirement)
-    {
-        Format = format;
-        BufferRequirement = bufferRequirement;
-    }
-
-    public required Size BufferRequirement { get; init; }
-    public DataFormat Format { get; }
+    public required Size BufferRequirement { get; init; } = bufferRequirement;
+    public DataFormat Format { get; } = format;
 }
 
 class MultiWriteState : IDisposable

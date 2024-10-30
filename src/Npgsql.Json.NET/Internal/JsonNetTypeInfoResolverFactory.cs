@@ -6,26 +6,18 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Json.NET.Internal;
 
-sealed class JsonNetTypeInfoResolverFactory : PgTypeInfoResolverFactory
+sealed class JsonNetTypeInfoResolverFactory(JsonSerializerSettings? settings = null) : PgTypeInfoResolverFactory
 {
-    readonly JsonSerializerSettings? _settings;
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(settings);
+    public override IPgTypeInfoResolver? CreateArrayResolver() => new ArrayResolver(settings);
 
-    public JsonNetTypeInfoResolverFactory(JsonSerializerSettings? settings = null) => _settings = settings;
-
-    public override IPgTypeInfoResolver CreateResolver() => new Resolver(_settings);
-    public override IPgTypeInfoResolver? CreateArrayResolver() => new ArrayResolver(_settings);
-
-    class Resolver : IPgTypeInfoResolver
+    class Resolver(JsonSerializerSettings? settings = null) : IPgTypeInfoResolver
     {
         TypeInfoMappingCollection? _mappings;
-        readonly JsonSerializerSettings _serializerSettings;
+        readonly JsonSerializerSettings _serializerSettings = settings ?? JsonConvert.DefaultSettings?.Invoke() ?? new JsonSerializerSettings();
         protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _serializerSettings);
 
-        public Resolver(JsonSerializerSettings? settings = null)
-        {
-            // Capture default settings during construction.
-            _serializerSettings = settings ?? JsonConvert.DefaultSettings?.Invoke() ?? new JsonSerializerSettings();
-        }
+        // Capture default settings during construction.
 
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings, JsonSerializerSettings settings)
         {
@@ -50,12 +42,10 @@ sealed class JsonNetTypeInfoResolverFactory : PgTypeInfoResolverFactory
             => Mappings.Find(type, dataTypeName, options);
     }
 
-    sealed class ArrayResolver : Resolver, IPgTypeInfoResolver
+    sealed class ArrayResolver(JsonSerializerSettings? settings = null) : Resolver(settings), IPgTypeInfoResolver
     {
         TypeInfoMappingCollection? _mappings;
         new TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(base.Mappings));
-
-        public ArrayResolver(JsonSerializerSettings? settings = null) : base(settings) {}
 
         public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options);

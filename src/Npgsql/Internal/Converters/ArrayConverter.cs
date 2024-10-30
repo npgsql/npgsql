@@ -55,40 +55,31 @@ interface IElementOperations
     ValueTask Write(bool async, PgWriter writer, object collection,  Indices indices, CancellationToken cancellationToken = default);
 }
 
-readonly struct PgArrayConverter
+readonly struct PgArrayConverter(
+    IElementOperations elemOps,
+    bool elemTypeDbNullable,
+    int? expectedDimensions,
+    BufferRequirements bufferRequirements,
+    PgTypeId elemTypeId,
+    int pgLowerBound = 1)
 {
     public const string ReadNonNullableCollectionWithNullsExceptionMessage =
         "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable collection type instead.";
     public const int MaxDimensions = 8;
 
-    readonly IElementOperations _elemOps;
-    readonly int? _expectedDimensions;
-    readonly BufferRequirements _bufferRequirements;
-    public bool ElemTypeDbNullable { get; }
-    readonly int _pgLowerBound;
-    readonly PgTypeId _elemTypeId;
-
-    public PgArrayConverter(IElementOperations elemOps, bool elemTypeDbNullable, int? expectedDimensions, BufferRequirements bufferRequirements, PgTypeId elemTypeId, int pgLowerBound = 1)
-    {
-        _elemTypeId = elemTypeId;
-        ElemTypeDbNullable = elemTypeDbNullable;
-        _pgLowerBound = pgLowerBound;
-        _elemOps = elemOps;
-        _expectedDimensions = expectedDimensions;
-        _bufferRequirements = bufferRequirements;
-    }
+    public bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
     bool IsDbNull(object values, Indices indices)
     {
         object? state = null;
-        return _elemOps.GetSizeOrDbNull(new(DataFormat.Binary, _bufferRequirements.Write), values, indices, ref state) is null;
+        return elemOps.GetSizeOrDbNull(new(DataFormat.Binary, bufferRequirements.Write), values, indices, ref state) is null;
     }
 
     Size GetElemsSize(object values, (Size, object?)[] elemStates, out bool anyElementState, DataFormat format, int count, Indices indices, int[]? lengths = null)
     {
         Debug.Assert(elemStates.Length >= count);
         var totalSize = Size.Zero;
-        var context = new SizeContext(format, _bufferRequirements.Write);
+        var context = new SizeContext(format, bufferRequirements.Write);
         anyElementState = false;
         var lastLength = lengths?[^1] ?? count;
         ref var lastIndex = ref indices.GetItem(indices.Count - 1);
@@ -97,7 +88,7 @@ readonly struct PgArrayConverter
         {
             ref var elemItem = ref elemStates[i++];
             var elemState = (object?)null;
-            var size = _elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
+            var size = elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
             anyElementState = anyElementState || elemState is not null;
             elemItem = (size ?? -1, elemState);
             totalSize = totalSize.Combine(size ?? 0);
@@ -134,7 +125,7 @@ readonly struct PgArrayConverter
 
     public Size GetSize(SizeContext context, object values, ref object? writeState)
     {
-        var count = _elemOps.GetCollectionCount(values, out var lengths);
+        var count = elemOps.GetCollectionCount(values, out var lengths);
         var dimensions = lengths?.Length ?? 1;
         if (dimensions > MaxDimensions)
             ThrowHelper.ThrowArgumentException($"Postgres arrays can have at most {MaxDimensions} dimensions.", nameof(values));
@@ -145,7 +136,7 @@ readonly struct PgArrayConverter
 
         Size elemsSize;
         var indices = Indices.Create(dimensions);
-        if (_bufferRequirements.Write is { Kind: SizeKind.Exact } req)
+        if (bufferRequirements.Write is { Kind: SizeKind.Exact } req)
         {
             elemsSize = GetFixedElemsSize(req, values, count, indices, lengths);
             writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths, ArrayPool = null, Data = default, AnyWriteState = false };
@@ -183,7 +174,7 @@ readonly struct PgArrayConverter
             dimLengths[i] = lastDimLength;
         }
 
-        var collection = _elemOps.CreateCollection(dimLengths.Slice(0, dimensions));
+        var collection = elemOps.CreateCollection(dimLengths.Slice(0, dimensions));
         Debug.Assert(dimensions <= 1 || collection is Array a && a.Rank == dimensions);
         return collection;
     }
@@ -200,10 +191,10 @@ readonly struct PgArrayConverter
         var containsNulls = reader.ReadInt32() is 1;
         _ = reader.ReadUInt32(); // Element OID.
 
-        if (dimensions is not 0 && _expectedDimensions is not null && dimensions != _expectedDimensions)
+        if (dimensions is not 0 && expectedDimensions is not null && dimensions != expectedDimensions)
             ThrowHelper.ThrowInvalidCastException(
                 $"Cannot read an array value with {dimensions} dimension{(dimensions == 1 ? "" : "s")} into a "
-                + $"collection type with {_expectedDimensions} dimension{(_expectedDimensions == 1 ? "" : "s")}. "
+                + $"collection type with {expectedDimensions} dimension{(expectedDimensions == 1 ? "" : "s")}. "
                 + $"Call GetValue or a version of GetFieldValue<TElement[,,,]> with the commas being the expected amount of dimensions.");
 
         if (containsNulls && !ElemTypeDbNullable)
@@ -217,7 +208,7 @@ readonly struct PgArrayConverter
         if (dimensions is 0 || lastDimLength is 0)
             return collection;
 
-        _ = _elemOps.GetCollectionCount(collection, out var dimLengths);
+        _ = elemOps.GetCollectionCount(collection, out var dimLengths);
         var indices = Indices.Create(dimensions);
 
         do
@@ -229,10 +220,10 @@ readonly struct PgArrayConverter
             var isDbNull = length == -1;
             if (!isDbNull)
             {
-                var scope = await reader.BeginNestedRead(async, length, _bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
+                var scope = await reader.BeginNestedRead(async, length, bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
+                    await elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -243,7 +234,7 @@ readonly struct PgArrayConverter
                 }
             }
             else
-                await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
+                await elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
         while (++indices.GetItem(indices.Count - 1) < lastDimLength || (dimLengths is not null && CarryIndices(dimLengths, indices)));
@@ -285,11 +276,11 @@ readonly struct PgArrayConverter
 
         writer.WriteInt32(dims); // Dimensions
         writer.WriteInt32(0); // Flags (not really used)
-        writer.WriteAsOid(_elemTypeId);
+        writer.WriteAsOid(elemTypeId);
         for (var dim = 0; dim < dims; dim++)
         {
             writer.WriteInt32(state?.Lengths?[dim] ?? count);
-            writer.WriteInt32(_pgLowerBound); // Lower bound
+            writer.WriteInt32(pgLowerBound); // Lower bound
         }
 
         // We can stop here for empty collections.
@@ -310,7 +301,7 @@ readonly struct PgArrayConverter
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
             var elem = elemData?[i++];
-            var size = elem?.Size ?? (elemTypeDbNullable && IsDbNull(values, indices) ? -1 : _bufferRequirements.Write);
+            var size = elem?.Size ?? (elemTypeDbNullable && IsDbNull(values, indices) ? -1 : bufferRequirements.Write);
             if (size.Kind is SizeKind.Unknown)
                 throw new NotImplementedException();
 
@@ -318,8 +309,8 @@ readonly struct PgArrayConverter
             writer.WriteInt32(length);
             if (length != -1)
             {
-                using var _ = await writer.BeginNestedWrite(async, _bufferRequirements.Write, length, elem?.WriteState, cancellationToken).ConfigureAwait(false);
-                await _elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
+                using var _ = await writer.BeginNestedWrite(async, bufferRequirements.Write, length, elem?.WriteState, cancellationToken).ConfigureAwait(false);
+                await elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
             }
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
@@ -429,15 +420,12 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     }
 }
 
-sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class
+sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
+    : ArrayConverter<T>(expectedDimensions: effectiveType is null ? 1 : effectiveType.IsArray ? effectiveType.GetArrayRank() : null,
+        elemResolution, pgLowerBound), IElementOperations
+    where T : class
 {
-    readonly PgConverter<TElement> _elemConverter;
-
-    public ArrayBasedArrayConverter(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
-        : base(
-            expectedDimensions: effectiveType is null ? 1 : effectiveType.IsArray ? effectiveType.GetArrayRank() : null,
-            elemResolution, pgLowerBound)
-        => _elemConverter = elemResolution.GetConverter<TElement>();
+    readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static TElement? GetValue(object collection, Indices indices)
@@ -533,13 +521,11 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
     }
 }
 
-sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class
+sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemResolution, int pgLowerBound = 1)
+    : ArrayConverter<T>(expectedDimensions: 1, elemResolution, pgLowerBound), IElementOperations
+    where T : class
 {
-    readonly PgConverter<TElement> _elemConverter;
-
-    public ListBasedArrayConverter(PgConverterResolution elemResolution, int pgLowerBound = 1)
-        : base(expectedDimensions: 1, elemResolution, pgLowerBound)
-        => _elemConverter = elemResolution.GetConverter<TElement>();
+    readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static TElement? GetValue(object collection, int index)
@@ -609,14 +595,11 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
     }
 }
 
-sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<T> where T : class
+sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeInfo, Type effectiveType)
+    : PgComposingConverterResolver<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
+        elementTypeInfo)
+    where T : class
 {
-    readonly Type _effectiveType;
-
-    public ArrayConverterResolver(PgResolverTypeInfo elementTypeInfo, Type effectiveType)
-        : base(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null, elementTypeInfo)
-        => _effectiveType = effectiveType;
-
     PgSerializerOptions Options => EffectiveTypeInfo.Options;
 
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
@@ -625,7 +608,7 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
     {
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
-            return new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, _effectiveType);
+            return new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, effectiveType);
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
             return new ListBasedArrayConverter<T, TElement>(effectiveResolution);
@@ -682,17 +665,11 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
 }
 
 // T is Array as we only know what type it will be after reading 'contains nulls'.
-sealed class PolymorphicArrayConverter<TBase> : PgStreamingConverter<TBase>
+sealed class PolymorphicArrayConverter<TBase>(
+    PgConverter<TBase> structElementCollectionConverter,
+    PgConverter<TBase> nullableElementCollectionConverter)
+    : PgStreamingConverter<TBase>
 {
-    readonly PgConverter<TBase> _structElementCollectionConverter;
-    readonly PgConverter<TBase> _nullableElementCollectionConverter;
-
-    public PolymorphicArrayConverter(PgConverter<TBase> structElementCollectionConverter, PgConverter<TBase> nullableElementCollectionConverter)
-    {
-        _structElementCollectionConverter = structElementCollectionConverter;
-        _nullableElementCollectionConverter = nullableElementCollectionConverter;
-    }
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.Create(read: sizeof(int) + sizeof(int), write: Size.Unknown);
@@ -705,8 +682,8 @@ sealed class PolymorphicArrayConverter<TBase> : PgStreamingConverter<TBase>
         var containsNulls = reader.ReadInt32() is 1;
         reader.Rewind(sizeof(int) + sizeof(int));
         return containsNulls
-            ? _nullableElementCollectionConverter.Read(reader)
-            : _structElementCollectionConverter.Read(reader);
+            ? nullableElementCollectionConverter.Read(reader)
+            : structElementCollectionConverter.Read(reader);
     }
 
     public override ValueTask<TBase> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
@@ -715,8 +692,8 @@ sealed class PolymorphicArrayConverter<TBase> : PgStreamingConverter<TBase>
         var containsNulls = reader.ReadInt32() is 1;
         reader.Rewind(sizeof(int) + sizeof(int));
         return containsNulls
-            ? _nullableElementCollectionConverter.ReadAsync(reader, cancellationToken)
-            : _structElementCollectionConverter.ReadAsync(reader, cancellationToken);
+            ? nullableElementCollectionConverter.ReadAsync(reader, cancellationToken)
+            : structElementCollectionConverter.ReadAsync(reader, cancellationToken);
     }
 
     public override Size GetSize(SizeContext context, TBase value, ref object? writeState)

@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types;
 /// <summary>
 /// https://www.postgresql.org/docs/current/static/datatype-numeric.html
 /// </summary>
-public class NumericTypeTests : MultiplexingTestBase
+public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public async Task Int16()
@@ -108,6 +108,4 @@ public class NumericTypeTests : MultiplexingTestBase
     [TestCase(0L, long.MaxValue + 1D, "decimal")]
     public Task Read_overflow<T>(T _, double value, string pgTypeName)
         => AssertTypeUnsupportedRead<T, OverflowException>(value.ToString(CultureInfo.InvariantCulture), pgTypeName);
-
-    public NumericTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

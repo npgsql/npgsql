@@ -2391,23 +2391,17 @@ LANGUAGE plpgsql VOLATILE";
 
 #region Mock Type Handlers
 
-sealed class ExplodingTypeHandlerResolverFactory : PgTypeInfoResolverFactory
+sealed class ExplodingTypeHandlerResolverFactory(bool safe) : PgTypeInfoResolverFactory
 {
-    readonly bool _safe;
-    public ExplodingTypeHandlerResolverFactory(bool safe) => _safe = safe;
-
-    public override IPgTypeInfoResolver CreateResolver() => new Resolver(_safe);
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(safe);
     public override IPgTypeInfoResolver? CreateArrayResolver() => null;
 
-    sealed class Resolver : IPgTypeInfoResolver
+    sealed class Resolver(bool safe) : IPgTypeInfoResolver
     {
-        readonly bool _safe;
-        public Resolver(bool safe) => _safe = safe;
-
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
             if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                return new(options, new ExplodingTypeHandler(_safe), DataTypeNames.Int4);
+                return new(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
 
             return null;
         }

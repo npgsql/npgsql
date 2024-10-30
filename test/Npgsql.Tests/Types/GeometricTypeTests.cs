@@ -10,7 +10,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-geometric.html
 /// </remarks>
-class GeometricTypeTests : MultiplexingTestBase
+class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
     public Task Point()
@@ -135,6 +135,4 @@ class GeometricTypeTests : MultiplexingTestBase
             "<(1,2),0.5>",
             "circle",
             NpgsqlDbType.Circle);
-
-    public GeometricTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

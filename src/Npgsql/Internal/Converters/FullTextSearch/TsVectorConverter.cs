@@ -8,13 +8,8 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
+sealed class TsVectorConverter(Encoding encoding) : PgStreamingConverter<NpgsqlTsVector>
 {
-    readonly Encoding _encoding;
-
-    public TsVectorConverter(Encoding encoding)
-        => _encoding = encoding;
-
     public override NpgsqlTsVector Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -32,8 +27,8 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
         for (var i = 0; i < numLexemes; i++)
         {
             var lexemeString = async
-                ? await reader.ReadNullTerminatedStringAsync(_encoding, cancellationToken).ConfigureAwait(false)
-                : reader.ReadNullTerminatedString(_encoding);
+                ? await reader.ReadNullTerminatedStringAsync(encoding, cancellationToken).ConfigureAwait(false)
+                : reader.ReadNullTerminatedString(encoding);
 
             if (reader.ShouldBuffer(sizeof(short)))
                 await reader.Buffer(async, sizeof(short), cancellationToken).ConfigureAwait(false);
@@ -70,7 +65,7 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
     {
         var size = 4;
         foreach (var l in value)
-            size += _encoding.GetByteCount(l.Text) + 1 + 2 + l.Count * 2;
+            size += encoding.GetByteCount(l.Text) + 1 + 2 + l.Count * 2;
 
         return size;
     }
@@ -90,9 +85,9 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
         foreach (var lexeme in value)
         {
             if (async)
-                await writer.WriteCharsAsync(lexeme.Text.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
+                await writer.WriteCharsAsync(lexeme.Text.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
             else
-                writer.WriteChars(lexeme.Text.AsMemory().Span, _encoding);
+                writer.WriteChars(lexeme.Text.AsMemory().Span, encoding);
 
             if (writer.ShouldFlush(sizeof(byte) + sizeof(short)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);

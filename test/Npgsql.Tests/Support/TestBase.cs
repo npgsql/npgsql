@@ -452,17 +452,12 @@ public abstract class TestBase
         return Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync())!;
     }
 
-    class SimpleComparer<T> : IEqualityComparer<T>
+    class SimpleComparer<T>(Func<T, T, bool> comparerDelegate) : IEqualityComparer<T>
     {
-        readonly Func<T, T, bool> _comparerDelegate;
-
-        public SimpleComparer(Func<T, T, bool> comparerDelegate)
-            => _comparerDelegate = comparerDelegate;
-
         public bool Equals(T? x, T? y)
             => x is null
                 ? y is null
-                : y is not null && _comparerDelegate(x, y);
+                : y is not null && comparerDelegate(x, y);
 
         public int GetHashCode(T obj) => throw new NotSupportedException();
     }

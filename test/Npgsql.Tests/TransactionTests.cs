@@ -12,7 +12,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class TransactionTests : MultiplexingTestBase
+public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test, Description("Basic insert within a committed transaction")]
     public async Task Commit([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
@@ -746,6 +746,4 @@ public class TransactionTests : MultiplexingTestBase
             t.Rollback();
         }
     }
-
-    public TransactionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

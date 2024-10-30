@@ -1967,11 +1967,9 @@ enum ConnectorBindingScope
     Temporary
 }
 
-readonly struct EndScopeDisposable : IDisposable
+readonly struct EndScopeDisposable(NpgsqlConnection connection) : IDisposable
 {
-    readonly NpgsqlConnection _connection;
-    public EndScopeDisposable(NpgsqlConnection connection) => _connection = connection;
-    public void Dispose() => _connection.EndBindingScope(ConnectorBindingScope.Temporary);
+    public void Dispose() => connection.EndBindingScope(ConnectorBindingScope.Temporary);
 }
 
 #region Delegates

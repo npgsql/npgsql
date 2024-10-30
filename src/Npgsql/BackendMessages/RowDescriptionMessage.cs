@@ -11,18 +11,11 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.BackendMessages;
 
-readonly struct ColumnInfo
+readonly struct ColumnInfo(PgConverterInfo converterInfo, DataFormat dataFormat, bool asObject)
 {
-    public ColumnInfo(PgConverterInfo converterInfo, DataFormat dataFormat, bool asObject)
-    {
-        ConverterInfo = converterInfo;
-        DataFormat = dataFormat;
-        AsObject = asObject;
-    }
-
-    public PgConverterInfo ConverterInfo { get; }
-    public DataFormat DataFormat { get; }
-    public bool AsObject { get; }
+    public PgConverterInfo ConverterInfo { get; } = converterInfo;
+    public DataFormat DataFormat { get; } = dataFormat;
+    public bool AsObject { get; } = asObject;
 }
 
 /// <summary>

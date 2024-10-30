@@ -5,11 +5,9 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-abstract class PolymorphicConverterResolver<TBase> : PgConverterResolver<TBase>
+abstract class PolymorphicConverterResolver<TBase>(PgTypeId pgTypeId) : PgConverterResolver<TBase>
 {
-    protected PolymorphicConverterResolver(PgTypeId pgTypeId) => PgTypeId = pgTypeId;
-
-    protected PgTypeId PgTypeId { get; }
+    protected PgTypeId PgTypeId { get; } = pgTypeId;
 
     protected abstract PgConverter Get(Field? field);
 
