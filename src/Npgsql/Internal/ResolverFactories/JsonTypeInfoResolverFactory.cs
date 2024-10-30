@@ -6,14 +6,10 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.ResolverFactories;
 
-sealed class JsonTypeInfoResolverFactory : PgTypeInfoResolverFactory
+sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOptions = null) : PgTypeInfoResolverFactory
 {
-    readonly JsonSerializerOptions? _serializerOptions;
-
-    public JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOptions = null) => _serializerOptions = serializerOptions;
-
-    public override IPgTypeInfoResolver CreateResolver() => new Resolver(_serializerOptions);
-    public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver(_serializerOptions);
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(serializerOptions);
+    public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver(serializerOptions);
 
     class Resolver : IPgTypeInfoResolver
     {
@@ -73,15 +69,10 @@ sealed class JsonTypeInfoResolverFactory : PgTypeInfoResolverFactory
         }
     }
 
-    sealed class ArrayResolver : Resolver, IPgTypeInfoResolver
+    sealed class ArrayResolver(JsonSerializerOptions? serializerOptions = null) : Resolver(serializerOptions), IPgTypeInfoResolver
     {
         TypeInfoMappingCollection? _mappings;
         new TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(base.Mappings));
-
-        public ArrayResolver(JsonSerializerOptions? serializerOptions = null)
-            : base(serializerOptions)
-        {
-        }
 
         public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options);

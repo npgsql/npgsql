@@ -3,17 +3,8 @@ using System;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-sealed class DateTimeConverter : PgBufferedConverter<DateTime>
+sealed class DateTimeConverter(bool dateTimeInfinityConversions, DateTimeKind kind) : PgBufferedConverter<DateTime>
 {
-    readonly bool _dateTimeInfinityConversions;
-    readonly DateTimeKind _kind;
-
-    public DateTimeConverter(bool dateTimeInfinityConversions, DateTimeKind kind)
-    {
-        _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        _kind = kind;
-    }
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
@@ -21,18 +12,14 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
     }
 
     protected override DateTime ReadCore(PgReader reader)
-        => PgTimestamp.Decode(reader.ReadInt64(), _kind, _dateTimeInfinityConversions);
+        => PgTimestamp.Decode(reader.ReadInt64(), kind, dateTimeInfinityConversions);
 
     protected override void WriteCore(PgWriter writer, DateTime value)
-        => writer.WriteInt64(PgTimestamp.Encode(value, _dateTimeInfinityConversions));
+        => writer.WriteInt64(PgTimestamp.Encode(value, dateTimeInfinityConversions));
 }
 
-sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
+sealed class DateTimeOffsetConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<DateTimeOffset>
 {
-    readonly bool _dateTimeInfinityConversions;
-    public DateTimeOffsetConverter(bool dateTimeInfinityConversions)
-        => _dateTimeInfinityConversions = dateTimeInfinityConversions;
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
@@ -40,14 +27,14 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
     }
 
     protected override DateTimeOffset ReadCore(PgReader reader)
-        => new(PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions), TimeSpan.Zero);
+        => new(PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, dateTimeInfinityConversions), TimeSpan.Zero);
 
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
     {
         if (value.Offset != TimeSpan.Zero)
             throw new ArgumentException($"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. ", nameof(value));
 
-        writer.WriteInt64(PgTimestamp.Encode(value.DateTime, _dateTimeInfinityConversions));
+        writer.WriteInt64(PgTimestamp.Encode(value.DateTime, dateTimeInfinityConversions));
 
     }
 }

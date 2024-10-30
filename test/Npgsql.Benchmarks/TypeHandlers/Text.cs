@@ -6,10 +6,8 @@ using Npgsql.Internal.Converters;
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
-public class Text : TypeHandlerBenchmarks<string>
+public class Text() : TypeHandlerBenchmarks<string>(new StringTextConverter(Encoding.UTF8))
 {
-    public Text() : base(new StringTextConverter(Encoding.UTF8)) { }
-
     protected override IEnumerable<string> ValuesOverride()
     {
         for (var i = 1; i <= 10000; i *= 10)

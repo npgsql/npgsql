@@ -6,11 +6,8 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-public class JsonPathTests : MultiplexingTestBase
+public class JsonPathTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
-    public JsonPathTests(MultiplexingMode multiplexingMode)
-        : base(multiplexingMode) { }
-
     static readonly object[] ReadWriteCases =
     [
         new object[] { "'$'", "$" },

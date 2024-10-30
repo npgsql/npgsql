@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class NumericTests : MultiplexingTestBase
+public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     static readonly object[] ReadWriteCases =
     [
@@ -212,6 +212,4 @@ public class NumericTests : MultiplexingTestBase
 
         Assert.That(value.Scale, Is.EqualTo(2));
     }
-
-    public NumericTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

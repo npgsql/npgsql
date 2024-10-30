@@ -14,7 +14,7 @@ namespace Npgsql.Tests;
 /// Note that this API is also available on .NET Framework.
 /// For the old DataTable-based API, see <see cref="ReaderOldSchemaTests"/>.
 /// </summary>
-public class ReaderNewSchemaTests : SyncOrAsyncTestBase
+public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase(syncOrAsync)
 {
     // ReSharper disable once InconsistentNaming
     [Test]
@@ -792,8 +792,6 @@ CREATE TABLE {table2} (foo INTEGER)");
     {
         public int Foo { get; set; }
     }
-
-    public ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
     async Task<ReadOnlyCollection<Schema.NpgsqlDbColumn>> GetColumnSchema(NpgsqlDataReader reader)
         => IsAsync ? await reader.GetColumnSchemaAsync() : reader.GetColumnSchema();

@@ -5,13 +5,8 @@ using Npgsql.NodaTime.Properties;
 
 namespace Npgsql.NodaTime.Internal;
 
-sealed class LocalDateConverter : PgBufferedConverter<LocalDate>
+sealed class LocalDateConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<LocalDate>
 {
-    readonly bool _dateTimeInfinityConversions;
-
-    public LocalDateConverter(bool dateTimeInfinityConversions)
-        => _dateTimeInfinityConversions = dateTimeInfinityConversions;
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
@@ -21,10 +16,10 @@ sealed class LocalDateConverter : PgBufferedConverter<LocalDate>
     protected override LocalDate ReadCore(PgReader reader)
         => reader.ReadInt32() switch
         {
-            int.MaxValue => _dateTimeInfinityConversions
+            int.MaxValue => dateTimeInfinityConversions
                 ? LocalDate.MaxIsoValue
                 : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue),
-            int.MinValue => _dateTimeInfinityConversions
+            int.MinValue => dateTimeInfinityConversions
                 ? LocalDate.MinIsoValue
                 : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue),
             var value => new LocalDate().PlusDays(value + 730119)
@@ -32,7 +27,7 @@ sealed class LocalDateConverter : PgBufferedConverter<LocalDate>
 
     protected override void WriteCore(PgWriter writer, LocalDate value)
     {
-        if (_dateTimeInfinityConversions)
+        if (dateTimeInfinityConversions)
         {
             if (value == LocalDate.MaxIsoValue)
             {

@@ -11,7 +11,7 @@ namespace Npgsql.Tests;
 /// This tests the .NET Framework DbDataReader schema/metadata API, which returns DataTable.
 /// For the new CoreCLR API, see <see cref="ReaderNewSchemaTests"/>.
 /// </summary>
-public class ReaderOldSchemaTests : SyncOrAsyncTestBase
+public class ReaderOldSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase(syncOrAsync)
 {
     [Test]
     public async Task Primary_key_composite()
@@ -239,8 +239,6 @@ SELECT 1 AS some_other_column, 2";
         Assert.That(dt.Rows[2]["BaseColumnName"].ToString(), Is.EqualTo("date"));
         Assert.That(dt.Rows[2]["ColumnName"].ToString(), Is.EqualTo("date"));
     }
-
-    public ReaderOldSchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
     async Task<DataTable?> GetSchemaTable(NpgsqlDataReader dr) => IsAsync ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
 }

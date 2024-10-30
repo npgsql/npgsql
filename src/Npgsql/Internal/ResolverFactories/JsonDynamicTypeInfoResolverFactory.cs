@@ -12,21 +12,14 @@ namespace Npgsql.Internal.ResolverFactories;
 
 [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
 [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-sealed class JsonDynamicTypeInfoResolverFactory : PgTypeInfoResolverFactory
+sealed class JsonDynamicTypeInfoResolverFactory(
+    Type[]? jsonbClrTypes = null,
+    Type[]? jsonClrTypes = null,
+    JsonSerializerOptions? serializerOptions = null)
+    : PgTypeInfoResolverFactory
 {
-    readonly Type[]? _jsonbClrTypes;
-    readonly Type[]? _jsonClrTypes;
-    readonly JsonSerializerOptions? _serializerOptions;
-
-    public JsonDynamicTypeInfoResolverFactory(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
-    {
-        _jsonbClrTypes = jsonbClrTypes;
-        _jsonClrTypes = jsonClrTypes;
-        _serializerOptions = serializerOptions;
-    }
-
-    public override IPgTypeInfoResolver CreateResolver() => new Resolver(_jsonbClrTypes, _jsonClrTypes, _serializerOptions);
-    public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver(_jsonbClrTypes, _jsonClrTypes, _serializerOptions);
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(jsonbClrTypes, jsonClrTypes, serializerOptions);
+    public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver(jsonbClrTypes, jsonClrTypes, serializerOptions);
 
     // Split into a nested class to avoid erroneous trimming/AOT warnings because the JsonDynamicTypeInfoResolverFactory is marked as incompatible.
     internal static class Support
@@ -45,9 +38,10 @@ sealed class JsonDynamicTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    class Resolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
+    class Resolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
+        : DynamicTypeInfoResolver, IPgTypeInfoResolver
     {
-        JsonSerializerOptions? _serializerOptions;
+        JsonSerializerOptions? _serializerOptions = serializerOptions;
         JsonSerializerOptions SerializerOptions
     #if NET7_0_OR_GREATER
             => _serializerOptions ??= JsonSerializerOptions.Default;
@@ -55,18 +49,11 @@ sealed class JsonDynamicTypeInfoResolverFactory : PgTypeInfoResolverFactory
             => _serializerOptions ??= new();
     #endif
 
-        readonly Type[] _jsonbClrTypes;
-        readonly Type[] _jsonClrTypes;
+        readonly Type[] _jsonbClrTypes = jsonbClrTypes ?? [];
+        readonly Type[] _jsonClrTypes = jsonClrTypes ?? [];
         TypeInfoMappingCollection? _mappings;
 
         protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _jsonbClrTypes, _jsonClrTypes, SerializerOptions);
-
-        public Resolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
-        {
-            _jsonbClrTypes = jsonbClrTypes ?? [];
-            _jsonClrTypes = jsonClrTypes ?? [];
-            _serializerOptions = serializerOptions;
-        }
 
         public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options) ?? base.GetTypeInfo(type, dataTypeName, options);
@@ -148,13 +135,11 @@ sealed class JsonDynamicTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    sealed class ArrayResolver : Resolver, IPgTypeInfoResolver
+    sealed class ArrayResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
+        : Resolver(jsonbClrTypes, jsonClrTypes, serializerOptions), IPgTypeInfoResolver
     {
         TypeInfoMappingCollection? _mappings;
         new TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(base.Mappings), base.Mappings);
-
-        public ArrayResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
-            : base(jsonbClrTypes, jsonClrTypes, serializerOptions) { }
 
         public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options) ?? base.GetTypeInfo(type, dataTypeName, options);

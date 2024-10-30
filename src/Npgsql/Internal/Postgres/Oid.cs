@@ -4,13 +4,11 @@ using System.Diagnostics.CodeAnalysis;
 namespace Npgsql.Internal.Postgres;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public readonly struct Oid: IEquatable<Oid>
+public readonly struct Oid(uint value) : IEquatable<Oid>
 {
-    public Oid(uint value) => Value = value;
-
     public static explicit operator uint(Oid oid) => oid.Value;
     public static implicit operator Oid(uint oid) => new(oid);
-    public uint Value { get; init; }
+    public uint Value { get; init; } = value;
     public static Oid Unspecified => new(0);
 
     public override string ToString() => Value.ToString();

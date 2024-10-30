@@ -4,14 +4,9 @@ using Npgsql.Properties;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
+sealed class DateTimeDateConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<DateTime>
 {
-    readonly bool _dateTimeInfinityConversions;
-
     static readonly DateTime BaseValue = new(2000, 1, 1, 0, 0, 0);
-
-    public DateTimeDateConverter(bool dateTimeInfinityConversions)
-        => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
@@ -22,10 +17,10 @@ sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
     protected override DateTime ReadCore(PgReader reader)
         => reader.ReadInt32() switch
         {
-            int.MaxValue => _dateTimeInfinityConversions
+            int.MaxValue => dateTimeInfinityConversions
                 ? DateTime.MaxValue
                 : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
-            int.MinValue => _dateTimeInfinityConversions
+            int.MinValue => dateTimeInfinityConversions
                 ? DateTime.MinValue
                 : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
             var value => BaseValue + TimeSpan.FromDays(value)
@@ -33,7 +28,7 @@ sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
 
     protected override void WriteCore(PgWriter writer, DateTime value)
     {
-        if (_dateTimeInfinityConversions)
+        if (dateTimeInfinityConversions)
         {
             if (value == DateTime.MaxValue)
             {
@@ -52,14 +47,9 @@ sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
     }
 }
 
-sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
+sealed class DateOnlyDateConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<DateOnly>
 {
-    readonly bool _dateTimeInfinityConversions;
-
     static readonly DateOnly BaseValue = new(2000, 1, 1);
-
-    public DateOnlyDateConverter(bool dateTimeInfinityConversions)
-        => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
@@ -70,10 +60,10 @@ sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
     protected override DateOnly ReadCore(PgReader reader)
         => reader.ReadInt32() switch
         {
-            int.MaxValue => _dateTimeInfinityConversions
+            int.MaxValue => dateTimeInfinityConversions
                 ? DateOnly.MaxValue
                 : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
-            int.MinValue => _dateTimeInfinityConversions
+            int.MinValue => dateTimeInfinityConversions
                 ? DateOnly.MinValue
                 : throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue),
             var value => BaseValue.AddDays(value)
@@ -81,7 +71,7 @@ sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
 
     protected override void WriteCore(PgWriter writer, DateOnly value)
     {
-        if (_dateTimeInfinityConversions)
+        if (dateTimeInfinityConversions)
         {
             if (value == DateOnly.MaxValue)
             {

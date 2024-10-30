@@ -59,22 +59,15 @@ public static class PgConverterFactory
 
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public readonly struct TypeInfoMapping
+public readonly struct TypeInfoMapping(Type type, string dataTypeName, TypeInfoFactory factory)
 {
-    public TypeInfoMapping(Type type, string dataTypeName, TypeInfoFactory factory)
-    {
-        Type = type;
-        // For objects it makes no sense to have clr type only matches by default, there are too many implementations.
-        MatchRequirement = type == typeof(object) ? MatchRequirement.DataTypeName : MatchRequirement.All;
-        DataTypeName = Postgres.DataTypeName.NormalizeName(dataTypeName);
-        Factory = factory;
-    }
+    // For objects it makes no sense to have clr type only matches by default, there are too many implementations.
 
-    public TypeInfoFactory Factory { get; init; }
-    public Type Type { get; init; }
-    public string DataTypeName { get; init; }
+    public TypeInfoFactory Factory { get; init; } = factory;
+    public Type Type { get; init; } = type;
+    public string DataTypeName { get; init; } = Postgres.DataTypeName.NormalizeName(dataTypeName);
 
-    public MatchRequirement MatchRequirement { get; init; }
+    public MatchRequirement MatchRequirement { get; init; } = type == typeof(object) ? MatchRequirement.DataTypeName : MatchRequirement.All;
     public Func<Type?, bool>? TypeMatchPredicate { get; init; }
 
     public bool TypeEquals(Type type) => TypeMatchPredicate?.Invoke(type) ?? Type == type;

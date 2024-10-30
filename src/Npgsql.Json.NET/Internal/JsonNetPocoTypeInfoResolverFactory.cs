@@ -9,43 +9,29 @@ namespace Npgsql.Json.NET.Internal;
 
 [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
 [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-sealed class JsonNetPocoTypeInfoResolverFactory : PgTypeInfoResolverFactory
+sealed class JsonNetPocoTypeInfoResolverFactory(
+    Type[]? jsonbClrTypes = null,
+    Type[]? jsonClrTypes = null,
+    JsonSerializerSettings? serializerSettings = null)
+    : PgTypeInfoResolverFactory
 {
-    readonly Type[]? _jsonbClrTypes;
-    readonly Type[]? _jsonClrTypes;
-    readonly JsonSerializerSettings? _serializerSettings;
-
-    public JsonNetPocoTypeInfoResolverFactory(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? serializerSettings = null)
-    {
-        _jsonbClrTypes = jsonbClrTypes;
-        _jsonClrTypes = jsonClrTypes;
-        _serializerSettings = serializerSettings;
-    }
-
-    public override IPgTypeInfoResolver CreateResolver() => new Resolver(_jsonbClrTypes, _jsonClrTypes, _serializerSettings);
-    public override IPgTypeInfoResolver? CreateArrayResolver() => new ArrayResolver(_jsonbClrTypes, _jsonClrTypes, _serializerSettings);
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver(jsonbClrTypes, jsonClrTypes, serializerSettings);
+    public override IPgTypeInfoResolver? CreateArrayResolver() => new ArrayResolver(jsonbClrTypes, jsonClrTypes, serializerSettings);
 
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    class Resolver : DynamicTypeInfoResolver, IPgTypeInfoResolver
+    class Resolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? serializerSettings = null)
+        : DynamicTypeInfoResolver, IPgTypeInfoResolver
     {
-        readonly Type[]? _jsonbClrTypes;
-        readonly Type[]? _jsonClrTypes;
-        readonly JsonSerializerSettings _serializerSettings;
+        readonly JsonSerializerSettings _serializerSettings = serializerSettings ?? JsonConvert.DefaultSettings?.Invoke() ?? new JsonSerializerSettings();
 
         TypeInfoMappingCollection? _mappings;
-        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _jsonbClrTypes ?? [], _jsonClrTypes ?? [], _serializerSettings);
+        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), jsonbClrTypes ?? [], jsonClrTypes ?? [], _serializerSettings);
 
         const string JsonDataTypeName = "pg_catalog.json";
         const string JsonbDataTypeName = "pg_catalog.jsonb";
 
-        public Resolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? serializerSettings = null)
-        {
-            _jsonbClrTypes = jsonbClrTypes;
-            _jsonClrTypes = jsonClrTypes;
-            // Capture default settings during construction.
-            _serializerSettings = serializerSettings ?? JsonConvert.DefaultSettings?.Invoke() ?? new JsonSerializerSettings();
-        }
+        // Capture default settings during construction.
 
         TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes, JsonSerializerSettings serializerSettings)
         {
@@ -96,15 +82,11 @@ sealed class JsonNetPocoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    sealed class ArrayResolver : Resolver, IPgTypeInfoResolver
+    sealed class ArrayResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? serializerSettings = null)
+        : Resolver(jsonbClrTypes, jsonClrTypes, serializerSettings), IPgTypeInfoResolver
     {
         TypeInfoMappingCollection? _mappings;
         new TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(base.Mappings), base.Mappings);
-
-        public ArrayResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerSettings? serializerSettings = null)
-            : base(jsonbClrTypes, jsonClrTypes, serializerSettings)
-        {
-        }
 
         public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => Mappings.Find(type, dataTypeName, options) ?? base.GetTypeInfo(type, dataTypeName, options);

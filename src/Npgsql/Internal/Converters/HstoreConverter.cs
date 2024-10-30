@@ -7,17 +7,10 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<KeyValuePair<string, string?>>
+sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair<string, string?>>, T>? convert = null)
+    : PgStreamingConverter<T>
+    where T : ICollection<KeyValuePair<string, string?>>
 {
-    readonly Encoding _encoding;
-    readonly Func<ICollection<KeyValuePair<string, string?>>, T>? _convert;
-
-    public HstoreConverter(Encoding encoding, Func<ICollection<KeyValuePair<string, string?>>, T>? convert = null)
-    {
-        _encoding = encoding;
-        _convert = convert;
-    }
-
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
 
@@ -40,8 +33,8 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
             if (kv.Key is null)
                 throw new ArgumentException("Hstore doesn't support null keys", nameof(value));
 
-            var keySize = _encoding.GetByteCount(kv.Key);
-            var valueSize = kv.Value is null ? -1 : _encoding.GetByteCount(kv.Value);
+            var keySize = encoding.GetByteCount(kv.Key);
+            var valueSize = kv.Value is null ? -1 : encoding.GetByteCount(kv.Value);
             totalSize += keySize + (valueSize is -1 ? 0 : valueSize);
             data[i] = (keySize, null);
             data[i + 1] = (valueSize, null);
@@ -78,7 +71,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
             if (reader.ShouldBuffer(sizeof(int)))
                 await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
             var keySize = reader.ReadInt32();
-            var key = _encoding.GetString(async
+            var key = encoding.GetString(async
                 ? await reader.ReadBytesAsync(keySize, cancellationToken).ConfigureAwait(false)
                 : reader.ReadBytes(keySize)
             );
@@ -88,7 +81,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
             var valueSize = reader.ReadInt32();
             string? value = null;
             if (valueSize is not -1)
-                value = _encoding.GetString(async
+                value = encoding.GetString(async
                     ? await reader.ReadBytesAsync(valueSize, cancellationToken).ConfigureAwait(false)
                     : reader.ReadBytes(valueSize)
                 );
@@ -99,7 +92,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
         if (typeof(T) == typeof(Dictionary<string, string?>) || typeof(T) == typeof(IDictionary<string, string?>))
             return (T)result;
 
-        return _convert is null ? throw new NotSupportedException() : _convert(result);
+        return convert is null ? throw new NotSupportedException() : convert(result);
     }
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
@@ -129,9 +122,9 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
             var length = size.Value;
             writer.WriteInt32(length);
             if (async)
-                await writer.WriteCharsAsync(kv.Key.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
+                await writer.WriteCharsAsync(kv.Key.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
             else
-                writer.WriteChars(kv.Key.AsSpan(), _encoding);
+                writer.WriteChars(kv.Key.AsSpan(), encoding);
 
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -145,9 +138,9 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : ICollection<
             if (valueLength is not -1)
             {
                 if (async)
-                    await writer.WriteCharsAsync(kv.Value.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
+                    await writer.WriteCharsAsync(kv.Value.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
                 else
-                    writer.WriteChars(kv.Value.AsSpan(), _encoding);
+                    writer.WriteChars(kv.Value.AsSpan(), encoding);
             }
             i += 2;
         }

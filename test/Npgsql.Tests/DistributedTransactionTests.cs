@@ -564,11 +564,9 @@ Start formatting event queue, going to sleep a bit for late events
         }
     }
 
-    public class TransactionEvent
+    public class TransactionEvent(string message)
     {
-        public TransactionEvent(string message)
-            => Message = $"{message} (TId {Thread.CurrentThread.ManagedThreadId})";
-        public string Message { get; }
+        public string Message { get; } = $"{message} (TId {Thread.CurrentThread.ManagedThreadId})";
     }
 
     #endregion Utilities

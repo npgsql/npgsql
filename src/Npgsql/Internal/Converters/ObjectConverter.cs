@@ -5,18 +5,8 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
-sealed class ObjectConverter : PgStreamingConverter<object>
+sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : PgStreamingConverter<object>(customDbNullPredicate: true)
 {
-    readonly PgSerializerOptions _options;
-    readonly PgTypeId _pgTypeId;
-
-    public ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId)
-        : base(customDbNullPredicate: true)
-    {
-        _options = options;
-        _pgTypeId = pgTypeId;
-    }
-
     protected override bool IsDbNullValue(object? value, ref object? writeState)
     {
         if (value is null or DBNull)
@@ -98,8 +88,8 @@ sealed class ObjectConverter : PgStreamingConverter<object>
     }
 
     PgTypeInfo GetTypeInfo(Type type)
-        => _options.GetTypeInfoInternal(type, _pgTypeId)
-           ?? throw new NotSupportedException($"Writing values of '{type.FullName}' having DataTypeName '{_options.DatabaseInfo.GetPostgresType(_pgTypeId).DisplayName}' is not supported.");
+        => options.GetTypeInfoInternal(type, pgTypeId)
+           ?? throw new NotSupportedException($"Writing values of '{type.FullName}' having DataTypeName '{options.DatabaseInfo.GetPostgresType(pgTypeId).DisplayName}' is not supported.");
 
     sealed class WriteState
     {
