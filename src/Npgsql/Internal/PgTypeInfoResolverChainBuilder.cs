@@ -6,7 +6,7 @@ namespace Npgsql.Internal;
 
 struct PgTypeInfoResolverChainBuilder
 {
-    readonly List<(Type ImplementationType, object)> _factories = new();
+    readonly List<(Type ImplementationType, object)> _factories = [];
     Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addRangeResolvers;
     Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addMultirangeResolvers;
     RangeArrayHandler _rangeArrayHandler = RangeArrayHandler.Instance;

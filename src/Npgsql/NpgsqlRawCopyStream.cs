@@ -54,10 +54,10 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     /// The copy binary format header signature
     /// </summary>
     internal static readonly byte[] BinarySignature =
-    {
+    [
         (byte)'P',(byte)'G',(byte)'C',(byte)'O',(byte)'P',(byte)'Y',
         (byte)'\n', 255, (byte)'\r', (byte)'\n', 0
-    };
+    ];
 
     readonly ILogger _copyLogger;
 

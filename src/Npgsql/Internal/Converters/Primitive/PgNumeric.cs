@@ -101,7 +101,8 @@ readonly struct PgNumeric
         internal const int MaxDecimalNumericDigits = 8;
 
         // Fast access for 10^n where n is 0-9
-        static ReadOnlySpan<uint> UIntPowers10 => new uint[] {
+        static ReadOnlySpan<uint> UIntPowers10 =>
+        [
             1,
             10,
             100,
@@ -112,7 +113,7 @@ readonly struct PgNumeric
             10000000,
             100000000,
             1000000000
-        };
+        ];
 
         const int MaxUInt32Scale = 9;
         const int MaxUInt16Scale = 4;

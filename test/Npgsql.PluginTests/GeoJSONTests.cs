@@ -23,89 +23,89 @@ public class GeoJSONTests : TestBase
     }
 
     public static readonly TestData[] Tests =
-    {
+    [
         new()
         {
             Geometry = new Point(
                     new Position(longitude: 1d, latitude: 2d))
-                { BoundingBoxes = new[] { 1d, 2d, 1d, 2d } },
+                { BoundingBoxes = [1d, 2d, 1d, 2d] },
             CommandText = "st_makepoint(1,2)"
         },
         new()
         {
-            Geometry = new LineString(new[] {
+            Geometry = new LineString([
                     new Position(longitude: 1d, latitude: 1d),
                     new Position(longitude: 1d, latitude: 2d)
-                })
-                { BoundingBoxes = new[] { 1d, 1d, 1d, 2d } },
+                ])
+                { BoundingBoxes = [1d, 1d, 1d, 2d] },
             CommandText = "st_makeline(st_makepoint(1,1), st_makepoint(1,2))"
         },
         new()
         {
-            Geometry = new Polygon(new[] {
-                    new LineString(new[] {
+            Geometry = new Polygon([
+                    new LineString([
                         new Position(longitude: 1d, latitude: 1d),
                         new Position(longitude: 2d, latitude: 2d),
                         new Position(longitude: 3d, latitude: 3d),
                         new Position(longitude: 1d, latitude: 1d)
-                    })
-                })
-                { BoundingBoxes = new[] { 1d, 1d, 3d, 3d } },
+                    ])
+                ])
+                { BoundingBoxes = [1d, 1d, 3d, 3d] },
             CommandText = "st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)]))"
         },
         new()
         {
-            Geometry = new MultiPoint(new[] {
+            Geometry = new MultiPoint([
                     new Point(new Position(longitude: 1d, latitude: 1d))
-                })
-                { BoundingBoxes = new[] { 1d, 1d, 1d, 1d } },
+                ])
+                { BoundingBoxes = [1d, 1d, 1d, 1d] },
             CommandText = "st_multi(st_makepoint(1, 1))"
         },
         new()
         {
-            Geometry = new MultiLineString(new[] {
-                    new LineString(new[] {
+            Geometry = new MultiLineString([
+                    new LineString([
                         new Position(longitude: 1d, latitude: 1d),
                         new Position(longitude: 1d, latitude: 2d)
-                    })
-                })
-                { BoundingBoxes = new[] { 1d, 1d, 1d, 2d } },
+                    ])
+                ])
+                { BoundingBoxes = [1d, 1d, 1d, 2d] },
             CommandText = "st_multi(st_makeline(st_makepoint(1,1), st_makepoint(1,2)))"
         },
         new()
         {
-            Geometry = new MultiPolygon(new[] {
-                    new Polygon(new[] {
-                        new LineString(new[] {
+            Geometry = new MultiPolygon([
+                    new Polygon([
+                        new LineString([
                             new Position(longitude: 1d, latitude: 1d),
                             new Position(longitude: 2d, latitude: 2d),
                             new Position(longitude: 3d, latitude: 3d),
                             new Position(longitude: 1d, latitude: 1d)
-                        })
-                    })
-                })
-                { BoundingBoxes = new[] { 1d, 1d, 3d, 3d } },
+                        ])
+                    ])
+                ])
+                { BoundingBoxes = [1d, 1d, 3d, 3d] },
             CommandText = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)])))"
         },
         new()
         {
-            Geometry = new GeometryCollection(new IGeometryObject[] {
+            Geometry = new GeometryCollection([
                     new Point(new Position(longitude: 1d, latitude: 1d)),
-                    new MultiPolygon(new[] {
-                        new Polygon(new[] {
-                            new LineString(new[] {
+                    new MultiPolygon([
+                        new Polygon([
+                            new LineString([
                                 new Position(longitude: 1d, latitude: 1d),
                                 new Position(longitude: 2d, latitude: 2d),
                                 new Position(longitude: 3d, latitude: 3d),
                                 new Position(longitude: 1d, latitude: 1d)
-                            })
-                        })
-                    })
-                })
-                { BoundingBoxes = new[] { 1d, 1d, 3d, 3d } },
+                            ])
+                        ])
+                    ])
+                ])
+                { BoundingBoxes = [1d, 1d, 3d, 3d] },
             CommandText = "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)]))))"
-        },
-    };
+        }
+    ];
 
     [Test, TestCaseSource(nameof(Tests))]
     public async Task Read(TestData data)
@@ -138,24 +138,24 @@ public class GeoJSONTests : TestBase
     }
 
     public static readonly TestData[] NotAllZSpecifiedTests =
-    {
+    [
         new()
         {
-            Geometry = new LineString(new[] {
+            Geometry = new LineString([
                 new Position(1d, 1d, 0d),
                 new Position(2d, 2d)
-            })
+            ])
         },
         new()
         {
-            Geometry =  new LineString(new[] {
+            Geometry =  new LineString([
                 new Position(1d, 1d, 0d),
                 new Position(2d, 2d),
                 new Position(3d, 3d),
                 new Position(4d, 4d)
-            })
+            ])
         }
-    };
+    ];
 
     [Test, TestCaseSource(nameof(NotAllZSpecifiedTests))]
     public async Task Not_all_Z_specified(TestData data)
@@ -315,18 +315,18 @@ public class GeoJSONTests : TestBase
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id text, field geometry");
 
-        var geometry = new MultiLineString(new[] {
+        var geometry = new MultiLineString([
             new LineString(
                 Enumerable.Range(1, 507)
                     .Select(i => new Position(longitude: i, latitude: i))
                     .Append(new Position(longitude: 1d, latitude: 1d))),
-            new LineString(new[] {
+            new LineString([
                 new Position(longitude: 1d, latitude: 1d),
                 new Position(longitude: 1d, latitude: 2d),
                 new Position(longitude: 1d, latitude: 3d),
-                new Position(longitude: 1d, latitude: 1d),
-            })
-        });
+                new Position(longitude: 1d, latitude: 1d)
+            ])
+        ]);
 
         await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (id, field) FROM STDIN BINARY"))
         {
@@ -375,18 +375,18 @@ public class GeoJSONTests : TestBase
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id text, field geometry");
 
-        var geometry = new Polygon(new[] {
+        var geometry = new Polygon([
             new LineString(
                 Enumerable.Range(1, 507)
                     .Select(i => new Position(longitude: i, latitude: i))
                     .Append(new Position(longitude: 1d, latitude: 1d))),
-            new LineString(new[] {
+            new LineString([
                 new Position(longitude: 1d, latitude: 1d),
                 new Position(longitude: 1d, latitude: 2d),
                 new Position(longitude: 1d, latitude: 3d),
-                new Position(longitude: 1d, latitude: 1d),
-            })
-        });
+                new Position(longitude: 1d, latitude: 1d)
+            ])
+        ]);
 
         await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (id, field) FROM STDIN BINARY"))
         {

@@ -87,7 +87,7 @@ sealed class AuthenticationSSPIMessage : AuthenticationRequestMessage
 sealed class AuthenticationSASLMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.SASL;
-    internal List<string> Mechanisms { get; } = new();
+    internal List<string> Mechanisms { get; } = [];
 
     internal AuthenticationSASLMessage(NpgsqlReadBuffer buf)
     {

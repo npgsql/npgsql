@@ -164,7 +164,7 @@ public class CommandParameterTests : MultiplexingTestBase
         cmd.Parameters.Add(new NpgsqlParameter<int>("p1", 8));
         cmd.Parameters.Add(new NpgsqlParameter<short>("p2", 8) { NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<string>("p3", "hello"));
-        cmd.Parameters.Add(new NpgsqlParameter<char[]>("p4", new[] { 'f', 'o', 'o' }));
+        cmd.Parameters.Add(new NpgsqlParameter<char[]>("p4", ['f', 'o', 'o']));
         using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         Assert.That(reader.GetInt32(0), Is.EqualTo(8));

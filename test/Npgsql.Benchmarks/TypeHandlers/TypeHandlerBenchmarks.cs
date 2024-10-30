@@ -61,7 +61,7 @@ public abstract class TypeHandlerBenchmarks<T>
 
     public IEnumerable<T> Values() => ValuesOverride();
 
-    protected virtual IEnumerable<T> ValuesOverride() => new[] { default(T) };
+    protected virtual IEnumerable<T> ValuesOverride() => [default(T)];
 
     [ParamsSource(nameof(Values))]
     public T Value

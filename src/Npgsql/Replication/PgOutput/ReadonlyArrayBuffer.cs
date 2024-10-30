@@ -11,7 +11,7 @@ sealed class ReadOnlyArrayBuffer<T> : IReadOnlyList<T>
     int _size;
 
     public ReadOnlyArrayBuffer()
-        => _items = Array.Empty<T>();
+        => _items = [];
 
     ReadOnlyArrayBuffer(T[] items)
     {

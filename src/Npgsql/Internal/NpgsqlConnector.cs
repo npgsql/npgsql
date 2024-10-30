@@ -177,7 +177,7 @@ public sealed partial class NpgsqlConnector
     /// <summary>
     /// Holds all run-time parameters in raw, binary format for efficient handling without allocations.
     /// </summary>
-    readonly List<(byte[] Name, byte[] Value)> _rawParameters = new();
+    readonly List<(byte[] Name, byte[] Value)> _rawParameters = [];
 
     /// <summary>
     /// If this connector was broken, this contains the exception that caused the break.
@@ -934,10 +934,7 @@ public sealed partial class NpgsqlConnector
                 EnabledSslProtocols = SslProtocols.None,
                 CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.Offline,
                 RemoteCertificateValidationCallback = certificateValidationCallback,
-                ApplicationProtocols = new List<SslApplicationProtocol>
-                {
-                    _alpnProtocol
-                }
+                ApplicationProtocols = [_alpnProtocol]
             };
 
             if (SslClientAuthenticationOptionsCallback is not null)

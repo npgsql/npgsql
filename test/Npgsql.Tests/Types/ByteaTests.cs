@@ -37,31 +37,31 @@ public class ByteaTests : MultiplexingTestBase
     [Test]
     public Task AsMemory()
         => AssertType(
-            new Memory<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false,
+            new Memory<byte>([1, 2, 3]), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false,
             comparer: (left, right) => left.Span.SequenceEqual(right.Span));
 
     [Test]
     public Task AsReadOnlyMemory()
         => AssertType(
-            new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false,
+            new ReadOnlyMemory<byte>([1, 2, 3]), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false,
             comparer: (left, right) => left.Span.SequenceEqual(right.Span));
 
     [Test]
     public Task AsArraySegment()
         => AssertType(
-            new ArraySegment<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+            new ArraySegment<byte>([1, 2, 3]), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
 
     [Test]
     public Task Write_as_MemoryStream()
         => AssertTypeWrite(
-            () => new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+            () => new MemoryStream([1, 2, 3]), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
 
     [Test]
     public Task Write_as_MemoryStream_truncated()
     {
         var msFactory = () =>
         {
-            var ms = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+            var ms = new MemoryStream([1, 2, 3, 4]);
             ms.ReadByte();
             return ms;
         };
@@ -107,7 +107,7 @@ public class ByteaTests : MultiplexingTestBase
         var fsList = new List<FileStream>();
         try
         {
-            await File.WriteAllBytesAsync(filePath, new byte[] { 1, 2, 3 });
+            await File.WriteAllBytesAsync(filePath, [1, 2, 3]);
 
             await AssertTypeWrite(
                 () => FileStreamFactory(filePath, fsList), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
@@ -191,14 +191,14 @@ public class ByteaTests : MultiplexingTestBase
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        byte[] data = { 1, 2, 3, 4, 5, 6 };
+        byte[] data = [1, 2, 3, 4, 5, 6];
         var p = new NpgsqlParameter("p", data) { Size = 4 };
         cmd.Parameters.Add(p);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
         Assert.That(p.Value, Is.EqualTo(new byte[] { 1, 2, 3, 4 }), "Truncated parameter value should be persisted on the parameter per DbParameter.Size docs");
 
         // NpgsqlParameter.Size needs to persist when value is changed
-        byte[] data2 = { 11, 12, 13, 14, 15, 16 };
+        byte[] data2 = [11, 12, 13, 14, 15, 16];
         p.Value = data2;
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 11, 12, 13, 14 }));
 
@@ -219,13 +219,13 @@ public class ByteaTests : MultiplexingTestBase
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        byte[] data = { 1, 2, 3, 4, 5, 6 };
+        byte[] data = [1, 2, 3, 4, 5, 6];
         var p = new NpgsqlParameter("p", new MemoryStream(data)) { Size = 4 };
         cmd.Parameters.Add(p);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
 
         // NpgsqlParameter.Size needs to persist when value is changed
-        byte[] data2 = { 11, 12, 13, 14, 15, 16 };
+        byte[] data2 = [11, 12, 13, 14, 15, 16];
         p.Value = new MemoryStream(data2);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 11, 12, 13, 14 }));
 
@@ -254,7 +254,7 @@ public class ByteaTests : MultiplexingTestBase
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        byte[] data = { 1, 2, 3, 4, 5, 6 };
+        byte[] data = [1, 2, 3, 4, 5, 6];
         var p = new NpgsqlParameter("p", new NonSeekableStream(data)) { Size = 4 };
         cmd.Parameters.Add(p);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));

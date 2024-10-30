@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Types;
 public class MultirangeTests : TestBase
 {
     static readonly TestCaseData[] MultirangeTestCases =
-    {
+    [
         // int4multirange
         new TestCaseData(
                 new NpgsqlRange<int>[]
@@ -82,8 +82,8 @@ public class MultirangeTests : TestBase
                     new(new(2020, 1, 10), true, false, default, false, true)
                 },
                 "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", NpgsqlDbType.DateMultirange, false, false, default(NpgsqlRange<DateOnly>))
-            .SetName("DateOnly"),
-    };
+            .SetName("DateOnly")
+    ];
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_array<T, TRange>(

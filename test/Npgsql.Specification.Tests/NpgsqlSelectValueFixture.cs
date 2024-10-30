@@ -51,8 +51,7 @@ INSERT INTO select_value VALUES
 
     public string SelectNoRows => "SELECT 1 WHERE 0 = 1;";
 
-    public IReadOnlyCollection<DbType> SupportedDbTypes { get; } = new ReadOnlyCollection<DbType>(new[]
-    {
+    public IReadOnlyCollection<DbType> SupportedDbTypes { get; } = new ReadOnlyCollection<DbType>([
         DbType.Binary,
         DbType.Boolean,
         DbType.Date,
@@ -67,7 +66,7 @@ INSERT INTO select_value VALUES
         DbType.Single,
         DbType.String,
         DbType.Time
-    });
+    ]);
 
     public Type NullValueExceptionType => typeof(InvalidCastException);
 

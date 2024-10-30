@@ -197,14 +197,14 @@ public class TypesTests
     public void NpgsqlPath_default()
     {
         NpgsqlPath defaultPath = default;
-        Assert.IsFalse(defaultPath.Equals(new NpgsqlPath { new(1, 2) }));
+        Assert.IsFalse(defaultPath.Equals([new(1, 2)]));
     }
 
     [Test]
     public void NpgsqlPolygon_default()
     {
         NpgsqlPolygon defaultPolygon = default;
-        Assert.IsFalse(defaultPolygon.Equals(new NpgsqlPolygon { new(1, 2) }));
+        Assert.IsFalse(defaultPolygon.Equals([new(1, 2)]));
     }
 
     [Test]

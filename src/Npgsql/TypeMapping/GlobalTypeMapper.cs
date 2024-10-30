@@ -16,9 +16,9 @@ namespace Npgsql.TypeMapping;
 sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
     readonly UserTypeMapper _userTypeMapper = new();
-    readonly List<PgTypeInfoResolverFactory> _pluginResolverFactories = new();
+    readonly List<PgTypeInfoResolverFactory> _pluginResolverFactories = [];
     readonly ReaderWriterLockSlim _lock = new();
-    PgTypeInfoResolverFactory[] _typeMappingResolvers = Array.Empty<PgTypeInfoResolverFactory>();
+    PgTypeInfoResolverFactory[] _typeMappingResolvers = [];
 
     internal IEnumerable<PgTypeInfoResolverFactory> GetPluginResolverFactories()
     {

@@ -1369,7 +1369,7 @@ LANGUAGE plpgsql VOLATILE";
         var table = await CreateTempTable(conn, "bytes BYTEA");
 
         // TODO: This is too small to actually test any interesting sequential behavior
-        byte[] expected = { 1, 2, 3, 4, 5 };
+        byte[] expected = [1, 2, 3, 4, 5];
         var actual = new byte[expected.Length];
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (bytes) VALUES ({EncodeByteaHex(expected)})");
 

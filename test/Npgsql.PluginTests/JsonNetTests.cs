@@ -108,9 +108,9 @@ public class JsonNetTests : TestBase
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         if (IsJsonb)
-            dataSourceBuilder.UseJsonNet(jsonbClrTypes: new[] { typeof(Foo) });
+            dataSourceBuilder.UseJsonNet(jsonbClrTypes: [typeof(Foo)]);
         else
-            dataSourceBuilder.UseJsonNet(jsonClrTypes: new[] { typeof(Foo) });
+            dataSourceBuilder.UseJsonNet(jsonClrTypes: [typeof(Foo)]);
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(
@@ -128,9 +128,9 @@ public class JsonNetTests : TestBase
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         if (IsJsonb)
-            dataSourceBuilder.UseJsonNet(jsonbClrTypes: new[] { typeof(int[]) });
+            dataSourceBuilder.UseJsonNet(jsonbClrTypes: [typeof(int[])]);
         else
-            dataSourceBuilder.UseJsonNet(jsonClrTypes: new[] { typeof(int[]) });
+            dataSourceBuilder.UseJsonNet(jsonClrTypes: [typeof(int[])]);
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(
@@ -157,9 +157,9 @@ public class JsonNetTests : TestBase
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         if (IsJsonb)
-            dataSourceBuilder.UseJsonNet(jsonbClrTypes: new[] { typeof(DateWrapper) }, settings: settings);
+            dataSourceBuilder.UseJsonNet(jsonbClrTypes: [typeof(DateWrapper)], settings: settings);
         else
-            dataSourceBuilder.UseJsonNet(jsonClrTypes: new[] { typeof(DateWrapper) }, settings: settings);
+            dataSourceBuilder.UseJsonNet(jsonClrTypes: [typeof(DateWrapper)], settings: settings);
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(
@@ -176,7 +176,7 @@ public class JsonNetTests : TestBase
     public async Task Bug3464()
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.UseJsonNet(jsonbClrTypes: new[] { typeof(Bug3464Class) });
+        dataSourceBuilder.UseJsonNet(jsonbClrTypes: [typeof(Bug3464Class)]);
         await using var dataSource = dataSourceBuilder.Build();
 
         var expected = new Bug3464Class { SomeString = new string('5', 8174) };

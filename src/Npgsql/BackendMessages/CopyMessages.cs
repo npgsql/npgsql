@@ -14,7 +14,7 @@ abstract class CopyResponseMessageBase : IBackendMessage
 
     internal CopyResponseMessageBase()
     {
-        ColumnFormatCodes = new List<DataFormat>();
+        ColumnFormatCodes = [];
     }
 
     internal void Load(NpgsqlReadBuffer buf)

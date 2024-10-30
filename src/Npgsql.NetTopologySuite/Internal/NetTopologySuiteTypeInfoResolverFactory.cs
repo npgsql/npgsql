@@ -54,7 +54,7 @@ sealed class NetTopologySuiteTypeInfoResolverFactory : PgTypeInfoResolverFactory
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings, PostGisReader reader, PostGisWriter writer,
             bool geographyAsDefault)
         {
-            foreach (var dataTypeName in geographyAsDefault ? new[] {"geography", "geometry"} : new[] { "geometry", "geography" })
+            foreach (var dataTypeName in geographyAsDefault ? ["geography", "geometry"] : new[] { "geometry", "geography" })
             {
                 mappings.AddType<Geometry>(dataTypeName,
                     (options, mapping, _) => mapping.CreateInfo(options, new NetTopologySuiteConverter<Geometry>(reader, writer)),
@@ -98,7 +98,7 @@ sealed class NetTopologySuiteTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings, bool geographyAsDefault)
         {
-            foreach (var dataTypeName in geographyAsDefault ? new[] { "geography", "geometry" } : new[] { "geometry", "geography" })
+            foreach (var dataTypeName in geographyAsDefault ? ["geography", "geometry"] : new[] { "geometry", "geography" })
             {
                 mappings.AddArrayType<Geometry>(dataTypeName);
                 mappings.AddArrayType<Point>(dataTypeName);

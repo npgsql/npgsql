@@ -16,7 +16,7 @@ public class PostgresCompositeType : PostgresType
     /// </summary>
     public IReadOnlyList<Field> Fields => MutableFields;
 
-    internal List<Field> MutableFields { get; } = new();
+    internal List<Field> MutableFields { get; } = [];
 
     /// <summary>
     /// Constructs a representation of a PostgreSQL array data type.

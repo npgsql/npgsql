@@ -305,7 +305,7 @@ CREATE TYPE {compositeType} AS (ints int4[])");
 
         await AssertType(
             connection,
-            new SomeCompositeWithArray { Ints = new[] { 1, 2, 3, 4 } },
+            new SomeCompositeWithArray { Ints = [1, 2, 3, 4] },
             @"(""{1,2,3,4}"")",
             compositeType,
             npgsqlDbType: null,
@@ -355,7 +355,9 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
 
         await AssertType(
             connection,
-            new SomeCompositeWithConverterResolverType { DateTimes = new [] { new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Unspecified), new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Unspecified).AddDays(1) } },
+            new SomeCompositeWithConverterResolverType { DateTimes = [new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Unspecified), new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Unspecified).AddDays(1)
+                ]
+            },
             """("{""1970-01-01 00:00:00"",""1970-01-02 00:00:00""}")""",
             compositeType,
             npgsqlDbType: null,
@@ -379,7 +381,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
 
         Assert.ThrowsAsync<ArgumentException>(() => AssertType(
             connection,
-            new SomeCompositeWithConverterResolverType { DateTimes = new[] { DateTime.UnixEpoch } }, // UTC DateTime
+            new SomeCompositeWithConverterResolverType { DateTimes = [DateTime.UnixEpoch] }, // UTC DateTime
             """("{""1970-01-01 01:00:00"",""1970-01-02 01:00:00""}")""",
             compositeType,
             npgsqlDbType: null,

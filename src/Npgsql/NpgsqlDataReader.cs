@@ -67,7 +67,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Records, for each column, its starting offset and length in the current row.
     /// Used only in non-sequential mode.
     /// </summary>
-    readonly List<(int Offset, int Length)> _columns = new();
+    readonly List<(int Offset, int Length)> _columns = [];
     int _columnsStartPos;
 
     /// <summary>
@@ -998,7 +998,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
             catch (Exception e)
             {
-                exceptions ??= new();
+                exceptions ??= [];
                 exceptions.Add(e);
             }
         }

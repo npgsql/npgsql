@@ -27,7 +27,7 @@ static class ReflectionCompositeInfoFactory
             throw new AmbiguousMatchException($"Property {propertyMap[duplicates[0]].Name} and field {fieldMap[duplicates[0]].Name} map to the same '{pgFields[duplicates[0]].Name}' composite field name.");
 
         var (constructorInfo, parameterFieldMap) = MapBestMatchingConstructor<T>(pgFields, nameTranslator);
-        var constructorParameters = constructorInfo?.GetParameters() ?? Array.Empty<ParameterInfo>();
+        var constructorParameters = constructorInfo?.GetParameters() ?? [];
         var compositeFields = new CompositeFieldInfo?[pgFields.Count];
         for (var i = 0; i < parameterFieldMap.Length; i++)
         {
@@ -122,7 +122,7 @@ static class ReflectionCompositeInfoFactory
 
     static Delegate CreateGetter<T>(PropertyInfo info)
     {
-        var invalidOpExceptionMessageConstructor = typeof(InvalidOperationException).GetConstructor(new []{ typeof(string) })!;
+        var invalidOpExceptionMessageConstructor = typeof(InvalidOperationException).GetConstructor([typeof(string)])!;
         var instance = Expression.Parameter(typeof(object), "instance");
         var body = info.GetMethod is null || !info.GetMethod.IsPublic
             ? (Expression)Expression.Throw(Expression.New(invalidOpExceptionMessageConstructor,
@@ -139,7 +139,7 @@ static class ReflectionCompositeInfoFactory
         var instance = Expression.Parameter(typeof(object), "instance");
         var value = Expression.Parameter(info.PropertyType, "value");
 
-        var invalidOpExceptionMessageConstructor = typeof(InvalidOperationException).GetConstructor(new []{ typeof(string) })!;
+        var invalidOpExceptionMessageConstructor = typeof(InvalidOperationException).GetConstructor([typeof(string)])!;
         var body = info.SetMethod is null || !info.SetMethod.IsPublic
             ? (Expression)Expression.Throw(Expression.New(invalidOpExceptionMessageConstructor,
                 Expression.Constant($"No (public) setter for '{info}' on type {typeof(T)}")), info.PropertyType)
@@ -162,7 +162,7 @@ static class ReflectionCompositeInfoFactory
 
         var parameters = constructorInfo.GetParameters();
         var parameterCount = Expression.Constant(parameters.Length);
-        var argumentExceptionNameMessageConstructor = typeof(ArgumentException).GetConstructor(new []{ typeof(string), typeof(string) })!;
+        var argumentExceptionNameMessageConstructor = typeof(ArgumentException).GetConstructor([typeof(string), typeof(string)])!;
         return Expression
             .Lambda<Func<StrongBox[], T>>(
                 Expression.Block(

@@ -34,7 +34,7 @@ sealed class JsonNetPocoTypeInfoResolverFactory : PgTypeInfoResolverFactory
         readonly JsonSerializerSettings _serializerSettings;
 
         TypeInfoMappingCollection? _mappings;
-        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _jsonbClrTypes ?? Array.Empty<Type>(), _jsonClrTypes ?? Array.Empty<Type>(), _serializerSettings);
+        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _jsonbClrTypes ?? [], _jsonClrTypes ?? [], _serializerSettings);
 
         const string JsonDataTypeName = "pg_catalog.json";
         const string JsonbDataTypeName = "pg_catalog.jsonb";

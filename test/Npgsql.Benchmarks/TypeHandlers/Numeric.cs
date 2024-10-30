@@ -39,8 +39,8 @@ public class Numeric : TypeHandlerBenchmarks<decimal>
 {
     public Numeric() : base(new DecimalNumericConverter<decimal>()) { }
 
-    protected override IEnumerable<decimal> ValuesOverride() => new[]
-    {
+    protected override IEnumerable<decimal> ValuesOverride() =>
+    [
         0.0000000000000000000000000001M,
         0.000000000000000000000001M,
         0.00000000000000000001M,
@@ -55,8 +55,8 @@ public class Numeric : TypeHandlerBenchmarks<decimal>
         10000000000000000M,
         100000000000000000000M,
         1000000000000000000000000M,
-        10000000000000000000000000000M,
-    };
+        10000000000000000000000000000M
+    ];
 }
 
 [Config(typeof(Config))]
