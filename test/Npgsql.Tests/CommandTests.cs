@@ -243,7 +243,7 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     public async Task Timeout_switch_connection()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
-        if (csb.CommandTimeout >= 100 && csb.CommandTimeout < 105)
+        if (csb.CommandTimeout is >= 100 and < 105)
             IgnoreExceptOnBuildServer("Bad default command timeout");
 
         await using var dataSource1 = CreateDataSource(ConnectionString + ";CommandTimeout=100");

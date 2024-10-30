@@ -189,7 +189,7 @@ public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquata
             if (value[pos] >= 'B' && value[pos] <= 'D' || value[pos] >= 'b' && value[pos] <= 'd')
             {
                 var weight = value[pos];
-                if (weight >= 'b' && weight <= 'd')
+                if (weight is >= 'b' and <= 'd')
                     weight = (char)(weight - ('b' - 'B'));
                 wordEntryPositions.Add(new Lexeme.WordEntryPos(wordPos, Lexeme.Weight.D + ('D' - weight)));
                 pos++;
