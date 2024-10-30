@@ -504,7 +504,7 @@ public sealed partial class NpgsqlConnector
             SerializerOptions = DataSource.SerializerOptions;
             DatabaseInfo = DataSource.DatabaseInfo;
 
-            if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
+            if (Settings.Pooling && Settings is { Multiplexing: false, NoResetOnClose: false } && DatabaseInfo.SupportsDiscard)
             {
                 _sendResetOnClose = true;
                 GenerateResetMessage();
@@ -1145,7 +1145,7 @@ public sealed partial class NpgsqlConnector
 
         if (Settings.TcpKeepAlive)
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-        if (Settings.TcpKeepAliveInterval > 0 && Settings.TcpKeepAliveTime == 0)
+        if (Settings is { TcpKeepAliveInterval: > 0, TcpKeepAliveTime: 0 })
             throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
         if (Settings.TcpKeepAliveTime > 0)
         {
@@ -2001,7 +2001,7 @@ public sealed partial class NpgsqlConnector
             // therefore vulnerable to the race condition in #615.
             if (copyOperation is NpgsqlBinaryImporter ||
                 copyOperation is NpgsqlCopyTextWriter ||
-                copyOperation is NpgsqlRawCopyStream rawCopyStream && rawCopyStream.CanWrite)
+                copyOperation is NpgsqlRawCopyStream { CanWrite: true })
             {
                 try
                 {
@@ -2676,7 +2676,7 @@ public sealed partial class NpgsqlConnector
                 {
                     msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
                 }
-                catch (Exception e) when (e is OperationCanceledException || e is NpgsqlException npgEx && npgEx.InnerException is TimeoutException)
+                catch (Exception e) when (e is OperationCanceledException || e is NpgsqlException { InnerException: TimeoutException })
                 {
                     // We're somewhere in the middle of a reading keepalive messages
                     // Breaking the connection, as we've lost protocol sync

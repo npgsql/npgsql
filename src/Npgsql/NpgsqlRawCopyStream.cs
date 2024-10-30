@@ -383,7 +383,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                         }
                         _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }
-                    catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
+                    catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
                     {
                         LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
                     }

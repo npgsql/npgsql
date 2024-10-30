@@ -183,7 +183,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// </summary>
     internal PreparedStatement? PreparedStatement
     {
-        get => _preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared
+        get => _preparedStatement is { State: PreparedState.Unprepared }
             ? _preparedStatement = null
             : _preparedStatement;
         set => _preparedStatement = value;

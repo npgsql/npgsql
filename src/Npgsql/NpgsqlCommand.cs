@@ -1031,7 +1031,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         static void ValidateParameterCount(NpgsqlBatchCommand batchCommand)
         {
-            if (batchCommand.HasParameters && batchCommand.PositionalParameters.Count > ushort.MaxValue)
+            if (batchCommand is { HasParameters: true, PositionalParameters.Count: > ushort.MaxValue })
                 ThrowHelper.ThrowNpgsqlException("A statement cannot have more than 65535 parameters");
         }
     }

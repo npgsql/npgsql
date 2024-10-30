@@ -32,12 +32,10 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 
         conn.StateChange += (s, e) =>
         {
-            if (e.OriginalState == ConnectionState.Closed &&
-                e.CurrentState == ConnectionState.Open)
+            if (e is { OriginalState: ConnectionState.Closed, CurrentState: ConnectionState.Open })
                 eventOpen = true;
 
-            if (e.OriginalState == ConnectionState.Open &&
-                e.CurrentState == ConnectionState.Closed)
+            if (e is { OriginalState: ConnectionState.Open, CurrentState: ConnectionState.Closed })
                 eventClosed = true;
         };
 
@@ -83,12 +81,10 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 
         conn.StateChange += (s, e) =>
         {
-            if (e.OriginalState == ConnectionState.Closed &&
-                e.CurrentState == ConnectionState.Open)
+            if (e is { OriginalState: ConnectionState.Closed, CurrentState: ConnectionState.Open })
                 eventOpen = true;
 
-            if (e.OriginalState == ConnectionState.Open &&
-                e.CurrentState == ConnectionState.Closed)
+            if (e is { OriginalState: ConnectionState.Open, CurrentState: ConnectionState.Closed })
                 eventClosed = true;
         };
 
