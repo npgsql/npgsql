@@ -322,7 +322,7 @@ partial class NpgsqlConnector
             var resultString = sb.ToString();
             result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
             Encoding.UTF8.GetBytes(resultString, 0, resultString.Length, result, 0);
-            result[result.Length - 1] = 0;
+            result[^1] = 0;
         }
 
         await WritePassword(result, async, cancellationToken).ConfigureAwait(false);

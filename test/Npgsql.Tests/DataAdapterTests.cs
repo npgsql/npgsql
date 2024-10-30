@@ -304,7 +304,7 @@ public class DataAdapterTests : TestBase
         var dt = ds.Tables[0];
         Assert.IsNotNull(dt);
 
-        var dr = ds.Tables[0].Rows[ds.Tables[0].Rows.Count - 1];
+        var dr = ds.Tables[0].Rows[^1];
         dr["field_int2"] = 4;
 
         var ds2 = ds.GetChanges()!;
@@ -350,7 +350,7 @@ public class DataAdapterTests : TestBase
         var dt = ds.Tables[0];
         Assert.IsNotNull(dt);
 
-        var dr = ds.Tables[0].Rows[ds.Tables[0].Rows.Count - 1];
+        var dr = ds.Tables[0].Rows[^1];
 
         dr["field_int2"] = 4;
 

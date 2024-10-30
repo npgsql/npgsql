@@ -2772,7 +2772,7 @@ public sealed partial class NpgsqlConnector
 
         for (var i = 0; i < _rawParameters.Count; i++)
         {
-            (var currentName, var currentValue) = _rawParameters[i];
+            var (currentName, currentValue) = _rawParameters[i];
             if (incomingName.SequenceEqual(currentName))
             {
                 if (incomingValue.SequenceEqual(currentValue))

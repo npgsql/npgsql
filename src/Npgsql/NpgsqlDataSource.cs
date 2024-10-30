@@ -447,7 +447,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 connector = null;
                 return false;
             }
-            connector = list[list.Count - 1];
+            connector = list[^1];
             list.RemoveAt(list.Count - 1);
             if (list.Count == 0)
                 _pendingEnlistedConnectors.Remove(transaction);
