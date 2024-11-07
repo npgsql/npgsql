@@ -41,4 +41,11 @@ public class NpgsqlTracingOptions
     /// Gets or sets a function that provides a span's name on a per <see cref="NpgsqlBatch"/> basis.
     /// </summary>
     public Func<NpgsqlBatch, string?>? ProvideSpanNameForNpgsqlBatch { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to disable the "time-to-first-read" event.
+    /// Default is false to preserve existing behavior.
+    /// </summary>
+    public bool DisableFirstResponseEvent { get; set; } = false;
+
 }

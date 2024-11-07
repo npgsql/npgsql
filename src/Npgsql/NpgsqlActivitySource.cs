@@ -98,15 +98,15 @@ static class NpgsqlActivitySource
 
     internal static void ReceivedFirstResponse(Activity activity)
     {
-        if (!activity.IsAllDataRequested)
+        if (!activity.IsAllDataRequested || (NpgsqlTracingOptions.Current?.DisableFirstResponseEvent ?? false))
             return;
-
+    
         var activityEvent = new ActivityEvent("received-first-response");
         activity.AddEvent(activityEvent);
     }
 
     internal static void CommandStop(Activity activity)
-    {
+    {        
         activity.SetTag("otel.status_code", "OK");
         activity.Dispose();
     }
