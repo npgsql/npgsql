@@ -13,6 +13,8 @@ Npgsql.NpgsqlSlimDataSourceBuilder.EnableJsonTypes() -> Npgsql.NpgsqlSlimDataSou
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableNetworkTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlTracingOptions.DisableFirstResponseEvent.get -> bool
+Npgsql.NpgsqlTracingOptions.DisableFirstResponseEvent.set -> void
 Npgsql.NpgsqlTracingOptions.EnrichWithNpgsqlBatch.get -> System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlBatch!>?
 Npgsql.NpgsqlTracingOptions.EnrichWithNpgsqlBatch.set -> void
 Npgsql.NpgsqlTracingOptions.EnrichWithNpgsqlCommand.get -> System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlCommand!>?

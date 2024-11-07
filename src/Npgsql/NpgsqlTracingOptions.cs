@@ -46,6 +46,5 @@ public class NpgsqlTracingOptions
     /// Gets or sets a value indicating whether to disable the "time-to-first-read" event.
     /// Default is false to preserve existing behavior.
     /// </summary>
-    public bool DisableFirstResponseEvent { get; set; } = false;
-
+    public bool DisableFirstResponseEvent { get; set; }
 }
