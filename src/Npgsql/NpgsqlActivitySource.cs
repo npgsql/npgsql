@@ -106,13 +106,7 @@ static class NpgsqlActivitySource
     }
 
     internal static void CommandStop(Activity activity)
-    {
-        if (!(NpgsqlTracingOptions.Current?.DisableLastReadEvent ?? false))
-        {
-            var activityEvent = new ActivityEvent("received-last-response");
-            activity.AddEvent(activityEvent);
-        }
-        
+    {        
         activity.SetTag("otel.status_code", "OK");
         activity.Dispose();
     }
