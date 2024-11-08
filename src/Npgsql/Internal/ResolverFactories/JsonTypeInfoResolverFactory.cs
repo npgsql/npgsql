@@ -47,8 +47,7 @@ sealed class JsonTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 var jsonb = dataTypeName == DataTypeNames.Jsonb;
                 mappings.AddType<JsonDocument>(dataTypeName, (options, mapping, _) =>
                         mapping.CreateInfo(options,
-                            new JsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions)),
-                    isDefault: true);
+                            new JsonConverter<JsonDocument, JsonDocument>(jsonb, options.TextEncoding, serializerOptions)));
                 mappings.AddStructType<JsonElement>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options,
                         new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
