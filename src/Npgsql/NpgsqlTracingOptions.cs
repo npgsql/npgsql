@@ -8,8 +8,6 @@ namespace Npgsql;
 /// </summary>
 public class NpgsqlTracingOptions
 {
-    internal static NpgsqlTracingOptions? Current { get; set; }
-
     /// <summary>
     /// Gets or sets a filter function that determines whether or not to
     /// collect telemetry on a per <see cref="NpgsqlCommand"/> basis.

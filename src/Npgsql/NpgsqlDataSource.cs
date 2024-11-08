@@ -96,6 +96,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         (var name,
                 LoggingConfiguration,
+                _,
                 TransportSecurityHandler,
                 IntegratedSecurityHandler,
                 SslClientAuthenticationOptionsCallback,

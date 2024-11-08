@@ -1502,7 +1502,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     NpgsqlEventSource.Log.CommandStart(CommandText);
                     startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
-                    TraceCommandStart(connector.Settings);
+                    TraceCommandStart(connector.Settings, connector.DataSource.Configuration.TracingOptions);
                     TraceCommandEnrich(connector);
 
                     // We do not wait for the entire send to complete before proceeding to reading -
@@ -1537,7 +1537,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 else
                     reader.NextResult();
 
-                TraceReceivedFirstResponse();
+                TraceReceivedFirstResponse(connector.DataSource.Configuration.TracingOptions);
 
                 return reader;
             }
@@ -1572,7 +1572,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 State = CommandState.InProgress;
 
-                TraceCommandStart(conn.Settings);
+                TraceCommandStart(conn.Settings, conn.NpgsqlDataSource.Configuration.TracingOptions);
 
                 // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
                 // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
@@ -1709,13 +1709,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     #region Tracing
 
-    internal void TraceCommandStart(NpgsqlConnectionStringBuilder settings)
+    internal void TraceCommandStart(NpgsqlConnectionStringBuilder settings, NpgsqlTracingOptions? tracingSettings)
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
         {
-            var tracingSettings = NpgsqlTracingOptions.Current;
-
             (var enableTracing, string? spanName) = (true, null);
             if (tracingSettings is not null)
             {
@@ -1744,7 +1742,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (CurrentActivity is not null)
         {
             NpgsqlActivitySource.Enrich(CurrentActivity, connector);
-            var tracingSettings = NpgsqlTracingOptions.Current;
+            var tracingSettings = connector.DataSource.Configuration.TracingOptions;
             if (WrappingBatch is not null)
                 tracingSettings?.EnrichWithBatch?.Invoke(CurrentActivity, WrappingBatch);
             else
@@ -1752,10 +1750,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
     }
 
-    internal void TraceReceivedFirstResponse()
+    internal void TraceReceivedFirstResponse(NpgsqlTracingOptions? tracingSettings)
     {
         if (CurrentActivity is not null)
-            NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity);
+            NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity, tracingSettings);
     }
 
     internal void TraceCommandStop()

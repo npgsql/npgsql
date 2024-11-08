@@ -122,10 +122,21 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Configures tracing options for the DataSource.
+    /// </summary>
+    /// <param name="tracingOptions">Tracing options for the DataSource.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder ConfigureTracingOptions(NpgsqlTracingOptions tracingOptions)
+    {
+        _internalBuilder.ConfigureTracingOptions(tracingOptions);
+        return this;
+    }
+
+    /// <summary>
     /// Configures the JSON serializer options used when reading and writing all System.Text.Json data.
     /// </summary>
     /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
-    /// <returns></returns>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlDataSourceBuilder ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
     {
         _internalBuilder.ConfigureJsonOptions(serializerOptions);
