@@ -1720,15 +1720,26 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (NpgsqlActivitySource.IsEnabled)
         {
             var tracingSettings = NpgsqlTracingOptions.Current;
-            var enableTracing = IsWrappedByBatch
-                ? tracingSettings?.FilterNpgsqlBatch?.Invoke(WrappingBatch!)
-                : tracingSettings?.FilterNpgsqlCommand?.Invoke(this);
-            if (enableTracing != false)
+
+            (var enableTracing, string? spanName) = (true, null);
+            if (tracingSettings is not null)
             {
-                var spanName = IsWrappedByBatch
-                    ? tracingSettings?.ProvideSpanNameForNpgsqlBatch?.Invoke(WrappingBatch!)
-                    : tracingSettings?.ProvideSpanNameForNpgsqlCommand?.Invoke(this);
-                CurrentActivity = NpgsqlActivitySource.CommandStart(settings, IsWrappedByBatch ? GetBatchFullCommandText() : CommandText, CommandType, spanName);
+                enableTracing = IsWrappedByBatch
+                    ? tracingSettings.FilterNpgsqlBatch?.Invoke(WrappingBatch!) ?? true
+                    : tracingSettings.FilterNpgsqlCommand?.Invoke(this) ?? true;
+
+                spanName = IsWrappedByBatch
+                    ? tracingSettings.ProvideSpanNameForNpgsqlBatch?.Invoke(WrappingBatch!)
+                    : tracingSettings.ProvideSpanNameForNpgsqlCommand?.Invoke(this);
+            }
+
+            if (enableTracing)
+            {
+                CurrentActivity = NpgsqlActivitySource.CommandStart(
+                    settings,
+                    IsWrappedByBatch ? GetBatchFullCommandText() : CommandText,
+                    CommandType,
+                    spanName);
             }
         }
     }
