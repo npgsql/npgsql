@@ -38,7 +38,7 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             @"{""p"": 1}",
             _pgTypeName,
             npgsqlDbType,
-            isDefault: false,
+            isDefaultForWriting: false,
             isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
