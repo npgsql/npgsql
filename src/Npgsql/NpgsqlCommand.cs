@@ -48,11 +48,6 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     internal NpgsqlBatch? WrappingBatch { get; }
 
-    /// <summary>
-    /// Whether this <see cref="NpgsqlCommand" /> is wrapped by an <see cref="NpgsqlBatch" />.
-    /// </summary>
-    internal bool IsWrappedByBatch => WrappingBatch is not null;
-
     internal List<NpgsqlBatchCommand> InternalBatchCommands { get; }
 
     Activity? CurrentActivity;
@@ -185,7 +180,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         get => _commandText;
         set
         {
-            Debug.Assert(!IsWrappedByBatch);
+            Debug.Assert(WrappingBatch is null);
 
             if (State != CommandState.Idle)
                 ThrowHelper.ThrowInvalidOperationException("An open data reader exists for this command.");
@@ -199,7 +194,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     string GetBatchFullCommandText()
     {
-        Debug.Assert(IsWrappedByBatch);
+        Debug.Assert(WrappingBatch is not null);
         if (InternalBatchCommands.Count == 0)
             return string.Empty;
         if (InternalBatchCommands.Count == 1)
@@ -560,7 +555,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             LogMessages.DerivingParameters(connector.CommandLogger, CommandText, connector.Id);
 
-            if (IsWrappedByBatch)
+            if (WrappingBatch is not null)
                 foreach (var batchCommand in InternalBatchCommands)
                     connector.SqlQueryParser.ParseRawQuery(batchCommand, connector.UseConformingStrings, deriveParameters: true);
             else
@@ -673,7 +668,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         var needToPrepare = false;
 
-        if (IsWrappedByBatch)
+        if (WrappingBatch is not null)
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
@@ -1296,7 +1291,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)
     {
         var behavior = CommandBehavior.SingleRow;
-        if (IsWrappedByBatch || _parameters?.HasOutputParameters != true)
+        if (WrappingBatch is not null || _parameters?.HasOutputParameters != true)
             behavior |= CommandBehavior.SequentialAccess;
 
         var reader = await ExecuteReader(async, behavior, cancellationToken).ConfigureAwait(false);
@@ -1416,7 +1411,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     {
                     case true:
                         Debug.Assert(_connectorPreparedOn != null);
-                        if (IsWrappedByBatch)
+                        if (WrappingBatch is not null)
                         {
                             foreach (var batchCommand in InternalBatchCommands)
                             {
@@ -1451,7 +1446,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     case false:
                         var numPrepared = 0;
 
-                        if (IsWrappedByBatch)
+                        if (WrappingBatch is not null)
                         {
                             for (var i = 0; i < InternalBatchCommands.Count; i++)
                             {
@@ -1561,7 +1556,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     ThrowHelper.ThrowNotSupportedException("Synchronous command execution is not supported when multiplexing is on");
                 }
 
-                if (IsWrappedByBatch)
+                if (WrappingBatch is not null)
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
@@ -1724,12 +1719,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             (var enableTracing, string? spanName) = (true, null);
             if (tracingSettings is not null)
             {
-                enableTracing = IsWrappedByBatch
-                    ? tracingSettings.FilterBatch?.Invoke(WrappingBatch!) ?? true
+                enableTracing = WrappingBatch is not null
+                    ? tracingSettings.FilterBatch?.Invoke(WrappingBatch) ?? true
                     : tracingSettings.FilterCommand?.Invoke(this) ?? true;
 
-                spanName = IsWrappedByBatch
-                    ? tracingSettings.ProvideSpanNameForBatch?.Invoke(WrappingBatch!)
+                spanName = WrappingBatch is not null
+                    ? tracingSettings.ProvideSpanNameForBatch?.Invoke(WrappingBatch)
                     : tracingSettings.ProvideSpanNameForCommand?.Invoke(this);
             }
 
@@ -1737,7 +1732,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 CurrentActivity = NpgsqlActivitySource.CommandStart(
                     settings,
-                    IsWrappedByBatch ? GetBatchFullCommandText() : CommandText,
+                    WrappingBatch is not null ? GetBatchFullCommandText() : CommandText,
                     CommandType,
                     spanName);
             }
@@ -1750,8 +1745,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             NpgsqlActivitySource.Enrich(CurrentActivity, connector);
             var tracingSettings = NpgsqlTracingOptions.Current;
-            if (IsWrappedByBatch)
-                tracingSettings?.EnrichWithBatch?.Invoke(CurrentActivity, WrappingBatch!);
+            if (WrappingBatch is not null)
+                tracingSettings?.EnrichWithBatch?.Invoke(CurrentActivity, WrappingBatch);
             else
                 tracingSettings?.EnrichWithCommand?.Invoke(CurrentActivity, this);
         }
