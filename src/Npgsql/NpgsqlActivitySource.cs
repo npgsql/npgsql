@@ -47,7 +47,7 @@ static class NpgsqlActivitySource
             throw new ArgumentOutOfRangeException(nameof(commandType), commandType, null);
         }
 
-        var activity = Source.StartActivity(string.IsNullOrEmpty(spanName) ? activityName : spanName, ActivityKind.Client);
+        var activity = Source.StartActivity(spanName ?? activityName, ActivityKind.Client);
         if (activity is not { IsAllDataRequested: true })
             return activity;
 
