@@ -41,8 +41,8 @@ public class NpgsqlTracingOptions
     public Func<NpgsqlBatch, string?>? ProvideSpanNameForBatch { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether to disable the "time-to-first-read" event.
-    /// Default is false to preserve existing behavior.
+    /// Gets or sets a value indicating whether to enable the "time-to-first-read" event.
+    /// Default is true to preserve existing behavior.
     /// </summary>
-    public bool DisableFirstResponseEvent { get; set; }
+    public bool EnableFirstResponseEvent { get; set; } = true;
 }

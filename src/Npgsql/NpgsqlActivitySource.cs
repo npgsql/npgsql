@@ -98,7 +98,7 @@ static class NpgsqlActivitySource
 
     internal static void ReceivedFirstResponse(Activity activity, NpgsqlTracingOptions? tracingSettings)
     {
-        if (!activity.IsAllDataRequested || (tracingSettings?.DisableFirstResponseEvent ?? false))
+        if (!activity.IsAllDataRequested || tracingSettings?.EnableFirstResponseEvent == false)
             return;
 
         var activityEvent = new ActivityEvent("received-first-response");
