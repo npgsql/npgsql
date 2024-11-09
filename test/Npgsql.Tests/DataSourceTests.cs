@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 // ReSharper disable MethodHasAsyncOverload
 
@@ -380,4 +381,72 @@ public class DataSourceTests : TestBase
             Assert.That(reader.GetFieldValue<Test>(0).Id, Is.EqualTo(1));
         }
     }
+
+    [Test]
+    public async Task ReloadTypes([Values] bool async)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        if (async)
+            await dataSource.ReloadTypesAsync();
+        else
+            dataSource.ReloadTypes();
+
+        Assert.ThrowsAsync<InvalidCastException>(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+
+        // Close connection and reopen to make sure it picks up the new type and mapping from the data source
+        await connection.CloseAsync();
+        await connection.OpenAsync();
+
+        Assert.DoesNotThrowAsync(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+    }
+
+    [Test]
+    public async Task ReloadTypes_across_data_sources([Values] bool async)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+        await using var dataSource1 = dataSourceBuilder.Build();
+        await using var connection1 = await dataSource1.OpenConnectionAsync();
+
+        await using var dataSource2 = dataSourceBuilder.Build();
+        await using var connection2 = await dataSource2.OpenConnectionAsync();
+
+        await connection1.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        if (async)
+            await dataSource1.ReloadTypesAsync();
+        else
+            dataSource1.ReloadTypes();
+
+        Assert.ThrowsAsync<InvalidCastException>(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+
+        // Close connection and reopen to check that the new type and mapping is not available in dataSource2
+        await connection2.CloseAsync();
+        await connection2.OpenAsync();
+
+        Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+
+        await dataSource2.ReloadTypesAsync();
+
+        // Close connection2 and reopen to make sure it picks up the new type and mapping from dataSource2
+        await connection2.CloseAsync();
+        await connection2.OpenAsync();
+
+        Assert.DoesNotThrowAsync(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+    }
+
+    enum Mood { Sad, Ok, Happy }
 }
