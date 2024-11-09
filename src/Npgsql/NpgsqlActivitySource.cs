@@ -13,7 +13,7 @@ static class NpgsqlActivitySource
 
     internal static bool IsEnabled => Source.HasListeners();
 
-    internal static Activity? CommandStart(NpgsqlConnectionStringBuilder settings, string commandText, CommandType commandType)
+    internal static Activity? CommandStart(NpgsqlConnectionStringBuilder settings, string commandText, CommandType commandType, string? spanName)
     {
         var dbName = settings.Database ?? "UNKNOWN";
         string? dbOperation = null;
@@ -47,7 +47,7 @@ static class NpgsqlActivitySource
             throw new ArgumentOutOfRangeException(nameof(commandType), commandType, null);
         }
 
-        var activity = Source.StartActivity(activityName, ActivityKind.Client);
+        var activity = Source.StartActivity(spanName ?? activityName, ActivityKind.Client);
         if (activity is not { IsAllDataRequested: true })
             return activity;
 
@@ -96,9 +96,9 @@ static class NpgsqlActivitySource
         }
     }
 
-    internal static void ReceivedFirstResponse(Activity activity)
+    internal static void ReceivedFirstResponse(Activity activity, NpgsqlTracingOptions? tracingSettings)
     {
-        if (!activity.IsAllDataRequested)
+        if (!activity.IsAllDataRequested || tracingSettings?.EnableFirstResponseEvent == false)
             return;
 
         var activityEvent = new ActivityEvent("received-first-response");

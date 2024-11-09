@@ -29,6 +29,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
+    NpgsqlTracingOptions? _tracingOptions;
 
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
@@ -117,10 +118,21 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Configures tracing options for the DataSource.
+    /// </summary>
+    /// <param name="tracingOptions">Tracing options for the DataSource.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder ConfigureTracingOptions(NpgsqlTracingOptions tracingOptions)
+    {
+        _tracingOptions = tracingOptions;
+        return this;
+    }
+
+    /// <summary>
     /// Configures the JSON serializer options used when reading and writing all System.Text.Json data.
     /// </summary>
     /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
-    /// <returns></returns>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
     {
         JsonSerializerOptions = serializerOptions;
@@ -724,6 +736,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _loggerFactory is null
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
+            _tracingOptions,
             _transportSecurityHandler,
             _integratedSecurityHandler,
             sslClientAuthenticationOptionsCallback,

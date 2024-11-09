@@ -12,8 +12,6 @@ public static class TracerProviderBuilderExtensions
     /// <summary>
     /// Subscribes to the Npgsql activity source to enable OpenTelemetry tracing.
     /// </summary>
-    public static TracerProviderBuilder AddNpgsql(
-        this TracerProviderBuilder builder,
-        Action<NpgsqlTracingOptions>? options = null)
+    public static TracerProviderBuilder AddNpgsql(this TracerProviderBuilder builder)
         => builder.AddSource("Npgsql");
 }
