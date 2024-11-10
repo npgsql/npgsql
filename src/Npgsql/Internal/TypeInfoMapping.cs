@@ -16,11 +16,11 @@ namespace Npgsql.Internal;
 /// </summary>
 /// <param name="options"></param>
 /// <param name="mapping"></param>
-/// <param name="resolvedDataTypeName">
-/// Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should follow mapping.DataTypeName.
+/// <param name="requiresDataTypeName">
+/// Relevant for `PgResolverTypeInfo` only: whether the instance can be constructed without passing mapping.DataTypeName, an exception occurs otherwise.
 /// </param>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
+public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool requiresDataTypeName);
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public enum MatchRequirement
@@ -184,13 +184,13 @@ public sealed class TypeInfoMappingCollection
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgTypeInfo, PgConverter> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
-        => (options, mapping, dataTypeNameMatch) =>
+        => (options, mapping, requiresDataTypeName) =>
         {
             var resolvedInnerMapping = innerMapping;
             if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
                 resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
 
-            var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, dataTypeNameMatch);
+            var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var converter = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
             var writingSupported = supportsWriting && innerInfo.SupportsWriting;
@@ -205,13 +205,13 @@ public sealed class TypeInfoMappingCollection
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
-        => (options, mapping, dataTypeNameMatch) =>
+        => (options, mapping, requiresDataTypeName) =>
         {
             var resolvedInnerMapping = innerMapping;
             if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
                 resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
 
-            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, dataTypeNameMatch);
+            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var resolver = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
             var writingSupported = supportsWriting && innerInfo.SupportsWriting;
@@ -346,12 +346,12 @@ public sealed class TypeInfoMappingCollection
             _items.Add(arrayMapping);
             suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) =>
                 {
-                    if (!dataTypeNameMatch)
+                    if (!requiresDataTypeName)
                         throw new InvalidOperationException("Should not happen, please file a bug.");
 
-                    return arrayMapping.Factory(options, mapping, dataTypeNameMatch);
+                    return arrayMapping.Factory(options, mapping, requiresDataTypeName);
                 }));
         }
     }
@@ -386,12 +386,12 @@ public sealed class TypeInfoMappingCollection
             _items.Add(arrayMapping);
             suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) =>
                 {
-                    if (!dataTypeNameMatch)
+                    if (!requiresDataTypeName)
                         throw new InvalidOperationException("Should not happen, please file a bug.");
 
-                    return arrayMapping.Factory(options, mapping, dataTypeNameMatch);
+                    return arrayMapping.Factory(options, mapping, requiresDataTypeName);
                 }));
         }
     }
@@ -485,16 +485,16 @@ public sealed class TypeInfoMappingCollection
         _items.Add(nullableArrayMapping);
         suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
         if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
+            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) =>
             {
                 return options.ArrayNullabilityMode switch
                 {
-                    _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
-                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    _ when !requiresDataTypeName => throw new InvalidOperationException("Should not happen, please file a bug."),
+                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                     ArrayNullabilityMode.PerInstance => CreateComposedPerInstance(
-                        arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                        nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                        arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                        nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                         mapping.DataTypeName
                     ),
                     _ => throw new ArgumentOutOfRangeException()
@@ -603,14 +603,14 @@ public sealed class TypeInfoMappingCollection
             _items.Add(nullableArrayMapping);
             suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) => options.ArrayNullabilityMode switch
                 {
-                    _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
-                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    _ when !requiresDataTypeName => throw new InvalidOperationException("Should not happen, please file a bug."),
+                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                     ArrayNullabilityMode.PerInstance => CreateComposedPerInstance(
-                        arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                        nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                        arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                        nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                         mapping.DataTypeName
                     ),
                     _ => throw new ArgumentOutOfRangeException()

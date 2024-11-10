@@ -221,7 +221,7 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
         where T : struct
     {
         internal override void AddMapping(TypeInfoMappingCollection mappings)
-            => mappings.AddStructType<T>(PgTypeName, (options, mapping, dataTypeNameMatch) =>
+            => mappings.AddStructType<T>(PgTypeName, (options, mapping, requiresDataTypeName) =>
             {
                 var pgType = mapping.GetPgType(options);
                 if (pgType is not PostgresCompositeType compositeType)
