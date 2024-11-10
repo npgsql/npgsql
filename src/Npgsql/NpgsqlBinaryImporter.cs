@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,6 +46,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     readonly ILogger _copyLogger;
     PgWriter _pgWriter = null!; // Setup in Init
 
+    Activity? CurrentActivity;
+
     /// <summary>
     /// Current timeout
     /// </summary>
@@ -72,6 +75,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     internal async Task Init(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
     {
+        TraceImportStart(copyFromCommand);
+
         await _connector.WriteQuery(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
         await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
 
@@ -532,6 +537,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         var connector = _connector;
 
         LogMessages.BinaryCopyOperationCompleted(_copyLogger, _rowsImported, connector?.Id ?? -1);
+        TraceCommandStop(_rowsImported);
 
         if (connector != null)
         {
@@ -581,4 +587,30 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     void ThrowColumnMismatch()
         => throw new InvalidOperationException($"The binary import operation was started with {NumColumns} column(s), but {_column + 1} value(s) were provided.");
+
+    #region Tracing
+
+    private void TraceImportStart(string copyFromCommand)
+    {
+        Debug.Assert(CurrentActivity is null);
+        if (NpgsqlActivitySource.IsEnabled)
+        {
+            CurrentActivity = NpgsqlActivitySource.ImportStart(copyFromCommand, _connector.Settings);
+            if (CurrentActivity is not null)
+            {
+                NpgsqlActivitySource.Enrich(CurrentActivity, _connector);
+            }
+        }
+    }
+
+    internal void TraceCommandStop(ulong rows)
+    {
+        if (CurrentActivity is not null)
+        {
+            NpgsqlActivitySource.ImportStop(CurrentActivity, rows);
+            CurrentActivity = null;
+        }
+    }
+
+    #endregion Tracing
 }
