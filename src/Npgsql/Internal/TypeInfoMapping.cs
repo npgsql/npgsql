@@ -753,6 +753,13 @@ public static class TypeInfoMappingHelpers
     internal static PostgresType GetPgType(this TypeInfoMapping mapping, PgSerializerOptions options)
         => options.DatabaseInfo.GetPostgresType(new DataTypeName(mapping.DataTypeName));
 
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter)
+        => new(options, converter, new DataTypeName(mapping.DataTypeName))
+        {
+            PreferredFormat = null,
+            SupportsWriting = true
+        };
+
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new(options, converter, new DataTypeName(mapping.DataTypeName))
         {
@@ -760,7 +767,22 @@ public static class TypeInfoMappingHelpers
             SupportsWriting = supportsWriting
         };
 
-    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null, bool supportsWriting = true)
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="mapping"></param>
+    /// <param name="options"></param>
+    /// <param name="resolver"></param>
+    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, 'closing' it on construction, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
+    /// <returns></returns>
+    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName)
+        => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
+        {
+            PreferredFormat = null,
+            SupportsWriting = true
+        };
+
+    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
             PreferredFormat = preferredFormat,

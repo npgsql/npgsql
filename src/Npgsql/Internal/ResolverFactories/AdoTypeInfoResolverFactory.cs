@@ -172,7 +172,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Varbit
             mappings.AddType<object>(DataTypeNames.Varbit,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), supportsWriting: false));
+                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), includeDataTypeName: true, supportsWriting: false));
             mappings.AddType<BitArray>(DataTypeNames.Varbit,
                 static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
             mappings.AddStructType<bool>(DataTypeNames.Varbit,
@@ -183,7 +183,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Bit
             mappings.AddType<object>(DataTypeNames.Bit,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), supportsWriting: false));
+                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), includeDataTypeName: true, supportsWriting: false));
             mappings.AddType<BitArray>(DataTypeNames.Bit,
                 static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
             mappings.AddStructType<bool>(DataTypeNames.Bit,
