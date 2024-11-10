@@ -1,3 +1,3 @@
-FROM postgres
+FROM postgres:17
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends openssl postgresql-16-postgis-3
+    apt-get install -y --no-install-recommends openssl postgresql-17-postgis-3
