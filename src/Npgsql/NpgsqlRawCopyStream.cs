@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -60,6 +60,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     ];
 
     readonly ILogger _copyLogger;
+    Activity? _copyActivity;
 
     #endregion
 
@@ -73,36 +74,48 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
-    internal async Task Init(string copyCommand, bool async, CancellationToken cancellationToken = default)
+    internal async Task Init(string copyCommand, CopyOperationType copyOperationType, bool async, CancellationToken cancellationToken = default)
     {
-        await _connector.WriteQuery(copyCommand, async, cancellationToken).ConfigureAwait(false);
-        await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
+        TraceCopyStart(copyCommand, copyOperationType);
 
-        using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-        var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
-        switch (msg.Code)
+        try
         {
-        case BackendMessageCode.CopyInResponse:
-            _state = CopyStreamState.Ready;
-            var copyInResponse = (CopyInResponseMessage) msg;
-            IsBinary = copyInResponse.IsBinary;
-            _canWrite = true;
-            _writeBuf.StartCopyMode();
-            break;
-        case BackendMessageCode.CopyOutResponse:
-            _state = CopyStreamState.Ready;
-            var copyOutResponse = (CopyOutResponseMessage) msg;
-            IsBinary = copyOutResponse.IsBinary;
-            _canRead = true;
-            break;
-        case BackendMessageCode.CommandComplete:
-            throw new InvalidOperationException(
-                "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
-                "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
-                "Note that your data has been successfully imported/exported.");
-        default:
-            throw _connector.UnexpectedMessageReceived(msg.Code);
+            await _connector.WriteQuery(copyCommand, async, cancellationToken).ConfigureAwait(false);
+            await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
+
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+
+            var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
+            switch (msg.Code)
+            {
+            case BackendMessageCode.CopyInResponse:
+                _state = CopyStreamState.Ready;
+                var copyInResponse = (CopyInResponseMessage)msg;
+                IsBinary = copyInResponse.IsBinary;
+                _canWrite = true;
+                _writeBuf.StartCopyMode();
+                TraceSetImport();
+                break;
+            case BackendMessageCode.CopyOutResponse:
+                _state = CopyStreamState.Ready;
+                var copyOutResponse = (CopyOutResponseMessage)msg;
+                IsBinary = copyOutResponse.IsBinary;
+                _canRead = true;
+                TraceSetExport();
+                break;
+            case BackendMessageCode.CommandComplete:
+                throw new InvalidOperationException(
+                    "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
+                    "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
+                    "Note that your data has been successfully imported/exported.");
+            default:
+                throw _connector.UnexpectedMessageReceived(msg.Code);
+            }
+        }
+        catch (Exception e)
+        {
+            TraceSetException(e);
+            throw;
         }
     }
 
@@ -261,10 +274,13 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 // read the next message
                 msg = await _connector.ReadMessage(async).ConfigureAwait(false);
             }
-            catch
+            catch (Exception e)
             {
                 if (_state != CopyStreamState.Disposed)
+                {
+                    TraceSetException(e);
                     Cleanup();
+                }
                 throw;
             }
 
@@ -339,7 +355,12 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 Cleanup();
 
                 if (e.SqlState != PostgresErrorCodes.QueryCanceled)
+                {
+                    TraceSetException(e);
                     throw;
+                }
+
+                TraceSetCancelled();
             }
         }
         else
@@ -356,7 +377,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
     public override ValueTask DisposeAsync()
         => DisposeAsync(disposing: true, async: true);
-
 
     async ValueTask DisposeAsync(bool disposing, bool async)
     {
@@ -375,6 +395,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 await _connector.Flush(async).ConfigureAwait(false);
                 Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+                TraceImportStop();
             }
             else
             {
@@ -387,15 +408,31 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                             await _readBuf.Skip(async, _leftToReadInDataMsg).ConfigureAwait(false);
                         }
                         _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+
+                        if (_connector.PostgresCancellationPerformed)
+                        {
+                            LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
+                            TraceSetCancelled();
+                        }
+                        else
+                        {
+                            TraceExportStop();
+                        }
                     }
                     catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
                     {
                         LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
+                        TraceSetCancelled();
                     }
                     catch (Exception e)
                     {
                         LogMessages.ExceptionWhenDisposingCopyOperation(_copyLogger, _connector.Id, e);
+                        TraceSetException(e);
                     }
+                }
+                else
+                {
+                    TraceExportStop();
                 }
             }
         }
@@ -456,6 +493,82 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         if (buffer.Length - offset < count)
             ThrowHelper.ThrowArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
     }
+    #endregion
+
+    #region Tracing
+
+    private void TraceCopyStart(string copyCommand, CopyOperationType copyOperationType)
+    {
+        Debug.Assert(_copyActivity is null);
+        if (NpgsqlActivitySource.IsEnabled)
+        {
+            var tracingOptions = _connector.DataSource.Configuration.TracingOptions;
+
+            if (tracingOptions.CopyOperationFilter?.Invoke(copyCommand, copyOperationType) ?? true)
+            {
+                var spanName = tracingOptions.CopyOperationSpanNameProvider?.Invoke(copyCommand, copyOperationType);
+                _copyActivity = NpgsqlActivitySource.CopyStart(copyCommand, _connector, spanName);
+
+                if (_copyActivity != null)
+                {
+                    tracingOptions.CopyOperationEnrichmentCallback?.Invoke(_copyActivity, copyCommand, copyOperationType);
+                }
+            }
+        }
+    }
+
+    private void TraceSetImport()
+    {
+        if (_copyActivity is not null)
+        {
+            NpgsqlActivitySource.SetImport(_copyActivity);
+        }
+    }
+
+    private void TraceSetExport()
+    {
+        if (_copyActivity is not null)
+        {
+            NpgsqlActivitySource.SetExport(_copyActivity);
+        }
+    }
+
+    private void TraceImportStop()
+    {
+        if (_copyActivity is not null)
+        {
+            NpgsqlActivitySource.ImportStop(_copyActivity);
+            _copyActivity = null;
+        }
+    }
+
+    private void TraceExportStop()
+    {
+        if (_copyActivity is not null)
+        {
+            NpgsqlActivitySource.ExportStop(_copyActivity);
+            _copyActivity = null;
+        }
+    }
+
+    private void TraceSetCancelled()
+    {
+        if (_copyActivity is not null)
+        {
+            NpgsqlActivitySource.SetCancelled(_copyActivity);
+            _copyActivity = null;
+        }
+    }
+
+    private void TraceSetException(Exception e)
+    {
+        if (_copyActivity is not null)
+        {
+            NpgsqlActivitySource.SetException(_copyActivity, e);
+            _copyActivity = null;
+        }
+    }
+
     #endregion
 
     #region Enums

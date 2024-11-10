@@ -79,3 +79,18 @@ public enum StatementType
     Call
 #pragma warning restore 1591
 }
+
+/// <summary>
+/// Specifies the type of copy operation.
+/// </summary>
+public enum CopyOperationType
+{
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    BinaryImport,
+    BinaryExport,
+    TextImport,
+    TextExport,
+    RawBinary
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+
+}

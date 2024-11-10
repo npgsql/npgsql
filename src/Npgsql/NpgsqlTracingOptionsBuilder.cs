@@ -17,6 +17,10 @@ public sealed class NpgsqlTracingOptionsBuilder
     bool _enableFirstResponseEvent = true;
     bool _enablePhysicalOpenTracing = true;
 
+    Func<string, CopyOperationType, bool>? _copyOperationFilter;
+    Action<Activity, string, CopyOperationType>? _copyOperationEnrichmentCallback;
+    Func<string, CopyOperationType, string?>? _copyOperationSpanNameProvider;
+
     internal NpgsqlTracingOptionsBuilder()
     {
     }
@@ -99,6 +103,35 @@ public sealed class NpgsqlTracingOptionsBuilder
         return this;
     }
 
+    /// <summary>
+    /// Configures a filter function that determines whether to emit tracing information for a copy operation.
+    /// By default, tracing information is emitted for all copy operations.
+    /// </summary>
+    public NpgsqlTracingOptionsBuilder ConfigureCopyOperationFilter(Func<string, CopyOperationType, bool>? copyOperationFilter)
+    {
+        _copyOperationFilter = copyOperationFilter;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures a callback that can enrich the <see cref="Activity"/> emitted for a given copy operation.
+    /// </summary>
+    public NpgsqlTracingOptionsBuilder ConfigureCopyOperationEnrichmentCallback(Action<Activity, string, CopyOperationType>? copyOperationEnrichmentCallback)
+    {
+        _copyOperationEnrichmentCallback = copyOperationEnrichmentCallback;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures a callback that provides the tracing span's name for a copy operation. If <c>null</c>, the default standard
+    /// span name is used, which is the database name.
+    /// </summary>
+    public NpgsqlTracingOptionsBuilder ConfigureCopyOperationSpanNameProvider(Func<string, CopyOperationType, string?>? copyOperationSpanNameProvider)
+    {
+        _copyOperationSpanNameProvider = copyOperationSpanNameProvider;
+        return this;
+    }
+
     internal NpgsqlTracingOptions Build() => new()
     {
         CommandFilter = _commandFilter,
@@ -108,7 +141,10 @@ public sealed class NpgsqlTracingOptionsBuilder
         CommandSpanNameProvider = _commandSpanNameProvider,
         BatchSpanNameProvider = _batchSpanNameProvider,
         EnableFirstResponseEvent = _enableFirstResponseEvent,
-        EnablePhysicalOpenTracing = _enablePhysicalOpenTracing
+        EnablePhysicalOpenTracing = _enablePhysicalOpenTracing,
+        CopyOperationFilter = _copyOperationFilter,
+        CopyOperationEnrichmentCallback = _copyOperationEnrichmentCallback,
+        CopyOperationSpanNameProvider = _copyOperationSpanNameProvider
     };
 }
 
@@ -122,4 +158,7 @@ sealed class NpgsqlTracingOptions
     internal Func<NpgsqlBatch, string?>? BatchSpanNameProvider { get; init; }
     internal bool EnableFirstResponseEvent { get; init; }
     internal bool EnablePhysicalOpenTracing { get; init; }
+    internal Func<string, CopyOperationType, bool>? CopyOperationFilter { get; init; }
+    internal Action<Activity, string, CopyOperationType>? CopyOperationEnrichmentCallback { get; init; }
+    internal Func<string, CopyOperationType, string?>? CopyOperationSpanNameProvider { get; init; }
 }
