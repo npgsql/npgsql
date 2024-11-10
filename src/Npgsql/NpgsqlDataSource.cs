@@ -4,7 +4,6 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -226,6 +225,29 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
         => Create(connectionStringBuilder.ToString());
+
+    /// <summary>
+    /// Flushes the type cache for this data source.
+    /// Type changes will appear for connections only after they are re-opened from the pool.
+    /// </summary>
+    public void ReloadTypes()
+    {
+        using var connection = OpenConnection();
+        connection.ReloadTypes();
+    }
+
+    /// <summary>
+    /// Flushes the type cache for this data source.
+    /// Type changes will appear for connections only after they are re-opened from the pool.
+    /// </summary>
+    public async Task ReloadTypesAsync(CancellationToken cancellationToken = default)
+    {
+        var connection = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using (connection.ConfigureAwait(false))
+        {
+            await connection.ReloadTypesAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     internal async Task Bootstrap(
         NpgsqlConnector connector,
