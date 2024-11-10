@@ -124,7 +124,8 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
 
             if (type is not null && info.Type != type)
             {
-                if (!info.IsBoxing || (info.IsBoxing && !type.IsAssignableFrom(info.Type)))
+                // Types were not equal, throw for IsBoxing = false, otherwise we throw when the returned type isn't assignable to the requested type (after unboxing).
+                if (!info.IsBoxing || !info.Type.IsAssignableTo(type))
                     throw new InvalidOperationException($"A CLR type '{type}' was passed but the resolved PgTypeInfo does not have an equal Type: {info.Type}.");
             }
 
