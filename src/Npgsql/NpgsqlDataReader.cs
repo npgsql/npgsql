@@ -2131,8 +2131,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         var field = RowDescription![ordinal];
 
-        converter = field.ObjectOrDefaultInfo.Converter;
-        bufferRequirement = field.ObjectOrDefaultInfo.BufferRequirement;
+        converter = field.ObjectInfo.Converter;
+        bufferRequirement = field.ObjectInfo.BufferRequirement;
         return field.DataFormat;
     }
 

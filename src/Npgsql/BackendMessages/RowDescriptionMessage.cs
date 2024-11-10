@@ -232,7 +232,7 @@ public sealed class FieldDescription
         DataFormat = source.DataFormat;
         PostgresType = source.PostgresType;
         Field = source.Field;
-        _objectOrDefaultInfo = source._objectOrDefaultInfo;
+        _objectInfo = source._objectInfo;
     }
 
     internal void Populate(
@@ -250,7 +250,7 @@ public sealed class FieldDescription
         DataFormat = dataFormat;
         PostgresType = _serializerOptions.DatabaseInfo.FindPostgresType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
         Field = new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
-        _objectOrDefaultInfo = default;
+        _objectInfo = default;
     }
 
     /// <summary>
@@ -296,18 +296,18 @@ public sealed class FieldDescription
 
     internal PostgresType PostgresType { get; private set; }
 
-    internal Type FieldType => ObjectOrDefaultInfo.TypeToConvert;
+    internal Type FieldType => ObjectInfo.TypeToConvert;
 
-    ColumnInfo _objectOrDefaultInfo;
-    internal PgConverterInfo ObjectOrDefaultInfo
+    ColumnInfo _objectInfo;
+    internal PgConverterInfo ObjectInfo
     {
         get
         {
-            if (!_objectOrDefaultInfo.ConverterInfo.IsDefault)
-                return _objectOrDefaultInfo.ConverterInfo;
+            if (!_objectInfo.ConverterInfo.IsDefault)
+                return _objectInfo.ConverterInfo;
 
-            ref var info = ref _objectOrDefaultInfo;
-            GetInfo(null, ref _objectOrDefaultInfo);
+            ref var info = ref _objectInfo;
+            GetInfoCore(null, ref _objectInfo);
             return info.ConverterInfo;
         }
     }
@@ -320,7 +320,8 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal void GetInfo(Type? type, ref ColumnInfo lastColumnInfo)
+    internal void GetInfo(Type type, ref ColumnInfo lastColumnInfo) => GetInfoCore(type, ref lastColumnInfo);
+    void GetInfoCore(Type? type, ref ColumnInfo lastColumnInfo)
     {
         Debug.Assert(lastColumnInfo.ConverterInfo.IsDefault || (
             ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) && (
@@ -332,20 +333,20 @@ public sealed class FieldDescription
         if (!lastColumnInfo.ConverterInfo.IsDefault && lastColumnInfo.ConverterInfo.TypeToConvert == type)
             return;
 
-        var odfInfo = DataFormat is DataFormat.Text && type is not null ? ObjectOrDefaultInfo : _objectOrDefaultInfo.ConverterInfo;
-        if (odfInfo is { IsDefault: false })
+        var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectInfo : _objectInfo.ConverterInfo;
+        if (objectInfo is { IsDefault: false })
         {
             if (typeof(object) == type)
             {
-                lastColumnInfo = new(odfInfo, DataFormat, true);
+                lastColumnInfo = new(objectInfo, DataFormat, true);
                 return;
             }
-            if (odfInfo.TypeToConvert == type)
+            if (objectInfo.TypeToConvert == type)
             {
                 // As TypeInfoMappingCollection is always adding object mappings for
                 // default/datatypename mappings, we'll also check Converter.TypeToConvert.
                 // If we have an exact match we are still able to use e.g. a converter for ints in an unboxed fashion.
-                lastColumnInfo = new(odfInfo, DataFormat, odfInfo.IsBoxingConverter && odfInfo.Converter.TypeToConvert != type);
+                lastColumnInfo = new(objectInfo, DataFormat, objectInfo.IsBoxingConverter && objectInfo.Converter.TypeToConvert != type);
                 return;
             }
         }
@@ -390,9 +391,8 @@ public sealed class FieldDescription
 
             // We delay initializing ObjectOrDefaultInfo until after the first lookup (unless it is itself the first lookup).
             // When passed in an unsupported type it allows the error to be more specific, instead of just having object/null to deal with.
-            if (_objectOrDefaultInfo.ConverterInfo.IsDefault && type is not null)
-                _ = ObjectOrDefaultInfo;
-
+            if (_objectInfo.ConverterInfo.IsDefault && type is not null)
+                _ = ObjectInfo;
         }
 
         // DataFormat.Text today exclusively signals that we executed with an UnknownResultTypeList.

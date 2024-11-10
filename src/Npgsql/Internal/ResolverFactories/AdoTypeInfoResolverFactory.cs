@@ -38,13 +38,12 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
         static PgTypeInfo? GetEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
-            if (type is not null && type != typeof(string))
+            if (type is not null && type != typeof(object) && type != typeof(string)
+                || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
                 return null;
 
-            if (options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
-                return null;
-
-            return new PgTypeInfo(options, new StringTextConverter(options.TextEncoding), dataTypeName);
+            return new PgTypeInfo(options, new StringTextConverter(options.TextEncoding), dataTypeName,
+                unboxedType: type == typeof(object) ? typeof(string) : null);
         }
 
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
@@ -511,7 +510,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
         static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
-            if ((type != typeof(object) && elementType is not null && elementType != typeof(string)) || pgElementType is not PostgresEnumType enumType)
+            if ((type is not null && type != typeof(object) && elementType != typeof(string))
+                || pgElementType is not PostgresEnumType enumType)
                 return null;
 
             var mappings = new TypeInfoMappingCollection();

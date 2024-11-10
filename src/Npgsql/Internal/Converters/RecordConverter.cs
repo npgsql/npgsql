@@ -7,6 +7,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? factory = null) : PgStreamingConverter<T>
 {
+    static bool IsObjectArrayRecord => typeof(T) == typeof(object[]);
+
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -34,9 +36,11 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
             var postgresType =
                 options.DatabaseInfo.GetPostgresType(typeOid).GetRepresentationalType()
                 ?? throw new NotSupportedException($"Reading isn't supported for record field {i} (unknown type OID {typeOid}");
-
             var pgTypeId = options.ToCanonicalTypeId(postgresType);
-            var typeInfo = options.GetObjectOrDefaultTypeInfoInternal(pgTypeId)
+
+            // TODO resolve based on types expected by _factory (pass in a Type[] during construcion)
+            // Only allow object polymorphism for object[] records, valuetuple records are always strongly typed.
+            var typeInfo = (IsObjectArrayRecord ? options.GetTypeInfo(typeof(object), pgTypeId) : options.GetDefaultTypeInfo(pgTypeId))
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 

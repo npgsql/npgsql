@@ -78,25 +78,22 @@ public sealed class PgSerializerOptions
     // This also makes it easier to realize it should be a cached value if infos for different CLR types are requested for the same
     // pgTypeId. Effectively it should be 'impossible' to get the wrong kind via any PgConverterOptions api which is what this is mainly
     // for.
-    PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId, bool defaultTypeFallback)
+    PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId)
         => PortableTypeIds
-            ? ((TypeInfoCache<DataTypeName>)(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this))).GetOrAddInfo(type, pgTypeId?.DataTypeName, defaultTypeFallback)
-            : ((TypeInfoCache<Oid>)(_typeInfoCache ??= new TypeInfoCache<Oid>(this))).GetOrAddInfo(type, pgTypeId?.Oid, defaultTypeFallback);
+            ? ((TypeInfoCache<DataTypeName>)(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this))).GetOrAddInfo(type, pgTypeId?.DataTypeName)
+            : ((TypeInfoCache<Oid>)(_typeInfoCache ??= new TypeInfoCache<Oid>(this))).GetOrAddInfo(type, pgTypeId?.Oid);
 
     internal PgTypeInfo? GetTypeInfoInternal(Type? type, PgTypeId? pgTypeId)
-        => GetTypeInfoCore(type, pgTypeId, false);
-
-    internal PgTypeInfo? GetObjectOrDefaultTypeInfoInternal(PgTypeId pgTypeId)
-        => GetTypeInfoCore(typeof(object), pgTypeId, true);
+        => GetTypeInfoCore(type, pgTypeId);
 
     public PgTypeInfo? GetDefaultTypeInfo(Type type)
-        => GetTypeInfoCore(type, null, false);
+        => GetTypeInfoCore(type, null);
 
     public PgTypeInfo? GetDefaultTypeInfo(PgTypeId pgTypeId)
-        => GetTypeInfoCore(null, GetCanonicalTypeId(pgTypeId), false);
+        => GetTypeInfoCore(null, GetCanonicalTypeId(pgTypeId));
 
     public PgTypeInfo? GetTypeInfo(Type type, PgTypeId pgTypeId)
-        => GetTypeInfoCore(type, GetCanonicalTypeId(pgTypeId), false);
+        => GetTypeInfoCore(type, GetCanonicalTypeId(pgTypeId));
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
     internal PgTypeId GetCanonicalTypeId(PgTypeId pgTypeId)
