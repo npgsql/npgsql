@@ -5,25 +5,29 @@
 
   "workspaceFolder": "/workspace",
 
-  "settings": {
-    "terminal.integrated.profiles.linux": {
-      "bash": {
-          "path": "/bin/bash"
-      }
-    },
-    "terminal.integrated.defaultProfile.linux": "bash",
-    "remote.extensionKind": {
-      "ms-azuretools.vscode-docker": "workspace"
+  "customizations": {
+    "vscode": {
+      "settings": {
+          "terminal.integrated.profiles.linux": {
+            "bash": {
+              "path": "/bin/bash"
+            }
+          },
+          "terminal.integrated.defaultProfile.linux": "bash",
+          "remote.extensionKind": {
+            "ms-azuretools.vscode-docker": "workspace"
+          }
+        },
+
+        "extensions": [
+          "ms-dotnettools.csharp",
+          "formulahendry.dotnet-test-explorer",
+          "ms-azuretools.vscode-docker",
+          "mutantdino.resourcemonitor"
+        ]
     }
   },
-
-  "extensions": [
-    "ms-dotnettools.csharp",
-    "formulahendry.dotnet-test-explorer",
-    "ms-azuretools.vscode-docker",
-    "mutantdino.resourcemonitor"
-  ],
-
+  
   "forwardPorts": [5432, 5050],
 
   "remoteEnv": {
