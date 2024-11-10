@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Npgsql.Internal;
-using Npgsql.Internal.ResolverFactories;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 

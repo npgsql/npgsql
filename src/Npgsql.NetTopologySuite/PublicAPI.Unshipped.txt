@@ -1,1 +1,2 @@
 ﻿#nullable enable
+static Npgsql.NpgsqlNetTopologySuiteExtensions.UseNetTopologySuite<TMapper>(this TMapper mapper, NetTopologySuite.Geometries.CoordinateSequenceFactory? coordinateSequenceFactory = null, NetTopologySuite.Geometries.PrecisionModel? precisionModel = null, NetTopologySuite.Geometries.Ordinates handleOrdinates = NetTopologySuite.Geometries.Ordinates.None, bool geographyAsDefault = false) -> TMapper

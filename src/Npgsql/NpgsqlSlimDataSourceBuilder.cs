@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Internal.ResolverFactories;
+using Npgsql.NameTranslation;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -357,8 +358,27 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         set => _userTypeMapper.DefaultNameTranslator = value;
     }
 
-    /// <inheritdoc />
-    public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    /// <summary>
+    /// Maps a CLR enum to a PostgreSQL enum type.
+    /// </summary>
+    /// <remarks>
+    /// CLR enum labels are mapped by name to PostgreSQL enum labels.
+    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+    /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
+    /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+    /// an exception will be raised.
+    /// </remarks>
+    /// <param name="pgName">
+    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
+    /// </param>
+    /// <param name="nameTranslator">
+    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+    /// Defaults to <see cref="DefaultNameTranslator" />.
+    /// </param>
+    /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+    public NpgsqlSlimDataSourceBuilder MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
     {
         _userTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
@@ -370,9 +390,28 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         where TEnum : struct, Enum
         => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Maps a CLR enum to a PostgreSQL enum type.
+    /// </summary>
+    /// <remarks>
+    /// CLR enum labels are mapped by name to PostgreSQL enum labels.
+    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+    /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
+    /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+    /// an exception will be raised.
+    /// </remarks>
+    /// <param name="clrType">The .NET enum type to be mapped</param>
+    /// <param name="pgName">
+    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
+    /// </param>
+    /// <param name="nameTranslator">
+    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+    /// Defaults to <see cref="DefaultNameTranslator" />.
+    /// </param>
     [RequiresDynamicCode("Calling MapEnum with a Type can require creating new generic types or methods. This may not work when AOT compiling.")]
-    public INpgsqlTypeMapper MapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+    public NpgsqlSlimDataSourceBuilder MapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _userTypeMapper.MapEnum(clrType, pgName, nameTranslator);
@@ -384,9 +423,28 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapEnum(clrType, pgName, nameTranslator);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Maps a CLR type to a PostgreSQL composite type.
+    /// </summary>
+    /// <remarks>
+    /// CLR fields and properties by string to PostgreSQL names.
+    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL name.
+    /// If there is a discrepancy between the .NET type and database type while a composite is read or written,
+    /// an exception will be raised.
+    /// </remarks>
+    /// <param name="pgName">
+    /// A PostgreSQL type name for the corresponding composite type in the database.
+    /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
+    /// </param>
+    /// <param name="nameTranslator">
+    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+    /// Defaults to <see cref="DefaultNameTranslator" />.
+    /// </param>
+    /// <typeparam name="T">The .NET type to be mapped</typeparam>
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types which can require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
-    public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+    public NpgsqlSlimDataSourceBuilder MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _userTypeMapper.MapComposite(typeof(T), pgName, nameTranslator);
@@ -399,9 +457,27 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(typeof(T), pgName, nameTranslator);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Maps a CLR type to a composite type.
+    /// </summary>
+    /// <remarks>
+    /// Maps CLR fields and properties by string to PostgreSQL names.
+    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+    /// which defaults to <see cref="DefaultNameTranslator" />.
+    /// If there is a discrepancy between the .NET type and database type while a composite is read or written,
+    /// an exception will be raised.
+    /// </remarks>
+    /// <param name="clrType">The .NET type to be mapped.</param>
+    /// <param name="pgName">
+    /// A PostgreSQL type name for the corresponding composite type in the database.
+    /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
+    /// </param>
+    /// <param name="nameTranslator">
+    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+    /// Defaults to <see cref="DefaultNameTranslator" />.
+    /// </param>
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types which can require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
-    public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+    public NpgsqlSlimDataSourceBuilder MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
@@ -413,7 +489,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
-
 
     /// <inheritdoc />
     public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.PrependResolverFactory(factory);
@@ -787,4 +862,38 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         "The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
     INpgsqlTypeMapper INpgsqlTypeMapper.EnableUnmappedTypes()
         => EnableUnmappedTypes();
+
+    /// <inheritdoc />
+    INpgsqlTypeMapper INpgsqlTypeMapper.MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName, INpgsqlNameTranslator? nameTranslator)
+    {
+        _userTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    [RequiresDynamicCode("Calling MapEnum with a Type can require creating new generic types or methods. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.MapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+        Type clrType, string? pgName, INpgsqlNameTranslator? nameTranslator)
+    {
+        _userTypeMapper.MapEnum(clrType, pgName, nameTranslator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types which can require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
+        string? pgName, INpgsqlNameTranslator? nameTranslator)
+    {
+        _userTypeMapper.MapComposite(typeof(T), pgName, nameTranslator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types which can require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
+    INpgsqlTypeMapper INpgsqlTypeMapper.MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
+        Type clrType, string? pgName, INpgsqlNameTranslator? nameTranslator)
+    {
+        _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
+        return this;
+    }
 }
