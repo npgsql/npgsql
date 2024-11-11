@@ -75,7 +75,7 @@ sealed class CompositeBuilder<T>(CompositeInfo<T> compositeInfo) : CompositeBuil
                 args[argIndex] = tempBoxes[i];
         }
         _instance = compositeInfo.Constructor(args)!;
-        ArrayPool<StrongBox>.Shared.Return(args);
+        ArrayPool<StrongBox>.Shared.Return(args, clearArray: true);
 
         if (tempBoxes.Length == compositeInfo.Fields.Count)
             return;
