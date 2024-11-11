@@ -97,11 +97,9 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 
 sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
 {
-    static int MaxSize => sizeof(int) + sizeof(int);
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(MaxSize));
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int) + sizeof(int));
         return format is DataFormat.Binary;
     }
 
@@ -121,18 +119,10 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
         };
     }
 
-    public override Size GetSize(SizeContext context, BitVector32 value, ref object? writeState)
-        => value.Data is 0 ? 4 : MaxSize;
-
     protected override void WriteCore(PgWriter writer, BitVector32 value)
     {
-        if (value.Data == 0)
-            writer.WriteInt32(0);
-        else
-        {
-            writer.WriteInt32(32);
-            writer.WriteInt32(value.Data);
-        }
+        writer.WriteInt32(32);
+        writer.WriteInt32(value.Data);
     }
 }
 
