@@ -1347,7 +1347,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [NpgsqlConnectionStringProperty]
     public ServerCompatibilityMode ServerCompatibilityMode
     {
-        get => _serverCompatibilityMode;
+        // Physical replication connections don't allow regular queries, so we can't load types from PG
+        get => ReplicationMode is ReplicationMode.Physical ? ServerCompatibilityMode.NoTypeLoading : _serverCompatibilityMode;
         set
         {
             _serverCompatibilityMode = value;
@@ -1627,29 +1628,6 @@ sealed class NpgsqlConnectionStringPropertyAttribute : Attribute
 #endregion
 
 #region Enums
-
-/// <summary>
-/// An option specified in the connection string that activates special compatibility features.
-/// </summary>
-public enum ServerCompatibilityMode
-{
-    /// <summary>
-    /// No special server compatibility mode is active
-    /// </summary>
-    None,
-
-    /// <summary>
-    /// The server is an Amazon Redshift instance.
-    /// </summary>
-    [Obsolete("ServerCompatibilityMode.Redshift no longer does anything and can be safely removed.")]
-    Redshift,
-
-    /// <summary>
-    /// The server is doesn't support full type loading from the PostgreSQL catalogs, support the basic set
-    /// of types via information hardcoded inside Npgsql.
-    /// </summary>
-    NoTypeLoading,
-}
 
 /// <summary>
 /// Specifies how to manage SSL.

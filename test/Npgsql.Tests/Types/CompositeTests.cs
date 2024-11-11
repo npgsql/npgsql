@@ -397,7 +397,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<SomeComposite>(table);
         if (enabled)
-            dataSourceBuilder.ConnectionStringBuilder.LoadTableComposites = true;
+            dataSourceBuilder.TypeLoading.LoadTableComposites = true;
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -430,7 +430,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         await adminConnection.ExecuteNonQueryAsync($"ALTER TABLE {table} DROP COLUMN bar;");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.ConnectionStringBuilder.LoadTableComposites = true;
+        dataSourceBuilder.TypeLoading.LoadTableComposites = true;
         dataSourceBuilder.MapComposite<SomeComposite>(table);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();

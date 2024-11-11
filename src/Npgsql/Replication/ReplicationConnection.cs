@@ -100,10 +100,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 ReplicationMode = ReplicationMode
             };
 
-            // Physical replication connections don't allow regular queries, so we can't load types from PG
-            if (ReplicationMode == ReplicationMode.Physical)
-                cs.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
-
             _npgsqlConnection.ConnectionString = cs.ToString();
         }
     }
