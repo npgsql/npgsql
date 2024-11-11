@@ -56,7 +56,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 
         return new(bytes) { Length = bits };
 
-        // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
+        // https://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
         static byte ReverseBits(byte b) => (byte)(((b * 0x80200802UL) & 0x0884422110UL) * 0x0101010101UL >> 32);
     }
 
