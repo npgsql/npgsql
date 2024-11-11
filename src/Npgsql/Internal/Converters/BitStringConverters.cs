@@ -11,19 +11,16 @@ using static Npgsql.Internal.Converters.BitStringHelpers;
 
 namespace Npgsql.Internal.Converters;
 
-static class BitStringHelpers
+file static class BitStringHelpers
 {
-    public static int GetByteLengthFromBits(int n)
+    public static int GetByteCountFromBitCount(int n)
     {
         const int BitShiftPerByte = 3;
         Debug.Assert(n >= 0);
         // Due to sign extension, we don't need to special case for n == 0, since ((n - 1) >> 3) + 1 = 0
         // This doesn't hold true for ((n - 1) / 8) + 1, which equals 1.
-        return (int)((uint)(n - 1 + (1 << BitShiftPerByte)) >> BitShiftPerByte);
+        return (n - 1 + (1 << BitShiftPerByte)) >>> BitShiftPerByte;
     }
-
-    // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
-    public static byte ReverseBits(byte b) => (byte)(((b * 0x80200802UL) & 0x0884422110UL) * 0x0101010101UL >> 32);
 }
 
 sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
@@ -34,7 +31,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
             reader.Buffer(sizeof(int));
 
         var bits = reader.ReadInt32();
-        var bytes = new byte[GetByteLengthFromBits(bits)];
+        var bytes = new byte[GetByteCountFromBitCount(bits)];
         reader.ReadBytes(bytes);
         return ReadValue(bytes, bits);
     }
@@ -44,7 +41,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
             await reader.BufferAsync(sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var bits = reader.ReadInt32();
-        var bytes = new byte[GetByteLengthFromBits(bits)];
+        var bytes = new byte[GetByteCountFromBitCount(bits)];
         await reader.ReadBytesAsync(bytes, cancellationToken).ConfigureAwait(false);
         return ReadValue(bytes, bits);
     }
@@ -58,10 +55,13 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
         }
 
         return new(bytes) { Length = bits };
+
+        // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
+        static byte ReverseBits(byte b) => (byte)(((b * 0x80200802UL) & 0x0884422110UL) * 0x0101010101UL >> 32);
     }
 
     public override Size GetSize(SizeContext context, BitArray value, ref object? writeState)
-        => sizeof(int) + GetByteLengthFromBits(value.Length);
+        => sizeof(int) + GetByteCountFromBitCount(value.Length);
 
     public override void Write(PgWriter writer, BitArray value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
@@ -111,7 +111,7 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
             throw new InvalidCastException("Can't read a BIT(N) with more than 32 bits to BitVector32, only up to BIT(32).");
 
         var bits = reader.ReadInt32();
-        return GetByteLengthFromBits(bits) switch
+        return GetByteCountFromBitCount(bits) switch
         {
             4 => new(reader.ReadInt32()),
             3 => new((reader.ReadInt16() << 8) + reader.ReadByte()),
@@ -179,7 +179,7 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
         var bits = reader.ReadInt32();
-        var bytes = new byte[GetByteLengthFromBits(bits)];
+        var bytes = new byte[GetByteCountFromBitCount(bits)];
         if (async)
             await reader.ReadBytesAsync(bytes, cancellationToken).ConfigureAwait(false);
         else
@@ -198,7 +198,7 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
         if (value.AsSpan().IndexOfAnyExcept('0', '1') is not -1 and var index)
             throw new ArgumentException($"Invalid bitstring character '{value[index]}' at index: {index}", nameof(value));
 
-        return sizeof(int) + GetByteLengthFromBits(value.Length);
+        return sizeof(int) + GetByteCountFromBitCount(value.Length);
     }
 
     public override void Write(PgWriter writer, string value)
