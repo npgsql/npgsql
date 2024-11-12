@@ -1637,10 +1637,13 @@ public enum ServerCompatibilityMode
     /// No special server compatibility mode is active
     /// </summary>
     None,
+
     /// <summary>
     /// The server is an Amazon Redshift instance.
     /// </summary>
+    [Obsolete("ServerCompatibilityMode.Redshift no longer does anything and can be safely removed.")]
     Redshift,
+
     /// <summary>
     /// The server is doesn't support full type loading from the PostgreSQL catalogs, support the basic set
     /// of types via information hardcoded inside Npgsql.

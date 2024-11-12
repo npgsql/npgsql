@@ -204,7 +204,7 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     public async Task ColumnSize()
     {
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Column size is never unlimited on Redshift");
+        await IgnoreOnRedshift(conn, "Column size is never unlimited on Redshift");
         var table = await CreateTempTable(conn, "bounded VARCHAR(30), unbounded VARCHAR");
 
         using var cmd = new NpgsqlCommand($"SELECT bounded,unbounded,'a'::VARCHAR(10),'b'::VARCHAR FROM {table}", conn);
@@ -220,7 +220,7 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     public async Task IsAutoIncrement()
     {
         await using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Serial columns not support on Redshift");
+        await IgnoreOnRedshift(conn, "Serial columns not support on Redshift");
 
         var table = await CreateTempTable(conn, "serial SERIAL, int INT");
 
@@ -236,7 +236,7 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     public async Task IsAutoIncrement_identity()
     {
         await using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
+        await IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
         MinimumPgVersion(conn, "10.0", "IDENTITY introduced in PostgreSQL 10");
 
         var table =
@@ -253,7 +253,7 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     public async Task IsIdentity()
     {
         await using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
+        await IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
         MinimumPgVersion(conn, "10.0", "IDENTITY introduced in PostgreSQL 10");
         var table = await CreateTempTable(
             conn,
@@ -273,7 +273,7 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     public async Task IsKey()
     {
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Key not supported in reader schema on Redshift");
+        await IgnoreOnRedshift(conn, "Key not supported in reader schema on Redshift");
         var table = await CreateTempTable(conn, "id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE");
 
         using var cmd = new NpgsqlCommand($"SELECT id,non_id,uniq,8 FROM {table}", conn);
@@ -294,7 +294,7 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     public async Task IsKey_composite()
     {
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Key not supported in reader schema on Redshift");
+        await IgnoreOnRedshift(conn, "Key not supported in reader schema on Redshift");
         var table = await CreateTempTable(conn, "id1 INT, id2 INT, PRIMARY KEY (id1, id2)");
 
         using var cmd = new NpgsqlCommand($"SELECT id1,id2 FROM {table}", conn);
@@ -308,7 +308,7 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     public async Task IsLong()
     {
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "bytea not supported on Redshift");
+        await IgnoreOnRedshift(conn, "bytea not supported on Redshift");
         var table = await CreateTempTable(conn, "long BYTEA, non_long INT");
 
         using var cmd = new NpgsqlCommand($"SELECT long, non_long, 8 FROM {table}", conn);
@@ -351,7 +351,7 @@ CREATE TABLE {table} (bar INTEGER)");
     public async Task IsUnique()
     {
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Unique not supported in reader schema on Redshift");
+        await IgnoreOnRedshift(conn, "Unique not supported in reader schema on Redshift");
         var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
@@ -373,7 +373,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task NumericPrecision()
     {
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Precision is never unlimited on Redshift");
+        await IgnoreOnRedshift(conn, "Precision is never unlimited on Redshift");
         var table = await CreateTempTable(conn, "a NUMERIC(8), b NUMERIC, c INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT a,b,c,8.3::NUMERIC(8) FROM {table}", conn);
@@ -389,7 +389,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task NumericScale()
     {
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Scale is never unlimited on Redshift");
+        await IgnoreOnRedshift(conn, "Scale is never unlimited on Redshift");
         var table = await CreateTempTable(conn, "a NUMERIC(8,5), b NUMERIC, c INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT a,b,c,8.3::NUMERIC(8,5) FROM {table}", conn);
@@ -431,7 +431,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task DataType_with_composite()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        IgnoreOnRedshift(adminConnection, "Composite types not support on Redshift");
+        await IgnoreOnRedshift(adminConnection, "Composite types not support on Redshift");
         var type = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (foo int)");
         var tableName = await CreateTempTable(adminConnection, $"comp {type}");
@@ -657,7 +657,7 @@ CREATE TABLE {table2} (foo INTEGER)");
         // if (IsMultiplexing)
         //     Assert.Ignore("Multiplexing: ReloadTypes");
         using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Domain types not support on Redshift");
+        await IgnoreOnRedshift(conn, "Domain types not support on Redshift");
 
         const string domainTypeName = "my_domain";
         var schema = await CreateTempSchema(conn);

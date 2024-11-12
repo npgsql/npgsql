@@ -44,19 +44,23 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     /// </summary>
     List<PostgresType>? _types;
 
+    bool? _isRedshift;
+
     /// <inheritdoc />
     protected override IEnumerable<PostgresType> GetTypes() => _types ?? (IEnumerable<PostgresType>)Array.Empty<PostgresType>();
 
     /// <summary>
     /// The PostgreSQL version string as returned by the version() function. Populated during loading.
     /// </summary>
-    public string LongVersion { get; set; } = default!;
+    public string LongVersion { get; set; } = "";
 
     /// <summary>
     /// True if the backend is Amazon Redshift; otherwise, false.
     /// </summary>
-    public bool IsRedshift { get; private set; }
+    public bool IsRedshift => _isRedshift ??= LongVersion.Contains("redshift", StringComparison.OrdinalIgnoreCase);
 
+    // Note that UNLISTEN is only needed for the reset message, but those don't get generated for Redshift anyway because e.g. DISCARD
+    // isn't supported there either. So the IsRedshift check isn't actually used, but is here for completeness.
     /// <inheritdoc />
     public override bool SupportsUnlisten => Version.IsGreaterOrEqual(6, 4) && !IsRedshift;
 
@@ -97,7 +101,6 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
             conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
             intDateTimes == "on";
 
-        IsRedshift = conn.Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
         _types = await LoadBackendTypes(conn, timeout, async).ConfigureAwait(false);
     }
 
