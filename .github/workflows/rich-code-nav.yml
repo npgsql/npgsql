@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  dotnet_sdk_version: '8.0.203'
+  dotnet_sdk_version: '9.0.100'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
