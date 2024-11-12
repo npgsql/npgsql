@@ -30,7 +30,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
-    NpgsqlTracingOptions? _tracingOptions;
+    Action<NpgsqlTracingOptionsBuilder>? _configureTracingOptionsBuilder;
 
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
@@ -119,13 +119,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// Configures tracing options for the DataSource.
+    /// Configures OpenTelemetry tracing options.
     /// </summary>
-    /// <param name="tracingOptions">Tracing options for the DataSource.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    public NpgsqlSlimDataSourceBuilder ConfigureTracingOptions(NpgsqlTracingOptions tracingOptions)
+    public NpgsqlSlimDataSourceBuilder ConfigureTracing(Action<NpgsqlTracingOptionsBuilder> configureAction)
     {
-        _tracingOptions = tracingOptions;
+        _configureTracingOptionsBuilder = configureAction;
         return this;
     }
 
@@ -806,12 +805,16 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
         ConfigureDefaultFactories(this);
 
+        var typeLoadingOptionsBuilder = new NpgsqlTracingOptionsBuilder();
+        _configureTracingOptionsBuilder?.Invoke(typeLoadingOptionsBuilder);
+        var tracingOptions = typeLoadingOptionsBuilder.Build();
+
         return new(
             Name,
             _loggerFactory is null
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
-            _tracingOptions,
+            tracingOptions,
             _transportSecurityHandler,
             _integratedSecurityHandler,
             sslClientAuthenticationOptionsCallback,

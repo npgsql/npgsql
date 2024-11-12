@@ -9,12 +9,12 @@ Npgsql.NpgsqlDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName
 Npgsql.NpgsqlDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
-Npgsql.NpgsqlDataSourceBuilder.ConfigureTracingOptions(Npgsql.NpgsqlTracingOptions! tracingOptions) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.ConfigureTracing(System.Action<Npgsql.NpgsqlTracingOptionsBuilder!>! configureAction) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlMetricsOptions
 Npgsql.NpgsqlMetricsOptions.NpgsqlMetricsOptions() -> void
-Npgsql.NpgsqlSlimDataSourceBuilder.ConfigureTracingOptions(Npgsql.NpgsqlTracingOptions! tracingOptions) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.ConfigureTracing(System.Action<Npgsql.NpgsqlTracingOptionsBuilder!>! configureAction) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableGeometricTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableJsonTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableNetworkTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
@@ -24,20 +24,14 @@ Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName 
 Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
-Npgsql.NpgsqlTracingOptions.EnableFirstResponseEvent.get -> bool
-Npgsql.NpgsqlTracingOptions.EnableFirstResponseEvent.set -> void
-Npgsql.NpgsqlTracingOptions.EnrichWithBatch.get -> System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlBatch!>?
-Npgsql.NpgsqlTracingOptions.EnrichWithBatch.set -> void
-Npgsql.NpgsqlTracingOptions.EnrichWithCommand.get -> System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlCommand!>?
-Npgsql.NpgsqlTracingOptions.EnrichWithCommand.set -> void
-Npgsql.NpgsqlTracingOptions.FilterBatch.get -> System.Func<Npgsql.NpgsqlBatch!, bool>?
-Npgsql.NpgsqlTracingOptions.FilterBatch.set -> void
-Npgsql.NpgsqlTracingOptions.FilterCommand.get -> System.Func<Npgsql.NpgsqlCommand!, bool>?
-Npgsql.NpgsqlTracingOptions.FilterCommand.set -> void
-Npgsql.NpgsqlTracingOptions.ProvideSpanNameForBatch.get -> System.Func<Npgsql.NpgsqlBatch!, string?>?
-Npgsql.NpgsqlTracingOptions.ProvideSpanNameForBatch.set -> void
-Npgsql.NpgsqlTracingOptions.ProvideSpanNameForCommand.get -> System.Func<Npgsql.NpgsqlCommand!, string?>?
-Npgsql.NpgsqlTracingOptions.ProvideSpanNameForCommand.set -> void
+Npgsql.NpgsqlTracingOptionsBuilder
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureBatchEnrichmentCallback(System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlBatch!>? batchEnrichmentCallback) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureBatchFilter(System.Func<Npgsql.NpgsqlBatch!, bool>? batchFilter) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureBatchSpanNameProvider(System.Func<Npgsql.NpgsqlBatch!, string?>? batchSpanNameProvider) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandEnrichmentCallback(System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlCommand!>? commandEnrichmentCallback) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandFilter(System.Func<Npgsql.NpgsqlCommand!, bool>? commandFilter) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandSpanNameProvider(System.Func<Npgsql.NpgsqlCommand!, string?>? commandSpanNameProvider) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.EnableFirstResponseEvent(bool enable = true) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.Replication.PgOutput.ReplicationValue.GetFieldName() -> string!
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage.AbortLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber

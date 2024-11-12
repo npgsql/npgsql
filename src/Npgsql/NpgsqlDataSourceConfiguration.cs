@@ -9,7 +9,7 @@ namespace Npgsql;
 
 sealed record NpgsqlDataSourceConfiguration(string? Name,
     NpgsqlLoggingConfiguration LoggingConfiguration,
-    NpgsqlTracingOptions? TracingOptions,
+    NpgsqlTracingOptions TracingOptions,
     TransportSecurityHandler TransportSecurityHandler,
     IntegratedSecurityHandler userCertificateValidationCallback,
     Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback,

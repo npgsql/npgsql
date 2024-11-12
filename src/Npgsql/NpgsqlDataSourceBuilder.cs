@@ -122,13 +122,12 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// Configures tracing options for the DataSource.
+    /// Configures OpenTelemetry tracing options.
     /// </summary>
-    /// <param name="tracingOptions">Tracing options for the DataSource.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    public NpgsqlDataSourceBuilder ConfigureTracingOptions(NpgsqlTracingOptions tracingOptions)
+    public NpgsqlDataSourceBuilder ConfigureTracing(Action<NpgsqlTracingOptionsBuilder> configureAction)
     {
-        _internalBuilder.ConfigureTracingOptions(tracingOptions);
+        _internalBuilder.ConfigureTracing(configureAction);
         return this;
     }
 
