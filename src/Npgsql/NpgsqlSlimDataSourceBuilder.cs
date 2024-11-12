@@ -31,7 +31,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
     List<Action<NpgsqlTracingOptionsBuilder>>? _tracingOptionsBuilderCallbacks;
-    NpgsqlTypeLoadingOptions? _typeLoadingOptions;
+    Action<NpgsqlTypeLoadingOptionsBuilder>? _configureTypeLoadingOptionsBuilder;
 
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
@@ -120,9 +120,14 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// Options for configuring Npgsql type loading.
+    /// Configure type loading options for the DataSource. Calling this again will replace
+    /// the prior action.
     /// </summary>
-    public NpgsqlTypeLoadingOptions TypeLoading => _typeLoadingOptions ??= new(ConnectionStringBuilder);
+    public NpgsqlSlimDataSourceBuilder ConfigureTypeLoading(Action<NpgsqlTypeLoadingOptionsBuilder> configureAction)
+    {
+        _configureTypeLoadingOptionsBuilder = configureAction;
+        return this;
+    }
 
     /// <summary>
     /// Configures OpenTelemetry tracing options.
@@ -812,6 +817,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
         ConfigureDefaultFactories(this);
 
+        var typeLoadingOptionsBuilder = new NpgsqlTypeLoadingOptionsBuilder();
+        typeLoadingOptionsBuilder.EnableTableCompositesLoading(connectionStringBuilder.LoadTableComposites);
+        typeLoadingOptionsBuilder.SetServerCompatibilityMode(connectionStringBuilder.ServerCompatibilityMode);
+        _configureTypeLoadingOptionsBuilder?.Invoke(typeLoadingOptionsBuilder);
+        var typeLoadingOptions = typeLoadingOptionsBuilder.Build();
+
         var tracingOptionsBuilder = new NpgsqlTracingOptionsBuilder();
         foreach (var callback in _tracingOptionsBuilderCallbacks ?? (IEnumerable<Action<NpgsqlTracingOptionsBuilder>>)[])
             callback.Invoke(tracingOptionsBuilder);
@@ -823,7 +834,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
             tracingOptions,
-            TypeLoading.Clone(),
+            typeLoadingOptions,
             _transportSecurityHandler,
             _integratedSecurityHandler,
             sslClientAuthenticationOptionsCallback,

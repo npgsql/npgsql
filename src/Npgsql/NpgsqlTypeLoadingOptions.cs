@@ -3,37 +3,53 @@ namespace Npgsql;
 /// <summary>
 /// Options for configuring Npgsql type loading.
 /// </summary>
-public class NpgsqlTypeLoadingOptions
+class NpgsqlTypeLoadingOptions
 {
-    readonly NpgsqlConnectionStringBuilder _csb;
-    internal NpgsqlTypeLoadingOptions(NpgsqlConnectionStringBuilder csb) => _csb = csb;
-
-    bool? _loadTableComposites;
     /// <summary>
     /// Load table composite type definitions, and not just free-standing composite types.
     /// </summary>
-    public bool LoadTableComposites
-    {
-        get => _loadTableComposites ?? _csb.LoadTableComposites;
-        set => _loadTableComposites = value;
-    }
+    public bool LoadTableComposites { get; init; }
 
-    ServerCompatibilityMode? _serverCompatibilityMode;
     /// <summary>
     /// A compatibility mode for special PostgreSQL server types.
     /// </summary>
-    public ServerCompatibilityMode ServerCompatibilityMode
+    public ServerCompatibilityMode ServerCompatibilityMode { get; init; }
+}
+
+/// <summary>
+/// Options builder for configuring Npgsql type loading.
+/// </summary>
+public sealed class NpgsqlTypeLoadingOptionsBuilder
+{
+    bool _loadTableComposites;
+    ServerCompatibilityMode _serverCompatibilityMode;
+
+    internal NpgsqlTypeLoadingOptionsBuilder() {}
+
+    /// <summary>
+    /// Enable loading table composite type definitions, and not just free-standing composite types.
+    /// </summary>
+    public NpgsqlTypeLoadingOptionsBuilder EnableTableCompositesLoading(bool enable = true)
     {
-        get => _serverCompatibilityMode ?? _csb.ServerCompatibilityMode;
-        set => _serverCompatibilityMode = value;
+        _loadTableComposites = enable;
+        return this;
     }
 
-    internal NpgsqlTypeLoadingOptions Clone()
-        => new(_csb)
-        {
-            LoadTableComposites = LoadTableComposites,
-            ServerCompatibilityMode = ServerCompatibilityMode
-        };
+    /// <summary>
+    /// Set a compatibility mode for special PostgreSQL server types.
+    /// </summary>
+    public NpgsqlTypeLoadingOptionsBuilder SetServerCompatibilityMode(
+        ServerCompatibilityMode serverCompatibilityMode = ServerCompatibilityMode.None)
+    {
+        _serverCompatibilityMode = serverCompatibilityMode;
+        return this;
+    }
+
+    internal NpgsqlTypeLoadingOptions Build() => new()
+    {
+        LoadTableComposites = _loadTableComposites,
+        ServerCompatibilityMode = _serverCompatibilityMode
+    };
 }
 
 /// <summary>
