@@ -1212,24 +1212,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     bool _noResetOnClose;
 
     /// <summary>
-    /// Load table composite type definitions, and not just free-standing composite types.
-    /// </summary>
-    [Category("Advanced")]
-    [Description("Load table composite type definitions, and not just free-standing composite types.")]
-    [DisplayName("Load Table Composites")]
-    [NpgsqlConnectionStringProperty]
-    public bool LoadTableComposites
-    {
-        get => _loadTableComposites;
-        set
-        {
-            _loadTableComposites = value;
-            SetValue(nameof(LoadTableComposites), value);
-        }
-    }
-    bool _loadTableComposites;
-
-    /// <summary>
     /// Set the replication mode of the connection
     /// </summary>
     /// <remarks>
@@ -1336,7 +1318,26 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     #endregion
 
-    #region Properties - Compatibility
+    #region Properties - Obsolete
+
+    /// <summary>
+    /// Load table composite type definitions, and not just free-standing composite types.
+    /// </summary>
+    [Category("Advanced")]
+    [Description("Load table composite type definitions, and not just free-standing composite types.")]
+    [DisplayName("Load Table Composites")]
+    [NpgsqlConnectionStringProperty]
+    [Obsolete("Specifying type loading options through the connection string is obsolete, use the DataSource builder instead. See the 9.0 release notes for more information.")]
+    public bool LoadTableComposites
+    {
+        get => _loadTableComposites;
+        set
+        {
+            _loadTableComposites = value;
+            SetValue(nameof(LoadTableComposites), value);
+        }
+    }
+    bool _loadTableComposites;
 
     /// <summary>
     /// A compatibility mode for special PostgreSQL server types.
@@ -1345,6 +1346,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Description("A compatibility mode for special PostgreSQL server types.")]
     [DisplayName("Server Compatibility Mode")]
     [NpgsqlConnectionStringProperty]
+    [Obsolete("Specifying type loading options through the connection string is obsolete, use the DataSource builder instead. See the 9.0 release notes for more information.")]
     public ServerCompatibilityMode ServerCompatibilityMode
     {
         // Physical replication connections don't allow regular queries, so we can't load types from PG
@@ -1356,10 +1358,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
     }
     ServerCompatibilityMode _serverCompatibilityMode;
-
-    #endregion
-
-    #region Properties - Obsolete
 
     /// <summary>
     /// Whether to trust the server certificate without validating it.
