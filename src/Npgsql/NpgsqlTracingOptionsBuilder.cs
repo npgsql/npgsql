@@ -6,7 +6,7 @@ namespace Npgsql;
 /// <summary>
 /// A builder to configure Npgsql's support for OpenTelemetry tracing.
 /// </summary>
-public class NpgsqlTracingOptionsBuilder
+public sealed class NpgsqlTracingOptionsBuilder
 {
     Func<NpgsqlCommand, bool>? _commandFilter;
     Func<NpgsqlBatch, bool>? _batchFilter;
@@ -100,7 +100,7 @@ public class NpgsqlTracingOptionsBuilder
     };
 }
 
-class NpgsqlTracingOptions
+sealed class NpgsqlTracingOptions
 {
     internal Func<NpgsqlCommand, bool>? CommandFilter { get; init; }
     internal Func<NpgsqlBatch, bool>? BatchFilter { get; init; }
