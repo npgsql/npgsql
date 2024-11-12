@@ -292,8 +292,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                     ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                     EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
                     TextEncoding = connector.TextEncoding,
-                    DefaultNameTranslator = _defaultNameTranslator,
-
+                    DefaultNameTranslator = _defaultNameTranslator
                 };
 
             IsBootstrapped = true;

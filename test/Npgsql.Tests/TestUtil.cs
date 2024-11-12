@@ -86,9 +86,12 @@ public static class TestUtil
 
     static readonly Version MinCreateExtensionVersion = new(9, 1);
 
-    public static void IgnoreOnRedshift(NpgsqlConnection conn, string? ignoreText = null)
+    public static async Task IgnoreOnRedshift(NpgsqlConnection conn, string? ignoreText = null)
     {
-        if (new NpgsqlConnectionStringBuilder(conn.ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.Redshift)
+        await using var command = conn.CreateCommand();
+        command.CommandText = "SELECT version()";
+        var version = (string)(await command.ExecuteScalarAsync())!;
+        if (version.Contains("redshift", StringComparison.OrdinalIgnoreCase))
         {
             var msg = "Test ignored on Redshift";
             if (ignoreText != null)

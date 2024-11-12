@@ -55,7 +55,7 @@ CREATE TABLE {table} (
     public async Task IsAutoIncrement()
     {
         await using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Serial columns not supported on Redshift");
+        await IgnoreOnRedshift(conn, "Serial columns not supported on Redshift");
 
         var table = await CreateTempTable(conn, "serial SERIAL, int INT");
 
@@ -72,7 +72,7 @@ CREATE TABLE {table} (
     public async Task IsAutoIncrement_identity()
     {
         await using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Serial columns not supported on Redshift");
+        await IgnoreOnRedshift(conn, "Serial columns not supported on Redshift");
         MinimumPgVersion(conn, "10.0", "IDENTITY introduced in PostgreSQL 10");
 
         var table =
@@ -90,7 +90,7 @@ CREATE TABLE {table} (
     public async Task IsIdentity()
     {
         await using var conn = await OpenConnectionAsync();
-        IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
+        await IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
         MinimumPgVersion(conn, "10.0", "IDENTITY introduced in PostgreSQL 10");
         var table = await CreateTempTable(
             conn,
