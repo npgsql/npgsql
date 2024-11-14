@@ -129,7 +129,7 @@ FROM (
         CASE WHEN elemproc.proname='array_recv' THEN 'a' ELSE elemtyp.typtype END AS elemtyptype,
         typ.typcategory
     FROM (
-        SELECT typ.oid, typnamespace, typname, typrelid, typnotnull, relkind, typelem AS elemoid, 
+        SELECT typ.oid, typnamespace, typname, typrelid, typnotnull, relkind, typelem AS elemoid,
             CASE WHEN proc.proname='array_recv' THEN 'a' ELSE typ.typtype END AS typtype,
             CASE
                 WHEN proc.proname='array_recv' THEN typ.typelem
@@ -209,8 +209,9 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var schemaNamePattern = @"^[a-zA-Z_][a-zA-Z0-9_]*$";
         var schemasFormatted = conn.Settings.SearchPath?.Split(',').Select( x => x.Trim().ToLowerInvariant()).Where( x => Regex.IsMatch(x,schemaNamePattern) ).Select( x => $"'{x.Trim().ToLowerInvariant()}'" );
         var loadTableComposites = conn.DataSource.Configuration.TypeLoading.LoadTableComposites;
-        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites, schemasFormatted, HasTypeCategory);
-        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites, schemasFormatted, HasTypeCategory);
+        var loadTypesFromSearchPath = conn.DataSource.Settings.LoadTypesFromSearchPath;
+        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites, loadTypesFromSearchPath, schemasFormatted, HasTypeCategory);
+        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites, loadTypesFromSearchPath, schemasFormatted, HasTypeCategory);
         var loadEnumFieldsQuery = SupportsEnumTypes
             ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
             : string.Empty;
