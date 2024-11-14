@@ -30,7 +30,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
-    Action<NpgsqlTracingOptionsBuilder>? _configureTracingOptionsBuilder;
+    List<Action<NpgsqlTracingOptionsBuilder>>? _tracingOptionsBuilderCallbacks;
 
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
@@ -124,7 +124,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder ConfigureTracing(Action<NpgsqlTracingOptionsBuilder> configureAction)
     {
-        _configureTracingOptionsBuilder = configureAction;
+        _tracingOptionsBuilderCallbacks ??= new();
+        _tracingOptionsBuilderCallbacks.Add(configureAction);
         return this;
     }
 
@@ -805,9 +806,10 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
         ConfigureDefaultFactories(this);
 
-        var typeLoadingOptionsBuilder = new NpgsqlTracingOptionsBuilder();
-        _configureTracingOptionsBuilder?.Invoke(typeLoadingOptionsBuilder);
-        var tracingOptions = typeLoadingOptionsBuilder.Build();
+        var tracingOptionsBuilder = new NpgsqlTracingOptionsBuilder();
+        foreach (var callback in _tracingOptionsBuilderCallbacks ?? (IEnumerable<Action<NpgsqlTracingOptionsBuilder>>)[])
+            callback.Invoke(tracingOptionsBuilder);
+        var tracingOptions = tracingOptionsBuilder.Build();
 
         return new(
             Name,
