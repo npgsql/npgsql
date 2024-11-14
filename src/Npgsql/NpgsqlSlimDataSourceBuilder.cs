@@ -31,7 +31,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
     List<Action<NpgsqlTracingOptionsBuilder>>? _tracingOptionsBuilderCallbacks;
-    Action<NpgsqlTypeLoadingOptionsBuilder>? _configureTypeLoadingOptionsBuilder;
+    List<Action<NpgsqlTypeLoadingOptionsBuilder>>? _typeLoadingOptionsBuilderCallbacks;
 
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
@@ -125,7 +125,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder ConfigureTypeLoading(Action<NpgsqlTypeLoadingOptionsBuilder> configureAction)
     {
-        _configureTypeLoadingOptionsBuilder = configureAction;
+        _typeLoadingOptionsBuilderCallbacks ??= new();
+        _typeLoadingOptionsBuilderCallbacks.Add(configureAction);
         return this;
     }
 
@@ -822,7 +823,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         typeLoadingOptionsBuilder.EnableTableCompositesLoading(connectionStringBuilder.LoadTableComposites);
         typeLoadingOptionsBuilder.EnableTypeLoading(connectionStringBuilder.ServerCompatibilityMode is not ServerCompatibilityMode.NoTypeLoading);
 #pragma warning restore CS0618 // Type or member is obsolete
-        _configureTypeLoadingOptionsBuilder?.Invoke(typeLoadingOptionsBuilder);
+        foreach (var callback in _typeLoadingOptionsBuilderCallbacks ?? (IEnumerable<Action<NpgsqlTypeLoadingOptionsBuilder>>)[])
+            callback.Invoke(typeLoadingOptionsBuilder);
         var typeLoadingOptions = typeLoadingOptionsBuilder.Build();
 
         var tracingOptionsBuilder = new NpgsqlTracingOptionsBuilder();
