@@ -820,7 +820,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         var typeLoadingOptionsBuilder = new NpgsqlTypeLoadingOptionsBuilder();
 #pragma warning disable CS0618 // Type or member is obsolete
         typeLoadingOptionsBuilder.EnableTableCompositesLoading(connectionStringBuilder.LoadTableComposites);
-        typeLoadingOptionsBuilder.SetServerCompatibilityMode(connectionStringBuilder.ServerCompatibilityMode);
+        typeLoadingOptionsBuilder.EnableTypeLoading(connectionStringBuilder.ServerCompatibilityMode is not ServerCompatibilityMode.NoTypeLoading);
 #pragma warning restore CS0618 // Type or member is obsolete
         _configureTypeLoadingOptionsBuilder?.Invoke(typeLoadingOptionsBuilder);
         var typeLoadingOptions = typeLoadingOptionsBuilder.Build();
