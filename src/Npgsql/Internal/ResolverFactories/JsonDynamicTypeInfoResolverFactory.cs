@@ -119,11 +119,7 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                 // For jsonb we can't properly support polymorphic serialization unless the SerializerOptions.AllowOutOfOrderMetadataProperties is `true`.
                 // If `jsonb` AND `AllowOutOfOrderMetadataProperties` is `false`, use `mapping.Type` as the base type for the converter, and 
                 // strip the "$type" field; essentially disabling the feature.
-                #if NET8_0_OR_GREATER
                 var baseType = jsonb && !SerializerOptions.AllowOutOfOrderMetadataProperties ? mapping.Type : typeof(object);
-                #else
-                var baseType = jsonb ? mapping.Type : typeof(object);
-                #endif
 
                 return mapping.CreateInfo(options,
                     CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, SerializerOptions, baseType));
