@@ -655,10 +655,10 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Test]
     [TestCase("test_schema_1", "public", true)]
     [TestCase("test_schema_1", "test_schema_2", true)]
-    [TestCase("test_schema_3", "test_schema_4", true)]
+    [TestCase("test_schema_2", "test_schema_3", true)]
     [TestCase("test_schema_1", "public", false)]
     [TestCase("test_schema_1", "test_schema_2", false)]
-    [TestCase("test_schema_3", "test_schema_4", false)]
+    [TestCase("test_schema_2", "test_schema_3", false)]
     [TestCase("'DROP TABLE X", "'COMMIT;  ", false)]
     [Parallelizable(ParallelScope.None)]
     public async Task Set_Schemas_And_Load_Relevant_Types(string testSchema, string otherSchema, bool enabled)
@@ -666,57 +666,67 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         if (IsMultiplexing)
             return;
 
-        using var conn1 = new NpgsqlConnection(ConnectionString);
-
-        await conn1.OpenAsync();
-        await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_3");
-        await conn1.ExecuteNonQueryAsync("CREATE TYPE public.test_type_3 AS (id int, name text)");
-
-        if (testSchema != "public")
+        var conn1 = await OpenConnectionAsync();
+        try
         {
-            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{testSchema}\" CASCADE");
-            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{testSchema}\"");
-        }
-        if (otherSchema != "public")
-        {
-            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{otherSchema}\" CASCADE");
-            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{otherSchema}\"");
-        }
-        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS \"{testSchema}\".test_type_1");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{testSchema}\".test_type_1 AS (id int)");
-        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS \"{otherSchema}\".test_type_2");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{otherSchema}\".test_type_2 AS (id int, name text)");
-        await conn1.DisposeAsync();
+            await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_3");
+            await conn1.ExecuteNonQueryAsync("CREATE TYPE public.test_type_3 AS (id int, name text)");
 
-        using var dataSource = CreateDataSource(builder =>
-        {
-            builder.ConfigureTypeLoading(builder =>
+            if (testSchema != "public")
             {
-                if (enabled)
-                    builder.SetTypeLoadingSchemas(testSchema, otherSchema);
+                await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{testSchema}\" CASCADE");
+                await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{testSchema}\"");
+            }
+
+            if (otherSchema != "public")
+            {
+                await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{otherSchema}\" CASCADE");
+                await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{otherSchema}\"");
+            }
+
+            await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS \"{testSchema}\".test_type_1");
+            await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{testSchema}\".test_type_1 AS (id int)");
+            await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS \"{otherSchema}\".test_type_2");
+            await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{otherSchema}\".test_type_2 AS (id int, name text)");
+
+            using var dataSource = CreateDataSource(builder =>
+            {
+                builder.ConfigureTypeLoading(builder =>
+                {
+                    if (enabled)
+                        builder.SetTypeLoadingSchemas(testSchema, otherSchema);
+                });
             });
-        });
-        using var conn = await dataSource.OpenConnectionAsync();
-        if (enabled)
-        {
-            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
-            if (testSchema == "public" || otherSchema == "public")
+            using var conn = await dataSource.OpenConnectionAsync();
+            if (enabled)
             {
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
+                if (testSchema == "public" || otherSchema == "public")
+                {
+                    Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                    Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                }
+                else
+                {
+                    Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                    Assert.False(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                }
             }
             else
             {
+                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
                 Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                Assert.False(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
             }
         }
-        else
+        finally
         {
-            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
-            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+            if (testSchema != "public")
+                await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{testSchema}\" CASCADE");
+            if (otherSchema != "public")
+                await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{otherSchema}\" CASCADE");
         }
+
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
