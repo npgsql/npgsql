@@ -104,6 +104,8 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
         _types = await LoadBackendTypes(conn, timeout, async).ConfigureAwait(false);
     }
 
+    const string BuiltinSchemaListSqlFragment = "'pg_catalog', 'information_schema', 'pg_toast'";
+
     /// <summary>
     /// Generates a raw SQL query string to select type information.
     /// </summary>
@@ -114,7 +116,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
     /// types).
     /// </remarks>
-    static string GenerateLoadTypesQuery(bool withRange, bool withMultirange, bool loadTableComposites)
+    static string GenerateLoadTypesQuery(bool withRange, bool withMultirange, bool loadTableComposites, string? schemaListSqlFragment, bool hasTypeCategory)
         => $@"
 SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid
 FROM (
@@ -125,6 +127,7 @@ FROM (
         typ.oid, typ.typnamespace, typ.typname, typ.typtype, typ.typrelid, typ.typnotnull, typ.relkind,
         elemtyp.oid AS elemtypoid, elemtyp.typname AS elemtypname, elemcls.relkind AS elemrelkind,
         CASE WHEN elemproc.proname='array_recv' THEN 'a' ELSE elemtyp.typtype END AS elemtyptype
+        {(hasTypeCategory ? ", typ.typcategory" : "")}
     FROM (
         SELECT typ.oid, typnamespace, typname, typrelid, typnotnull, relkind, typelem AS elemoid,
             CASE WHEN proc.proname='array_recv' THEN 'a' ELSE typ.typtype END AS typtype,
@@ -134,6 +137,7 @@ FROM (
                 {(withMultirange ? "WHEN typ.typtype='m' THEN (SELECT rngtypid FROM pg_range WHERE rngmultitypid = typ.oid)" : "")}
                 WHEN typ.typtype='d' THEN typ.typbasetype
             END AS elemtypoid
+            {(hasTypeCategory ? ", typ.typcategory" : "")}
         FROM pg_type AS typ
         LEFT JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
         LEFT JOIN pg_proc AS proc ON proc.oid = typ.typreceive
@@ -145,14 +149,15 @@ FROM (
 ) AS t
 JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
+    {(schemaListSqlFragment is not null ? $"(ns.nspname IN ({BuiltinSchemaListSqlFragment}{(schemaListSqlFragment.Length > 0 ? $", {schemaListSqlFragment}" : "")}){(hasTypeCategory ? " OR typcategory = 'U'" : "" )}) AND (" : "(")}
     typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
-    (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
+    (typtype = 'c' AND {(loadTableComposites ? $"ns.nspname NOT IN ({BuiltinSchemaListSqlFragment})" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
     (typtype = 'p' AND typname IN ('record', 'void', 'unknown')) OR -- Some special supported pseudo-types
     (typtype = 'a' AND (  -- Array of...
         elemtyptype IN ('b', 'r', 'm', 'e', 'd') OR -- Array of base, range, multirange, enum, domain
         (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
-        (elemtyptype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "elemrelkind='c'")}) -- Array of user-defined free-standing composites (not table composites) by default
-    ))
+        (elemtyptype = 'c' AND {(loadTableComposites ? $"ns.nspname NOT IN ({BuiltinSchemaListSqlFragment})" : "elemrelkind='c'")}) -- Array of user-defined free-standing composites (not table composites) by default
+    )))
 ORDER BY CASE
        WHEN typtype IN ('b', 'e', 'p') THEN 0           -- First base types, enums, pseudo-types
        WHEN typtype = 'c' THEN 1                        -- Composites after (fields loaded later in 2nd pass)
@@ -163,7 +168,7 @@ ORDER BY CASE
        WHEN typtype = 'd' AND elemtyptype = 'a' THEN 6  -- Domains over arrays last
 END;";
 
-    static string GenerateLoadCompositeTypesQuery(bool loadTableComposites)
+    static string GenerateLoadCompositeTypesQuery(bool loadTableComposites, string? schemaListSqlFragment)
         => $@"
 -- Load field definitions for (free-standing) composite types
 SELECT typ.oid, att.attname, att.atttypid
@@ -172,7 +177,8 @@ JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
 JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
-  (typ.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) AND
+  (typ.typtype = 'c' AND {(loadTableComposites ? $"ns.nspname NOT IN ({BuiltinSchemaListSqlFragment})" : "cls.relkind='c'")}) AND
+  {(schemaListSqlFragment is not null ? $"(ns.nspname IN ({BuiltinSchemaListSqlFragment}{(schemaListSqlFragment.Length > 0 ? $", {schemaListSqlFragment}" : "")})) AND " : "")}
   attnum > 0 AND     -- Don't load system attributes
   NOT attisdropped
 ORDER BY typ.oid, att.attnum;";
@@ -199,9 +205,30 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
     internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
         var versionQuery = "SELECT version();";
-        var loadTableComposites = conn.DataSource.Configuration.TypeLoading.LoadTableComposites;
-        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites);
-        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites);
+        var typeLoading = conn.DataSource.Configuration.TypeLoading;
+        var loadTableComposites = typeLoading.LoadTableComposites;
+
+        // Escape the schemas configured by the user, we need these as literals to be used in an IN() operator, and we cannot use parameters.
+        // Add an opening quote, escape any quotes in the schema, and add a closing quote.
+        string? schemaListSqlFragment = null;
+        if (typeLoading.TypeLoadingSchemas is not null)
+        {
+            var builder = new StringBuilder();
+            for (var i = 0; i < typeLoading.TypeLoadingSchemas.Length; i++)
+            {
+                if (i > 0)
+                    builder.Append(", ");
+                var schema = typeLoading.TypeLoadingSchemas[i];
+                builder.Append('\'');
+                builder.Append(EscapeLiteral(schema));
+                builder.Append('\'');
+            }
+
+            schemaListSqlFragment = builder.ToString();
+        }
+
+        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites, schemaListSqlFragment, HasTypeCategory);
+        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites, schemaListSqlFragment);
         var loadEnumFieldsQuery = SupportsEnumTypes
             ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
             : string.Empty;

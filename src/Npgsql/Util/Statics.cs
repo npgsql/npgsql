@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Npgsql.Util;
 
@@ -23,6 +24,15 @@ static class Statics
         EnableAssertions = AppContext.TryGetSwitch("Npgsql.EnableAssertions", out var enabled) && enabled;
         LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out enabled) && enabled;
         DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
+    }
+
+    /// Returns the escaped SQL representation of a string literal.
+    /// <param name="literal">The identifier to be escaped.</param>
+    internal static string EscapeLiteral(string literal)
+    {
+        // There is no support for escape sequences in quoted values for PostgreSQL, so replacing ' is enough.
+        // (to be able to use escaped characters an alternative syntax exists, it requires E to appear directly before the opening quote)
+        return literal.Replace("'", "''");
     }
 
     internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
@@ -87,10 +97,4 @@ static class Statics
         static void ThrowUnknownMessageCode(BackendMessageCode code)
             => ThrowHelper.ThrowNpgsqlException($"Unknown message code: {code}");
     }
-}
-
-static class EnumerableExtensions
-{
-    internal static string Join(this IEnumerable<string> values, string separator)
-        => string.Join(separator, values);
 }
