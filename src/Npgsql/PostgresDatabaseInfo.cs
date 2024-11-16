@@ -126,8 +126,8 @@ FROM (
     SELECT
         typ.oid, typ.typnamespace, typ.typname, typ.typtype, typ.typrelid, typ.typnotnull, typ.relkind,
         elemtyp.oid AS elemtypoid, elemtyp.typname AS elemtypname, elemcls.relkind AS elemrelkind,
-        CASE WHEN elemproc.proname='array_recv' THEN 'a' ELSE elemtyp.typtype END AS elemtyptype,
-        typ.typcategory
+        CASE WHEN elemproc.proname='array_recv' THEN 'a' ELSE elemtyp.typtype END AS elemtyptype
+        {(hasTypeCategory ? ", typ.typcategory" : "")}
     FROM (
         SELECT typ.oid, typnamespace, typname, typrelid, typnotnull, relkind, typelem AS elemoid,
             CASE WHEN proc.proname='array_recv' THEN 'a' ELSE typ.typtype END AS typtype,
@@ -136,8 +136,8 @@ FROM (
                 {(withRange ? "WHEN typ.typtype='r' THEN rngsubtype" : "")}
                 {(withMultirange ? "WHEN typ.typtype='m' THEN (SELECT rngtypid FROM pg_range WHERE rngmultitypid = typ.oid)" : "")}
                 WHEN typ.typtype='d' THEN typ.typbasetype
-            END AS elemtypoid,
-            typ.typcategory
+            END AS elemtypoid
+            {(hasTypeCategory ? ", typ.typcategory" : "")}
         FROM pg_type AS typ
         LEFT JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
         LEFT JOIN pg_proc AS proc ON proc.oid = typ.typreceive
