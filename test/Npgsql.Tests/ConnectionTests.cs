@@ -393,15 +393,15 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 
     #region ConnectionString - Host
 
-    [TestCase("127.0.0.1", ExpectedResult = new[] { "127.0.0.1:5432" })]
-    [TestCase("127.0.0.1:5432", ExpectedResult = new[] { "127.0.0.1:5432" })]
-    [TestCase("::1", ExpectedResult = new[] { "::1:5432" })]
-    [TestCase("[::1]", ExpectedResult = new[] { "[::1]:5432" })]
-    [TestCase("[::1]:5432", ExpectedResult = new[] { "[::1]:5432" })]
-    [TestCase("localhost", ExpectedResult = new[] { "localhost:5432" })]
-    [TestCase("localhost:5432", ExpectedResult = new[] { "localhost:5432" })]
+    [TestCase("127.0.0.1", ExpectedResult = new [] { "127.0.0.1:5432" })]
+    [TestCase("127.0.0.1:5432", ExpectedResult = new [] { "127.0.0.1:5432" })]
+    [TestCase("::1", ExpectedResult = new [] { "::1:5432" })]
+    [TestCase("[::1]", ExpectedResult = new [] { "[::1]:5432" })]
+    [TestCase("[::1]:5432", ExpectedResult = new [] { "[::1]:5432" })]
+    [TestCase("localhost", ExpectedResult = new [] { "localhost:5432" })]
+    [TestCase("localhost:5432", ExpectedResult = new [] { "localhost:5432" })]
     [TestCase("127.0.0.1,127.0.0.1:5432,::1,[::1],[::1]:5432,localhost,localhost:5432",
-        ExpectedResult = new[]
+        ExpectedResult = new []
         {
             "127.0.0.1:5432",
             "127.0.0.1:5432",
@@ -781,9 +781,9 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         await using var dataSource = CreateDataSource(csb => csb.KeepAlive = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
 
-        var watch = Stopwatch.StartNew();
+        var startTimestamp = Stopwatch.GetTimestamp();
         // Give a few seconds for a KeepAlive to possibly perform
-        while (watch.Elapsed.TotalSeconds < 2)
+        while (Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds < 2)
             Assert.DoesNotThrow(conn.ReloadTypes);
     }
 
