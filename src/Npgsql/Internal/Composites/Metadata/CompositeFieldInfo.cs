@@ -143,10 +143,12 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         _getter = getter;
     }
 
+    // Accessed through reflection (ReflectionCompositeInfoFactory)
     public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, int parameterIndex)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _parameterIndex = parameterIndex;
 
+    // Accessed through reflection (ReflectionCompositeInfoFactory)
     public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, Action<object, T> setter)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _setter = setter;

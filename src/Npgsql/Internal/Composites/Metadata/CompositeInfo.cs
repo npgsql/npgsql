@@ -12,35 +12,20 @@ sealed class CompositeInfo<T>
     public CompositeInfo(CompositeFieldInfo[] fields, int constructorParameters, Func<StrongBox[], T> constructor)
     {
         _lastConstructorFieldIndex = -1;
-        for (var i = fields.Length - 1; i >= 0; i--)
+        var constructorFields = 0;
+        for (var i = 0; i < fields.Length; i++)
+        {
             if (fields[i].ConstructorParameterIndex is not null)
             {
                 _lastConstructorFieldIndex = i;
-                break;
+                constructorFields++;
             }
-
-        var parameterSum = 0;
-        for (var i = constructorParameters - 1; i > 0; i--)
-            parameterSum += i;
-
-        var argumentsSum = 0;
-        if (parameterSum > 0)
-        {
-            foreach (var field in fields)
-                if (field.ConstructorParameterIndex is { } index)
-                    argumentsSum += index;
         }
 
-        if (parameterSum != argumentsSum)
+        if (constructorParameters != constructorFields)
             throw new InvalidOperationException($"Missing composite fields to map to the required {constructorParameters} constructor parameters.");
 
         _fields = fields;
-        var arguments = constructorParameters is 0 ? [] : new CompositeFieldInfo[constructorParameters];
-        foreach (var field in fields)
-        {
-            if (field.ConstructorParameterIndex is { } index)
-                arguments[index] = field;
-        }
         Constructor = constructor;
         ConstructorParameters = constructorParameters;
     }
@@ -56,12 +41,14 @@ sealed class CompositeInfo<T>
     /// <returns></returns>
     public StrongBox[] CreateTempBoxes()
     {
-        var valueCache = _lastConstructorFieldIndex + 1 is 0 ? [] : new StrongBox[_lastConstructorFieldIndex + 1];
+        if (_lastConstructorFieldIndex is -1)
+            return [];
+
+        var boxes = new StrongBox[_lastConstructorFieldIndex + 1];
         var fields = _fields;
+        for (var i = 0; i < boxes.Length; i++)
+            boxes[i] = fields[i].CreateBox();
 
-        for (var i = 0; i < valueCache.Length; i++)
-            valueCache[i] = fields[i].CreateBox();
-
-        return valueCache;
+        return boxes;
     }
 }
