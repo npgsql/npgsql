@@ -753,6 +753,8 @@ public static class TypeInfoMappingHelpers
     internal static PostgresType GetPgType(this TypeInfoMapping mapping, PgSerializerOptions options)
         => options.DatabaseInfo.GetPostgresType(new DataTypeName(mapping.DataTypeName));
 
+    // NOTE: This method exists since 9.0 to be able to deprecate the method below that has optional arguments in 10.0 (potentially removing it directly or in 11.0).
+    // It reduces how binary breaking that change will be if this method would not be there to be picked for the most common invocations.
     /// <summary>
     /// Creates a PgTypeInfo from a mapping, optins, and a converter.
     /// </summary>
@@ -783,6 +785,8 @@ public static class TypeInfoMappingHelpers
             SupportsWriting = supportsWriting
         };
 
+    // NOTE: This method exists since 9.0 to be able to deprecate the method below that has optional arguments in 10.0 (potentially removing it directly or in 11.0).
+    // It reduces how binary breaking that change will be if this method would not be there to be picked for the most common invocations.
     /// <summary>
     /// Creates a PgResolverTypeInfo from a mapping, options, and a converter resolver.
     /// </summary>
