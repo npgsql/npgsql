@@ -659,6 +659,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [TestCase("test_schema_1", "public", false)]
     [TestCase("test_schema_1", "test_schema_2", false)]
     [TestCase("test_schema_3", "test_schema_4", false)]
+    [TestCase("'DROP TABLE X", "'COMMIT;  ", false)]
     [Parallelizable(ParallelScope.None)]
     public async Task Set_Schemas_And_Load_Relevant_Types(string testSchema, string otherSchema, bool enabled)
     {
@@ -673,18 +674,18 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 
         if (testSchema != "public")
         {
-            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {testSchema} CASCADE");
-            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {testSchema}");
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{testSchema}\" CASCADE");
+            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{testSchema}\"");
         }
         if (otherSchema != "public")
         {
-            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {otherSchema} CASCADE");
-            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {otherSchema}");
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{otherSchema}\" CASCADE");
+            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{otherSchema}\"");
         }
-        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {testSchema}.test_type_1");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {testSchema}.test_type_1 AS (id int)");
-        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {otherSchema}.test_type_2");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {otherSchema}.test_type_2 AS (id int, name text)");
+        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS \"{testSchema}\".test_type_1");
+        await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{testSchema}\".test_type_1 AS (id int)");
+        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS \"{otherSchema}\".test_type_2");
+        await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{otherSchema}\".test_type_2 AS (id int, name text)");
         await conn1.DisposeAsync();
 
         using var dataSource = CreateDataSource(builder =>
