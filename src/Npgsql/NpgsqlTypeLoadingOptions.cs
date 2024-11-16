@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Npgsql;
 
@@ -17,6 +18,11 @@ sealed class NpgsqlTypeLoadingOptions
     /// support the basic set of types via information hardcoded inside Npgsql.
     /// </summary>
     public required bool LoadTypes { get; init; } = true;
+
+    /// <summary>
+    /// Load type definitions from the given schemas.
+    /// </summary>
+    public required string[]? TypeLoadingSchemas { get; init; }
 }
 
 /// <summary>
@@ -26,6 +32,7 @@ public sealed class NpgsqlTypeLoadingOptionsBuilder
 {
     bool _loadTableComposites;
     bool _loadTypes = true;
+    List<string>? _typeLoadingSchemas;
 
     internal NpgsqlTypeLoadingOptionsBuilder() {}
 
@@ -47,10 +54,36 @@ public sealed class NpgsqlTypeLoadingOptionsBuilder
         return this;
     }
 
+    /// <summary>
+    /// Set the schemas to load types from, this can be used to reduce the work done during type loading.
+    /// </summary>
+    /// <remarks>Npgsql will always load types from the following schemas: pg_catalog, information_schema, pg_toast.
+    /// Any user-defined types (typcategory 'U') will also be loaded regardless of their schema.</remarks>
+    /// <param name="schemas">Schemas to load types from.</param>
+    public NpgsqlTypeLoadingOptionsBuilder SetTypeLoadingSchemas(params IEnumerable<string>? schemas)
+    {
+        if (schemas is null)
+        {
+            _typeLoadingSchemas = null;
+            return this;
+        }
+
+        foreach (var schema in schemas)
+        {
+            if (schema is not { Length: > 0 })
+                throw new ArgumentException("Schema cannot be null or empty.");
+            _typeLoadingSchemas ??= new();
+            _typeLoadingSchemas.Add(schema);
+        }
+
+        return this;
+    }
+
     internal NpgsqlTypeLoadingOptions Build() => new()
     {
         LoadTableComposites = _loadTableComposites,
-        LoadTypes = _loadTypes
+        LoadTypes = _loadTypes,
+        TypeLoadingSchemas = _typeLoadingSchemas?.ToArray()
     };
 }
 
