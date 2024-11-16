@@ -10,7 +10,7 @@ sealed class NpgsqlTypeLoadingOptions
     /// <summary>
     /// Load table composite type definitions, and not just free-standing composite types.
     /// </summary>
-    public bool LoadTableComposites { get; init; }
+    public required bool LoadTableComposites { get; init; }
 
     /// <summary>
     /// When false, if the server doesn't support full type loading from the PostgreSQL catalogs,
@@ -39,7 +39,7 @@ public sealed class NpgsqlTypeLoadingOptionsBuilder
     }
 
     /// <summary>
-    /// Set a compatibility mode for special PostgreSQL server types.
+    /// Enable loading of types, when disabled Npgsql falls back to a small, builtin, set of known types and type ids.
     /// </summary>
     public NpgsqlTypeLoadingOptionsBuilder EnableTypeLoading(bool enable = true)
     {
