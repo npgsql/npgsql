@@ -16,11 +16,11 @@ namespace Npgsql.Internal;
 /// </summary>
 /// <param name="options"></param>
 /// <param name="mapping"></param>
-/// <param name="resolvedDataTypeName">
-/// Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should follow mapping.DataTypeName.
+/// <param name="requiresDataTypeName">
+/// Relevant for `PgResolverTypeInfo` only: whether the instance can be constructed without passing mapping.DataTypeName, an exception occurs otherwise.
 /// </param>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
+public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool requiresDataTypeName);
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public enum MatchRequirement
@@ -184,13 +184,13 @@ public sealed class TypeInfoMappingCollection
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgTypeInfo, PgConverter> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
-        => (options, mapping, dataTypeNameMatch) =>
+        => (options, mapping, requiresDataTypeName) =>
         {
             var resolvedInnerMapping = innerMapping;
             if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
                 resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
 
-            var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, dataTypeNameMatch);
+            var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var converter = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
             var writingSupported = supportsWriting && innerInfo.SupportsWriting;
@@ -205,13 +205,13 @@ public sealed class TypeInfoMappingCollection
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
-        => (options, mapping, dataTypeNameMatch) =>
+        => (options, mapping, requiresDataTypeName) =>
         {
             var resolvedInnerMapping = innerMapping;
             if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
                 resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
 
-            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, dataTypeNameMatch);
+            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var resolver = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
             var writingSupported = supportsWriting && innerInfo.SupportsWriting;
@@ -346,12 +346,12 @@ public sealed class TypeInfoMappingCollection
             _items.Add(arrayMapping);
             suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) =>
                 {
-                    if (!dataTypeNameMatch)
+                    if (!requiresDataTypeName)
                         throw new InvalidOperationException("Should not happen, please file a bug.");
 
-                    return arrayMapping.Factory(options, mapping, dataTypeNameMatch);
+                    return arrayMapping.Factory(options, mapping, requiresDataTypeName);
                 }));
         }
     }
@@ -386,12 +386,12 @@ public sealed class TypeInfoMappingCollection
             _items.Add(arrayMapping);
             suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) =>
                 {
-                    if (!dataTypeNameMatch)
+                    if (!requiresDataTypeName)
                         throw new InvalidOperationException("Should not happen, please file a bug.");
 
-                    return arrayMapping.Factory(options, mapping, dataTypeNameMatch);
+                    return arrayMapping.Factory(options, mapping, requiresDataTypeName);
                 }));
         }
     }
@@ -485,16 +485,16 @@ public sealed class TypeInfoMappingCollection
         _items.Add(nullableArrayMapping);
         suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
         if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
+            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) =>
             {
                 return options.ArrayNullabilityMode switch
                 {
-                    _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
-                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    _ when !requiresDataTypeName => throw new InvalidOperationException("Should not happen, please file a bug."),
+                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                     ArrayNullabilityMode.PerInstance => CreateComposedPerInstance(
-                        arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                        nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                        arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                        nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                         mapping.DataTypeName
                     ),
                     _ => throw new ArgumentOutOfRangeException()
@@ -603,14 +603,14 @@ public sealed class TypeInfoMappingCollection
             _items.Add(nullableArrayMapping);
             suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
-                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, requiresDataTypeName) => options.ArrayNullabilityMode switch
                 {
-                    _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
-                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    _ when !requiresDataTypeName => throw new InvalidOperationException("Should not happen, please file a bug."),
+                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                     ArrayNullabilityMode.PerInstance => CreateComposedPerInstance(
-                        arrayMapping.Factory(options, mapping, dataTypeNameMatch),
-                        nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                        arrayMapping.Factory(options, mapping, requiresDataTypeName),
+                        nullableArrayMapping.Factory(options, mapping, requiresDataTypeName),
                         mapping.DataTypeName
                     ),
                     _ => throw new ArgumentOutOfRangeException()
@@ -753,6 +753,31 @@ public static class TypeInfoMappingHelpers
     internal static PostgresType GetPgType(this TypeInfoMapping mapping, PgSerializerOptions options)
         => options.DatabaseInfo.GetPostgresType(new DataTypeName(mapping.DataTypeName));
 
+    // NOTE: This method exists since 9.0 to be able to deprecate the method below that has optional arguments in 10.0 (potentially removing it directly or in 11.0).
+    // It reduces how binary breaking that change will be if this method would not be there to be picked for the most common invocations.
+    /// <summary>
+    /// Creates a PgTypeInfo from a mapping, optins, and a converter.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="converter">The converter to create a PgTypeInfo for.</param>
+    /// <returns>The created info instance.</returns>
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter)
+        => new(options, converter, new DataTypeName(mapping.DataTypeName))
+        {
+            PreferredFormat = null,
+            SupportsWriting = true
+        };
+
+    /// <summary>
+    /// Creates a PgTypeInfo from a mapping, options, and a converter.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="converter">The converter to create a PgTypeInfo for.</param>
+    /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
+    /// <param name="supportsWriting">Whether the converters returned from the given converter resolver support writing.</param>
+    /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new(options, converter, new DataTypeName(mapping.DataTypeName))
         {
@@ -760,7 +785,34 @@ public static class TypeInfoMappingHelpers
             SupportsWriting = supportsWriting
         };
 
-    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null, bool supportsWriting = true)
+    // NOTE: This method exists since 9.0 to be able to deprecate the method below that has optional arguments in 10.0 (potentially removing it directly or in 11.0).
+    // It reduces how binary breaking that change will be if this method would not be there to be picked for the most common invocations.
+    /// <summary>
+    /// Creates a PgResolverTypeInfo from a mapping, options, and a converter resolver.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="resolver">The resolver to create a PgResolverTypeInfo for.</param>
+    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
+    /// <returns>The created info instance.</returns>
+    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName)
+        => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
+        {
+            PreferredFormat = null,
+            SupportsWriting = true
+        };
+
+    /// <summary>
+    /// Creates a PgResolverTypeInfo from a mapping, options, and a converter resolver.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="resolver">The converter resolver to create a PgResolverTypeInfo for.</param>
+    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
+    /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
+    /// <param name="supportsWriting">Whether the converters returned from the given converter resolver support writing.</param>
+    /// <returns>The created info instance.</returns>
+    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
             PreferredFormat = preferredFormat,

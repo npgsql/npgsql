@@ -172,7 +172,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Varbit
             mappings.AddType<object>(DataTypeNames.Varbit,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), supportsWriting: false));
+                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), includeDataTypeName: true, supportsWriting: false));
             mappings.AddType<BitArray>(DataTypeNames.Varbit,
                 static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
             mappings.AddStructType<bool>(DataTypeNames.Varbit,
@@ -183,7 +183,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Bit
             mappings.AddType<object>(DataTypeNames.Bit,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), supportsWriting: false));
+                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), includeDataTypeName: true, supportsWriting: false));
             mappings.AddType<BitArray>(DataTypeNames.Bit,
                 static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
             mappings.AddStructType<bool>(DataTypeNames.Bit,
@@ -201,9 +201,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             else
             {
                 mappings.AddResolverStructType<DateTime>(DataTypeNames.Timestamp,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateResolver(options, options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName), isDefault: true);
             }
             mappings.AddStructType<long>(DataTypeNames.Timestamp,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
@@ -220,9 +220,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             else
             {
                 mappings.AddResolverStructType<DateTime>(DataTypeNames.TimestampTz,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateResolver(options, options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName), isDefault: true);
                 mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimestampTz,
                     static (options, mapping, _) => mapping.CreateInfo(options, new DateTimeOffsetConverter(options.EnableDateTimeInfinityConversions)));
             }

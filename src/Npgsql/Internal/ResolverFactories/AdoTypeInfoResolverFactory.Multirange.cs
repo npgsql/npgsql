@@ -74,18 +74,18 @@ sealed partial class AdoTypeInfoResolverFactory
             else
             {
                 mappings.AddResolverType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsMultirange,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName),
                     isDefault: true);
                 mappings.AddResolverType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch));
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName));
             }
 
             mappings.AddType<NpgsqlRange<long>[]>(DataTypeNames.TsMultirange,
@@ -126,18 +126,18 @@ sealed partial class AdoTypeInfoResolverFactory
             else
             {
                 mappings.AddResolverType<NpgsqlRange<DateTime>[]>(DataTypeNames.TsTzMultirange,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName),
                     isDefault: true);
                 mappings.AddResolverType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateMultirangeResolver<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch));
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName));
                 mappings.AddType<NpgsqlRange<DateTimeOffset>[]>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, CreateArrayMultirangeConverter(

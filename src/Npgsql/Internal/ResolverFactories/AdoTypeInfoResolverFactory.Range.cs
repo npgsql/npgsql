@@ -48,11 +48,11 @@ sealed partial class AdoTypeInfoResolverFactory
             else
             {
                 mappings.AddResolverStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateRangeResolver(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                             options.GetCanonicalTypeId(DataTypeNames.TsRange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName),
                     isDefault: true);
             }
             mappings.AddStructType<NpgsqlRange<long>>(DataTypeNames.TsRange,
@@ -73,11 +73,11 @@ sealed partial class AdoTypeInfoResolverFactory
             else
             {
                 mappings.AddResolverStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
-                    static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeConverterResolver.CreateRangeResolver(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                             options.GetCanonicalTypeId(DataTypeNames.TsRange),
-                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch),
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName),
                     isDefault: true);
                 mappings.AddStructType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange,
                     static (options, mapping, _) => mapping.CreateInfo(options,
