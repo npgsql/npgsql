@@ -38,7 +38,16 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
     readonly List<UserTypeMapping> _mappings;
     public IList<UserTypeMapping> Items => _mappings;
 
-    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = NpgsqlSnakeCaseNameTranslator.Instance;
+    INpgsqlNameTranslator _defaultNameTranslator = NpgsqlSnakeCaseNameTranslator.Instance;
+    public INpgsqlNameTranslator DefaultNameTranslator
+    {
+        get => _defaultNameTranslator;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _defaultNameTranslator = value;
+        }
+    }
 
     UserTypeMapper(IEnumerable<UserTypeMapping> mappings) => _mappings = [..mappings];
     public UserTypeMapper() => _mappings = [];

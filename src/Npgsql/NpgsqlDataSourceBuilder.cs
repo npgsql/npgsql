@@ -122,6 +122,15 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Configures type loading options for the DataSource.
+    /// </summary>
+    public NpgsqlDataSourceBuilder ConfigureTypeLoading(Action<NpgsqlTypeLoadingOptionsBuilder> configureAction)
+    {
+        _internalBuilder.ConfigureTypeLoading(configureAction);
+        return this;
+    }
+
+    /// <summary>
     /// Configures OpenTelemetry tracing options.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>

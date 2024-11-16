@@ -31,6 +31,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
     List<Action<NpgsqlTracingOptionsBuilder>>? _tracingOptionsBuilderCallbacks;
+    List<Action<NpgsqlTypeLoadingOptionsBuilder>>? _typeLoadingOptionsBuilderCallbacks;
 
     TransportSecurityHandler _transportSecurityHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
@@ -119,11 +120,24 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Configure type loading options for the DataSource. Calling this again will replace
+    /// the prior action.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder ConfigureTypeLoading(Action<NpgsqlTypeLoadingOptionsBuilder> configureAction)
+    {
+        ArgumentNullException.ThrowIfNull(configureAction);
+        _typeLoadingOptionsBuilderCallbacks ??= new();
+        _typeLoadingOptionsBuilderCallbacks.Add(configureAction);
+        return this;
+    }
+
+    /// <summary>
     /// Configures OpenTelemetry tracing options.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder ConfigureTracing(Action<NpgsqlTracingOptionsBuilder> configureAction)
     {
+        ArgumentNullException.ThrowIfNull(configureAction);
         _tracingOptionsBuilderCallbacks ??= new();
         _tracingOptionsBuilderCallbacks.Add(configureAction);
         return this;
@@ -136,6 +150,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
     {
+        ArgumentNullException.ThrowIfNull(serializerOptions);
         JsonSerializerOptions = serializerOptions;
         return this;
     }
@@ -731,8 +746,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlDataSource Build()
     {
-        var config = PrepareConfiguration();
-        var connectionStringBuilder = ConnectionStringBuilder.Clone();
+        var (connectionStringBuilder, config) = PrepareConfiguration();
 
         if (ConnectionStringBuilder.Host!.Contains(','))
         {
@@ -753,16 +767,17 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
     {
-        var config = PrepareConfiguration();
+        var (connectionStringBuilder, config) = PrepareConfiguration();
 
         ValidateMultiHost();
 
-        return new(ConnectionStringBuilder.Clone(), config);
+        return new(connectionStringBuilder, config);
     }
 
-    NpgsqlDataSourceConfiguration PrepareConfiguration()
+    (NpgsqlConnectionStringBuilder, NpgsqlDataSourceConfiguration) PrepareConfiguration()
     {
         ConnectionStringBuilder.PostProcessAndValidate();
+        var connectionStringBuilder = ConnectionStringBuilder.Clone();
 
         var sslClientAuthenticationOptionsCallback = _sslClientAuthenticationOptionsCallback;
         var hasCertificateCallbacks = _userCertificateValidationCallback is not null || _clientCertificatesCallback is not null;
@@ -806,17 +821,27 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
         ConfigureDefaultFactories(this);
 
+        var typeLoadingOptionsBuilder = new NpgsqlTypeLoadingOptionsBuilder();
+#pragma warning disable CS0618 // Type or member is obsolete
+        typeLoadingOptionsBuilder.EnableTableCompositesLoading(connectionStringBuilder.LoadTableComposites);
+        typeLoadingOptionsBuilder.EnableTypeLoading(connectionStringBuilder.ServerCompatibilityMode is not ServerCompatibilityMode.NoTypeLoading);
+#pragma warning restore CS0618 // Type or member is obsolete
+        foreach (var callback in _typeLoadingOptionsBuilderCallbacks ?? (IEnumerable<Action<NpgsqlTypeLoadingOptionsBuilder>>)[])
+            callback.Invoke(typeLoadingOptionsBuilder);
+        var typeLoadingOptions = typeLoadingOptionsBuilder.Build();
+
         var tracingOptionsBuilder = new NpgsqlTracingOptionsBuilder();
         foreach (var callback in _tracingOptionsBuilderCallbacks ?? (IEnumerable<Action<NpgsqlTracingOptionsBuilder>>)[])
             callback.Invoke(tracingOptionsBuilder);
         var tracingOptions = tracingOptionsBuilder.Build();
 
-        return new(
+        return (connectionStringBuilder, new(
             Name,
             _loggerFactory is null
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
             tracingOptions,
+            typeLoadingOptions,
             _transportSecurityHandler,
             _integratedSecurityHandler,
             sslClientAuthenticationOptionsCallback,
@@ -832,7 +857,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 #if NET7_0_OR_GREATER
             ,_negotiateOptionsCallback
 #endif
-            );
+            ));
     }
 
     void ValidateMultiHost()

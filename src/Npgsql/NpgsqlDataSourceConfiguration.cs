@@ -1,6 +1,5 @@
 using System;
 using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -10,8 +9,9 @@ namespace Npgsql;
 sealed record NpgsqlDataSourceConfiguration(string? Name,
     NpgsqlLoggingConfiguration LoggingConfiguration,
     NpgsqlTracingOptions TracingOptions,
+    NpgsqlTypeLoadingOptions TypeLoading,
     TransportSecurityHandler TransportSecurityHandler,
-    IntegratedSecurityHandler userCertificateValidationCallback,
+    IntegratedSecurityHandler IntegratedSecurityHandler,
     Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback,
     Func<NpgsqlConnectionStringBuilder, string>? PasswordProvider,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PasswordProviderAsync,

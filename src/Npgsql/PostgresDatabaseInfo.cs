@@ -199,8 +199,9 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
     internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
         var versionQuery = "SELECT version();";
-        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites);
-        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites);
+        var loadTableComposites = conn.DataSource.Configuration.TypeLoading.LoadTableComposites;
+        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites);
+        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites);
         var loadEnumFieldsQuery = SupportsEnumTypes
             ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
             : string.Empty;
