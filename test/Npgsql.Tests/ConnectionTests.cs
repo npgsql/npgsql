@@ -666,7 +666,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         if (IsMultiplexing)
             return;
 
-        var conn1 = await OpenConnectionAsync();
+        await using var conn1 = await OpenConnectionAsync();
         try
         {
             await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_3");
