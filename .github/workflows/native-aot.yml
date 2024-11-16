@@ -202,7 +202,7 @@ jobs:
           size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)"
 
-          if (( size > 6291456 )); then
-            echo "Binary size exceeds 6mb threshold"
+          if (( size > 5242880 )); then
+            echo "Binary size exceeds 5MB threshold"
             exit 1
           fi
