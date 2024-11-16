@@ -1710,22 +1710,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     #region Tracing
 
-    internal void TraceCommandStart(NpgsqlConnectionStringBuilder settings, NpgsqlTracingOptions? tracingSettings)
+    internal void TraceCommandStart(NpgsqlConnectionStringBuilder settings, NpgsqlTracingOptions tracingOptions)
     {
         Debug.Assert(CurrentActivity is null);
+
         if (NpgsqlActivitySource.IsEnabled)
         {
-            (var enableTracing, string? spanName) = (true, null);
-            if (tracingSettings is not null)
-            {
-                enableTracing = WrappingBatch is not null
-                    ? tracingSettings.FilterBatch?.Invoke(WrappingBatch) ?? true
-                    : tracingSettings.FilterCommand?.Invoke(this) ?? true;
+            var enableTracing = WrappingBatch is not null
+                ? tracingOptions.BatchFilter?.Invoke(WrappingBatch) ?? true
+                : tracingOptions.CommandFilter?.Invoke(this) ?? true;
 
-                spanName = WrappingBatch is not null
-                    ? tracingSettings.ProvideSpanNameForBatch?.Invoke(WrappingBatch)
-                    : tracingSettings.ProvideSpanNameForCommand?.Invoke(this);
-            }
+            var spanName = WrappingBatch is not null
+                ? tracingOptions.BatchSpanNameProvider?.Invoke(WrappingBatch)
+                : tracingOptions.CommandSpanNameProvider?.Invoke(this);
 
             if (enableTracing)
             {
@@ -1743,18 +1740,18 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         if (CurrentActivity is not null)
         {
             NpgsqlActivitySource.Enrich(CurrentActivity, connector);
-            var tracingSettings = connector.DataSource.Configuration.TracingOptions;
+            var tracingOptions = connector.DataSource.Configuration.TracingOptions;
             if (WrappingBatch is not null)
-                tracingSettings?.EnrichWithBatch?.Invoke(CurrentActivity, WrappingBatch);
+                tracingOptions.BatchEnrichmentCallback?.Invoke(CurrentActivity, WrappingBatch);
             else
-                tracingSettings?.EnrichWithCommand?.Invoke(CurrentActivity, this);
+                tracingOptions.CommandEnrichmentCallback?.Invoke(CurrentActivity, this);
         }
     }
 
-    internal void TraceReceivedFirstResponse(NpgsqlTracingOptions? tracingSettings)
+    internal void TraceReceivedFirstResponse(NpgsqlTracingOptions tracingOptions)
     {
         if (CurrentActivity is not null)
-            NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity, tracingSettings);
+            NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity, tracingOptions);
     }
 
     internal void TraceCommandStop()
