@@ -1,13 +1,4 @@
 <Project>
-  <!-- .NET 6 -->
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
-    <PackageVersion Include="System.Text.Json" Version="8.0.5" />
-  </ItemGroup>
-
-  <!-- .NET 8 and UP -->
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
-    <PackageVersion Include="System.Text.Json" Version="9.0.0" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
@@ -15,6 +6,7 @@
     <PackageVersion Include="OpenTelemetry.API" Version="1.7.0" />
 
     <!-- Compatibility -->
+    <PackageVersion Include="System.Text.Json" Version="9.0.0" />
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
 

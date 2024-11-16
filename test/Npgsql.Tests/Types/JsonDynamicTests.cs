@@ -218,13 +218,6 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_polymorphic_mapping()
     {
-        #if !NET8_0_OR_GREATER
-        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
-        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
-        if (IsJsonb)
-            return;
-        #endif
-
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
         dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
@@ -253,13 +246,6 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_polymorphic_mapping_read_parents()
     {
-        #if !NET8_0_OR_GREATER
-        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
-        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
-        if (IsJsonb)
-            return;
-        #endif
-
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
         dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
@@ -301,13 +287,6 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_exact_polymorphic_mapping()
     {
-        #if !NET8_0_OR_GREATER
-        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
-        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
-        if (IsJsonb)
-            return;
-        #endif
-
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(ExtendedDerivedWeatherForecast)]);
         dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
@@ -336,15 +315,6 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_unspecified_polymorphic_mapping()
     {
-        // We don't yet support polymorphic deserialization for jsonb as $type does not come back as the first property.
-        // This could be fixed by detecting PolymorphicOptions types, always buffering their values and modifying the text.
-        // In this case we don't have any statically mapped base type to check its PolymorphicOptions on.
-        // Detecting whether the type could be polymorphic would require us to duplicate STJ's nearest polymorphic ancestor search.
-        #if !NET8_0_OR_GREATER
-        if (IsJsonb)
-            return;
-        #endif
-
         var dataSourceBuilder = CreateDataSourceBuilder().EnableDynamicJson();
         dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
         await using var dataSource = dataSourceBuilder.Build();
