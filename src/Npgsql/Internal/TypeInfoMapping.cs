@@ -753,6 +753,13 @@ public static class TypeInfoMappingHelpers
     internal static PostgresType GetPgType(this TypeInfoMapping mapping, PgSerializerOptions options)
         => options.DatabaseInfo.GetPostgresType(new DataTypeName(mapping.DataTypeName));
 
+    /// <summary>
+    /// Creates a PgTypeInfo from a mapping, optins, and a converter.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="converter">The converter to create a PgTypeInfo for.</param>
+    /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter)
         => new(options, converter, new DataTypeName(mapping.DataTypeName))
         {
@@ -760,6 +767,15 @@ public static class TypeInfoMappingHelpers
             SupportsWriting = true
         };
 
+    /// <summary>
+    /// Creates a PgTypeInfo from a mapping, options, and a converter.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="converter">The converter to create a PgTypeInfo for.</param>
+    /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
+    /// <param name="supportsWriting">Whether the converters returned from the given converter resolver support writing.</param>
+    /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new(options, converter, new DataTypeName(mapping.DataTypeName))
         {
@@ -768,13 +784,13 @@ public static class TypeInfoMappingHelpers
         };
 
     /// <summary>
-    ///
+    /// Creates a PgResolverTypeInfo from a mapping, options, and a converter resolver.
     /// </summary>
-    /// <param name="mapping"></param>
-    /// <param name="options"></param>
-    /// <param name="resolver"></param>
-    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, 'closing' it on construction, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
-    /// <returns></returns>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="resolver">The resolver to create a PgResolverTypeInfo for.</param>
+    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
+    /// <returns>The created info instance.</returns>
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName)
         => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
@@ -782,6 +798,16 @@ public static class TypeInfoMappingHelpers
             SupportsWriting = true
         };
 
+    /// <summary>
+    /// Creates a PgResolverTypeInfo from a mapping, options, and a converter resolver.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="resolver">The converter resolver to create a PgResolverTypeInfo for.</param>
+    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
+    /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
+    /// <param name="supportsWriting">Whether the converters returned from the given converter resolver support writing.</param>
+    /// <returns>The created info instance.</returns>
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
