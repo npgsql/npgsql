@@ -218,9 +218,9 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_polymorphic_mapping()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
-        dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
+        var dataSourceBuilder = CreateDataSourceBuilder()
+            .EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)])
+            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
         await using var dataSource = dataSourceBuilder.Build();
 
         var sql =
@@ -246,9 +246,9 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_polymorphic_mapping_read_parents()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
-        dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
+        var dataSourceBuilder = CreateDataSourceBuilder()
+            .EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)])
+            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
         await using var dataSource = dataSourceBuilder.Build();
 
         var value = new ExtendedDerivedWeatherForecast()
@@ -287,9 +287,9 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_exact_polymorphic_mapping()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(ExtendedDerivedWeatherForecast)]);
-        dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
+        var dataSourceBuilder = CreateDataSourceBuilder()
+            .EnableDynamicJson(jsonClrTypes: [typeof(ExtendedDerivedWeatherForecast)])
+            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
         await using var dataSource = dataSourceBuilder.Build();
 
         var sql = 
@@ -315,8 +315,9 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_unspecified_polymorphic_mapping()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder().EnableDynamicJson();
-        dataSourceBuilder.ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
+        var dataSourceBuilder = CreateDataSourceBuilder()
+            .EnableDynamicJson()
+            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
         await using var dataSource = dataSourceBuilder.Build();
 
         var value = new ExtendedDerivedWeatherForecast
