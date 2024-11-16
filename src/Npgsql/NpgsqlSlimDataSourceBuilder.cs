@@ -125,6 +125,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder ConfigureTypeLoading(Action<NpgsqlTypeLoadingOptionsBuilder> configureAction)
     {
+        ArgumentNullException.ThrowIfNull(configureAction);
         _typeLoadingOptionsBuilderCallbacks ??= new();
         _typeLoadingOptionsBuilderCallbacks.Add(configureAction);
         return this;
@@ -136,6 +137,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder ConfigureTracing(Action<NpgsqlTracingOptionsBuilder> configureAction)
     {
+        ArgumentNullException.ThrowIfNull(configureAction);
         _tracingOptionsBuilderCallbacks ??= new();
         _tracingOptionsBuilderCallbacks.Add(configureAction);
         return this;
@@ -148,6 +150,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
     {
+        ArgumentNullException.ThrowIfNull(serializerOptions);
         JsonSerializerOptions = serializerOptions;
         return this;
     }
