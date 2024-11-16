@@ -11,7 +11,7 @@ sealed class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
     public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
         => Task.FromResult(
-            conn.DataSource.Configuration.TypeLoading.TypeLoading
+            !conn.DataSource.Configuration.TypeLoading.LoadTypes
                 ? (NpgsqlDatabaseInfo)new PostgresMinimalDatabaseInfo(conn)
                 : null);
 }

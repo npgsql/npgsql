@@ -13,10 +13,10 @@ sealed class NpgsqlTypeLoadingOptions
     public bool LoadTableComposites { get; init; }
 
     /// <summary>
-    /// The server is doesn't support full type loading from the PostgreSQL catalogs, support the basic set
-    /// of types via information hardcoded inside Npgsql.
+    /// When false, if the server doesn't support full type loading from the PostgreSQL catalogs,
+    /// support the basic set of types via information hardcoded inside Npgsql.
     /// </summary>
-    public bool TypeLoading { get; init; }
+    public required bool LoadTypes { get; init; } = true;
 }
 
 /// <summary>
@@ -25,7 +25,7 @@ sealed class NpgsqlTypeLoadingOptions
 public sealed class NpgsqlTypeLoadingOptionsBuilder
 {
     bool _loadTableComposites;
-    bool _typeLoading;
+    bool _loadTypes = true;
 
     internal NpgsqlTypeLoadingOptionsBuilder() {}
 
@@ -41,17 +41,16 @@ public sealed class NpgsqlTypeLoadingOptionsBuilder
     /// <summary>
     /// Set a compatibility mode for special PostgreSQL server types.
     /// </summary>
-    public NpgsqlTypeLoadingOptionsBuilder EnableTypeLoading(
-        bool enable = true)
+    public NpgsqlTypeLoadingOptionsBuilder EnableTypeLoading(bool enable = true)
     {
-        _typeLoading = enable;
+        _loadTypes = enable;
         return this;
     }
 
     internal NpgsqlTypeLoadingOptions Build() => new()
     {
         LoadTableComposites = _loadTableComposites,
-        TypeLoading = _typeLoading
+        LoadTypes = _loadTypes
     };
 }
 
