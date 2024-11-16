@@ -68,11 +68,14 @@ public sealed class NpgsqlTypeLoadingOptionsBuilder
             return this;
         }
 
+        _typeLoadingSchemas = new();
         foreach (var schema in schemas)
         {
             if (schema is not { Length: > 0 })
+            {
+                _typeLoadingSchemas = null;
                 throw new ArgumentException("Schema cannot be null or empty.");
-            _typeLoadingSchemas ??= new();
+            }
             _typeLoadingSchemas.Add(schema);
         }
 
