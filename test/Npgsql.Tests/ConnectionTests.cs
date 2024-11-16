@@ -669,6 +669,8 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         await using var conn1 = await OpenConnectionAsync();
         try
         {
+            await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_1");
+            await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_2");
             await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_3");
             await conn1.ExecuteNonQueryAsync("CREATE TYPE public.test_type_3 AS (id int, name text)");
 
