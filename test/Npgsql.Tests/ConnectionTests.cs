@@ -653,175 +653,69 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     }
 
     [Test]
+    [TestCase("test_schema_1", "public", true)]
     [TestCase("test_schema_1", "test_schema_2", true)]
     [TestCase("test_schema_3", "test_schema_4", true)]
-    [TestCase("test_schema_5", "test_schema_6", false)]
-    [TestCase("test_schema_7", "test_schema_8", false)]
+    [TestCase("test_schema_1", "public", false)]
+    [TestCase("test_schema_1", "test_schema_2", false)]
+    [TestCase("test_schema_3", "test_schema_4", false)]
     [Parallelizable(ParallelScope.None)]
-    public async Task Set_SearchPath_And_Load_Relevant_Composite_Types(string testSchema, string otherSchema, bool enabled)
+    public async Task Set_Schemas_And_Load_Relevant_Types(string testSchema, string otherSchema, bool enabled)
     {
         if (IsMultiplexing)
             return;
 
         using var conn1 = new NpgsqlConnection(ConnectionString);
-        try
-        {
-            await conn1.OpenAsync();
-            // Call aquire advisory lock to prevent concurrent schema creation
-            await conn1.ExecuteNonQueryAsync("SELECT pg_advisory_lock(9802890)");
-            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {testSchema} CASCADE");
-            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {otherSchema} CASCADE");
-            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {testSchema}");
-            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {otherSchema}");
-            await conn1.ExecuteNonQueryAsync($"CREATE TYPE {testSchema}.test_type_1 AS (id int)");
-            await conn1.ExecuteNonQueryAsync($"CREATE TYPE {otherSchema}.test_type_2 AS (id int, name text)");
-            await conn1.ExecuteNonQueryAsync("SELECT pg_advisory_unlock(9802890)");
-            await conn1.DisposeAsync();
 
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await conn1.OpenAsync();
+        await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_3");
+        await conn1.ExecuteNonQueryAsync("CREATE TYPE public.test_type_3 AS (id int, name text)");
+
+        if (testSchema != "public")
+        {
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {testSchema} CASCADE");
+            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {testSchema}");
+        }
+        if (otherSchema != "public")
+        {
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {otherSchema} CASCADE");
+            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {otherSchema}");
+        }
+        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {testSchema}.test_type_1");
+        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {testSchema}.test_type_1 AS (id int)");
+        await conn1.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {otherSchema}.test_type_2");
+        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {otherSchema}.test_type_2 AS (id int, name text)");
+        await conn1.DisposeAsync();
+
+        using var dataSource = CreateDataSource(builder =>
+        {
+            builder.ConfigureTypeLoading(builder =>
             {
-                LoadTypesFromSearchPath = enabled,
-                SearchPath = $"{testSchema}, public"
-            }.ToString();
-            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connString);
-            using var dataSource = dataSourceBuilder.Build();
-            using var conn = await dataSource.OpenConnectionAsync();
-            if (enabled)
+                if (enabled)
+                    builder.SetTypeLoadingSchemas(testSchema, otherSchema);
+            });
+        });
+        using var conn = await dataSource.OpenConnectionAsync();
+        if (enabled)
+        {
+            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
+            if (testSchema == "public" || otherSchema == "public")
             {
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
-                Assert.False(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
             }
             else
             {
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
                 Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                Assert.False(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
             }
         }
-        finally
+        else
         {
-            using var connCleanup = new NpgsqlConnection(ConnectionString);
-            await connCleanup.OpenAsync();
-            await connCleanup.ExecuteNonQueryAsync($"DROP SCHEMA {testSchema} CASCADE");
-            await connCleanup.ExecuteNonQueryAsync($"DROP SCHEMA {otherSchema} CASCADE");
-            await connCleanup.DisposeAsync();
+            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
+            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+            Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
         }
-    }
-
-    [Test]
-    [TestCase("test_schema_1", "test_schema_2", true, Description = "LoadTypesFromSearchPath enabled")]
-    [TestCase("test_schema_3", "test_schema_4", false, Description = "LoadTypesFromSearchPath disabled")]
-    [Parallelizable(ParallelScope.None)]
-    public async Task Set_SearchPath_And_Load_All_Composite_Types(string testSchema1, string testSchema2, bool enabled)
-    {
-        if (IsMultiplexing)
-            return;
-
-        using var conn1 = new NpgsqlConnection(ConnectionString);
-        await conn1.OpenAsync();
-        using var trans = await conn1.BeginTransactionAsync();
-        //await conn1.ExecuteNonQueryAsync("SELECT pg_advisory_lock(978678)");
-        await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {testSchema1} CASCADE");
-        await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {testSchema2} CASCADE");
-        await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {testSchema1}");
-        await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {testSchema2}");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {testSchema1}.test_type_1 AS (id int)");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {testSchema2}.test_type_2 AS (id int, name text)");
-
-        await trans.CommitAsync();
-        await conn1.CloseAsync();
-
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            LoadTypesFromSearchPath = enabled,
-            SearchPath = $"{testSchema1}, {testSchema2}"
-        }.ToString();
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connString);
-        using var dataSource = dataSourceBuilder.Build();
-        using var conn = await dataSource.OpenConnectionAsync();
-        Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
-        Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-    }
-
-    //[Test]
-    //[TestCase("extensions", true, Description = "LoadTypesFromSearchPath enabled")]
-    //public async Task Set_SearchPath_And_Check_Extension_User_Types_Always_Loaded(string extensionSchema, bool enabled)
-    //{
-    //    using var conn1 = new NpgsqlConnection(ConnectionString);
-    //    await conn1.OpenAsync();
-    //    await TestUtil.EnsurePostgis(conn1);
-    //    using var trans = await conn1.BeginTransactionAsync();
-    //    await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {extensionSchema} CASCADE");
-    //    await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA IF NOT EXISTS dummy");
-    //    await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {extensionSchema}");
-    //    await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis_topology");
-    //    await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis_tiger_geocoder");
-    //    await conn1.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis");
-    //    await conn1.ExecuteNonQueryAsync($"CREATE EXTENSION postgis SCHEMA {extensionSchema}");
-    //    await trans.CommitAsync();
-    //    await conn1.CloseAsync();
-
-    //    var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-    //    {
-    //        LoadTypesFromSearchPath = enabled,
-    //        SearchPath = "dummy"
-    //    }.ToString();
-    //    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connString);
-    //    using var dataSource = dataSourceBuilder.Build();
-    //    using var conn = await dataSource.OpenConnectionAsync();
-    //    Assert.True(dataSource.DatabaseInfo.BaseTypes.Any(x => x.Name == "geography" && x.Namespace == extensionSchema));
-
-    //    await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS postgis");
-    //    await conn.ExecuteNonQueryAsync($"CREATE EXTENSION postgis");
-    //    await conn.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_tiger_geocoder");
-    //    await conn.ExecuteNonQueryAsync($"CREATE EXTENSION postgis_topology");
-    //}
-
-    [Test]
-    public void Set_SearchPath_To_Invalid()
-    {
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            LoadTypesFromSearchPath = true,
-            SearchPath = $"schema1, ;DROP TABLE X; COMMIT; schema2"
-        }.ToString();
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connString);
-        using var dataSource = dataSourceBuilder.Build();
-        var exception = Assert.ThrowsAsync<PostgresException>(async () => await dataSource.OpenConnectionAsync());
-        Assert.That(exception?.SqlState == "22023");
-    }
-
-    [Test]
-    [TestCase("test_schema_1", "test_schema_2")]
-    [Parallelizable(ParallelScope.None)]
-    public async Task Clear_SearchPath_And_Load_All_Composite_Types(string testSchema1, string testSchema2)
-    {
-        if (IsMultiplexing)
-            return;
-
-        using var conn1 = new NpgsqlConnection(ConnectionString);
-        await conn1.OpenAsync();
-        using var trans = await conn1.BeginTransactionAsync();
-        //await conn1.ExecuteNonQueryAsync("SELECT pg_advisory_lock(89012873)");
-        await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {testSchema1} CASCADE");
-        await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {testSchema2} CASCADE");
-        await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {testSchema1}");
-        await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA {testSchema2}");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {testSchema1}.test_type_1 AS (id int)");
-        await conn1.ExecuteNonQueryAsync($"CREATE TYPE {testSchema2}.test_type_2 AS (id int, name text)");
-        await conn1.ExecuteNonQueryAsync("reindex table pg_namespace");
-        await trans.CommitAsync();
-        await conn1.DisposeAsync();
-
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SearchPath = string.Empty
-        }.ToString();
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connString);
-        using var dataSource = dataSourceBuilder.Build();
-        using var conn = await dataSource.OpenConnectionAsync();
-        Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
-        Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-        await conn.DisposeAsync();
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
