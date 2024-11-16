@@ -767,6 +767,8 @@ Npgsql.NpgsqlSlimDataSourceBuilder.UsePhysicalConnectionInitializer(System.Actio
 Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificate(System.Security.Cryptography.X509Certificates.X509Certificate2? rootCertificate) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificateCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2!>? rootCertificateCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseUserCertificateValidationCallback(System.Net.Security.RemoteCertificateValidationCallback! userCertificateValidationCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlTracingOptions
+Npgsql.NpgsqlTracingOptions.NpgsqlTracingOptions() -> void
 Npgsql.NpgsqlTransaction
 Npgsql.NpgsqlTransaction.Connection.get -> Npgsql.NpgsqlConnection?
 Npgsql.PostgresErrorCodes
