@@ -223,24 +223,29 @@ public class JsonDynamicTests : MultiplexingTestBase
             .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
         await using var dataSource = dataSourceBuilder.Build();
 
+        var value = new ExtendedDerivedWeatherForecast()
+        {
+            Date = new DateTime(2019, 9, 1),
+            Summary = "Partly cloudy",
+            TemperatureC = 10
+        };
+
         var sql =
             IsJsonb
                 ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertType<WeatherForecast>(
+        await AssertTypeWrite(
             dataSource,
-            new ExtendedDerivedWeatherForecast()
-            {
-                Date = new DateTime(2019, 9, 1),
-                Summary = "Partly cloudy",
-                TemperatureC = 10
-            },
+            value,
             sql,
             PostgresType,
             NpgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDefault: false);
+
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value,
+            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast),
+            isDefault: false);
     }
 
     [Test]
@@ -308,7 +313,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             sql,
             PostgresType,
             NpgsqlDbType,
-            isDefault: false,
+            isDefaultForReading: false,
             isNpgsqlDbTypeInferredFromClrType: false);
     }
 
@@ -332,7 +337,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertType(
+        await AssertTypeWrite(
             dataSource,
             value,
             sql,
