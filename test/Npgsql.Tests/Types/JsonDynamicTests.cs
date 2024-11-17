@@ -215,87 +215,35 @@ public class JsonDynamicTests : MultiplexingTestBase
             isNpgsqlDbTypeInferredFromClrType: false);
     }
 
+    #region Polymorphic
+
     [Test]
     public async Task Poco_polymorphic_mapping()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder()
-            .EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)])
-            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
-        await using var dataSource = dataSourceBuilder.Build();
+        await using var dataSource = CreateWeatherForecastDataSource();
 
-        var value = new ExtendedDerivedWeatherForecast()
+        var value = new ExtendedDerivedWeatherForecast
         {
             Date = new DateTime(2019, 9, 1),
             Summary = "Partly cloudy",
             TemperatureC = 10
         };
 
+        // Note: we assert a specific string representation, though jsonb doesn't guarantee the property ordering; so the assert may break
+        // for jsonb if PostgreSQL changes its implementation.
         var sql =
             IsJsonb
                 ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(
-            dataSource,
-            value,
-            sql,
-            PostgresType,
-            NpgsqlDbType,
-            isDefault: false);
-
-        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value,
-            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast),
-            isDefault: false);
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, NpgsqlDbType, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
     }
 
     [Test]
     public async Task Poco_polymorphic_mapping_read_parents()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder()
-            .EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)])
-            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
-        await using var dataSource = dataSourceBuilder.Build();
-
-        var value = new ExtendedDerivedWeatherForecast()
-        {
-            Date = new DateTime(2019, 9, 1),
-            Summary = "Partly cloudy",
-            TemperatureC = 10
-        };
-
-        var sql =
-            IsJsonb
-                ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
-                : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
-
-        await AssertTypeWrite<WeatherForecast>(
-            dataSource,
-            value,
-            sql,
-            PostgresType,
-            NpgsqlDbType,
-            isNpgsqlDbTypeInferredFromClrType: false,
-            isDefault: false);
-
-        // GetFieldValue
-        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value,
-            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast),
-            isDefault: false);
-
-        await AssertTypeRead<DerivedWeatherForecast>(dataSource, sql, PostgresType, value,
-            comparer: (_, actual) => actual.GetType() == typeof(DerivedWeatherForecast), isDefault: false);
-
-        await AssertTypeRead<ExtendedDerivedWeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
-    }
-
-
-    [Test]
-    public async Task Poco_exact_polymorphic_mapping()
-    {
-        var dataSourceBuilder = CreateDataSourceBuilder()
-            .EnableDynamicJson(jsonClrTypes: [typeof(ExtendedDerivedWeatherForecast)])
-            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
-        await using var dataSource = dataSourceBuilder.Build();
+        await using var dataSource = CreateWeatherForecastDataSource();
 
         var value = new ExtendedDerivedWeatherForecast
         {
@@ -304,31 +252,55 @@ public class JsonDynamicTests : MultiplexingTestBase
             TemperatureC = 10
         };
 
-        var sql = 
+        // Note: we assert a specific string representation, though jsonb doesn't guarantee the property ordering; so the assert may break
+        // for jsonb if PostgreSQL changes its implementation.
+        var sql =
             IsJsonb
                 ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
-                : """{"TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+                : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(
-            dataSource,
-            value,
-            sql,
-            PostgresType,
-            NpgsqlDbType,
-            isDefault: false);
+        await AssertTypeWrite<WeatherForecast>(dataSource, value, sql, PostgresType, NpgsqlDbType,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
-        await AssertTypeRead(dataSource, sql, PostgresType, value,
-            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast),
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
+        await AssertTypeRead(dataSource, sql, PostgresType,
+            new DerivedWeatherForecast
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
             isDefault: false);
+        await AssertTypeRead(dataSource, sql, PostgresType, value, isDefault: false);
+    }
+
+    [Test]
+    public async Task Poco_exact_polymorphic_mapping()
+    {
+        await using var dataSource = CreateWeatherForecastDataSource();
+
+        var value = new ExtendedDerivedWeatherForecast
+        {
+            Date = new DateTime(2019, 9, 1),
+            Summary = "Partly cloudy",
+            TemperatureC = 10
+        };
+
+        // Note: we assert a specific string representation, though jsonb doesn't guarantee the property ordering; so the assert may break
+        // for jsonb if PostgreSQL changes its implementation.
+        var sql =
+            IsJsonb
+                ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
+                : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, NpgsqlDbType, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeRead(dataSource, sql, PostgresType, value, isDefault: false);
     }
 
     [Test]
     public async Task Poco_unspecified_polymorphic_mapping()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder()
-            .EnableDynamicJson()
-            .ConfigureJsonOptions(new () { AllowOutOfOrderMetadataProperties = true });
-        await using var dataSource = dataSourceBuilder.Build();
+        await using var dataSource = CreateWeatherForecastDataSource();
 
         var value = new ExtendedDerivedWeatherForecast
         {
@@ -337,26 +309,68 @@ public class JsonDynamicTests : MultiplexingTestBase
             TemperatureC = 10
         };
 
+        // Note: we assert a specific string representation, though jsonb doesn't guarantee the property ordering; so the assert may break
+        // for jsonb if PostgreSQL changes its implementation.
         var sql =
             IsJsonb
                 ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(
-            dataSource,
-            value,
-            sql,
-            PostgresType,
-            NpgsqlDbType,
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, NpgsqlDbType, isDefault: false);
+
+        await AssertTypeRead(dataSource, sql, PostgresType,
+            new DerivedWeatherForecast
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
             isDefault: false);
-
-        await AssertTypeRead<DerivedWeatherForecast>(dataSource, sql, PostgresType, value,
-            comparer: (_, actual) => actual.GetType() == typeof(DerivedWeatherForecast), isDefault: false);
-
-        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value,
-            comparer: (_, actual) => actual.GetType() == typeof(ExtendedDerivedWeatherForecast), isDefault: false);
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
     }
 
+    [Test]
+    public async Task Poco_polymorphic_mapping_without_AllowOutOfOrderMetadataProperties()
+    {
+        await using var dataSource = CreateWeatherForecastDataSource(allowOutOfOrderMetadataProperties: false);
+
+        var value = new ExtendedDerivedWeatherForecast
+        {
+            Date = new DateTime(2019, 9, 1),
+            Summary = "Partly cloudy",
+            TemperatureC = 10
+        };
+
+        // Note: we assert a specific string representation, though jsonb doesn't guarantee the property ordering; so the assert may break
+        // for jsonb if PostgreSQL changes its implementation.
+        var sql =
+            IsJsonb
+                ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
+                : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, NpgsqlDbType, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
+    }
+
+    NpgsqlDataSource CreateWeatherForecastDataSource(bool allowOutOfOrderMetadataProperties = true)
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+
+        if (IsJsonb)
+        {
+            dataSourceBuilder.EnableDynamicJson(jsonbClrTypes: [typeof(WeatherForecast)]);
+        }
+        else
+        {
+            dataSourceBuilder.EnableDynamicJson(jsonClrTypes: [typeof(WeatherForecast)]);
+        }
+
+        dataSourceBuilder.ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = allowOutOfOrderMetadataProperties });
+        return dataSourceBuilder.Build();
+    }
+
+    // ReSharper disable UnusedAutoPropertyAccessor.Local
+    // ReSharper disable UnusedMember.Local
     [JsonDerivedType(typeof(ExtendedDerivedWeatherForecast), typeDiscriminator: "extended")]
     record WeatherForecast
     {
@@ -365,14 +379,16 @@ public class JsonDynamicTests : MultiplexingTestBase
         public string Summary { get; set; } = "";
     }
 
-    record DerivedWeatherForecast : WeatherForecast
-    {
-    }
+    record DerivedWeatherForecast : WeatherForecast;
 
     record ExtendedDerivedWeatherForecast : DerivedWeatherForecast
     {
         public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
     }
+    // ReSharper restore UnusedMember.Local
+    // ReSharper restore UnusedAutoPropertyAccessor.Local
+
+    #endregion Polymorphic
 
     public JsonDynamicTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)
         : base(multiplexingMode)

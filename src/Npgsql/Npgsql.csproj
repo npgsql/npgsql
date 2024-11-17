@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <Authors>Shay Rojansky;Nikita Kazmin;Brar Piening;Nino Floris;Yoh Deadfall;;Austin Drenski;Emil Lenngren;Francisco Figueiredo Jr.;Kenji Uno</Authors>
@@ -22,13 +22,11 @@
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net8.0' ">
-    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="System.Text.Json" /> <!-- For AllowOutOfOrderMetadataProperties -->
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
+    <PackageReference Include="System.Text.Json" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" />
   </ItemGroup>

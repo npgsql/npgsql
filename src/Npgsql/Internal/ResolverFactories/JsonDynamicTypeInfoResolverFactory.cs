@@ -117,7 +117,7 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                 var jsonb = dataTypeName == DataTypeNames.Jsonb;
 
                 // For jsonb we can't properly support polymorphic serialization unless the SerializerOptions.AllowOutOfOrderMetadataProperties is `true`.
-                // If `jsonb` AND `AllowOutOfOrderMetadataProperties` is `false`, use `mapping.Type` as the base type for the converter, and 
+                // If `jsonb` AND `AllowOutOfOrderMetadataProperties` is `false`, use `mapping.Type` as the base type for the converter, and
                 // strip the "$type" field; essentially disabling the feature.
                 var baseType = jsonb && !SerializerOptions.AllowOutOfOrderMetadataProperties ? mapping.Type : typeof(object);
 
