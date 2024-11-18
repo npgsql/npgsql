@@ -407,6 +407,59 @@ public class JsonDynamicTests : MultiplexingTestBase
             await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
     }
 
+    [Test]
+    public async Task Poco_unspecified_polymorphic_mapping_without_AllowOutOfOrderMetadataProperties()
+    {
+        await using var dataSource = CreateDataSource(builder =>
+        {
+            builder
+                .ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = false })
+                .EnableDynamicJson();
+        });
+
+        var value = new ExtendedDerivedWeatherForecast
+        {
+            Date = new DateTime(2019, 9, 1),
+            Summary = "Partly cloudy",
+            TemperatureC = 10
+        };
+
+        // Note: we assert a specific string representation, though jsonb doesn't guarantee the property ordering; so the assert may break
+        // for jsonb if PostgreSQL changes its implementation.
+        var sql =
+            IsJsonb
+                ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
+                : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
+
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, NpgsqlDbType, isDefault: false);
+
+        // As we have disabled polymorphism for jsonb when AllowOutOfOrderMetadataProperties = false we should be able to read it as equalt to a WeatherForecast instance.
+        if (IsJsonb)
+            await AssertTypeRead(dataSource, sql, PostgresType,
+                new WeatherForecast
+                {
+                    Date = new DateTime(2019, 9, 1),
+                    Summary = "Partly cloudy",
+                    TemperatureC = 10
+                },
+                isDefault: false);
+
+        // Reading as DerivedWeatherForecast should not cause us to get an instance of ExtendedDerivedWeatherForecast (as it doesn't define JsonDerivedType)
+        await AssertTypeRead(dataSource, sql, PostgresType,
+            new DerivedWeatherForecast
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
+            isDefault: false);
+
+        // We won't get the original value back for jsonb as we can't support polymorphism without also enforcing AllowOutOfOrderMetadataProperties is true.
+        // If we output $type, jsonb won't have that at the start and STJ will throw due to it appearing later in the object. So it's disabled entirely.
+        if (!IsJsonb)
+            await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isDefault: false);
+    }
+
     // ReSharper disable UnusedAutoPropertyAccessor.Local
     // ReSharper disable UnusedMember.Local
     [JsonDerivedType(typeof(ExtendedDerivedWeatherForecast), typeDiscriminator: "extended")]
