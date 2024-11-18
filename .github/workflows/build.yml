@@ -38,10 +38,6 @@ jobs:
             pg_major: 16
             config: Debug
             test_tfm: net8.0
-          - os: ubuntu-22.04
-            pg_major: 16
-            config: Release
-            test_tfm: netcoreapp3.1
           - os: macos-15
             pg_major: 14
             config: Release
@@ -73,7 +69,6 @@ jobs:
         with:
           dotnet-version: |
             ${{ env.dotnet_sdk_version }}
-            3.1.x
 
       - name: Build
         run: dotnet build -c ${{ matrix.config }}
