@@ -232,15 +232,18 @@ jobs:
       - name: Start PostgreSQL ${{ matrix.pg_major }} (MacOS)
         if: startsWith(matrix.os, 'macos')
         run: |
-            PGDATA=/usr/local/var/postgresql@${{ matrix.pg_major }}
+            brew install postgresql@${{ matrix.pg_major }}
+
+            PGDATA=/opt/homebrew/var/postgresql@${{ matrix.pg_major }}
 
             sudo sed -i '' 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
             cp $GITHUB_WORKSPACE/.build/{server.crt,server.key} $PGDATA
             chmod 600 $PGDATA/{server.crt,server.key}
-            
-            postgreService=$(brew services list | grep -oe "postgresql\S*")
+
+            postgreService=$(brew services list | grep -oe "postgresql@${{ matrix.pg_major }}\S*")
 
             brew services start $postgreService
+            export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
             echo "Check PostgreSQL service is running"
             i=5
             COMMAND='pg_isready'
@@ -255,7 +258,7 @@ jobs:
                 echo "PostgreSQL service not ready, wait 5 more sec, attempts left: $i"
                 sleep 5
             done
-            
+
             # Create npgsql_tests user with md5 password 'npgsql_tests'
             psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'" postgres
             
