@@ -37,7 +37,7 @@ jobs:
             pg_major: 16
             config: Release
             test_tfm: netcoreapp3.1
-          - os: macos-12
+          - os: macos-15
             pg_major: 14
             config: Release
             test_tfm: net7.0
