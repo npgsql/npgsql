@@ -10,6 +10,9 @@
   <ItemGroup>
     <PackageReference Include="GeoJSON.Net" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
+
+    <!-- Take direct reference on Newtonsoft.Json since the version referenced by GeoJSON.Net 1.2.19 (10.0.2) has CVEs against it -->
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>
