@@ -220,11 +220,17 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_polymorphic_mapping()
     {
+#if !NET9_0_OR_GREATER
+        if (IsJsonb)
+            return;
+#endif
         await using var dataSource = CreateDataSource(builder =>
         {
             var types = new[] {typeof(WeatherForecast)};
             builder
+#if NET9_0_OR_GREATER
                 .ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = true })
+#endif
                 .EnableDynamicJson(jsonClrTypes: IsJsonb ? [] : types, jsonbClrTypes: !IsJsonb ? [] : types);
         });
 
@@ -249,11 +255,17 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_polymorphic_mapping_read_parents()
     {
+#if !NET9_0_OR_GREATER
+        if (IsJsonb)
+            return;
+#endif
         await using var dataSource = CreateDataSource(builder =>
         {
             var types = new[] {typeof(WeatherForecast)};
             builder
+#if NET9_0_OR_GREATER
                 .ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = true })
+#endif
                 .EnableDynamicJson(jsonClrTypes: IsJsonb ? [] : types, jsonbClrTypes: !IsJsonb ? [] : types);
         });
 
@@ -293,7 +305,9 @@ public class JsonDynamicTests : MultiplexingTestBase
         {
             var types = new[] {typeof(ExtendedDerivedWeatherForecast)};
             builder
+#if NET9_0_OR_GREATER
                 .ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = true })
+#endif
                 .EnableDynamicJson(jsonClrTypes: IsJsonb ? [] : types, jsonbClrTypes: !IsJsonb ? [] : types);
         });
 
@@ -318,10 +332,17 @@ public class JsonDynamicTests : MultiplexingTestBase
     [Test]
     public async Task Poco_unspecified_polymorphic_mapping()
     {
+#if !NET9_0_OR_GREATER
+        if (IsJsonb)
+            return;
+#endif
+
         await using var dataSource = CreateDataSource(builder =>
         {
             builder
+#if NET9_0_OR_GREATER
                 .ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = true })
+#endif
                 .EnableDynamicJson();
         });
 
@@ -360,7 +381,9 @@ public class JsonDynamicTests : MultiplexingTestBase
         {
             var types = new[] {typeof(WeatherForecast)};
             builder
+#if NET9_0_OR_GREATER
                 .ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = false })
+#endif
                 .EnableDynamicJson(jsonClrTypes: IsJsonb ? [] : types, jsonbClrTypes: !IsJsonb ? [] : types);
         });
 
@@ -413,7 +436,9 @@ public class JsonDynamicTests : MultiplexingTestBase
         await using var dataSource = CreateDataSource(builder =>
         {
             builder
+#if NET9_0_OR_GREATER
                 .ConfigureJsonOptions(new() { AllowOutOfOrderMetadataProperties = false })
+#endif
                 .EnableDynamicJson();
         });
 
