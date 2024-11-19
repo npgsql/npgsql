@@ -53,7 +53,9 @@ sealed class JsonDynamicTypeInfoResolverFactory(
         readonly Type[] _jsonClrTypes = jsonClrTypes ?? [];
         TypeInfoMappingCollection? _mappings;
 
-#if !NET9_0_OR_GREATER
+#if NET9_0_OR_GREATER
+        static Func<JsonSerializerOptions, bool> AllowOutOfOrderMetadataProperties { get; } = options => options.AllowOutOfOrderMetadataProperties;
+#else
         static Func<JsonSerializerOptions, bool> AllowOutOfOrderMetadataProperties { get; } =
             typeof(JsonSerializerOptions).GetProperty("AllowOutOfOrderMetadataProperties") is { } prop && prop.GetGetMethod() is { } getProp
                 ? getProp.CreateDelegate<Func<JsonSerializerOptions, bool>>()
