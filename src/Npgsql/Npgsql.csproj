@@ -22,7 +22,6 @@
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
-    <PackageReference Include="System.Text.Json" /> <!-- For AllowOutOfOrderMetadataProperties -->
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">

@@ -53,6 +53,12 @@ sealed class JsonDynamicTypeInfoResolverFactory(
         readonly Type[] _jsonClrTypes = jsonClrTypes ?? [];
         TypeInfoMappingCollection? _mappings;
 
+#if !NET9_0_OR_GREATER
+        static Func<JsonSerializerOptions, bool> AllowOutOfOrderMetadataProperties { get; } =
+            typeof(JsonSerializerOptions).GetProperty("AllowOutOfOrderMetadataProperties") is { } prop && prop.GetGetMethod() is { } getProp
+                ? getProp.CreateDelegate<Func<JsonSerializerOptions, bool>>()
+                : _ => false;
+#endif
         protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _jsonbClrTypes, _jsonClrTypes, SerializerOptions);
 
         public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
@@ -98,7 +104,7 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                             // For jsonb we can't properly support polymorphic serialization unless the SerializerOptions.AllowOutOfOrderMetadataProperties is `true`.
                             // If `jsonb` AND `AllowOutOfOrderMetadataProperties` is `false`, use `derived.DerivedType` as the base type for the converter,
                             // this causes STJ to stop serializing the "$type" field; essentially disabling the feature.
-                            var baseType = jsonb && !serializerOptions.AllowOutOfOrderMetadataProperties ? derived.DerivedType : jsonType;
+                            var baseType = jsonb && !AllowOutOfOrderMetadataProperties(serializerOptions) ? derived.DerivedType : jsonType;
                             dynamicMappings.AddMapping(derived.DerivedType, dataTypeName,
                                 factory: (options, mapping, _) => mapping.CreateInfo(options,
                                     CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, serializerOptions, baseType)));
@@ -125,7 +131,7 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                 // For jsonb we can't properly support polymorphic serialization unless the SerializerOptions.AllowOutOfOrderMetadataProperties is `true`.
                 // If `jsonb` AND `AllowOutOfOrderMetadataProperties` is `false`, use `mapping.Type` as the base type for the converter,
                 // this causes STJ to stop serializing the "$type" field; essentially disabling the feature.
-                var baseType = jsonb && !SerializerOptions.AllowOutOfOrderMetadataProperties ? mapping.Type : typeof(object);
+                var baseType = jsonb && !AllowOutOfOrderMetadataProperties(SerializerOptions) ? mapping.Type : typeof(object);
 
                 return mapping.CreateInfo(options,
                     CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, SerializerOptions, baseType));
