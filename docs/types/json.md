@@ -101,6 +101,24 @@ class MyPoco
 
 This mapping method is quite powerful, allowing you to read and write nested graphs of objects and arrays to PostgreSQL without having to deal with serialization yourself.
 
+### Polymorphic JSON mapping
+
+Npgsql uses System.Text.Json to perform the actual serialization and deserialization of your POCO types to JSON. System.Text.Json support [`polymorphioc serialization`](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/polymorphism), which allows serializing type hierarchies, using a JSON `$type` property as the type discriminator.
+
+If you're using the `json` type, you can use System.Text.Json's polymorphic serialization without any extra steps. However, if you're using `jsonb` (which is generally recommended), then you'll run into trouble: System.Text.Json requires that the `$type` property be at the top of the JSON document, but `jsonb` does **not** preserve property order in JSON objects.
+
+System.Text.Json 9.0 brings support for [out-of-order metadata reads](https://devblogs.microsoft.com/dotnet/system-text-json-in-dotnet-9/#out-of-order-metadata-reads), which is an opt-in feature allowing the `$type` property to be anywhere in the JSON object. When using Npgsql, you can opt into this when configuring your <xref:Npgsql.NpgsqlDataSourceBuilder> as follows:
+
+```c#
+var builder = new NpgsqlDataSourceBuilder("<connection string>");
+builder
+    .EnableDynamicJson()
+    .ConfigureJsonOptions(new JsonSerializerOptions { AllowOutOfOrderMetadataProperties = true });
+await using var dataSource = builder.Build();
+```
+
+Once that's done, you can use JSON polymorphism with `jsonb`. If you're still targeting .NET 8.0, you can take a reference on System.Text.Json 9.0 in order to use `AllowOutOfOrderMetadataProperties`.
+
 ## System.Text.Json DOM types
 
 There are cases in which mapping JSON data to POCOs isn't appropriate; for example, your JSON column may not contain a fixed schema and must be inspected to see what it contains; for these cases, Npgsql supports mapping JSON data to [JsonDocument](https://docs.microsoft.com/dotnet/api/system.text.json.jsondocument) or [JsonElement](https://docs.microsoft.com/dotnet/api/system.text.json.jsonelement) ([see docs](https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/use-dom#use-jsondocument)):
