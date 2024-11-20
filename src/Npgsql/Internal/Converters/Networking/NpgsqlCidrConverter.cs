@@ -3,6 +3,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
+#pragma warning disable CS0618 // NpgsqlCidr is obsolete
 sealed class NpgsqlCidrConverter : PgBufferedConverter<NpgsqlCidr>
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
@@ -20,3 +21,4 @@ sealed class NpgsqlCidrConverter : PgBufferedConverter<NpgsqlCidr>
     protected override void WriteCore(PgWriter writer, NpgsqlCidr value)
         => NpgsqlInetConverter.WriteImpl(writer, (value.Address, value.Netmask), isCidr: true);
 }
+#pragma warning restore CS0618

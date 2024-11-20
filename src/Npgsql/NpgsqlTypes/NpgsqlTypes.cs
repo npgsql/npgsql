@@ -488,6 +488,7 @@ public readonly record struct NpgsqlInet
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-net-types.html
 /// </remarks>
+[Obsolete("Use .NET IPNetwork instead of NpgsqlCidr to map to PostgreSQL cidr")]
 public readonly record struct NpgsqlCidr
 {
     public IPAddress Address { get; }

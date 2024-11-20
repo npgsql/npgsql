@@ -53,23 +53,23 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         => AssertTypeWrite(IPAddress.Any, "0.0.0.0/32", "inet", NpgsqlDbType.Inet, skipArrayCheck: true);
 
     [Test]
-    public Task Cidr()
-        => AssertType(
-            new NpgsqlCidr(IPAddress.Parse("192.168.1.0"), netmask: 24),
-            "192.168.1.0/24",
-            "cidr",
-            NpgsqlDbType.Cidr,
-            isDefaultForWriting: false);
-
-    [Test]
     public Task IPNetwork_as_cidr()
         => AssertType(
             new IPNetwork(IPAddress.Parse("192.168.1.0"), 24),
             "192.168.1.0/24",
             "cidr",
+            NpgsqlDbType.Cidr);
+
+#pragma warning disable CS0618 // NpgsqlCidr is obsolete
+    [Test]
+    public Task NpgsqlCidr_as_Cidr()
+        => AssertType(
+            new NpgsqlCidr(IPAddress.Parse("192.168.1.0"), netmask: 24),
+            "192.168.1.0/24",
+            "cidr",
             NpgsqlDbType.Cidr,
-            isDefaultForWriting: false,
             isDefaultForReading: false);
+#pragma warning restore CS0618
 
     [Test]
     public Task Inet_v4_as_NpgsqlInet()
