@@ -535,12 +535,12 @@ public class SecurityTests : TestBase
             csb.RootCertificate = "ca.crt";
         });
 
-        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var _ = await dataSource.OpenConnectionAsync();
     }
 
     [Test]
     [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
-    public async Task Connect_with_verify_full_fails_with_wrong_host()
+    public async Task Connect_with_verify_check_host([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         if (!IsOnBuildServer)
             Assert.Ignore("Only executed in CI");
@@ -548,12 +548,19 @@ public class SecurityTests : TestBase
         await using var dataSource = CreateDataSource(csb =>
         {
             csb.Host = "127.0.0.1";
-            csb.SslMode = SslMode.VerifyFull;
+            csb.SslMode = sslMode;
             csb.RootCertificate = "ca.crt";
         });
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
-        Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
+        if (sslMode == SslMode.VerifyFull)
+        {
+            await using var _ = await dataSource.OpenConnectionAsync();
+        }
+        else
+        {
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+            Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
+        }
     }
 
     [Test]
