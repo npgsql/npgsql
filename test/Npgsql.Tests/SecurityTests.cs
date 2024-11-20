@@ -523,6 +523,21 @@ public class SecurityTests : TestBase
     }
 
     [Test]
+    public async Task Connect_with_verify_and_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
+    {
+        if (!IsOnBuildServer)
+            Assert.Ignore("Only executed in CI");
+
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.SslMode = sslMode;
+            csb.RootCertificate = "ca.crt";
+        });
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+    }
+
+    [Test]
     [NonParallelizable] // Sets environment variable
     public async Task Direct_ssl_via_env_requires_correct_sslmode()
     {
