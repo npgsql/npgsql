@@ -230,14 +230,15 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 
             // Date
+            mappings.AddStructType<DateOnly>(DataTypeNames.Date,
+                static (options, mapping, _) =>
+                    mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
             mappings.AddStructType<DateTime>(DataTypeNames.Date,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)),
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<int>(DataTypeNames.Date,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()));
-            mappings.AddStructType<DateOnly>(DataTypeNames.Date,
-                static (options, mapping, _) => mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)));
 
             // Interval
             mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
@@ -246,12 +247,12 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
             // Time
+            mappings.AddStructType<TimeOnly>(DataTypeNames.Time,
+                static (options, mapping, _) => mapping.CreateInfo(options, new TimeOnlyTimeConverter()), isDefault: true);
             mappings.AddStructType<TimeSpan>(DataTypeNames.Time,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()));
             mappings.AddStructType<long>(DataTypeNames.Time,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
-            mappings.AddStructType<TimeOnly>(DataTypeNames.Time,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TimeOnlyTimeConverter()));
 
             // TimeTz
             mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimeTz,
@@ -446,9 +447,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddStructArrayType<long>(DataTypeNames.TimestampTz);
 
             // Date
+            mappings.AddStructArrayType<DateOnly>(DataTypeNames.Date);
             mappings.AddStructArrayType<DateTime>(DataTypeNames.Date);
             mappings.AddStructArrayType<int>(DataTypeNames.Date);
-            mappings.AddStructArrayType<DateOnly>(DataTypeNames.Date);
 
             // Interval
             mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);

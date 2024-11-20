@@ -87,15 +87,16 @@ sealed partial class AdoTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, CreateRangeConverter(new Int8Converter<long>(), options)));
 
             // daterange
-            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange,
-                static (options, mapping, _) => mapping.CreateInfo(options,
-                    CreateRangeConverter(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions), options)),
-                isDefault: true);
-            mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.DateRange,
-                static (options, mapping, _) => mapping.CreateInfo(options, CreateRangeConverter(new Int4Converter<int>(), options)));
             mappings.AddStructType<NpgsqlRange<DateOnly>>(DataTypeNames.DateRange,
                 static (options, mapping, _) =>
-                    mapping.CreateInfo(options, CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options)));
+                    mapping.CreateInfo(options,
+                        CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options)),
+                isDefault: true);
+            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange,
+                static (options, mapping, _) => mapping.CreateInfo(options,
+                    CreateRangeConverter(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions), options)));
+            mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.DateRange,
+                static (options, mapping, _) => mapping.CreateInfo(options, CreateRangeConverter(new Int4Converter<int>(), options)));
 
             return mappings;
         }

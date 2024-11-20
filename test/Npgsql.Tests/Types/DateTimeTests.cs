@@ -14,8 +14,12 @@ public class DateTimeTests : TestBase
     #region Date
 
     [Test]
+    public Task Date_as_DateOnly()
+        => AssertType(new DateOnly(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date);
+
+    [Test]
     public Task Date_as_DateTime()
-        => AssertType(new DateTime(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefaultForWriting: false);
+        => AssertType(new DateTime(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefault: false);
 
     [Test]
     public Task Date_as_DateTime_with_date_and_time_before_2000()
@@ -27,44 +31,12 @@ public class DateTimeTests : TestBase
         => AssertType(7579, "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefault: false);
 
     [Test]
-    public Task Daterange_as_NpgsqlRange_of_DateTime()
-        => AssertType(
-            new NpgsqlRange<DateTime>(new(2002, 3, 4), true, new(2002, 3, 6), false),
-            "[2002-03-04,2002-03-06)",
-            "daterange",
-            NpgsqlDbType.DateRange,
-            isDefaultForWriting: false);
-
-    [Test]
-    public async Task Datemultirange_as_array_of_NpgsqlRange_of_DateTime()
-    {
-        await using var conn = await OpenConnectionAsync();
-        MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
-
-        await AssertType(
-            new[]
-            {
-                new NpgsqlRange<DateTime>(new(2002, 3, 4), true, new(2002, 3, 6), false),
-                new NpgsqlRange<DateTime>(new(2002, 3, 8), true, new(2002, 3, 11), false)
-            },
-            "{[2002-03-04,2002-03-06),[2002-03-08,2002-03-11)}",
-            "datemultirange",
-            NpgsqlDbType.DateMultirange,
-            isDefaultForWriting: false);
-    }
-
-    [Test]
-    public Task Date_as_DateOnly()
-        => AssertType(new DateOnly(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefaultForReading: false);
-
-    [Test]
     public Task Daterange_as_NpgsqlRange_of_DateOnly()
         => AssertType(
             new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false),
             "[2002-03-04,2002-03-06)",
             "daterange",
             NpgsqlDbType.DateRange,
-            isDefaultForReading: false,
             skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
 
     [Test]
@@ -78,6 +50,15 @@ public class DateTimeTests : TestBase
             """{"[2002-03-04,2002-03-06)","[2002-03-08,2002-03-09)"}""",
             "daterange[]",
             NpgsqlDbType.DateRange | NpgsqlDbType.Array,
+            isDefaultForWriting: false);
+
+    [Test]
+    public Task Daterange_as_NpgsqlRange_of_DateTime()
+        => AssertType(
+            new NpgsqlRange<DateTime>(new(2002, 3, 4), true, new(2002, 3, 6), false),
+            "[2002-03-04,2002-03-06)",
+            "daterange",
+            NpgsqlDbType.DateRange,
             isDefault: false);
 
     [Test]
@@ -94,13 +75,39 @@ public class DateTimeTests : TestBase
             },
             "{[2002-03-04,2002-03-06),[2002-03-08,2002-03-11)}",
             "datemultirange",
+            NpgsqlDbType.DateMultirange);
+    }
+
+    [Test]
+    public async Task Datemultirange_as_array_of_NpgsqlRange_of_DateTime()
+    {
+        await using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
+
+        await AssertType(
+            new[]
+            {
+                new NpgsqlRange<DateTime>(new(2002, 3, 4), true, new(2002, 3, 6), false),
+                new NpgsqlRange<DateTime>(new(2002, 3, 8), true, new(2002, 3, 11), false)
+            },
+            "{[2002-03-04,2002-03-06),[2002-03-08,2002-03-11)}",
+            "datemultirange",
             NpgsqlDbType.DateMultirange,
-            isDefaultForReading: false);
+            isDefault: false);
     }
 
     #endregion
 
     #region Time
+
+    [Test]
+    public Task Time_as_TimeOnly()
+        => AssertType(
+            new TimeOnly(10, 45, 34, 500),
+            "10:45:34.5",
+            "time without time zone",
+            NpgsqlDbType.Time,
+            DbType.Time);
 
     [Test]
     public Task Time_as_TimeSpan()
@@ -110,17 +117,7 @@ public class DateTimeTests : TestBase
             "time without time zone",
             NpgsqlDbType.Time,
             DbType.Time,
-            isDefaultForWriting: false);
-
-    [Test]
-    public Task Time_as_TimeOnly()
-        => AssertType(
-            new TimeOnly(10, 45, 34, 500),
-            "10:45:34.5",
-            "time without time zone",
-            NpgsqlDbType.Time,
-            DbType.Time,
-            isDefaultForReading: false);
+            isDefault: false);
 
     #endregion
 
