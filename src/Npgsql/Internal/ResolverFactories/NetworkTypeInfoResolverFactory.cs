@@ -78,10 +78,7 @@ sealed class NetworkTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // cidr
             mappings.AddStructArrayType<NpgsqlCidr>(DataTypeNames.Cidr);
-
-#if NET8_0_OR_GREATER
             mappings.AddStructArrayType<IPNetwork>(DataTypeNames.Cidr);
-#endif
 
             return mappings;
         }

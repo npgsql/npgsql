@@ -242,11 +242,4 @@ sealed class MetricsReporter : IDisposable
             Reporters.Remove(this);
         }
     }
-
-#if !NET7_0_OR_GREATER
-    const long TicksPerMicrosecond = 10;
-    const long TicksPerMillisecond = TicksPerMicrosecond * 1000;
-    const long TicksPerSecond = TicksPerMillisecond * 1000;   // 10,000,000
-    static readonly double StopWatchTickFrequency = (double)TicksPerSecond / Stopwatch.Frequency;
-#endif
 }

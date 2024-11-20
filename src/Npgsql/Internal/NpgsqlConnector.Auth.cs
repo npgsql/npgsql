@@ -255,17 +255,7 @@ partial class NpgsqlConnector
         return buffer1;
     }
 
-    static byte[] HMAC(byte[] key, string data)
-    {
-        var dataBytes = Encoding.UTF8.GetBytes(data);
-#if NET7_0_OR_GREATER
-        return HMACSHA256.HashData(key, dataBytes);
-#else
-        using var ih = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, key);
-        ih.AppendData(dataBytes);
-        return ih.GetHashAndReset();
-#endif
-    }
+    static byte[] HMAC(byte[] key, string data) => HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(data));
 
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
     {
@@ -298,11 +288,7 @@ partial class NpgsqlConnector
             prehashbytes.CopyTo(cryptBuf, 0);
 
             sb = new StringBuilder("md5");
-#if NET7_0_OR_GREATER
             hashResult = MD5.HashData(cryptBuf);
-#else
-            hashResult = md5.ComputeHash(cryptBuf);
-#endif
             foreach (var b in hashResult)
                 sb.Append(b.ToString("x2"));
 

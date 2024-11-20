@@ -341,7 +341,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         return this;
     }
 
-#if NET7_0_OR_GREATER
     /// <summary>
     /// When using Kerberos, this is a callback that allows customizing default settings for Kerberos authentication.
     /// </summary>
@@ -358,7 +357,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
         return this;
     }
-#endif
 
     #endregion Authentication
 

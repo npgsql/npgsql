@@ -141,9 +141,7 @@ public sealed class PostgresException : NpgsqlException
     /// </summary>
     /// <param name="info">The <see cref="SerializationInfo"/> to populate with data.</param>
     /// <param name="context">The destination (see <see cref="StreamingContext"/>) for this serialization.</param>
-#if NET8_0_OR_GREATER
     [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]
-#endif
     public override void GetObjectData(SerializationInfo info, StreamingContext context)
     {
         base.GetObjectData(info, context);
