@@ -210,6 +210,7 @@ $$ LANGUAGE 'plpgsql';");
         Assert.False(new NpgsqlException("", new Exception("Inner Exception")).IsTransient);
     }
 
+#if !NET9_0_OR_GREATER
 #pragma warning disable SYSLIB0051
 #pragma warning disable 618
     [Test]
@@ -309,4 +310,5 @@ $$ LANGUAGE 'plpgsql';");
         Assert.That(ex.StackTrace, Is.EqualTo(info.GetValue("StackTraceString", typeof(string))));
     }
 #pragma warning restore SYSLIB0051
+#endif
 }
