@@ -60,9 +60,7 @@ public sealed partial class NpgsqlConnector
     ProvidePasswordCallback? ProvidePasswordCallback { get; }
 #pragma warning restore CS0618
 
-#if NET7_0_OR_GREATER
     Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback { get; }
-#endif
 
     public Encoding TextEncoding { get; private set; } = default!;
 
@@ -912,16 +910,6 @@ public sealed partial class NpgsqlConnector
             }
 
             var host = Host;
-
-#if !NET8_0_OR_GREATER
-            // If the host is a valid IP address - replace it with an empty string
-            // We do that because .NET uses targetHost argument to send SNI to the server
-            // RFC explicitly prohibits sending an IP address so some servers might fail
-            // This was already fixed for .NET 8
-            // See #5543 for discussion
-            if (IPAddress.TryParse(host, out _))
-                host = string.Empty;
-#endif
 
             timeout.CheckAndApply(this);
 

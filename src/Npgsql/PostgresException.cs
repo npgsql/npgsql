@@ -110,9 +110,7 @@ public sealed class PostgresException : NpgsqlException
     internal static PostgresException Load(NpgsqlReadBuffer buf, bool includeDetail, ILogger exceptionLogger)
         => new(ErrorOrNoticeMessage.Load(buf, includeDetail, exceptionLogger));
 
-#if NET8_0_OR_GREATER
     [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]
-#endif
     internal PostgresException(SerializationInfo info, StreamingContext context)
         : base(info, context)
     {

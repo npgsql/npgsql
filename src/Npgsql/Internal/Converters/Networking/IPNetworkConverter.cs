@@ -1,6 +1,4 @@
-﻿#if NET8_0_OR_GREATER
-
-using System.Net;
+﻿using System.Net;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
@@ -22,5 +20,3 @@ sealed class IPNetworkConverter : PgBufferedConverter<IPNetwork>
     protected override void WriteCore(PgWriter writer, IPNetwork value)
         => NpgsqlInetConverter.WriteImpl(writer, (value.BaseAddress, (byte)value.PrefixLength), isCidr: true);
 }
-
-#endif

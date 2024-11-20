@@ -61,11 +61,7 @@ sealed class KerberosUsernameProvider
             var line = default(string);
             for (var i = 0; i < 2; i++)
                 // ReSharper disable once MethodHasAsyncOverload
-#if NET7_0_OR_GREATER
                 if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false) : process.StandardOutput.ReadLine()) == null)
-#else
-                if ((line = async ? await process.StandardOutput.ReadLineAsync().ConfigureAwait(false) : process.StandardOutput.ReadLine()) == null)
-#endif
                 {
                     connectionLogger.LogDebug("Unexpected output from klist, aborting Kerberos username detection");
                     return null;

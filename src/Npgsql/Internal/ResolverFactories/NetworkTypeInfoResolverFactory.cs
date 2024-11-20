@@ -51,10 +51,8 @@ sealed class NetworkTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddStructType<NpgsqlCidr>(DataTypeNames.Cidr,
                 static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlCidrConverter()), isDefault: true);
 
-#if NET8_0_OR_GREATER
             mappings.AddStructType<IPNetwork>(DataTypeNames.Cidr,
                 static (options, mapping, _) => mapping.CreateInfo(options, new IPNetworkConverter()));
-#endif
 
             return mappings;
         }

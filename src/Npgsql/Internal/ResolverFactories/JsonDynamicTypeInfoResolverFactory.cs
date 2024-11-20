@@ -42,12 +42,7 @@ sealed class JsonDynamicTypeInfoResolverFactory(
         : DynamicTypeInfoResolver, IPgTypeInfoResolver
     {
         JsonSerializerOptions? _serializerOptions = serializerOptions;
-        JsonSerializerOptions SerializerOptions
-    #if NET7_0_OR_GREATER
-            => _serializerOptions ??= JsonSerializerOptions.Default;
-    #else
-            => _serializerOptions ??= new();
-    #endif
+        JsonSerializerOptions SerializerOptions => _serializerOptions ??= JsonSerializerOptions.Default;
 
         readonly Type[] _jsonbClrTypes = jsonbClrTypes ?? [];
         readonly Type[] _jsonClrTypes = jsonClrTypes ?? [];
