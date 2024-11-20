@@ -10,6 +10,11 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\.build\ca.crt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <PropertyGroup>
     <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
     <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
