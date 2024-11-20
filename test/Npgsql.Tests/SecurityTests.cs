@@ -523,6 +523,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
     public async Task Connect_with_verify_and_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         if (!IsOnBuildServer)

@@ -242,14 +242,14 @@ jobs:
             PGDATA=/opt/homebrew/var/postgresql@${{ matrix.pg_major }}
 
             sudo sed -i '' 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
-            sudo sed -i '' "s/ssl_ca_file =/ssl_ca_file = 'ca.crt' #/" $PGDATA/postgresql.conf
+            sudo sed -i '' "s/#ssl_ca_file =/ssl_ca_file = 'ca.crt' #/" $PGDATA/postgresql.conf
             cp $GITHUB_WORKSPACE/.build/{server.crt,server.key,ca.crt} $PGDATA
             chmod 600 $PGDATA/{server.crt,server.key,ca.crt}
             
             postgreService=$(brew services list | grep -oe "postgresql@${{ matrix.pg_major }}\S*")
 
             brew services start $postgreService
-            export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+            export PATH="/opt/homebrew/opt/postgresql@${{ matrix.pg_major }}/bin:$PATH"
             echo "Check PostgreSQL service is running"
             i=5
             COMMAND='pg_isready'
