@@ -242,7 +242,7 @@ jobs:
             PGDATA=/opt/homebrew/var/postgresql@${{ matrix.pg_major }}
 
             sudo sed -i '' 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
-            sudo sed -i '' "s/#ssl_ca_file =/ssl_ca_file = '$PGDATA/ca.crt' #/" $PGDATA/postgresql.conf
+            sudo sed -i '' "s/#ssl_ca_file =/ssl_ca_file = 'ca.crt' #/" $PGDATA/postgresql.conf
             cp $GITHUB_WORKSPACE/.build/{server.crt,server.key,ca.crt} $PGDATA
             chmod 600 $PGDATA/{server.crt,server.key,ca.crt}
             
