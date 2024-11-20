@@ -47,12 +47,12 @@ public class MultirangeTests : TestBase
 
         // daterange
         new TestCaseData(
-                new NpgsqlRange<DateTime>[]
+                new NpgsqlRange<DateOnly>[]
                 {
                     new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
                     new(new(2020, 1, 10), true, false, default, false, true)
                 },
-                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", NpgsqlDbType.DateMultirange, true, false, default(NpgsqlRange<DateTime>))
+                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", NpgsqlDbType.DateMultirange, true, false, default(NpgsqlRange<DateOnly>))
             .SetName("DateTime DateMultirange"),
 
         // tsmultirange

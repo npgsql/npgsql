@@ -475,7 +475,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             dr.Read();
             var values = new object[4];
             Assert.That(dr.GetValues(values), Is.EqualTo(3));
-            Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new DateTime(2014, 1, 1), null }));
+            Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new DateOnly(2014, 1, 1), null }));
         }
         using (var dr = await command.ExecuteReaderAsync(Behavior))
         {
