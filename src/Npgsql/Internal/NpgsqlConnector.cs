@@ -932,7 +932,7 @@ public sealed partial class NpgsqlConnector
                 TargetHost = host,
                 ClientCertificates = clientCertificates,
                 EnabledSslProtocols = SslProtocols.None,
-                CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck,
+                CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.Offline,
                 RemoteCertificateValidationCallback = certificateValidationCallback,
                 ApplicationProtocols = [_alpnProtocol]
             };
