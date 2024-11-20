@@ -523,6 +523,47 @@ public class SecurityTests : TestBase
     }
 
     [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    public async Task Connect_with_verify_and_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
+    {
+        if (!IsOnBuildServer)
+            Assert.Ignore("Only executed in CI");
+
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.SslMode = sslMode;
+            csb.RootCertificate = "ca.crt";
+        });
+
+        await using var _ = await dataSource.OpenConnectionAsync();
+    }
+
+    [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    public async Task Connect_with_verify_check_host([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
+    {
+        if (!IsOnBuildServer)
+            Assert.Ignore("Only executed in CI");
+
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.Host = "127.0.0.1";
+            csb.SslMode = sslMode;
+            csb.RootCertificate = "ca.crt";
+        });
+
+        if (sslMode == SslMode.VerifyCA)
+        {
+            await using var _ = await dataSource.OpenConnectionAsync();
+        }
+        else
+        {
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+            Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
+        }
+    }
+
+    [Test]
     [NonParallelizable] // Sets environment variable
     public async Task Direct_ssl_via_env_requires_correct_sslmode()
     {
