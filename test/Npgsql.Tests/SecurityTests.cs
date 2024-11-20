@@ -552,7 +552,8 @@ public class SecurityTests : TestBase
             csb.RootCertificate = "ca.crt";
         });
 
-        await using var conn = await dataSource.OpenConnectionAsync();
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+        Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
     }
 
     [Test]
