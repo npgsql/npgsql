@@ -392,10 +392,7 @@ public sealed partial class NpgsqlConnector
         CopyLogger = LoggingConfiguration.CopyLogger;
 
         SslClientAuthenticationOptionsCallback = dataSource.SslClientAuthenticationOptionsCallback;
-
-#if NET7_0_OR_GREATER
         NegotiateOptionsCallback = dataSource.Configuration.NegotiateOptionsCallback;
-#endif
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
