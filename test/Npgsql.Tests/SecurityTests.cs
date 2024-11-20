@@ -552,7 +552,7 @@ public class SecurityTests : TestBase
             csb.RootCertificate = "ca.crt";
         });
 
-        if (sslMode == SslMode.VerifyFull)
+        if (sslMode == SslMode.VerifyCA)
         {
             await using var _ = await dataSource.OpenConnectionAsync();
         }
