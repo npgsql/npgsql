@@ -32,17 +32,21 @@ jobs:
         os: [ubuntu-22.04]
         pg_major: [17, 16, 15, 14, 13]
         config: [Release]
-        test_tfm: [net8.0]
+        test_tfm: [net9.0]
         include:
           - os: ubuntu-22.04
             pg_major: 17
             config: Debug
-            test_tfm: net8.0
+            test_tfm: net9.0
           - os: macos-15
             pg_major: 16
             config: Release
-            test_tfm: net8.0
+            test_tfm: net9.0
           - os: windows-2022
+            pg_major: 17
+            config: Release
+            test_tfm: net9.0
+          - os: ubuntu-22.04
             pg_major: 17
             config: Release
             test_tfm: net8.0
