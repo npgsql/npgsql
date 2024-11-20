@@ -539,6 +539,23 @@ public class SecurityTests : TestBase
     }
 
     [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    public async Task Connect_with_verify_full_fails_with_wrong_host()
+    {
+        if (!IsOnBuildServer)
+            Assert.Ignore("Only executed in CI");
+
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.Host = "127.0.0.1";
+            csb.SslMode = SslMode.VerifyFull;
+            csb.RootCertificate = "ca.crt";
+        });
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+    }
+
+    [Test]
     [NonParallelizable] // Sets environment variable
     public async Task Direct_ssl_via_env_requires_correct_sslmode()
     {
