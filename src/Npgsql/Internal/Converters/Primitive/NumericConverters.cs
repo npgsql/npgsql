@@ -82,12 +82,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
     static BigInteger ConvertTo(in PgNumeric numeric) => numeric.ToBigInteger();
 }
 
-sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
-#if NET7_0_OR_GREATER
-    where T : INumberBase<T>
-#else
-    where T : notnull
-#endif
+sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumberBase<T>
 {
     const int StackAllocByteThreshold = 64 * sizeof(uint);
 
@@ -129,60 +124,10 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
     }
 
     static PgNumeric.Builder ConvertFrom(T value, Span<short> destination)
-    {
-#if !NET7_0_OR_GREATER
-        if (typeof(short) == typeof(T))
-            return new PgNumeric.Builder((decimal)(short)(object)value!, destination);
-        if (typeof(int) == typeof(T))
-            return new PgNumeric.Builder((decimal)(int)(object)value!, destination);
-        if (typeof(long) == typeof(T))
-            return new PgNumeric.Builder((decimal)(long)(object)value!, destination);
-
-        if (typeof(byte) == typeof(T))
-            return new PgNumeric.Builder((decimal)(byte)(object)value!, destination);
-        if (typeof(sbyte) == typeof(T))
-            return new PgNumeric.Builder((decimal)(sbyte)(object)value!, destination);
-
-        if (typeof(float) == typeof(T))
-            return new PgNumeric.Builder((decimal)(float)(object)value!, destination);
-        if (typeof(double) == typeof(T))
-            return new PgNumeric.Builder((decimal)(double)(object)value!, destination);
-        if (typeof(decimal) == typeof(T))
-            return new PgNumeric.Builder((decimal)(object)value!, destination);
-
-        throw new NotSupportedException();
-#else
-        return new PgNumeric.Builder(decimal.CreateChecked(value), destination);
-#endif
-    }
+        => new(decimal.CreateChecked(value), destination);
 
     static T ConvertTo(in PgNumeric.Builder numeric)
-    {
-#if !NET7_0_OR_GREATER
-        if (typeof(short) == typeof(T))
-            return (T)(object)(short)numeric.ToDecimal();
-        if (typeof(int) == typeof(T))
-            return (T)(object)(int)numeric.ToDecimal();
-        if (typeof(long) == typeof(T))
-            return (T)(object)(long)numeric.ToDecimal();
-
-        if (typeof(byte) == typeof(T))
-            return (T)(object)(byte)numeric.ToDecimal();
-        if (typeof(sbyte) == typeof(T))
-            return (T)(object)(sbyte)numeric.ToDecimal();
-
-        if (typeof(float) == typeof(T))
-            return (T)(object)(float)numeric.ToDecimal();
-        if (typeof(double) == typeof(T))
-            return (T)(object)(double)numeric.ToDecimal();
-        if (typeof(decimal) == typeof(T))
-            return (T)(object)numeric.ToDecimal();
-
-        throw new NotSupportedException();
-#else
-        return T.CreateChecked(numeric.ToDecimal());
-#endif
-    }
+        => T.CreateChecked(numeric.ToDecimal());
 }
 
 static class NumericConverter

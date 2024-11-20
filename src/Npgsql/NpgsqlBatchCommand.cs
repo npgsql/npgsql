@@ -42,28 +42,11 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     public new NpgsqlParameterCollection Parameters => _parameters ??= [];
 
 
-#if NET8_0_OR_GREATER
     /// <inheritdoc/>
-    public override NpgsqlParameter CreateParameter()
-#else
-    /// <summary>
-    /// Creates a new instance of a <see cref="NpgsqlParameter"/> object.
-    /// </summary>
-    /// <returns>An <see cref="NpgsqlParameter"/> object.</returns>
-    public NpgsqlParameter CreateParameter()
-#endif
-    => new();
+    public override NpgsqlParameter CreateParameter() => new();
 
-#if NET8_0_OR_GREATER
     /// <inheritdoc/>
-    public override bool CanCreateParameter
-#else
-    /// <summary>
-    /// Returns whether the <see cref="NpgsqlBatchCommand.CreateParameter"/> method is implemented.
-    /// </summary>
-    public bool CanCreateParameter
-#endif
-    => true;
+    public override bool CanCreateParameter => true;
 
 
     /// <summary>

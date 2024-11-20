@@ -51,10 +51,6 @@ readonly struct PgMoney
         Debug.Assert(destination.Length >= DecimalBits);
 
         decimal.GetBits(value, MemoryMarshal.Cast<uint, int>(destination));
-#if NET7_0_OR_GREATER
         scale = value.Scale;
-#else
-        scale = (byte)(destination[3] >> 16);
-#endif
     }
 }

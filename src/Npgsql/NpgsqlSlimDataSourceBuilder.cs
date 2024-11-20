@@ -38,9 +38,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     Action<X509CertificateCollection>? _clientCertificatesCallback;
     Action<SslClientAuthenticationOptions>? _sslClientAuthenticationOptionsCallback;
 
-#if NET7_0_OR_GREATER
     Action<NegotiateAuthenticationClientOptions>? _negotiateOptionsCallback;
-#endif
 
     IntegratedSecurityHandler _integratedSecurityHandler = new();
 
@@ -853,11 +851,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _resolverChainBuilder.Build(ConfigureResolverChain),
             DefaultNameTranslator,
             _connectionInitializer,
-            _connectionInitializerAsync
-#if NET7_0_OR_GREATER
-            ,_negotiateOptionsCallback
-#endif
-            ));
+            _connectionInitializerAsync,
+            _negotiateOptionsCallback));
     }
 
     void ValidateMultiHost()

@@ -66,11 +66,9 @@ public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     /// <inheritdoc/>
     public override DbBatchCommand CreateBatchCommand() => new NpgsqlBatchCommand();
 
-#if NET7_0_OR_GREATER
     /// <inheritdoc/>
     public override DbDataSource CreateDataSource(string connectionString)
         => NpgsqlDataSource.Create(connectionString);
-#endif
 
     #region IServiceProvider Members
 

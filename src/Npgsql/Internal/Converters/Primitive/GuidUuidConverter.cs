@@ -11,35 +11,15 @@ sealed class GuidUuidConverter : PgBufferedConverter<Guid>
         bufferRequirements = BufferRequirements.CreateFixedSize(16 * sizeof(byte));
         return format is DataFormat.Binary;
     }
+
     protected override Guid ReadCore(PgReader reader)
-    {
-#if NET8_0_OR_GREATER
-        return new Guid(reader.ReadBytes(16).FirstSpan, bigEndian: true);
-#else
-        return new GuidRaw
-        {
-            Data1 = reader.ReadInt32(),
-            Data2 = reader.ReadInt16(),
-            Data3 = reader.ReadInt16(),
-            Data4 = BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(reader.ReadInt64()) : reader.ReadInt64()
-        }.Value;
-#endif
-    }
+        => new(reader.ReadBytes(16).FirstSpan, bigEndian: true);
 
     protected override void WriteCore(PgWriter writer, Guid value)
     {
-#if NET8_0_OR_GREATER
         Span<byte> bytes = stackalloc byte[16];
         value.TryWriteBytes(bytes, bigEndian: true, out _);
         writer.WriteBytes(bytes);
-#else
-        var raw = new GuidRaw(value);
-
-        writer.WriteInt32(raw.Data1);
-        writer.WriteInt16(raw.Data2);
-        writer.WriteInt16(raw.Data3);
-        writer.WriteInt64(BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(raw.Data4) : raw.Data4);
-#endif
     }
 
 #if !NET8_0_OR_GREATER
