@@ -4,405 +4,85 @@ on:
   push:
     branches:
       - main
-      - 'hotfix/**'
-    tags:
-      - '*'
   pull_request:
+    branches:
+      - main
+  merge_group:
+    branches:
+      - main
 
-# Cancel previous PR branch commits (head_ref is only defined on PRs)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  dotnet_sdk_version: '9.0.100'
-  postgis_version: 3
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
-  # with some of our tests
-  PGPASSWORD: ""
-
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04]
-        pg_major: [17, 16, 15, 14, 13]
-        config: [Release]
-        test_tfm: [net8.0]
-        include:
-          - os: ubuntu-22.04
-            pg_major: 17
-            config: Debug
-            test_tfm: net8.0
-          - os: macos-15
-            pg_major: 16
-            config: Release
-            test_tfm: net8.0
-          - os: windows-2022
-            pg_major: 17
-            config: Release
-            test_tfm: net8.0
-#          - os: ubuntu-22.04
-#            pg_major: 17
-#            config: Release
-#            test_tfm: net8.0
-#            pg_prerelease: 'PG Prerelease'
-
+  ci-get-version:
+    name: Determine Version
+    runs-on: ubuntu-22.04
     outputs:
-      is_release: ${{ steps.analyze_tag.outputs.is_release }}
-      is_prerelease: ${{ steps.analyze_tag.outputs.is_prerelease }}
-
+      SemVer: ${{ steps.get-version.outputs.SemVer }}
+      legacySemVerPadded: ${{ steps.get-version.outputs.legacySemVerPadded }}
+      nuGetVersionV2: ${{ steps.get-version.outputs.nuGetVersionV2 }}
+      AssemblySemVer: ${{ steps.get-version.outputs.AssemblySemVer }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: NuGet Cache
-        uses: actions/cache@v4
+        uses: tesourohq/Tesouro-Github-Actions/common-actions/checkout@main
         with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+          fetch-depth: 0
 
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.1.0
-        with:
-          dotnet-version: |
-            ${{ env.dotnet_sdk_version }}
+      - id: get-version
+        uses: tesourohq/Tesouro-Github-Actions/get-version@main
 
-      - name: Build
-        run: dotnet build -c ${{ matrix.config }}
-        shell: bash
-
-      - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          # First uninstall any PostgreSQL installed on the image
-          dpkg-query -W --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg -P postgresql
-
-          # Import the repository signing key
-          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main ${{ matrix.pg_major }}" >> /etc/apt/sources.list.d/pgdg.list'
-          sudo apt-get update -qq
-          sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
-          export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
-          
-          sudo cp $GITHUB_WORKSPACE/.build/{server.crt,server.key,ca.crt} $PGDATA
-          sudo chmod 600 $PGDATA/{server.crt,server.key,ca.crt}
-          sudo chown postgres $PGDATA/{server.crt,server.key,ca.crt}
-          
-          # Create npgsql_tests user with md5 password 'npgsql_tests'
-          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
-          
-          sudo -u postgres psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'"
-          sudo -u postgres psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'"
-
-          # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
-          if [ -z "${{ matrix.pg_prerelease }}" ]; then
-            sudo apt-get install -qq postgresql-${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
-          fi
-          
-          if [ ${{ matrix.pg_major }} -ge 14 ]; then
-            sudo sed -i "s|unix_socket_directories = '/var/run/postgresql'|unix_socket_directories = '/var/run/postgresql, @/npgsql_unix'|" $PGDATA/postgresql.conf
-          fi
-
-          sudo sed -i 's/max_connections = 100/max_connections = 500/' $PGDATA/postgresql.conf
-          sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
-          sudo sed -i "s|ssl_ca_file =|ssl_ca_file = '$PGDATA/ca.crt' #|" $PGDATA/postgresql.conf
-          sudo sed -i "s|ssl_cert_file =|ssl_cert_file = '$PGDATA/server.crt' #|" $PGDATA/postgresql.conf
-          sudo sed -i "s|ssl_key_file =|ssl_key_file = '$PGDATA/server.key' #|" $PGDATA/postgresql.conf
-          sudo sed -i 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
-          sudo sed -i 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
-          sudo sed -i 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
-          sudo sed -i 's/#logical_decoding_work_mem =/logical_decoding_work_mem = 64kB #/' $PGDATA/postgresql.conf
-          sudo sed -i 's/#wal_sender_timeout =/wal_sender_timeout = 3s #/' $PGDATA/postgresql.conf
-          sudo sed -i "s/#synchronous_standby_names =/synchronous_standby_names = 'npgsql_test_sync_standby' #/" $PGDATA/postgresql.conf
-          sudo sed -i "s/#synchronous_commit =/synchronous_commit = local #/" $PGDATA/postgresql.conf
-          sudo sed -i "s/#max_prepared_transactions = 0/max_prepared_transactions = 100/" $PGDATA/postgresql.conf
-
-          # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
-          sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
-          sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
-          sudo sh -c "echo 'hostssl all npgsql_tests_ssl all md5' >> $PGDATA/pg_hba.conf"
-          sudo sh -c "echo 'hostnossl all npgsql_tests_ssl all reject' >> $PGDATA/pg_hba.conf"
-          sudo sh -c "echo 'hostnossl all npgsql_tests_nossl all md5' >> $PGDATA/pg_hba.conf"
-          sudo sh -c "echo 'hostssl all npgsql_tests_nossl all reject' >> $PGDATA/pg_hba.conf"
-          sudo sh -c "echo 'host all all all md5' >> $PGDATA/pg_hba.conf"
-          sudo sh -c "echo 'host replication all all md5' >> $PGDATA/pg_hba.conf"
-          
-          sudo pg_ctlcluster ${{ matrix.pg_major }} main restart
-
-          # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
-          sudo -u postgres psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'"
-          
-      # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v4
-      #- name: Setup tmate session
-      #  uses: mxschmitt/action-tmate@v3
-
-      - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
-        if: startsWith(matrix.os, 'windows')
-        shell: bash
-        run: |
-          # Find EnterpriseDB version number
-          EDB_VERSION=$(pwsh -c "
-              \$global:progressPreference='silentlyContinue';
-              Invoke-WebRequest -URI https://www.postgresql.org/applications-v2.xml |
-                  Select-Object -ExpandProperty Content |
-                  Select-Xml -XPath '/applications/application[id=\"postgresql_${{ matrix.pg_major }}\" and platform=\"windows-x64\"]/version/text()' |
-                  Select-Object -First 1 -ExpandProperty Node |
-                  Select-Object -ExpandProperty Value")
-
-          # Install PostgreSQL
-          echo "Installing PostgreSQL (version: ${EDB_VERSION})"
-          curl -o pgsql.zip -L https://get.enterprisedb.com/postgresql/postgresql-${EDB_VERSION}-windows-x64-binaries.zip
-          unzip pgsql.zip -x 'pgsql/include/**' 'pgsql/doc/**' 'pgsql/pgAdmin 4/**' 'pgsql/StackBuilder/**'
-
-          # Match Npgsql CI Docker image and stash one level up
-          cp $GITHUB_WORKSPACE/.build/{server.crt,server.key,ca.crt} pgsql
-
-          # Find OSGEO version number
-          OSGEO_VERSION=$(\
-            curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }} |
-            sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p' |
-            tail -n 1)
-          if [ -z "$OSGEO_VERSION" ]; then
-              OSGEO_VERSION=$(\
-                curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/archive |
-                sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p' |
-                tail -n 1)
-              POSTGIS_PATH="archive/"
-          else
-              POSTGIS_PATH=""
-          fi
-
-          # Install PostGIS
-          echo "Installing PostGIS (version: ${OSGEO_VERSION})"
-          POSTGIS_FILE="postgis-bundle-pg${{ matrix.pg_major }}-${OSGEO_VERSION}x64"
-          curl -o postgis.zip -L https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/${POSTGIS_PATH}${POSTGIS_FILE}.zip
-          unzip postgis.zip -d postgis
-          cp -a postgis/$POSTGIS_FILE/. pgsql/
-
-          # Start PostgreSQL
-          pgsql/bin/initdb -D pgsql/PGDATA -E UTF8 -U postgres
-          SOCKET_DIR=$(echo "$LOCALAPPDATA\Temp" | sed 's|\\|/|g')
-          sed -i "s|max_connections = 100|max_connections = 500|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#unix_socket_directories = ''|unix_socket_directories = '$SOCKET_DIR'|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#wal_level =|wal_level = logical #|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#max_wal_senders =|max_wal_senders = 50 #|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#logical_decoding_work_mem =|logical_decoding_work_mem = 64kB #|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#wal_sender_timeout =|wal_sender_timeout = 3s #|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#synchronous_standby_names =|synchronous_standby_names = 'npgsql_test_sync_standby' #|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#synchronous_commit =|synchronous_commit = local #|" pgsql/PGDATA/postgresql.conf
-          sed -i "s|#max_prepared_transactions = 0|max_prepared_transactions = 100|" pgsql/PGDATA/postgresql.conf
-          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key -c ssl_ca_file=../ca.crt' start
-
-          # Create npgsql_tests user with md5 password 'npgsql_tests'
-          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
-          
-          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_ssl SUPERUSER LOGIN PASSWORD 'npgsql_tests_ssl'"
-          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_nossl SUPERUSER LOGIN PASSWORD 'npgsql_tests_nossl'"
-
-          # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
-          if [ ${{ matrix.pg_major }} -ge 14 ]; then
-            sed -i "s|password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
-          else
-            sed -i "s|#password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
-          fi
-
-          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key -c ssl_ca_file=../ca.crt' restart
-
-          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_scram SUPERUSER LOGIN PASSWORD 'npgsql_tests_scram'"
-
-          # Disable trust authentication except for unix domain sockets, requiring MD5
-          # passwords - some tests must fail if a password isn't provided.
-          if [ ${{ matrix.pg_major }} -ge 13 ]; then
-                echo "local all all trust" > pgsql/PGDATA/pg_hba.conf
-                echo "host all npgsql_tests_scram all scram-sha-256" >> pgsql/PGDATA/pg_hba.conf
-          else
-                echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
-          fi
-          echo "hostssl all npgsql_tests_ssl all md5" >> pgsql/PGDATA/pg_hba.conf
-          echo "hostnossl all npgsql_tests_ssl all reject" >> pgsql/PGDATA/pg_hba.conf
-          echo "hostnossl all npgsql_tests_nossl all md5" >> pgsql/PGDATA/pg_hba.conf
-          echo "hostssl all npgsql_tests_nossl all reject" >> pgsql/PGDATA/pg_hba.conf
-          echo "host all all all md5" >> pgsql/PGDATA/pg_hba.conf
-          echo "host replication all all md5" >> pgsql/PGDATA/pg_hba.conf
-
-      - name: Start PostgreSQL ${{ matrix.pg_major }} (MacOS)
-        if: startsWith(matrix.os, 'macos')
-        run: |
-            brew install postgresql@${{ matrix.pg_major }}
-          
-            PGDATA=/opt/homebrew/var/postgresql@${{ matrix.pg_major }}
-
-            sudo sed -i '' 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
-            sudo sed -i '' "s/#ssl_ca_file =/ssl_ca_file = 'ca.crt' #/" $PGDATA/postgresql.conf
-            cp $GITHUB_WORKSPACE/.build/{server.crt,server.key,ca.crt} $PGDATA
-            chmod 600 $PGDATA/{server.crt,server.key,ca.crt}
-            
-            postgreService=$(brew services list | grep -oe "postgresql@${{ matrix.pg_major }}\S*")
-
-            brew services start $postgreService
-            export PATH="/opt/homebrew/opt/postgresql@${{ matrix.pg_major }}/bin:$PATH"
-            echo "Check PostgreSQL service is running"
-            i=5
-            COMMAND='pg_isready'
-            while [ $i -gt 0 ]; do
-                echo "Check PostgreSQL service status"
-                eval $COMMAND && break
-                ((i--))
-                if [ $i == 0 ]; then
-                    echo "PostgreSQL service not ready, all attempts exhausted"
-                    exit 1
-                fi
-                echo "PostgreSQL service not ready, wait 5 more sec, attempts left: $i"
-                sleep 5
-            done
-            
-            # Create npgsql_tests user with md5 password 'npgsql_tests'
-            psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'" postgres
-            
-            psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'" postgres
-            psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'" postgres
-
-            sudo sed -i '' 's/max_connections = 100/max_connections = 500/' $PGDATA/postgresql.conf
-            sudo sed -i '' 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
-            sudo sed -i '' 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
-            sudo sed -i '' 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
-            sudo sed -i '' 's/#logical_decoding_work_mem =/logical_decoding_work_mem = 64kB #/' $PGDATA/postgresql.conf
-            sudo sed -i '' 's/#wal_sender_timeout =/wal_sender_timeout = 3s #/' $PGDATA/postgresql.conf
-            sudo sed -i '' "s/#synchronous_standby_names =/synchronous_standby_names = 'npgsql_test_sync_standby' #/" $PGDATA/postgresql.conf
-            sudo sed -i '' "s/#synchronous_commit =/synchronous_commit = local #/" $PGDATA/postgresql.conf
-            sudo sed -i '' "s/#max_prepared_transactions = 0/max_prepared_transactions = 100/" $PGDATA/postgresql.conf
-            # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
-            sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
-            sudo sh -c "echo 'hostssl all npgsql_tests_ssl all md5' >> $PGDATA/pg_hba.conf"
-            sudo sh -c "echo 'hostnossl all npgsql_tests_ssl all reject' >> $PGDATA/pg_hba.conf"
-            sudo sh -c "echo 'hostnossl all npgsql_tests_nossl all md5' >> $PGDATA/pg_hba.conf"
-            sudo sh -c "echo 'hostssl all npgsql_tests_nossl all reject' >> $PGDATA/pg_hba.conf"
-            sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
-            sudo sh -c "echo 'host all all all md5' >> $PGDATA/pg_hba.conf"
-            sudo sh -c "echo 'host replication all all md5' >> $PGDATA/pg_hba.conf"
-
-            brew services restart $postgreService
-            echo "Check PostgreSQL service is running"
-            i=5
-            COMMAND='pg_isready'
-            while [ $i -gt 0 ]; do
-                echo "Check PostgreSQL service status"
-                eval $COMMAND && break
-                ((i--))
-                if [ $i == 0 ]; then
-                    echo "PostgreSQL service not ready, all attempts exhausted"
-                    exit 1
-                fi
-                echo "PostgreSQL service not ready, wait 5 more sec, attempts left: $i"
-                sleep 5
-            done
-            psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'" postgres
-
-      # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
-      - name: Test
-        run: |
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.Tests --logger "GitHubActions;report-warnings=false"
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.DependencyInjection.Tests --logger "GitHubActions;report-warnings=false"
-        shell: bash
-
-      - name: Test Plugins
-        if: "!startsWith(matrix.os, 'macos')"
-        run: |
-            if [ -z "${{ matrix.pg_prerelease }}" ]; then
-                dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
-            fi
-        shell: bash
-
-      - id: analyze_tag
-        name: Analyze tag
-        shell: bash
-        run: |
-          if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-              echo "Release tag detected"
-              echo "::set-output name=is_release::true"
-              if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+.*- ]]; then
-                  echo "Prerelease tag detected"
-                  echo "::set-output name=is_prerelease::true"
-              fi
-          fi
-
-  publish-ci:
-    needs: build
+  ci-build-and-test:
+    name: Build, Restore, and Test
     runs-on: ubuntu-22.04
-    if: github.event_name == 'push' && github.repository == 'npgsql/npgsql'
-    environment: myget
-
+    permissions:
+      checks: write
+      contents: write
+      id-token: write
+      pull-requests: write
+      security-events: write
+      statuses: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: NuGet Cache
-        uses: actions/cache@v4
+        uses: tesourohq/Tesouro-Github-Actions/common-actions/checkout@main
         with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+          fetch-depth: 0
 
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.1.0
+      - id: build-and-test
+        uses: tesourohq/Tesouro-Github-Actions/build-and-test@main
         with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
+          gh-packages-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          solution-file: ./Npgsql.sln
+          dotnet-version: 9.0.100
+          code-coverage: '80 95'
 
-      - name: Pack
-        run: dotnet pack Npgsql.sln --configuration Release --property:PackageOutputPath="$PWD/nupkgs" --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
-
-      - name: Upload artifacts (nupkg)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Npgsql.CI
-          path: nupkgs
-
-      - name: Publish packages to MyGet (vnext)
-        if: startsWith(github.ref, 'refs/heads/') && startsWith(github.ref, 'refs/heads/hotfix/') == false
-        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql-vnext/api/v3/index.json
-        working-directory: nupkgs
-
-      - name: Publish packages to MyGet (patch)
-        if: startsWith(github.ref, 'refs/heads/hotfix/')
-        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql/api/v3/index.json
-        working-directory: nupkgs
-
-  release:
-    needs: build
+  ci-package-publish-npgsql:
+    name: Package and Publish Npgsql Fork
     runs-on: ubuntu-22.04
-    if: github.event_name == 'push' && startsWith(github.repository, 'npgsql/') && needs.build.outputs.is_release == 'true'
-    environment: nuget.org
-
+    needs: [ ci-get-version, ci-build-and-test ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.1.0
+        uses: tesourohq/Tesouro-Github-Actions/common-actions/checkout@main
         with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
+          fetch-depth: 0
 
-      - name: Pack
-        run: dotnet pack Npgsql.sln --configuration Release --property:PackageOutputPath="$PWD/nupkgs" -p:ContinuousIntegrationBuild=true      
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Package and Publish
+        uses: tesourohq/Tesouro-Github-Actions/package-and-publish@main
         with:
-          name: Npgsql.Release
-          path: nupkgs
+          sem-ver: ${{ needs.ci-get-version.outputs.SemVer }}
+          assembly-ver: ${{ needs.ci-get-version.outputs.AssemblySemVer }}
+          info-ver: ${{ needs.ci-get-version.outputs.InformationalVersion }}
+          gh-packages-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          project-file: ./src/Npgsql/Npgsql.csproj
+          dotnet-version: 9.0.100
 
-      # TODO: Create a release
-
-      - name: Publish to nuget.org
-        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_ORG_API_KEY }} --source https://api.nuget.org/v3/index.json
-        working-directory: nupkgs
+  slack-notify:
+    name: Slack Notify
+    if: (failure() || cancelled()) && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    needs: [ ci-package-publish-npgsql ]
+    steps:
+      - uses: tesourohq/Tesouro-Github-Actions/slack-notify@main
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

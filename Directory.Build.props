@@ -6,14 +6,17 @@
     <Nullable>enable</Nullable>
     <AnalysisLevel>latest</AnalysisLevel>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
-    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
-    <SignAssembly>true</SignAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <Copyright>Copyright 2024 © The Npgsql Development Team</Copyright>
-    <Company>Npgsql</Company>
+    <PackageId>Tesouro.$(AssemblyName)</PackageId>
+    <Company>Tesouro</Company>
+    <Authors>Tesouro</Authors>
+    <Copyright>Copyright 2024 © Tesouro</Copyright>
+
+    <PackageProjectUrl>https://github.com/dylanTesouro/npgsql</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dylanTesouro/npgsql</RepositoryUrl>
+
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
     <PackageIcon>postgresql.png</PackageIcon>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
