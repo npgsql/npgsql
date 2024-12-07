@@ -86,6 +86,8 @@
   href: "https://www.npgsql.org/doc/api/Npgsql.html"
 - name: Developer notes
   items:
+  - name: Release checklist
+    href: dev/release-checklist.md
   - name: Tests
     href: dev/tests.md
   - name: Type representations
