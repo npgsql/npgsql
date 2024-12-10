@@ -127,12 +127,14 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         // There is one exception and that's array syntax, which is always resolvable in both ways, while we want the canonical name.
         var schemaEndIndex = displayNameSpan.IndexOf('.');
         if (schemaEndIndex is not -1 &&
+            string.IsNullOrEmpty(schema) &&
             !displayNameSpan.Slice(schemaEndIndex).StartsWith("_".AsSpan(), StringComparison.Ordinal) &&
             !displayNameSpan.EndsWith("[]".AsSpan(), StringComparison.Ordinal))
             return new(displayName);
 
         // First we strip the schema to get the type name.
-        if (schemaEndIndex is not -1)
+        if (schemaEndIndex is not -1 &&
+            string.IsNullOrEmpty(schema))
         {
             schema = displayNameSpan.Slice(0, schemaEndIndex).ToString();
             displayNameSpan = displayNameSpan.Slice(schemaEndIndex + 1);
