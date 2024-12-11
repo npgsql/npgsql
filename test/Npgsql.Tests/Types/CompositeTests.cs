@@ -220,7 +220,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             connection,
             new SomeComposite { SomeText = "foobar", X = 10 },
             "(10,foobar)",
-            $"{schema}.{typename}",
+            $"{schema}.\"{typename}\"",
             npgsqlDbType: null);
     }
 
