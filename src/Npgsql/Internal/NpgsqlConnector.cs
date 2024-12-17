@@ -486,7 +486,7 @@ public sealed partial class NpgsqlConnector
 
         State = ConnectorState.Connecting;
         LogMessages.OpeningPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString);
-        var stopwatch = Stopwatch.StartNew();
+        var startOpenTimestamp = Stopwatch.GetTimestamp();
 
         try
         {
@@ -557,7 +557,7 @@ public sealed partial class NpgsqlConnector
             }
 
             LogMessages.OpenedPhysicalConnection(
-                ConnectionLogger, Host, Port, Database, UserFacingConnectionString, stopwatch.ElapsedMilliseconds, Id);
+                ConnectionLogger, Host, Port, Database, UserFacingConnectionString, (long)Stopwatch.GetElapsedTime(startOpenTimestamp).TotalMilliseconds, Id);
         }
         catch (Exception e)
         {
@@ -2646,7 +2646,7 @@ public sealed partial class NpgsqlConnector
 
             LogMessages.SendingKeepalive(ConnectionLogger, Id);
 
-            var keepaliveTime = Stopwatch.StartNew();
+            var keepaliveStartTimestamp = Stopwatch.GetTimestamp();
             await WriteSync(async, cancellationToken).ConfigureAwait(false);
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
@@ -2687,7 +2687,7 @@ public sealed partial class NpgsqlConnector
             }
 
             if (timeout > 0)
-                timeout -= (keepaliveMs + (int)keepaliveTime.ElapsedMilliseconds);
+                timeout -= (keepaliveMs + (int)Stopwatch.GetElapsedTime(keepaliveStartTimestamp).TotalMilliseconds);
         }
     }
 
