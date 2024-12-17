@@ -2624,10 +2624,11 @@ public sealed partial class NpgsqlConnector
         var keepaliveMs = Settings.KeepAlive * 1000;
         while (true)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             var timeoutForKeepalive = _isKeepAliveEnabled && (timeout <= 0 || keepaliveMs < timeout);
             ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
+            // We should set the timeout before checking the token as otherwise we're racing with the callback registered on cancellationToken
+            // Which can also change the timeout
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
@@ -2651,7 +2652,6 @@ public sealed partial class NpgsqlConnector
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
             var receivedNotification = false;
-            var expectedMessageCode = BackendMessageCode.RowDescription;
 
             while (true)
             {
@@ -2676,13 +2676,12 @@ public sealed partial class NpgsqlConnector
                 }
 
                 if (msg.Code != BackendMessageCode.ReadyForQuery)
-                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
+                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {BackendMessageCode.ReadyForQuery} as part of keepalive");
 
                 LogMessages.CompletedKeepalive(ConnectionLogger, Id);
 
                 if (receivedNotification)
                     return true; // Notification was received during the keepalive
-                cancellationToken.ThrowIfCancellationRequested();
                 break;
             }
 
