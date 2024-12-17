@@ -2625,10 +2625,13 @@ public sealed partial class NpgsqlConnector
         while (true)
         {
             var timeoutForKeepalive = _isKeepAliveEnabled && (timeout <= 0 || keepaliveMs < timeout);
-            ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
-            // We should set the timeout before checking the token as otherwise we're racing with the callback registered on cancellationToken
-            // Which can also change the timeout
-            cancellationToken.ThrowIfCancellationRequested();
+            lock (CancelLock)
+            {
+                // We need to make sure a callback registered on CancellationToken doesn't try to concurrently change ReadBuffer.Timeout.
+                // Having Thread.MemoryBarrier() wouldn't be enough because ReadBuffer.Timeout isn't thread safe.
+                cancellationToken.ThrowIfCancellationRequested();
+                ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
+            }
             try
             {
                 var msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
