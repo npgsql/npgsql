@@ -75,7 +75,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
         // on to the next connector.
         Debug.Assert(_multiplexCommandReader != null);
 
-        var stats = new MultiplexingStats { Stopwatch = new Stopwatch() };
+        var stats = new MultiplexingStats();
 
         while (true)
         {
@@ -358,7 +358,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             // for over-capacity write.
             connector.FlagAsWritableForMultiplexing();
 
-            NpgsqlEventSource.Log.MultiplexingBatchSent(stats.NumCommands, stats.Stopwatch);
+            NpgsqlEventSource.Log.MultiplexingBatchSent(stats.NumCommands, Stopwatch.GetElapsedTime(stats.StartTimestamp).Ticks);
         }
 
         // ReSharper disable once FunctionNeverReturns
@@ -380,19 +380,18 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     struct MultiplexingStats
     {
-        internal Stopwatch Stopwatch;
+        internal long StartTimestamp;
         internal int NumCommands;
 
         internal void Reset()
         {
             NumCommands = 0;
-            Stopwatch.Reset();
+            StartTimestamp = Stopwatch.GetTimestamp();
         }
 
         internal MultiplexingStats Clone()
         {
-            var clone = new MultiplexingStats { Stopwatch = Stopwatch, NumCommands = NumCommands };
-            Stopwatch = new Stopwatch();
+            var clone = new MultiplexingStats { StartTimestamp = StartTimestamp, NumCommands = NumCommands };
             return clone;
         }
     }

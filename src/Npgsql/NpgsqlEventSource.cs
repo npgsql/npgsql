@@ -101,14 +101,14 @@ sealed class NpgsqlEventSource : EventSource
         }
     }
 
-    internal void MultiplexingBatchSent(int numCommands, Stopwatch stopwatch)
+    internal void MultiplexingBatchSent(int numCommands, long elapsedTicks)
     {
         // TODO: CAS loop instead of 3 separate interlocked operations?
         if (IsEnabled())
         {
             Interlocked.Increment(ref _multiplexingBatchesSent);
             Interlocked.Add(ref _multiplexingCommandsSent, numCommands);
-            Interlocked.Add(ref _multiplexingTicksWritten, stopwatch.ElapsedTicks);
+            Interlocked.Add(ref _multiplexingTicksWritten, elapsedTicks);
         }
     }
 
