@@ -2482,12 +2482,12 @@ public sealed partial class NpgsqlConnector
             State = newState;
             _currentCommand = command;
 
-            StartCancellableOperation(cancellationToken, attemptPgCancellation);
-
             // We reset the ReadBuffer.Timeout for every user action, so it wouldn't leak from the previous query or action
             // For example, we might have successfully cancelled the previous query (so the connection is not broken)
-            // But the next time, we call the Prepare, which doesn't set it's own timeout
+            // But the next time, we call the Prepare, which doesn't set its own timeout
             ReadBuffer.Timeout = TimeSpan.FromSeconds(command?.CommandTimeout ?? Settings.CommandTimeout);
+
+            StartCancellableOperation(cancellationToken, attemptPgCancellation);
 
             return new UserAction(this);
         }
