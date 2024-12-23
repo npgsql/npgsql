@@ -97,7 +97,8 @@ sealed class NpgsqlEventSource : EventSource
     {
         lock (_dataSourcesLock)
         {
-            _dataSources.Add(dataSource, null);
+            if (_dataSources is not null && !_dataSources.ContainsKey(dataSource))
+                _dataSources.Add(dataSource, null);
         }
     }
 
