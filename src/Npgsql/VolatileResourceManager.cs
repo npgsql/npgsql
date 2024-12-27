@@ -293,10 +293,7 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
 #pragma warning restore CS8625
 
     void CheckDisposed()
-    {
-        if (_isDisposed)
-            throw new ObjectDisposedException(nameof(VolatileResourceManager));
-    }
+        => ObjectDisposedException.ThrowIf(_isDisposed, this);
 
     #endregion
 

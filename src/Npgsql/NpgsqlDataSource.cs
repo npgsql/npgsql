@@ -533,10 +533,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     private protected void CheckDisposed()
-    {
-        if (_isDisposed == 1)
-            ThrowHelper.ThrowObjectDisposedException(GetType().FullName);
-    }
+        => ObjectDisposedException.ThrowIf(_isDisposed == 1, this);
 
     #endregion
 

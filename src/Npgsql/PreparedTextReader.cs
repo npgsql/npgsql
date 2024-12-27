@@ -95,10 +95,7 @@ sealed class PreparedTextReader : TextReader
     public override Task<string> ReadToEndAsync() => Task.FromResult(ReadToEnd());
 
     void CheckDisposed()
-    {
-        if (_disposed || _stream.IsDisposed)
-            ThrowHelper.ThrowObjectDisposedException(nameof(PreparedTextReader));
-    }
+        => ObjectDisposedException.ThrowIf(_disposed || _stream.IsDisposed, this);
 
     public void Restart()
     {

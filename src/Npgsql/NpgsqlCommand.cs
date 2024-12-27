@@ -1955,8 +1955,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     NpgsqlConnection? CheckAndGetConnection()
     {
-        if (State is CommandState.Disposed)
-            ThrowHelper.ThrowObjectDisposedException(GetType().FullName);
+        ObjectDisposedException.ThrowIf(State is CommandState.Disposed, this);
 
         var conn = InternalConnection;
         if (conn is null)

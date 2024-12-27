@@ -1529,10 +1529,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     }
 
     void CheckDisposed()
-    {
-        if (_disposed)
-            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlConnection));
-    }
+        => ObjectDisposedException.ThrowIf(_disposed, this);
 
     internal void CheckReady()
     {

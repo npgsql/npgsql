@@ -191,10 +191,7 @@ sealed partial class NpgsqlReadBuffer
             => throw new NotSupportedException();
 
         void CheckDisposed()
-        {
-            if (IsDisposed)
-                ThrowHelper.ThrowObjectDisposedException(nameof(ColumnStream));
-        }
+            => ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         protected override void Dispose(bool disposing)
         {
