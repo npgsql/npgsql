@@ -58,16 +58,11 @@ sealed class PreparedTextReader : TextReader
     public override int Read(char[] buffer, int index, int count)
     {
         ArgumentNullException.ThrowIfNull(buffer);
-        {
-            throw new ArgumentNullException(nameof(buffer));
-        }
-        if (index < 0 || count < 0)
-        {
-            throw new ArgumentOutOfRangeException(index < 0 ? nameof(index) : nameof(count));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
         if (buffer.Length - index < count)
         {
-            throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+            ThrowHelper.ThrowArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
         }
 
         return Read(buffer.AsSpan(index, count));

@@ -446,13 +446,10 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     static void ValidateArguments(byte[] buffer, int offset, int count)
     {
         ArgumentNullException.ThrowIfNull(buffer);
-            throw new ArgumentNullException(nameof(buffer));
-        if (offset < 0)
-            throw new ArgumentNullException(nameof(offset));
-        if (count < 0)
-            throw new ArgumentNullException(nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
         if (buffer.Length - offset < count)
-            throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+            ThrowHelper.ThrowArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
     }
     #endregion
 }

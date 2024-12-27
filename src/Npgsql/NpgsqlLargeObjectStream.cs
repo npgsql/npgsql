@@ -65,13 +65,10 @@ public sealed class NpgsqlLargeObjectStream : Stream
     async Task<int> Read(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(buffer);
-            throw new ArgumentNullException(nameof(buffer));
-        if (offset < 0)
-            throw new ArgumentOutOfRangeException(nameof(offset));
-        if (count < 0)
-            throw new ArgumentOutOfRangeException(nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
         if (buffer.Length - offset < count)
-            throw new ArgumentException("Invalid offset or count for this buffer");
+            ThrowHelper.ThrowArgumentException("Invalid offset or count for this buffer");
 
         CheckDisposed();
 
@@ -116,13 +113,10 @@ public sealed class NpgsqlLargeObjectStream : Stream
     async Task Write(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(buffer);
-            throw new ArgumentNullException(nameof(buffer));
-        if (offset < 0)
-            throw new ArgumentOutOfRangeException(nameof(offset));
-        if (count < 0)
-            throw new ArgumentOutOfRangeException(nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
         if (buffer.Length - offset < count)
-            throw new ArgumentException("Invalid offset or count for this buffer");
+            ThrowHelper.ThrowArgumentException("Invalid offset or count for this buffer");
 
         CheckDisposed();
 
@@ -262,8 +256,7 @@ public sealed class NpgsqlLargeObjectStream : Stream
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (value < 0)
-            throw new ArgumentOutOfRangeException(nameof(value));
+        ArgumentOutOfRangeException.ThrowIfNegative(value);
         if (!Has64BitSupport && value != (int)value)
             throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
 

@@ -403,8 +403,7 @@ public sealed class NpgsqlTsQueryLexeme : NpgsqlTsQuery
         get => _text;
         set
         {
-            if (string.IsNullOrEmpty(value))
-                throw new ArgumentException("Text is null or empty string", nameof(value));
+            ArgumentException.ThrowIfNullOrEmpty(value);
 
             _text = value;
         }
@@ -674,8 +673,7 @@ public sealed class NpgsqlTsQueryFollowedBy : NpgsqlTsQueryBinOp
         NpgsqlTsQuery right)
         : base(NodeKind.Phrase, left, right)
     {
-        if (distance < 0)
-            throw new ArgumentOutOfRangeException(nameof(distance));
+        ArgumentOutOfRangeException.ThrowIfNegative(distance);
 
         Distance = distance;
     }

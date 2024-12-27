@@ -223,9 +223,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         get => _timeout ?? (InternalConnection?.CommandTimeout ?? DefaultTimeout);
         set
         {
-            if (value < 0) {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be less than zero.");
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _timeout = value;
         }

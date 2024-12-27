@@ -244,8 +244,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _port;
         set
         {
-            if (value <= 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "Invalid port: " + value);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
 
             _port = value;
             SetValue(nameof(Port), value);
@@ -720,8 +719,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _minPoolSize;
         set
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize can't be negative");
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _minPoolSize = value;
             SetValue(nameof(MinPoolSize), value);
@@ -742,8 +740,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _maxPoolSize;
         set
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize can't be negative");
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _maxPoolSize = value;
             SetValue(nameof(MaxPoolSize), value);
@@ -836,8 +833,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _timeout;
         set
         {
-            if (value < 0 || value > NpgsqlConnection.TimeoutLimit)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "Timeout must be between 0 and " + NpgsqlConnection.TimeoutLimit);
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, NpgsqlConnection.TimeoutLimit);
 
             _timeout = value;
             SetValue(nameof(Timeout), value);
@@ -861,8 +858,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _commandTimeout;
         set
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be negative");
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _commandTimeout = value;
             SetValue(nameof(CommandTimeout), value);
@@ -885,8 +881,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _cancellationTimeout;
         set
         {
-            if (value < -1)
-                throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(CancellationTimeout)} can't less than -1");
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, -1);
 
             _cancellationTimeout = value;
             SetValue(nameof(CancellationTimeout), value);
@@ -975,8 +970,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _hostRecheckSeconds;
         set
         {
-            if (value < 0)
-                throw new ArgumentException($"{HostRecheckSeconds} cannot be negative", nameof(HostRecheckSeconds));
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
             _hostRecheckSeconds = value;
             SetValue(nameof(HostRecheckSeconds), value);
         }
@@ -1000,8 +994,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _keepAlive;
         set
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "KeepAlive can't be negative");
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _keepAlive = value;
             SetValue(nameof(KeepAlive), value);
@@ -1041,8 +1034,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _tcpKeepAliveTime;
         set
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "TcpKeepAliveTime can't be negative");
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _tcpKeepAliveTime = value;
             SetValue(nameof(TcpKeepAliveTime), value);
@@ -1063,8 +1055,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _tcpKeepAliveInterval;
         set
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, "TcpKeepAliveInterval can't be negative");
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _tcpKeepAliveInterval = value;
             SetValue(nameof(TcpKeepAliveInterval), value);
@@ -1160,8 +1151,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _maxAutoPrepare;
         set
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(MaxAutoPrepare)} cannot be negative");
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _maxAutoPrepare = value;
             SetValue(nameof(MaxAutoPrepare), value);
@@ -1183,8 +1173,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _autoPrepareMinUsages;
         set
         {
-            if (value < 1)
-                throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(AutoPrepareMinUsages)} must be 1 or greater");
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
 
             _autoPrepareMinUsages = value;
             SetValue(nameof(AutoPrepareMinUsages), value);
@@ -1408,8 +1397,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     internal void PostProcessAndValidate()
     {
-        if (string.IsNullOrWhiteSpace(Host))
-            throw new ArgumentException("Host can't be null");
+        ArgumentException.ThrowIfNullOrWhiteSpace(Host);
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
         if (SslNegotiation == SslNegotiation.Direct && SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)

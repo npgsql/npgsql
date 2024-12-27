@@ -113,10 +113,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         Encoding relaxedTextEncoding,
         bool usePool = false)
     {
-        if (size < MinimumSize)
-        {
-            throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(size, MinimumSize);
 
         Connector = connector!; // TODO: Clean this up
         Underlying = stream;

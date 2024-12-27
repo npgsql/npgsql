@@ -101,8 +101,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
         int size,
         Encoding textEncoding)
     {
-        if (size < MinimumSize)
-            throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
+        ArgumentOutOfRangeException.ThrowIfLessThan(size, MinimumSize);
 
         Connector = connector!; // TODO: Clean this up; only null when used from PregeneratedMessages, where we don't care.
         Underlying = stream;
@@ -579,8 +578,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
         void Throw()
         {
-            if (count < 0)
-                throw new ArgumentOutOfRangeException(nameof(count), "Can't advance by a negative count");
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
 
             if (_messageLength is null)
                 throw Connector.Break(new InvalidOperationException("No message was started"));

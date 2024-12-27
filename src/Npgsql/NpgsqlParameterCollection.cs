@@ -170,7 +170,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             var index = IndexOf(parameterName);
             if (index == -1)
-                throw new ArgumentException("Parameter not found");
+                ThrowHelper.ThrowArgumentException("Parameter not found");
 
             return InternalList[index];
         }
@@ -181,10 +181,10 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             var index = IndexOf(parameterName);
             if (index == -1)
-                throw new ArgumentException("Parameter not found");
+                ThrowHelper.ThrowArgumentException("Parameter not found");
 
             if (!string.Equals(parameterName, value.TrimmedName, StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("Parameter name must be a case-insensitive match with the property 'ParameterName' on the given NpgsqlParameter", nameof(parameterName));
+                ThrowHelper.ThrowArgumentException("Parameter name must be a case-insensitive match with the property 'ParameterName' on the given NpgsqlParameter", nameof(parameterName));
 
             var oldValue = InternalList[index];
             LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
@@ -425,8 +425,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <param name="index">The zero-based index of the parameter.</param>
     public override void RemoveAt(int index)
     {
-        if (InternalList.Count - 1 < index)
-            throw new ArgumentOutOfRangeException(nameof(index));
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, InternalList.Count);
 
         Remove(InternalList[index]);
     }
