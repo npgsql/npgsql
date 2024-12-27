@@ -323,7 +323,7 @@ public class MultipleHostsTests : TestBase
 
     [Test]
     public void HostRecheckSeconds_invalid_throws()
-        => Assert.Throws<ArgumentException>(() =>
+        => Assert.Throws<ArgumentOutOfRangeException>(() =>
             new NpgsqlConnectionStringBuilder
             {
                 HostRecheckSeconds = -1

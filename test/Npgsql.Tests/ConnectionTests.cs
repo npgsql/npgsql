@@ -217,7 +217,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 
     [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
     public void Mandatory_connection_string_params()
-        => Assert.Throws<ArgumentException>(() =>
+        => Assert.Throws<ArgumentNullException>(() =>
             new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests"));
 
     [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
