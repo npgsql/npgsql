@@ -192,7 +192,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// </remarks>
     public override void Save(string name)
     {
-        if (name == null)
+        ArgumentNullException.ThrowIfNull(name);
             throw new ArgumentNullException(nameof(name));
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("name can't be empty", nameof(name));
@@ -236,7 +236,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 
     async Task Rollback(bool async, string name, CancellationToken cancellationToken = default)
     {
-        if (name == null)
+        ArgumentNullException.ThrowIfNull(name);
             throw new ArgumentNullException(nameof(name));
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("name can't be empty", nameof(name));
@@ -271,7 +271,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 
     async Task Release(bool async, string name, CancellationToken cancellationToken = default)
     {
-        if (name == null)
+        ArgumentNullException.ThrowIfNull(name);
             throw new ArgumentNullException(nameof(name));
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("name can't be empty", nameof(name));

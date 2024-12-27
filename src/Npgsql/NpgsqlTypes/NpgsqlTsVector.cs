@@ -76,8 +76,7 @@ public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquata
     [Obsolete("Client-side parsing of NpgsqlTsVector is unreliable and cannot fully duplicate the PostgreSQL logic. Use PG functions instead (e.g. to_tsvector)")]
     public static NpgsqlTsVector Parse(string value)
     {
-        if (value == null)
-            throw new ArgumentNullException(nameof(value));
+        ArgumentNullException.ThrowIfNull(value);
 
         var lexemes = new List<Lexeme>();
         var pos = 0;

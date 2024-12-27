@@ -64,7 +64,7 @@ public sealed class NpgsqlLargeObjectStream : Stream
 
     async Task<int> Read(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
     {
-        if (buffer == null)
+        ArgumentNullException.ThrowIfNull(buffer);
             throw new ArgumentNullException(nameof(buffer));
         if (offset < 0)
             throw new ArgumentOutOfRangeException(nameof(offset));
@@ -115,7 +115,7 @@ public sealed class NpgsqlLargeObjectStream : Stream
 
     async Task Write(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
     {
-        if (buffer == null)
+        ArgumentNullException.ThrowIfNull(buffer);
             throw new ArgumentNullException(nameof(buffer));
         if (offset < 0)
             throw new ArgumentOutOfRangeException(nameof(offset));

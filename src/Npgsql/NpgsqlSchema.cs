@@ -19,8 +19,7 @@ static class NpgsqlSchema
 {
     public static Task<DataTable> GetSchema(bool async, NpgsqlConnection conn, string? collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
     {
-        if (collectionName is null)
-            throw new ArgumentNullException(nameof(collectionName));
+        ArgumentNullException.ThrowIfNull(collectionName);
         if (collectionName.Length == 0)
             throw new ArgumentException("Collection name cannot be empty.", nameof(collectionName));
 

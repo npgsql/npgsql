@@ -55,8 +55,7 @@ public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
     /// </summary>
     public string TranslateMemberName(string clrName)
     {
-        if (clrName == null)
-            throw new ArgumentNullException(nameof(clrName));
+        ArgumentNullException.ThrowIfNull(clrName);
 
         return LegacyMode
             ? string.Concat(LegacyModeMap(clrName)).ToLower(_culture)

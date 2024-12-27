@@ -224,7 +224,7 @@ sealed partial class NpgsqlReadBuffer
 
     static void ValidateArguments(byte[] buffer, int offset, int count)
     {
-        if (buffer == null)
+        ArgumentNullException.ThrowIfNull(buffer);
             throw new ArgumentNullException(nameof(buffer));
         if (offset < 0)
             throw new ArgumentOutOfRangeException(nameof(offset));

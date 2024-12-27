@@ -495,7 +495,7 @@ public sealed class PgWriter
 
         Task Write(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            if (buffer is null)
+            ArgumentNullException.ThrowIfNull(buffer);
                 throw new ArgumentNullException(nameof(buffer));
             if (offset < 0)
                 throw new ArgumentNullException(nameof(offset));

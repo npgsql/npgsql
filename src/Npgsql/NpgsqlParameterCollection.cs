@@ -166,8 +166,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     {
         get
         {
-            if (parameterName is null)
-                throw new ArgumentNullException(nameof(parameterName));
+            ArgumentNullException.ThrowIfNull(parameterName);
 
             var index = IndexOf(parameterName);
             if (index == -1)
@@ -177,10 +176,8 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         }
         set
         {
-            if (parameterName is null)
-                throw new ArgumentNullException(nameof(parameterName));
-            if (value is null)
-                throw new ArgumentNullException(nameof(value));
+            ArgumentNullException.ThrowIfNull(parameterName);
+            ArgumentNullException.ThrowIfNull(value);
 
             var index = IndexOf(parameterName);
             if (index == -1)
@@ -206,8 +203,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         get => InternalList[index];
         set
         {
-            if (value is null)
-                ThrowHelper.ThrowArgumentNullException(nameof(value));
+            ArgumentNullException.ThrowIfNull(value);
             if (value.Collection is not null)
                 ThrowHelper.ThrowInvalidOperationException("The parameter already belongs to a collection");
 
@@ -231,8 +227,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <returns>The parameter that was added.</returns>
     public NpgsqlParameter Add(NpgsqlParameter value)
     {
-        if (value is null)
-            ThrowHelper.ThrowArgumentNullException(nameof(value));
+        ArgumentNullException.ThrowIfNull(value);
         if (value.Collection is not null)
             ThrowHelper.ThrowInvalidOperationException("The parameter already belongs to a collection");
 
@@ -446,8 +441,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <param name="parameterName">The name of the <see cref="NpgsqlParameter"/> to remove from the collection.</param>
     public void Remove(string parameterName)
     {
-        if (parameterName is null)
-            ThrowHelper.ThrowArgumentNullException(nameof(parameterName));
+        ArgumentNullException.ThrowIfNull(parameterName);
 
         var index = IndexOf(parameterName);
         if (index < 0)
@@ -481,8 +475,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// </returns>
     public bool TryGetValue(string parameterName, [NotNullWhen(true)] out NpgsqlParameter? parameter)
     {
-        if (parameterName is null)
-            throw new ArgumentNullException(nameof(parameterName));
+        ArgumentNullException.ThrowIfNull(parameterName);
 
         var index = IndexOf(parameterName);
 
@@ -561,8 +554,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <inheritdoc />
     public override void AddRange(Array values)
     {
-        if (values is null)
-            throw new ArgumentNullException(nameof(values));
+        ArgumentNullException.ThrowIfNull(values);
 
         foreach (var parameter in values)
             Add(Cast(parameter));
@@ -599,8 +591,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <param name="item">Parameter to insert.</param>
     public void Insert(int index, NpgsqlParameter item)
     {
-        if (item is null)
-            throw new ArgumentNullException(nameof(item));
+        ArgumentNullException.ThrowIfNull(item);
         if (item.Collection != null)
             throw new Exception("The parameter already belongs to a collection");
 
@@ -624,8 +615,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <returns>True if the parameter was found and removed, otherwise false.</returns>
     public bool Remove(NpgsqlParameter item)
     {
-        if (item == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(item));
+        ArgumentNullException.ThrowIfNull(item);
         if (item.Collection != this)
             ThrowHelper.ThrowInvalidOperationException("The item does not belong to this collection");
 

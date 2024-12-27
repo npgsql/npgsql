@@ -57,7 +57,7 @@ sealed class PreparedTextReader : TextReader
 
     public override int Read(char[] buffer, int index, int count)
     {
-        if (buffer == null)
+        ArgumentNullException.ThrowIfNull(buffer);
         {
             throw new ArgumentNullException(nameof(buffer));
         }
