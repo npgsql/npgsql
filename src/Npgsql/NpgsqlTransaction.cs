@@ -192,7 +192,6 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// </remarks>
     public override void Save(string name)
     {
-        ArgumentNullException.ThrowIfNull(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         CheckReady();
@@ -234,7 +233,6 @@ public sealed class NpgsqlTransaction : DbTransaction
 
     async Task Rollback(bool async, string name, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         CheckReady();
@@ -267,7 +265,6 @@ public sealed class NpgsqlTransaction : DbTransaction
 
     async Task Release(bool async, string name, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         CheckReady();
