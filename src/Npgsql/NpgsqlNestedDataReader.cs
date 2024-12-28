@@ -174,8 +174,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     /// <inheritdoc />
     public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
     {
-        if (dataOffset is < 0 or > int.MaxValue)
-            throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between 0 and {int.MaxValue}");
+        ArgumentOutOfRangeException.ThrowIfNegative(dataOffset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(dataOffset, int.MaxValue);
         if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
             throw new IndexOutOfRangeException($"bufferOffset must be between 0 and {buffer.Length}");
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
@@ -303,8 +303,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     /// <inheritdoc />
     public override int GetValues(object[] values)
     {
-        if (values == null)
-            throw new ArgumentNullException(nameof(values));
+        ArgumentNullException.ThrowIfNull(values);
         CheckOnRow();
 
         var count = Math.Min(FieldCount, values.Length);

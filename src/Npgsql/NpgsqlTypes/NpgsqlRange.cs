@@ -378,8 +378,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     [RequiresUnreferencedCode("Parse implementations for certain types of T may require members that have been trimmed.")]
     public static NpgsqlRange<T> Parse(string value)
     {
-        if (value is null)
-            throw new ArgumentNullException(nameof(value));
+        ArgumentNullException.ThrowIfNull(value);
 
         value = value.Trim();
 

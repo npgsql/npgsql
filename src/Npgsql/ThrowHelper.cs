@@ -89,10 +89,6 @@ static class ThrowHelper
         => throw new ArgumentException(message, paramName);
 
     [DoesNotReturn]
-    internal static void ThrowArgumentNullException(string paramName)
-        => throw new ArgumentNullException(paramName);
-
-    [DoesNotReturn]
     internal static void ThrowArgumentNullException(string message, string paramName)
         => throw new ArgumentNullException(paramName, message);
 

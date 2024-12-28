@@ -79,8 +79,7 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
     [Obsolete("Client-side parsing of NpgsqlTsQuery is unreliable and cannot fully duplicate the PostgreSQL logic. Use PG functions instead (e.g. to_tsquery)")]
     public static NpgsqlTsQuery Parse(string value)
     {
-        if (value == null)
-            throw new ArgumentNullException(nameof(value));
+        ArgumentNullException.ThrowIfNull(value);
 
         var valStack = new Stack<NpgsqlTsQuery>();
         var opStack = new Stack<NpgsqlTsQueryOperator>();
@@ -404,8 +403,7 @@ public sealed class NpgsqlTsQueryLexeme : NpgsqlTsQuery
         get => _text;
         set
         {
-            if (string.IsNullOrEmpty(value))
-                throw new ArgumentException("Text is null or empty string", nameof(value));
+            ArgumentException.ThrowIfNullOrEmpty(value);
 
             _text = value;
         }
@@ -675,8 +673,7 @@ public sealed class NpgsqlTsQueryFollowedBy : NpgsqlTsQueryBinOp
         NpgsqlTsQuery right)
         : base(NodeKind.Phrase, left, right)
     {
-        if (distance < 0)
-            throw new ArgumentOutOfRangeException(nameof(distance));
+        ArgumentOutOfRangeException.ThrowIfNegative(distance);
 
         Distance = distance;
     }

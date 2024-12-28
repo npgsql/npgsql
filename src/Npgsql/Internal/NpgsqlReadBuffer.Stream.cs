@@ -73,8 +73,7 @@ sealed partial class NpgsqlReadBuffer
             }
             set
             {
-                if (value < 0)
-                    throw new ArgumentOutOfRangeException(nameof(value), "Non - negative number required.");
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 Seek(value, SeekOrigin.Begin);
             }
         }
@@ -85,8 +84,7 @@ sealed partial class NpgsqlReadBuffer
 
             if (!_canSeek)
                 throw new NotSupportedException();
-            if (offset > int.MaxValue)
-                throw new ArgumentOutOfRangeException(nameof(offset), "Stream length must be non-negative and less than 2^31 - 1 - origin.");
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, int.MaxValue);
 
             const string seekBeforeBegin = "An attempt was made to move the position before the beginning of the stream.";
 
@@ -191,10 +189,7 @@ sealed partial class NpgsqlReadBuffer
             => throw new NotSupportedException();
 
         void CheckDisposed()
-        {
-            if (IsDisposed)
-                ThrowHelper.ThrowObjectDisposedException(nameof(ColumnStream));
-        }
+            => ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         protected override void Dispose(bool disposing)
         {
@@ -224,13 +219,10 @@ sealed partial class NpgsqlReadBuffer
 
     static void ValidateArguments(byte[] buffer, int offset, int count)
     {
-        if (buffer == null)
-            throw new ArgumentNullException(nameof(buffer));
-        if (offset < 0)
-            throw new ArgumentOutOfRangeException(nameof(offset));
-        if (count < 0)
-            throw new ArgumentOutOfRangeException(nameof(count));
+        ArgumentNullException.ThrowIfNull(buffer);
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
         if (buffer.Length - offset < count)
-            throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+            ThrowHelper.ThrowArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
     }
 }

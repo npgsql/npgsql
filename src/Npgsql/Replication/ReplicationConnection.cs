@@ -322,8 +322,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// <returns>The current setting of the run-time parameter specified in <paramref name="parameterName"/> as <see cref="string"/>.</returns>
     public Task<string> Show(string parameterName, CancellationToken cancellationToken = default)
     {
-        if (parameterName is null)
-            throw new ArgumentNullException(nameof(parameterName));
+        ArgumentNullException.ThrowIfNull(parameterName);
 
         return ShowInternal(parameterName, cancellationToken);
 
@@ -710,8 +709,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// <returns>A task representing the asynchronous drop operation.</returns>
     public Task DropReplicationSlot(string slotName, bool wait = false, CancellationToken cancellationToken = default)
     {
-        if (slotName is null)
-            throw new ArgumentNullException(nameof(slotName));
+        ArgumentNullException.ThrowIfNull(slotName);
 
         CheckDisposed();
 

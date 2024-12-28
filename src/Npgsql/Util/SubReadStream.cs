@@ -75,10 +75,7 @@ sealed class SubReadStream : Stream
     public override bool CanWrite => false;
 
     void ThrowIfDisposed()
-    {
-        if (_isDisposed)
-            throw new ObjectDisposedException(GetType().ToString());
-    }
+        => ObjectDisposedException.ThrowIf(_isDisposed, this);
 
     void ThrowIfCantRead()
     {

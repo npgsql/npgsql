@@ -313,8 +313,7 @@ public abstract class NpgsqlDatabaseInfo
     /// </summary>
     public static void RegisterFactory(INpgsqlDatabaseInfoFactory factory)
     {
-        if (factory == null)
-            throw new ArgumentNullException(nameof(factory));
+        ArgumentNullException.ThrowIfNull(factory);
 
         var factories = new INpgsqlDatabaseInfoFactory[Factories.Length + 1];
         factories[0] = factory;

@@ -223,9 +223,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         get => _timeout ?? (InternalConnection?.CommandTimeout ?? DefaultTimeout);
         set
         {
-            if (value < 0) {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "CommandTimeout can't be less than zero.");
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
 
             _timeout = value;
         }
@@ -1955,8 +1953,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     NpgsqlConnection? CheckAndGetConnection()
     {
-        if (State is CommandState.Disposed)
-            ThrowHelper.ThrowObjectDisposedException(GetType().FullName);
+        ObjectDisposedException.ThrowIf(State is CommandState.Disposed, this);
 
         var conn = InternalConnection;
         if (conn is null)

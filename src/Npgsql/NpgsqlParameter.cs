@@ -365,9 +365,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         set
         {
             if (value == NpgsqlDbType.Array)
-                throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
             if (value == NpgsqlDbType.Range)
-                throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
 
             ResetTypeInfo();
             _npgsqlDbType = value;
@@ -453,7 +453,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         set
         {
             if (value < -1)
-                throw new ArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
+                ThrowHelper.ThrowArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
             ResetBindingInfo();
             _size = value;
@@ -599,7 +599,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         void ThrowNotSupported(string dataTypeName)
         {
-            throw new NotSupportedException(_npgsqlDbType is not null
+            ThrowHelper.ThrowNotSupportedException(_npgsqlDbType is not null
                 ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
                 : $"The data type name '{dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
         }

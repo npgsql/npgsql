@@ -61,10 +61,8 @@ public static class LogicalReplicationConnectionExtensions
         CancellationToken cancellationToken = default)
     {
         connection.CheckDisposed();
-        if (slotName is null)
-            throw new ArgumentNullException(nameof(slotName));
-        if (outputPlugin is null)
-            throw new ArgumentNullException(nameof(outputPlugin));
+        ArgumentNullException.ThrowIfNull(slotName);
+        ArgumentNullException.ThrowIfNull(outputPlugin);
 
         cancellationToken.ThrowIfCancellationRequested();
 

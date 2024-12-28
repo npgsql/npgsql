@@ -1145,8 +1145,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     async Task<NpgsqlBinaryImporter> BeginBinaryImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
     {
-        if (copyFromCommand == null)
-            throw new ArgumentNullException(nameof(copyFromCommand));
+        ArgumentNullException.ThrowIfNull(copyFromCommand);
         if (!IsValidCopyCommand(copyFromCommand))
             throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
@@ -1196,8 +1195,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     async Task<NpgsqlBinaryExporter> BeginBinaryExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
     {
-        if (copyToCommand == null)
-            throw new ArgumentNullException(nameof(copyToCommand));
+        ArgumentNullException.ThrowIfNull(copyToCommand);
         if (!IsValidCopyCommand(copyToCommand))
             throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
@@ -1253,8 +1251,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     async Task<TextWriter> BeginTextImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
     {
-        if (copyFromCommand == null)
-            throw new ArgumentNullException(nameof(copyFromCommand));
+        ArgumentNullException.ThrowIfNull(copyFromCommand);
         if (!IsValidCopyCommand(copyFromCommand))
             throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
@@ -1311,8 +1308,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     async Task<TextReader> BeginTextExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
     {
-        if (copyToCommand == null)
-            throw new ArgumentNullException(nameof(copyToCommand));
+        ArgumentNullException.ThrowIfNull(copyToCommand);
         if (!IsValidCopyCommand(copyToCommand))
             throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
@@ -1369,8 +1365,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(bool async, string copyCommand, CancellationToken cancellationToken = default)
     {
-        if (copyCommand == null)
-            throw new ArgumentNullException(nameof(copyCommand));
+        ArgumentNullException.ThrowIfNull(copyCommand);
         if (!IsValidCopyCommand(copyCommand))
             throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
 
@@ -1534,10 +1529,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     }
 
     void CheckDisposed()
-    {
-        if (_disposed)
-            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlConnection));
-    }
+        => ObjectDisposedException.ThrowIf(_disposed, this);
 
     internal void CheckReady()
     {
@@ -1825,8 +1817,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <param name="dbName">The name of the database to use in place of the current database.</param>
     public override void ChangeDatabase(string dbName)
     {
-        if (dbName == null)
-            throw new ArgumentNullException(nameof(dbName));
+        ArgumentNullException.ThrowIfNull(dbName);
         if (string.IsNullOrEmpty(dbName))
             throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
 
