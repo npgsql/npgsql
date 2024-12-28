@@ -202,6 +202,28 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             isDefaultForWriting: true);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5972")]
+    public async Task With_schema_and_dots_in_type_name()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var schema = await CreateTempSchema(adminConnection);
+        var typename = "Some.Composite.with.dots";
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {schema}.\"{typename}\" AS (x int, some_text text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>($"{schema}.{typename}");
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeComposite { SomeText = "foobar", X = 10 },
+            "(10,foobar)",
+            $"{schema}.\"{typename}\"",
+            npgsqlDbType: null);
+    }
+
     [Test]
     public async Task Struct()
     {
