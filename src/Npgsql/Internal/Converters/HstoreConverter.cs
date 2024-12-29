@@ -72,7 +72,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
                 await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
             var keySize = reader.ReadInt32();
             var key = encoding.GetString(async
-                ? await reader.ReadBytesAsync(keySize, cancellationToken).ConfigureAwait(false)
+                ? (await reader.ReadBytesAsync(keySize, cancellationToken).ConfigureAwait(false)).Span
                 : reader.ReadBytes(keySize)
             );
 
@@ -82,7 +82,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
             string? value = null;
             if (valueSize is not -1)
                 value = encoding.GetString(async
-                    ? await reader.ReadBytesAsync(valueSize, cancellationToken).ConfigureAwait(false)
+                    ? (await reader.ReadBytesAsync(valueSize, cancellationToken).ConfigureAwait(false)).Span
                     : reader.ReadBytes(valueSize)
                 );
 

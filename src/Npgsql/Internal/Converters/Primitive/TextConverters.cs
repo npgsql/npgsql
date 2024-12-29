@@ -1,6 +1,4 @@
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -45,7 +43,7 @@ abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConve
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding, CancellationToken cancellationToken)
-            => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
+            => ConvertFrom(encoding.GetString((await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)).Span));
     }
 }
 
@@ -92,12 +90,11 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding)
-            => ConvertFrom(GetSegment(await reader.ReadBytesAsync(reader.CurrentRemaining).ConfigureAwait(false), encoding));
+            => ConvertFrom(GetSegment((await reader.ReadBytesAsync(reader.CurrentRemaining).ConfigureAwait(false)).Span, encoding));
 
-        static ArraySegment<char> GetSegment(ReadOnlySequence<byte> bytes, Encoding encoding)
+        static ArraySegment<char> GetSegment(ReadOnlySpan<byte> bytes, Encoding encoding)
         {
-            var array = TextConverter.GetChars(encoding, bytes);
-            return new(array, 0, array.Length);
+            return TextConverter.GetChars(encoding, bytes);
         }
     }
 }
@@ -134,11 +131,9 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
 
     protected override char ReadCore(PgReader reader)
     {
-        var byteSeq = reader.ReadBytes(Math.Min(_oneCharMaxByteCount.Value, reader.CurrentRemaining));
-        Debug.Assert(byteSeq.IsSingleSegment);
-        var bytes = byteSeq.FirstSpan;
-
+        var bytes = reader.ReadBytes(Math.Min(_oneCharMaxByteCount.Value, reader.CurrentRemaining));
         var chars = encoding.GetCharCount(bytes);
+
         if (chars < 1)
             throw new NpgsqlException("Could not read char - string was empty");
 
@@ -254,62 +249,10 @@ static class TextConverter
         => encoding.GetByteCount(value.Span);
 
     // Adapted version of GetString(ROSeq) removing the intermediate string allocation to make a contiguous char array.
-    public static char[] GetChars(Encoding encoding, ReadOnlySequence<byte> bytes)
+    public static char[] GetChars(Encoding encoding, ReadOnlySpan<byte> bytes)
     {
-        if (bytes.IsSingleSegment)
-        {
-            // If the incoming sequence is single-segment, one-shot this.
-            var firstSpan = bytes.First.Span;
-            var chars = new char[encoding.GetCharCount(firstSpan)];
-            encoding.GetChars(bytes.First.Span, chars);
-            return chars;
-        }
-        else
-        {
-            // If the incoming sequence is multi-segment, create a stateful Decoder
-            // and use it as the workhorse. On the final iteration we'll pass flush=true.
-
-            var decoder = encoding.GetDecoder();
-
-            // Maintain a list of all the segments we'll need to concat together.
-            // These will be released back to the pool at the end of the method.
-
-            var listOfSegments = new List<(char[], int)>();
-            var totalCharCount = 0;
-
-            var remainingBytes = bytes;
-            bool isFinalSegment;
-
-            do
-            {
-                var firstSpan = remainingBytes.First.Span;
-                var next = remainingBytes.GetPosition(firstSpan.Length);
-                isFinalSegment = remainingBytes.IsSingleSegment;
-
-                var charCountThisIteration = decoder.GetCharCount(firstSpan, flush: isFinalSegment); // could throw ArgumentException if overflow would occur
-                var rentedArray = ArrayPool<char>.Shared.Rent(charCountThisIteration);
-                var actualCharsWrittenThisIteration = decoder.GetChars(firstSpan, rentedArray, flush: isFinalSegment);
-                listOfSegments.Add((rentedArray, actualCharsWrittenThisIteration));
-
-                totalCharCount += actualCharsWrittenThisIteration;
-                if (totalCharCount < 0)
-                    throw new OutOfMemoryException();
-
-                remainingBytes = remainingBytes.Slice(next);
-            } while (!isFinalSegment);
-
-            // Now build up the string to return, then release all of our scratch buffers
-            // back to the shared pool.
-            var chars = new char[totalCharCount];
-            var span = chars.AsSpan();
-            foreach (var (array, length) in listOfSegments)
-            {
-                array.AsSpan(0, length).CopyTo(span);
-                ArrayPool<char>.Shared.Return(array);
-                span = span.Slice(length);
-            }
-
-            return chars;
-        }
+        var chars = new char[encoding.GetCharCount(bytes)];
+        encoding.GetChars(bytes, chars);
+        return chars;
     }
 }

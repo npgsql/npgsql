@@ -1,6 +1,4 @@
 using System;
-using System.Buffers.Binary;
-using System.Runtime.InteropServices;
 
 namespace Npgsql.Internal.Converters;
 
@@ -13,7 +11,7 @@ sealed class GuidUuidConverter : PgBufferedConverter<Guid>
     }
 
     protected override Guid ReadCore(PgReader reader)
-        => new(reader.ReadBytes(16).FirstSpan, bigEndian: true);
+        => new(reader.ReadBytes(16), bigEndian: true);
 
     protected override void WriteCore(PgWriter writer, Guid value)
     {
