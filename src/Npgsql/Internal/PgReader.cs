@@ -234,7 +234,7 @@ public class PgReader
         _preparedTextReader ??= new PreparedTextReader();
         _preparedTextReader.Init(
             encoding.GetString(async
-                ? await ReadBytesAsync(CurrentRemaining, cancellationToken).ConfigureAwait(false)
+                ? (await ReadBytesAsync(CurrentRemaining, cancellationToken).ConfigureAwait(false)).Span
                 : ReadBytes(CurrentRemaining)), GetColumnStream(canSeek: false, 0));
         return _preparedTextReader;
     }
@@ -315,39 +315,39 @@ public class PgReader
     }
 
     /// ReadBytes without memory management, the next read invalidates the underlying buffer(s), only use this for intermediate transformations.
-    public ReadOnlySequence<byte> ReadBytes(int count)
+    public ReadOnlySpan<byte> ReadBytes(int count)
     {
         CheckBounds(count);
         var offset = _buffer.ReadPosition;
         var remaining = _buffer.FilledBytes - offset;
         if (remaining >= count)
         {
-            var result = new ReadOnlySequence<byte>(_buffer.Buffer, offset, count);
+            var result = new ReadOnlySpan<byte>(_buffer.Buffer, offset, count);
             _buffer.ReadPosition += count;
             return result;
         }
 
-        var array = RentArray(count);
-        ReadBytes(array.AsSpan(0, count));
-        return new(array, 0, count);
+        var rentedBuffer = RentArray(count).AsSpan(0, count);
+        ReadBytes(rentedBuffer);
+        return rentedBuffer;
     }
 
     /// ReadBytesAsync without memory management, the next read invalidates the underlying buffer(s), only use this for intermediate transformations.
-    public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int count, CancellationToken cancellationToken = default)
+    public async ValueTask<ReadOnlyMemory<byte>> ReadBytesAsync(int count, CancellationToken cancellationToken = default)
     {
         CheckBounds(count);
         var offset = _buffer.ReadPosition;
         var remaining = _buffer.FilledBytes - offset;
         if (remaining >= count)
         {
-            var result = new ReadOnlySequence<byte>(_buffer.Buffer, offset, count);
+            var result = new ReadOnlyMemory<byte>(_buffer.Buffer, offset, count);
             _buffer.ReadPosition += count;
             return result;
         }
 
-        var array = RentArray(count);
-        await ReadBytesAsync(array.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
-        return new(array, 0, count);
+        var rentedBuffer = RentArray(count).AsMemory(0, count);
+        await ReadBytesAsync(rentedBuffer, cancellationToken).ConfigureAwait(false);
+        return rentedBuffer;
     }
 
     public void Rewind(int count)
