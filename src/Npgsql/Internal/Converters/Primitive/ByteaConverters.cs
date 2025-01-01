@@ -91,11 +91,21 @@ sealed class MemoryByteaConverter : ByteaConverters<Memory<byte>>
 
 sealed class StreamByteaConverter : PgStreamingConverter<Stream>
 {
+    readonly bool _supportsText;
+
+    public StreamByteaConverter(bool supportsText) => _supportsText = supportsText;
+
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.None;
+        return format is DataFormat.Text or DataFormat.Binary;
+    }
+
     public override Stream Read(PgReader reader)
-        => throw new NotSupportedException("Handled by generic stream support in NpgsqlDataReader");
+        => reader.GetStream();
 
     public override ValueTask<Stream> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("Handled by generic stream support in NpgsqlDataReader");
+        => new(reader.GetStream());
 
     public override Size GetSize(SizeContext context, Stream value, ref object? writeState)
     {
