@@ -23,10 +23,10 @@ abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConve
         => TextConverter.GetSize(ref context, ConvertTo(value), encoding);
 
     public override void Write(PgWriter writer, T value)
-        => writer.WriteChars(ConvertTo(value).Span, encoding);
+        => writer.WriteChars(ConvertTo(value).Span, encoding, writer.Current.Size.Kind == SizeKind.Exact ? writer.Current.Size.Value : null);
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => writer.WriteCharsAsync(ConvertTo(value), encoding, cancellationToken);
+        => writer.WriteCharsAsync(ConvertTo(value), encoding, writer.Current.Size.Kind == SizeKind.Exact ? writer.Current.Size.Value : null, cancellationToken : cancellationToken);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
@@ -75,7 +75,7 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
         => writer.WriteChars(ConvertTo(value).AsSpan(), encoding);
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => writer.WriteCharsAsync(ConvertTo(value), encoding, cancellationToken);
+        => writer.WriteCharsAsync(ConvertTo(value), encoding, cancellationToken: cancellationToken);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
@@ -149,14 +149,14 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
 
     public override Size GetSize(SizeContext context, char value, ref object? writeState)
     {
-        Span<char> spanValue = [value];
+        ReadOnlySpan<char> spanValue = [value];
         return encoding.GetByteCount(spanValue);
     }
 
     protected override void WriteCore(PgWriter writer, char value)
     {
-        Span<char> spanValue = [value];
-        writer.WriteChars(spanValue, encoding);
+        ReadOnlySpan<char> spanValue = [value];
+        writer.WriteChars(spanValue, encoding, writer.Current.Size.Kind == SizeKind.Exact ? writer.Current.Size.Value : null);
     }
 }
 
