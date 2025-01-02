@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConverter<T>
+abstract class StringBasedTextConverter<T>(Encoding encoding, bool nested = true) : PgStreamingConverter<T>
 {
     public override T Read(PgReader reader)
         => Read(async: false, reader, encoding).GetAwaiter().GetResult();
@@ -23,10 +23,10 @@ abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConve
         => TextConverter.GetSize(ref context, ConvertTo(value), encoding);
 
     public override void Write(PgWriter writer, T value)
-        => writer.WriteChars(ConvertTo(value).Span, encoding, writer.Current.Size.Kind == SizeKind.Exact ? writer.Current.Size.Value : null);
+        => writer.WriteChars(ConvertTo(value).Span, encoding, !nested ? writer.Current.Size.Value : null);
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => writer.WriteCharsAsync(ConvertTo(value), encoding, writer.Current.Size.Kind == SizeKind.Exact ? writer.Current.Size.Value : null, cancellationToken : cancellationToken);
+        => writer.WriteCharsAsync(ConvertTo(value), encoding, !nested ? writer.Current.Size.Value : null, cancellationToken : cancellationToken);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
@@ -49,13 +49,13 @@ abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConve
     }
 }
 
-sealed class ReadOnlyMemoryTextConverter(Encoding encoding) : StringBasedTextConverter<ReadOnlyMemory<char>>(encoding)
+sealed class ReadOnlyMemoryTextConverter(Encoding encoding, bool nested = true) : StringBasedTextConverter<ReadOnlyMemory<char>>(encoding, nested)
 {
     protected override ReadOnlyMemory<char> ConvertTo(ReadOnlyMemory<char> value) => value;
     protected override ReadOnlyMemory<char> ConvertFrom(string value) => value.AsMemory();
 }
 
-sealed class StringTextConverter(Encoding encoding) : StringBasedTextConverter<string>(encoding)
+sealed class StringTextConverter(Encoding encoding, bool nested = true) : StringBasedTextConverter<string>(encoding, nested)
 {
     protected override ReadOnlyMemory<char> ConvertTo(string value) => value.AsMemory();
     protected override string ConvertFrom(string value) => value;
@@ -122,7 +122,7 @@ sealed class CharArrayTextConverter(Encoding encoding) : ArrayBasedTextConverter
     }
 }
 
-sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
+sealed class CharTextConverter(Encoding encoding, bool nested = true) : PgBufferedConverter<char>
 {
     readonly Size _oneCharMaxByteCount = Size.CreateUpperBound(encoding.GetMaxByteCount(1));
 
@@ -156,7 +156,7 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
     protected override void WriteCore(PgWriter writer, char value)
     {
         ReadOnlySpan<char> spanValue = [value];
-        writer.WriteChars(spanValue, encoding, writer.Current.Size.Kind == SizeKind.Exact ? writer.Current.Size.Value : null);
+        writer.WriteChars(spanValue, encoding, !nested ? writer.Current.Size.Value : null);
     }
 }
 

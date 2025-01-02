@@ -108,7 +108,7 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<char[]>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding, nested: false), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
 
@@ -121,7 +121,7 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
                     static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding),
                         preferredFormat: DataFormat.Text));
                 mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding),
+                    static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding, nested: false),
                         preferredFormat: DataFormat.Text));
                 mappings.AddStructType<ArraySegment<char>>(dataTypeName,
                     static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding),
