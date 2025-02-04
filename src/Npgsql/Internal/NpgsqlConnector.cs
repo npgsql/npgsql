@@ -2204,10 +2204,25 @@ public sealed partial class NpgsqlConnector
     /// Closes the socket and cleans up client-side resources associated with this connector.
     /// </summary>
     /// <remarks>
-    /// This method doesn't actually perform any meaningful I/O, and therefore is sync-only.
+    /// This method doesn't actually perform any meaningful I/O (except sending TLS alert), and therefore is sync-only.
     /// </remarks>
     void Cleanup()
     {
+        if (_stream is SslStream sslStream)
+        {
+            try
+            {
+                // Send close_notify TLS alert to correctly close connection on postgres's side
+                sslStream.ShutdownAsync().GetAwaiter().GetResult();
+                // Theoretically we should do a 0 read here to receive server's close_notify alert
+                // But overall it doesn't look like it makes much of a difference
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
         try
         {
             _stream?.Dispose();
