@@ -73,10 +73,11 @@ public readonly struct TypeInfoMapping(Type type, string dataTypeName, TypeInfoF
     public bool TypeEquals(Type type) => TypeMatchPredicate?.Invoke(type) ?? Type == type;
     public bool DataTypeNameEquals(string dataTypeName)
     {
+        var norm = Postgres.DataTypeName.NormalizeName(dataTypeName);
         var span = DataTypeName.AsSpan();
         return Postgres.DataTypeName.IsFullyQualified(span)
-            ? span.Equals(dataTypeName.AsSpan(), StringComparison.Ordinal)
-            : span.Equals(Postgres.DataTypeName.ValidatedName(dataTypeName).UnqualifiedNameSpan, StringComparison.Ordinal);
+            ? span.Equals(norm.AsSpan(), StringComparison.Ordinal)
+            : span.Equals(Postgres.DataTypeName.ValidatedName(norm).UnqualifiedNameSpan, StringComparison.Ordinal);
     }
 
     string DebuggerDisplay
