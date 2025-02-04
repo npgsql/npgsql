@@ -2209,6 +2209,7 @@ public sealed partial class NpgsqlConnector
     /// </remarks>
     void Cleanup()
     {
+#if !NETSTANDARD2_0
         if (_stream is SslStream sslStream)
         {
             try
@@ -2223,6 +2224,7 @@ public sealed partial class NpgsqlConnector
                 // ignored
             }
         }
+#endif
 
         try
         {
