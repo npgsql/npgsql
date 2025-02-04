@@ -201,7 +201,10 @@ public abstract class TestBase
         if (dotIndex > -1 && dataTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
             dataTypeName = dataTypeName.Substring(dotIndex + 1);
 
-        Assert.That(dataTypeName, Is.EqualTo(pgTypeName),
+        // For composite type with dots, postgres works only with quoted name - scheme."My.type.name"
+        // but npgsql converts it to name without quotes
+        var pgTypeNameWithoutQuotes = dataTypeName.Replace("\"", string.Empty);
+        Assert.That(dataTypeName, Is.EqualTo(pgTypeNameWithoutQuotes),
             $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
 
         if (isDefault)
@@ -300,9 +303,12 @@ public abstract class TestBase
         }
 
         // With data type name
-        p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacets };
+        // For composite type with dots in name, Postgresql returns name with quotes - scheme."My.type.name"
+        // but for npgsql mapping we should use names without quotes - scheme.My.type.name
+        var pgTypeNameWithoutFacetsAndDots = pgTypeNameWithoutFacets.Replace("\"", string.Empty);
+        p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacetsAndDots };
         cmd.Parameters.Add(p);
-        errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacets}";
+        errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacetsAndDots}";
         CheckInference();
 
         // With DbType
