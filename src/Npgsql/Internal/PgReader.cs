@@ -744,10 +744,10 @@ public class PgReader
         => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
     public bool ShouldBuffer(int byteCount)
     {
-        return _buffer.ReadBytesLeft < byteCount && ShouldBufferSlow();
+        return _buffer.ReadBytesLeft < byteCount && ShouldBufferSlow(byteCount);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        bool ShouldBufferSlow()
+        bool ShouldBufferSlow(int byteCount)
         {
             if (byteCount > _buffer.Size)
                 ThrowHelper.ThrowArgumentOutOfRangeException(nameof(byteCount),
