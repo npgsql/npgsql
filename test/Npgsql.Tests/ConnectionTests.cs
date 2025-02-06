@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -311,6 +312,38 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         var cts = new CancellationTokenSource(1000);
         Assert.That(async () => await conn.OpenAsync(cts.Token), Throws.Exception.TypeOf<OperationCanceledException>());
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+    }
+
+    [Test]
+    public void Bad_hostname()
+    {
+        using var dataSource = CreateDataSource(csb => csb.Host = "hostname.that.does.not.exist");
+        using var conn = dataSource.CreateConnection();
+
+        Assert.That(
+            () => conn.Open(),
+            Throws.Exception
+                .TypeOf<NpgsqlException>()
+                .With
+                .Property(nameof(NpgsqlException.InnerException))
+                .TypeOf<SocketException>()
+        );
+    }
+
+    [Test]
+    public void Bad_hostname_async()
+    {
+        using var dataSource = CreateDataSource(csb => csb.Host = "hostname.that.does.not.exist");
+        using var conn = dataSource.CreateConnection();
+
+        Assert.That(
+            async () => await conn.OpenAsync(),
+            Throws.Exception
+                .TypeOf<NpgsqlException>()
+                .With
+                .Property(nameof(NpgsqlException.InnerException))
+                .TypeOf<SocketException>()
+        );
     }
 
     #endregion
