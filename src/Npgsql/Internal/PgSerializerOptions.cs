@@ -48,7 +48,7 @@ public sealed class PgSerializerOptions
     internal NpgsqlDatabaseInfo DatabaseInfo { get; }
 
     public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
-    public Encoding TextEncoding { get; init; } = Encoding.UTF8;
+    public Encoding TextEncoding { get; init; } = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
     public IPgTypeInfoResolver TypeInfoResolver
     {
         get => _typeInfoResolver ??= new ChainTypeInfoResolver(_resolverChain);

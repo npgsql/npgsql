@@ -42,7 +42,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
                 return null;
 
-            return new PgTypeInfo(options, new StringTextConverter(options.TextEncoding), dataTypeName,
+            return new PgTypeInfo(options, StringTextConverter.Create(options.TextEncoding), dataTypeName,
                 unboxedType: type == typeof(object) ? typeof(string) : null);
         }
 
@@ -76,7 +76,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Text
             // Update PgSerializerOptions.IsWellKnownTextType(Type) after any changes to this list.
             mappings.AddType<string>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, StringTextConverter.Create(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             // Uses the bytea converters, as neither type has a header.
@@ -103,7 +103,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         DataTypeNames.Xml, DataTypeNames.Name, DataTypeNames.RefCursor })
             {
                 mappings.AddType<string>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                    static (options, mapping, _) => mapping.CreateInfo(options, StringTextConverter.Create(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
                 mappings.AddStructType<char>(dataTypeName,
                     static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
                 // Uses the bytea converters, as neither type has a header.
@@ -128,7 +128,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Jsonb
             const byte jsonbVersion = 1;
             mappings.AddType<string>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonbVersion, new StringTextConverter(options.TextEncoding))), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonbVersion, StringTextConverter.Create(options.TextEncoding))), isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Jsonb,
                 static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<char>(jsonbVersion, new CharTextConverter(options.TextEncoding))));
             mappings.AddType<byte[]>(DataTypeNames.Jsonb,
@@ -151,7 +151,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Jsonpath
             const byte jsonpathVersion = 1;
             mappings.AddType<string>(DataTypeNames.Jsonpath,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonpathVersion, new StringTextConverter(options.TextEncoding))), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonpathVersion, StringTextConverter.Create(options.TextEncoding))), isDefault: true);
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Jsonpath,
                 static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<TextReader>(jsonpathVersion, new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
@@ -271,7 +271,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Unknown
             mappings.AddType<string>(DataTypeNames.Unknown,
-                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
+                static (options, mapping, _) => mapping.CreateInfo(options, StringTextConverter.Create(options.TextEncoding), preferredFormat: DataFormat.Text),
                 MatchRequirement.DataTypeName);
 
             // Void
@@ -517,7 +517,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             var mappings = new TypeInfoMappingCollection();
             mappings.AddType<string>(enumType.DataTypeName,
-                (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding)), MatchRequirement.DataTypeName);
+                (options, mapping, _) => mapping.CreateInfo(options, StringTextConverter.Create(options.TextEncoding)), MatchRequirement.DataTypeName);
             mappings.AddArrayType<string>(enumType.DataTypeName);
             return mappings.Find(type, dataTypeName, options);
         }
