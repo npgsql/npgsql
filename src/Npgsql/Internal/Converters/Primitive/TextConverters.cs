@@ -55,8 +55,38 @@ sealed class ReadOnlyMemoryTextConverter(Encoding encoding) : StringBasedTextCon
     protected override ReadOnlyMemory<char> ConvertFrom(string value) => value.AsMemory();
 }
 
+sealed class StringUtf8TextConverter(UTF8EncodingNoBom encoding) : PgStreamingConverter<string>
+{
+    public override string Read(PgReader reader)
+        => encoding.GetString(reader.ReadBytes(reader.CurrentRemaining));
+
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+    public async override ValueTask<string> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false));
+
+    public override Size GetSize(SizeContext context, string value, ref object? writeState)
+        => encoding.GetByteCount(value);
+
+    public override void Write(PgWriter writer, string value)
+        => writer.WriteChars(value, encoding);
+
+    public override ValueTask WriteAsync(PgWriter writer, string value, CancellationToken cancellationToken = default)
+        => writer.WriteCharsAsync(value.AsMemory(), encoding, cancellationToken: cancellationToken);
+
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.None;
+        return format is DataFormat.Binary or DataFormat.Text;
+    }
+}
+
 sealed class StringTextConverter(Encoding encoding) : StringBasedTextConverter<string>(encoding)
 {
+    public static PgStreamingConverter<string> Create(Encoding encoding)
+        => encoding is UTF8EncodingNoBom utf8nobom ?
+            new StringUtf8TextConverter(utf8nobom) :
+            new StringTextConverter(encoding);
+
     protected override ReadOnlyMemory<char> ConvertTo(string value) => value.AsMemory();
     protected override string ConvertFrom(string value) => value;
 }
