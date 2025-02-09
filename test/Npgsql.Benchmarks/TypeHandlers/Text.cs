@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
-public class Text() : TypeHandlerBenchmarks<string>(StringTextConverter.Create(NpgsqlWriteBuffer.UTF8Encoding))
+public class Text() : TypeHandlerBenchmarks<string>(new StringTextConverter(NpgsqlWriteBuffer.UTF8Encoding))
 {
     protected override IEnumerable<string> ValuesOverride()
     {
