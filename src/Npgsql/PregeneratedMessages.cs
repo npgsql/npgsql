@@ -26,7 +26,7 @@ static class PregeneratedMessages
     {
         NpgsqlWriteBuffer.AssertASCIIOnly(query);
 
-        var queryByteLen = Encoding.ASCII.GetByteCount(query);
+        var queryByteLen = buf.TextEncoding.GetByteCount(query);
 
         buf.WriteByte(FrontendMessageCode.Query);
         buf.WriteInt32(4 +            // Message length (including self excluding code)
