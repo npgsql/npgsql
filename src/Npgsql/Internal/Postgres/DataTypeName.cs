@@ -96,28 +96,26 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     // Manual testing on PG confirmed it's only the first occurence of 'range' that gets replaced.
     public DataTypeName ToDefaultMultirangeName()
     {
-        var unqualifiedNameSpan = UnqualifiedNameSpan;
+        var nameSpan = UnqualifiedNameSpan;
         if (UnqualifiedNameSpan.IndexOf("multirange".AsSpan(), StringComparison.Ordinal) != -1)
             return this;
 
-        var rangeIndex = unqualifiedNameSpan.IndexOf("range", StringComparison.Ordinal);
+        var rangeIndex = nameSpan.IndexOf("range", StringComparison.Ordinal);
         if (rangeIndex != -1)
         {
-            ReadOnlySpan<char> str = string.Concat(unqualifiedNameSpan.Slice(0, rangeIndex), "multirange", unqualifiedNameSpan.Slice(rangeIndex + "range".Length));
+            ReadOnlySpan<char> str = string.Concat(nameSpan.Slice(0, rangeIndex), "multirange", nameSpan.Slice(rangeIndex + "range".Length));
 
-            if (unqualifiedNameSpan.Length + "multi".Length > NAMEDATALEN)
-                str = str.Slice(0, NAMEDATALEN - "multi".Length);
+            if (str.Length > NAMEDATALEN)
+                str = str.Slice(0, NAMEDATALEN);
 
             return new(string.Concat(Schema, ".", str));
         }
         else
         {
-            var str = unqualifiedNameSpan;
+            if (nameSpan.Length + "_multirange".Length > NAMEDATALEN)
+                nameSpan = nameSpan.Slice(0, NAMEDATALEN - "_multirange".Length);
 
-            if (str.Length + "multi".Length > NAMEDATALEN)
-                str = str.Slice(0, NAMEDATALEN - "_multirange".Length);
-
-            return new(string.Concat(Schema, ".", str, "_multirange"));
+            return new(string.Concat(Schema, ".", nameSpan, "_multirange"));
         }
     }
 
