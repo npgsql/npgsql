@@ -2,10 +2,12 @@
 using Npgsql.Internal.Converters;
 using System.Collections.Generic;
 using System.Text;
+using BenchmarkDotNet.Attributes;
 
 namespace Npgsql.Benchmarks.TypeHandlers;
 
-public class Text() : TypeHandlerBenchmarks<string>(StringTextConverter.Create(NpgsqlWriteBuffer.UTF8Encoding))
+[Config(typeof(Config))]
+public class Text() : TypeHandlerBenchmarks<string>(new StringTextConverter(NpgsqlWriteBuffer.UTF8Encoding))
 {
     protected override IEnumerable<string> ValuesOverride()
     {
