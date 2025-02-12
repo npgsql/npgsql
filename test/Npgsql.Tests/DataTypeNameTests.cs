@@ -23,4 +23,18 @@ public class DataTypeNameTests
         var exception = Assert.Throws<ArgumentException>(() => new DataTypeName(fullyQualifiedDataTypeName));
         Assert.That(exception!.Message, Does.EndWith($": public.{new string('a', DataTypeName.NAMEDATALEN)}"));
     }
+
+    [TestCase("public.multirange", ExpectedResult = "public.multirange")]
+    [TestCase("public.abcmultirange123", ExpectedResult = "public.abcmultirange123")]
+    [TestCase("public.multiRANGE", ExpectedResult = "public.multiRANGE_multirange")]
+    public string ToDefaultMultirangeNameHasMultiRange(string name)
+        => new DataTypeName(name).ToDefaultMultirangeName();
+
+    [TestCase("public.range", ExpectedResult = "public.multirange")]
+    [TestCase("public.abcrange123", ExpectedResult = "public.abcmultirange123")]
+    [TestCase("public.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaarange", ExpectedResult = "public.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaamultirange")] // Replace goes to max length
+    [TestCase("public.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaarange1", ExpectedResult = "public.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaamultir")] // Replace goes over max length
+    [TestCase("public.RANGE", ExpectedResult = "public.RANGE_multirange")]
+    public string ToDefaultMultirangeNameHasRange(string name)
+        => new DataTypeName(name).ToDefaultMultirangeName();
 }
