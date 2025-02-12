@@ -24,6 +24,12 @@ public class DataTypeNameTests
         Assert.That(exception!.Message, Does.EndWith($": public.{new string('a', DataTypeName.NAMEDATALEN)}"));
     }
 
+    [TestCase("public.name", ExpectedResult = "public._name")]
+    [TestCase("public._name", ExpectedResult = "public._name")]
+    [TestCase("public.zzzaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa123", ExpectedResult = "public._zzzaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa12")]
+    public string ToArrayName(string name)
+        => new DataTypeName(name).ToArrayName();
+
     [TestCase("public.multirange", ExpectedResult = "public.multirange")]
     [TestCase("public.abcmultirange123", ExpectedResult = "public.abcmultirange123")]
     [TestCase("public.multiRANGE", ExpectedResult = "public.multiRANGE_multirange")]
