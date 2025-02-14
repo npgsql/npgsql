@@ -130,7 +130,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         var schemaEndIndex = displayNameSpan.IndexOf('.');
         if (schemaEndIndex is not -1 &&
             string.IsNullOrEmpty(schema) &&
-            !displayNameSpan.Slice(schemaEndIndex).StartsWith("_".AsSpan(), StringComparison.Ordinal) &&
+            !displayNameSpan.Slice(schemaEndIndex + 1).StartsWith("_".AsSpan(), StringComparison.Ordinal) &&
             !displayNameSpan.EndsWith("[]".AsSpan(), StringComparison.Ordinal))
             return new(displayName);
 

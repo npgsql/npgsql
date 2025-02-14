@@ -43,4 +43,23 @@ public class DataTypeNameTests
     [TestCase("public.RANGE", ExpectedResult = "public.RANGE_multirange")]
     public string ToDefaultMultirangeNameHasRange(string name)
         => new DataTypeName(name).ToDefaultMultirangeName();
+
+    [TestCase("public.name", null, ExpectedResult = "public.name")]
+    [TestCase("public.name ", null, ExpectedResult = "public.name ")]
+    [TestCase("public._name", null, ExpectedResult = "public._name")]
+    [TestCase("public.name[]", null, ExpectedResult = "public._name")]
+    [TestCase("public.integer", null, ExpectedResult = "public.integer")]
+    [TestCase("name", null, ExpectedResult = "pg_catalog.name")]
+    [TestCase("_name", null, ExpectedResult = "pg_catalog._name")]
+    [TestCase("name[]", null, ExpectedResult = "pg_catalog._name")]
+    [TestCase("character varying", null, ExpectedResult = "pg_catalog.varchar")]
+    [TestCase("decimal(facet_name)", null, ExpectedResult = "pg_catalog.numeric")]
+    [TestCase("name", "public", ExpectedResult = "public.name")]
+    [TestCase("name ", "public", ExpectedResult = "public.name")]
+    [TestCase("_name", "public", ExpectedResult = "public._name")]
+    [TestCase("name[]", "public", ExpectedResult = "public._name")]
+    [TestCase("timestamp with time zone", "public", ExpectedResult = "public.timestamptz")]
+    [TestCase("boolean(facet_name)", "public", ExpectedResult = "public.bool")]
+    public string FromDisplayName(string name, string schema)
+    => DataTypeName.FromDisplayName(name, schema).Value;
 }
