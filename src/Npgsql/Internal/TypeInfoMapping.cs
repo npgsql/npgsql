@@ -71,12 +71,25 @@ public readonly struct TypeInfoMapping(Type type, string dataTypeName, TypeInfoF
     public Func<Type?, bool>? TypeMatchPredicate { get; init; }
 
     public bool TypeEquals(Type type) => TypeMatchPredicate?.Invoke(type) ?? Type == type;
-    public bool DataTypeNameEquals(string dataTypeName)
+
+    private bool DataTypeNameEqualsCore(string dataTypeName)
     {
         var span = DataTypeName.AsSpan();
         return Postgres.DataTypeName.IsFullyQualified(span)
             ? span.Equals(dataTypeName.AsSpan(), StringComparison.Ordinal)
             : span.Equals(Postgres.DataTypeName.ValidatedName(dataTypeName).UnqualifiedNameSpan, StringComparison.Ordinal);
+    }
+
+    internal bool DataTypeNameEquals(DataTypeName dataTypeName)
+    {
+        var value = dataTypeName.Value;
+        return DataTypeNameEqualsCore(value);
+    }
+
+    public bool DataTypeNameEquals(string dataTypeName)
+    {
+        var normalized = Postgres.DataTypeName.NormalizeName(dataTypeName);
+        return DataTypeNameEqualsCore(normalized);
     }
 
     string DebuggerDisplay
@@ -125,7 +138,7 @@ public sealed class TypeInfoMappingCollection
         {
             var looseTypeMatch = mapping.TypeMatchPredicate is { } pred ? pred(type) : type is null || mapping.Type == type;
             var typeMatch = type is not null && looseTypeMatch;
-            var dataTypeMatch = dataTypeName is not null && mapping.DataTypeNameEquals(dataTypeName.Value.Value);
+            var dataTypeMatch = dataTypeName is not null && mapping.DataTypeNameEquals(dataTypeName.Value);
 
             var matchRequirement = mapping.MatchRequirement;
             if (dataTypeMatch && typeMatch
