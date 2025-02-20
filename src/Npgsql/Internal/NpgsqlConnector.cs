@@ -2209,6 +2209,19 @@ public sealed partial class NpgsqlConnector
             }
         }
 
+        // After we access SslStream.RemoteCertificate (like for SASLSha256Plus)
+        // SslStream will no longer dispose it for us automatically
+        // Which is why we have to do it ourselves before disposing the stream
+        // As otherwise accessing RemoteCertificate will throw an exception
+        try
+        {
+            sslStream?.RemoteCertificate?.Dispose();
+        }
+        catch
+        {
+            // ignored
+        }
+
         try
         {
             _stream?.Dispose();
@@ -2216,21 +2229,6 @@ public sealed partial class NpgsqlConnector
         catch
         {
             // ignored
-        }
-
-        // After we access SslStream.RemoteCertificate (like for SASLSha256Plus)
-        // SslStream will no longer dispose it for us automatically
-        // Which is why we have to do it ourselves
-        if (sslStream?.RemoteCertificate is not null)
-        {
-            try
-            {
-                sslStream.RemoteCertificate.Dispose();
-            }
-            catch
-            {
-                // ignored
-            }
         }
 
         if (CurrentReader != null)
