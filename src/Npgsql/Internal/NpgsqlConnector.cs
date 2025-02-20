@@ -2193,7 +2193,8 @@ public sealed partial class NpgsqlConnector
     /// </remarks>
     void Cleanup()
     {
-        if (_stream is SslStream sslStream)
+        var sslStream = _stream as SslStream;
+        if (sslStream is not null)
         {
             try
             {
@@ -2215,6 +2216,21 @@ public sealed partial class NpgsqlConnector
         catch
         {
             // ignored
+        }
+
+        // After we access SslStream.RemoteCertificate (like for SASLSha256Plus)
+        // SslStream will no longer dispose it for us automatically
+        // Which is why we have to do it ourselves
+        if (sslStream?.RemoteCertificate is not null)
+        {
+            try
+            {
+                sslStream.RemoteCertificate.Dispose();
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         if (CurrentReader != null)

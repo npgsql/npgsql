@@ -190,13 +190,15 @@ partial class NpgsqlConnector
             throw new NpgsqlException("Server offered SCRAM-SHA-256-PLUS authentication over a non-SSL connection");
 
         var sslStream = (SslStream)_stream;
-        if (sslStream.RemoteCertificate is null)
+        // The remote certificate we get here is actually X509Certificate2
+        // So just do a cast instead of creating another instance
+        var remoteCertificate = (X509Certificate2?)sslStream.RemoteCertificate;
+        if (remoteCertificate is null)
         {
             ConnectionLogger.LogWarning("Remote certificate null, falling back to SCRAM-SHA-256");
             return;
         }
 
-        using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
         // Checking for hashing algorithms
         HashAlgorithm? hashAlgorithm = null;
         var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
