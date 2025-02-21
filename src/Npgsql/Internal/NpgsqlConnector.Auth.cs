@@ -196,6 +196,8 @@ partial class NpgsqlConnector
             return;
         }
 
+        // While SslStream.RemoteCertificate is X509Certificate2, it actually returns X509Certificate2
+        // But to be on the safe side we'll just create a new instance of it
         using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
         // Checking for hashing algorithms
         HashAlgorithm? hashAlgorithm = null;
