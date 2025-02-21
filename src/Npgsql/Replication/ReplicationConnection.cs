@@ -237,8 +237,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         SetTimeouts(CommandTimeout, CommandTimeout);
 
-        _npgsqlConnection.Connector!.LongRunningConnection = true;
-
         ReplicationLogger = _npgsqlConnection.Connector!.LoggingConfiguration.ReplicationLogger;
     }
 
