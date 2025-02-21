@@ -95,7 +95,7 @@ partial class NpgsqlConnector
         if (clientSupportsSha256Plus)
             DataSource.TransportSecurityHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 
-        if (!successfulBind && serverSupportsSha256)
+        if (!successfulBind && clientSupportsSha256)
         {
             mechanism = "SCRAM-SHA-256";
             // We can get here if PostgreSQL supports only SCRAM-SHA-256 or there was an error while binding to SCRAM-SHA-256-PLUS
