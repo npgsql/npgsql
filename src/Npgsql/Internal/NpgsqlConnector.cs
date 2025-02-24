@@ -1676,12 +1676,12 @@ public sealed partial class NpgsqlConnector
     internal bool IsSecure { get; private set; }
 
     /// <summary>
-    /// Returns whether SCRAM-SHA256 is being user for the connection
+    /// Returns whether SCRAM-SHA256 is being used for the connection
     /// </summary>
     internal bool IsScram { get; private set; }
 
     /// <summary>
-    /// Returns whether SCRAM-SHA256-PLUS is being user for the connection
+    /// Returns whether SCRAM-SHA256-PLUS is being used for the connection
     /// </summary>
     internal bool IsScramPlus { get; private set; }
 
