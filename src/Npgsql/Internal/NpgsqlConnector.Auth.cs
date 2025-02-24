@@ -71,10 +71,10 @@ partial class NpgsqlConnector
     {
         // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
         var serverSupportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
-        var clientSupportsSha256 = serverSupportsSha256 && Settings.ChannelBinding != ChannelBinding.Require;
+        var allowSha256 = serverSupportsSha256 && Settings.ChannelBinding != ChannelBinding.Require;
         var serverSupportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
-        var clientSupportsSha256Plus = serverSupportsSha256Plus && Settings.ChannelBinding != ChannelBinding.Disable;
-        if (!clientSupportsSha256 && !clientSupportsSha256Plus)
+        var allowSha256Plus = serverSupportsSha256Plus && Settings.ChannelBinding != ChannelBinding.Disable;
+        if (!allowSha256 && !allowSha256Plus)
         {
             if (serverSupportsSha256 && Settings.ChannelBinding == ChannelBinding.Require)
                 throw new NpgsqlException($"Couldn't connect because {nameof(ChannelBinding)} is set to {nameof(ChannelBinding.Require)} " +
@@ -92,10 +92,10 @@ partial class NpgsqlConnector
         var cbind = string.Empty;
         var successfulBind = false;
 
-        if (clientSupportsSha256Plus)
+        if (allowSha256Plus)
             DataSource.TransportSecurityHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 
-        if (!successfulBind && serverSupportsSha256)
+        if (!successfulBind && allowSha256)
         {
             mechanism = "SCRAM-SHA-256";
             // We can get here if PostgreSQL supports only SCRAM-SHA-256 or there was an error while binding to SCRAM-SHA-256-PLUS
