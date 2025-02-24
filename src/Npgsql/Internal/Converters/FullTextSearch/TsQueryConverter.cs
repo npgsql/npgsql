@@ -180,7 +180,7 @@ sealed class TsQueryConverter<T>(Encoding encoding) : PgStreamingConverter<T>
                 writer.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
 
                 if (async)
-                    await writer.WriteCharsAsync(lexemeNode.Text.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
+                    await writer.WriteCharsAsync(lexemeNode.Text.AsMemory(), encoding, cancellationToken: cancellationToken).ConfigureAwait(false);
                 else
                     writer.WriteChars(lexemeNode.Text.AsMemory().Span, encoding);
 
