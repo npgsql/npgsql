@@ -678,7 +678,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     {
         if (_lastStream is not { IsDisposed: true })
             _lastStream = new ColumnStream(Connector);
-        _lastStream.Init(len, canSeek, !Connector.LongRunningConnection, consumeOnDispose);
+        _lastStream.Init(len, canSeek, Connector.Settings.ReplicationMode == ReplicationMode.Off, consumeOnDispose);
         return _lastStream;
     }
 

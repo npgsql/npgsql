@@ -182,9 +182,6 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     volatile Exception? _breakReason;
 
-    // Used by replication to change our cancellation behaviour on ColumnStreams.
-    internal bool LongRunningConnection { get; set; }
-
     /// <summary>
     /// <para>
     /// Used by the pool to indicate that I/O is currently in progress on this connector, so that another write
@@ -2399,7 +2396,6 @@ public sealed partial class NpgsqlConnector
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void ResetReadBuffer()
     {
-        LongRunningConnection = false;
         if (_origReadBuffer != null)
         {
             Debug.Assert(_origReadBuffer.ReadBytesLeft == 0);
