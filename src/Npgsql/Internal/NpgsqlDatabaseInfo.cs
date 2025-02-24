@@ -241,9 +241,9 @@ public abstract class NpgsqlDatabaseInfo
             ByFullName[type.DataTypeName.Value] = type;
             // If more than one type exists with the same partial name, we place a null value.
             // This allows us to detect this case later and force the user to use full names only.
-            ByName[type.InternalName] = ByName.ContainsKey(type.InternalName)
-                ? null
-                : type;
+            var typeInternalName = type.InternalName;
+            if (!ByName.TryAdd(typeInternalName, type))
+                ByName[typeInternalName] = null;
 
             switch (type)
             {
