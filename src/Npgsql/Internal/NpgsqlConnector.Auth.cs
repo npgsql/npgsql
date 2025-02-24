@@ -220,6 +220,18 @@ partial class NpgsqlConnector
         {
             hashAlgorithm = SHA512.Create();
         }
+        else if (algorithmName.StartsWith("sha3-256", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA3_256.Create();
+        }
+        else if (algorithmName.StartsWith("sha3-384", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA3_384.Create();
+        }
+        else if (algorithmName.StartsWith("sha3-512", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA3_512.Create();
+        }
         else
         {
             ConnectionLogger.LogWarning(
