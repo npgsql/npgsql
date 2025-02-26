@@ -17,7 +17,7 @@ namespace Npgsql.Internal;
 partial class NpgsqlConnector
 {
 
-    private const int MAX_AUTH_ATTEMPTS = 100;
+    private const int MAX_AUTH_ATTEMPTS = 10;
 
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
