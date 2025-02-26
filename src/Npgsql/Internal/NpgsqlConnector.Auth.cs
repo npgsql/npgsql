@@ -21,7 +21,7 @@ partial class NpgsqlConnector
 
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        // Connecting to PG through an intermediatary, such as PG bouncer, can sometimes cause the connection to require multiple nested authentications.
+        // Connecting to PG through an intermediatary, such as PgPool-II, can sometimes cause the connection to require multiple nested authentications.
         // Since we do not know how many times we need to authenticate, we do it in a loop until its no longer expected.
 
         var attempt = 0;
