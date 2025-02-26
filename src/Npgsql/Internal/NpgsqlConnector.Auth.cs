@@ -29,7 +29,7 @@ partial class NpgsqlConnector
         // https://github.com/dotnet/runtime/issues/112898
 
         var attempt = 0;
-        while (!timeout.HasExpired && !cancellationToken.IsCancellationRequested && attempt <= MAX_AUTH_ATTEMPTS)
+        while (attempt < MAX_AUTH_ATTEMPTS)
         {
             attempt++;
 
