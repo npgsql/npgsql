@@ -23,7 +23,10 @@ partial class NpgsqlConnector
     {
         // Connecting to PG through an intermediatary, such as PgPool-II, can sometimes cause the connection to require multiple nested authentications.
         // Since we do not know how many times we need to authenticate, we do it in a loop until its no longer expected.
-        // See https://github.com/npgsql/npgsql/pull/5006 + https://github.com/npgsql/npgsql/issues/6029 for details
+        // See the following issues for details
+        // https://github.com/npgsql/npgsql/pull/5006
+        // https://github.com/npgsql/npgsql/issues/6029
+        // https://github.com/dotnet/runtime/issues/112898
 
         var attempt = 0;
         while (!timeout.HasExpired && !cancellationToken.IsCancellationRequested && attempt <= MAX_AUTH_ATTEMPTS)
