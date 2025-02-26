@@ -16,42 +16,53 @@ namespace Npgsql.Internal;
 
 partial class NpgsqlConnector
 {
+
+    private const int MAX_AUTH_ATTEMPTS = 100;
+
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        while (true)
+        // Connecting to PG through an intermediatary, such as PG bouncer, can sometimes cause the connection to require multiple nested authentications.
+        // Since we do not know how many times we need to authenticate, we do it in a loop until its no longer expected.
+
+        var attempt = 0;
+        while (!timeout.HasExpired && !cancellationToken.IsCancellationRequested && attempt <= MAX_AUTH_ATTEMPTS)
         {
+            attempt++;
+
             timeout.CheckAndApply(this);
             var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
             switch (msg.AuthRequestType)
             {
-            case AuthenticationRequestType.Ok:
-                return;
+                case AuthenticationRequestType.Ok:
+                    return;
 
-            case AuthenticationRequestType.CleartextPassword:
-                await AuthenticateCleartext(username, async, cancellationToken).ConfigureAwait(false);
-                break;
+                case AuthenticationRequestType.CleartextPassword:
+                    await AuthenticateCleartext(username, async, cancellationToken).ConfigureAwait(false);
+                    break;
 
-            case AuthenticationRequestType.MD5Password:
-                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
-                break;
+                case AuthenticationRequestType.MD5Password:
+                    await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
+                    break;
 
-            case AuthenticationRequestType.SASL:
-                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
-                    cancellationToken).ConfigureAwait(false);
-                break;
+                case AuthenticationRequestType.SASL:
+                    await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
+                        cancellationToken).ConfigureAwait(false);
+                    break;
 
-            case AuthenticationRequestType.GSS:
-            case AuthenticationRequestType.SSPI:
-                await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this).ConfigureAwait(false);
-                return;
+                case AuthenticationRequestType.GSS:
+                case AuthenticationRequestType.SSPI:
+                    await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this).ConfigureAwait(false);
+                    return;
 
-            case AuthenticationRequestType.GSSContinue:
-                throw new NpgsqlException("Can't start auth cycle with AuthenticationGSSContinue");
+                case AuthenticationRequestType.GSSContinue:
+                    throw new NpgsqlException("Can't start auth cycle with AuthenticationGSSContinue");
 
-            default:
-                throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
+                default:
+                    throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
             }
         }
+
+        throw new NpgsqlException($"Authentication cycle timed out after {attempt} attempts.");
     }
 
     async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
