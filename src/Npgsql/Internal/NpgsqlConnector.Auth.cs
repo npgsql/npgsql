@@ -66,6 +66,7 @@ partial class NpgsqlConnector
             }
         }
 
+        // If we made it this far, authentication failed to occur within the specified timeout, or attempt limit.
         throw new NpgsqlException($"Authentication cycle timed out after {attempt} attempts.");
     }
 
