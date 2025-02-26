@@ -67,7 +67,7 @@ partial class NpgsqlConnector
         }
 
         // If we made it this far, authentication failed to occur within the specified timeout, or attempt limit.
-        throw new NpgsqlException($"Authentication cycle timed out after {attempt} attempts.");
+        throw new NpgsqlException($"Authentication cycle failed to complete successfully after {attempt} attempts.");
     }
 
     async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
