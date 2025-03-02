@@ -37,7 +37,7 @@ In this trace, the Npgsql query (to database testdb) took around 800ms, and was 
 >
 > This feature was introduced in Npgsql 9.0
 
-Once you've enabled Npgsql tracing as above, you can tweak its configuration via the <xref:Npgsql.NpgsqlDataSourceBuilder.ConfigureTracingOptions*?displayProperty=nameWithType> API:
+Once you've enabled Npgsql tracing as above, you can tweak its configuration via the <xref:Npgsql.NpgsqlDataSourceBuilder.ConfigureTracing*?displayProperty=nameWithType> API:
 
 ```csharp
 dataSourceBuilder.ConfigureTracing(o => o
@@ -56,7 +56,7 @@ This allows you to:
 
 ## Using `AsyncLocal` to pass arbitrary information to your callbacks
 
-The callbacks available via <xref:Npgsql.NpgsqlDataSourceBuilder.ConfigureTracingOptions*?displayProperty=nameWithType> only accept the <xref:Npgsql.NpgsqlCommand> or <xref:Npgsql.NpgsqlBatch> as their parameters; this makes it difficult to e.g. assign arbitrary names to your commands, so that show up as the span names in your tracing monitor. You can use .NET [`AsyncLocal`](https://learn.microsoft.com/dotnet/api/system.threading.asynclocal-1) to flow arbitrary information from the command call site (where you execute the command) to your tracing callbacks to achieve this.
+The callbacks available via <xref:Npgsql.NpgsqlDataSourceBuilder.ConfigureTracing*?displayProperty=nameWithType> only accept the <xref:Npgsql.NpgsqlCommand> or <xref:Npgsql.NpgsqlBatch> as their parameters; this makes it difficult to e.g. assign arbitrary names to your commands, so that show up as the span names in your tracing monitor. You can use .NET [`AsyncLocal`](https://learn.microsoft.com/dotnet/api/system.threading.asynclocal-1) to flow arbitrary information from the command call site (where you execute the command) to your tracing callbacks to achieve this.
 
 For example, the following adds an `ExecuteReaderWithSpanNameAsync` extension method to <xref:Npgsql.NpgsqlCommand>:
 
