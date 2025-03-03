@@ -1741,11 +1741,11 @@ CREATE TABLE record ()");
     }
 
     [Test]
-    public async Task Connect_with_sasl_auth()
+    public async Task Connect_with_md5_auth()
     {
         await using var dataSource = CreateDataSource(csb =>
         {
-            csb.RequireAuth = $"{RequireAuthMode.ScramSHA256}";
+            csb.RequireAuth = $"{RequireAuthMode.MD5}";
         });
         try
         {
@@ -1754,15 +1754,15 @@ CREATE TABLE record ()");
         catch (Exception e) when (!IsOnBuildServer)
         {
             Console.WriteLine(e);
-            Assert.Ignore("SASL authentication doesn't seem to be set up");
+            Assert.Ignore("MD5 authentication doesn't seem to be set up");
         }
     }
 
     [Test]
     [NonParallelizable] // Sets environment variable
-    public async Task Connect_with_sasl_auth_env()
+    public async Task Connect_with_md5_auth_env()
     {
-        using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"{RequireAuthMode.ScramSHA256}");
+        using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"{RequireAuthMode.MD5}");
         await using var dataSource = CreateDataSource();
         try
         {
@@ -1771,7 +1771,7 @@ CREATE TABLE record ()");
         catch (Exception e) when (!IsOnBuildServer)
         {
             Console.WriteLine(e);
-            Assert.Ignore("SASL authentication doesn't seem to be set up");
+            Assert.Ignore("MD5 authentication doesn't seem to be set up");
         }
     }
 
