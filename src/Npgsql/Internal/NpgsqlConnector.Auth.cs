@@ -18,9 +18,9 @@ partial class NpgsqlConnector
 {
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        var allowedAuthModes = Settings.AllowedAuthModes;
-        if (allowedAuthModes == default)
-            allowedAuthModes = NpgsqlConnectionStringBuilder.ParseAuthMode(PostgresEnvironment.RequireAuth);
+        var requiredAuthModes = Settings.RequireAuthModes;
+        if (requiredAuthModes == default)
+            requiredAuthModes = NpgsqlConnectionStringBuilder.ParseAuthMode(PostgresEnvironment.RequireAuth);
 
         var authenticated = false;
 
@@ -33,28 +33,28 @@ partial class NpgsqlConnector
             case AuthenticationRequestType.Ok:
                 // If we didn't complete authentication, check whether it's allowed
                 if (!authenticated)
-                    ThrowIfNotAllowed(allowedAuthModes, RequireAuthMode.None);
+                    ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.None);
                 return;
 
             case AuthenticationRequestType.CleartextPassword:
-                ThrowIfNotAllowed(allowedAuthModes, RequireAuthMode.Password);
+                ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.Password);
                 await AuthenticateCleartext(username, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.MD5Password:
-                ThrowIfNotAllowed(allowedAuthModes, RequireAuthMode.MD5);
+                ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.MD5);
                 await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.SASL:
-                ThrowIfNotAllowed(allowedAuthModes, RequireAuthMode.ScramSHA256);
+                ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.ScramSHA256);
                 await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
                     cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.GSS:
             case AuthenticationRequestType.SSPI:
-                ThrowIfNotAllowed(allowedAuthModes, msg.AuthRequestType == AuthenticationRequestType.GSS ? RequireAuthMode.GSS : RequireAuthMode.SSPI);
+                ThrowIfNotAllowed(requiredAuthModes, msg.AuthRequestType == AuthenticationRequestType.GSS ? RequireAuthMode.GSS : RequireAuthMode.SSPI);
                 await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this).ConfigureAwait(false);
                 return;
 
@@ -68,10 +68,10 @@ partial class NpgsqlConnector
             authenticated = true;
         }
 
-        static void ThrowIfNotAllowed(RequireAuthMode allowedAuthModes, RequireAuthMode requestedAuthMode)
+        static void ThrowIfNotAllowed(RequireAuthMode requiredAuthModes, RequireAuthMode requestedAuthMode)
         {
-            if (!allowedAuthModes.HasFlag(requestedAuthMode))
-                throw new NpgsqlException($"\"{requestedAuthMode}\" authentication method is not allowed. Allowed methods: {allowedAuthModes}");
+            if (!requiredAuthModes.HasFlag(requestedAuthMode))
+                throw new NpgsqlException($"\"{requestedAuthMode}\" authentication method is not allowed. Allowed methods: {requiredAuthModes}");
         }
     }
 

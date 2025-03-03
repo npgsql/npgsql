@@ -695,14 +695,14 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         get => _requireAuth;
         set
         {
-            AllowedAuthModes = ParseAuthMode(value);
+            RequireAuthModes = ParseAuthMode(value);
             _requireAuth = value;
             SetValue(nameof(RequireAuth), value);
         }
     }
     string? _requireAuth;
 
-    internal RequireAuthMode AllowedAuthModes { get; private set; }
+    internal RequireAuthMode RequireAuthModes { get; private set; }
 
     internal static RequireAuthMode ParseAuthMode(string? value)
     {

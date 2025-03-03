@@ -1807,7 +1807,7 @@ CREATE TABLE record ()");
         {
             RequireAuth = $"{RequireAuthMode.Password} , {RequireAuthMode.MD5}"
         };
-        Assert.That(csb.AllowedAuthModes, Is.EqualTo(RequireAuthMode.Password | RequireAuthMode.MD5));
+        Assert.That(csb.RequireAuthModes, Is.EqualTo(RequireAuthMode.Password | RequireAuthMode.MD5));
     }
 
     #endregion Require auth
