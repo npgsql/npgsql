@@ -704,15 +704,11 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     internal RequireAuthMode AllowedAuthModes { get; private set; }
 
-    const RequireAuthMode AllAuthModes = RequireAuthMode.Password | RequireAuthMode.MD5 |
-                                         RequireAuthMode.GSS | RequireAuthMode.SSPI |
-                                         RequireAuthMode.ScramSHA256 | RequireAuthMode.None;
-
     internal static RequireAuthMode ParseAuthMode(string? value)
     {
         var modes = value?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (modes is not { Length: > 0 })
-            return AllAuthModes;
+            return RequireAuthMode.All;
 
         var isNegative = false;
         RequireAuthMode parsedModes = default;
@@ -741,7 +737,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
 
         var allowedModes = isNegative
-            ? (RequireAuthMode)(AllAuthModes - parsedModes)
+            ? (RequireAuthMode)(RequireAuthMode.All - parsedModes)
             : parsedModes;
 
         if (allowedModes == default)
@@ -1831,7 +1827,11 @@ enum RequireAuthMode
     /// <summary>
     /// No authentication exchange.
     /// </summary>
-    None = 32
+    None = 32,
+    /// <summary>
+    /// All authentication methods.
+    /// </summary>
+    All = Password | MD5 | GSS | SSPI | ScramSHA256 | None
 }
 
 #endregion
