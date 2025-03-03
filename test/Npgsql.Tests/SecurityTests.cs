@@ -13,27 +13,27 @@ namespace Npgsql.Tests;
 public class SecurityTests : TestBase
 {
     [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
-    public void Basic_ssl()
+    public async Task Basic_ssl()
     {
-        using var dataSource = CreateDataSource(csb =>
+        await using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
         });
-        using var conn = dataSource.OpenConnection();
+        await using var conn = await dataSource.OpenConnectionAsync();
         Assert.That(conn.IsSecure, Is.True);
     }
 
     [Test, Description("Default user must run with md5 password encryption")]
-    public void Default_user_uses_md5_password()
+    public async Task Default_user_uses_md5_password()
     {
         if (!IsOnBuildServer)
             Assert.Ignore("Only executed in CI");
 
-        using var dataSource = CreateDataSource(csb =>
+        await using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
         });
-        using var conn = dataSource.OpenConnection();
+        await using var conn = await dataSource.OpenConnectionAsync();
         Assert.That(conn.IsScram, Is.False);
         Assert.That(conn.IsScramPlus, Is.False);
     }
