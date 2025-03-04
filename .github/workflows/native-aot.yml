@@ -15,7 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '9.0.100'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   AOT_Compat: |
     param([string]$targetFramework)
@@ -109,9 +108,6 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.3.0
-        with:
-          dotnet-version: |
-            ${{ env.dotnet_sdk_version }}
 
       - name: Write script
         run: echo "$AOT_Compat" > test-aot-compatibility.ps1
@@ -146,9 +142,6 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.3.0
-        with:
-          dotnet-version: |
-            ${{ env.dotnet_sdk_version }}
 
       - name: Start PostgreSQL
         run: |

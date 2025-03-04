@@ -15,7 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '9.0.100'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
@@ -70,9 +69,6 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.3.0
-        with:
-          dotnet-version: |
-            ${{ env.dotnet_sdk_version }}
 
       - name: Build
         run: dotnet build -c ${{ matrix.config }}
@@ -355,8 +351,6 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.3.0
-        with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
 
       - name: Pack
         run: dotnet pack Npgsql.sln --configuration Release --property:PackageOutputPath="$PWD/nupkgs" --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
@@ -389,8 +383,6 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.3.0
-        with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
 
       - name: Pack
         run: dotnet pack Npgsql.sln --configuration Release --property:PackageOutputPath="$PWD/nupkgs" -p:ContinuousIntegrationBuild=true      
