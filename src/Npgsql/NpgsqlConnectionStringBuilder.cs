@@ -683,6 +683,70 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     }
     ChannelBinding _channelBinding;
 
+    /// <summary>
+    /// Controls the available authentication methods.
+    /// </summary>
+    [Category("Security")]
+    [Description("Controls the available authentication methods.")]
+    [DisplayName("Require Auth")]
+    [NpgsqlConnectionStringProperty]
+    public string? RequireAuth
+    {
+        get => _requireAuth;
+        set
+        {
+            RequireAuthModes = ParseAuthMode(value);
+            _requireAuth = value;
+            SetValue(nameof(RequireAuth), value);
+        }
+    }
+    string? _requireAuth;
+
+    internal RequireAuthMode RequireAuthModes { get; private set; }
+
+    internal static RequireAuthMode ParseAuthMode(string? value)
+    {
+        var modes = value?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (modes is not { Length: > 0 })
+            return RequireAuthMode.All;
+
+        var isNegative = false;
+        RequireAuthMode parsedModes = default;
+        for (var i = 0; i < modes.Length; i++)
+        {
+            var mode = modes[i];
+            var modeToParse = mode.AsSpan();
+            if (mode.StartsWith('!'))
+            {
+                if (i > 0 && !isNegative)
+                    throw new ArgumentException("Mixing both positive and negative authentication methods is not supported");
+
+                modeToParse = modeToParse.Slice(1);
+                isNegative = true;
+            }
+            else
+            {
+                if (i > 0 && isNegative)
+                    throw new ArgumentException("Mixing both positive and negative authentication methods is not supported");
+            }
+
+            // Explicitly disallow 'All' as libpq doesn't have it
+            if (!Enum.TryParse<RequireAuthMode>(modeToParse, out var parsedMode) || parsedMode == RequireAuthMode.All)
+                throw new ArgumentException($"Unable to parse authentication method \"{modeToParse}\"");
+
+            parsedModes |= parsedMode;
+        }
+
+        var allowedModes = isNegative
+            ? (RequireAuthMode)(RequireAuthMode.All - parsedModes)
+            : parsedModes;
+
+        if (allowedModes == default)
+            throw new ArgumentException($"No authentication method is allowed. Check \"{nameof(RequireAuth)}\" in connection string.");
+
+        return allowedModes;
+    }
+
     #endregion
 
     #region Properties - Pooling
@@ -1733,6 +1797,42 @@ enum ReplicationMode
     /// Logical replication enabled
     /// </summary>
     Logical
+}
+
+/// <summary>
+/// Specifies which authentication methods are supported.
+/// </summary>
+[Flags]
+enum RequireAuthMode
+{
+    /// <summary>
+    /// Plaintext password.
+    /// </summary>
+    Password = 1,
+    /// <summary>
+    /// MD5 hashed password.
+    /// </summary>
+    MD5 = 2,
+    /// <summary>
+    /// Kerberos.
+    /// </summary>
+    GSS = 4,
+    /// <summary>
+    /// Windows SSPI.
+    /// </summary>
+    SSPI = 8,
+    /// <summary>
+    /// SASL.
+    /// </summary>
+    ScramSHA256 = 16,
+    /// <summary>
+    /// No authentication exchange.
+    /// </summary>
+    None = 32,
+    /// <summary>
+    /// All authentication methods. For internal use.
+    /// </summary>
+    All = Password | MD5 | GSS | SSPI | ScramSHA256 | None
 }
 
 #endregion

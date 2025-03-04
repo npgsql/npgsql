@@ -1679,6 +1679,139 @@ CREATE TABLE record ()");
 
     #endregion Physical connection initialization
 
+    #region Require auth
+
+    [Test]
+    public async Task Connect_with_any_auth()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.RequireAuth = $"{RequireAuthMode.Password},{RequireAuthMode.MD5},{RequireAuthMode.GSS},{RequireAuthMode.SSPI},{RequireAuthMode.ScramSHA256},{RequireAuthMode.None}";
+        });
+        await using var conn = await dataSource.OpenConnectionAsync();
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public async Task Connect_with_any_auth_env()
+    {
+        using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"{RequireAuthMode.Password},{RequireAuthMode.MD5},{RequireAuthMode.GSS},{RequireAuthMode.SSPI},{RequireAuthMode.ScramSHA256},{RequireAuthMode.None}");
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+    }
+
+    [Test]
+    public async Task Connect_with_any_except_none_auth()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.RequireAuth = $"!{RequireAuthMode.None}";
+        });
+        await using var conn = await dataSource.OpenConnectionAsync();
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public async Task Connect_with_any_except_none_auth_env()
+    {
+        using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"!{RequireAuthMode.None}");
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+    }
+
+    [Test]
+    public async Task Fail_connect_with_none_auth()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.RequireAuth = $"{RequireAuthMode.None}";
+        });
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+        Assert.That(ex.Message, Does.Contain("authentication method is not allowed"));
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public async Task Fail_connect_with_none_auth_env()
+    {
+        using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"{RequireAuthMode.None}");
+        await using var dataSource = CreateDataSource();
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+        Assert.That(ex.Message, Does.Contain("authentication method is not allowed"));
+    }
+
+    [Test]
+    public async Task Connect_with_md5_auth()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.RequireAuth = $"{RequireAuthMode.MD5}";
+        });
+        try
+        {
+            await using var conn = await dataSource.OpenConnectionAsync();
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("MD5 authentication doesn't seem to be set up");
+        }
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public async Task Connect_with_md5_auth_env()
+    {
+        using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"{RequireAuthMode.MD5}");
+        await using var dataSource = CreateDataSource();
+        try
+        {
+            await using var conn = await dataSource.OpenConnectionAsync();
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("MD5 authentication doesn't seem to be set up");
+        }
+    }
+
+    [Test]
+    public void Mixed_auth_methods_not_supported([Values(
+            $"{nameof(RequireAuthMode.ScramSHA256)},!{nameof(RequireAuthMode.None)}",
+            $"!{nameof(RequireAuthMode.ScramSHA256)},{nameof(RequireAuthMode.None)}")]
+            string authMethods)
+    {
+        var csb = new NpgsqlConnectionStringBuilder();
+        Assert.Throws<ArgumentException>(() => csb.RequireAuth = authMethods);
+    }
+
+    [Test]
+    public void Remove_all_auth_methods_throws()
+    {
+        var csb = new NpgsqlConnectionStringBuilder();
+        Assert.Throws<ArgumentException>(() =>
+            csb.RequireAuth = $"!{RequireAuthMode.Password},!{RequireAuthMode.MD5},!{RequireAuthMode.GSS},!{RequireAuthMode.SSPI},!{RequireAuthMode.ScramSHA256},!{RequireAuthMode.None}");
+    }
+
+    [Test]
+    public void Unknown_auth_method_throws()
+    {
+        var csb = new NpgsqlConnectionStringBuilder();
+        Assert.Throws<ArgumentException>(() => csb.RequireAuth = "SuperSecure");
+    }
+
+    [Test]
+    public void Auth_methods_are_trimmed()
+    {
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            RequireAuth = $"{RequireAuthMode.Password} , {RequireAuthMode.MD5}"
+        };
+        Assert.That(csb.RequireAuthModes, Is.EqualTo(RequireAuthMode.Password | RequireAuthMode.MD5));
+    }
+
+    #endregion Require auth
+
     [Test]
     [NonParallelizable] // Modifies global database info factories
     [IssueLink("https://github.com/npgsql/npgsql/issues/4425")]
