@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 
 env:
-  dotnet_sdk_version: '9.0.100'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
@@ -24,9 +23,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.1.0
-        with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
+        uses: actions/setup-dotnet@v4.3.0
 
       - name: Build
         run: dotnet build Npgsql.sln --configuration Debug
