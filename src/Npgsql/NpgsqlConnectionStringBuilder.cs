@@ -730,7 +730,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
                     throw new ArgumentException("Mixing both positive and negative authentication methods is not supported");
             }
 
-            if (!Enum.TryParse<RequireAuthMode>(modeToParse, out var parsedMode))
+            // Explicitly disallow 'All' as libpq doesn't have it
+            if (!Enum.TryParse<RequireAuthMode>(modeToParse, out var parsedMode) || parsedMode == RequireAuthMode.All)
                 throw new ArgumentException($"Unable to parse authentication method \"{modeToParse}\"");
 
             parsedModes |= parsedMode;
@@ -1829,7 +1830,7 @@ enum RequireAuthMode
     /// </summary>
     None = 32,
     /// <summary>
-    /// All authentication methods.
+    /// All authentication methods. For internal use.
     /// </summary>
     All = Password | MD5 | GSS | SSPI | ScramSHA256 | None
 }
