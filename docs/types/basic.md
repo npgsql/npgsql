@@ -66,7 +66,7 @@ multirange types (PG14)     | NpgsqlRange\<TElement>[]   |
 enum types                  | TEnum                      |
 array types                 | Array (of element type)    |
 
-<sup>1</sup>Types which can be read as `byte[]` can also be written as `ReadOnlyMemory<byte>` and `Stream`., and if they could be big, consider using `Stream`CommandBehavior.SequentialAccess` and `NpgsqlDataReader.GetStream()` to stream the row and column instead of buffering them. Note that if you're reading string data (e.g. `jsonb`) as binary, it's you're responsibility to perform UTF8 decoding (or whatever encoding is configured for your database).
+<sup>1</sup>Types which can be read as `byte[]` can also be written as `ReadOnlyMemory<byte>` and `Stream`, and if they could be big, consider using `CommandBehavior.SequentialAccess` and `NpgsqlDataReader.GetStream()` to stream the row and column instead of buffering them. Note that if you're reading string data (e.g. `jsonb`) as binary, it's your responsibility to perform UTF8 decoding (or whatever encoding is configured for your database).
 
 <sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc, and reading it as a DateTimeOffset returns a local offset based on the timezone of the server where Npgsql is running. [See the breaking change note for more info](../release-notes/6.0.md#major-changes-to-timestamp-mapping).
 
