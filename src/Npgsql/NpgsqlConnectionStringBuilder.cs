@@ -1001,7 +1001,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
         set
         {
-            TargetSessionAttributesParsed = value is null ? null : ParseTargetSessionAttributes(value);
+            TargetSessionAttributesParsed = value is null ? null : ParseTargetSessionAttributes(value.ToLowerInvariant());
             SetValue(nameof(TargetSessionAttributes), value);
         }
     }

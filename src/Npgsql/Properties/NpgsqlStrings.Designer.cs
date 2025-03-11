@@ -114,15 +114,6 @@ namespace Npgsql.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to When creating a multi-host data source, TargetSessionAttributes cannot be specified. Create without TargetSessionAttributes, and then obtain DataSource wrappers from it. Consult the docs for more information..
-        /// </summary>
-        internal static string CannotSpecifyTargetSessionAttributes {
-            get {
-                return ResourceManager.GetString("CannotSpecifyTargetSessionAttributes", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to RootCertificate cannot be used in conjunction with SslClientAuthenticationOptionsCallback overwriting RemoteCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback..
         /// </summary>
         internal static string CannotUseSslRootCertificateWithCustomValidationCallback {
