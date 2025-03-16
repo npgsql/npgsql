@@ -117,6 +117,7 @@ static class NpgsqlActivitySource
         {
             { "exception.type", ex.GetType().FullName },
             { "exception.message", ex.Message },
+            // TODO: only set ex.StackTrace?
             { "exception.stacktrace", ex.ToString() },
             { "exception.escaped", escaped }
         };
