@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  dotnet_sdk_version: '7.0.100'
+  dotnet_sdk_version: '7.0.410'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
@@ -37,10 +37,10 @@ jobs:
             pg_major: 16
             config: Release
             test_tfm: netcoreapp3.1
-          - os: macos-12
-            pg_major: 14
-            config: Release
-            test_tfm: net7.0
+#          - os: macos-12
+#            pg_major: 14
+#            config: Release
+#            test_tfm: net7.0
 #          - os: ubuntu-22.04
 #            pg_major: 15
 #            config: Release
@@ -388,7 +388,7 @@ jobs:
         run: dotnet pack Npgsql.sln --configuration Release --property:PackageOutputPath="$PWD/nupkgs" -p:ContinuousIntegrationBuild=true
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Npgsql.Release
           path: nupkgs
