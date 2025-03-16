@@ -1476,6 +1476,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
 
                     NpgsqlEventSource.Log.CommandStart(CommandText);
+                    TraceCommandStart(connector.Settings);
                     TraceCommandEnrich(connector);
 
                     // We do not wait for the entire send to complete before proceeding to reading -
