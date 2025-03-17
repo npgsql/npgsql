@@ -10,7 +10,7 @@ namespace Npgsql.Tests;
 public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
 {
     [Test]
-    public async Task Basic([Values] bool async)
+    public async Task Basic([Values] bool async, [Values] bool batch)
     {
         if (IsMultiplexing && !async)
             return;
@@ -25,10 +25,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
-        if (async)
-            await conn.ExecuteScalarAsync("SELECT 42");
-        else
-            conn.ExecuteScalar("SELECT 42");
+        await ExecuteScalar(conn, async, batch, "SELECT 42");
 
         Assert.That(activities.Count, Is.EqualTo(1));
         var activity = activities[0];
@@ -70,7 +67,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     }
 
     [Test]
-    public async Task Error([Values] bool async)
+    public async Task Error([Values] bool async, [Values] bool batch)
     {
         if (IsMultiplexing && !async)
             return;
@@ -85,10 +82,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
-        if (async)
-            Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync("SELECT * FROM non_existing_table"));
-        else
-            Assert.Throws<PostgresException>(() => conn.ExecuteScalar("SELECT * FROM non_existing_table"));
+        Assert.ThrowsAsync<PostgresException>(async () => await ExecuteScalar(conn, async, batch, "SELECT * FROM non_existing_table"));
 
         Assert.That(activities.Count, Is.EqualTo(1));
         var activity = activities[0];
@@ -148,7 +142,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     }
 
     [Test]
-    public async Task Configure_tracing([Values] bool async)
+    public async Task Configure_tracing([Values] bool async, [Values] bool batch)
     {
         if (IsMultiplexing && !async)
             return;
@@ -167,23 +161,20 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             options
                 .EnableFirstResponseEvent(enable: false)
                 .ConfigureCommandFilter(cmd => cmd.CommandText.Contains('2'))
+                .ConfigureBatchFilter(batch => batch.BatchCommands[0].CommandText.Contains('2'))
                 .ConfigureCommandSpanNameProvider(_ => "unknown_query")
-                .ConfigureCommandEnrichmentCallback((activity, _) => activity.AddTag("custom_tag", "custom_value"));
+                .ConfigureBatchSpanNameProvider(_ => "unknown_query")
+                .ConfigureCommandEnrichmentCallback((activity, _) => activity.AddTag("custom_tag", "custom_value"))
+                .ConfigureBatchEnrichmentCallback((activity, _) => activity.AddTag("custom_tag", "custom_value"));
         });
         await using var dataSource = dataSourceBuilder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
 
-        if (async)
-            await conn.ExecuteScalarAsync("SELECT 1");
-        else
-            conn.ExecuteScalar("SELECT 1");
+        await ExecuteScalar(conn, async, batch, "SELECT 1");
 
         Assert.That(activities.Count, Is.EqualTo(0));
 
-        if (async)
-            await conn.ExecuteScalarAsync("SELECT 2");
-        else
-            conn.ExecuteScalar("SELECT 2");
+        await ExecuteScalar(conn, async, batch, "SELECT 2");
 
         Assert.That(activities.Count, Is.EqualTo(1));
         var activity = activities[0];
@@ -194,5 +185,28 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var customTag = activity.TagObjects.First(x => x.Key == "custom_tag");
         Assert.That(customTag.Value, Is.EqualTo("custom_value"));
+    }
+
+    async Task<object?> ExecuteScalar(NpgsqlConnection connection, bool async, bool isBatch, string query)
+    {
+        if (!isBatch)
+        {
+            if (async)
+                return await connection.ExecuteScalarAsync(query);
+            else
+                return connection.ExecuteScalar(query);
+        }
+        else
+        {
+            await using var batch = connection.CreateBatch();
+            var batchCommand = batch.CreateBatchCommand();
+            batchCommand.CommandText = query;
+            batch.BatchCommands.Add(batchCommand);
+
+            if (async)
+                return await batch.ExecuteScalarAsync();
+            else
+                return batch.ExecuteScalar();
+        }
     }
 }
