@@ -32,7 +32,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
         // TODO: set status code?
-        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Unset));
+        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Ok));
 
         Assert.That(activity.Events.Count(), Is.EqualTo(1));
         var firstResponseEvent = activity.Events.First();
@@ -88,8 +88,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         var activity = activities[0];
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
-        // TODO: set status code?
-        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Unset));
+        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
+        Assert.That(activity.StatusDescription, Is.EqualTo(PostgresErrorCodes.UndefinedTable));
 
         Assert.That(activity.Events.Count(), Is.EqualTo(1));
         var exceptionEvent = activity.Events.First();

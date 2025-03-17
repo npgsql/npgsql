@@ -108,23 +108,26 @@ static class NpgsqlActivitySource
     internal static void CommandStop(Activity activity)
     {
         activity.SetTag("otel.status_code", "OK");
+        activity.SetStatus(ActivityStatusCode.Ok);
         activity.Dispose();
     }
 
     internal static void SetException(Activity activity, Exception ex, bool escaped = true)
     {
+        // TODO: We can instead use Activity.AddException whenever we start using .NET 9
         var tags = new ActivityTagsCollection
         {
             { "exception.type", ex.GetType().FullName },
             { "exception.message", ex.Message },
-            // TODO: only set ex.StackTrace?
             { "exception.stacktrace", ex.ToString() },
             { "exception.escaped", escaped }
         };
         var activityEvent = new ActivityEvent("exception", tags: tags);
         activity.AddEvent(activityEvent);
         activity.SetTag("otel.status_code", "ERROR");
-        activity.SetTag("otel.status_description", ex is PostgresException pgEx ? pgEx.SqlState : ex.Message);
+        var statusDescription = ex is PostgresException pgEx ? pgEx.SqlState : ex.Message;
+        activity.SetTag("otel.status_description", statusDescription);
+        activity.SetStatus(ActivityStatusCode.Error, statusDescription);
         activity.Dispose();
     }
 }
