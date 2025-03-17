@@ -1177,7 +1177,6 @@ public sealed partial class NpgsqlConnector
 
                     // We have a resultset for the command - hand back control to the command (which will
                     // return it to the user)
-                    command.TraceReceivedFirstResponse(DataSource.Configuration.TracingOptions);
                     ReaderCompleted.Reset();
                     command.ExecutionCompletion.SetResult(this);
 

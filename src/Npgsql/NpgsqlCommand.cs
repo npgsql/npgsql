@@ -1597,6 +1597,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 connector.CurrentReader = reader;
                 await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
 
+                TraceReceivedFirstResponse(connector.DataSource.Configuration.TracingOptions);
+
                 return reader;
             }
         }
@@ -1718,12 +1720,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 ? tracingOptions.BatchFilter?.Invoke(WrappingBatch) ?? true
                 : tracingOptions.CommandFilter?.Invoke(this) ?? true;
 
-            var spanName = WrappingBatch is not null
-                ? tracingOptions.BatchSpanNameProvider?.Invoke(WrappingBatch)
-                : tracingOptions.CommandSpanNameProvider?.Invoke(this);
-
             if (enableTracing)
             {
+                var spanName = WrappingBatch is not null
+                    ? tracingOptions.BatchSpanNameProvider?.Invoke(WrappingBatch)
+                    : tracingOptions.CommandSpanNameProvider?.Invoke(this);
+
                 CurrentActivity = NpgsqlActivitySource.CommandStart(
                     settings,
                     WrappingBatch is not null ? GetBatchFullCommandText() : CommandText,
