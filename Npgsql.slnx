@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="NuGet.config" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Github/">
+    <File Path=".github/dependabot.yml" />
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/codeql-analysis.yml" />
+    <File Path=".github/workflows/native-aot.yml" />
+    <File Path=".github/workflows/rich-code-nav.yml" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Npgsql.DependencyInjection/Npgsql.DependencyInjection.csproj" />
+    <Project Path="src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
+    <Project Path="src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
+    <Project Path="src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
+    <Project Path="src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
+    <Project Path="src/Npgsql.OpenTelemetry/Npgsql.OpenTelemetry.csproj" />
+    <Project Path="src/Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" />
+    <Project Path="src/Npgsql/Npgsql.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Npgsql.Benchmarks/Npgsql.Benchmarks.csproj" />
+    <Project Path="test/Npgsql.DependencyInjection.Tests/Npgsql.DependencyInjection.Tests.csproj" />
+    <Project Path="test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj" />
+    <Project Path="test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" />
+    <Project Path="test/Npgsql.Specification.Tests/Npgsql.Specification.Tests.csproj" />
+    <Project Path="test/Npgsql.Tests/Npgsql.Tests.csproj" />
+  </Folder>
+</Solution>
