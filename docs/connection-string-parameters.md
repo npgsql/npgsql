@@ -90,7 +90,6 @@ Search Path              | Sets the schema search path.                         
 Client Encoding          | Gets or sets the client_encoding parameter.                                                          | PGCLIENTENCODING, UTF8
 Encoding                 | Gets or sets the .NET encoding that will be used to encode/decode PostgreSQL string data.            | UTF8
 Timezone                 | Gets or sets the session timezone.                                                                   | PGTZ
-Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.                   | false
 Array Nullability Mode   | Configure the way arrays of value types are returned when requested as object instances. Possible values are: `Never` (arrays of value types are always returned as non-nullable arrays), `Always` (arrays of value types are always returned as nullable arrays) and `PerInstance` (the type of array that gets returned is determined at runtime). | Never
 
 <sup id="misc_sup_1">1</sup>The `Options` connection string parameter is essentially the string of command line options that get passed to the [`postgres`](https://www.postgresql.org/docs/current/app-postgres.html) program when the process is started.
@@ -98,16 +97,12 @@ It is most commonly used to set named run-time parameters via the `-c` option bu
 Setting multiple options is possible by separating them with a space character. Space and backslash characters in option values need to be escaped by prefixing a backslash character.
 Example: `Options=-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing`
 
-## Compatibility
-
-Parameter                 | Description                                                                                       | Default
-------------------------- | ------------------------------------------------------------------------------------------------- | -------
-Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types. | none
-
 ## Obsolete/removed
 
 Parameter                 | Description                                                                                                         | Default
 ------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------
+Load Table Composites     | Load table composite type definitions, and not just free-standing composite types. Obsoleted in 9.0, use `NpgsqlDataSourceBuilder.ConfigureTypeLoading()`. | false
+Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types. Obsoleted in 9.0, use `NpgsqlDataSourceBuilder.ConfigureTypeLoading()`. | none
 Internal Command Timeout  | The time to wait (in seconds) while trying to execute an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1
 EF Template Database      | The database template to specify when creating a database in non-core Entity Framework.  Removed in 8.0.            | template1
 EF Admin Database         | The database admin to specify when creating and dropping a database in non-core Entity Framework. Removed in 8.0.   | template1
