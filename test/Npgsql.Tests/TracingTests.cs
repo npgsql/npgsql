@@ -31,14 +31,13 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         var activity = activities[0];
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
-        // TODO: set status code?
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Ok));
 
         Assert.That(activity.Events.Count(), Is.EqualTo(1));
         var firstResponseEvent = activity.Events.First();
         Assert.That(firstResponseEvent.Name, Is.EqualTo("received-first-response"));
 
-        var expectedTagCount = conn.Settings.Port == 5432 ? 10 : 11;
+        var expectedTagCount = conn.Settings.Port == 5432 ? 8 : 9;
         Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
 
         var queryTag = activity.TagObjects.First(x => x.Key == "db.statement");
@@ -104,13 +103,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         StringAssert.Contains("relation \"non_existing_table\" does not exist", (string)exceptionMessageTag.Value!);
 
         var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        // TODO: StackTrace shouldn't contain exception message?
         StringAssert.Contains("relation \"non_existing_table\" does not exist", (string)exceptionStacktraceTag.Value!);
 
         var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
         Assert.That(exceptionEscapedTag.Value, Is.True);
 
-        var expectedTagCount = conn.Settings.Port == 5432 ? 11 : 12;
+        var expectedTagCount = conn.Settings.Port == 5432 ? 9 : 10;
         Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
 
         var queryTag = activity.TagObjects.First(x => x.Key == "db.statement");
