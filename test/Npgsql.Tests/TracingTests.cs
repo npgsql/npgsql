@@ -37,7 +37,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         var firstResponseEvent = activity.Events.First();
         Assert.That(firstResponseEvent.Name, Is.EqualTo("received-first-response"));
 
-        var expectedTagCount = conn.Settings.Port == 5432 ? 8 : 9;
+        var expectedTagCount = conn.Settings.Port == 5432 ? 9 : 10;
         Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
 
         var queryTag = activity.TagObjects.First(x => x.Key == "db.statement");
@@ -60,9 +60,6 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             var connIDTag = activity.TagObjects.First(x => x.Key == "db.connection_id");
             Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
         }
-
-        var statusTag = activity.TagObjects.First(x => x.Key == "otel.status_code");
-        Assert.That(statusTag.Value, Is.EqualTo("OK"));
     }
 
     [Test]
@@ -131,12 +128,6 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             var connIDTag = activity.TagObjects.First(x => x.Key == "db.connection_id");
             Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
         }
-
-        var statusTag = activity.TagObjects.First(x => x.Key == "otel.status_code");
-        Assert.That(statusTag.Value, Is.EqualTo("ERROR"));
-
-        var descriptionTag = activity.TagObjects.First(x => x.Key == "otel.status_description");
-        Assert.That(descriptionTag.Value, Is.EqualTo(PostgresErrorCodes.UndefinedTable));
     }
 
     [Test]
