@@ -107,7 +107,6 @@ static class NpgsqlActivitySource
 
     internal static void CommandStop(Activity activity)
     {
-        activity.SetTag("otel.status_code", "OK");
         activity.SetStatus(ActivityStatusCode.Ok);
         activity.Dispose();
     }
@@ -124,9 +123,7 @@ static class NpgsqlActivitySource
         };
         var activityEvent = new ActivityEvent("exception", tags: tags);
         activity.AddEvent(activityEvent);
-        activity.SetTag("otel.status_code", "ERROR");
         var statusDescription = ex is PostgresException pgEx ? pgEx.SqlState : ex.Message;
-        activity.SetTag("otel.status_description", statusDescription);
         activity.SetStatus(ActivityStatusCode.Error, statusDescription);
         activity.Dispose();
     }
