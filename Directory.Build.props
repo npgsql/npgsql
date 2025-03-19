@@ -10,7 +10,7 @@
     <SignAssembly>true</SignAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <Copyright>Copyright 2024 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2025 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
