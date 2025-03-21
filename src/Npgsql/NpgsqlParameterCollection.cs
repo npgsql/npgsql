@@ -653,7 +653,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         foreach (var param in InternalList)
         {
             var newParam = param.Clone();
-            newParam.Collection = this;
+            newParam.Collection = other;
             other.InternalList.Add(newParam);
         }
 
