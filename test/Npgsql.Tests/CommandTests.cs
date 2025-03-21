@@ -1639,4 +1639,18 @@ FROM
 
         Assert.That(connection.PostgresParameters, Contains.Key("SomeKey").WithValue("SomeValue"));
     }
+
+    [Test, Description("Writing to properties of a disposed command does not raise exceptions. This is the SqlClient behavior.")]
+    public async Task Command_Dispose_allows_assignment()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var command = new NpgsqlCommand("SELECT 1");
+        command.Dispose();
+
+        command.Connection = conn;
+        command.CommandText = "SELECT 2";
+
+        Assert.AreSame(conn, command.Connection);
+        Assert.AreSame("SELECT 2", command.CommandText);
+    }
 }
