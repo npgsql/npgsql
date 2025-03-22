@@ -4,6 +4,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace Npgsql.Tests;
 
@@ -319,6 +320,18 @@ public class NpgsqlParameterCollectionTests
         Assert.AreEqual(0, command.Parameters.IndexOf(param.ParameterName));
         Assert.AreEqual(NpgsqlParameter.PositionalName, param.ParameterName);
     }
+
+    [Test]
+    public void Clone_sets_correct_collection()
+    {
+        var cmd = new NpgsqlCommand();
+        cmd.Parameters.Add(new NpgsqlParameter<int> { TypedValue = 42 });
+        Assert.AreSame(cmd.Parameters, cmd.Parameters.Single().Collection);
+
+        cmd = cmd.Clone();
+        Assert.AreSame(cmd.Parameters, cmd.Parameters.Single().Collection);
+    }
+
 
     public NpgsqlParameterCollectionTests(CompatMode compatMode)
     {
