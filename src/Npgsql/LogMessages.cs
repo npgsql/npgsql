@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using Microsoft.Extensions.Logging;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -180,7 +181,7 @@ static partial class LogMessages
         Level = LogLevel.Debug,
         Message = "Executing batch: {BatchCommands}",
         SkipEnabledCheck = true)]
-    internal static partial void ExecutingBatchWithParameters(ILogger logger, (string CommandText, object[] Parameters)[] BatchCommands, int ConnectorId);
+    internal static partial void ExecutingBatchWithParameters(ILogger logger, (string CommandText, IEnumerable<object> Parameters)[] BatchCommands, int ConnectorId);
 
     [LoggerMessage(
         EventId = NpgsqlEventId.CommandExecutionCompleted,
@@ -209,7 +210,7 @@ static partial class LogMessages
         Message = "Batch execution completed (duration={DurationMs}ms): {BatchCommands}",
         SkipEnabledCheck = true)]
     internal static partial void BatchExecutionCompletedWithParameters(
-        ILogger logger, (string CommandText, object[] Parameters)[] BatchCommands, long DurationMs, int ConnectorId);
+        ILogger logger, (string CommandText, IEnumerable<object> Parameters)[] BatchCommands, long DurationMs, int ConnectorId);
 
     [LoggerMessage(
         EventId = NpgsqlEventId.CancellingCommand,
