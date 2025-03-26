@@ -72,6 +72,34 @@ public class NpgsqlParameterCollectionTests
     }
 
     [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6067")]
+    public void Hash_lookup_unnamed_parameter_rename_bug()
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+
+        for (var i = 0; i < 3; i++)
+        {
+            // Put plenty of parameters in the collection to turn on hash lookup functionality.
+            for (var j = 0; j < LookupThreshold; j++)
+            {
+                // Create and add an unnamed parameter before renaming it
+                var parameter = command.CreateParameter();
+                command.Parameters.Add(parameter);
+                parameter.ParameterName = $"{j}";
+            }
+
+            // Make sure hash lookup is generated.
+            Assert.AreEqual(command.Parameters["3"].ParameterName, "3");
+
+            // Remove all parameters to clear hash lookup
+            command.Parameters.Clear();
+        }
+    }
+
+    [Test]
     public void Remove_duplicate_parameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
         if (_compatMode == CompatMode.OnePass)
