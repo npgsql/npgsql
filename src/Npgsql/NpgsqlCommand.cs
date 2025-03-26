@@ -1823,6 +1823,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         var logParameters = connector.LoggingConfiguration.IsParameterLoggingEnabled || connector.Settings.LogParameters;
         var logger = connector.LoggingConfiguration.CommandLogger;
+        Debug.Assert(executing ? logger.IsEnabled(LogLevel.Debug) : logger.IsEnabled(LogLevel.Information));
 
         if (InternalBatchCommands.Count == 1)
         {
@@ -1860,9 +1861,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (logParameters)
             {
-                var commands = new (string, object[])[InternalBatchCommands.Count];
+                var commands = new (string, IEnumerable<object>)[InternalBatchCommands.Count];
                 for (var i = 0; i < InternalBatchCommands.Count; i++)
-                    commands[i] = (InternalBatchCommands[i].FinalCommandText!, GetParametersForLogging(InternalBatchCommands[i]));
+                    commands[i] = (InternalBatchCommands[i].FinalCommandText!, new LoggingEnumerable<object>(GetParametersForLogging(InternalBatchCommands[i])));
 
                 if (executing)
                     LogMessages.ExecutingBatchWithParameters(logger, commands, connector.Id);
