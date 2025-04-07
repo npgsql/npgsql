@@ -9,7 +9,7 @@ namespace Npgsql;
 
 static class NpgsqlActivitySource
 {
-    static readonly ActivitySource Source = new("Npgsql", "0.1.0");
+    static readonly ActivitySource Source = new("Npgsql", "0.2.0");
 
     internal static bool IsEnabled => Source.HasListeners();
 
@@ -61,7 +61,23 @@ static class NpgsqlActivitySource
         return activity;
     }
 
-    internal static void Enrich(Activity activity, NpgsqlConnector connector)
+    internal static Activity? ConnectionOpen(NpgsqlConnector connector)
+    {
+        if (!connector.DataSource.Configuration.TracingOptions.EnablePhysicalOpenTracing)
+            return null;
+
+        var dbName = connector.Settings.Database ?? "UNKNOWN";
+        var activity = Source.StartActivity(dbName, ActivityKind.Client);
+        if (activity is not { IsAllDataRequested: true })
+            return activity;
+
+        activity.SetTag("db.system", "postgresql");
+        activity.SetTag("db.connection_string", connector.UserFacingConnectionString);
+
+        return activity;
+    }
+
+    internal static void EnrichCommand(Activity activity, NpgsqlConnector connector)
     {
         if (!activity.IsAllDataRequested)
             return;

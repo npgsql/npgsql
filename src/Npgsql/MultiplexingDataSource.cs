@@ -56,6 +56,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
         _connectionLogger = dataSourceConfig.LoggingConfiguration.ConnectionLogger;
         _commandLogger = dataSourceConfig.LoggingConfiguration.CommandLogger;
 
+        // Make sure we do not flow AsyncLocals like Activity.Current
+        using var _ = ExecutionContext.SuppressFlow();
         _multiplexWriteLoop = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
             .ContinueWith(t =>
             {
@@ -106,15 +108,28 @@ sealed class MultiplexingDataSource : PoolingDataSource
                         break;
                     }
 
-                    connector = await OpenNewConnector(
-                        command.InternalConnection!,
-                        new NpgsqlTimeout(TimeSpan.FromSeconds(Settings.Timeout)),
-                        async: true,
-                        CancellationToken.None).ConfigureAwait(false);
+                    // At no point should we ever have an activity here
+                    Debug.Assert(Activity.Current is null);
+                    // Set current activity as the one from the command
+                    // So child activities from physical open are bound to it
+                    Activity.Current = command.CurrentActivity;
+
+                    try
+                    {
+                        connector = await OpenNewConnector(
+                            command.InternalConnection!,
+                            new NpgsqlTimeout(TimeSpan.FromSeconds(Settings.Timeout)),
+                            async: true,
+                            CancellationToken.None).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        Activity.Current = null;
+                    }
 
                     if (connector != null)
                     {
-                        // Managed to created a new connector
+                        // Managed to create a new connector
                         connector.Connection = null;
 
                         // See increment under over-capacity mode below

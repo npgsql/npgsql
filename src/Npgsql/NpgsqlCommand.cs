@@ -51,7 +51,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     internal List<NpgsqlBatchCommand> InternalBatchCommands { get; }
 
-    Activity? CurrentActivity;
+    internal Activity? CurrentActivity { get; private set; }
 
     /// <summary>
     /// Returns details about each statement that this command has executed.
@@ -1739,7 +1739,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         if (CurrentActivity is not null)
         {
-            NpgsqlActivitySource.Enrich(CurrentActivity, connector);
+            NpgsqlActivitySource.EnrichCommand(CurrentActivity, connector);
             var tracingOptions = connector.DataSource.Configuration.TracingOptions;
             if (WrappingBatch is not null)
                 tracingOptions.BatchEnrichmentCallback?.Invoke(CurrentActivity, WrappingBatch);

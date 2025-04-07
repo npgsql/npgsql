@@ -38,6 +38,7 @@ Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandEnrichmentCallback(System.Act
 Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandFilter(System.Func<Npgsql.NpgsqlCommand!, bool>? commandFilter) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandSpanNameProvider(System.Func<Npgsql.NpgsqlCommand!, string?>? commandSpanNameProvider) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTracingOptionsBuilder.EnableFirstResponseEvent(bool enable = true) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.EnablePhysicalOpenTracing(bool enable = true) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTypeLoadingOptionsBuilder
 Npgsql.NpgsqlTypeLoadingOptionsBuilder.EnableTableCompositesLoading(bool enable = true) -> Npgsql.NpgsqlTypeLoadingOptionsBuilder!
 Npgsql.NpgsqlTypeLoadingOptionsBuilder.EnableTypeLoading(bool enable = true) -> Npgsql.NpgsqlTypeLoadingOptionsBuilder!

@@ -15,6 +15,7 @@ public sealed class NpgsqlTracingOptionsBuilder
     Func<NpgsqlCommand, string?>? _commandSpanNameProvider;
     Func<NpgsqlBatch, string?>? _batchSpanNameProvider;
     bool _enableFirstResponseEvent = true;
+    bool _enablePhysicalOpenTracing = true;
 
     internal NpgsqlTracingOptionsBuilder()
     {
@@ -88,6 +89,16 @@ public sealed class NpgsqlTracingOptionsBuilder
         return this;
     }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether to trace physical connection open.
+    /// Default is true to preserve existing behavior.
+    /// </summary>
+    public NpgsqlTracingOptionsBuilder EnablePhysicalOpenTracing(bool enable = true)
+    {
+        _enablePhysicalOpenTracing = enable;
+        return this;
+    }
+
     internal NpgsqlTracingOptions Build() => new()
     {
         CommandFilter = _commandFilter,
@@ -96,7 +107,8 @@ public sealed class NpgsqlTracingOptionsBuilder
         BatchEnrichmentCallback = _batchEnrichmentCallback,
         CommandSpanNameProvider = _commandSpanNameProvider,
         BatchSpanNameProvider = _batchSpanNameProvider,
-        EnableFirstResponseEvent = _enableFirstResponseEvent
+        EnableFirstResponseEvent = _enableFirstResponseEvent,
+        EnablePhysicalOpenTracing = _enablePhysicalOpenTracing
     };
 }
 
@@ -109,4 +121,5 @@ sealed class NpgsqlTracingOptions
     internal Func<NpgsqlCommand, string?>? CommandSpanNameProvider { get; init; }
     internal Func<NpgsqlBatch, string?>? BatchSpanNameProvider { get; init; }
     internal bool EnableFirstResponseEvent { get; init; }
+    internal bool EnablePhysicalOpenTracing { get; init; }
 }
