@@ -170,7 +170,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(activity.DisplayName, Is.EqualTo(dataSource.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(dataSource.Settings.Database));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
-        Assert.That(activity.StatusDescription, Is.EqualTo("No such host is known."));
+        Assert.That(activity.StatusDescription, Is.EqualTo(ex.Message));
 
         Assert.That(activity.Events.Count(), Is.EqualTo(1));
         var exceptionEvent = activity.Events.First();
@@ -182,10 +182,10 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(exceptionTypeTag.Value, Is.EqualTo(ex.GetType().FullName));
 
         var exceptionMessageTag = exceptionEvent.Tags.First(x => x.Key == "exception.message");
-        StringAssert.Contains("No such host is known.", (string)exceptionMessageTag.Value!);
+        StringAssert.Contains(ex.Message, (string)exceptionMessageTag.Value!);
 
         var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        StringAssert.Contains("No such host is known.", (string)exceptionStacktraceTag.Value!);
+        StringAssert.Contains(ex.Message, (string)exceptionStacktraceTag.Value!);
 
         var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
         Assert.That(exceptionEscapedTag.Value, Is.True);
