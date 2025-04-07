@@ -1217,6 +1217,9 @@ public sealed partial class NpgsqlConnector
 
             try
             {
+                // Some options are not applied after the socket is open, see #6013
+                SetSocketOptions(socket);
+
                 try
                 {
                     socket.Connect(endpoint);
@@ -1235,7 +1238,6 @@ public sealed partial class NpgsqlConnector
                 if (write.Count is 0)
                     throw new TimeoutException("Timeout during connection attempt");
                 socket.Blocking = true;
-                SetSocketOptions(socket);
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
                 return;
@@ -1289,8 +1291,11 @@ public sealed partial class NpgsqlConnector
             var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
             try
             {
-                await OpenSocketConnectionAsync(socket, endpoint, endpointTimeout, cancellationToken).ConfigureAwait(false);
+                // Some options are not applied after the socket is open, see #6013
                 SetSocketOptions(socket);
+
+                await OpenSocketConnectionAsync(socket, endpoint, endpointTimeout, cancellationToken).ConfigureAwait(false);
+
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
                 return;
