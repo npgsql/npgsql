@@ -1739,7 +1739,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         if (CurrentActivity is not null)
         {
-            NpgsqlActivitySource.EnrichCommand(CurrentActivity, connector);
+            NpgsqlActivitySource.Enrich(CurrentActivity, connector);
             var tracingOptions = connector.DataSource.Configuration.TracingOptions;
             if (WrappingBatch is not null)
                 tracingOptions.BatchEnrichmentCallback?.Invoke(CurrentActivity, WrappingBatch);

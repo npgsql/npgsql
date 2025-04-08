@@ -66,7 +66,7 @@ static class NpgsqlActivitySource
         if (!connector.DataSource.Configuration.TracingOptions.EnablePhysicalOpenTracing)
             return null;
 
-        var dbName = connector.Settings.Database ?? "UNKNOWN";
+        var dbName = connector.Settings.Database ?? connector.InferredUserName;
         var activity = Source.StartActivity(dbName, ActivityKind.Client);
         if (activity is not { IsAllDataRequested: true })
             return activity;
@@ -77,7 +77,7 @@ static class NpgsqlActivitySource
         return activity;
     }
 
-    internal static void EnrichCommand(Activity activity, NpgsqlConnector connector)
+    internal static void Enrich(Activity activity, NpgsqlConnector connector)
     {
         if (!activity.IsAllDataRequested)
             return;

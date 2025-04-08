@@ -485,14 +485,18 @@ public sealed partial class NpgsqlConnector
         LogMessages.OpeningPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString);
         var startOpenTimestamp = Stopwatch.GetTimestamp();
 
-        var activity = NpgsqlActivitySource.ConnectionOpen(this);
+        Activity? activity = null;
 
         try
         {
-            await OpenCore(this, Settings.SslMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            var username = await GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
+
+            activity = NpgsqlActivitySource.ConnectionOpen(this);
+
+            await OpenCore(this, username, Settings.SslMode, timeout, async, cancellationToken).ConfigureAwait(false);
 
             if (activity is not null)
-                NpgsqlActivitySource.EnrichCommand(activity, this);
+                NpgsqlActivitySource.Enrich(activity, this);
 
             await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken).ConfigureAwait(false);
 
@@ -577,14 +581,13 @@ public sealed partial class NpgsqlConnector
 
         static async Task OpenCore(
             NpgsqlConnector conn,
+            string username,
             SslMode sslMode,
             NpgsqlTimeout timeout,
             bool async,
             CancellationToken cancellationToken)
         {
             await conn.RawOpen(sslMode, timeout, async, cancellationToken).ConfigureAwait(false);
-
-            var username = await conn.GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
@@ -608,6 +611,7 @@ public sealed partial class NpgsqlConnector
                 // If Allow was specified and we failed (without SSL), retry with SSL
                 await OpenCore(
                     conn,
+                    username,
                     sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
                     timeout,
                     async,
