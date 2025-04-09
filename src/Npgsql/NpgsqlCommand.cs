@@ -51,7 +51,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     internal List<NpgsqlBatchCommand> InternalBatchCommands { get; }
 
-    Activity? CurrentActivity;
+    internal Activity? CurrentActivity { get; private set; }
 
     /// <summary>
     /// Returns details about each statement that this command has executed.

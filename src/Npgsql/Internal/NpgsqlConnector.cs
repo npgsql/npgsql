@@ -485,9 +485,18 @@ public sealed partial class NpgsqlConnector
         LogMessages.OpeningPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString);
         var startOpenTimestamp = Stopwatch.GetTimestamp();
 
+        Activity? activity = null;
+
         try
         {
-            await OpenCore(this, Settings.SslMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            var username = await GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
+
+            activity = NpgsqlActivitySource.ConnectionOpen(this);
+
+            await OpenCore(this, username, Settings.SslMode, timeout, async, cancellationToken).ConfigureAwait(false);
+
+            if (activity is not null)
+                NpgsqlActivitySource.Enrich(activity, this);
 
             await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken).ConfigureAwait(false);
 
@@ -510,6 +519,8 @@ public sealed partial class NpgsqlConnector
                 // It is intentionally not awaited and will run as long as the connector is alive.
                 // The CommandsInFlightWriter channel is completed in Cleanup, which should cause this task
                 // to complete.
+                // Make sure we do not flow AsyncLocals like Activity.Current
+                using var __ = ExecutionContext.SuppressFlow();
                 _ = Task.Run(MultiplexingReadLoop, CancellationToken.None)
                     .ContinueWith(t =>
                     {
@@ -540,7 +551,7 @@ public sealed partial class NpgsqlConnector
                 {
                     if (async)
                         await DataSource.ConnectionInitializerAsync(tempConnection).ConfigureAwait(false);
-                    else if (!async)
+                    else
                         DataSource.ConnectionInitializer(tempConnection);
                 }
                 finally
@@ -553,25 +564,30 @@ public sealed partial class NpgsqlConnector
                 }
             }
 
+            if (activity is not null)
+                NpgsqlActivitySource.CommandStop(activity);
+
             LogMessages.OpenedPhysicalConnection(
-                ConnectionLogger, Host, Port, Database, UserFacingConnectionString, (long)Stopwatch.GetElapsedTime(startOpenTimestamp).TotalMilliseconds, Id);
+                ConnectionLogger, Host, Port, Database, UserFacingConnectionString,
+                (long)Stopwatch.GetElapsedTime(startOpenTimestamp).TotalMilliseconds, Id);
         }
         catch (Exception e)
         {
+            if (activity is not null)
+                NpgsqlActivitySource.SetException(activity, e);
             Break(e);
             throw;
         }
 
         static async Task OpenCore(
             NpgsqlConnector conn,
+            string username,
             SslMode sslMode,
             NpgsqlTimeout timeout,
             bool async,
             CancellationToken cancellationToken)
         {
             await conn.RawOpen(sslMode, timeout, async, cancellationToken).ConfigureAwait(false);
-
-            var username = await conn.GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
@@ -595,6 +611,7 @@ public sealed partial class NpgsqlConnector
                 // If Allow was specified and we failed (without SSL), retry with SSL
                 await OpenCore(
                     conn,
+                    username,
                     sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
                     timeout,
                     async,
@@ -754,6 +771,8 @@ public sealed partial class NpgsqlConnector
             else
                 Connect(timeout);
 
+            ConnectionLogger.LogTrace("Socket connected to {Host}:{Port}", Host, Port);
+
             _baseStream = new NetworkStream(_socket, true);
             _stream = _baseStream;
 
@@ -810,8 +829,6 @@ public sealed partial class NpgsqlConnector
                 if (ReadBuffer.ReadBytesLeft > 0)
                     throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
             }
-
-            ConnectionLogger.LogTrace("Socket connected to {Host}:{Port}", Host, Port);
         }
         catch
         {
