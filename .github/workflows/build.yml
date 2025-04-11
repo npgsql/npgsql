@@ -45,7 +45,7 @@ jobs:
             pg_major: 17
             config: Release
             test_tfm: net9.0
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             pg_major: 17
             config: Release
             test_tfm: net8.0
