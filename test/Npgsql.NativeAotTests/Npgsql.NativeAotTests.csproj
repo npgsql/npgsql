@@ -9,6 +9,7 @@
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
     <StackTraceSupport>false</StackTraceSupport>
     <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
