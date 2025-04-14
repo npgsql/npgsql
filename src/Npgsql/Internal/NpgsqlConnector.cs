@@ -896,7 +896,7 @@ public sealed partial class NpgsqlConnector
             var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
             RemoteCertificateValidationCallback? certificateValidationCallback;
-            X509Certificate2? caCert;
+            X509Certificate2Collection? caCerts;
             string? certRootPath = null;
 
             if (sslMode is SslMode.Prefer or SslMode.Require)
@@ -904,11 +904,11 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }
-            else if ((caCert = DataSource.TransportSecurityHandler.RootCertificateCallback?.Invoke()) is not null ||
+            else if (((caCerts = DataSource.TransportSecurityHandler.RootCertificateCallback?.Invoke()) is not null && caCerts.Count > 0) ||
                      (certRootPath = Settings.RootCertificate ??
                                      PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
             {
-                certificateValidationCallback = SslRootValidation(sslMode == SslMode.VerifyFull, certRootPath, caCert);
+                certificateValidationCallback = SslRootValidation(sslMode == SslMode.VerifyFull, certRootPath, caCerts);
             }
             else if (sslMode == SslMode.VerifyCA)
             {
@@ -1695,7 +1695,7 @@ public sealed partial class NpgsqlConnector
         (sender, certificate, chain, sslPolicyErrors)
             => true;
 
-    static RemoteCertificateValidationCallback SslRootValidation(bool verifyFull, string? certRootPath, X509Certificate2? caCertificate)
+    static RemoteCertificateValidationCallback SslRootValidation(bool verifyFull, string? certRootPath, X509Certificate2Collection? caCertificates)
         => (_, certificate, chain, sslPolicyErrors) =>
         {
             if (certificate is null || chain is null)
@@ -1717,12 +1717,13 @@ public sealed partial class NpgsqlConnector
 
             if (certRootPath is null)
             {
-                Debug.Assert(caCertificate is not null);
-                certs.Add(caCertificate);
+                Debug.Assert(caCertificates is not null);
+                Debug.Assert(caCertificates.Count > 0);
+                certs.AddRange(caCertificates);
             }
             else
             {
-                Debug.Assert(caCertificate is null);
+                Debug.Assert(caCertificates is null || caCertificates.Count == 0);
                 if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
                     certs.ImportFromPemFile(certRootPath);
 
