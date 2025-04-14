@@ -183,7 +183,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         {
             Debug.Assert(WrappingBatch is null);
 
-            if (State != CommandState.Idle)
+            if (State == CommandState.InProgress)
                 ThrowHelper.ThrowInvalidOperationException("An open data reader exists for this command.");
 
             _commandText = value ?? string.Empty;
@@ -252,7 +252,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
             if (InternalConnection == value)
                 return;
 
-            InternalConnection = State == CommandState.Idle
+            InternalConnection = State != CommandState.InProgress
                 ? (NpgsqlConnection?)value
                 : throw new InvalidOperationException("An open data reader exists for this command.");
 
