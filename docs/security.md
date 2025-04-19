@@ -2,7 +2,7 @@
 
 ## Password management
 
-The simplest way to log into PostgreSQL is by specifying a `Username` and a `Password` in your connection string. Depending on how your PostgreSQL is configured (in the `pg_hba.conf` file), Npgsql will send the password in MD5 or in cleartext (not recommended).
+The simplest way to log into PostgreSQL is by specifying a `Username` and a `Password` in your connection string. Depending on how your PostgreSQL is configured (in the `pg_hba.conf` file), Npgsql will send the password via SASL (SCRAM-SHA-256), in MD5 or in clear-text (not recommended).
 
 If a `Password` is not specified and your PostgreSQL is configured to request a password, Npgsql will look for a [standard PostgreSQL password file](https://www.postgresql.org/docs/current/static/libpq-pgpass.html). If you specify the `Passfile` connection string parameter, the file it specifies will be used. If that parameter isn't defined, Npgsql will look under the path taken from `PGPASSFILE` environment variable. If the environment variable isn't defined, Npgsql will fall back to the system-dependent default directory which is `$HOME/.pgpass` for Unix and `%APPDATA%\postgresql\pgpass.conf` for Windows.
 
