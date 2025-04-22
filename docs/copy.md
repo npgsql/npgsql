@@ -69,7 +69,7 @@ int len;
 var data = new byte[10000];
 // Export table1 to data array
 using (var inStream = conn.BeginRawBinaryCopy("COPY table1 TO STDOUT (FORMAT BINARY)")) {
-    // We assume the data will fit in 10000 bytes, in real usage you would read repeatedly, writine to a file.
+    // We assume the data will fit in 10000 bytes, in real usage you would read repeatedly, write into a file.
     len = inStream.Read(data, 0, data.Length);
 }
 
