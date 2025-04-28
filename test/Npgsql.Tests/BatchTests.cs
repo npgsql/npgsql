@@ -12,7 +12,7 @@ namespace Npgsql.Tests;
 [TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.Default)]
 [TestFixture(MultiplexingMode.NonMultiplexing, CommandBehavior.SequentialAccess)]
 [TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.SequentialAccess)]
-public class BatchTests : MultiplexingTestBase
+public class BatchTests : MultiplexingTestBase, IDisposable
 {
     #region Parameters
 
@@ -477,7 +477,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_close_dispose_reader_with_multiple_errors([Values] bool withErrorBarriers, [Values] bool dispose)
     {
         // Create a temp pool since we dispose the reader (and check the state afterwards) and it can be reused by another connection
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(x => x.IncludeFailedStatement = true);
         await using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id INT");
 
@@ -804,11 +804,16 @@ LANGUAGE 'plpgsql'");
     readonly CommandBehavior Behavior;
     // ReSharper restore InconsistentNaming
 
+    NpgsqlDataSource? _dataSource;
+    protected override NpgsqlDataSource DataSource => _dataSource ??= CreateDataSource(csb => csb.IncludeFailedStatement = true);
+
     public BatchTests(MultiplexingMode multiplexingMode, CommandBehavior behavior) : base(multiplexingMode)
     {
         Behavior = behavior;
         IsSequential = (Behavior & CommandBehavior.SequentialAccess) != 0;
     }
+
+    public void Dispose() => DataSource.Dispose();
 
     #endregion
 }

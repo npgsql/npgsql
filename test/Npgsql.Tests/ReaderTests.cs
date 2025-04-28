@@ -623,9 +623,10 @@ LANGUAGE 'plpgsql';
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
-    public async Task NpgsqlException_references_BatchCommand_with_single_command()
+    public async Task NpgsqlException_references_BatchCommand_with_single_command([Values] bool includeFailedStatement)
     {
-        await using var conn = await OpenConnectionAsync();
+        await using var dataSource = CreateDataSource(x => x.IncludeFailedStatement = includeFailedStatement);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
@@ -638,7 +639,10 @@ LANGUAGE 'plpgsql'");
         cmd.CommandText = $"SELECT {function}()";
 
         var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync(Behavior))!;
-        Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
+        if (includeFailedStatement)
+            Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
+        else
+            Assert.That(exception.BatchCommand, Is.Null);
 
         // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
         // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
@@ -648,9 +652,10 @@ LANGUAGE 'plpgsql'");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
-    public async Task NpgsqlException_references_BatchCommand_with_multiple_commands()
+    public async Task NpgsqlException_references_BatchCommand_with_multiple_commands([Values] bool includeFailedStatement)
     {
-        await using var conn = await OpenConnectionAsync();
+        await using var dataSource = CreateDataSource(x => x.IncludeFailedStatement = includeFailedStatement);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
@@ -665,7 +670,10 @@ LANGUAGE 'plpgsql'");
         await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             var exception = Assert.ThrowsAsync<PostgresException>(() => reader.NextResultAsync())!;
-            Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
+            if (includeFailedStatement)
+                Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
+            else
+                Assert.That(exception.BatchCommand, Is.Null);
         }
 
         // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command

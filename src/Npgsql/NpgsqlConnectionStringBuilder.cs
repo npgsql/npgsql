@@ -684,6 +684,24 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     bool _includeErrorDetail;
 
     /// <summary>
+    /// When enabled, failed statements are included on <see cref="NpgsqlException.BatchCommand" />. These can contain sensitive data.
+    /// </summary>
+    [Category("Security")]
+    [Description("When enabled, failed statements are included on NpgsqlException.BatchCommand. These can contain sensitive data.")]
+    [DisplayName("Include Failed Statement")]
+    [NpgsqlConnectionStringProperty]
+    public bool IncludeFailedStatement
+    {
+        get => _includeFailedStatement;
+        set
+        {
+            _includeFailedStatement = value;
+            SetValue(nameof(IncludeFailedStatement), value);
+        }
+    }
+    bool _includeFailedStatement;
+
+    /// <summary>
     /// Controls whether channel binding is required, disabled or preferred, depending on server support.
     /// </summary>
     [Category("Security")]
