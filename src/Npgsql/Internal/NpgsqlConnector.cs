@@ -881,11 +881,20 @@ public sealed partial class NpgsqlConnector
                     // Windows crypto API has a bug with pem certs
                     // See #3650
                     using var previousCert = cert;
+#if NET9_0_OR_GREATER
+                    cert = X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pkcs12), null);
+#else
                     cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+#endif
                 }
             }
 
+#if NET9_0_OR_GREATER
+            // If it's null, it's probably PFX
+            cert ??= X509CertificateLoader.LoadPkcs12FromFile(certPath, password);
+#else
             cert ??= new X509Certificate2(certPath, password);
+#endif
             clientCertificates.Add(cert);
 
             _certificate = cert;
@@ -1727,7 +1736,14 @@ public sealed partial class NpgsqlConnector
                     certs.ImportFromPemFile(certRootPath);
 
                 if (certs.Count == 0)
+                {
+#if NET9_0_OR_GREATER
+                    // This is not a PEM certificate, probably PFX
+                    certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
+#else
                     certs.Add(new X509Certificate2(certRootPath));
+#endif
+                }
             }
 
             chain.ChainPolicy.CustomTrustStore.AddRange(certs);
