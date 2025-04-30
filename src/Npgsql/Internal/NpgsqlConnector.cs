@@ -1710,13 +1710,8 @@ public sealed partial class NpgsqlConnector
             if (certificate is null || chain is null)
                 return false;
 
-            // No errors here - no reason to check further
-            if (sslPolicyErrors == SslPolicyErrors.None)
-                return true;
-
-            // That's VerifyCA check and the only error is name mismatch - no reason to check further
-            if (!verifyFull && sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch)
-                return true;
+            // Even if there was no error while validating, we have to check one more time with the provided certificate
+            // As this is the exact same behavior as libpq
 
             // That's VerifyFull check and we have name mismatch - no reason to check further
             if (verifyFull && sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
