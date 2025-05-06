@@ -13,6 +13,9 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
 
     public override BigInteger Read(PgReader reader)
     {
+        if (reader.ShouldBuffer(sizeof(short)))
+            reader.Buffer(sizeof(short));
+
         var digitCount = reader.ReadInt16();
         short[]? digitsFromPool = null;
         var digits = (digitCount <= StackAllocByteThreshold / sizeof(short)
@@ -37,7 +40,9 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
 
         static async ValueTask<BigInteger> AsyncCore(PgReader reader, CancellationToken cancellationToken)
         {
-            await reader.BufferAsync(PgNumeric.GetByteCount(0), cancellationToken).ConfigureAwait(false);
+            if (reader.ShouldBuffer(sizeof(short)))
+                await reader.BufferAsync(sizeof(short), cancellationToken).ConfigureAwait(false);
+
             var digitCount = reader.ReadInt16();
             var digits = new ArraySegment<short>(ArrayPool<short>.Shared.Rent(digitCount), 0, digitCount);
             var value = ConvertTo(await NumericConverter.ReadAsync(reader, digits, cancellationToken).ConfigureAwait(false));
@@ -132,7 +137,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumb
 
 static class NumericConverter
 {
-    public static int DecimalBasedMaxByteCount = PgNumeric.GetByteCount(PgNumeric.Builder.MaxDecimalNumericDigits);
+    public static readonly int DecimalBasedMaxByteCount = PgNumeric.GetByteCount(PgNumeric.Builder.MaxDecimalNumericDigits);
 
     public static PgNumeric.Builder Read(PgReader reader, Span<short> digits)
     {
