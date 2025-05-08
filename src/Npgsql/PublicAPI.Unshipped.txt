@@ -7,6 +7,10 @@ Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.get -> Npgsql.SslNegotiation
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.set -> void
+Npgsql.NpgsqlDataSource.TryGetMapping(System.Type? type = null, string? dataTypeName = null) -> Npgsql.Internal.PgTypeInfo?
+Npgsql.NpgsqlDataSource.TryGetMapping<T>(string? dataTypeName = null) -> Npgsql.Internal.PgTypeInfo?
+Npgsql.NpgsqlDataSource.TryGetMappingAsync(System.Type? type = null, string? dataTypeName = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.Internal.PgTypeInfo?>
+Npgsql.NpgsqlDataSource.TryGetMappingAsync<T>(string? dataTypeName = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.Internal.PgTypeInfo?>
 Npgsql.NpgsqlDataSourceBuilder.ConfigureTypeLoading(System.Action<Npgsql.NpgsqlTypeLoadingOptionsBuilder!>! configureAction) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
