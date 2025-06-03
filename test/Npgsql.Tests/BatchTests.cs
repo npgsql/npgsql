@@ -848,21 +848,19 @@ LANGUAGE 'plpgsql'");
 
         var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
 
-        // Note: the message formatter of Microsoft.Extensions.Logging doesn't seem to handle arrays inside tuples, so we get the
-        // following ugliness (https://github.com/dotnet/runtime/issues/63165). Serilog handles this fine.
-        Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[(SELECT $1, System.Object[]), (SELECT $1, 9, System.Object[])]"));
+        Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[(SELECT $1, [8]), (SELECT $1, 9, [9])]"));
         AssertLoggingStateDoesNotContain(executingCommandEvent, "CommandText");
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
 
         if (!IsMultiplexing)
             AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
 
-        var batchCommands = (IList<(string CommandText, object[] Parameters)>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
+        var batchCommands = (IList<(string CommandText, IEnumerable<object> Parameters)>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
         Assert.That(batchCommands.Count, Is.EqualTo(2));
         Assert.That(batchCommands[0].CommandText, Is.EqualTo("SELECT $1"));
-        Assert.That(batchCommands[0].Parameters[0], Is.EqualTo(8));
+        Assert.That(batchCommands[0].Parameters.First(), Is.EqualTo(8));
         Assert.That(batchCommands[1].CommandText, Is.EqualTo("SELECT $1, 9"));
-        Assert.That(batchCommands[1].Parameters[0], Is.EqualTo(9));
+        Assert.That(batchCommands[1].Parameters.First(), Is.EqualTo(9));
     }
 
     [Test]
