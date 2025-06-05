@@ -669,7 +669,11 @@ public sealed partial class NpgsqlConnector
         try
         {
             var data = authentication.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
-            Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
+            if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
+            {
+                authentication.Dispose();
+                return false;
+            }
 
             var lengthBuffer = new byte[4];
 
