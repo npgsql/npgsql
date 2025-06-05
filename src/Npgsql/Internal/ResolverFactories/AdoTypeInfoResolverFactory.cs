@@ -76,9 +76,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Text
             // Update PgSerializerOptions.IsWellKnownTextType(Type) after any changes to this list.
             mappings.AddType<string>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding, nested: false), preferredFormat: DataFormat.Text), isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding, nested: false), preferredFormat: DataFormat.Text));
             // Uses the bytea converters, as neither type has a header.
             mappings.AddType<byte[]>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()),
@@ -103,9 +103,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         DataTypeNames.Xml, DataTypeNames.Name, DataTypeNames.RefCursor })
             {
                 mappings.AddType<string>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                    static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding, nested: false), preferredFormat: DataFormat.Text), isDefault: true);
                 mappings.AddStructType<char>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                    static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding, nested: false), preferredFormat: DataFormat.Text));
                 // Uses the bytea converters, as neither type has a header.
                 mappings.AddType<byte[]>(dataTypeName,
                     static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()),

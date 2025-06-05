@@ -271,13 +271,15 @@ public sealed class PgWriter
         Advance(sizeof(double));
     }
 
-    public void WriteChars(ReadOnlySpan<char> data, Encoding encoding)
+    public void WriteChars(ReadOnlySpan<char> data, Encoding encoding, int? encodedByteLength = null)
     {
         // If we have more chars than bytes remaining we can immediately go to the slow path.
         if (data.Length <= Remaining)
         {
             // If not, it's worth a shot to see if we can convert in one go.
-            var encodedLength = encoding.GetByteCount(data);
+            Debug.Assert(encodedByteLength is null || encodedByteLength == encoding.GetByteCount(data));
+            var encodedLength = encodedByteLength ?? encoding.GetByteCount(data);
+
             if (!ShouldFlush(encodedLength))
             {
                 var count = encoding.GetBytes(data, Span);
@@ -305,14 +307,16 @@ public sealed class PgWriter
         }
     }
 
-    public ValueTask WriteCharsAsync(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken = default)
+    public ValueTask WriteCharsAsync(ReadOnlyMemory<char> data, Encoding encoding, int? encodedByteLength = null, CancellationToken cancellationToken = default)
     {
         var dataSpan = data.Span;
         // If we have more chars than bytes remaining we can immediately go to the slow path.
         if (data.Length <= Remaining)
         {
             // If not, it's worth a shot to see if we can convert in one go.
-            var encodedLength = encoding.GetByteCount(dataSpan);
+            Debug.Assert(encodedByteLength is null || encodedByteLength == encoding.GetByteCount(dataSpan));
+            var encodedLength = encodedByteLength ?? encoding.GetByteCount(dataSpan);
+
             if (!ShouldFlush(encodedLength))
             {
                 var count = encoding.GetBytes(dataSpan, Span);
