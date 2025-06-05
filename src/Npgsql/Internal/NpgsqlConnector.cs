@@ -641,27 +641,6 @@ public sealed partial class NpgsqlConnector
 
     internal async ValueTask<bool> GSSEncrypt(bool async, CancellationToken cancellationToken)
     {
-        WriteGSSEncryptRequest();
-        await Flush(async, cancellationToken).ConfigureAwait(false);
-
-        await ReadBuffer.Ensure(1, async).ConfigureAwait(false);
-        var response = (char)ReadBuffer.ReadByte();
-
-        switch (response)
-        {
-        default:
-            throw new NpgsqlException($"Received unknown response {response} for GSSEncRequest (expecting G or N)");
-        case 'N':
-            return false;
-            // TODO: message
-            //throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
-        case 'G':
-            break;
-        }
-
-        if (ReadBuffer.ReadBytesLeft > 0)
-            throw new NpgsqlException("Additional unencrypted data received after GSS encryption negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
-
         var targetName = $"{KerberosServiceName}/{Host}";
         var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
         var authentication = new NegotiateAuthentication(clientOptions);
@@ -671,9 +650,30 @@ public sealed partial class NpgsqlConnector
             var data = authentication.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
             if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
             {
-                authentication.Dispose();
                 return false;
             }
+
+            WriteGSSEncryptRequest();
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+
+            await ReadBuffer.Ensure(1, async).ConfigureAwait(false);
+            var response = (char)ReadBuffer.ReadByte();
+
+            switch (response)
+            {
+            default:
+                throw new NpgsqlException($"Received unknown response {response} for GSSEncRequest (expecting G or N)");
+            case 'N':
+                return false;
+            // TODO: message
+            //throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
+            case 'G':
+                break;
+            }
+
+            if (ReadBuffer.ReadBytesLeft > 0)
+                throw new NpgsqlException(
+                    "Additional unencrypted data received after GSS encryption negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
 
             var lengthBuffer = new byte[4];
 
@@ -713,9 +713,16 @@ public sealed partial class NpgsqlConnector
                 await WriteGssEncryptMessage(async, data, lengthBuffer).ConfigureAwait(false);
             }
 
+            _stream = new GSSStream(_stream, authentication);
+            ReadBuffer.Underlying = _stream;
+            WriteBuffer.Underlying = _stream;
+            authentication = null;
+            return true;
+
             async ValueTask WriteGssEncryptMessage(bool async, byte[] data, byte[] lengthBuffer)
             {
-                Unsafe.WriteUnaligned(ref lengthBuffer[0], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(data.Length) : data.Length);
+                Unsafe.WriteUnaligned(ref lengthBuffer[0],
+                    BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(data.Length) : data.Length);
 
                 if (async)
                 {
@@ -733,14 +740,12 @@ public sealed partial class NpgsqlConnector
         }
         catch (Exception e)
         {
-            authentication.Dispose();
             throw new NpgsqlException("Exception while performing GSS encryption", e);
         }
-
-        _stream = new GSSStream(_stream, authentication);
-        ReadBuffer.Underlying = _stream;
-        WriteBuffer.Underlying = _stream;
-        return true;
+        finally
+        {
+            authentication?.Dispose();
+        }
     }
 
     internal async ValueTask<DatabaseState> QueryDatabaseState(
