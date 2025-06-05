@@ -16,7 +16,7 @@ class IntegratedSecurityHandler
         return new();
     }
 
-    public virtual ValueTask NegotiateAuthentication(bool async, NpgsqlConnector connector)
+    public virtual ValueTask NegotiateAuthentication(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
         => throw new NotSupportedException(string.Format(NpgsqlStrings.IntegratedSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity)));
 }
 
@@ -27,6 +27,6 @@ sealed class RealIntegratedSecurityHandler : IntegratedSecurityHandler
     public override ValueTask<string?> GetUsername(bool async, bool includeRealm, ILogger connectionLogger, CancellationToken cancellationToken)
         => KerberosUsernameProvider.GetUsername(async, includeRealm, connectionLogger, cancellationToken);
 
-    public override ValueTask NegotiateAuthentication(bool async, NpgsqlConnector connector)
-        => new(connector.AuthenticateGSS(async));
+    public override ValueTask NegotiateAuthentication(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
+        => new(connector.AuthenticateGSS(async, cancellationToken));
 }

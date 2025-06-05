@@ -55,7 +55,7 @@ partial class NpgsqlConnector
             case AuthenticationRequestType.GSS:
             case AuthenticationRequestType.SSPI:
                 ThrowIfNotAllowed(requiredAuthModes, msg.AuthRequestType == AuthenticationRequestType.GSS ? RequireAuthMode.GSS : RequireAuthMode.SSPI);
-                await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this).ConfigureAwait(false);
+                await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this, cancellationToken).ConfigureAwait(false);
                 return;
 
             case AuthenticationRequestType.GSSContinue:
@@ -321,7 +321,7 @@ partial class NpgsqlConnector
         await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
-    internal async Task AuthenticateGSS(bool async)
+    internal async Task AuthenticateGSS(bool async, CancellationToken cancellationToken)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 
@@ -331,8 +331,8 @@ partial class NpgsqlConnector
         using var authContext = new NegotiateAuthentication(clientOptions);
         var data = authContext.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
         Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
-        await WritePassword(data, 0, data.Length, async, UserCancellationToken).ConfigureAwait(false);
-        await Flush(async, UserCancellationToken).ConfigureAwait(false);
+        await WritePassword(data, 0, data.Length, async, cancellationToken).ConfigureAwait(false);
+        await Flush(async, cancellationToken).ConfigureAwait(false);
         while (true)
         {
             var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async).ConfigureAwait(false), this);
@@ -340,15 +340,15 @@ partial class NpgsqlConnector
                 break;
             if (response is not AuthenticationGSSContinueMessage gssMsg)
                 throw new NpgsqlException($"Received unexpected authentication request message {response.AuthRequestType}");
-            data = authContext.GetOutgoingBlob(gssMsg.AuthenticationData.AsSpan(), out statusCode)!;
+            data = authContext.GetOutgoingBlob(gssMsg.AuthenticationData.AsSpan(), out statusCode);
             if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
                 throw new NpgsqlException($"Error while authenticating GSS/SSPI: {statusCode}");
             // We might get NegotiateAuthenticationStatusCode.Completed but the data will not be null
             // This can happen if it's the first cycle, in which case we have to send that data to complete handshake (#4888)
             if (data is null)
                 continue;
-            await WritePassword(data, 0, data.Length, async, UserCancellationToken).ConfigureAwait(false);
-            await Flush(async, UserCancellationToken).ConfigureAwait(false);
+            await WritePassword(data, 0, data.Length, async, cancellationToken).ConfigureAwait(false);
+            await Flush(async, cancellationToken).ConfigureAwait(false);
         }
     }
 
