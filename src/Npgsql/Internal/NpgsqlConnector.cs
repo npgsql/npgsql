@@ -950,6 +950,7 @@ public sealed partial class NpgsqlConnector
                     // Alternatively, we can instead just go with the usual route of writing SslRequest, ignoring direct ssl
                     // But this is how libpq works
                     Debug.Assert(gssEncMode == GssEncMode.Prefer);
+                    // The exception message doesn't matter since we're going to retry again
                     throw new NpgsqlException();
                 }
 
