@@ -654,7 +654,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal async ValueTask<GssEncryptionResult> GSSEncrypt(bool async, CancellationToken cancellationToken)
+    internal async ValueTask<GssEncryptionResult> GSSEncrypt(bool async, bool isRequired, CancellationToken cancellationToken)
     {
         ConnectionLogger.LogTrace("Negotiating GSS encryption");
 
@@ -667,6 +667,11 @@ public sealed partial class NpgsqlConnector
             var data = authentication.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
             if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
             {
+                // Unable to retrieve credentials
+                // If it's required, throw an appropriate exception
+                if (isRequired)
+                    throw new NpgsqlException($"Unable to negotiate GSS encryption: {statusCode}");
+
                 return GssEncryptionResult.GetCredentialFailure;
             }
 
@@ -718,7 +723,7 @@ public sealed partial class NpgsqlConnector
                 data = authentication.GetOutgoingBlob(buffer.AsSpan(0, messageLength), out statusCode);
                 ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
                 if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
-                    throw new NpgsqlException($"Error while authenticating GSS encryption: {statusCode}");
+                    throw new NpgsqlException($"Error while negotiating GSS encryption: {statusCode}");
 
                 // TODO: the code below is the copy from GSS/SSPI auth
                 // It's unknown whether it holds true here or not
@@ -933,9 +938,6 @@ public sealed partial class NpgsqlConnector
             if (gssEncryptResult == GssEncryptionResult.Success)
                 return;
 
-            if (gssEncMode == GssEncMode.Require)
-                throw new NpgsqlException();
-
             timeout.CheckAndApply(this);
 
             if (GetSslNegotiation(Settings) == SslNegotiation.Direct)
@@ -1015,7 +1017,7 @@ public sealed partial class NpgsqlConnector
             throw new NpgsqlException("GSS encryption isn't supported over unix socket");
         }
 
-        return await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, this, cancellationToken)
+        return await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, gssEncMode == GssEncMode.Require, this, cancellationToken)
             .ConfigureAwait(false);
     }
 
