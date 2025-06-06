@@ -380,6 +380,22 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         return this;
     }
 
+    /// <summary>
+    /// When using Kerberos, this is a callback that allows customizing default settings for Kerberos encryption.
+    /// </summary>
+    /// <param name="gssEncryptionOptionsCallback">The callback containing logic to customize Kerberos encryption settings.</param>
+    /// <remarks>
+    /// <para>
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.negotiateauthenticationclientoptions?view=net-7.0"/>.
+    /// </para>
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseGssEncryptionOptionsCallback(Action<NegotiateAuthenticationClientOptions>? gssEncryptionOptionsCallback)
+    {
+        _internalBuilder.UseGssEncryptionOptionsCallback(gssEncryptionOptionsCallback);
+        return this;
+    }
+
     #endregion Authentication
 
     #region Type mapping

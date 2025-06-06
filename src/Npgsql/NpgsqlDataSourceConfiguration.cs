@@ -22,4 +22,5 @@ sealed record NpgsqlDataSourceConfiguration(string? Name,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
     Func<NpgsqlConnection, Task>? ConnectionInitializerAsync,
-    Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback);
+    Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback,
+    Action<NegotiateAuthenticationClientOptions>? GssEncryptionOptionsCallback);

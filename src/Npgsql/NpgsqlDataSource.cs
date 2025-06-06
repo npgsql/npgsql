@@ -109,6 +109,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync,
+                _,
                 _)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
