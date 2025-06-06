@@ -494,7 +494,7 @@ public sealed partial class NpgsqlConnector
 
             activity = NpgsqlActivitySource.ConnectionOpen(this);
 
-            await OpenCore(this, username, Settings.SslMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            await OpenCore(this, username, Settings.SslMode, Settings.GssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
 
             if (activity is not null)
                 NpgsqlActivitySource.Enrich(activity, this);
@@ -584,11 +584,25 @@ public sealed partial class NpgsqlConnector
             NpgsqlConnector conn,
             string username,
             SslMode sslMode,
+            GssEncMode encMode,
             NpgsqlTimeout timeout,
             bool async,
             CancellationToken cancellationToken)
         {
-            await conn.RawOpen(sslMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await conn.RawOpen(sslMode, encMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            }
+            catch when (encMode == GssEncMode.Prefer)
+            {
+                // TODO: should we log exception?
+                conn.Cleanup();
+
+                // If we hit an error with gss encryption
+                // Retry again without it
+                encMode = GssEncMode.Disable;
+                await conn.RawOpen(sslMode, encMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            }
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
@@ -601,7 +615,7 @@ public sealed partial class NpgsqlConnector
             }
             catch (PostgresException e)
                 when (e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification &&
-                      (sslMode == SslMode.Prefer && conn.IsSecure || sslMode == SslMode.Allow && !conn.IsSecure))
+                      (sslMode == SslMode.Prefer && conn.IsSslEncrypted || sslMode == SslMode.Allow && !conn.IsSslEncrypted))
             {
                 cancellationRegistration.Dispose();
                 Debug.Assert(!conn.IsBroken);
@@ -614,6 +628,7 @@ public sealed partial class NpgsqlConnector
                     conn,
                     username,
                     sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
+                    encMode,
                     timeout,
                     async,
                     cancellationToken).ConfigureAwait(false);
@@ -641,6 +656,8 @@ public sealed partial class NpgsqlConnector
 
     internal async ValueTask<bool> GSSEncrypt(bool async, CancellationToken cancellationToken)
     {
+        ConnectionLogger.LogTrace("Negotiating GSS encryption");
+
         var targetName = $"{KerberosServiceName}/{Host}";
         var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
         var authentication = new NegotiateAuthentication(clientOptions);
@@ -659,14 +676,16 @@ public sealed partial class NpgsqlConnector
             await ReadBuffer.Ensure(1, async).ConfigureAwait(false);
             var response = (char)ReadBuffer.ReadByte();
 
+            // TODO: Server can respond with an error here
+            // but according to documentation we shouldn't display this error to the user/application
+            // since the server has not been authenticated (CVE-2024-10977)
+            // See https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-GSSAPI
             switch (response)
             {
             default:
                 throw new NpgsqlException($"Received unknown response {response} for GSSEncRequest (expecting G or N)");
             case 'N':
                 return false;
-            // TODO: message
-            //throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
             case 'G':
                 break;
             }
@@ -698,9 +717,12 @@ public sealed partial class NpgsqlConnector
 
                 data = authentication.GetOutgoingBlob(buffer.AsSpan(0, messageLength), out statusCode);
                 if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
-                    throw new NpgsqlException($"Error while authenticating GSS/SSPI: {statusCode}");
+                    throw new NpgsqlException($"Error while authenticating GSS encryption: {statusCode}");
 
                 ArrayPool<byte>.Shared.Return(buffer);
+
+                // TODO: the code below is the copy from GSS/SSPI auth
+                // It's unknown whether it holds true here or not
 
                 // We might get NegotiateAuthenticationStatusCode.Completed but the data will not be null
                 // This can happen if it's the first cycle, in which case we have to send that data to complete handshake (#4888)
@@ -716,7 +738,10 @@ public sealed partial class NpgsqlConnector
             _stream = new GSSStream(_stream, authentication);
             ReadBuffer.Underlying = _stream;
             WriteBuffer.Underlying = _stream;
+            IsGssEncrypted = true;
             authentication = null;
+
+            ConnectionLogger.LogTrace("GSS encryption successful");
             return true;
 
             async ValueTask WriteGssEncryptMessage(bool async, byte[] data, byte[] lengthBuffer)
@@ -872,7 +897,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    async Task RawOpen(SslMode sslMode, GssEncMode gssEncMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         try
         {
@@ -902,10 +927,19 @@ public sealed partial class NpgsqlConnector
 
             timeout.CheckAndApply(this);
 
-            IsSecure = false;
+            IsSslEncrypted = false;
+            IsGssEncrypted = false;
 
-            if (await GSSEncrypt(async, cancellationToken).ConfigureAwait(false))
-                return;
+            if (gssEncMode != GssEncMode.Disable)
+            {
+                if (await GSSEncrypt(async, cancellationToken).ConfigureAwait(false))
+                    return;
+
+                if (gssEncMode == GssEncMode.Require)
+                    throw new NpgsqlException();
+            }
+
+            timeout.CheckAndApply(this);
 
             if (GetSslNegotiation(Settings) == SslNegotiation.Direct)
             {
@@ -974,6 +1008,8 @@ public sealed partial class NpgsqlConnector
 
     internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
+        ConnectionLogger.LogTrace("Negotiating SSL encryption");
+
         var clientCertificates = new X509Certificate2Collection();
         var certPath = Settings.SslCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
 
@@ -1094,7 +1130,7 @@ public sealed partial class NpgsqlConnector
 
             ReadBuffer.Underlying = _stream;
             WriteBuffer.Underlying = _stream;
-            IsSecure = true;
+            IsSslEncrypted = true;
             ConnectionLogger.LogTrace("SSL negotiation successful");
         }
         catch
@@ -1793,7 +1829,12 @@ public sealed partial class NpgsqlConnector
     /// <summary>
     /// Returns whether SSL is being used for the connection
     /// </summary>
-    internal bool IsSecure { get; private set; }
+    internal bool IsSslEncrypted { get; private set; }
+
+    /// <summary>
+    /// Returns whether GSS is being used for the connection
+    /// </summary>
+    internal bool IsGssEncrypted { get; private set; }
 
     /// <summary>
     /// Returns whether SCRAM-SHA256 is being used for the connection
@@ -2014,8 +2055,24 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            RawOpen(Settings.SslMode, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false, CancellationToken.None)
-                .GetAwaiter().GetResult();
+            try
+            {
+                RawOpen(Settings.SslMode, Settings.GssEncMode, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
+                        CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            catch when (Settings.GssEncMode == GssEncMode.Prefer)
+            {
+                // TODO: should we log exception?
+                Cleanup();
+
+                // If we hit an error with gss encryption
+                // Retry again without it
+                RawOpen(Settings.SslMode, GssEncMode.Disable, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
+                        CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+
             WriteCancelRequest(backendProcessId, backendSecretKey);
             Flush();
 

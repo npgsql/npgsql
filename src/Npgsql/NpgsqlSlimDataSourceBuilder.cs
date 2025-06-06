@@ -610,7 +610,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// Enables the possibility to use GSS/SSPI authentication for connections to PostgreSQL. This does not guarantee that it will
+    /// Enables the possibility to use GSS/SSPI authentication and encryption for connections to PostgreSQL. This does not guarantee that it will
     /// actually be used; see <see href="https://www.npgsql.org/doc/security.html"/> for more details.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>

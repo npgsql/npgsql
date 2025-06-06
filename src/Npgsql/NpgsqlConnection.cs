@@ -999,7 +999,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// Returns whether SSL is being used for the connection.
     /// </summary>
-    internal bool IsSecure => CheckOpenAndRunInTemporaryScope(c => c.IsSecure);
+    internal bool IsSecure => CheckOpenAndRunInTemporaryScope(c => c.IsSslEncrypted);
 
     /// <summary>
     /// Returns whether SCRAM-SHA256 is being user for the connection

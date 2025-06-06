@@ -207,7 +207,7 @@ partial class NpgsqlConnector
         // try authenticate without channel binding even though both
         // the client and server supported it. The SCRAM exchange
         // checks for that, to prevent downgrade attacks.
-        if (!IsSecure)
+        if (!IsSslEncrypted)
             throw new NpgsqlException("Server offered SCRAM-SHA-256-PLUS authentication over a non-SSL connection");
 
         var sslStream = (SslStream)_stream;
