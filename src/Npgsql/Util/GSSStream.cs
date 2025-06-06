@@ -9,8 +9,13 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Util;
 
+// For more detailed explanation of communication protocol
+// See https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-GSSAPI
 sealed class GSSStream : Stream
 {
+    // At most, postgres supports GSS messages up to 16kb
+    // We use the recommended value of 8kb for the write buffer
+    // Which will result in messages of slightly larger than 8kb
     const int MaxWriteMessageSizeLimit = 8 * 1024;
     const int MaxReadMessageSizeLimit = 16 * 1024;
 
@@ -28,6 +33,9 @@ sealed class GSSStream : Stream
     {
         _stream = stream;
         _authentication = authentication;
+        // While we guarantee that unencrypted messages are at most 8kb
+        // Encrypting them will result in messages slightly larger than the original size
+        // Which is why the initial capacity has an additional 2kb of free space
         _writeBuffer = new ArrayBufferWriter<byte>(MaxWriteMessageSizeLimit + 2048);
         _writeLengthBuffer = new byte[4];
         _readBuffer = new byte[MaxReadMessageSizeLimit];
@@ -45,7 +53,7 @@ sealed class GSSStream : Stream
                 _authentication.IsEncrypted,
                 out _);
             if (result != NegotiateAuthenticationStatusCode.Completed)
-                throw new NpgsqlException();
+                throw new NpgsqlException($"Error while encrypting buffer: {result}");
 
             var written = _writeBuffer.WrittenMemory;
             Unsafe.WriteUnaligned(ref _writeLengthBuffer[0], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(written.Length) : written.Length);
@@ -73,7 +81,7 @@ sealed class GSSStream : Stream
                 _authentication.IsEncrypted,
                 out _);
             if (result != NegotiateAuthenticationStatusCode.Completed)
-                throw new NpgsqlException();
+                throw new NpgsqlException($"Error while encrypting buffer: {result}");
 
             var written = _writeBuffer.WrittenMemory;
             Unsafe.WriteUnaligned(ref _writeLengthBuffer[0], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(written.Length) : written.Length);
@@ -105,7 +113,7 @@ sealed class GSSStream : Stream
             _stream.ReadExactly(messageBuffer);
             var result = _authentication.UnwrapInPlace(messageBuffer, out _readPosition, out _leftToRead, out _);
             if (result != NegotiateAuthenticationStatusCode.Completed)
-                throw new NpgsqlException();
+                throw new NpgsqlException($"Error while decrypting buffer: {result}");
         }
 
         var maxRead = Math.Min(_leftToRead, buffer.Length);
@@ -130,7 +138,7 @@ sealed class GSSStream : Stream
             await _stream.ReadExactlyAsync(messageBuffer, cancellationToken).ConfigureAwait(false);
             var result = _authentication.UnwrapInPlace(messageBuffer.Span, out _readPosition, out _leftToRead, out _);
             if (result != NegotiateAuthenticationStatusCode.Completed)
-                throw new NpgsqlException();
+                throw new NpgsqlException($"Error while decrypting buffer: {result}");
         }
 
         var maxRead = Math.Min(_leftToRead, buffer.Length);
