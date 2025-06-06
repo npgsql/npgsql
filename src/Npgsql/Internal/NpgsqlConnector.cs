@@ -952,7 +952,7 @@ public sealed partial class NpgsqlConnector
                 // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but since we also allow environment variables...
                 if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
                     throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
-                if (gssEncryptResult == GssEncryptionResult.GetCredentialFailure)
+                if (gssEncryptResult == GssEncryptionResult.NegotiateFailure)
                 {
                     // We can be here only if it's fallback from preferred (but failed) gss encryption
                     // In this case, direct encryption isn't going to work anymore, so we throw a bogus exception to retry again without gss
