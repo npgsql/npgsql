@@ -654,7 +654,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    internal async ValueTask<bool> GSSEncrypt(bool async, CancellationToken cancellationToken)
+    internal async ValueTask<GssEncryptionResult> GSSEncrypt(bool async, CancellationToken cancellationToken)
     {
         ConnectionLogger.LogTrace("Negotiating GSS encryption");
 
@@ -667,7 +667,7 @@ public sealed partial class NpgsqlConnector
             var data = authentication.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
             if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
             {
-                return false;
+                return GssEncryptionResult.GetCredentialFailure;
             }
 
             WriteGSSEncryptRequest();
@@ -685,7 +685,7 @@ public sealed partial class NpgsqlConnector
             default:
                 throw new NpgsqlException($"Received unknown response {response} for GSSEncRequest (expecting G or N)");
             case 'N':
-                return false;
+                return GssEncryptionResult.NegotiateFailure;
             case 'G':
                 break;
             }
@@ -742,7 +742,7 @@ public sealed partial class NpgsqlConnector
             authentication = null;
 
             ConnectionLogger.LogTrace("GSS encryption successful");
-            return true;
+            return GssEncryptionResult.Success;
 
             async ValueTask WriteGssEncryptMessage(bool async, byte[] data, byte[] lengthBuffer)
             {
@@ -930,9 +930,15 @@ public sealed partial class NpgsqlConnector
             IsSslEncrypted = false;
             IsGssEncrypted = false;
 
+            // GetCredentialFailure is essentially a nop (since we didn't send anything other the wire)
+            // So we can proceed below as if gss encryption wasn't even attempted
+            var gssEncryptResult = GssEncryptionResult.GetCredentialFailure;
+
             if (gssEncMode != GssEncMode.Disable)
             {
-                if (await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, this, cancellationToken).ConfigureAwait(false))
+                gssEncryptResult = await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, this, cancellationToken)
+                    .ConfigureAwait(false);
+                if (gssEncryptResult == GssEncryptionResult.Success)
                     return;
 
                 if (gssEncMode == GssEncMode.Require)
@@ -946,6 +952,16 @@ public sealed partial class NpgsqlConnector
                 // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but since we also allow environment variables...
                 if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
                     throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
+                if (gssEncryptResult == GssEncryptionResult.GetCredentialFailure)
+                {
+                    // We can be here only if it's fallback from preferred (but failed) gss encryption
+                    // In this case, direct encryption isn't going to work anymore, so we throw a bogus exception to retry again without gss
+                    // Alternatively, we can instead just go with the usual route of writing SslRequest, ignoring direct ssl
+                    // But this is how libpq works
+                    Debug.Assert(gssEncMode == GssEncMode.Prefer);
+                    throw new NpgsqlException();
+                }
+
                 await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
                 if (ReadBuffer.ReadBytesLeft > 0)
                     throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
@@ -3143,6 +3159,13 @@ enum DataRowLoadingMode
     /// Skip DataRow messages altogether
     /// </summary>
     Skip
+}
+
+enum GssEncryptionResult
+{
+    GetCredentialFailure,
+    NegotiateFailure,
+    Success
 }
 
 #endregion

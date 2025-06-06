@@ -19,7 +19,7 @@ class IntegratedSecurityHandler
     public virtual ValueTask NegotiateAuthentication(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
         => throw new NotSupportedException(string.Format(NpgsqlStrings.IntegratedSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity)));
 
-    public virtual ValueTask<bool> GSSEncrypt(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
+    public virtual ValueTask<GssEncryptionResult> GSSEncrypt(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
         => throw new NotSupportedException(string.Format(NpgsqlStrings.IntegratedSecurityDisabled, nameof(NpgsqlSlimDataSourceBuilder.EnableIntegratedSecurity)));
 }
 
@@ -33,6 +33,6 @@ sealed class RealIntegratedSecurityHandler : IntegratedSecurityHandler
     public override ValueTask NegotiateAuthentication(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
         => connector.AuthenticateGSS(async, cancellationToken);
 
-    public override ValueTask<bool> GSSEncrypt(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
+    public override ValueTask<GssEncryptionResult> GSSEncrypt(bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
         => connector.GSSEncrypt(async, cancellationToken);
 }
