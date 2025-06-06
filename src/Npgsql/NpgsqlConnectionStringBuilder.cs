@@ -493,7 +493,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         set
         {
             _gssEncMode = value;
-            SetValue(nameof(_gssEncMode), value);
+            SetValue(nameof(GssEncMode), value);
         }
     }
     GssEncMode _gssEncMode;
@@ -1745,7 +1745,7 @@ public enum SslNegotiation
 }
 
 /// <summary>
-///
+/// Specifies how to manage GSS encryption.
 /// </summary>
 public enum GssEncMode
 {
