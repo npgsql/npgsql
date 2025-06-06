@@ -932,7 +932,7 @@ public sealed partial class NpgsqlConnector
 
             if (gssEncMode != GssEncMode.Disable)
             {
-                if (await GSSEncrypt(async, cancellationToken).ConfigureAwait(false))
+                if (await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, this, cancellationToken).ConfigureAwait(false))
                     return;
 
                 if (gssEncMode == GssEncMode.Require)

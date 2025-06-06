@@ -321,7 +321,7 @@ partial class NpgsqlConnector
         await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
-    internal async Task AuthenticateGSS(bool async, CancellationToken cancellationToken)
+    internal async ValueTask AuthenticateGSS(bool async, CancellationToken cancellationToken)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
 
