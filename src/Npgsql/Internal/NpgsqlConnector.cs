@@ -929,20 +929,12 @@ public sealed partial class NpgsqlConnector
             IsSslEncrypted = false;
             IsGssEncrypted = false;
 
-            // GetCredentialFailure is essentially a nop (since we didn't send anything other the wire)
-            // So we can proceed below as if gss encryption wasn't even attempted
-            var gssEncryptResult = GssEncryptionResult.GetCredentialFailure;
+            var gssEncryptResult = await TryNegotiateGssEncryption(gssEncMode, async, cancellationToken).ConfigureAwait(false);
+            if (gssEncryptResult == GssEncryptionResult.Success)
+                return;
 
-            if (gssEncMode != GssEncMode.Disable)
-            {
-                gssEncryptResult = await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, this, cancellationToken)
-                    .ConfigureAwait(false);
-                if (gssEncryptResult == GssEncryptionResult.Success)
-                    return;
-
-                if (gssEncMode == GssEncMode.Require)
-                    throw new NpgsqlException();
-            }
+            if (gssEncMode == GssEncMode.Require)
+                throw new NpgsqlException();
 
             timeout.CheckAndApply(this);
 
@@ -1005,6 +997,25 @@ public sealed partial class NpgsqlConnector
 
             throw;
         }
+    }
+
+    async ValueTask<GssEncryptionResult> TryNegotiateGssEncryption(GssEncMode gssEncMode, bool async, CancellationToken cancellationToken)
+    {
+        // GetCredentialFailure is essentially a nop (since we didn't send anything other the wire)
+        // So we can proceed further as if gss encryption wasn't even attempted
+        if (gssEncMode == GssEncMode.Disable) return GssEncryptionResult.GetCredentialFailure;
+
+        if (ConnectedEndPoint!.AddressFamily == AddressFamily.Unix)
+        {
+            if (gssEncMode == GssEncMode.Prefer)
+                return GssEncryptionResult.GetCredentialFailure;
+
+            Debug.Assert(gssEncMode == GssEncMode.Require);
+            throw new NpgsqlException("GSS encryption isn't supported over unix socket");
+        }
+
+        return await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, this, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     static SslNegotiation GetSslNegotiation(NpgsqlConnectionStringBuilder settings)
