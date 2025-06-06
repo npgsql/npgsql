@@ -33,7 +33,13 @@ partial class NpgsqlConnector
             case AuthenticationRequestType.Ok:
                 // If we didn't complete authentication, check whether it's allowed
                 if (!authenticated)
+                {
+                    // User requested GSS authentication, but server said that no auth is required
+                    // If and only if our connection is gss encrypted, we consider us already authenticated
+                    if (requiredAuthModes.HasFlag(RequireAuthMode.GSS) && IsGssEncrypted)
+                        return;
                     ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.None);
+                }
                 return;
 
             case AuthenticationRequestType.CleartextPassword:
