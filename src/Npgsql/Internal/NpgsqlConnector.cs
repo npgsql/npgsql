@@ -716,10 +716,9 @@ public sealed partial class NpgsqlConnector
                     _stream.ReadExactly(buffer.AsSpan(0, messageLength));
 
                 data = authentication.GetOutgoingBlob(buffer.AsSpan(0, messageLength), out statusCode);
+                ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
                 if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
                     throw new NpgsqlException($"Error while authenticating GSS encryption: {statusCode}");
-
-                ArrayPool<byte>.Shared.Return(buffer);
 
                 // TODO: the code below is the copy from GSS/SSPI auth
                 // It's unknown whether it holds true here or not
