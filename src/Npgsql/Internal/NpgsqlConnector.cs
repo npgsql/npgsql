@@ -587,24 +587,24 @@ public sealed partial class NpgsqlConnector
             NpgsqlConnector conn,
             string username,
             SslMode sslMode,
-            GssEncMode encMode,
+            GssEncMode gssEncMode,
             NpgsqlTimeout timeout,
             bool async,
             CancellationToken cancellationToken)
         {
             try
             {
-                await conn.RawOpen(sslMode, encMode, timeout, async, cancellationToken).ConfigureAwait(false);
+                await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
             }
-            catch when (encMode == GssEncMode.Prefer)
+            catch when (gssEncMode == GssEncMode.Prefer)
             {
                 // TODO: should we log exception?
                 conn.Cleanup();
 
                 // If we hit an error with gss encryption
                 // Retry again without it
-                encMode = GssEncMode.Disable;
-                await conn.RawOpen(sslMode, encMode, timeout, async, cancellationToken).ConfigureAwait(false);
+                gssEncMode = GssEncMode.Disable;
+                await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
             }
 
             timeout.CheckAndApply(conn);
@@ -631,7 +631,7 @@ public sealed partial class NpgsqlConnector
                     conn,
                     username,
                     sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
-                    encMode,
+                    gssEncMode,
                     timeout,
                     async,
                     cancellationToken).ConfigureAwait(false);
@@ -1010,7 +1010,7 @@ public sealed partial class NpgsqlConnector
 
     async ValueTask<GssEncryptionResult> TryNegotiateGssEncryption(GssEncMode gssEncMode, bool async, CancellationToken cancellationToken)
     {
-        // GetCredentialFailure is essentially a nop (since we didn't send anything other the wire)
+        // GetCredentialFailure is essentially a nop (since we didn't send anything over the wire)
         // So we can proceed further as if gss encryption wasn't even attempted
         if (gssEncMode == GssEncMode.Disable) return GssEncryptionResult.GetCredentialFailure;
 
