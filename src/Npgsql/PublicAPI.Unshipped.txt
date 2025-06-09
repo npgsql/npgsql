@@ -3,6 +3,8 @@ abstract Npgsql.NpgsqlDataSource.Clear() -> void
 Npgsql.NpgsqlConnection.CloneWithAsync(string! connectionString, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.get -> System.Action<System.Net.Security.SslClientAuthenticationOptions!>?
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.IncludeFailedStatement.get -> bool
+Npgsql.NpgsqlConnectionStringBuilder.IncludeFailedStatement.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.get -> Npgsql.SslNegotiation
