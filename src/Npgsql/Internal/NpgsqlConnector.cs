@@ -2534,12 +2534,12 @@ public sealed partial class NpgsqlConnector
             State = newState;
             _currentCommand = command;
 
-            StartCancellableOperation(cancellationToken, attemptPgCancellation);
-
             // We reset the ReadBuffer.Timeout for every user action, so it wouldn't leak from the previous query or action
             // For example, we might have successfully cancelled the previous query (so the connection is not broken)
-            // But the next time, we call the Prepare, which doesn't set it's own timeout
+            // But the next time, we call the Prepare, which doesn't set its own timeout
             ReadBuffer.Timeout = TimeSpan.FromSeconds(command?.CommandTimeout ?? Settings.CommandTimeout);
+
+            StartCancellableOperation(cancellationToken, attemptPgCancellation);
 
             return new UserAction(this);
         }
@@ -2676,10 +2676,14 @@ public sealed partial class NpgsqlConnector
         var keepaliveMs = Settings.KeepAlive * 1000;
         while (true)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             var timeoutForKeepalive = _isKeepAliveEnabled && (timeout <= 0 || keepaliveMs < timeout);
-            ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
+            lock (CancelLock)
+            {
+                // We need to make sure a callback registered on CancellationToken doesn't try to concurrently change ReadBuffer.Timeout.
+                // Having Thread.MemoryBarrier() wouldn't be enough because ReadBuffer.Timeout isn't thread safe.
+                cancellationToken.ThrowIfCancellationRequested();
+                ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
+            }
             try
             {
                 var msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
@@ -2703,7 +2707,6 @@ public sealed partial class NpgsqlConnector
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
             var receivedNotification = false;
-            var expectedMessageCode = BackendMessageCode.RowDescription;
 
             while (true)
             {
@@ -2728,13 +2731,12 @@ public sealed partial class NpgsqlConnector
                 }
 
                 if (msg.Code != BackendMessageCode.ReadyForQuery)
-                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
+                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {BackendMessageCode.ReadyForQuery} as part of keepalive");
 
                 LogMessages.CompletedKeepalive(ConnectionLogger, Id);
 
                 if (receivedNotification)
                     return true; // Notification was received during the keepalive
-                cancellationToken.ThrowIfCancellationRequested();
                 break;
             }
 
