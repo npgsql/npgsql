@@ -497,7 +497,9 @@ public sealed partial class NpgsqlConnector
 
             activity = NpgsqlActivitySource.ConnectionOpen(this);
 
-            await OpenCore(this, username, Settings.SslMode, Settings.GssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            var gssEncMode = GetGssEncMode(Settings);
+
+            await OpenCore(this, username, Settings.SslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
 
             if (activity is not null)
                 NpgsqlActivitySource.Enrich(activity, this);
@@ -1032,13 +1034,27 @@ public sealed partial class NpgsqlConnector
         if (settings.UserProvidedSslNegotiation is { } userProvidedSslNegotiation)
             return userProvidedSslNegotiation;
 
-        if (PostgresEnvironment.SslNegotiation is { } sslNegotiationEnv)
+        if (PostgresEnvironment.GssEncMode is { } sslNegotiationEnv)
         {
             if (Enum.TryParse<SslNegotiation>(sslNegotiationEnv, ignoreCase: true, out var sslNegotiation))
                 return sslNegotiation;
         }
 
         return SslNegotiation.Postgres;
+    }
+
+    static GssEncMode GetGssEncMode(NpgsqlConnectionStringBuilder settings)
+    {
+        if (settings.UserProvidedGssEncMode is { } userProvidedGssEncMode)
+            return userProvidedGssEncMode;
+
+        if (PostgresEnvironment.GssEncMode is { } gssEncModeEnv)
+        {
+            if (Enum.TryParse<GssEncMode>(gssEncModeEnv, ignoreCase: true, out var gssEncMode))
+                return gssEncMode;
+        }
+
+        return GssEncMode.Disable;
     }
 
     internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
@@ -2087,16 +2103,17 @@ public sealed partial class NpgsqlConnector
     void DoCancelRequest(int backendProcessId, int backendSecretKey)
     {
         Debug.Assert(State == ConnectorState.Closed);
+        var gssEncMode = GetGssEncMode(Settings);
 
         try
         {
             try
             {
-                RawOpen(Settings.SslMode, Settings.GssEncMode, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
+                RawOpen(Settings.SslMode, gssEncMode, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
             }
-            catch when (Settings.GssEncMode == GssEncMode.Prefer)
+            catch when (gssEncMode == GssEncMode.Prefer)
             {
                 // TODO: should we log exception?
                 Cleanup();

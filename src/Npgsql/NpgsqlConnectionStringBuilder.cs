@@ -485,18 +485,18 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Category("Security")]
     [Description("Controls whether GSS encryption is required, disabled or preferred, depending on server support.")]
     [DisplayName("GSS Enc Mode")]
-    [DefaultValue(GssEncMode.Disable)]
     [NpgsqlConnectionStringProperty]
     public GssEncMode GssEncMode
     {
-        get => _gssEncMode;
+        get => UserProvidedGssEncMode ?? GssEncMode.Disable;
         set
         {
-            _gssEncMode = value;
+            UserProvidedGssEncMode = value;
             SetValue(nameof(GssEncMode), value);
         }
     }
-    GssEncMode _gssEncMode;
+
+    internal GssEncMode? UserProvidedGssEncMode { get; private set; }
 
     /// <summary>
     /// Location of a client certificate to be sent to the server.
