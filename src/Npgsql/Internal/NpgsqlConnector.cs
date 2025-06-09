@@ -1034,7 +1034,7 @@ public sealed partial class NpgsqlConnector
         if (settings.UserProvidedSslNegotiation is { } userProvidedSslNegotiation)
             return userProvidedSslNegotiation;
 
-        if (PostgresEnvironment.GssEncMode is { } sslNegotiationEnv)
+        if (PostgresEnvironment.SslNegotiation is { } sslNegotiationEnv)
         {
             if (Enum.TryParse<SslNegotiation>(sslNegotiationEnv, ignoreCase: true, out var sslNegotiation))
                 return sslNegotiation;
