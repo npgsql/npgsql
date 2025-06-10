@@ -84,6 +84,8 @@ sealed class NpgsqlWriteBuffer : IDisposable
     bool _disposed;
     readonly PgWriter _pgWriter;
 
+    Span<byte> Span => Buffer.AsSpan(WritePosition, WriteSpaceLeft);
+
     /// <summary>
     /// The minimum buffer size possible.
     /// </summary>
@@ -329,46 +331,46 @@ sealed class NpgsqlWriteBuffer : IDisposable
         => ThrowHelper.ThrowInvalidOperationException("There is not enough space left in the buffer.");
 
     public Task WriteString(string s, int byteLen, bool async, CancellationToken cancellationToken = default)
-        => WriteString(s, s.Length, byteLen, async, cancellationToken);
-
-    public Task WriteString(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken = default)
     {
         if (byteLen <= WriteSpaceLeft)
         {
-            WriteString(s, charLen);
+            WriteString(s);
             return Task.CompletedTask;
         }
-        return WriteStringLong(this, async, s, charLen, byteLen, cancellationToken);
+        return WriteStringLong(this, async, s, byteLen, cancellationToken);
 
-        static async Task WriteStringLong(NpgsqlWriteBuffer buffer, bool async, string s, int charLen, int byteLen, CancellationToken cancellationToken)
+        static async Task WriteStringLong(NpgsqlWriteBuffer buffer, bool async, string s, int byteLen, CancellationToken cancellationToken)
         {
             Debug.Assert(byteLen > buffer.WriteSpaceLeft);
             if (byteLen <= buffer.Size)
             {
                 // String can fit entirely in an empty buffer. Flush and retry rather than
-                // going into the partial writing flow below (which requires ToCharArray())
+                // going into the partial writing flow below
                 await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
-                buffer.WriteString(s, charLen);
+                buffer.WriteString(s);
             }
             else
             {
-                var charPos = 0;
-                while (true)
+                var data = s.AsMemory();
+                var minBufferSize = buffer.TextEncoding.GetMaxByteCount(1);
+                bool completed;
+
+                do
                 {
-                    buffer.WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
-                    if (completed)
-                        break;
-                    await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
-                    charPos += charsUsed;
-                }
+                    if (buffer.WriteSpaceLeft < minBufferSize)
+                        await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
+                    buffer._textEncoder.Convert(data.Span, buffer.Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
+                    data = data.Slice(charsUsed);
+                    buffer.WritePosition += bytesUsed;
+                } while (!completed);
             }
         }
     }
 
-    public void WriteString(string s, int len = 0)
+    public void WriteString(string s)
     {
         Debug.Assert(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
-        WritePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, Buffer, WritePosition);
+        WritePosition += TextEncoding.GetBytes(s, 0, s.Length, Buffer, WritePosition);
     }
 
     public void WriteBytes(ReadOnlySpan<byte> buf)
@@ -421,30 +423,6 @@ sealed class NpgsqlWriteBuffer : IDisposable
         }
     }
 
-    public async Task WriteStreamRaw(Stream stream, int count, bool async, CancellationToken cancellationToken = default)
-    {
-        while (count > 0)
-        {
-            if (WriteSpaceLeft == 0)
-                await Flush(async, cancellationToken).ConfigureAwait(false);
-            try
-            {
-                var read = async
-                    ? await stream.ReadAsync(Buffer, WritePosition, Math.Min(WriteSpaceLeft, count), cancellationToken).ConfigureAwait(false)
-                    : stream.Read(Buffer, WritePosition, Math.Min(WriteSpaceLeft, count));
-                if (read == 0)
-                    throw new EndOfStreamException();
-                WritePosition += read;
-                count -= read;
-            }
-            catch (Exception e)
-            {
-                throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
-            }
-        }
-        Debug.Assert(count == 0);
-    }
-
     public void WriteNullTerminatedString(string s)
     {
         AssertASCIIOnly(s);
@@ -459,47 +437,6 @@ sealed class NpgsqlWriteBuffer : IDisposable
         Debug.Assert(WriteSpaceLeft >= s.Length + 1);
         WriteBytes(s);
         WriteByte(0);
-    }
-
-    #endregion
-
-    #region Write Complex
-
-    internal void WriteStringChunked(char[] chars, int charIndex, int charCount,
-        bool flush, out int charsUsed, out bool completed)
-    {
-        if (WriteSpaceLeft < _textEncoder.GetByteCount(chars, charIndex, char.IsHighSurrogate(chars[charIndex]) ? 2 : 1, flush: false))
-        {
-            charsUsed = 0;
-            completed = false;
-            return;
-        }
-
-        _textEncoder.Convert(chars, charIndex, charCount, Buffer, WritePosition, WriteSpaceLeft,
-            flush, out charsUsed, out var bytesUsed, out completed);
-        WritePosition += bytesUsed;
-    }
-
-    internal unsafe void WriteStringChunked(string s, int charIndex, int charCount,
-        bool flush, out int charsUsed, out bool completed)
-    {
-        int bytesUsed;
-
-        fixed (char* sPtr = s)
-        fixed (byte* bufPtr = Buffer)
-        {
-            if (WriteSpaceLeft < _textEncoder.GetByteCount(sPtr + charIndex, char.IsHighSurrogate(*(sPtr + charIndex)) ? 2 : 1, flush: false))
-            {
-                charsUsed = 0;
-                completed = false;
-                return;
-            }
-
-            _textEncoder.Convert(sPtr + charIndex, charCount, bufPtr + WritePosition, WriteSpaceLeft,
-                flush, out charsUsed, out bytesUsed, out completed);
-        }
-
-        WritePosition += bytesUsed;
     }
 
     #endregion
