@@ -166,7 +166,7 @@ In the example above, we let Npgsql *infer* the PostgreSQL data type from the .N
 
 The standard ADO.NET parameter API is unfortunately weakly-typed: parameter values are set on `NpgsqlParameter.Value`, which, being an `object`, boxes value types such as `int`. If you're sending lots of value types to the database, this creates large amounts of useless heap allocations and strain the garbage collector.
 
-As an alternative, you can use `NpgsqlParameter<T>`. This generic class has a `TypedValue` member, which is similar to `NpgsqlParameter.Value` but is strongly-typed, thus avoiding the boxing and heap allocation. Unfortunately, using nullable value types (in order to send nulls) isn't yet supported - you'll have to use the non-generic parameter API for that. Note also that this strongly-typed parameter API is entirely Npgsql-specific, and will make your code non-portable to other database. See [#8955](https://github.com/dotnet/corefx/issues/8955) for an issue discussing this at the ADO.NET level.
+As an alternative, you can use `NpgsqlParameter<T>`. This generic class has a `TypedValue` member, which is similar to `NpgsqlParameter.Value` but is strongly-typed, thus avoiding the boxing and heap allocation. Note that this strongly-typed parameter API is entirely Npgsql-specific, and will make your code non-portable to other database. See [#8955](https://github.com/dotnet/corefx/issues/8955) for an issue discussing this at the ADO.NET level.
 
 ## Transactions
 
