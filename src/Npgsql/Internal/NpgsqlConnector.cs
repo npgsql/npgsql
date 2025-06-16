@@ -20,9 +20,10 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Util;
-using static Npgsql.Util.Statics;
 using Microsoft.Extensions.Logging;
 using Npgsql.Properties;
+
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Internal;
 
@@ -755,8 +756,7 @@ public sealed partial class NpgsqlConnector
 
             async ValueTask WriteGssEncryptMessage(bool async, byte[] data, byte[] lengthBuffer)
             {
-                Unsafe.WriteUnaligned(ref lengthBuffer[0],
-                    BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(data.Length) : data.Length);
+                BinaryPrimitives.WriteInt32BigEndian(lengthBuffer, data.Length);
 
                 if (async)
                 {
