@@ -63,8 +63,6 @@ public sealed partial class NpgsqlConnector
 
     Action<NegotiateAuthenticationClientOptions>? NegotiateOptionsCallback { get; }
 
-    Action<NegotiateAuthenticationClientOptions>? GSSEncryptionOptionsCallback { get; }
-
     public Encoding TextEncoding { get; private set; } = default!;
 
     /// <summary>
@@ -393,7 +391,6 @@ public sealed partial class NpgsqlConnector
 
         SslClientAuthenticationOptionsCallback = dataSource.SslClientAuthenticationOptionsCallback;
         NegotiateOptionsCallback = dataSource.Configuration.NegotiateOptionsCallback;
-        GSSEncryptionOptionsCallback = dataSource.Configuration.GssEncryptionOptionsCallback;
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
@@ -666,7 +663,7 @@ public sealed partial class NpgsqlConnector
         var targetName = $"{KerberosServiceName}/{Host}";
         var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
 
-        GSSEncryptionOptionsCallback?.Invoke(clientOptions);
+        NegotiateOptionsCallback?.Invoke(clientOptions);
 
         var authentication = new NegotiateAuthentication(clientOptions);
 
