@@ -592,21 +592,7 @@ public sealed partial class NpgsqlConnector
             bool async,
             CancellationToken cancellationToken)
         {
-            try
-            {
-                await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (gssEncMode == GssEncryptionMode.Prefer)
-            {
-                conn.ConnectionLogger.LogTrace(e, "Error while opening physical connection with GSS encryption, retrying without it");
-                conn.Cleanup();
-
-                // If we hit an error with gss encryption
-                // Retry again without it
-                gssEncMode = GssEncryptionMode.Disable;
-                await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
-            }
-
+            await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
             await conn.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -616,10 +602,21 @@ public sealed partial class NpgsqlConnector
             {
                 await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
             }
-            catch (PostgresException e)
-                when (e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification &&
-                      (sslMode == SslMode.Prefer && conn.IsSslEncrypted || sslMode == SslMode.Allow && !conn.IsSslEncrypted))
+            catch (Exception e) when
+                // Any error after trying with GSS encryption
+                (gssEncMode == GssEncryptionMode.Prefer ||
+                // Auth error with/without SSL
+                (e is PostgresException { SqlState: PostgresErrorCodes.InvalidAuthorizationSpecification } &&
+                 (sslMode == SslMode.Prefer && conn.IsSslEncrypted || sslMode == SslMode.Allow && !conn.IsSslEncrypted)))
             {
+                if (gssEncMode == GssEncryptionMode.Prefer)
+                {
+                    conn.ConnectionLogger.LogTrace(e, "Error while opening physical connection with GSS encryption, retrying without it");
+                    gssEncMode = GssEncryptionMode.Disable;
+                }
+                else
+                    sslMode = sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require;
+
                 cancellationRegistration.Dispose();
                 Debug.Assert(!conn.IsBroken);
 
@@ -630,7 +627,7 @@ public sealed partial class NpgsqlConnector
                 await OpenCore(
                     conn,
                     username,
-                    sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
+                    sslMode,
                     gssEncMode,
                     timeout,
                     async,
