@@ -595,9 +595,9 @@ public sealed partial class NpgsqlConnector
             {
                 await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
             }
-            catch when (gssEncMode == GssEncryptionMode.Prefer)
+            catch (Exception e) when (gssEncMode == GssEncryptionMode.Prefer)
             {
-                // TODO: should we log exception?
+                conn.ConnectionLogger.LogTrace(e, "Error while opening physical connection with GSS encryption, retrying without it");
                 conn.Cleanup();
 
                 // If we hit an error with gss encryption
@@ -2110,9 +2110,9 @@ public sealed partial class NpgsqlConnector
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
             }
-            catch when (gssEncMode == GssEncryptionMode.Prefer)
+            catch (Exception e) when (gssEncMode == GssEncryptionMode.Prefer)
             {
-                // TODO: should we log exception?
+                ConnectionLogger.LogTrace(e, "Error while opening physical connection with GSS encryption, retrying without it");
                 Cleanup();
 
                 // If we hit an error with gss encryption
