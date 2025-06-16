@@ -20,7 +20,7 @@ public class SecurityTests : TestBase
             csb.SslMode = SslMode.Require;
         });
         await using var conn = await dataSource.OpenConnectionAsync();
-        Assert.That(conn.IsSecure, Is.True);
+        Assert.That(conn.IsSslEncrypted, Is.True);
     }
 
     [Test, Description("Default user must run with md5 password encryption")]
@@ -72,7 +72,7 @@ public class SecurityTests : TestBase
     {
         using var dataSource = CreateDataSource(csb => csb.SslMode = SslMode.Disable);
         using var conn = dataSource.OpenConnection();
-        Assert.That(conn.IsSecure, Is.False);
+        Assert.That(conn.IsSslEncrypted, Is.False);
     }
 
     [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
@@ -248,7 +248,7 @@ public class SecurityTests : TestBase
                 csb.KeepAlive = keepAlive ? 10 : 0;
             });
             await using var conn = await dataSource.OpenConnectionAsync();
-            Assert.IsTrue(conn.IsSecure);
+            Assert.IsTrue(conn.IsSslEncrypted);
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
@@ -277,7 +277,7 @@ public class SecurityTests : TestBase
                 csb.KeepAlive = keepAlive ? 10 : 0;
             });
             await using var conn = await dataSource.OpenConnectionAsync();
-            Assert.IsFalse(conn.IsSecure);
+            Assert.IsFalse(conn.IsSslEncrypted);
         }
         catch (NpgsqlException ex) when (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ex.InnerException is IOException)
         {
@@ -400,7 +400,7 @@ public class SecurityTests : TestBase
         try
         {
             conn = await dataSource.OpenConnectionAsync();
-            Assert.IsTrue(conn.IsSecure);
+            Assert.IsTrue(conn.IsSslEncrypted);
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
@@ -451,7 +451,7 @@ public class SecurityTests : TestBase
         try
         {
             conn = await dataSource.OpenConnectionAsync();
-            Assert.IsFalse(conn.IsSecure);
+            Assert.IsFalse(conn.IsSslEncrypted);
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
@@ -494,7 +494,7 @@ public class SecurityTests : TestBase
             csb.SslNegotiation = SslNegotiation.Direct;
         });
         await using var conn = await dataSource.OpenConnectionAsync();
-        Assert.IsTrue(conn.IsSecure);
+        Assert.IsTrue(conn.IsSslEncrypted);
     }
 
     [Test]
