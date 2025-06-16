@@ -589,7 +589,7 @@ public sealed partial class NpgsqlConnector
             NpgsqlConnector conn,
             string username,
             SslMode sslMode,
-            GssEncMode gssEncMode,
+            GssEncryptionMode gssEncMode,
             NpgsqlTimeout timeout,
             bool async,
             CancellationToken cancellationToken)
@@ -598,14 +598,14 @@ public sealed partial class NpgsqlConnector
             {
                 await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
             }
-            catch when (gssEncMode == GssEncMode.Prefer)
+            catch when (gssEncMode == GssEncryptionMode.Prefer)
             {
                 // TODO: should we log exception?
                 conn.Cleanup();
 
                 // If we hit an error with gss encryption
                 // Retry again without it
-                gssEncMode = GssEncMode.Disable;
+                gssEncMode = GssEncryptionMode.Disable;
                 await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
             }
 
@@ -909,7 +909,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    async Task RawOpen(SslMode sslMode, GssEncMode gssEncMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    async Task RawOpen(SslMode sslMode, GssEncryptionMode gssEncryptionMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         try
         {
@@ -942,7 +942,7 @@ public sealed partial class NpgsqlConnector
             IsSslEncrypted = false;
             IsGssEncrypted = false;
 
-            var gssEncryptResult = await TryNegotiateGssEncryption(gssEncMode, async, cancellationToken).ConfigureAwait(false);
+            var gssEncryptResult = await TryNegotiateGssEncryption(gssEncryptionMode, async, cancellationToken).ConfigureAwait(false);
             if (gssEncryptResult == GssEncryptionResult.Success)
                 return;
 
@@ -959,7 +959,7 @@ public sealed partial class NpgsqlConnector
                     // In this case, direct encryption isn't going to work anymore, so we throw a bogus exception to retry again without gss
                     // Alternatively, we can instead just go with the usual route of writing SslRequest, ignoring direct ssl
                     // But this is how libpq works
-                    Debug.Assert(gssEncMode == GssEncMode.Prefer);
+                    Debug.Assert(gssEncryptionMode == GssEncryptionMode.Prefer);
                     // The exception message doesn't matter since we're going to retry again
                     throw new NpgsqlException();
                 }
@@ -1010,22 +1010,22 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    async ValueTask<GssEncryptionResult> TryNegotiateGssEncryption(GssEncMode gssEncMode, bool async, CancellationToken cancellationToken)
+    async ValueTask<GssEncryptionResult> TryNegotiateGssEncryption(GssEncryptionMode gssEncryptionMode, bool async, CancellationToken cancellationToken)
     {
         // GetCredentialFailure is essentially a nop (since we didn't send anything over the wire)
         // So we can proceed further as if gss encryption wasn't even attempted
-        if (gssEncMode == GssEncMode.Disable) return GssEncryptionResult.GetCredentialFailure;
+        if (gssEncryptionMode == GssEncryptionMode.Disable) return GssEncryptionResult.GetCredentialFailure;
 
         if (ConnectedEndPoint!.AddressFamily == AddressFamily.Unix)
         {
-            if (gssEncMode == GssEncMode.Prefer)
+            if (gssEncryptionMode == GssEncryptionMode.Prefer)
                 return GssEncryptionResult.GetCredentialFailure;
 
-            Debug.Assert(gssEncMode == GssEncMode.Require);
+            Debug.Assert(gssEncryptionMode == GssEncryptionMode.Require);
             throw new NpgsqlException("GSS encryption isn't supported over unix socket");
         }
 
-        return await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, gssEncMode == GssEncMode.Require, this, cancellationToken)
+        return await DataSource.IntegratedSecurityHandler.GSSEncrypt(async, gssEncryptionMode == GssEncryptionMode.Require, this, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1043,18 +1043,18 @@ public sealed partial class NpgsqlConnector
         return SslNegotiation.Postgres;
     }
 
-    static GssEncMode GetGssEncMode(NpgsqlConnectionStringBuilder settings)
+    static GssEncryptionMode GetGssEncMode(NpgsqlConnectionStringBuilder settings)
     {
         if (settings.UserProvidedGssEncMode is { } userProvidedGssEncMode)
             return userProvidedGssEncMode;
 
-        if (PostgresEnvironment.GssEncMode is { } gssEncModeEnv)
+        if (PostgresEnvironment.GssEncryptionMode is { } gssEncModeEnv)
         {
-            if (Enum.TryParse<GssEncMode>(gssEncModeEnv, ignoreCase: true, out var gssEncMode))
+            if (Enum.TryParse<GssEncryptionMode>(gssEncModeEnv, ignoreCase: true, out var gssEncMode))
                 return gssEncMode;
         }
 
-        return GssEncMode.Disable;
+        return GssEncryptionMode.Disable;
     }
 
     internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
@@ -2113,14 +2113,14 @@ public sealed partial class NpgsqlConnector
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
             }
-            catch when (gssEncMode == GssEncMode.Prefer)
+            catch when (gssEncMode == GssEncryptionMode.Prefer)
             {
                 // TODO: should we log exception?
                 Cleanup();
 
                 // If we hit an error with gss encryption
                 // Retry again without it
-                RawOpen(Settings.SslMode, GssEncMode.Disable, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
+                RawOpen(Settings.SslMode, GssEncryptionMode.Disable, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
             }

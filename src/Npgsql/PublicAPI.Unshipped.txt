@@ -1,14 +1,14 @@
 ﻿#nullable enable
 abstract Npgsql.NpgsqlDataSource.Clear() -> void
-Npgsql.GssEncMode
-Npgsql.GssEncMode.Disable = 0 -> Npgsql.GssEncMode
-Npgsql.GssEncMode.Prefer = 1 -> Npgsql.GssEncMode
-Npgsql.GssEncMode.Require = 2 -> Npgsql.GssEncMode
+Npgsql.GssEncryptionMode
+Npgsql.GssEncryptionMode.Disable = 0 -> Npgsql.GssEncryptionMode
+Npgsql.GssEncryptionMode.Prefer = 1 -> Npgsql.GssEncryptionMode
+Npgsql.GssEncryptionMode.Require = 2 -> Npgsql.GssEncryptionMode
 Npgsql.NpgsqlConnection.CloneWithAsync(string! connectionString, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.get -> System.Action<System.Net.Security.SslClientAuthenticationOptions!>?
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.set -> void
-Npgsql.NpgsqlConnectionStringBuilder.GssEncMode.get -> Npgsql.GssEncMode
-Npgsql.NpgsqlConnectionStringBuilder.GssEncMode.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.GssEncryptionMode.get -> Npgsql.GssEncryptionMode
+Npgsql.NpgsqlConnectionStringBuilder.GssEncryptionMode.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.get -> Npgsql.SslNegotiation

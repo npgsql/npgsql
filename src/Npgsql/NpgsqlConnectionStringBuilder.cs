@@ -484,19 +484,19 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// </summary>
     [Category("Security")]
     [Description("Controls whether GSS encryption is required, disabled or preferred, depending on server support.")]
-    [DisplayName("GSS Enc Mode")]
+    [DisplayName("GSS Encryption Mode")]
     [NpgsqlConnectionStringProperty]
-    public GssEncMode GssEncMode
+    public GssEncryptionMode GssEncryptionMode
     {
-        get => UserProvidedGssEncMode ?? GssEncMode.Disable;
+        get => UserProvidedGssEncMode ?? GssEncryptionMode.Disable;
         set
         {
             UserProvidedGssEncMode = value;
-            SetValue(nameof(GssEncMode), value);
+            SetValue(nameof(GssEncryptionMode), value);
         }
     }
 
-    internal GssEncMode? UserProvidedGssEncMode { get; private set; }
+    internal GssEncryptionMode? UserProvidedGssEncMode { get; private set; }
 
     /// <summary>
     /// Location of a client certificate to be sent to the server.
@@ -1747,7 +1747,7 @@ public enum SslNegotiation
 /// <summary>
 /// Specifies how to manage GSS encryption.
 /// </summary>
-public enum GssEncMode
+public enum GssEncryptionMode
 {
     /// <summary>
     /// GSS encryption is disabled. If the server requires GSS encryption, the connection will fail.

@@ -50,7 +50,7 @@ static class PostgresEnvironment
 
     internal static string? SslNegotiation => Environment.GetEnvironmentVariable("PGSSLNEGOTIATION");
 
-    internal static string? GssEncMode => Environment.GetEnvironmentVariable("PGGSSENCMODE");
+    internal static string? GssEncryptionMode => Environment.GetEnvironmentVariable("PGGSSENCMODE");
 
     internal static string? RequireAuth => Environment.GetEnvironmentVariable("PGREQUIREAUTH");
 
