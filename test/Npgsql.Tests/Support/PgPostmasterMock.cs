@@ -16,6 +16,7 @@ class PgPostmasterMock : IAsyncDisposable
     const int WriteBufferSize = 8192;
     const int CancelRequestCode = 1234 << 16 | 5678;
     const int SslRequest = 80877103;
+    const int GssRequest = 80877104;
 
     static readonly Encoding Encoding = NpgsqlWriteBuffer.UTF8Encoding;
     static readonly Encoding RelaxedEncoding = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
@@ -148,6 +149,17 @@ class PgPostmasterMock : IAsyncDisposable
         await readBuffer.EnsureAsync(len - 4);
 
         var request = readBuffer.ReadInt32();
+        if (request == GssRequest)
+        {
+            writeBuffer.WriteByte((byte)'N');
+            await writeBuffer.Flush(async: true);
+
+            await readBuffer.EnsureAsync(4);
+            len = readBuffer.ReadInt32();
+            await readBuffer.EnsureAsync(len - 4);
+            request = readBuffer.ReadInt32();
+        }
+
         if (request == SslRequest)
         {
             writeBuffer.WriteByte((byte)'N');

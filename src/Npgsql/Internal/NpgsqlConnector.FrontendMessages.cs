@@ -396,6 +396,19 @@ partial class NpgsqlConnector
         WriteBuffer.WriteInt32(80877103);
     }
 
+    internal void WriteGSSEncryptRequest()
+    {
+        const int len = sizeof(int) +  // Length
+                        sizeof(int);   // GSSEnc request code
+
+        WriteBuffer.StartMessage(len);
+        if (WriteBuffer.WriteSpaceLeft < len)
+            Flush(false).GetAwaiter().GetResult();
+
+        WriteBuffer.WriteInt32(len);
+        WriteBuffer.WriteInt32(80877104);
+    }
+
     internal void WriteStartup(Dictionary<string, string> parameters)
     {
         const int protocolVersion3 = 3 << 16; // 196608
