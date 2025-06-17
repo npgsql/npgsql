@@ -391,6 +391,47 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 
     #endregion Timezone
 
+    #region Application Name
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6133")]
+    [NonParallelizable] // Sets environment variable
+    public async Task Application_name_env_var()
+    {
+        const string testAppName = "MyTestApp";
+        
+        // Note that the pool is unaware of the environment variable, so if a connection is
+        // returned from the pool it may contain the wrong application name
+        using var _ = SetEnvironmentVariable("PGAPPNAME", testAppName);
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+        Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo(testAppName));
+    }
+
+    [Test]
+    public async Task Application_name_connection_param()
+    {
+        const string testAppName = "MyTestApp2";
+        
+        await using var dataSource = CreateDataSource(csb => csb.ApplicationName = testAppName);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo(testAppName));
+    }
+
+    [Test]
+    [NonParallelizable] // Sets environment variable
+    public async Task Application_name_connection_param_overrides_env_var()
+    {
+        const string envAppName = "EnvApp";
+        const string connAppName = "ConnApp";
+        
+        using var _ = SetEnvironmentVariable("PGAPPNAME", envAppName);
+        await using var dataSource = CreateDataSource(csb => csb.ApplicationName = connAppName);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo(connAppName));
+    }
+
+    #endregion Application Name
+
     #region ConnectionString - Host
 
     [TestCase("127.0.0.1", ExpectedResult = new [] { "127.0.0.1:5432" })]

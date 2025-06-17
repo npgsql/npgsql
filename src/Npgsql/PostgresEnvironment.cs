@@ -54,6 +54,8 @@ static class PostgresEnvironment
 
     internal static string? RequireAuth => Environment.GetEnvironmentVariable("PGREQUIREAUTH");
 
+    internal static string? AppName => Environment.GetEnvironmentVariable("PGAPPNAME");
+
     static string? GetHomeDir()
         => Environment.GetEnvironmentVariable(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "APPDATA" : "HOME");
 
