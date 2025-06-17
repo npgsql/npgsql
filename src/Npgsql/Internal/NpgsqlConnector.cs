@@ -833,8 +833,9 @@ public sealed partial class NpgsqlConnector
         if (Settings.Database is not null)
             startupParams["database"] = Settings.Database;
 
-        if (Settings.ApplicationName?.Length > 0)
-            startupParams["application_name"] = Settings.ApplicationName;
+        var applicationName = Settings.ApplicationName ?? PostgresEnvironment.AppName;
+        if (applicationName?.Length > 0)
+            startupParams["application_name"] = applicationName;
 
         if (Settings.SearchPath?.Length > 0)
             startupParams["search_path"] = Settings.SearchPath;
