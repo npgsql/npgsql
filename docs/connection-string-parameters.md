@@ -84,7 +84,7 @@ Host Recheck Seconds      | Controls for how long the host's cached state will b
 Parameter                | Description                                                                                          | Default
 ------------------------ | ---------------------------------------------------------------------------------------------------- | ----------
 Options<sup>[1](#misc_sup_1)</sup> | Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS) (e.g. `Options=-c synchronous_commit=local`). Introduced in 5.0. | PGOPTIONS
-Application Name         | The optional application name parameter to be sent to the backend during connection initiation.      |
+Application Name         | The optional application name parameter to be sent to the backend during connection initiation.      | PGAPPNAME
 Enlist                   | Whether to enlist in an ambient TransactionScope.                                                    | true
 Search Path              | Sets the schema search path.                                                                         |
 Client Encoding          | Gets or sets the client_encoding parameter.                                                          | PGCLIENTENCODING, UTF8
@@ -122,4 +122,5 @@ PGSSLROOTCERT        | Behaves the same as the [sslrootcert](https://www.postgre
 PGCLIENTENCODING     | Behaves the same as the [client_encoding](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-CLIENT-ENCODING) connection parameter.
 PGTZ                 | Sets the default time zone. (Equivalent to SET timezone TO ....)
 PGOPTIONS            | Behaves the same as the [options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS) connection parameter.
+PGAPPNAME            | Behaves the same as the [application_name](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-APPLICATION-NAME) connection parameter.
 PGSSLNEGOTIATION     | Behaves the same as the [sslnegotiation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLNEGOTIATION) connection parameter.
