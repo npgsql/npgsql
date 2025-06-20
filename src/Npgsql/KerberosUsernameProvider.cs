@@ -11,9 +11,9 @@ namespace Npgsql;
 /// Launches MIT Kerberos klist and parses out the default principal from it.
 /// Caches the result.
 /// </summary>
-sealed class KerberosUsernameProvider
+static class KerberosUsernameProvider
 {
-    static bool _performedDetection;
+    static volatile bool _performedDetection;
     static string? _principalWithRealm;
     static string? _principalWithoutRealm;
 
