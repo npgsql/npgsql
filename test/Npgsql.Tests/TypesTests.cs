@@ -87,6 +87,13 @@ public class TypesTests
 #pragma warning restore CS0618 // {NpgsqlTsVector,NpgsqlTsQuery}.Parse are obsolete
 
     [Test]
+    public void TsVector_empty()
+    {
+        Assert.IsEmpty(NpgsqlTsVector.Empty);
+        Assert.AreEqual(string.Empty, NpgsqlTsVector.Empty.ToString());
+    }
+
+    [Test]
     public void TsQueryEquatibility()
     {
         //Debugger.Launch();
