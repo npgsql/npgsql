@@ -11,6 +11,11 @@ namespace NpgsqlTypes;
 /// </summary>
 public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquatable<NpgsqlTsVector>
 {
+    /// <summary>
+    /// Represents an empty tsvector.
+    /// </summary>
+    public static readonly NpgsqlTsVector Empty = new NpgsqlTsVector([], noCheck: true);
+
     readonly List<Lexeme> _lexemes;
 
     internal NpgsqlTsVector(List<Lexeme> lexemes, bool noCheck = false)
