@@ -86,35 +86,37 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         if (unqualifiedNameSpan.StartsWith("_".AsSpan(), StringComparison.Ordinal))
             return this;
 
-        var unqualifiedName = unqualifiedNameSpan.ToString();
-        if (unqualifiedName.Length + "_".Length > NAMEDATALEN)
-            unqualifiedName = unqualifiedName.Substring(0, NAMEDATALEN - "_".Length);
+        if (unqualifiedNameSpan.Length + "_".Length > NAMEDATALEN)
+            unqualifiedNameSpan = unqualifiedNameSpan.Slice(0, NAMEDATALEN - "_".Length);
 
-        return new(Schema + "._" + unqualifiedName);
+        return new(string.Concat(Schema, "._", unqualifiedNameSpan));
     }
 
     // Static transform as defined by https://www.postgresql.org/docs/current/sql-createtype.html#SQL-CREATETYPE-RANGE
     // Manual testing on PG confirmed it's only the first occurence of 'range' that gets replaced.
     public DataTypeName ToDefaultMultirangeName()
     {
-        var unqualifiedNameSpan = UnqualifiedNameSpan;
+        var nameSpan = UnqualifiedNameSpan;
         if (UnqualifiedNameSpan.IndexOf("multirange".AsSpan(), StringComparison.Ordinal) != -1)
             return this;
 
-        var unqualifiedName = unqualifiedNameSpan.ToString();
-        var rangeIndex = unqualifiedName.IndexOf("range", StringComparison.Ordinal);
+        var rangeIndex = nameSpan.IndexOf("range", StringComparison.Ordinal);
         if (rangeIndex != -1)
         {
-            var str = unqualifiedName.Substring(0, rangeIndex) + "multirange" + unqualifiedName.Substring(rangeIndex + "range".Length);
+            ReadOnlySpan<char> str = string.Concat(nameSpan.Slice(0, rangeIndex), "multirange", nameSpan.Slice(rangeIndex + "range".Length));
 
-            return new($"{Schema}." + (unqualifiedName.Length + "multi".Length > NAMEDATALEN
-                ? str.Substring(0, NAMEDATALEN - "multi".Length)
-                : str));
+            if (str.Length > NAMEDATALEN)
+                str = str.Slice(0, NAMEDATALEN);
+
+            return new(string.Concat(Schema, ".", str));
         }
+        else
+        {
+            if (nameSpan.Length + "_multirange".Length > NAMEDATALEN)
+                nameSpan = nameSpan.Slice(0, NAMEDATALEN - "_multirange".Length);
 
-        return new($"{Schema}." + (unqualifiedName.Length + "multi".Length > NAMEDATALEN
-            ? unqualifiedName.Substring(0, NAMEDATALEN - "_multirange".Length) + "_multirange"
-            : unqualifiedName + "_multirange"));
+            return new(string.Concat(Schema, ".", nameSpan, "_multirange"));
+        }
     }
 
     // Create a DataTypeName from a broader range of valid names.
@@ -128,7 +130,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         var schemaEndIndex = displayNameSpan.IndexOf('.');
         if (schemaEndIndex is not -1 &&
             string.IsNullOrEmpty(schema) &&
-            !displayNameSpan.Slice(schemaEndIndex).StartsWith("_".AsSpan(), StringComparison.Ordinal) &&
+            !displayNameSpan.Slice(schemaEndIndex + 1).StartsWith("_".AsSpan(), StringComparison.Ordinal) &&
             !displayNameSpan.EndsWith("[]".AsSpan(), StringComparison.Ordinal))
             return new(displayName);
 
@@ -153,7 +155,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             displayNameSpan = displayNameSpan.Slice(0, displayNameSpan.Length - 2);
         }
 
-        string mapped;
+        ReadOnlySpan<char> mapped;
         if (schemaEndIndex is -1)
         {
             // Finally we strip the facet info.
@@ -162,7 +164,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
                 displayNameSpan = displayNameSpan.Slice(0, parenIndex);
 
             // Map any aliases to the internal type name.
-            mapped = displayNameSpan.ToString() switch
+            mapped = displayNameSpan switch
             {
                 "boolean" => "bool",
                 "character" => "bpchar",
@@ -184,10 +186,10 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         else
         {
             // If we had a schema originally we stop here, see comment at schemaEndIndex.
-            mapped = displayNameSpan.ToString();
+            mapped = displayNameSpan;
         }
 
-        return new((schema ?? "pg_catalog") + "." + (isArray ? "_" : "") + mapped);
+        return new(string.Concat(schema ?? "pg_catalog", ".", isArray ? "_" : "", mapped));
     }
 
     // The type names stored in a DataTypeName are usually the actual typname from the pg_type column.
@@ -198,7 +200,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     static string ToDisplayName(ReadOnlySpan<char> unqualifiedName)
     {
         var isArray = unqualifiedName.IndexOf('_') == 0;
-        var baseTypeName = isArray ? unqualifiedName.Slice(1).ToString() : unqualifiedName.ToString();
+        var baseTypeName = isArray ? unqualifiedName.Slice(1) : unqualifiedName;
 
         var mappedBaseType = baseTypeName switch
         {
@@ -216,7 +218,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             "timestamptz" => "timestamp with time zone",
             "varbit" => "bit varying",
             "varchar" => "character varying",
-            _ => baseTypeName
+            _ => baseTypeName.ToString()
         };
 
         if (isArray)
