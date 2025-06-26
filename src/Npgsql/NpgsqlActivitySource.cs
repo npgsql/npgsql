@@ -143,4 +143,26 @@ static class NpgsqlActivitySource
         activity.SetStatus(ActivityStatusCode.Error, statusDescription);
         activity.Dispose();
     }
+
+    internal static Activity? ImportStart(string copyFromCommand, NpgsqlConnectionStringBuilder settings)
+    {
+        var dbName = settings.Database ?? "UNKNOWN";
+
+        var activity = Source.StartActivity(dbName, ActivityKind.Client);
+
+        if (activity is not { IsAllDataRequested: true })
+            return activity;
+
+        activity.SetTag("db.statement", copyFromCommand);
+        activity.SetTag("db.operation", "COPY FROM");
+
+        return activity;
+    }
+
+    internal static void ImportStop(Activity activity, ulong rows)
+    {
+        activity.SetTag("otel.status_code", "OK");
+        activity.SetTag("db.rows", rows);
+        activity.Dispose();
+    }
 }
