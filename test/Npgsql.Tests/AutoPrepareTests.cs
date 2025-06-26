@@ -538,6 +538,63 @@ LANGUAGE 'plpgsql';
         await cmd.ExecuteScalarAsync();
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6038")]
+    public async Task Auto_prepared_schema_only_correct_schema()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MaxAutoPrepare = 1;
+            csb.AutoPrepareMinUsages = 5;
+        });
+        await using var connection = await dataSource.OpenConnectionAsync();
+        var table1 = await CreateTempTable(connection, "foo int");
+        var table2 = await CreateTempTable(connection, "bar int");
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"SELECT * FROM {table1}";
+        for (var i = 0; i < 5; i++)
+        {
+            // Make sure we prepare the first query
+            await using (await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly)) { }
+        }
+
+        cmd.CommandText = $"SELECT * FROM {table2}";
+        // The second query will load RowDescription, which is a singleton on NpgsqlConnector
+        // This shouldn't affect the first query, because we create a copy of RowDescription on prepare
+        await using (await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly)) { }
+
+        cmd.CommandText = $"SELECT * FROM {table1}";
+        // If we indeed made a copy of RowDescription on prepare, we should get the column for the first query and not for the second
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+        var columns = await reader.GetColumnSchemaAsync();
+        Assert.That(columns.Count, Is.EqualTo(1));
+        Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
+    }
+
+    [Test]
+    public async Task Auto_prepared_schema_only_replace()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MaxAutoPrepare = 1;
+            csb.AutoPrepareMinUsages = 5;
+        });
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT 1";
+        for (var i = 0; i < 5; i++)
+        {
+            await using (await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly)) { }
+        }
+
+        cmd.CommandText = "SELECT 2";
+        for (var i = 0; i < 5; i++)
+        {
+            await using (await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly)) { }
+        }
+    }
+
     [Test]
     public async Task Auto_prepared_statement_invalidation()
     {
