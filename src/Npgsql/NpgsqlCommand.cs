@@ -1634,8 +1634,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </summary>
     protected override DbTransaction? DbTransaction
     {
-        get => _transaction;
-        set => _transaction = (NpgsqlTransaction?)value;
+        get => Transaction;
+        set => Transaction = (NpgsqlTransaction?)value;
     }
 
     /// <summary>
@@ -1645,8 +1645,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </summary>
     public new NpgsqlTransaction? Transaction
     {
-        get => (NpgsqlTransaction?)DbTransaction;
-        set => DbTransaction = value;
+        get => _transaction;
+        set
+        {
+            if (value is { IsCompleted: true })
+                throw new InvalidOperationException("Transaction is already completed");
+            _transaction = value;
+        }
     }
 
     #endregion Transactions
