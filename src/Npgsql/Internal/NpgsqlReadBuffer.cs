@@ -36,25 +36,16 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     internal ResettableCancellationTokenSource Cts { get; }
     readonly MetricsReporter? _metricsReporter;
 
-    TimeSpan _preTranslatedTimeout = TimeSpan.Zero;
-
     /// <summary>
     /// Timeout for sync and async reads
     /// </summary>
     internal TimeSpan Timeout
     {
-        get => _preTranslatedTimeout;
+        get => Cts.Timeout;
         set
         {
-            if (_preTranslatedTimeout != value)
+            if (Cts.Timeout != value)
             {
-                _preTranslatedTimeout = value;
-
-                if (value == TimeSpan.Zero)
-                    value = InfiniteTimeSpan;
-                else if (value < TimeSpan.Zero)
-                    value = TimeSpan.Zero;
-
                 Debug.Assert(_underlyingSocket != null);
 
                 _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
@@ -189,7 +180,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     async ValueTask<int> ReadWithTimeoutAsync(Memory<byte> buffer, CancellationToken cancellationToken)
     {
-        var finalCt = Timeout != TimeSpan.Zero
+        var finalCt = Timeout != InfiniteTimeSpan
             ? Cts.Start(cancellationToken)
             : Cts.Reset();
 
@@ -289,7 +280,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                 buffer.ReadPosition = 0;
             }
 
-            var finalCt = async && buffer.Timeout != TimeSpan.Zero
+            var finalCt = async && buffer.Timeout != InfiniteTimeSpan
                 ? buffer.Cts.Start()
                 : buffer.Cts.Reset();
 
