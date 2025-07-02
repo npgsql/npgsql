@@ -1639,4 +1639,19 @@ FROM
 
         Assert.That(connection.PostgresParameters, Contains.Key("SomeKey").WithValue("SomeValue"));
     }
+
+    [Test]
+    public async Task Completed_transaction_throws([Values] bool commit)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+        await using var cmd = conn.CreateCommand();
+
+        if (commit)
+            await tx.CommitAsync();
+        else
+            await tx.RollbackAsync();
+
+        Assert.Throws<InvalidOperationException>(() => cmd.Transaction = tx);
+    }
 }

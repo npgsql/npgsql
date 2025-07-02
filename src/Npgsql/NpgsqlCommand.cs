@@ -1635,7 +1635,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     protected override DbTransaction? DbTransaction
     {
         get => _transaction;
-        set => _transaction = (NpgsqlTransaction?)value;
+        set
+        {
+            var tx = (NpgsqlTransaction?)value;
+            if (tx is { IsCompleted: true })
+                throw new InvalidOperationException("Transaction is already completed");
+            _transaction = tx;
+        }
     }
 
     /// <summary>
