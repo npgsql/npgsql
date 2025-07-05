@@ -105,6 +105,8 @@ await using (var reader = cmd.ExecuteReader()) {
 
 Note that your PostgreSQL enum and composites types (`mood` and `inventory_data` in the sample above) must be defined in your database before the first connection is created (see `CREATE TYPE`). If you're creating PostgreSQL types within your program, call `NpgsqlConnection.ReloadTypes()` to make sure Npgsql becomes properly aware of them.
 
+[When preparing commands](../prepare.md), you need to specify the database type of parameters without specifying an actual parameter value. This is usually done via the <xref:NpgsqlTypes.NpgsqlDbType> enum; but since enums and composites are user-defined types, they have no labels in that enum. Instead, set the <xref:Npgsql.NpgsqlParameter.DataTypeName> property on the parameter to the name of your type ([see these docs for more information on parameter types](../basic-usage.md#parameter-types)).
+
 ## Name translation
 
 CLR type and field names are usually Pascal case (e.g. `InventoryData`), whereas in PostgreSQL they are snake case (e.g. `inventory_data`). To help make the mapping for enums and composites seamless, pluggable name translators are used translate all names. The default translation scheme is `NpgsqlSnakeCaseNameTranslator`, which maps names like `SomeType` to `some_type`, but you can specify others. The default name translator can be set for all your connections via `NpgsqlConnection.GlobalTypeMapper.DefaultNameTranslator`, or for a specific connection for `NpgsqlConnection.TypeMapper.DefaultNameTranslator`. You also have the option of specifying a name translator when setting up a mapping:
