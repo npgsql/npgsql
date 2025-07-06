@@ -49,11 +49,11 @@ jobs:
             pg_major: 17
             config: Release
             test_tfm: net8.0
-#          - os: ubuntu-24.04
-#            pg_major: 17
-#            config: Release
-#            test_tfm: net8.0
-#            pg_prerelease: 'PG Prerelease'
+          - os: ubuntu-24.04
+            pg_major: 18
+            config: Release
+            test_tfm: net8.0
+            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
@@ -86,7 +86,7 @@ jobs:
 
           # Automated repository configuration
           sudo apt install -y postgresql-common
-          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -v ${{ matrix.pg_major }} -y
           sudo apt-get update -qq
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
@@ -102,9 +102,9 @@ jobs:
           sudo -u postgres psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'"
 
           # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
-          if [ -z "${{ matrix.pg_prerelease }}" ]; then
+          #if [ -z "${{ matrix.pg_prerelease }}" ]; then
             sudo apt-get install -qq postgresql-${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
-          fi
+          #fi
           
           if [ ${{ matrix.pg_major }} -ge 14 ]; then
             sudo sed -i "s|unix_socket_directories = '/var/run/postgresql'|unix_socket_directories = '/var/run/postgresql, @/npgsql_unix'|" $PGDATA/postgresql.conf
