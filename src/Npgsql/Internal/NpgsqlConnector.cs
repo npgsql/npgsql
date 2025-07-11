@@ -283,7 +283,7 @@ public sealed partial class NpgsqlConnector
 #pragma warning disable CA1859
     // We're casting to IDisposable to not explicitly reference X509Certificate2 for NativeAOT
     // TODO: probably pointless now, needs to be rechecked
-    IDisposable? _certificate;
+    List<IDisposable>? _certificates;
 #pragma warning restore CA1859
 
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
@@ -1063,36 +1063,59 @@ public sealed partial class NpgsqlConnector
         {
             var password = Settings.SslPassword;
 
-            X509Certificate2? cert = null;
             if (!string.Equals(Path.GetExtension(certPath), ".pfx", StringComparison.OrdinalIgnoreCase))
             {
                 // It's PEM time
                 var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
-                cert = string.IsNullOrEmpty(password)
-                    ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
-                    : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                if (string.IsNullOrEmpty(password) && string.IsNullOrEmpty(keyPath))
+                {
+                    // If there is no password or key provided, most likely there are multiple certificates
+                    // Where one is leaf and others are intermediate
+                    clientCertificates.ImportFromPemFile(certPath);
+                }
+                else
+                {
+                    var cert = string.IsNullOrEmpty(password)
+                        ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
+                        : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                    clientCertificates.Add(cert);
+                }
+
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    // Windows crypto API has a bug with pem certs
-                    // See #3650
-                    using var previousCert = cert;
+                    for (var i = 0; i < clientCertificates.Count; i++)
+                    {
+                        var cert = clientCertificates[i];
+
+                        // Windows crypto API has a bug with pem certs
+                        // See #3650
+                        using var previousCert = cert;
 #if NET9_0_OR_GREATER
-                    cert = X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pkcs12), null);
+                        cert = X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pkcs12), null);
 #else
-                    cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+                        cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
 #endif
+                        clientCertificates[i] = cert;
+                    }
                 }
             }
 
+            // If it's empty, it's probably PFX
+            if (clientCertificates.Count == 0)
+            {
 #if NET9_0_OR_GREATER
-            // If it's null, it's probably PFX
-            cert ??= X509CertificateLoader.LoadPkcs12FromFile(certPath, password);
+                var certs = X509CertificateLoader.LoadPkcs12CollectionFromFile(certPath, password);
+                clientCertificates.AddRange(certs);
 #else
-            cert ??= new X509Certificate2(certPath, password);
+                var cert = new X509Certificate2(certPath, password);
+                clientCertificates.Add(cert);
 #endif
-            clientCertificates.Add(cert);
+            }
 
-            _certificate = cert;
+            var certificates = new List<IDisposable>();
+            foreach (var certificate in clientCertificates)
+                certificates.Add(certificate);
+            _certificates = certificates;
         }
 
         try
@@ -1181,8 +1204,8 @@ public sealed partial class NpgsqlConnector
         }
         catch
         {
-            _certificate?.Dispose();
-            _certificate = null;
+            _certificates?.ForEach(x => x.Dispose());
+            _certificates = null;
 
             throw;
         }
@@ -2522,11 +2545,8 @@ public sealed partial class NpgsqlConnector
         PostgresParameters.Clear();
         _currentCommand = null;
 
-        if (_certificate is not null)
-        {
-            _certificate.Dispose();
-            _certificate = null;
-        }
+        _certificates?.ForEach(x => x.Dispose());
+        _certificates = null;
     }
 
     void GenerateResetMessage()
