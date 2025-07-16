@@ -1067,19 +1067,21 @@ public sealed partial class NpgsqlConnector
             {
                 // It's PEM time
                 var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
-                if (string.IsNullOrEmpty(password) && string.IsNullOrEmpty(keyPath))
-                {
-                    // If there is no password or key provided, most likely there are multiple certificates
-                    // Where one is leaf and others are intermediate
-                    clientCertificates.ImportFromPemFile(certPath);
-                }
-                else
-                {
-                    var cert = string.IsNullOrEmpty(password)
-                        ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
-                        : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
-                    clientCertificates.Add(cert);
-                }
+
+                // With PEM certificates we might have multiple certificates in a single file
+                // Where the first one is a leaf (and it has to have a private key)
+                // And others are intermediate between it and CA cert
+                // To support this, we first load the leaf certificate with private key
+                // And then we load everything else including the leaf, but without private key
+                // And afterwards we just get rid of the duplicate
+                var firstClientCert = string.IsNullOrEmpty(password)
+                    ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
+                    : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                clientCertificates.Add(firstClientCert);
+
+                clientCertificates.ImportFromPemFile(certPath);
+                clientCertificates[1].Dispose();
+                clientCertificates.RemoveAt(1);
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
@@ -1147,6 +1149,20 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslVerifyFullValidation;
             }
 
+            SslStreamCertificateContext? clientCertificateContext = null;
+            if (clientCertificates.Count > 0)
+            {
+                // SslClientAuthenticationOptions.ClientCertificates only sends trusted certificates or if they have private key
+                // Which makes us unable to send intermediate certificates
+                // Work around this by specifying the first certificate as target
+                // And others as additional
+                // See https://github.com/dotnet/runtime/issues/26323
+                var clientCertificate = clientCertificates[0];
+                clientCertificates.RemoveAt(0);
+
+                clientCertificateContext = SslStreamCertificateContext.Create(clientCertificate, clientCertificates);
+            }
+
             var host = Host;
 
             timeout.CheckAndApply(this);
@@ -1156,7 +1172,7 @@ public sealed partial class NpgsqlConnector
             var sslStreamOptions = new SslClientAuthenticationOptions
             {
                 TargetHost = host,
-                ClientCertificates = clientCertificates,
+                ClientCertificateContext = clientCertificateContext,
                 EnabledSslProtocols = SslProtocols.None,
                 CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck,
                 RemoteCertificateValidationCallback = certificateValidationCallback,
