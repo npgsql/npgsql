@@ -38,7 +38,7 @@ await cmd.ExecuteNonQueryAsync();
 // And so on
 ```
 
-Note that all parameters must be set before calling `Prepare()` - they are part of the information transmitted to PostgreSQL and used to effectively plan the statement. You must also set the `DbType` or `NpgsqlDbType` on your parameters to unambiguously specify the data type (setting the value isn't support).
+The above shows the typical use-case, where you  first prepare a command without providing any parameter values, and then execute that same command many times, setting different values each time. In this case, all parameters are added before calling `PrepareAsync()`, and these must have `DbType`, `NpgsqlDbType` or `DataTypeName` set in order to identify the parameter type, which is necessary for preparation. Alternatively, you can set values on the command's parameters before preparing it, in which case parameter types are inferred as usual ([see parameter documentation](basic-usage.md#parameters)).
 
 Note that preparation happens on individual statements, and not on commands, which can contain multiple statements, batching them together. This can be important in cases such as the following:
 
