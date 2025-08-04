@@ -2352,6 +2352,41 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(conn.Connector!.State, Is.EqualTo(ConnectorState.Ready));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6160")]
+    [Description("Consuming result set shouldn't go infinite in case connection is broken")]
+    public async Task Bug6160()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            // Set to -1 to trigger immediate connection break on timeout
+            CancellationTimeout = -1,
+            CommandTimeout = 1
+        };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var pgMock = await postmasterMock.WaitForServerConnection();
+        await pgMock
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteRowDescription(new FieldDescription(Int4Oid))
+            .WriteDataRow(new byte[4])
+            .FlushAsync();
+
+        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        await using (var reader = await cmd.ExecuteReaderAsync(Behavior | CommandBehavior.SingleRow))
+        {
+            await reader.ReadAsync();
+            // The second read will try to consume the whole resultset due to CommandBehavior.SingleRow
+            // Which will fail with timeout (and immediate connection break) since we didn't send anything else beside the first row
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await reader.ReadAsync())!;
+            Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+        }
+    }
+
     #endregion
 
     #region Initialization / setup / teardown

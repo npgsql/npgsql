@@ -978,7 +978,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         // Skip over the other result sets. Note that this does tally records affected from CommandComplete messages, and properly sets
         // state for auto-prepared statements
-        while (true)
+        //
+        // The only exception is when the connector is broken (which can happen in the middle of consuming)
+        // As then there is no point in going forward
+        //
+        // While we can also check our local state (State == Closed)
+        // It's probably better to rely on connector since it's private and its state can't be changed
+        while (!Connector.IsBroken)
         {
             try
             {
