@@ -10,6 +10,7 @@ using NUnit.Framework;
 using Npgsql.Replication;
 using Npgsql.Replication.PgOutput;
 using Npgsql.Replication.PgOutput.Messages;
+using Npgsql.Util;
 using TruncateOptions = Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions;
 using ReplicaIdentitySetting = Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting;
 using static Npgsql.Tests.TestUtil;
@@ -728,77 +729,86 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     }
                 }
 
-                if (IsStreaming)
+                // PostgreSQL 18 skips logical decoding of already-aborted transactions
+                if (c.PostgreSqlVersion.IsGreaterOrEqual(18))
                 {
-                    // Begin Transaction 2
-                    transactionXid = await AssertTransactionStart(messages);
+                    if (writeMessages)
+                        await messages.MoveNextAsync(); // Skip LogicalDecodingMessage 1 (non-transactional) from above
+                }
+                else
+                {
+                    if (IsStreaming)
+                    {
+                        // Begin Transaction 2
+                        transactionXid = await AssertTransactionStart(messages);
 
-                    // Relation
-                    await NextMessage<RelationMessage>(messages);
+                        // Relation
+                        await NextMessage<RelationMessage>(messages);
 
-                    // Inserts
-                    for (var insertCount = 0; insertCount < 10; insertCount++)
-                        await NextMessage<InsertMessage>(messages);
+                        // Inserts
+                        for (var insertCount = 0; insertCount < 10; insertCount++)
+                            await NextMessage<InsertMessage>(messages);
 
-                    // LogicalDecodingMessage 2 (transactional)
+                        // LogicalDecodingMessage 2 (transactional)
+                        if (writeMessages)
+                        {
+                            var msg = await NextMessage<LogicalDecodingMessage>(messages);
+                            Assert.That(msg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                            Assert.That(msg.Flags, Is.EqualTo(1));
+                            Assert.That(msg.Prefix, Is.EqualTo(prefix));
+                            Assert.That(msg.Data.Length, Is.EqualTo(transactionalMessage.Length));
+                            if (readMessages)
+                            {
+                                var buffer = new MemoryStream();
+                                await msg.Data.CopyToAsync(buffer, CancellationToken.None);
+                                Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(transactionalMessage));
+                            }
+                        }
+
+                        // Further inserts
+                        // We don't try to predict how many insert messages we get here
+                        // since the streaming transaction will most likely abort before
+                        // we reach the expected number
+                        while (await messages.MoveNextAsync() && messages.Current is InsertMessage
+                               || messages.Current is StreamStopMessage
+                               && await messages.MoveNextAsync()
+                               && messages.Current is StreamStartMessage
+                               && await messages.MoveNextAsync()
+                               && messages.Current is InsertMessage)
+                        {
+                            // Ignore
+                        }
+                    }
+                    else if (writeMessages)
+                        await messages.MoveNextAsync();
+
+                    // LogicalDecodingMessage 3 (non-transactional)
                     if (writeMessages)
                     {
-                        var msg = await NextMessage<LogicalDecodingMessage>(messages);
-                        Assert.That(msg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                        Assert.That(msg.Flags, Is.EqualTo(1));
+                        var msg = (LogicalDecodingMessage)messages.Current;
+                        Assert.That(msg.TransactionXid, Is.Null);
+                        Assert.That(msg.Flags, Is.EqualTo(0));
                         Assert.That(msg.Prefix, Is.EqualTo(prefix));
-                        Assert.That(msg.Data.Length, Is.EqualTo(transactionalMessage.Length));
+                        Assert.That(msg.Data.Length, Is.EqualTo(nonTransactionalMessage.Length));
                         if (readMessages)
                         {
                             var buffer = new MemoryStream();
                             await msg.Data.CopyToAsync(buffer, CancellationToken.None);
-                            Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(transactionalMessage));
+                            Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(nonTransactionalMessage));
                         }
+
+                        if (IsStreaming)
+                            await messages.MoveNextAsync();
                     }
 
-                    // Further inserts
-                    // We don't try to predict how many insert messages we get here
-                    // since the streaming transaction will most likely abort before
-                    // we reach the expected number
-                    while (await messages.MoveNextAsync() && messages.Current is InsertMessage
-                           || messages.Current is StreamStopMessage
-                           && await messages.MoveNextAsync()
-                           && messages.Current is StreamStartMessage
-                           && await messages.MoveNextAsync()
-                           && messages.Current is InsertMessage)
-                    {
-                        // Ignore
-                    }
-                }
-                else if (writeMessages)
-                    await messages.MoveNextAsync();
-
-                // LogicalDecodingMessage 3 (non-transactional)
-                if (writeMessages)
-                {
-                    var msg = (LogicalDecodingMessage)messages.Current;
-                    Assert.That(msg.TransactionXid, Is.Null);
-                    Assert.That(msg.Flags, Is.EqualTo(0));
-                    Assert.That(msg.Prefix, Is.EqualTo(prefix));
-                    Assert.That(msg.Data.Length, Is.EqualTo(nonTransactionalMessage.Length));
-                    if (readMessages)
-                    {
-                        var buffer = new MemoryStream();
-                        await msg.Data.CopyToAsync(buffer, CancellationToken.None);
-                        Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(nonTransactionalMessage));
-                    }
-
+                    // Rollback Transaction 2
                     if (IsStreaming)
-                        await messages.MoveNextAsync();
-                }
-
-                // Rollback Transaction 2
-                if (IsStreaming)
-                {
-                    Assert.That(messages.Current,
-                        _streamingMode == PgOutputStreamingMode.On
-                            ? Is.TypeOf<StreamAbortMessage>()
-                            : Is.TypeOf<ParallelStreamAbortMessage>());
+                    {
+                        Assert.That(messages.Current,
+                            _streamingMode == PgOutputStreamingMode.On
+                                ? Is.TypeOf<StreamAbortMessage>()
+                                : Is.TypeOf<ParallelStreamAbortMessage>());
+                    }
                 }
 
                 streamingCts.Cancel();
