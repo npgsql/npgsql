@@ -732,8 +732,21 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 // PostgreSQL 18 skips logical decoding of already-aborted transactions
                 if (c.PostgreSqlVersion.IsGreaterOrEqual(18))
                 {
+                    // LogicalDecodingMessage 2 (non-transactional)
                     if (writeMessages)
-                        await messages.MoveNextAsync(); // Skip LogicalDecodingMessage 1 (non-transactional) from above
+                    {
+                        var msg = await NextMessage<LogicalDecodingMessage>(messages);
+                        Assert.That(msg.TransactionXid, Is.Null);
+                        Assert.That(msg.Flags, Is.EqualTo(0));
+                        Assert.That(msg.Prefix, Is.EqualTo(prefix));
+                        Assert.That(msg.Data.Length, Is.EqualTo(nonTransactionalMessage.Length));
+                        if (readMessages)
+                        {
+                            var buffer = new MemoryStream();
+                            await msg.Data.CopyToAsync(buffer, CancellationToken.None);
+                            Assert.That(rc.Encoding.GetString(buffer.ToArray()), Is.EqualTo(nonTransactionalMessage));
+                        }
+                    }
                 }
                 else
                 {
