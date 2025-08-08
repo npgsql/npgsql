@@ -80,11 +80,11 @@ public abstract class ReplicationConnection : IAsyncDisposable
         _requestFeedbackInterval = new TimeSpan(_walReceiverTimeout.Ticks / 2);
         var cs = new NpgsqlConnectionStringBuilder(connection.ConnectionString)
         {
-        Pooling = false,
-        Enlist = false,
-        Multiplexing = false,
-        KeepAlive = 0,
-        ReplicationMode = ReplicationMode
+            Pooling = false,
+            Enlist = false,
+            Multiplexing = false,
+            KeepAlive = 0,
+            ReplicationMode = ReplicationMode
         };
         _npgsqlConnection = connection.CloneWith(cs.ToString());
         _userFacingConnectionString = _npgsqlConnection.ConnectionString;
