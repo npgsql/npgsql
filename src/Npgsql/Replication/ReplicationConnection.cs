@@ -65,8 +65,30 @@ public abstract class ReplicationConnection : IAsyncDisposable
         _requestFeedbackInterval = new TimeSpan(_walReceiverTimeout.Ticks / 2);
     }
 
-    private protected ReplicationConnection(string? connectionString) : this()
-        => ConnectionString = connectionString;
+  private protected ReplicationConnection(string? connectionString)
+      : this() => ConnectionString = connectionString;
+
+  /// <summary>
+  /// Initializes a new instance of <see cref="ReplicationConnection"/> with the given connection.
+  /// The connection's <see cref="NpgsqlConnection.ConnectionString"/> is used to initialize the replication connection.
+  /// </summary>
+  /// <param name="connection"></param>
+  private protected ReplicationConnection(NpgsqlConnection connection)
+  {
+    ArgumentNullException.ThrowIfNull(connection);
+
+    _requestFeedbackInterval = new TimeSpan(_walReceiverTimeout.Ticks / 2);
+    var cs = new NpgsqlConnectionStringBuilder(connection.ConnectionString)
+    {
+      Pooling = false,
+      Enlist = false,
+      Multiplexing = false,
+      KeepAlive = 0,
+      ReplicationMode = ReplicationMode
+    };
+    _npgsqlConnection = connection.CloneWith(cs.ToString());
+    _userFacingConnectionString = _npgsqlConnection.ConnectionString;
+  }
 
     #endregion
 

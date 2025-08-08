@@ -21,18 +21,19 @@
 
         "extensions": [
           "ms-dotnettools.csharp",
+          "ms-dotnettools.csdevkit",
           "formulahendry.dotnet-test-explorer",
           "ms-azuretools.vscode-docker",
           "mutantdino.resourcemonitor"
         ]
     }
   },
-  
+
   "forwardPorts": [5432, 5050],
 
   "remoteEnv": {
     "DeveloperBuild": "True"
   },
 
-  "postCreateCommand": "dotnet restore Npgsql.sln"
+  "postCreateCommand": "dotnet restore Npgsql.slnx"
 }

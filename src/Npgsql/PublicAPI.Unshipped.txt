@@ -85,3 +85,5 @@ Npgsql.NpgsqlConnection.ReloadTypesAsync(System.Threading.CancellationToken canc
 *REMOVED*Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 static readonly NpgsqlTypes.NpgsqlTsVector.Empty -> NpgsqlTypes.NpgsqlTsVector!
+Npgsql.Replication.LogicalReplicationConnection.LogicalReplicationConnection(Npgsql.NpgsqlConnection! connection) -> void
+Npgsql.Replication.PhysicalReplicationConnection.PhysicalReplicationConnection(Npgsql.NpgsqlConnection! connection) -> void
