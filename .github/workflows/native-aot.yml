@@ -93,7 +93,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
@@ -127,7 +127,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
@@ -154,7 +154,7 @@ jobs:
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v4
+      #- uses: actions/checkout@v5
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 
