@@ -13,11 +13,18 @@ namespace Npgsql.Internal.Converters;
 
 abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConverter<T>
 {
-    public override T Read(PgReader reader)
-        => Read(async: false, reader, encoding).GetAwaiter().GetResult();
+    // Gives the abiltity to call NpgsqlWriteBuffer.UTF8Encoding directly and have the functions devirtualized
+    readonly bool _knownUtf8Encoding = ReferenceEquals(encoding, NpgsqlWriteBuffer.UTF8Encoding);
 
-    public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => Read(async: true, reader, encoding, cancellationToken);
+    public override T Read(PgReader reader)
+        => ConvertFrom(
+            _knownUtf8Encoding ?
+            NpgsqlWriteBuffer.UTF8Encoding.GetString(reader.ReadBytes(reader.CurrentRemaining)) :
+            encoding.GetString(reader.ReadBytes(reader.CurrentRemaining)));
+
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+    public async override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => TextConverter.GetSize(ref context, ConvertTo(value), encoding);
@@ -36,17 +43,6 @@ abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConve
 
     protected abstract ReadOnlyMemory<char> ConvertTo(T value);
     protected abstract T ConvertFrom(string value);
-
-    ValueTask<T> Read(bool async, PgReader reader, Encoding encoding, CancellationToken cancellationToken = default)
-    {
-        return async
-            ? ReadAsync(reader, encoding, cancellationToken)
-            : new(ConvertFrom(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining))));
-
-        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-        async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding, CancellationToken cancellationToken)
-            => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
-    }
 }
 
 sealed class ReadOnlyMemoryTextConverter(Encoding encoding) : StringBasedTextConverter<ReadOnlyMemory<char>>(encoding)
