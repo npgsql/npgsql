@@ -473,8 +473,10 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         _periodicPasswordProviderTimer?.Dispose();
-        _setupMappingsSemaphore.Dispose();
         MetricsReporter.Dispose();
+        // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
+        // Due to possible concurrent access, which might lead to deadlock
+        // See issue #6115
 
         Clear();
     }
@@ -508,8 +510,10 @@ public abstract class NpgsqlDataSource : DbDataSource
 #endif
         }
 
-        _setupMappingsSemaphore.Dispose();
         MetricsReporter.Dispose();
+        // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
+        // Due to possible concurrent access, which might lead to deadlock
+        // See issue #6115
 
         // TODO: async Clear, #4499
         Clear();
