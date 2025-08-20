@@ -505,7 +505,11 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     public override int IndexOf(object value)
         => IndexOf(Cast(value));
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Adds the specified <see cref="NpgsqlParameter"/> object to the <see cref="NpgsqlParameterCollection"/>.
+    /// </summary>
+    /// <param name="value">The <see cref="NpgsqlParameter"/> to add to the collection.</param>
+    /// <returns>The zero-based index of the new <see cref="NpgsqlParameter"/> object in the collection.</returns>
     public override int Add(object value)
     {
         Add(Cast(value));
