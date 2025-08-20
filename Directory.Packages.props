@@ -6,7 +6,7 @@
 
     <!-- Compatibility -->
     <PackageVersion Include="System.Text.Json" Version="8.0.5" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="9.0.7" />
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
 
     <!-- Plugin projects -->
@@ -22,7 +22,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
     <PackageVersion Include="Scriban.Signed" Version="5.9.0 " />
-    
+
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="3.14.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.1" />
