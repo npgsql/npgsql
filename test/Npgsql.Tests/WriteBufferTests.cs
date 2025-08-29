@@ -33,20 +33,17 @@ class WriteBufferTests
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1275")]
-    public void Write_zero_characters()
+    public void Chunked_string_with_full_buffer()
     {
         // Fill up the buffer entirely
         WriteBuffer.WriteBytes(new byte[WriteBuffer.Size], 0, WriteBuffer.Size);
         Assert.That(WriteBuffer.WriteSpaceLeft, Is.Zero);
 
-        int charsUsed;
-        bool completed;
-        WriteBuffer.WriteStringChunked("hello", 0, 5, true, out charsUsed, out completed);
-        Assert.That(charsUsed, Is.Zero);
-        Assert.That(completed, Is.False);
-        WriteBuffer.WriteStringChunked("hello".ToCharArray(), 0, 5, true, out charsUsed, out completed);
-        Assert.That(charsUsed, Is.Zero);
-        Assert.That(completed, Is.False);
+        var data = new string('a', WriteBuffer.Size) + "hello";
+        var byteLength = WriteBuffer.TextEncoding.GetByteCount(data);
+        WriteBuffer.WriteString(data, byteLength, false);
+        Assert.That(WriteBuffer.WritePosition, Is.EqualTo(5));
+        Assert.That(WriteBuffer.Buffer.AsSpan(0, 5).ToArray(), Is.EqualTo(new byte[] { (byte)'h', (byte)'e', (byte)'l', (byte)'l', (byte)'o' }));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
@@ -55,26 +52,11 @@ class WriteBufferTests
         WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1], 0, WriteBuffer.Size - 1);
         Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
 
-        var charsUsed = 1;
-        var completed = true;
         // This unicode character is three bytes when encoded in UTF8
-        Assert.That(() => WriteBuffer.WriteStringChunked("\uD55C", 0, 1, true, out charsUsed, out completed), Throws.Nothing);
-        Assert.That(charsUsed, Is.EqualTo(0));
-        Assert.That(completed, Is.False);
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
-    public void Chunked_byte_array_encoding_fits()
-    {
-        WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1], 0, WriteBuffer.Size - 1);
-        Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
-
-        var charsUsed = 1;
-        var completed = true;
-        // This unicode character is three bytes when encoded in UTF8
-        Assert.That(() => WriteBuffer.WriteStringChunked("\uD55C".ToCharArray(), 0, 1, true, out charsUsed, out completed), Throws.Nothing);
-        Assert.That(charsUsed, Is.EqualTo(0));
-        Assert.That(completed, Is.False);
+        var data = "\uD55C" + new string('a', WriteBuffer.Size);
+        var byteLength = WriteBuffer.TextEncoding.GetByteCount(data);
+        WriteBuffer.WriteString(data, byteLength, false);
+        Assert.That(WriteBuffer.WritePosition, Is.EqualTo(3));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3733")]
@@ -83,28 +65,10 @@ class WriteBufferTests
         WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1]);
         Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
 
-        var charsUsed = 1;
-        var completed = true;
-        var cyclone = "🌀";
-
-        Assert.That(() => WriteBuffer.WriteStringChunked(cyclone, 0, cyclone.Length, true, out charsUsed, out completed), Throws.Nothing);
-        Assert.That(charsUsed, Is.EqualTo(0));
-        Assert.That(completed, Is.False);
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3733")]
-    public void Chunked_char_array_encoding_fits_with_surrogates()
-    {
-        WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1]);
-        Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
-
-        var charsUsed = 1;
-        var completed = true;
-        var cyclone = "🌀";
-
-        Assert.That(() => WriteBuffer.WriteStringChunked(cyclone.ToCharArray(), 0, cyclone.Length, true, out charsUsed, out completed), Throws.Nothing);
-        Assert.That(charsUsed, Is.EqualTo(0));
-        Assert.That(completed, Is.False);
+        var cyclone = "🌀" + new string('a', WriteBuffer.Size);
+        var byteLength = WriteBuffer.TextEncoding.GetByteCount(cyclone);
+        WriteBuffer.WriteString(cyclone, byteLength, false);
+        Assert.That(WriteBuffer.WritePosition, Is.EqualTo(4));
     }
 
     [SetUp]
