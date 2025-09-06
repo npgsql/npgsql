@@ -303,7 +303,7 @@ $$ LANGUAGE 'plpgsql';");
 
         // Check virtual base properties, which can be incorrectly deserialized if overridden, because the base
         // Exception.GetObjectData() method writes the fields, not the properties (e.g. "_message" instead of "Message").
-        Assert.That(ex.Data, Is.EquivalentTo((IDictionary?)info.GetValue("Data", typeof(IDictionary))));
+        Assert.That(ex.Data, Is.EquivalentTo((IDictionary)info.GetValue("Data", typeof(IDictionary))!));
         Assert.That(ex.HelpLink, Is.EqualTo(info.GetValue("HelpURL", typeof(string))));
         Assert.That(ex.Message, Is.EqualTo(info.GetValue("Message", typeof(string))));
         Assert.That(ex.Source, Is.EqualTo(info.GetValue("Source", typeof(string))));
