@@ -362,9 +362,9 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT field FROM {table}";
         await using var reader = await cmd.ExecuteReaderAsync();
-        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetValue(0), Is.EqualTo(1234m));
-        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetValue(0), Is.EqualTo(5678m));
     }
 
@@ -753,7 +753,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
                 {
                     var str = reader.Read<string>();
                     Assert.That(str.Length, Is.EqualTo(len));
-                    Assert.True(str.AsSpan().IndexOfAnyExcept('x') is -1);
+                    Assert.That(str.AsSpan().IndexOfAnyExcept('x') is -1);
                 }
             }
             Assert.That(row, Is.EqualTo(100));

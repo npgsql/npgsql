@@ -1261,7 +1261,7 @@ $$;");
         using (var exporter = await conn.BeginBinaryExportAsync($"COPY {table} (value) TO STDIN (FORMAT binary)"))
         {
             await exporter.StartRowAsync();
-            Assert.IsTrue(exporter.IsNull);
+            Assert.That(exporter.IsNull);
             await exporter.SkipAsync();
             await exporter.StartRowAsync();
             Assert.That(await exporter.ReadAsync<int?>(), Is.EqualTo(1));

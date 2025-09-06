@@ -123,10 +123,10 @@ public class NpgsqlParameterCollectionTests
         command.Parameters.Remove(command.Parameters["p02"]);
 
         // Test whether we can still find the last added parameter, and if its index is correctly shifted in the lookup.
-        Assert.IsTrue(command.Parameters.IndexOf("p02") == count - 1);
-        Assert.IsTrue(command.Parameters.IndexOf("P02") == count - 1);
+        Assert.That(command.Parameters.IndexOf("p02") == count - 1);
+        Assert.That(command.Parameters.IndexOf("P02") == count - 1);
         // And finally test whether other parameters were also correctly shifted.
-        Assert.IsTrue(command.Parameters.IndexOf("p03") == 1);
+        Assert.That(command.Parameters.IndexOf("p03") == 1);
     }
 
     [Test]
@@ -144,8 +144,8 @@ public class NpgsqlParameterCollectionTests
         command.Parameters.Remove(command.Parameters["p02"]);
 
         // Make sure we cannot find it, also not case insensitively.
-        Assert.IsTrue(command.Parameters.IndexOf("p02") == -1);
-        Assert.IsTrue(command.Parameters.IndexOf("P02") == -1);
+        Assert.That(command.Parameters.IndexOf("p02") == -1);
+        Assert.That(command.Parameters.IndexOf("P02") == -1);
     }
 
     [Test]
@@ -193,14 +193,14 @@ public class NpgsqlParameterCollectionTests
         command.Parameters.Insert(0, new NpgsqlParameter("ParameteR02", NpgsqlDbType.Text) { Value = "String parameter value 2" });
 
         // Try to find the exact index.
-        Assert.IsTrue(command.Parameters.IndexOf("parameter02") == 2);
-        Assert.IsTrue(command.Parameters.IndexOf("Parameter02") == command.Parameters.Count - 1);
-        Assert.IsTrue(command.Parameters.IndexOf("ParameteR02") == 0);
+        Assert.That(command.Parameters.IndexOf("parameter02") == 2);
+        Assert.That(command.Parameters.IndexOf("Parameter02") == command.Parameters.Count - 1);
+        Assert.That(command.Parameters.IndexOf("ParameteR02") == 0);
         // This name does not exist so we expect the first case insensitive match to be returned.
-        Assert.IsTrue(command.Parameters.IndexOf("ParaMeteR02") == 0);
+        Assert.That(command.Parameters.IndexOf("ParaMeteR02") == 0);
 
         // And finally test whether other parameters were also correctly shifted.
-        Assert.IsTrue(command.Parameters.IndexOf("parameter03") == 3);
+        Assert.That(command.Parameters.IndexOf("parameter03") == 3);
     }
 
     [Test]

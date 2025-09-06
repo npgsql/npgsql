@@ -203,11 +203,11 @@ $$ LANGUAGE 'plpgsql';");
     [Test]
     public void NpgsqlException_IsTransient()
     {
-        Assert.True(new NpgsqlException("", new IOException()).IsTransient);
-        Assert.True(new NpgsqlException("", new SocketException()).IsTransient);
-        Assert.True(new NpgsqlException("", new TimeoutException()).IsTransient);
-        Assert.False(new NpgsqlException().IsTransient);
-        Assert.False(new NpgsqlException("", new Exception("Inner Exception")).IsTransient);
+        Assert.That(new NpgsqlException("", new IOException()).IsTransient);
+        Assert.That(new NpgsqlException("", new SocketException()).IsTransient);
+        Assert.That(new NpgsqlException("", new TimeoutException()).IsTransient);
+        Assert.That(new NpgsqlException().IsTransient, Is.False);
+        Assert.That(new NpgsqlException("", new Exception("Inner Exception")).IsTransient, Is.False);
     }
 
 #if !NET9_0_OR_GREATER
@@ -216,8 +216,8 @@ $$ LANGUAGE 'plpgsql';");
     [Test]
     public void PostgresException_IsTransient()
     {
-        Assert.True(CreateWithSqlState("53300").IsTransient);
-        Assert.False(CreateWithSqlState("0").IsTransient);
+        Assert.That(CreateWithSqlState("53300").IsTransient);
+        Assert.That(CreateWithSqlState("0").IsTransient, Is.False);
 
         PostgresException CreateWithSqlState(string sqlState)
         {

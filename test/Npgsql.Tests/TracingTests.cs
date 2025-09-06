@@ -59,7 +59,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             var expectedTagCount = conn.Settings.Port == 5432 ? 8 : 9;
             Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
 
-            Assert.IsFalse(activity.TagObjects.Any(x => x.Key == "db.statement"));
+            Assert.That(activity.TagObjects.Any(x => x.Key == "db.statement"), Is.False);
 
             var systemTag = activity.TagObjects.First(x => x.Key == "db.system");
             Assert.That(systemTag.Value, Is.EqualTo("postgresql"));
@@ -79,7 +79,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
                 Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
             }
             else
-                Assert.IsTrue(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+                Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
         }
     }
 
@@ -140,7 +140,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
         }
         else
-            Assert.IsTrue(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+            Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
     }
 
     [Test]
@@ -271,7 +271,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
         }
         else
-            Assert.IsTrue(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+            Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
     }
 
     [Test]

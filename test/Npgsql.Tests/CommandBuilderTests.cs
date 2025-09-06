@@ -364,7 +364,7 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
         using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
 
         daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
-        Assert.True(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
+        Assert.That(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2846")]

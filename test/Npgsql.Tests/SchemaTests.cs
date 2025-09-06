@@ -257,7 +257,7 @@ CREATE DOMAIN {domainType} AS TEXT");
     {
         await using var conn = await OpenConnectionAsync();
         var dt = await GetSchema(conn, "ForeignKeys");
-        Assert.IsNotNull(dt);
+        Assert.That(dt, Is.Not.Null);
     }
 
     [Test]
@@ -276,7 +276,7 @@ CREATE DOMAIN {domainType} AS TEXT");
         command.CommandText = $"SELECT * FROM {table} WHERE int=" + string.Format(parameterMarkerFormat, parameterName);
         command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
         await using var reader = await command.ExecuteReaderAsync();
-        Assert.IsTrue(reader.Read());
+        Assert.That(reader.Read());
     }
 
     [Test]
@@ -425,11 +425,11 @@ CREATE DOMAIN {domainType} AS TEXT");
 
         // Columns are not necessarily in the correct order
         var firstColumn = columns.FirstOrDefault(x => (string)x["column_name"] == "f1")!;
-        Assert.NotNull(firstColumn);
+        Assert.That(firstColumn, Is.Not.Null);
         Assert.That(firstColumn["ordinal_number"], Is.EqualTo(1));
 
         var secondColumn = columns.FirstOrDefault(x => (string)x["column_name"] == "f2")!;
-        Assert.NotNull(secondColumn);
+        Assert.That(secondColumn, Is.Not.Null);
         Assert.That(secondColumn["ordinal_number"], Is.EqualTo(2));
     }
 

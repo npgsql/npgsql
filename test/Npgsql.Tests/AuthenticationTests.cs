@@ -66,7 +66,7 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
 
         using var dataSource = dataSourceBuilder.Build();
         using var conn = async ? await dataSource.OpenConnectionAsync() : dataSource.OpenConnection();
-        Assert.True(async ? asyncProviderCalled : syncProviderCalled, "Password_provider not used");
+        Assert.That(async ? asyncProviderCalled : syncProviderCalled, "Password_provider not used");
     }
 
     [Test]
@@ -418,7 +418,7 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
         using (var conn = new NpgsqlConnection(builder.ConnectionString) { ProvidePasswordCallback = ProvidePasswordCallback })
         {
             conn.Open();
-            Assert.True(getPasswordDelegateWasCalled, "ProvidePasswordCallback delegate not used");
+            Assert.That(getPasswordDelegateWasCalled, "ProvidePasswordCallback delegate not used");
 
             // Do this again, since with multiplexing the very first connection attempt is done via
             // the non-multiplexing path, to surface any exceptions.
@@ -427,7 +427,7 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
             getPasswordDelegateWasCalled = false;
             conn.Open();
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
-            Assert.True(getPasswordDelegateWasCalled, "ProvidePasswordCallback delegate not used");
+            Assert.That(getPasswordDelegateWasCalled, "ProvidePasswordCallback delegate not used");
         }
 
         string ProvidePasswordCallback(string host, int port, string database, string username)

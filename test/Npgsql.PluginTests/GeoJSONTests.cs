@@ -304,7 +304,7 @@ public class GeoJSONTests : TestBase
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT field FROM {table}";
         await using var reader = await cmd.ExecuteReaderAsync();
-        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(await reader.ReadAsync());
         var actual = reader.GetValue(0);
         Assert.That(actual, Is.EqualTo(data.Geometry));
     }
@@ -341,7 +341,7 @@ public class GeoJSONTests : TestBase
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT field FROM {table}";
         await using var reader = await cmd.ExecuteReaderAsync();
-        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(await reader.ReadAsync());
         var actual = reader.GetValue(0);
         Assert.That(actual, Is.EqualTo(geometry));
     }

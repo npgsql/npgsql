@@ -128,7 +128,7 @@ public class CommandParameterTests(MultiplexingMode multiplexingMode) : Multiple
         command.Parameters.Add(new NpgsqlParameter("Parameter4", DbType.DateTime));
 
         var idbPrmtr = command.Parameters["Parameter1"];
-        Assert.IsNotNull(idbPrmtr);
+        Assert.That(idbPrmtr, Is.Not.Null);
         command.Parameters[0].Value = 1;
 
         // Get by indexers.

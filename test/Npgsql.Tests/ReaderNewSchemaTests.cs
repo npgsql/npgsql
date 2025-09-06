@@ -757,9 +757,9 @@ CREATE TABLE {table2} (foo INTEGER)");
 
         var iface = (IDbColumnSchemaGenerator)reader;
         var schema = iface.GetColumnSchema();
-        Assert.NotNull(schema);
+        Assert.That(schema, Is.Not.Null);
         Assert.That(schema.Count, Is.EqualTo(1));
-        Assert.NotNull(schema[0]);
+        Assert.That(schema[0], Is.Not.Null);
     }
 
     #region Not supported

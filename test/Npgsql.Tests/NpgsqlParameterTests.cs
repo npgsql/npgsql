@@ -149,7 +149,7 @@ public class NpgsqlParameterTest : TestBase
         var p = new NpgsqlParameter();
         Assert.That(p.DbType, Is.EqualTo(DbType.Object), "DbType");
         Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "Direction");
-        Assert.IsFalse(p.IsNullable, "IsNullable");
+        Assert.That(p.IsNullable, Is.False, "IsNullable");
         Assert.That(p.ParameterName, Is.Empty, "ParameterName");
         Assert.That(p.Precision, Is.EqualTo(0), "Precision");
         Assert.That(p.Scale, Is.EqualTo(0), "Scale");
@@ -157,7 +157,7 @@ public class NpgsqlParameterTest : TestBase
         Assert.That(p.SourceColumn, Is.Empty, "SourceColumn");
         Assert.That(p.SourceVersion, Is.EqualTo(DataRowVersion.Current), "SourceVersion");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "NpgsqlDbType");
-        Assert.IsNull(p.Value, "Value");
+        Assert.That(p.Value, Is.Null, "Value");
     }
 
     [Test]
@@ -168,7 +168,7 @@ public class NpgsqlParameterTest : TestBase
         var p = new NpgsqlParameter("address", value);
         Assert.That(p.DbType, Is.EqualTo(DbType.DateTime2), "B:DbType");
         Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "B:Direction");
-        Assert.IsFalse(p.IsNullable, "B:IsNullable");
+        Assert.That(p.IsNullable, Is.False, "B:IsNullable");
         Assert.That(p.ParameterName, Is.EqualTo("address"), "B:ParameterName");
         Assert.That(p.Precision, Is.EqualTo(0), "B:Precision");
         Assert.That(p.Scale, Is.EqualTo(0), "B:Scale");
@@ -185,7 +185,7 @@ public class NpgsqlParameterTest : TestBase
         var p = new NpgsqlParameter("address", DBNull.Value);
         Assert.That(p.DbType, Is.EqualTo(DbType.Object), "B:DbType");
         Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "B:Direction");
-        Assert.IsFalse(p.IsNullable, "B:IsNullable");
+        Assert.That(p.IsNullable, Is.False, "B:IsNullable");
         Assert.That(p.ParameterName, Is.EqualTo("address"), "B:ParameterName");
         Assert.That(p.Precision, Is.EqualTo(0), "B:Precision");
         Assert.That(p.Scale, Is.EqualTo(0), "B:Scale");
@@ -202,7 +202,7 @@ public class NpgsqlParameterTest : TestBase
         var p = new NpgsqlParameter("address", null);
         Assert.That(p.DbType, Is.EqualTo(DbType.Object), "A:DbType");
         Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "A:Direction");
-        Assert.IsFalse(p.IsNullable, "A:IsNullable");
+        Assert.That(p.IsNullable, Is.False, "A:IsNullable");
         Assert.That(p.ParameterName, Is.EqualTo("address"), "A:ParameterName");
         Assert.That(p.Precision, Is.EqualTo(0), "A:Precision");
         Assert.That(p.Scale, Is.EqualTo(0), "A:Scale");
@@ -210,7 +210,7 @@ public class NpgsqlParameterTest : TestBase
         Assert.That(p.SourceColumn, Is.Empty, "A:SourceColumn");
         Assert.That(p.SourceVersion, Is.EqualTo(DataRowVersion.Current), "A:SourceVersion");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "A:NpgsqlDbType");
-        Assert.IsNull(p.Value, "A:Value");
+        Assert.That(p.Value, Is.Null, "A:Value");
     }
 
     [Test]
@@ -357,9 +357,9 @@ public class NpgsqlParameterTest : TestBase
             {
                 // The parameter data type of ... is invalid
                 Assert.That(ex.GetType(), Is.EqualTo(typeof(ArgumentException)), "#A2");
-                Assert.IsNull(ex.InnerException, "#A3");
-                Assert.IsNotNull(ex.Message, "#A4");
-                Assert.IsNull(ex.ParamName, "#A5");
+                Assert.That(ex.InnerException, Is.Null, "#A3");
+                Assert.That(ex.Message, Is.Not.Null, "#A4");
+                Assert.That(ex.ParamName, Is.Null, "#A5");
             }
         }
     }
@@ -532,7 +532,7 @@ public class NpgsqlParameterTest : TestBase
         p.ResetDbType();
         Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#G:DbType");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#G:NpgsqlDbType");
-        Assert.IsNull(p.Value, "#G:Value");
+        Assert.That(p.Value, Is.Null, "#G:Value");
     }
 
     [Test]

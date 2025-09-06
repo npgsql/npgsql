@@ -432,7 +432,7 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
                     // NpgsqlLogicalReplicationConnection
                     // Begin Transaction, Insert, Commit Transaction
                     for (var i = 0; i < 3; i++)
-                        Assert.True(await messages.MoveNextAsync());
+                        Assert.That(await messages.MoveNextAsync());
                     return messages.Current.Lsn;
 
                 }

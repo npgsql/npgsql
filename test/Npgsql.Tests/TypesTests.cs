@@ -89,7 +89,7 @@ public class TypesTests
     [Test]
     public void TsVector_empty()
     {
-        Assert.IsEmpty(NpgsqlTsVector.Empty);
+        Assert.That(NpgsqlTsVector.Empty, Is.Empty);
         Assert.That(NpgsqlTsVector.Empty.ToString(), Is.Empty);
     }
 
@@ -167,16 +167,16 @@ public class TypesTests
 
         void AreEqual(NpgsqlTsQuery left, NpgsqlTsQuery right)
         {
-            Assert.True(left == right);
-            Assert.False(left != right);
+            Assert.That(left == right);
+            Assert.That(left != right, Is.False);
             Assert.That(right, Is.EqualTo(left));
             Assert.That(right.GetHashCode(), Is.EqualTo(left.GetHashCode()));
         }
 
         void AreNotEqual(NpgsqlTsQuery left, NpgsqlTsQuery right)
         {
-            Assert.False(left == right);
-            Assert.True(left != right);
+            Assert.That(left == right, Is.False);
+            Assert.That(left != right);
             Assert.That(right, Is.Not.EqualTo(left));
             Assert.That(right.GetHashCode(), Is.Not.EqualTo(left.GetHashCode()));
         }
@@ -204,14 +204,14 @@ public class TypesTests
     public void NpgsqlPath_default()
     {
         NpgsqlPath defaultPath = default;
-        Assert.IsFalse(defaultPath.Equals([new(1, 2)]));
+        Assert.That(defaultPath.Equals([new(1, 2)]), Is.False);
     }
 
     [Test]
     public void NpgsqlPolygon_default()
     {
         NpgsqlPolygon defaultPolygon = default;
-        Assert.IsFalse(defaultPolygon.Equals([new(1, 2)]));
+        Assert.That(defaultPolygon.Equals([new(1, 2)]), Is.False);
     }
 
     [Test]

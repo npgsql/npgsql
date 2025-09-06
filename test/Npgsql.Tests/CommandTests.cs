@@ -818,8 +818,8 @@ $$ LANGUAGE plpgsql;";
         var cmdBuilder = new NpgsqlCommandBuilder();
         var da = new NpgsqlDataAdapter(command);
         cmdBuilder.DataAdapter = da;
-        Assert.IsNotNull(da.SelectCommand);
-        Assert.IsNotNull(cmdBuilder.DataAdapter);
+        Assert.That(da.SelectCommand, Is.Not.Null);
+        Assert.That(cmdBuilder.DataAdapter, Is.Not.Null);
 
         var updateCommand = cmdBuilder.GetUpdateCommand();
         Assert.That(updateCommand.UpdatedRowSource, Is.EqualTo(UpdateRowSource.None));
@@ -1146,10 +1146,10 @@ $$ LANGUAGE plpgsql;";
             ? await cmd.ExecuteReaderAsync()
             : cmd.ExecuteReader();
 
-        Assert.IsTrue(async ? await reader.ReadAsync() : reader.Read());
+        Assert.That(async ? await reader.ReadAsync() : reader.Read());
         var value = reader.GetInt32(0);
         Assert.That(value, Is.EqualTo(1));
-        Assert.IsFalse(async ? await reader.ReadAsync() : reader.Read());
+        Assert.That(async ? await reader.ReadAsync() : reader.Read(), Is.False);
         var ex = async
             ? Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())
             : Assert.Throws<PostgresException>(() => reader.NextResult());
@@ -1503,8 +1503,8 @@ $$ LANGUAGE plpgsql;";
         var cancellationRequestTask = postmasterMock.WaitForCancellationRequest().AsTask();
         // Give 1 second to make sure we didn't send cancellation request
         await Task.Delay(1000);
-        Assert.IsFalse(cancelTask.IsCompleted);
-        Assert.IsFalse(cancellationRequestTask.IsCompleted);
+        Assert.That(cancelTask.IsCompleted, Is.False);
+        Assert.That(cancellationRequestTask.IsCompleted, Is.False);
 
         if (failPrependedQuery)
         {
