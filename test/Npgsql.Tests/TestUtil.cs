@@ -428,7 +428,7 @@ CREATE TABLE {tableName} ({columns});");
         (LogLevel Level, EventId Id, string Message, object? State, Exception? Exception) log,
         string key,
         T value)
-        => Assert.That(log.State, Contains.Item(new KeyValuePair<string, T>(key, value)));
+        => Assert.That(log.State as IEnumerable<KeyValuePair<string, object>>, Contains.Item(new KeyValuePair<string, T>(key, value)));
 
     internal static void AssertLoggingStateDoesNotContain(
         (LogLevel Level, EventId Id, string Message, object? State, Exception? Exception) log,

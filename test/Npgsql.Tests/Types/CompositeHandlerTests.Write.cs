@@ -45,34 +45,34 @@ public partial class CompositeHandlerTests
 
     [Test]
     public Task Write_class_with_property()
-        => Write<ClassWithProperty>((reader, expected) => Assert.AreEqual(expected.Value, reader.GetString(0)));
+        => Write<ClassWithProperty>((reader, expected) => Assert.That(reader.GetString(0), Is.EqualTo(expected.Value)));
 
     [Test]
     public Task Write_class_with_field()
-        => Write<ClassWithField>((reader, expected) => Assert.AreEqual(expected.Value, reader.GetString(0)));
+        => Write<ClassWithField>((reader, expected) => Assert.That(reader.GetString(0), Is.EqualTo(expected.Value)));
 
     [Test]
     public Task Write_struct_with_property()
-        => Write<StructWithProperty>((reader, expected) => Assert.AreEqual(expected.Value, reader.GetString(0)));
+        => Write<StructWithProperty>((reader, expected) => Assert.That(reader.GetString(0), Is.EqualTo(expected.Value)));
 
     [Test]
     public Task Write_struct_with_field()
-        => Write<StructWithField>((reader, expected) => Assert.AreEqual(expected.Value, reader.GetString(0)));
+        => Write<StructWithField>((reader, expected) => Assert.That(reader.GetString(0), Is.EqualTo(expected.Value)));
 
     [Test]
     public Task Write_type_with_two_properties()
         => Write<TypeWithTwoProperties>((reader, expected) =>
         {
-            Assert.AreEqual(expected.IntValue, reader.GetInt32(0));
-            Assert.AreEqual(expected.StringValue, reader.GetString(1));
+            Assert.That(reader.GetInt32(0), Is.EqualTo(expected.IntValue));
+            Assert.That(reader.GetString(1), Is.EqualTo(expected.StringValue));
         });
 
     [Test]
     public Task Write_type_with_two_properties_inverted()
         => Write<TypeWithTwoPropertiesReversed>((reader, expected) =>
         {
-            Assert.AreEqual(expected.IntValue, reader.GetInt32(1));
-            Assert.AreEqual(expected.StringValue, reader.GetString(0));
+            Assert.That(reader.GetInt32(1), Is.EqualTo(expected.IntValue));
+            Assert.That(reader.GetString(0), Is.EqualTo(expected.StringValue));
         });
 
     [Test]

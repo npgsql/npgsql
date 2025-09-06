@@ -237,7 +237,7 @@ UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
         using var dr = await command.ExecuteReaderAsync(Behavior);
         dr.Read();
         var result = dr.GetString(0);
-        Assert.AreEqual(text, result);
+        Assert.That(result, Is.EqualTo(text));
     }
 
     [Test]
@@ -263,7 +263,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         using var dr = await command.ExecuteReaderAsync(Behavior);
         dr.Read();
         var result = dr.GetString(0);
-        Assert.AreEqual(test, result);
+        Assert.That(result, Is.EqualTo(test));
     }
 
     [Test]
@@ -644,7 +644,7 @@ LANGUAGE 'plpgsql'");
         // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
         cmd.Dispose();
         var cmd2 = conn.CreateCommand();
-        Assert.AreNotSame(cmd2, cmd);
+        Assert.That(cmd, Is.Not.SameAs(cmd2));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
@@ -672,7 +672,7 @@ LANGUAGE 'plpgsql'");
         // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
         cmd.Dispose();
         var cmd2 = conn.CreateCommand();
-        Assert.AreNotSame(cmd2, cmd);
+        Assert.That(cmd, Is.Not.SameAs(cmd2));
     }
 
     #region SchemaOnly
@@ -979,7 +979,7 @@ LANGUAGE 'plpgsql'");
                 .WriteCommandComplete()
                 .WriteReadyForQuery()
                 .FlushAsync();
-            Assert.AreEqual(expected, await task);
+            Assert.That(await task, Is.EqualTo(expected));
         }
     }
 

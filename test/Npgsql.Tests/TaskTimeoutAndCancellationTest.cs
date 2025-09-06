@@ -21,7 +21,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
 
     [Test]
     public async Task SuccessfulResultTaskAsync() =>
-        Assert.AreEqual(TestResultValue, await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None));
+        Assert.That(await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None), Is.EqualTo(TestResultValue));
 
     [Test]
     public async Task SuccessfulVoidTaskAsync() =>

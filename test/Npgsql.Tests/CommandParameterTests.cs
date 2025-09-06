@@ -22,8 +22,8 @@ public class CommandParameterTests(MultiplexingMode multiplexingMode) : Multiple
         cmd.Parameters.Add(c);
         using (await cmd.ExecuteReaderAsync(behavior))
         {
-            Assert.AreEqual(5, b.Value);
-            Assert.AreEqual(3, c.Value);
+            Assert.That(b.Value, Is.EqualTo(5));
+            Assert.That(c.Value, Is.EqualTo(3));
         }
     }
 
@@ -133,15 +133,15 @@ public class CommandParameterTests(MultiplexingMode multiplexingMode) : Multiple
 
         // Get by indexers.
 
-        Assert.AreEqual(":Parameter1", command.Parameters["Parameter1"].ParameterName);
-        Assert.AreEqual(":Parameter2", command.Parameters["Parameter2"].ParameterName);
-        Assert.AreEqual(":Parameter3", command.Parameters["Parameter3"].ParameterName);
-        Assert.AreEqual("Parameter4", command.Parameters["Parameter4"].ParameterName); //Should this work?
+        Assert.That(command.Parameters["Parameter1"].ParameterName, Is.EqualTo(":Parameter1"));
+        Assert.That(command.Parameters["Parameter2"].ParameterName, Is.EqualTo(":Parameter2"));
+        Assert.That(command.Parameters["Parameter3"].ParameterName, Is.EqualTo(":Parameter3"));
+        Assert.That(command.Parameters["Parameter4"].ParameterName, Is.EqualTo("Parameter4")); //Should this work?
 
-        Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
-        Assert.AreEqual(":Parameter2", command.Parameters[1].ParameterName);
-        Assert.AreEqual(":Parameter3", command.Parameters[2].ParameterName);
-        Assert.AreEqual("Parameter4", command.Parameters[3].ParameterName);
+        Assert.That(command.Parameters[0].ParameterName, Is.EqualTo(":Parameter1"));
+        Assert.That(command.Parameters[1].ParameterName, Is.EqualTo(":Parameter2"));
+        Assert.That(command.Parameters[2].ParameterName, Is.EqualTo(":Parameter3"));
+        Assert.That(command.Parameters[3].ParameterName, Is.EqualTo("Parameter4"));
     }
 
     [Test]

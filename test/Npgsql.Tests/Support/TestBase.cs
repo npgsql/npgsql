@@ -565,6 +565,7 @@ public abstract class TestBase
 
     protected virtual NpgsqlDataSource DataSource => DefaultDataSource;
 
+    
     protected virtual NpgsqlConnection CreateConnection()
         => DataSource.CreateConnection();
 

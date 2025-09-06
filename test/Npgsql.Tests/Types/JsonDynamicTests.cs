@@ -520,6 +520,12 @@ public class JsonDynamicTests : MultiplexingTestBase
 
     protected override NpgsqlDataSource DataSource { get; }
 
+    [OneTimeTearDown]
+    protected void CleanUpDataSource()
+    {
+        DataSource.Dispose();
+    }
+
     bool IsJsonb => NpgsqlDbType == NpgsqlDbType.Jsonb;
     string PostgresType => IsJsonb ? "jsonb" : "json";
     readonly NpgsqlDbType NpgsqlDbType;

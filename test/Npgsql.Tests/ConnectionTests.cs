@@ -111,7 +111,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         Assert.That(eventClosed, Is.True);
         Assert.That(conn.Connector is null);
-        Assert.AreEqual(0, conn.NpgsqlDataSource.Statistics.Total);
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
 
         if (openFromClose)
         {
@@ -123,8 +123,8 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         }
 
         Assert.DoesNotThrowAsync(conn.OpenAsync);
-        Assert.AreEqual(1, await conn.ExecuteScalarAsync("SELECT 1"));
-        Assert.AreEqual(1, conn.NpgsqlDataSource.Statistics.Total);
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
         Assert.DoesNotThrowAsync(conn.CloseAsync);
     }
 
@@ -953,7 +953,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     {
         var c = new NpgsqlConnection();
         c.Dispose();
-        Assert.AreEqual(ConnectionState.Closed, c.State);
+        Assert.That(c.State, Is.EqualTo(ConnectionState.Closed));
     }
 
     [Test]

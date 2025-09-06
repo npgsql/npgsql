@@ -442,8 +442,8 @@ public class DateTimeTests : TestBase
     {
         var localtimestamp = new NpgsqlParameter { Value = DateTime.Now };
         var unspecifiedtimestamp = new NpgsqlParameter { Value = new DateTime() };
-        Assert.AreEqual(DbType.DateTime2, localtimestamp.DbType);
-        Assert.AreEqual(DbType.DateTime2, unspecifiedtimestamp.DbType);
+        Assert.That(localtimestamp.DbType, Is.EqualTo(DbType.DateTime2));
+        Assert.That(unspecifiedtimestamp.DbType, Is.EqualTo(DbType.DateTime2));
 
         // We don't support any DateTimeOffset other than offset 0 which maps to timestamptz,
         // we might add an exception for offset == DateTimeOffset.Now.Offset (local offset) mapping to timestamp at some point.
@@ -452,8 +452,8 @@ public class DateTimeTests : TestBase
 
         var timestamptz = new NpgsqlParameter { Value = DateTime.UtcNow };
         var dtotimestamptz = new NpgsqlParameter { Value = DateTimeOffset.UtcNow };
-        Assert.AreEqual(DbType.DateTime, timestamptz.DbType);
-        Assert.AreEqual(DbType.DateTime, dtotimestamptz.DbType);
+        Assert.That(timestamptz.DbType, Is.EqualTo(DbType.DateTime));
+        Assert.That(dtotimestamptz.DbType, Is.EqualTo(DbType.DateTime));
     }
 
     [Test]
@@ -461,13 +461,13 @@ public class DateTimeTests : TestBase
     {
         var localtimestamp = new NpgsqlParameter { Value = DateTime.Now };
         var unspecifiedtimestamp = new NpgsqlParameter { Value = new DateTime() };
-        Assert.AreEqual(NpgsqlDbType.Timestamp, localtimestamp.NpgsqlDbType);
-        Assert.AreEqual(NpgsqlDbType.Timestamp, unspecifiedtimestamp.NpgsqlDbType);
+        Assert.That(localtimestamp.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
+        Assert.That(unspecifiedtimestamp.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
 
         var timestamptz = new NpgsqlParameter { Value = DateTime.UtcNow };
         var dtotimestamptz = new NpgsqlParameter { Value = DateTimeOffset.UtcNow };
-        Assert.AreEqual(NpgsqlDbType.TimestampTz, timestamptz.NpgsqlDbType);
-        Assert.AreEqual(NpgsqlDbType.TimestampTz, dtotimestamptz.NpgsqlDbType);
+        Assert.That(timestamptz.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
+        Assert.That(dtotimestamptz.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
     }
 
     [Test]

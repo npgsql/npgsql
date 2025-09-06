@@ -758,7 +758,7 @@ CREATE TABLE {table2} (foo INTEGER)");
         var iface = (IDbColumnSchemaGenerator)reader;
         var schema = iface.GetColumnSchema();
         Assert.NotNull(schema);
-        Assert.AreEqual(1, schema.Count);
+        Assert.That(schema.Count, Is.EqualTo(1));
         Assert.NotNull(schema[0]);
     }
 

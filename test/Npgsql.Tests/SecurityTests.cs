@@ -424,7 +424,7 @@ public class SecurityTests : TestBase
             await conn.CloseAsync();
             await conn.OpenAsync();
 
-            Assert.AreSame(originalConnector, conn.Connector);
+            Assert.That(conn.Connector, Is.SameAs(originalConnector));
         }
 
         cmd.CommandText = "SELECT 1";
@@ -473,7 +473,7 @@ public class SecurityTests : TestBase
         await conn.CloseAsync();
         await conn.OpenAsync();
 
-        Assert.AreSame(originalConnector, conn.Connector);
+        Assert.That(conn.Connector, Is.SameAs(originalConnector));
 
         cmd.CommandText = "SELECT 1";
         if (async)

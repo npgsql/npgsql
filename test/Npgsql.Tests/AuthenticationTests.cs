@@ -500,10 +500,10 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
         using (var conn = new NpgsqlConnection(builder.ConnectionString) { ProvidePasswordCallback = ProvidePasswordCallback })
         {
             conn.Open();
-            Assert.AreEqual(builder.Host, receivedHost);
-            Assert.AreEqual(builder.Port, receivedPort);
-            Assert.AreEqual(builder.Database, receivedDatabase);
-            Assert.AreEqual(builder.Username, receivedUsername);
+            Assert.That(receivedHost, Is.EqualTo(builder.Host));
+            Assert.That(receivedPort, Is.EqualTo(builder.Port));
+            Assert.That(receivedDatabase, Is.EqualTo(builder.Database));
+            Assert.That(receivedUsername, Is.EqualTo(builder.Username));
         }
 
         string ProvidePasswordCallback(string host, int port, string database, string username)

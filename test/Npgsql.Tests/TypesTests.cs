@@ -17,22 +17,22 @@ public class TypesTests
         NpgsqlTsVector vec;
 
         vec = NpgsqlTsVector.Parse("a");
-        Assert.AreEqual("'a'", vec.ToString());
+        Assert.That(vec.ToString(), Is.EqualTo("'a'"));
 
         vec = NpgsqlTsVector.Parse("a ");
-        Assert.AreEqual("'a'", vec.ToString());
+        Assert.That(vec.ToString(), Is.EqualTo("'a'"));
 
         vec = NpgsqlTsVector.Parse("a:1A");
-        Assert.AreEqual("'a':1A", vec.ToString());
+        Assert.That(vec.ToString(), Is.EqualTo("'a':1A"));
 
         vec = NpgsqlTsVector.Parse(@"\abc\def:1a ");
-        Assert.AreEqual("'abcdef':1A", vec.ToString());
+        Assert.That(vec.ToString(), Is.EqualTo("'abcdef':1A"));
 
         vec = NpgsqlTsVector.Parse(@"abc:3A 'abc' abc:4B 'hello''yo' 'meh\'\\':5");
-        Assert.AreEqual(@"'abc':3A,4B 'hello''yo' 'meh''\\':5", vec.ToString());
+        Assert.That(vec.ToString(), Is.EqualTo(@"'abc':3A,4B 'hello''yo' 'meh''\\':5"));
 
         vec = NpgsqlTsVector.Parse(" a:12345C  a:24D a:25B b c d 1 2 a:25A,26B,27,28");
-        Assert.AreEqual("'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'", vec.ToString());
+        Assert.That(vec.ToString(), Is.EqualTo("'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'"));
     }
 
     [Test]
@@ -47,27 +47,27 @@ public class TypesTests
         var str = query.ToString();
 
         query = NpgsqlTsQuery.Parse("a & b | c");
-        Assert.AreEqual("'a' & 'b' | 'c'", query.ToString());
+        Assert.That(query.ToString(), Is.EqualTo("'a' & 'b' | 'c'"));
 
         query = NpgsqlTsQuery.Parse("'a''':*ab&d:d&!c");
-        Assert.AreEqual("'a''':*AB & 'd':D & !'c'", query.ToString());
+        Assert.That(query.ToString(), Is.EqualTo("'a''':*AB & 'd':D & !'c'"));
 
         query = NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | c | d | e");
-        Assert.AreEqual("( ( 'a' & !( 'c' | 'd' ) & !( !'a' ) & 'b' | 'c' ) | 'd' ) | 'e'", query.ToString());
-        Assert.AreEqual(query.ToString(), NpgsqlTsQuery.Parse(query.ToString()).ToString());
+        Assert.That(query.ToString(), Is.EqualTo("( ( 'a' & !( 'c' | 'd' ) & !( !'a' ) & 'b' | 'c' ) | 'd' ) | 'e'"));
+        Assert.That(NpgsqlTsQuery.Parse(query.ToString()).ToString(), Is.EqualTo(query.ToString()));
 
         query = NpgsqlTsQuery.Parse("(((a:*)))");
-        Assert.AreEqual("'a':*", query.ToString());
+        Assert.That(query.ToString(), Is.EqualTo("'a':*"));
 
         query = NpgsqlTsQuery.Parse(@"'a\\b''cde'");
-        Assert.AreEqual(@"a\b'cde", ((NpgsqlTsQueryLexeme)query).Text);
-        Assert.AreEqual(@"'a\\b''cde'", query.ToString());
+        Assert.That(((NpgsqlTsQueryLexeme)query).Text, Is.EqualTo(@"a\b'cde"));
+        Assert.That(query.ToString(), Is.EqualTo(@"'a\\b''cde'"));
 
         query = NpgsqlTsQuery.Parse(@"a <-> b");
-        Assert.AreEqual("'a' <-> 'b'", query.ToString());
+        Assert.That(query.ToString(), Is.EqualTo("'a' <-> 'b'"));
 
         query = NpgsqlTsQuery.Parse("((a & b) <5> c) <-> !d <0> e");
-        Assert.AreEqual("( ( 'a' & 'b' <5> 'c' ) <-> !'d' ) <0> 'e'", query.ToString());
+        Assert.That(query.ToString(), Is.EqualTo("( ( 'a' & 'b' <5> 'c' ) <-> !'d' ) <0> 'e'"));
 
         Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a b c & &"));
         Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("&"));
@@ -90,7 +90,7 @@ public class TypesTests
     public void TsVector_empty()
     {
         Assert.IsEmpty(NpgsqlTsVector.Empty);
-        Assert.AreEqual(string.Empty, NpgsqlTsVector.Empty.ToString());
+        Assert.That(NpgsqlTsVector.Empty.ToString(), Is.Empty);
     }
 
     [Test]
@@ -169,16 +169,16 @@ public class TypesTests
         {
             Assert.True(left == right);
             Assert.False(left != right);
-            Assert.AreEqual(left, right);
-            Assert.AreEqual(left.GetHashCode(), right.GetHashCode());
+            Assert.That(right, Is.EqualTo(left));
+            Assert.That(right.GetHashCode(), Is.EqualTo(left.GetHashCode()));
         }
 
         void AreNotEqual(NpgsqlTsQuery left, NpgsqlTsQuery right)
         {
             Assert.False(left == right);
             Assert.True(left != right);
-            Assert.AreNotEqual(left, right);
-            Assert.AreNotEqual(left.GetHashCode(), right.GetHashCode());
+            Assert.That(right, Is.Not.EqualTo(left));
+            Assert.That(right.GetHashCode(), Is.Not.EqualTo(left.GetHashCode()));
         }
     }
 
@@ -188,7 +188,7 @@ public class TypesTests
     {
         var query = NpgsqlTsQuery.Parse("!a <-> b & c | d & e");
         var expectedGrouping = NpgsqlTsQuery.Parse("((!(a) <-> b) & c) | (d & e)");
-        Assert.AreEqual(expectedGrouping.ToString(), query.ToString());
+        Assert.That(query.ToString(), Is.EqualTo(expectedGrouping.ToString()));
     }
 #pragma warning restore CS0618 // {NpgsqlTsVector,NpgsqlTsQuery}.Parse are obsolete
 

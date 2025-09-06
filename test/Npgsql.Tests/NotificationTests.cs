@@ -54,7 +54,7 @@ public class NotificationTests : TestBase
             await Task.Delay(2000);
 
             Assert.IsTrue(reader.Read());
-            Assert.AreEqual(1, reader.GetValue(0));
+            Assert.That(reader.GetValue(0), Is.EqualTo(1));
         }
 
         Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));

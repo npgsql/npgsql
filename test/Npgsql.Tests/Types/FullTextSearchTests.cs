@@ -68,19 +68,19 @@ public class FullTextSearchTests(MultiplexingMode multiplexingMode) : Multiplexi
 
         var exception = await AssertTypeUnsupportedRead<NpgsqlTsQuery, InvalidCastException>("a", "tsquery", dataSource);
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedWrite<NpgsqlTsQuery, InvalidCastException>(new NpgsqlTsQueryLexeme("a"), pgTypeName: null, dataSource);
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedRead<NpgsqlTsVector, InvalidCastException>("1", "tsvector", dataSource);
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedWrite<NpgsqlTsVector, InvalidCastException>(NpgsqlTsVector.Parse("'1'"), pgTypeName: null, dataSource);
         Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]
