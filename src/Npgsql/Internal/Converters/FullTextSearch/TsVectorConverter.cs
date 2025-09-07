@@ -85,7 +85,7 @@ sealed class TsVectorConverter(Encoding encoding) : PgStreamingConverter<NpgsqlT
         foreach (var lexeme in value)
         {
             if (async)
-                await writer.WriteCharsAsync(lexeme.Text.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
+                await writer.WriteCharsAsync(lexeme.Text.AsMemory(), encoding, cancellationToken: cancellationToken).ConfigureAwait(false);
             else
                 writer.WriteChars(lexeme.Text.AsMemory().Span, encoding);
 
