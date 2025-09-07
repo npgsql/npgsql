@@ -179,7 +179,10 @@ public class DistributedTransactionTests : TestBase
             }
             catch (Exception ex)
             {
-                Assert.Fail($"Failed at iteration {i}.\r\nEvents:\r\n{FormatEventQueue(eventQueue)}\r\nException {ex}");
+                Assert.Fail($@"Failed at iteration {i}.
+Events:
+{FormatEventQueue(eventQueue)}
+Exception {ex}");
             }
         }
     }
@@ -228,7 +231,10 @@ public class DistributedTransactionTests : TestBase
             }
             catch (Exception ex)
             {
-                Assert.Fail($"Failed at iteration {i}.\r\nEvents:\r\n{FormatEventQueue(eventQueue)}\r\nException {ex}");
+                Assert.Fail($@"Failed at iteration {i}.
+Events:
+{FormatEventQueue(eventQueue)}
+Exception {ex}");
             }
         }
     }
@@ -277,7 +283,10 @@ public class DistributedTransactionTests : TestBase
             }
             catch (Exception ex)
             {
-                Assert.Fail($"Failed at iteration {i}.\r\nEvents:\r\n{FormatEventQueue(eventQueue)}\r\nException {ex}");
+                Assert.Fail($@"Failed at iteration {i}.
+Events:
+{FormatEventQueue(eventQueue)}
+Exception {ex}");
             }
         }
     }
@@ -350,7 +359,10 @@ public class DistributedTransactionTests : TestBase
             }
             catch (Exception ex)
             {
-                Assert.Fail($"Failed at iteration {i}.\r\nEvents:\r\n{FormatEventQueue(eventQueue)}\r\nException {ex}");
+                Assert.Fail($@"Failed at iteration {i}.
+Events:
+{FormatEventQueue(eventQueue)}
+Exception {ex}");
             }
         }
     }
