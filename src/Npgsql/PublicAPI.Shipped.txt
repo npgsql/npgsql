@@ -1228,6 +1228,8 @@ NpgsqlTypes.NpgsqlBox.Width.get -> double
 NpgsqlTypes.NpgsqlCidr
 NpgsqlTypes.NpgsqlCidr.Address.get -> System.Net.IPAddress!
 NpgsqlTypes.NpgsqlCidr.Deconstruct(out System.Net.IPAddress! address, out byte netmask) -> void
+NpgsqlTypes.NpgsqlCidr.Equals(NpgsqlTypes.NpgsqlCidr other) -> bool
+NpgsqlTypes.NpgsqlInet.Equals(NpgsqlTypes.NpgsqlInet other) -> bool
 NpgsqlTypes.NpgsqlCidr.Netmask.get -> byte
 NpgsqlTypes.NpgsqlCidr.NpgsqlCidr() -> void
 NpgsqlTypes.NpgsqlCidr.NpgsqlCidr(string! addr) -> void
@@ -1793,10 +1795,12 @@ override Npgsql.Schema.NpgsqlDbColumn.this[string! propertyName].get -> object?
 override NpgsqlTypes.NpgsqlBox.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlBox.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlBox.ToString() -> string!
+override NpgsqlTypes.NpgsqlCidr.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlCidr.ToString() -> string!
 override NpgsqlTypes.NpgsqlCircle.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlCircle.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlCircle.ToString() -> string!
+override NpgsqlTypes.NpgsqlInet.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlInet.ToString() -> string!
 override NpgsqlTypes.NpgsqlInterval.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlInterval.GetHashCode() -> int
@@ -1886,10 +1890,14 @@ static NpgsqlTypes.NpgsqlBox.operator !=(NpgsqlTypes.NpgsqlBox x, NpgsqlTypes.Np
 static NpgsqlTypes.NpgsqlBox.operator ==(NpgsqlTypes.NpgsqlBox x, NpgsqlTypes.NpgsqlBox y) -> bool
 static NpgsqlTypes.NpgsqlCidr.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlCidr cidr) -> System.Net.IPAddress!
 static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTypes.NpgsqlCidr cidr) -> NpgsqlTypes.NpgsqlInet
+static NpgsqlTypes.NpgsqlCidr.operator !=(NpgsqlTypes.NpgsqlCidr left, NpgsqlTypes.NpgsqlCidr right) -> bool
+static NpgsqlTypes.NpgsqlCidr.operator ==(NpgsqlTypes.NpgsqlCidr left, NpgsqlTypes.NpgsqlCidr right) -> bool
 static NpgsqlTypes.NpgsqlCircle.operator !=(NpgsqlTypes.NpgsqlCircle x, NpgsqlTypes.NpgsqlCircle y) -> bool
 static NpgsqlTypes.NpgsqlCircle.operator ==(NpgsqlTypes.NpgsqlCircle x, NpgsqlTypes.NpgsqlCircle y) -> bool
 static NpgsqlTypes.NpgsqlInet.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlInet inet) -> System.Net.IPAddress!
 static NpgsqlTypes.NpgsqlInet.implicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPAddress! ip) -> NpgsqlTypes.NpgsqlInet
+static NpgsqlTypes.NpgsqlInet.operator !=(NpgsqlTypes.NpgsqlInet left, NpgsqlTypes.NpgsqlInet right) -> bool
+static NpgsqlTypes.NpgsqlInet.operator ==(NpgsqlTypes.NpgsqlInet left, NpgsqlTypes.NpgsqlInet right) -> bool
 static NpgsqlTypes.NpgsqlLine.operator !=(NpgsqlTypes.NpgsqlLine x, NpgsqlTypes.NpgsqlLine y) -> bool
 static NpgsqlTypes.NpgsqlLine.operator ==(NpgsqlTypes.NpgsqlLine x, NpgsqlTypes.NpgsqlLine y) -> bool
 static NpgsqlTypes.NpgsqlLogSequenceNumber.explicit operator NpgsqlTypes.NpgsqlLogSequenceNumber(ulong value) -> NpgsqlTypes.NpgsqlLogSequenceNumber
@@ -1934,5 +1942,13 @@ static NpgsqlTypes.NpgsqlTsVector.Parse(string! value) -> NpgsqlTypes.NpgsqlTsVe
 static readonly Npgsql.NpgsqlFactory.Instance -> Npgsql.NpgsqlFactory!
 static readonly NpgsqlTypes.NpgsqlLogSequenceNumber.Invalid -> NpgsqlTypes.NpgsqlLogSequenceNumber
 static readonly NpgsqlTypes.NpgsqlRange<T>.Empty -> NpgsqlTypes.NpgsqlRange<T>
+virtual Npgsql.NoticeEventHandler.Invoke(object! sender, Npgsql.NpgsqlNoticeEventArgs! e) -> void
+virtual Npgsql.NotificationEventHandler.Invoke(object! sender, Npgsql.NpgsqlNotificationEventArgs! e) -> void
 virtual Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!
+virtual Npgsql.NpgsqlRowUpdatedEventHandler.Invoke(object! sender, Npgsql.NpgsqlRowUpdatedEventArgs! e) -> void
+virtual Npgsql.NpgsqlRowUpdatingEventHandler.Invoke(object! sender, Npgsql.NpgsqlRowUpdatingEventArgs! e) -> void
+virtual Npgsql.ProvideClientCertificatesCallback.Invoke(System.Security.Cryptography.X509Certificates.X509CertificateCollection! certificates) -> void
+virtual Npgsql.ProvidePasswordCallback.Invoke(string! host, int port, string! database, string! username) -> string!
 virtual Npgsql.Replication.PgOutput.ReplicationTuple.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerator<Npgsql.Replication.PgOutput.ReplicationValue!>!
+~override NpgsqlTypes.NpgsqlCidr.Equals(object obj) -> bool
+~override NpgsqlTypes.NpgsqlInet.Equals(object obj) -> bool
