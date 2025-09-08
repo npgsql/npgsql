@@ -37,7 +37,7 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
 
     <!-- Benchmarks -->
-    <PackageVersion Include="BenchmarkDotNet" Version="0.13.12" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.2" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.10" />
 
