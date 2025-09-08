@@ -138,15 +138,15 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         var expected = new char[] { 'a', (char)(256 - 3), 'b', (char)66, (char)230 };
         for (var i = 0; i < expected.Length; i++)
         {
-            Assert.AreEqual(expected[i], reader.GetChar(i));
+            Assert.That(reader.GetChar(i), Is.EqualTo(expected[i]));
         }
         var arr = (char[])reader.GetValue(5);
         var arr2 = (char[])reader.GetValue(6);
-        Assert.AreEqual(testArr.Length, arr.Length);
+        Assert.That(arr.Length, Is.EqualTo(testArr.Length));
         for (var i = 0; i < arr.Length; i++)
         {
-            Assert.AreEqual(testArr[i], arr[i]);
-            Assert.AreEqual(testArr2[i], arr2[i]);
+            Assert.That(arr[i], Is.EqualTo(testArr[i]));
+            Assert.That(arr2[i], Is.EqualTo(testArr2[i]));
         }
     }
 }

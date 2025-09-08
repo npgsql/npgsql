@@ -310,7 +310,7 @@ jobs:
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
         run: |
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.Tests --logger "GitHubActions;report-warnings=false"
+            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.Tests --logger "GitHubActions;report-warnings=false" --blame-hang-timeout 30s
             dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.DependencyInjection.Tests --logger "GitHubActions;report-warnings=false"
         shell: bash
 

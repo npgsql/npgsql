@@ -12,7 +12,7 @@ public class DataTypeNameTests
         var name = new string('a', DataTypeName.NAMEDATALEN);
         var fullyQualifiedDataTypeName= $"public.{name}";
         Assert.DoesNotThrow(() => new DataTypeName(fullyQualifiedDataTypeName));
-        Assert.AreEqual(new DataTypeName(fullyQualifiedDataTypeName).Value, fullyQualifiedDataTypeName);
+        Assert.That(fullyQualifiedDataTypeName, Is.EqualTo(new DataTypeName(fullyQualifiedDataTypeName).Value));
     }
 
     [Test]

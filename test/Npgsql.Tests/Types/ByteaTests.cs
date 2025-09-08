@@ -279,9 +279,9 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         var inVal = new[] { bytes, bytes };
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array, inVal);
         var retVal = (byte[][]?)await cmd.ExecuteScalarAsync();
-        Assert.AreEqual(inVal.Length, retVal!.Length);
-        Assert.AreEqual(inVal[0], retVal[0]);
-        Assert.AreEqual(inVal[1], retVal[1]);
+        Assert.That(retVal!.Length, Is.EqualTo(inVal.Length));
+        Assert.That(retVal[0], Is.EqualTo(inVal[0]));
+        Assert.That(retVal[1], Is.EqualTo(inVal[1]));
     }
 
     sealed class NonSeekableStream(byte[] data) : MemoryStream(data)

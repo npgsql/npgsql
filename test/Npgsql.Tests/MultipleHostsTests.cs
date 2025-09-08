@@ -359,21 +359,21 @@ public class MultipleHostsTests : TestBase
             secondConnector = secondConnection.Connector!;
         }
 
-        Assert.AreNotSame(firstConnector, secondConnector);
+        Assert.That(secondConnector, Is.Not.SameAs(firstConnector));
 
         await using (var firstBalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, firstBalancedConnection.Connector);
+            Assert.That(firstBalancedConnection.Connector, Is.SameAs(firstConnector));
         }
 
         await using (var secondBalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(secondConnector, secondBalancedConnection.Connector);
+            Assert.That(secondBalancedConnection.Connector, Is.SameAs(secondConnector));
         }
 
         await using (var thirdBalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, thirdBalancedConnection.Connector);
+            Assert.That(thirdBalancedConnection.Connector, Is.SameAs(firstConnector));
         }
     }
 
@@ -403,7 +403,7 @@ public class MultipleHostsTests : TestBase
         }
         await using (var secondConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, secondConnection.Connector);
+            Assert.That(secondConnection.Connector, Is.SameAs(firstConnector));
         }
         await using (var firstConnection = await dataSource.OpenConnectionAsync())
         await using (var secondConnection = await dataSource.OpenConnectionAsync())
@@ -411,16 +411,16 @@ public class MultipleHostsTests : TestBase
             secondConnector = secondConnection.Connector!;
         }
 
-        Assert.AreNotSame(firstConnector, secondConnector);
+        Assert.That(secondConnector, Is.Not.SameAs(firstConnector));
 
         await using (var firstUnbalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, firstUnbalancedConnection.Connector);
+            Assert.That(firstUnbalancedConnection.Connector, Is.SameAs(firstConnector));
         }
 
         await using (var secondUnbalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, secondUnbalancedConnection.Connector);
+            Assert.That(secondUnbalancedConnection.Connector, Is.SameAs(firstConnector));
         }
     }
 
@@ -481,7 +481,7 @@ public class MultipleHostsTests : TestBase
         }
 
         await using var thirdConnection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.PreferPrimary);
-        Assert.AreSame(alwaysCheckHostState ? secondConnector : firstConnector, thirdConnection.Connector);
+        Assert.That(thirdConnection.Connector, Is.SameAs(alwaysCheckHostState ? secondConnector : firstConnector));
 
         await firstServerTask;
         await secondServerTask;
@@ -494,22 +494,22 @@ public class MultipleHostsTests : TestBase
         var timeStamp = DateTime.UtcNow;
 
         dataSource.UpdateDatabaseState(DatabaseState.PrimaryReadWrite, timeStamp, TimeSpan.Zero);
-        Assert.AreEqual(DatabaseState.PrimaryReadWrite, dataSource.GetDatabaseState());
+        Assert.That(dataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadWrite));
 
         // Update with the same timestamp - shouldn't change anything
         dataSource.UpdateDatabaseState(DatabaseState.Standby, timeStamp, TimeSpan.Zero);
-        Assert.AreEqual(DatabaseState.PrimaryReadWrite, dataSource.GetDatabaseState());
+        Assert.That(dataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadWrite));
 
         // Update with a new timestamp
         timeStamp = timeStamp.AddSeconds(1);
         dataSource.UpdateDatabaseState(DatabaseState.PrimaryReadOnly, timeStamp, TimeSpan.Zero);
-        Assert.AreEqual(DatabaseState.PrimaryReadOnly, dataSource.GetDatabaseState());
+        Assert.That(dataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadOnly));
 
         // Expired state returns as Unknown (depending on ignoreExpiration)
         timeStamp = timeStamp.AddSeconds(1);
         dataSource.UpdateDatabaseState(DatabaseState.PrimaryReadWrite, timeStamp, TimeSpan.FromSeconds(-1));
-        Assert.AreEqual(DatabaseState.Unknown, dataSource.GetDatabaseState(ignoreExpiration: false));
-        Assert.AreEqual(DatabaseState.PrimaryReadWrite, dataSource.GetDatabaseState(ignoreExpiration: true));
+        Assert.That(dataSource.GetDatabaseState(ignoreExpiration: false), Is.EqualTo(DatabaseState.Unknown));
+        Assert.That(dataSource.GetDatabaseState(ignoreExpiration: true), Is.EqualTo(DatabaseState.PrimaryReadWrite));
     }
 
     [Test]
@@ -925,7 +925,7 @@ public class MultipleHostsTests : TestBase
         Assert.DoesNotThrowAsync(() => clientsTask);
         Assert.ThrowsAsync<NpgsqlException>(() => onlyStandbyClient);
         Assert.ThrowsAsync<NpgsqlException>(() => readOnlyClient);
-        Assert.AreEqual(125, queriesDone);
+        Assert.That(queriesDone, Is.EqualTo(125));
 
         Task Client(NpgsqlMultiHostDataSource multiHostDataSource, TargetSessionAttributes targetSessionAttributes)
         {

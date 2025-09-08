@@ -76,7 +76,7 @@ public class DataSourceTests : TestBase
 
         await using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
         {
-            Assert.True(reader.Read());
+            Assert.That(reader.Read());
             Assert.That(reader.GetInt32(0), Is.EqualTo(1));
         }
 
@@ -125,10 +125,10 @@ public class DataSourceTests : TestBase
 
         using (var reader = async ? await batch.ExecuteReaderAsync() : batch.ExecuteReader())
         {
-            Assert.True(reader.Read());
+            Assert.That(reader.Read());
             Assert.That(reader.GetInt32(0), Is.EqualTo(1));
-            Assert.True(reader.NextResult());
-            Assert.True(reader.Read());
+            Assert.That(reader.NextResult());
+            Assert.That(reader.Read());
             Assert.That(reader.GetInt32(0), Is.EqualTo(2));
         }
 
@@ -318,7 +318,7 @@ public class DataSourceTests : TestBase
         command.CommandText = "SELECT 1";
 
         await using var reader = await command.ExecuteReaderAsync();
-        Assert.True(reader.Read());
+        Assert.That(reader.Read());
         Assert.That(reader.GetInt32(0), Is.EqualTo(1));
     }
 

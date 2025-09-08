@@ -453,8 +453,8 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
             Assert.ThrowsAsync<NotSupportedException>(DoAssertion);
             // Start a transaction specifically for multiplexing (to bind a connector to the connection)
             await using var tx = await connection.BeginTransactionAsync();
-            Assert.Null(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)));
-            Assert.Null(connection.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains(table)));
+            Assert.That(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)), Is.Null);
+            Assert.That(connection.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains(table)), Is.Null);
 
         }
 

@@ -199,15 +199,15 @@ public class NestedDataReaderTests : TestBase
         Assert.That(nestedReader.GetBytes(0, 0, null, 0, 4), Is.EqualTo(3));
         Assert.That(nestedReader.GetBytes(0, 0, buf, 0, 3), Is.EqualTo(3));
         Assert.That(nestedReader.GetBytes(0, 0, buf, 0, 4), Is.EqualTo(3));
-        CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 0 }, buf);
+        Assert.That(buf, Is.EqualTo(new byte[] { 1, 2, 3, 0 }).AsCollection);
         buf = new byte[2];
         Assert.That(nestedReader.GetBytes(0, 0, buf, 0, 2), Is.EqualTo(2));
-        CollectionAssert.AreEqual(new byte[] { 1, 2 }, buf);
+        Assert.That(buf, Is.EqualTo(new byte[] { 1, 2 }).AsCollection);
         buf = new byte[2];
         Assert.That(nestedReader.GetBytes(0, 1, buf, 1, 1), Is.EqualTo(1));
-        CollectionAssert.AreEqual(new byte[] { 0, 2 }, buf);
+        Assert.That(buf, Is.EqualTo(new byte[] { 0, 2 }).AsCollection);
         Assert.That(nestedReader.GetBytes(0, 2, buf, 1, 1), Is.EqualTo(1));
-        CollectionAssert.AreEqual(new byte[] { 0, 3 }, buf);
+        Assert.That(buf, Is.EqualTo(new byte[] { 0, 3 }).AsCollection);
         Assert.Throws<InvalidCastException>(() => nestedReader.GetBytes(1, 0, buf, 0, 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => nestedReader.GetBytes(0, 4, buf, 0, 1));
     }

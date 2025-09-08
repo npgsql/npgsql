@@ -73,23 +73,23 @@ class RangeTests : MultiplexingTestBase
 
         //different bounds
         var r2 = new NpgsqlRange<int>(1, true, false, 2, false, false);
-        Assert.IsFalse(r1 == r2);
+        Assert.That(r1 == r2, Is.False);
 
         //lower bound is not inclusive
         var r3 = new NpgsqlRange<int>(0, false, false, 1, false, false);
-        Assert.IsFalse(r1 == r3);
+        Assert.That(r1 == r3, Is.False);
 
         //upper bound is inclusive
         var r4 = new NpgsqlRange<int>(0, true, false, 1, true, false);
-        Assert.IsFalse(r1 == r4);
+        Assert.That(r1 == r4, Is.False);
 
         var r5 = new NpgsqlRange<int>(0, true, false, 1, false, false);
-        Assert.IsTrue(r1 == r5);
+        Assert.That(r1 == r5);
 
         //check some other combinations while we are here
-        Assert.IsFalse(r2 == r3);
-        Assert.IsFalse(r2 == r4);
-        Assert.IsFalse(r3 == r4);
+        Assert.That(r2 == r3, Is.False);
+        Assert.That(r2 == r4, Is.False);
+        Assert.That(r3 == r4, Is.False);
     }
 
     [Test]
@@ -99,20 +99,20 @@ class RangeTests : MultiplexingTestBase
 
         //different upper bound (lower bound shouldn't matter since it is infinite)
         var r2 = new NpgsqlRange<int>(1, false, true, 2, false, false);
-        Assert.IsFalse(r1 == r2);
+        Assert.That(r1 == r2, Is.False);
 
         //upper bound is inclusive
         var r3 = new NpgsqlRange<int>(0, false, true, 1, true, false);
-        Assert.IsFalse(r1 == r3);
+        Assert.That(r1 == r3, Is.False);
 
         //value of lower bound shouldn't matter since it is infinite
         var r4 = new NpgsqlRange<int>(10, false, true, 1, false, false);
-        Assert.IsTrue(r1 == r4);
+        Assert.That(r1 == r4);
 
         //check some other combinations while we are here
-        Assert.IsFalse(r2 == r3);
-        Assert.IsFalse(r2 == r4);
-        Assert.IsFalse(r3 == r4);
+        Assert.That(r2 == r3, Is.False);
+        Assert.That(r2 == r4, Is.False);
+        Assert.That(r3 == r4, Is.False);
     }
 
     [Test]
@@ -122,12 +122,12 @@ class RangeTests : MultiplexingTestBase
         NpgsqlRange<int> b = NpgsqlRange<int>.Empty;
         NpgsqlRange<int> c = NpgsqlRange<int>.Parse("(,)");
 
-        Assert.IsFalse(a.Equals(b));
-        Assert.IsFalse(a.Equals(c));
-        Assert.IsFalse(b.Equals(c));
-        Assert.AreNotEqual(a.GetHashCode(), b.GetHashCode());
-        Assert.AreNotEqual(a.GetHashCode(), c.GetHashCode());
-        Assert.AreNotEqual(b.GetHashCode(), c.GetHashCode());
+        Assert.That(a.Equals(b), Is.False);
+        Assert.That(a.Equals(c), Is.False);
+        Assert.That(b.Equals(c), Is.False);
+        Assert.That(b.GetHashCode(), Is.Not.EqualTo(a.GetHashCode()));
+        Assert.That(c.GetHashCode(), Is.Not.EqualTo(a.GetHashCode()));
+        Assert.That(c.GetHashCode(), Is.Not.EqualTo(b.GetHashCode()));
     }
 
     [Test]
@@ -137,12 +137,12 @@ class RangeTests : MultiplexingTestBase
         NpgsqlRange<string> b = NpgsqlRange<string>.Empty;
         NpgsqlRange<string> c = NpgsqlRange<string>.Parse("(,)");
 
-        Assert.IsFalse(a.Equals(b));
-        Assert.IsFalse(a.Equals(c));
-        Assert.IsFalse(b.Equals(c));
-        Assert.AreNotEqual(a.GetHashCode(), b.GetHashCode());
-        Assert.AreNotEqual(a.GetHashCode(), c.GetHashCode());
-        Assert.AreNotEqual(b.GetHashCode(), c.GetHashCode());
+        Assert.That(a.Equals(b), Is.False);
+        Assert.That(a.Equals(c), Is.False);
+        Assert.That(b.Equals(c), Is.False);
+        Assert.That(b.GetHashCode(), Is.Not.EqualTo(a.GetHashCode()));
+        Assert.That(c.GetHashCode(), Is.Not.EqualTo(a.GetHashCode()));
+        Assert.That(c.GetHashCode(), Is.Not.EqualTo(b.GetHashCode()));
     }
 
     [Test]
@@ -208,15 +208,15 @@ class RangeTests : MultiplexingTestBase
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(new NpgsqlRange<string>("bar", "foo"), rangeType);
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedRead("""["bar","foo"]""", rangeType);
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedRead<NpgsqlRange<string>>("""["bar","foo"]""", rangeType);
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
@@ -288,7 +288,7 @@ class RangeTests : MultiplexingTestBase
     {
         var wellKnownText = input.ToString();
         var result = NpgsqlRange<DateTime>.Parse(wellKnownText);
-        Assert.AreEqual(input, result);
+        Assert.That(result, Is.EqualTo(input));
     }
 
     [Theory]
@@ -298,7 +298,7 @@ class RangeTests : MultiplexingTestBase
     public void Parse_empty(string value)
     {
         var result = NpgsqlRange<int>.Parse(value);
-        Assert.AreEqual(NpgsqlRange<int>.Empty, result);
+        Assert.That(result, Is.EqualTo(NpgsqlRange<int>.Empty));
     }
 
     [Theory]
@@ -310,7 +310,7 @@ class RangeTests : MultiplexingTestBase
     public void Roundtrip_int_ranges_through_ToString_and_Parse(string input)
     {
         var result = NpgsqlRange<int>.Parse(input);
-        Assert.AreEqual(input.Replace(" ", null), result.ToString());
+        Assert.That(result.ToString(), Is.EqualTo(input.Replace(" ", null)));
     }
 
     [Theory]
@@ -330,7 +330,7 @@ class RangeTests : MultiplexingTestBase
     public void Int_range_Parse_ToString_returns_normalized_representations(string input, string normalized)
     {
         var result = NpgsqlRange<int>.Parse(input);
-        Assert.AreEqual(normalized, result.ToString());
+        Assert.That(result.ToString(), Is.EqualTo(normalized));
     }
 
     [Theory]
@@ -350,7 +350,7 @@ class RangeTests : MultiplexingTestBase
     public void Nullable_int_range_Parse_ToString_returns_normalized_representations(string input, string normalized)
     {
         var result = NpgsqlRange<int?>.Parse(input);
-        Assert.AreEqual(normalized, result.ToString());
+        Assert.That(result.ToString(), Is.EqualTo(normalized));
     }
 
     [Theory]
@@ -361,7 +361,7 @@ class RangeTests : MultiplexingTestBase
     public void String_range_Parse_ToString_returns_normalized_representations(string input, string normalized)
     {
         var result = NpgsqlRange<string>.Parse(input);
-        Assert.AreEqual(normalized, result.ToString());
+        Assert.That(result.ToString(), Is.EqualTo(normalized));
     }
 
     [Theory]
@@ -369,7 +369,7 @@ class RangeTests : MultiplexingTestBase
     public void Roundtrip_string_ranges_through_ToString_and_Parse2(string input)
     {
         var result = NpgsqlRange<SimpleType>.Parse(input);
-        Assert.AreEqual(input, result.ToString());
+        Assert.That(result.ToString(), Is.EqualTo(input));
     }
 
     [Theory]
@@ -388,12 +388,12 @@ class RangeTests : MultiplexingTestBase
         var converter = TypeDescriptor.GetConverter(typeof(NpgsqlRange<int>));
 
         // Act
-        Assert.IsInstanceOf<NpgsqlRange<int>.RangeTypeConverter>(converter);
-        Assert.IsTrue(converter.CanConvertFrom(typeof(string)));
+        Assert.That(converter, Is.InstanceOf<NpgsqlRange<int>.RangeTypeConverter>());
+        Assert.That(converter.CanConvertFrom(typeof(string)));
         var result = converter.ConvertFromString("empty");
 
         // Assert
-        Assert.AreEqual(NpgsqlRange<int>.Empty, result);
+        Assert.That(result, Is.Empty);
     }
 
     #endregion

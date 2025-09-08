@@ -66,9 +66,9 @@ public class SnakeCaseNameTranslatorTests
         const string clrName = "IPhone";
         const string expected = "i_phone";
 
-        Assert.AreEqual(expected, translator.TranslateMemberName(clrName));
-        Assert.AreEqual(expected, translator.TranslateTypeName(clrName));
-        Assert.AreEqual(expected, legacyTranslator.TranslateMemberName(clrName));
-        Assert.AreEqual(expected, legacyTranslator.TranslateTypeName(clrName));
+        Assert.That(translator.TranslateMemberName(clrName), Is.EqualTo(expected));
+        Assert.That(translator.TranslateTypeName(clrName), Is.EqualTo(expected));
+        Assert.That(legacyTranslator.TranslateMemberName(clrName), Is.EqualTo(expected));
+        Assert.That(legacyTranslator.TranslateTypeName(clrName), Is.EqualTo(expected));
     }
 }

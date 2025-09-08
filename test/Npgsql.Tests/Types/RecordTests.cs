@@ -103,8 +103,8 @@ public class RecordTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             nameof(NpgsqlSlimDataSourceBuilder.EnableRecords));
 
         var exception = Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<(int, string)>(0))!;
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]
@@ -127,12 +127,12 @@ public class RecordTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             nameof(NpgsqlSlimDataSourceBuilder.EnableRecords));
 
         var exception = Assert.Throws<InvalidCastException>(() => reader.GetValue(0))!;
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<object[]>(0))!;
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
-        Assert.AreEqual(errorMessage, exception.InnerException!.Message);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]

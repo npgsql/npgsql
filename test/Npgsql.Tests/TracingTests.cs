@@ -59,7 +59,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             var expectedTagCount = conn.Settings.Port == 5432 ? 8 : 9;
             Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
 
-            Assert.IsFalse(activity.TagObjects.Any(x => x.Key == "db.statement"));
+            Assert.That(activity.TagObjects.Any(x => x.Key == "db.statement"), Is.False);
 
             var systemTag = activity.TagObjects.First(x => x.Key == "db.system");
             Assert.That(systemTag.Value, Is.EqualTo("postgresql"));
@@ -79,7 +79,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
                 Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
             }
             else
-                Assert.IsTrue(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+                Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
         }
     }
 
@@ -140,7 +140,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
         }
         else
-            Assert.IsTrue(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+            Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
     }
 
     [Test]
@@ -182,10 +182,10 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(exceptionTypeTag.Value, Is.EqualTo(ex.GetType().FullName));
 
         var exceptionMessageTag = exceptionEvent.Tags.First(x => x.Key == "exception.message");
-        StringAssert.Contains(ex.Message, (string)exceptionMessageTag.Value!);
+        Assert.That((string)exceptionMessageTag.Value!, Does.Contain(ex.Message));
 
         var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        StringAssert.Contains(ex.Message, (string)exceptionStacktraceTag.Value!);
+        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain(ex.Message));
 
         var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
         Assert.That(exceptionEscapedTag.Value, Is.True);
@@ -239,10 +239,10 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(exceptionTypeTag.Value, Is.EqualTo("Npgsql.PostgresException"));
 
         var exceptionMessageTag = exceptionEvent.Tags.First(x => x.Key == "exception.message");
-        StringAssert.Contains("relation \"non_existing_table\" does not exist", (string)exceptionMessageTag.Value!);
+        Assert.That((string)exceptionMessageTag.Value!, Does.Contain("relation \"non_existing_table\" does not exist"));
 
         var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        StringAssert.Contains("relation \"non_existing_table\" does not exist", (string)exceptionStacktraceTag.Value!);
+        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain("relation \"non_existing_table\" does not exist"));
 
         var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
         Assert.That(exceptionEscapedTag.Value, Is.True);
@@ -271,7 +271,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
         }
         else
-            Assert.IsTrue(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+            Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
     }
 
     [Test]

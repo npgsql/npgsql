@@ -51,6 +51,6 @@ public class JsonPathTests(MultiplexingMode multiplexingMode) : MultiplexingTest
         using var cmd = new NpgsqlCommand($"SELECT 'Passed' WHERE @p::text = {query}::text", conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
         using var rdr = await cmd.ExecuteReaderAsync();
 
-        Assert.True(rdr.Read());
+        Assert.That(rdr.Read());
     }
 }

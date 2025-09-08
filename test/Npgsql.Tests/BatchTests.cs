@@ -294,10 +294,10 @@ public class BatchTests : MultiplexingTestBase
     }
 
     [Test]
-    public void CanCreateParameter() => Assert.True(new NpgsqlBatchCommand().CanCreateParameter);
+    public void CanCreateParameter() => Assert.That(new NpgsqlBatchCommand().CanCreateParameter);
 
     [Test]
-    public void CreateParameter() => Assert.NotNull(new NpgsqlBatchCommand().CreateParameter());
+    public void CreateParameter() => Assert.That(new NpgsqlBatchCommand().CreateParameter(), Is.Not.Null);
 
     #endregion NpgsqlBatchCommand
 
@@ -702,7 +702,7 @@ LANGUAGE 'plpgsql'");
         // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
         batch.Dispose();
         var cmd2 = conn.CreateBatch();
-        Assert.AreNotSame(cmd2, batch);
+        Assert.That(batch, Is.Not.SameAs(cmd2));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
@@ -731,7 +731,7 @@ LANGUAGE 'plpgsql'");
         // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
         batch.Dispose();
         var cmd2 = conn.CreateBatch();
-        Assert.AreNotSame(cmd2, batch);
+        Assert.That(batch, Is.Not.SameAs(cmd2));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4202")]

@@ -37,13 +37,13 @@ public class NpgsqlParameterCollectionTests
         var c1 = new NpgsqlCommand();
         var c2 = new NpgsqlCommand();
         c1.Parameters.Add(p);
-        Assert.AreEqual(1, c1.Parameters.Count);
-        Assert.AreEqual(0, c2.Parameters.Count);
+        Assert.That(c1.Parameters.Count, Is.EqualTo(1));
+        Assert.That(c2.Parameters.Count, Is.EqualTo(0));
         c1.Parameters.Clear();
-        Assert.AreEqual(0, c1.Parameters.Count);
+        Assert.That(c1.Parameters.Count, Is.EqualTo(0));
         c2.Parameters.Add(p);
-        Assert.AreEqual(0, c1.Parameters.Count);
-        Assert.AreEqual(1, c2.Parameters.Count);
+        Assert.That(c1.Parameters.Count, Is.EqualTo(0));
+        Assert.That(c2.Parameters.Count, Is.EqualTo(1));
     }
 
     [Test]
@@ -60,7 +60,7 @@ public class NpgsqlParameterCollectionTests
         }
 
         // Make sure hash lookup is generated.
-        Assert.AreEqual(command.Parameters["p03"].ParameterName, "p03");
+        Assert.That(command.Parameters["p03"].ParameterName, Is.EqualTo("p03"));
 
         // Rename the target parameter.
         command.Parameters["p03"].ParameterName = "a_new_name";
@@ -92,7 +92,7 @@ public class NpgsqlParameterCollectionTests
             }
 
             // Make sure hash lookup is generated.
-            Assert.AreEqual(command.Parameters["3"].ParameterName, "3");
+            Assert.That(command.Parameters["3"].ParameterName, Is.EqualTo("3"));
 
             // Remove all parameters to clear hash lookup
             command.Parameters.Clear();
@@ -114,7 +114,7 @@ public class NpgsqlParameterCollectionTests
         }
 
         // Make sure lookup is generated.
-        Assert.AreEqual(command.Parameters["p02"].ParameterName, "p02");
+        Assert.That(command.Parameters["p02"].ParameterName, Is.EqualTo("p02"));
 
         // Add uppercased version causing a list to be created.
         command.Parameters.AddWithValue("P02", NpgsqlDbType.Text, "String parameter value 2");
@@ -123,10 +123,10 @@ public class NpgsqlParameterCollectionTests
         command.Parameters.Remove(command.Parameters["p02"]);
 
         // Test whether we can still find the last added parameter, and if its index is correctly shifted in the lookup.
-        Assert.IsTrue(command.Parameters.IndexOf("p02") == count - 1);
-        Assert.IsTrue(command.Parameters.IndexOf("P02") == count - 1);
+        Assert.That(command.Parameters.IndexOf("p02") == count - 1);
+        Assert.That(command.Parameters.IndexOf("P02") == count - 1);
         // And finally test whether other parameters were also correctly shifted.
-        Assert.IsTrue(command.Parameters.IndexOf("p03") == 1);
+        Assert.That(command.Parameters.IndexOf("p03") == 1);
     }
 
     [Test]
@@ -144,8 +144,8 @@ public class NpgsqlParameterCollectionTests
         command.Parameters.Remove(command.Parameters["p02"]);
 
         // Make sure we cannot find it, also not case insensitively.
-        Assert.IsTrue(command.Parameters.IndexOf("p02") == -1);
-        Assert.IsTrue(command.Parameters.IndexOf("P02") == -1);
+        Assert.That(command.Parameters.IndexOf("p02") == -1);
+        Assert.That(command.Parameters.IndexOf("P02") == -1);
     }
 
     [Test]
@@ -184,7 +184,7 @@ public class NpgsqlParameterCollectionTests
         }
 
         // Make sure lookup is generated.
-        Assert.AreEqual(command.Parameters["parameter02"].ParameterName, "parameter02");
+        Assert.That(command.Parameters["parameter02"].ParameterName, Is.EqualTo("parameter02"));
 
         // Add uppercased version.
         command.Parameters.AddWithValue("Parameter02", NpgsqlDbType.Text, "String parameter value 2");
@@ -193,14 +193,14 @@ public class NpgsqlParameterCollectionTests
         command.Parameters.Insert(0, new NpgsqlParameter("ParameteR02", NpgsqlDbType.Text) { Value = "String parameter value 2" });
 
         // Try to find the exact index.
-        Assert.IsTrue(command.Parameters.IndexOf("parameter02") == 2);
-        Assert.IsTrue(command.Parameters.IndexOf("Parameter02") == command.Parameters.Count - 1);
-        Assert.IsTrue(command.Parameters.IndexOf("ParameteR02") == 0);
+        Assert.That(command.Parameters.IndexOf("parameter02") == 2);
+        Assert.That(command.Parameters.IndexOf("Parameter02") == command.Parameters.Count - 1);
+        Assert.That(command.Parameters.IndexOf("ParameteR02") == 0);
         // This name does not exist so we expect the first case insensitive match to be returned.
-        Assert.IsTrue(command.Parameters.IndexOf("ParaMeteR02") == 0);
+        Assert.That(command.Parameters.IndexOf("ParaMeteR02") == 0);
 
         // And finally test whether other parameters were also correctly shifted.
-        Assert.IsTrue(command.Parameters.IndexOf("parameter03") == 3);
+        Assert.That(command.Parameters.IndexOf("parameter03") == 3);
     }
 
     [Test]
@@ -345,8 +345,8 @@ public class NpgsqlParameterCollectionTests
         param.ParameterName = null;
 
         // These should not throw exceptions
-        Assert.AreEqual(0, command.Parameters.IndexOf(param.ParameterName));
-        Assert.AreEqual(NpgsqlParameter.PositionalName, param.ParameterName);
+        Assert.That(command.Parameters.IndexOf(param.ParameterName), Is.EqualTo(0));
+        Assert.That(param.ParameterName, Is.EqualTo(NpgsqlParameter.PositionalName));
     }
 
     [Test]
@@ -354,10 +354,10 @@ public class NpgsqlParameterCollectionTests
     {
         var cmd = new NpgsqlCommand();
         cmd.Parameters.Add(new NpgsqlParameter<int> { TypedValue = 42 });
-        Assert.AreSame(cmd.Parameters, cmd.Parameters.Single().Collection);
+        Assert.That(cmd.Parameters.Single().Collection, Is.SameAs(cmd.Parameters));
 
         cmd = cmd.Clone();
-        Assert.AreSame(cmd.Parameters, cmd.Parameters.Single().Collection);
+        Assert.That(cmd.Parameters.Single().Collection, Is.SameAs(cmd.Parameters));
     }
 
 

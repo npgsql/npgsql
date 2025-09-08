@@ -90,7 +90,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 // other transactions possibly from system processes can
                 // interfere here, inserting additional messages, but more
                 // likely we'll get everything in one big chunk.
-                Assert.True(await messages.MoveNextAsync());
+                Assert.That(await messages.MoveNextAsync());
                 var message = messages.Current;
                 Assert.That(message.WalStart, Is.EqualTo(info.XLogPos));
                 Assert.That(message.WalEnd, Is.GreaterThan(message.WalStart));
@@ -128,7 +128,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
             // other transactions possibly from system processes can
             // interfere here, inserting additional messages, but more
             // likely we'll get everything in one big chunk.
-            Assert.True(await messages.MoveNextAsync());
+            Assert.That(await messages.MoveNextAsync());
             var message = messages.Current;
             Assert.That(message.WalStart, Is.EqualTo(info.XLogPos));
             Assert.That(message.WalEnd, Is.GreaterThan(message.WalStart));

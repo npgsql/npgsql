@@ -132,7 +132,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 PostgresType,
                 base.DataSource);
 
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedRead<WeatherForecast>(
@@ -142,7 +142,7 @@ public class JsonDynamicTests : MultiplexingTestBase
             PostgresType,
             base.DataSource);
 
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 
@@ -519,6 +519,12 @@ public class JsonDynamicTests : MultiplexingTestBase
     }
 
     protected override NpgsqlDataSource DataSource { get; }
+
+    [OneTimeTearDown]
+    protected void CleanUpDataSource()
+    {
+        DataSource.Dispose();
+    }
 
     bool IsJsonb => NpgsqlDbType == NpgsqlDbType.Jsonb;
     string PostgresType => IsJsonb ? "jsonb" : "json";

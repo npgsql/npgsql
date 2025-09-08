@@ -1358,7 +1358,7 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
 
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
-        Assert.True(await messages.MoveNextAsync());
+        Assert.That(await messages.MoveNextAsync());
 
         switch (messages.Current)
         {
@@ -1379,13 +1379,13 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
 
     async Task AssertTransactionCommit(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
-        Assert.True(await messages.MoveNextAsync());
+        Assert.That(await messages.MoveNextAsync());
 
         switch (messages.Current)
         {
         case StreamStopMessage:
             Assert.That(IsStreaming);
-            Assert.True(await messages.MoveNextAsync());
+            Assert.That(await messages.MoveNextAsync());
             Assert.That(messages.Current, Is.TypeOf<StreamCommitMessage>());
             return;
         case CommitMessage:
@@ -1398,10 +1398,10 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
 
     async Task<PrepareMessageBase> AssertPrepare(IAsyncEnumerator<PgOutputReplicationMessage> enumerator)
     {
-        Assert.True(await enumerator.MoveNextAsync());
+        Assert.That(await enumerator.MoveNextAsync());
         if (IsStreaming && enumerator.Current is StreamStopMessage)
         {
-            Assert.True(await enumerator.MoveNextAsync());
+            Assert.That(await enumerator.MoveNextAsync());
             Assert.That(enumerator.Current, Is.TypeOf<StreamPrepareMessage>());
             return (PrepareMessageBase)enumerator.Current!;
         }
@@ -1413,16 +1413,16 @@ INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'ano
     async ValueTask<TExpected> NextMessage<TExpected>(IAsyncEnumerator<PgOutputReplicationMessage> enumerator, bool expectRelationMessage = false)
         where TExpected : PgOutputReplicationMessage
     {
-        Assert.True(await enumerator.MoveNextAsync());
+        Assert.That(await enumerator.MoveNextAsync());
         if (IsStreaming && enumerator.Current is StreamStopMessage)
         {
-            Assert.True(await enumerator.MoveNextAsync());
+            Assert.That(await enumerator.MoveNextAsync());
             Assert.That(enumerator.Current, Is.TypeOf<StreamStartMessage>());
-            Assert.True(await enumerator.MoveNextAsync());
+            Assert.That(await enumerator.MoveNextAsync());
             if (expectRelationMessage)
             {
                 Assert.That(enumerator.Current, Is.TypeOf<RelationMessage>());
-                Assert.True(await enumerator.MoveNextAsync());
+                Assert.That(await enumerator.MoveNextAsync());
             }
         }
 

@@ -248,7 +248,7 @@ public class SecurityTests : TestBase
                 csb.KeepAlive = keepAlive ? 10 : 0;
             });
             await using var conn = await dataSource.OpenConnectionAsync();
-            Assert.IsTrue(conn.IsSslEncrypted);
+            Assert.That(conn.IsSslEncrypted);
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
@@ -277,7 +277,7 @@ public class SecurityTests : TestBase
                 csb.KeepAlive = keepAlive ? 10 : 0;
             });
             await using var conn = await dataSource.OpenConnectionAsync();
-            Assert.IsFalse(conn.IsSslEncrypted);
+            Assert.That(conn.IsSslEncrypted, Is.False);
         }
         catch (NpgsqlException ex) when (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ex.InnerException is IOException)
         {
@@ -319,7 +319,7 @@ public class SecurityTests : TestBase
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
-        Assert.IsTrue(callbackWasInvoked);
+        Assert.That(callbackWasInvoked);
     }
 
     [Test]
@@ -348,7 +348,7 @@ public class SecurityTests : TestBase
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
-        Assert.IsTrue(callbackWasInvoked);
+        Assert.That(callbackWasInvoked);
     }
 
     [Test]
@@ -400,7 +400,7 @@ public class SecurityTests : TestBase
         try
         {
             conn = await dataSource.OpenConnectionAsync();
-            Assert.IsTrue(conn.IsSslEncrypted);
+            Assert.That(conn.IsSslEncrypted);
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
@@ -424,7 +424,7 @@ public class SecurityTests : TestBase
             await conn.CloseAsync();
             await conn.OpenAsync();
 
-            Assert.AreSame(originalConnector, conn.Connector);
+            Assert.That(conn.Connector, Is.SameAs(originalConnector));
         }
 
         cmd.CommandText = "SELECT 1";
@@ -451,7 +451,7 @@ public class SecurityTests : TestBase
         try
         {
             conn = await dataSource.OpenConnectionAsync();
-            Assert.IsFalse(conn.IsSslEncrypted);
+            Assert.That(conn.IsSslEncrypted, Is.False);
         }
         catch (Exception e) when (!IsOnBuildServer)
         {
@@ -473,7 +473,7 @@ public class SecurityTests : TestBase
         await conn.CloseAsync();
         await conn.OpenAsync();
 
-        Assert.AreSame(originalConnector, conn.Connector);
+        Assert.That(conn.Connector, Is.SameAs(originalConnector));
 
         cmd.CommandText = "SELECT 1";
         if (async)
@@ -494,7 +494,7 @@ public class SecurityTests : TestBase
             csb.SslNegotiation = SslNegotiation.Direct;
         });
         await using var conn = await dataSource.OpenConnectionAsync();
-        Assert.IsTrue(conn.IsSslEncrypted);
+        Assert.That(conn.IsSslEncrypted);
     }
 
     [Test]

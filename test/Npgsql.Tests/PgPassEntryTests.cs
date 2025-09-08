@@ -13,11 +13,11 @@ public class PgPassEntryTests
         var entry = PgPassFile.Entry.Parse(input);
 
         Assert.That(entry, Is.Not.Null);
-        Assert.That("test", Is.EqualTo(entry.Host));
-        Assert.That(1234, Is.EqualTo(entry.Port));
-        Assert.That("test2", Is.EqualTo(entry.Database));
-        Assert.That("test3", Is.EqualTo(entry.Username));
-        Assert.That("test4", Is.EqualTo(entry.Password));
+        Assert.That(entry.Host, Is.EqualTo("test"));
+        Assert.That(entry.Port, Is.EqualTo(1234));
+        Assert.That(entry.Database, Is.EqualTo("test2"));
+        Assert.That(entry.Username, Is.EqualTo("test3"));
+        Assert.That(entry.Password, Is.EqualTo("test4"));
     }
 
     [Test]
@@ -36,11 +36,11 @@ public class PgPassEntryTests
         var entry = PgPassFile.Entry.Parse(input);
 
         Assert.That(entry, Is.Not.Null);
-        Assert.That("t:est", Is.EqualTo(entry.Host));
-        Assert.That(1234, Is.EqualTo(entry.Port));
-        Assert.That("test2", Is.EqualTo(entry.Database));
-        Assert.That("test3", Is.EqualTo(entry.Username));
-        Assert.That("test\\4", Is.EqualTo(entry.Password));
+        Assert.That(entry.Host, Is.EqualTo("t:est"));
+        Assert.That(entry.Port, Is.EqualTo(1234));
+        Assert.That(entry.Database, Is.EqualTo("test2"));
+        Assert.That(entry.Username, Is.EqualTo("test3"));
+        Assert.That(entry.Password, Is.EqualTo("test\\4"));
     }
 
     [Test]

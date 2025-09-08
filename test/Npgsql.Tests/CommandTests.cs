@@ -522,7 +522,7 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         while (dr.Read())
             i++;
-        Assert.AreEqual(3, i);
+        Assert.That(i, Is.EqualTo(3));
         dr.Close();
 
         i = 0;
@@ -530,7 +530,7 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         var dr2 = command.ExecuteReader();
         while (dr2.Read())
             i++;
-        Assert.AreEqual(1, i);
+        Assert.That(i, Is.EqualTo(1));
         dr2.Close();
 
         command.CommandText = "close te;";
@@ -546,7 +546,7 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         command.ExecuteNonQuery();
         command.CommandText = "MOVE FORWARD ALL IN curs";
         var count = command.ExecuteNonQuery();
-        Assert.AreEqual(3, count);
+        Assert.That(count, Is.EqualTo(3));
     }
 
     #endregion
@@ -707,7 +707,7 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         command.Parameters.AddWithValue(":arr", new int[] {5, 4, 3, 2, 1});
         await using var rdr = await command.ExecuteReaderAsync();
         rdr.Read();
-        Assert.AreEqual(rdr.GetInt32(0), 4);
+        Assert.That(rdr.GetInt32(0), Is.EqualTo(4));
     }
 
     [Test]
@@ -760,15 +760,15 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         await using var reader = await command.ExecuteReaderAsync(behavior);
 
-        Assert.AreEqual(4, command.Parameters["param1"].Value);
-        Assert.AreEqual(5, command.Parameters["param2"].Value);
+        Assert.That(command.Parameters["param1"].Value, Is.EqualTo(4));
+        Assert.That(command.Parameters["param2"].Value, Is.EqualTo(5));
 
         reader.Read();
 
-        Assert.AreEqual(3, reader.GetInt32(0));
-        Assert.AreEqual(4, reader.GetInt32(1));
-        Assert.AreEqual(5, reader.GetInt32(2));
-        Assert.AreEqual(6, reader.GetInt32(3));
+        Assert.That(reader.GetInt32(0), Is.EqualTo(3));
+        Assert.That(reader.GetInt32(1), Is.EqualTo(4));
+        Assert.That(reader.GetInt32(2), Is.EqualTo(5));
+        Assert.That(reader.GetInt32(3), Is.EqualTo(6));
     }
 
     [Test]
@@ -799,8 +799,8 @@ $$ LANGUAGE plpgsql;";
 
         _ = await command.ExecuteScalarAsync();
 
-        Assert.AreEqual(3, command.Parameters[0].Value);
-        Assert.AreEqual(true, command.Parameters[1].Value);
+        Assert.That(command.Parameters[0].Value, Is.EqualTo(3));
+        Assert.That(command.Parameters[1].Value, Is.EqualTo(true));
     }
 
     [Test]
@@ -813,16 +813,16 @@ $$ LANGUAGE plpgsql;";
         var table = await CreateTempTable(conn, "id SERIAL PRIMARY KEY, name TEXT");
 
         var command = new NpgsqlCommand($"SELECT * FROM {table}", conn);
-        Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
+        Assert.That(command.UpdatedRowSource, Is.EqualTo(UpdateRowSource.Both));
 
         var cmdBuilder = new NpgsqlCommandBuilder();
         var da = new NpgsqlDataAdapter(command);
         cmdBuilder.DataAdapter = da;
-        Assert.IsNotNull(da.SelectCommand);
-        Assert.IsNotNull(cmdBuilder.DataAdapter);
+        Assert.That(da.SelectCommand, Is.Not.Null);
+        Assert.That(cmdBuilder.DataAdapter, Is.Not.Null);
 
         var updateCommand = cmdBuilder.GetUpdateCommand();
-        Assert.AreEqual(UpdateRowSource.None, updateCommand.UpdatedRowSource);
+        Assert.That(updateCommand.UpdatedRowSource, Is.EqualTo(UpdateRowSource.None));
     }
 
     [Test]
@@ -1146,10 +1146,10 @@ $$ LANGUAGE plpgsql;";
             ? await cmd.ExecuteReaderAsync()
             : cmd.ExecuteReader();
 
-        Assert.IsTrue(async ? await reader.ReadAsync() : reader.Read());
+        Assert.That(async ? await reader.ReadAsync() : reader.Read());
         var value = reader.GetInt32(0);
         Assert.That(value, Is.EqualTo(1));
-        Assert.IsFalse(async ? await reader.ReadAsync() : reader.Read());
+        Assert.That(async ? await reader.ReadAsync() : reader.Read(), Is.False);
         var ex = async
             ? Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())
             : Assert.Throws<PostgresException>(() => reader.NextResult());
@@ -1503,8 +1503,8 @@ $$ LANGUAGE plpgsql;";
         var cancellationRequestTask = postmasterMock.WaitForCancellationRequest().AsTask();
         // Give 1 second to make sure we didn't send cancellation request
         await Task.Delay(1000);
-        Assert.IsFalse(cancelTask.IsCompleted);
-        Assert.IsFalse(cancellationRequestTask.IsCompleted);
+        Assert.That(cancelTask.IsCompleted, Is.False);
+        Assert.That(cancellationRequestTask.IsCompleted, Is.False);
 
         if (failPrependedQuery)
         {
@@ -1622,7 +1622,7 @@ FROM
         await connection.CloseAsync();
         await connection.OpenAsync();
 
-        Assert.AreSame(connector, connection.Connector);
+        Assert.That(connection.Connector, Is.SameAs(connector));
         // We'll get new value after the next query reads ParameterStatus from the buffer
         Assert.That(connection.PostgresParameters, Does.Not.ContainKey("SomeKey").WithValue("SomeValue"));
 
