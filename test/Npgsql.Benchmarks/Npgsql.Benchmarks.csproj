@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" />
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
     <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
     <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
