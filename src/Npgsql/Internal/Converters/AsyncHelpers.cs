@@ -90,10 +90,12 @@ static class AsyncHelpers
         if (task.IsCompletedSuccessfully)
             return new(new T?(task.Result));
 
-        // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
+        // Otherwise we do one additional allocation, this allows us to share state machine codegen for all Ts.
         var source = new PoolingCompletionSource<T?>();
+        // PoolingCompletionSource's Task and SetResult aren't thread safe in regard to each other
+        var sourceTask = source.Task;
         OnCompletedWithSource(task.AsTask(), source, new(instance, &UnboxAndComplete));
-        return source.Task;
+        return sourceTask;
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
@@ -111,10 +113,12 @@ static class AsyncHelpers
         if (task.IsCompletedSuccessfully)
             return new((T)task.Result);
 
-        // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
+        // Otherwise we do one additional allocation, this allows us to share state machine codegen for all Ts.
         var source = new PoolingCompletionSource<T>();
+        // PoolingCompletionSource's Task and SetResult aren't thread safe in regard to each other
+        var sourceTask = source.Task;
         OnCompletedWithSource(task.AsTask(), source, new(instance, &UnboxAndComplete));
-        return source.Task;
+        return sourceTask;
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {

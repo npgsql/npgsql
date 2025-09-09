@@ -375,8 +375,10 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         // We don't use the PoolingCompletionSource here as it would be backed by an IValueTaskSource.
         // Any ReadAsObjectAsync caller would call AsTask() on it immediately, causing another allocation and indirection.
         var source = new AsyncHelpers.CompletionSource<T>();
+        // CompletionSource's Task and SetResult aren't thread safe in regard to each other
+        var sourceTask = source.Task;
         AsyncHelpers.OnCompletedWithSource(task.AsTask(), source, new(this, &UnboxAndComplete));
-        return source.Task;
+        return sourceTask;
 
         static void UnboxAndComplete(Task task, AsyncHelpers.CompletionSource completionSource)
         {
