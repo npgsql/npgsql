@@ -124,8 +124,9 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             _timerPasswordProviderCancellationTokenSource = new();
 
-            // Create the timer, but don't start it; the manual run below will will schedule the first refresh.
-            _periodicPasswordProviderTimer = new Timer(state => _ = RefreshPassword(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            // Create the timer, but don't start it; the manual run below will schedule the first refresh.
+            using (ExecutionContext.SuppressFlow()) // Don't capture the current ExecutionContext and its AsyncLocals onto the timer causing them to live forever
+                _periodicPasswordProviderTimer = new Timer(state => _ = RefreshPassword(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             // Trigger the first refresh attempt right now, outside the timer; this allows us to capture the Task so it can be observed
             // in GetPasswordAsync.
             _passwordRefreshTask = Task.Run(RefreshPassword);
