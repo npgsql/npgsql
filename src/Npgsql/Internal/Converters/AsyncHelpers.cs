@@ -37,9 +37,17 @@ static class AsyncHelpers
 
     public sealed class CompletionSource<T> : CompletionSource
     {
-        AsyncValueTaskMethodBuilder<T> _amb = AsyncValueTaskMethodBuilder<T>.Create();
+        AsyncValueTaskMethodBuilder<T> _amb;
 
-        public ValueTask<T> Task => _amb.Task;
+        public ValueTask<T> Task { get; }
+
+        public CompletionSource()
+        {
+            _amb = AsyncValueTaskMethodBuilder<T>.Create();
+            // AsyncValueTaskMethodBuilder's Task and SetResult aren't thread safe in regard to each other
+            // Which is why we access it prematurely
+            Task = _amb.Task;
+        }
 
         public void SetResult(T value)
             => _amb.SetResult(value);
@@ -50,9 +58,17 @@ static class AsyncHelpers
 
     public sealed class PoolingCompletionSource<T> : CompletionSource
     {
-        PoolingAsyncValueTaskMethodBuilder<T> _amb = PoolingAsyncValueTaskMethodBuilder<T>.Create();
+        PoolingAsyncValueTaskMethodBuilder<T> _amb;
 
-        public ValueTask<T> Task => _amb.Task;
+        public ValueTask<T> Task { get; }
+
+        public PoolingCompletionSource()
+        {
+            _amb = PoolingAsyncValueTaskMethodBuilder<T>.Create();
+            // PoolingAsyncValueTaskMethodBuilder's Task and SetResult aren't thread safe in regard to each other
+            // Which is why we access it prematurely
+            Task = _amb.Task;
+        }
 
         public void SetResult(T value)
             => _amb.SetResult(value);
@@ -92,10 +108,8 @@ static class AsyncHelpers
 
         // Otherwise we do one additional allocation, this allows us to share state machine codegen for all Ts.
         var source = new PoolingCompletionSource<T?>();
-        // PoolingCompletionSource's Task and SetResult aren't thread safe in regard to each other
-        var sourceTask = source.Task;
         OnCompletedWithSource(task.AsTask(), source, new(instance, &UnboxAndComplete));
-        return sourceTask;
+        return source.Task;
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
@@ -115,10 +129,8 @@ static class AsyncHelpers
 
         // Otherwise we do one additional allocation, this allows us to share state machine codegen for all Ts.
         var source = new PoolingCompletionSource<T>();
-        // PoolingCompletionSource's Task and SetResult aren't thread safe in regard to each other
-        var sourceTask = source.Task;
         OnCompletedWithSource(task.AsTask(), source, new(instance, &UnboxAndComplete));
-        return sourceTask;
+        return source.Task;
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
         {
