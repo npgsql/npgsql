@@ -9,6 +9,8 @@ Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.get -> System.Act
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.GssEncryptionMode.get -> Npgsql.GssEncryptionMode
 Npgsql.NpgsqlConnectionStringBuilder.GssEncryptionMode.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.IncludeFailedStatement.get -> bool
+Npgsql.NpgsqlConnectionStringBuilder.IncludeFailedStatement.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.get -> Npgsql.SslNegotiation
