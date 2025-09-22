@@ -120,7 +120,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// The SQL as it will be sent to PostgreSQL, after any rewriting performed by Npgsql (e.g. named to positional parameter
     /// placeholders).
     /// </summary>
-    internal string? FinalCommandText { get; set; }
+    public string? FinalCommandText { get; internal set; }
 
     /// <summary>
     /// The list of parameters, ordered positionally, as it will be sent to PostgreSQL.
