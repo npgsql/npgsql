@@ -144,9 +144,9 @@ static class NpgsqlActivitySource
         activity.Dispose();
     }
 
-    internal static Activity? ImportStart(string copyFromCommand, NpgsqlConnectionStringBuilder settings)
+    internal static Activity? ImportStart(string copyFromCommand, NpgsqlConnector connector)
     {
-        var dbName = settings.Database ?? "UNKNOWN";
+        var dbName = connector.Settings.Database ?? "UNKNOWN";
 
         var activity = Source.StartActivity(dbName, ActivityKind.Client);
 
@@ -156,13 +156,21 @@ static class NpgsqlActivitySource
         activity.SetTag("db.statement", copyFromCommand);
         activity.SetTag("db.operation", "COPY FROM");
 
+        Enrich(activity, connector);
+
         return activity;
     }
 
     internal static void ImportStop(Activity activity, ulong rows)
     {
-        activity.SetTag("otel.status_code", "OK");
+        activity.SetStatus(ActivityStatusCode.Ok);
         activity.SetTag("db.rows", rows);
+        activity.Dispose();
+    }
+
+    internal static void ImportCancelled(Activity activity)
+    {
+        activity.SetStatus(ActivityStatusCode.Error, "Cancelled");
         activity.Dispose();
     }
 }
