@@ -1371,8 +1371,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             {
                 // ignored
             }
-            connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
             throw;
         }
     }
@@ -1444,8 +1442,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             {
                 // ignored
             }
-            connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
             throw;
         }
     }
