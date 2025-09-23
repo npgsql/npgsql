@@ -431,8 +431,9 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             _state = ImporterState.Committed;
             return cmdComplete.Rows;
         }
-        catch
+        catch(Exception e)
         {
+            TraceSetException(e);
             Cleanup();
             throw;
         }
@@ -526,6 +527,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             throw new Exception("Invalid state: " + _state);
         }
 
+        TraceImportStop();
         Cleanup();
     }
 
@@ -537,7 +539,6 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         var connector = _connector;
 
         LogMessages.BinaryCopyOperationCompleted(_copyLogger, _rowsImported, connector?.Id ?? -1);
-        TraceCommandStop(_rowsImported);
 
         if (connector != null)
         {
@@ -590,24 +591,40 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     #region Tracing
 
-    private void TraceImportStart(string copyFromCommand)
+    void TraceImportStart(string copyFromCommand)
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
         {
-            CurrentActivity = NpgsqlActivitySource.ImportStart(copyFromCommand, _connector.Settings);
-            if (CurrentActivity is not null)
-            {
-                NpgsqlActivitySource.Enrich(CurrentActivity, _connector);
-            }
+            CurrentActivity = NpgsqlActivitySource.ImportStart(copyFromCommand, _connector);
         }
     }
 
-    internal void TraceCommandStop(ulong rows)
+    void TraceImportStop()
     {
         if (CurrentActivity is not null)
         {
-            NpgsqlActivitySource.ImportStop(CurrentActivity, rows);
+            switch (_state)
+            {
+            case ImporterState.Committed:
+                NpgsqlActivitySource.ImportStop(CurrentActivity, _rowsImported);
+                break;
+            case ImporterState.Cancelled:
+                NpgsqlActivitySource.ImportCancelled(CurrentActivity);
+                break;
+            default:
+                throw new Exception("Invalid state: " + _state);
+            }
+
+            CurrentActivity = null;
+        }
+    }
+
+    void TraceSetException(Exception exception)
+    {
+        if (CurrentActivity is not null)
+        {
+            NpgsqlActivitySource.SetException(CurrentActivity, exception);
             CurrentActivity = null;
         }
     }
