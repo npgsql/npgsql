@@ -28,7 +28,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     NpgsqlWriteBuffer _writeBuf;
 
     int _leftToReadInDataMsg;
-    bool _isDisposed, _isConsumed;
+    // We consider COPY operation as consumed until Init successfully completes
+    bool _isDisposed, _isConsumed = true;
 
     bool _canRead;
     bool _canWrite;
@@ -84,12 +85,14 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         switch (msg.Code)
         {
         case BackendMessageCode.CopyInResponse:
+            _isConsumed = false;
             var copyInResponse = (CopyInResponseMessage) msg;
             IsBinary = copyInResponse.IsBinary;
             _canWrite = true;
             _writeBuf.StartCopyMode();
             break;
         case BackendMessageCode.CopyOutResponse:
+            _isConsumed = false;
             var copyOutResponse = (CopyOutResponseMessage) msg;
             IsBinary = copyOutResponse.IsBinary;
             _canRead = true;

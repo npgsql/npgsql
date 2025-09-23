@@ -24,7 +24,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     NpgsqlConnector _connector;
     NpgsqlReadBuffer _buf;
-    bool _isConsumed, _isDisposed;
+    // We consider COPY operation as consumed until Init successfully completes
+    bool _isDisposed, _isConsumed = true;
     long _endOfMessagePos;
 
     short _column;
@@ -91,6 +92,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             throw _connector.UnexpectedMessageReceived(msg.Code);
         }
 
+        _isConsumed = false;
         NumColumns = copyOutResponse.NumColumns;
         _columnInfoCache = new PgConverterInfo[NumColumns];
         _rowsExported = 0;

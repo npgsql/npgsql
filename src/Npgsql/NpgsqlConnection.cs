@@ -1160,32 +1160,26 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         LogMessages.StartingBinaryImport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
-        NpgsqlBinaryImporter? importer = null;
+        var importer = new NpgsqlBinaryImporter(connector);
         try
         {
-            importer = new NpgsqlBinaryImporter(connector);
             await importer.Init(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
             connector.CurrentCopyOperation = importer;
             return importer;
         }
         catch
         {
-            if (importer is not null)
+            try
             {
-                try
-                {
-                    if (async)
-                        await importer.DisposeAsync().ConfigureAwait(false);
-                    else
-                        importer.Dispose();
-                }
-                catch
-                {
-                    // ignored
-                }
+                if (async)
+                    await importer.DisposeAsync().ConfigureAwait(false);
+                else
+                    importer.Dispose();
             }
-            connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
+            catch
+            {
+                // ignored
+            }
             throw;
         }
     }
@@ -1225,32 +1219,26 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         LogMessages.StartingBinaryExport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
-        NpgsqlBinaryExporter? exporter = null;
+        var exporter = new NpgsqlBinaryExporter(connector);
         try
         {
-            exporter = new NpgsqlBinaryExporter(connector);
             await exporter.Init(copyToCommand, async, cancellationToken).ConfigureAwait(false);
             connector.CurrentCopyOperation = exporter;
             return exporter;
         }
         catch
         {
-            if (exporter is not null)
+            try
             {
-                try
-                {
-                    if (async)
-                        await exporter.DisposeAsync().ConfigureAwait(false);
-                    else
-                        exporter.Dispose();
-                }
-                catch
-                {
-                    // ignored
-                }
+                if (async)
+                    await exporter.DisposeAsync().ConfigureAwait(false);
+                else
+                    exporter.Dispose();
             }
-            connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
+            catch
+            {
+                // ignored
+            }
             throw;
         }
     }
@@ -1296,10 +1284,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         LogMessages.StartingTextImport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
-        NpgsqlRawCopyStream? copyStream = null;
+        var copyStream = new NpgsqlRawCopyStream(connector);
         try
         {
-            copyStream = new NpgsqlRawCopyStream(connector);
             await copyStream.Init(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
             var writer = new NpgsqlCopyTextWriter(connector, copyStream);
             connector.CurrentCopyOperation = writer;
@@ -1307,22 +1294,17 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
         catch
         {
-            if (copyStream is not null)
+            try
             {
-                try
-                {
-                    if (async)
-                        await copyStream.DisposeAsync().ConfigureAwait(false);
-                    else
-                        copyStream.Dispose();
-                }
-                catch
-                {
-                    // ignored
-                }
+                if (async)
+                    await copyStream.DisposeAsync().ConfigureAwait(false);
+                else
+                    copyStream.Dispose();
             }
-            connector.EndUserAction();
-            EndBindingScope(ConnectorBindingScope.Copy);
+            catch
+            {
+                // ignored
+            }
             throw;
         }
     }
@@ -1368,10 +1350,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         LogMessages.StartingTextExport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
-        NpgsqlRawCopyStream? copyStream = null;
+        var copyStream = new NpgsqlRawCopyStream(connector);
         try
         {
-            copyStream = new NpgsqlRawCopyStream(connector);
             await copyStream.Init(copyToCommand, async, cancellationToken).ConfigureAwait(false);
             var reader = new NpgsqlCopyTextReader(connector, copyStream);
             connector.CurrentCopyOperation = reader;
@@ -1379,19 +1360,16 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
         catch
         {
-            if (copyStream is not null)
+            try
             {
-                try
-                {
-                    if (async)
-                        await copyStream.DisposeAsync().ConfigureAwait(false);
-                    else
-                        copyStream.Dispose();
-                }
-                catch
-                {
-                    // ignored
-                }
+                if (async)
+                    await copyStream.DisposeAsync().ConfigureAwait(false);
+                else
+                    copyStream.Dispose();
+            }
+            catch
+            {
+                // ignored
             }
             connector.EndUserAction();
             EndBindingScope(ConnectorBindingScope.Copy);
@@ -1440,10 +1418,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         LogMessages.StartingRawCopy(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
-        NpgsqlRawCopyStream? stream = null;
+        var stream = new NpgsqlRawCopyStream(connector);
         try
         {
-            stream = new NpgsqlRawCopyStream(connector);
             await stream.Init(copyCommand, async, cancellationToken).ConfigureAwait(false);
             if (!stream.IsBinary)
             {
@@ -1456,19 +1433,16 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
         catch
         {
-            if (stream is not null)
+            try
             {
-                try
-                {
-                    if (async)
-                        await stream.DisposeAsync().ConfigureAwait(false);
-                    else
-                        stream.Dispose();
-                }
-                catch
-                {
-                    // ignored
-                }
+                if (async)
+                    await stream.DisposeAsync().ConfigureAwait(false);
+                else
+                    stream.Dispose();
+            }
+            catch
+            {
+                // ignored
             }
             connector.EndUserAction();
             EndBindingScope(ConnectorBindingScope.Copy);
