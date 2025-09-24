@@ -168,7 +168,7 @@ static class NpgsqlActivitySource
         activity.Dispose();
     }
 
-    internal static void ImportCancelled(Activity activity)
+    internal static void SetCancelled(Activity activity)
     {
         activity.SetStatus(ActivityStatusCode.Error, "Cancelled");
         activity.Dispose();
