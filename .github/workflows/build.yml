@@ -29,12 +29,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        pg_major: [17, 16, 15, 14, 13]
+        pg_major: [18, 17, 16, 15, 14]
         config: [Release]
         test_tfm: [net9.0]
         include:
           - os: ubuntu-24.04
-            pg_major: 17
+            pg_major: 18
             config: Debug
             test_tfm: net9.0
           - os: macos-15
@@ -42,18 +42,18 @@ jobs:
             config: Release
             test_tfm: net9.0
           - os: windows-2022
-            pg_major: 17
+            pg_major: 18
             config: Release
             test_tfm: net9.0
-          - os: ubuntu-24.04
-            pg_major: 17
-            config: Release
-            test_tfm: net8.0
           - os: ubuntu-24.04
             pg_major: 18
             config: Release
             test_tfm: net8.0
-            pg_prerelease: 'PG Prerelease'
+#          - os: ubuntu-24.04
+#            pg_major: 18
+#            config: Release
+#            test_tfm: net8.0
+#            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
