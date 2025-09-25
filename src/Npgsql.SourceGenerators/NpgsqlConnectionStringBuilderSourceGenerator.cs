@@ -9,7 +9,7 @@ using Scriban;
 namespace Npgsql.SourceGenerators;
 
 [Generator]
-public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
+public class NpgsqlConnectionStringBuilderSourceGenerator : IIncrementalGenerator
 {
     static readonly DiagnosticDescriptor InternalError = new DiagnosticDescriptor(
         id: "PGXXXX",
@@ -19,106 +19,107 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public void Initialize(GeneratorInitializationContext context) {}
-
-    public void Execute(GeneratorExecutionContext context)
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        if (context.Compilation.Assembly.GetTypeByMetadataName("Npgsql.NpgsqlConnectionStringBuilder") is not { } type)
-            return;
-
-        if (context.Compilation.Assembly.GetTypeByMetadataName("Npgsql.NpgsqlConnectionStringPropertyAttribute") is not
-            { } connectionStringPropertyAttribute)
+        var compilationProvider = context.CompilationProvider;
+        context.RegisterSourceOutput(compilationProvider, (spc, compilation) =>
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                InternalError,
-                location: null,
-                "Could not find Npgsql.NpgsqlConnectionStringPropertyAttribute"));
-            return;
-        }
+            var type = compilation.Assembly.GetTypeByMetadataName("Npgsql.NpgsqlConnectionStringBuilder");
+            if (type is null)
+                return;
 
-        var obsoleteAttribute = context.Compilation.GetTypeByMetadataName("System.ObsoleteAttribute");
-        var displayNameAttribute = context.Compilation.GetTypeByMetadataName("System.ComponentModel.DisplayNameAttribute");
-        var defaultValueAttribute = context.Compilation.GetTypeByMetadataName("System.ComponentModel.DefaultValueAttribute");
-
-        if (obsoleteAttribute is null || displayNameAttribute is null || defaultValueAttribute is null)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                InternalError,
-                location: null,
-                "Could not find ObsoleteAttribute, DisplayNameAttribute or DefaultValueAttribute"));
-            return;
-        }
-
-        var properties = new List<PropertyDetails>();
-        var propertiesByKeyword = new Dictionary<string, PropertyDetails>();
-        foreach (var member in type.GetMembers())
-        {
-            if (member is not IPropertySymbol property ||
-                property.GetAttributes().FirstOrDefault(a => connectionStringPropertyAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default)) is not { } propertyAttribute ||
-                property.GetAttributes()
-                    .FirstOrDefault(a => displayNameAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default))
-                    ?.ConstructorArguments[0].Value is not string displayName)
+            var connectionStringPropertyAttribute = compilation.Assembly.GetTypeByMetadataName("Npgsql.NpgsqlConnectionStringPropertyAttribute");
+            if (connectionStringPropertyAttribute is null)
             {
-                continue;
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    InternalError,
+                    location: null,
+                    "Could not find Npgsql.NpgsqlConnectionStringPropertyAttribute"));
+                return;
             }
 
-            var explicitDefaultValue = property.GetAttributes()
-                .FirstOrDefault(a => defaultValueAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default))
-                ?.ConstructorArguments[0].Value;
+            var obsoleteAttribute = compilation.GetTypeByMetadataName("System.ObsoleteAttribute");
+            var displayNameAttribute = compilation.GetTypeByMetadataName("System.ComponentModel.DisplayNameAttribute");
+            var defaultValueAttribute = compilation.GetTypeByMetadataName("System.ComponentModel.DefaultValueAttribute");
 
-            if (explicitDefaultValue is string s)
-                explicitDefaultValue = '"' + s.Replace("\"", "\"\"") + '"';
-
-            if (explicitDefaultValue is not null && property.Type.TypeKind == TypeKind.Enum)
+            if (obsoleteAttribute is null || displayNameAttribute is null || defaultValueAttribute is null)
             {
-                explicitDefaultValue = $"({property.Type.Name}){explicitDefaultValue}";
-                // var foo = property.Type.Name;
-                // explicitDefaultValue += $"/* {foo} */";
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    InternalError,
+                    location: null,
+                    "Could not find ObsoleteAttribute, DisplayNameAttribute or DefaultValueAttribute"));
+                return;
             }
 
-            var propertyDetails = new PropertyDetails
+            var properties = new List<PropertyDetails>();
+            var propertiesByKeyword = new Dictionary<string, PropertyDetails>();
+            foreach (var member in type.GetMembers())
             {
-                Name = property.Name,
-                CanonicalName = displayName,
-                TypeName = property.Type.Name,
-                IsEnum = property.Type.TypeKind == TypeKind.Enum,
-                IsObsolete = property.GetAttributes().Any(a => obsoleteAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default)),
-                DefaultValue = explicitDefaultValue
-            };
-
-            properties.Add(propertyDetails);
-
-            propertiesByKeyword[displayName.ToUpperInvariant()] = propertyDetails;
-            if (property.Name != displayName)
-            {
-                var propertyName = property.Name.ToUpperInvariant();
-                if (!propertiesByKeyword.ContainsKey(propertyName))
-                    propertyDetails.Alternatives.Add(propertyName);
-            }
-
-            if (propertyAttribute.ConstructorArguments.Length == 1)
-            {
-                foreach (var synonymArg in propertyAttribute.ConstructorArguments[0].Values)
+                if (member is not IPropertySymbol property ||
+                    property.GetAttributes().FirstOrDefault(a => connectionStringPropertyAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default)) is not { } propertyAttribute ||
+                    property.GetAttributes()
+                        .FirstOrDefault(a => displayNameAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default))
+                        ?.ConstructorArguments[0].Value is not string displayName)
                 {
-                    if (synonymArg.Value is string synonym)
+                    continue;
+                }
+
+                var explicitDefaultValue = property.GetAttributes()
+                    .FirstOrDefault(a => defaultValueAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default))
+                    ?.ConstructorArguments[0].Value;
+
+                if (explicitDefaultValue is string s)
+                    explicitDefaultValue = '"' + s.Replace("\"", "\"\"") + '"';
+
+                if (explicitDefaultValue is not null && property.Type.TypeKind == TypeKind.Enum)
+                {
+                    explicitDefaultValue = $"({property.Type.Name}){explicitDefaultValue}";
+                }
+
+                var propertyDetails = new PropertyDetails
+                {
+                    Name = property.Name,
+                    CanonicalName = displayName,
+                    TypeName = property.Type.Name,
+                    IsEnum = property.Type.TypeKind == TypeKind.Enum,
+                    IsObsolete = property.GetAttributes().Any(a => obsoleteAttribute.Equals(a.AttributeClass, SymbolEqualityComparer.Default)),
+                    DefaultValue = explicitDefaultValue
+                };
+
+                properties.Add(propertyDetails);
+
+                propertiesByKeyword[displayName.ToUpperInvariant()] = propertyDetails;
+                if (property.Name != displayName)
+                {
+                    var propertyName = property.Name.ToUpperInvariant();
+                    if (!propertiesByKeyword.ContainsKey(propertyName))
+                        propertyDetails.Alternatives.Add(propertyName);
+                }
+
+                if (propertyAttribute.ConstructorArguments.Length == 1)
+                {
+                    foreach (var synonymArg in propertyAttribute.ConstructorArguments[0].Values)
                     {
-                        var synonymName = synonym.ToUpperInvariant();
-                        if (!propertiesByKeyword.ContainsKey(synonymName))
-                            propertyDetails.Alternatives.Add(synonymName);
+                        if (synonymArg.Value is string synonym)
+                        {
+                            var synonymName = synonym.ToUpperInvariant();
+                            if (!propertiesByKeyword.ContainsKey(synonymName))
+                                propertyDetails.Alternatives.Add(synonymName);
+                        }
                     }
                 }
             }
-        }
 
-        var template = Template.Parse(EmbeddedResource.GetContent("NpgsqlConnectionStringBuilder.snbtxt"), "NpgsqlConnectionStringBuilder.snbtxt");
+            var template = Template.Parse(EmbeddedResource.GetContent("NpgsqlConnectionStringBuilder.snbtxt"), "NpgsqlConnectionStringBuilder.snbtxt");
 
-        var output = template.Render(new
-        {
-            Properties = properties,
-            PropertiesByKeyword = propertiesByKeyword
+            var output = template.Render(new
+            {
+                Properties = properties,
+                PropertiesByKeyword = propertiesByKeyword
+            });
+
+            spc.AddSource(type.Name + ".Generated.cs", SourceText.From(output, Encoding.UTF8));
         });
-
-        context.AddSource(type.Name + ".Generated.cs", SourceText.From(output, Encoding.UTF8));
     }
 
     sealed class PropertyDetails
