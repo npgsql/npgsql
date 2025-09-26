@@ -25,7 +25,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     NpgsqlConnector _connector;
     NpgsqlWriteBuffer _buf;
 
-    ImporterState _state;
+    // We consider COPY operation as cancelled until Init successfully completes
+    ImporterState _state = ImporterState.Cancelled;
 
     /// <summary>
     /// The number of columns in the current (not-yet-written) row.
@@ -99,6 +100,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             throw _connector.UnexpectedMessageReceived(msg.Code);
         }
 
+        _state = ImporterState.Ready;
         _params = new NpgsqlParameter[copyInResponse.NumColumns];
         _rowsImported = 0;
         _buf.StartCopyMode();
