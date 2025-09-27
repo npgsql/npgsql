@@ -359,25 +359,44 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var copyFromCommand = $"COPY {table} (field_text, field_int2) FROM STDIN BINARY";
 
-        using (var writer = async
+        await using (var writer = async
             ? await conn.BeginBinaryImportAsync(copyFromCommand)
             : conn.BeginBinaryImport(copyFromCommand))
         {
-            writer.StartRow();
-            writer.Write("Hello");
-            writer.Write((short)8, NpgsqlDbType.Smallint);
+            ulong rowsWritten;
+            if (async)
+            {
+                await writer.StartRowAsync();
+                await writer.WriteAsync("Hello");
+                await writer.WriteAsync((short)8, NpgsqlDbType.Smallint);
 
-            writer.WriteRow("Something", (short)9);
+                await writer.WriteRowAsync(default, "Something", (short)9);
 
-            writer.StartRow();
-            writer.Write(longString, "text");
-            writer.WriteNull();
+                await writer.StartRowAsync();
+                await writer.WriteAsync(longString, "text");
+                await writer.WriteNullAsync();
 
-            var rowsWritten = writer.Complete();
+                rowsWritten = await writer.CompleteAsync();
+            }
+            else
+            {
+                writer.StartRow();
+                writer.Write("Hello");
+                writer.Write((short)8, NpgsqlDbType.Smallint);
+
+                writer.WriteRow("Something", (short)9);
+
+                writer.StartRow();
+                writer.Write(longString, "text");
+                writer.WriteNull();
+
+                rowsWritten = writer.Complete();
+            }
+
             Assert.That(rowsWritten, Is.EqualTo(3));
         }
 
-        Assert.That(activities.Count, Is.EqualTo(IsMultiplexing ? 2 : 1));
+        Assert.That(activities.Count, Is.EqualTo(1));
         var activity = activities.Last();
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
@@ -532,15 +551,27 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             await using var writer = async
                 ? await conn.BeginBinaryImportAsync(copyFromCommand)
                 : conn.BeginBinaryImport(copyFromCommand);
-            writer.StartRow();
-            writer.Write(8);
-            writer.StartRow();
-            writer.Write(8);
-            writer.Complete();
+
+            if (async)
+            {
+                await writer.StartRowAsync();
+                await writer.WriteAsync(8);
+                await writer.StartRowAsync();
+                await writer.WriteAsync(8);
+                await writer.CompleteAsync();
+            }
+            else
+            {
+                writer.StartRow();
+                writer.Write(8);
+                writer.StartRow();
+                writer.Write(8);
+                writer.Complete();
+            }
             Assert.Fail("Commit should have thrown");
         });
 
-        Assert.That(activities.Count, Is.EqualTo(IsMultiplexing ? 2 : 1));
+        Assert.That(activities.Count, Is.EqualTo(1));
         var activity = activities.Last();
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
@@ -626,16 +657,29 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             await using var writer = async
                 ? await conn.BeginBinaryImportAsync(copyFromCommand)
                 : conn.BeginBinaryImport(copyFromCommand);
-            writer.StartRow();
-            writer.Write(8);
-            writer.Write("hello");
-            writer.StartRow();
-            writer.Write(9);
-            writer.Complete();
+
+            if (async)
+            {
+                await writer.StartRowAsync();
+                await writer.WriteAsync(8);
+                await writer.WriteAsync("hello");
+                await writer.StartRowAsync();
+                await writer.WriteAsync(9);
+                await writer.CompleteAsync();
+            }
+            else
+            {
+                writer.StartRow();
+                writer.Write(8);
+                writer.Write("hello");
+                writer.StartRow();
+                writer.Write(9);
+                writer.Complete();
+            }
             Assert.Fail("Commit should have thrown");
         });
 
-        Assert.That(activities.Count, Is.EqualTo(IsMultiplexing ? 2 : 1));
+        Assert.That(activities.Count, Is.EqualTo(1));
         var activity = activities.Last();
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
