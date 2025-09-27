@@ -436,6 +436,93 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     }
 
     [Test]
+    public async Task Cancel_binary_import([Values] bool async)
+    {
+        if (IsMultiplexing && !async)
+            return;
+
+        var activities = new List<Activity>();
+
+        using var activityListener = new ActivityListener();
+        activityListener.ShouldListenTo = source => source.Name == "Npgsql";
+        activityListener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
+        activityListener.ActivityStopped = activity => activities.Add(activity);
+        ActivitySource.AddActivityListener(activityListener);
+
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        // We're not interested in physical open's activity
+        Assert.That(activities.Count, Is.EqualTo(1));
+        activities.Clear();
+
+        var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT");
+
+        // We're not interested in temp table creation's activity
+        Assert.That(activities.Count, Is.EqualTo(1));
+        activities.Clear();
+
+        var longString = new StringBuilder(conn.Settings.WriteBufferSize + 50).Append('a').ToString();
+
+        var copyFromCommand = $"COPY {table} (field_text, field_int2) FROM STDIN BINARY";
+
+        await using (var writer = async
+            ? await conn.BeginBinaryImportAsync(copyFromCommand)
+            : conn.BeginBinaryImport(copyFromCommand))
+        {
+            if (async)
+            {
+                await writer.StartRowAsync();
+                await writer.WriteAsync("Hello");
+                await writer.WriteAsync((short)8, NpgsqlDbType.Smallint);
+
+                await ((ICancelable)writer).CancelAsync();
+            }
+            else
+            {
+                writer.StartRow();
+                writer.Write("Hello");
+                writer.Write((short)8, NpgsqlDbType.Smallint);
+
+                ((ICancelable)writer).Cancel();
+            }
+        }
+
+        Assert.That(activities.Count, Is.EqualTo(1));
+        var activity = activities.Last();
+        Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
+        Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
+        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
+        Assert.That(activity.StatusDescription, Is.EqualTo("Cancelled"));
+
+        var expectedTagCount = conn.Settings.Port == 5432 ? 10 : 11;
+        Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
+
+        var queryTag = activity.TagObjects.First(x => x.Key == "db.statement");
+        Assert.That(queryTag.Value, Is.EqualTo(copyFromCommand));
+
+        var systemTag = activity.TagObjects.First(x => x.Key == "db.system");
+        Assert.That(systemTag.Value, Is.EqualTo("postgresql"));
+
+        var userTag = activity.TagObjects.First(x => x.Key == "db.user");
+        Assert.That(userTag.Value, Is.EqualTo(conn.Settings.Username));
+
+        var dbNameTag = activity.TagObjects.First(x => x.Key == "db.name");
+        Assert.That(dbNameTag.Value, Is.EqualTo(conn.Settings.Database));
+
+        var connStringTag = activity.TagObjects.First(x => x.Key == "db.connection_string");
+        Assert.That(connStringTag.Value, Is.EqualTo(conn.ConnectionString));
+
+        if (!IsMultiplexing)
+        {
+            var connIDTag = activity.TagObjects.First(x => x.Key == "db.connection_id");
+            Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
+        }
+        else
+            Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+    }
+
+    [Test]
     public async Task Error_binary_import([Values] bool async)
     {
         if (IsMultiplexing && !async)
