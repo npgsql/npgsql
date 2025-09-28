@@ -101,12 +101,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         activityListener.ActivityStopped = activity => activities.Add(activity);
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(DisablePhysicalOpenTracing);
         await using var conn = await dataSource.OpenConnectionAsync();
-
-        // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
-        activities.Clear();
 
         await ExecuteScalar(conn, async, batch, "SELECT 42");
 
@@ -217,12 +213,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         activityListener.ActivityStopped = activity => activities.Add(activity);
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(DisablePhysicalOpenTracing);
         await using var conn = await dataSource.OpenConnectionAsync();
-
-        // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
-        activities.Clear();
 
         Assert.ThrowsAsync<PostgresException>(async () => await ExecuteScalar(conn, async, batch, "SELECT * FROM non_existing_table"));
 
@@ -342,12 +334,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         activityListener.ActivityStopped = activity => activities.Add(activity);
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(DisablePhysicalOpenTracing);
         await using var conn = await dataSource.OpenConnectionAsync();
-
-        // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
-        activities.Clear();
 
         var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT");
 
@@ -449,12 +437,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         activityListener.ActivityStopped = activity => activities.Add(activity);
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(DisablePhysicalOpenTracing);
         await using var conn = await dataSource.OpenConnectionAsync();
-
-        // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
-        activities.Clear();
 
         var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT");
 
@@ -536,12 +520,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         activityListener.ActivityStopped = activity => activities.Add(activity);
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(DisablePhysicalOpenTracing);
         await using var conn = await dataSource.OpenConnectionAsync();
-
-        // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
-        activities.Clear();
 
         var copyFromCommand = $"COPY non_existing_table (field_text, field_int2) FROM STDIN BINARY";
 
@@ -618,12 +598,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         activityListener.ActivityStopped = activity => activities.Add(activity);
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
-        await using var conn = await dataSource.OpenConnectionAsync();
-
-        // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
-        activities.Clear();
+        await using var dataSource = CreateDataSource(DisablePhysicalOpenTracing);
+        await using var conn = await dataSource.OpenConnectionAsync();;
 
         var table = await CreateTempTable(conn, "foo INT UNIQUE");
 
@@ -724,12 +700,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         activityListener.ActivityStopped = activity => activities.Add(activity);
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(DisablePhysicalOpenTracing);
         await using var conn = await dataSource.OpenConnectionAsync();
-
-        // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
-        activities.Clear();
 
         var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT");
 
@@ -799,6 +771,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         else
             Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
     }
+
+    static void DisablePhysicalOpenTracing(NpgsqlDataSourceBuilder dsb) => dsb.ConfigureTracing(tob => tob.EnablePhysicalOpenTracing(false));
 
     async Task<object?> ExecuteScalar(NpgsqlConnection connection, bool async, bool isBatch, string query)
     {
