@@ -385,7 +385,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         }
 
         Assert.That(activities.Count, Is.EqualTo(1));
-        var activity = activities.Last();
+        var activity = activities[0];
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Ok));
@@ -473,7 +473,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         }
 
         Assert.That(activities.Count, Is.EqualTo(1));
-        var activity = activities.Last();
+        var activity = activities[0];
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
@@ -525,7 +525,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var copyFromCommand = $"COPY non_existing_table (field_text, field_int2) FROM STDIN BINARY";
 
-        Assert.ThrowsAsync<PostgresException>(async () =>
+        var ex = Assert.ThrowsAsync<PostgresException>(async () =>
         {
             await using var writer = async
                 ? await conn.BeginBinaryImportAsync(copyFromCommand)
@@ -546,13 +546,13 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(exceptionEvent.Tags.Count(), Is.EqualTo(4));
 
         var exceptionTypeTag = exceptionEvent.Tags.First(x => x.Key == "exception.type");
-        Assert.That(exceptionTypeTag.Value, Is.EqualTo("Npgsql.PostgresException"));
+        Assert.That(exceptionTypeTag.Value, Is.EqualTo(ex.GetType().FullName));
 
         var exceptionMessageTag = exceptionEvent.Tags.First(x => x.Key == "exception.message");
-        Assert.That((string)exceptionMessageTag.Value!, Does.Contain("relation \"non_existing_table\" does not exist"));
+        Assert.That((string)exceptionMessageTag.Value!, Does.Contain(ex.Message));
 
         var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain("relation \"non_existing_table\" does not exist"));
+        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain(ex.Message));
 
         var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
         Assert.That(exceptionEscapedTag.Value, Is.True);
@@ -609,7 +609,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var copyFromCommand = $"COPY {table} (foo) FROM STDIN BINARY";
 
-        Assert.ThrowsAsync<PostgresException>(async () =>
+        var ex = Assert.ThrowsAsync<PostgresException>(async () =>
         {
             await using var writer = async
                 ? await conn.BeginBinaryImportAsync(copyFromCommand)
@@ -635,7 +635,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         });
 
         Assert.That(activities.Count, Is.EqualTo(1));
-        var activity = activities.Last();
+        var activity = activities[0];
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
@@ -648,13 +648,13 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(exceptionEvent.Tags.Count(), Is.EqualTo(4));
 
         var exceptionTypeTag = exceptionEvent.Tags.First(x => x.Key == "exception.type");
-        Assert.That(exceptionTypeTag.Value, Is.EqualTo("Npgsql.PostgresException"));
+        Assert.That(exceptionTypeTag.Value, Is.EqualTo(ex.GetType().FullName));
 
         var exceptionMessageTag = exceptionEvent.Tags.First(x => x.Key == "exception.message");
-        Assert.That((string)exceptionMessageTag.Value!, Does.Contain("duplicate key value violates unique constraint"));
+        Assert.That((string)exceptionMessageTag.Value!, Does.Contain(ex.Message));
 
         var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain("duplicate key value violates unique constraint"));
+        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain(ex.Message));
 
         var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
         Assert.That(exceptionEscapedTag.Value, Is.True);
@@ -739,7 +739,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         });
 
         Assert.That(activities.Count, Is.EqualTo(1));
-        var activity = activities.Last();
+        var activity = activities[0];
         Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
