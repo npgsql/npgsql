@@ -516,7 +516,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 var statement = _statements[StatementIndex];
 
                 // Reference the triggering statement from the exception
-                if (Connector.Settings.IncludeFailedStatement)
+                if (Connector.Settings.IncludeFailedBatchedCommand)
                     postgresException.BatchCommand = statement;
 
                 // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
@@ -762,7 +762,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
             {
                 // Reference the triggering statement from the exception
-                if (Connector.Settings.IncludeFailedStatement)
+                if (Connector.Settings.IncludeFailedBatchedCommand)
                     postgresException.BatchCommand = _statements[StatementIndex];
 
                 // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since

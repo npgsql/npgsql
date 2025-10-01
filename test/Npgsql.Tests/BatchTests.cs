@@ -477,7 +477,7 @@ public class BatchTests : MultiplexingTestBase, IDisposable
     public async Task Batch_close_dispose_reader_with_multiple_errors([Values] bool withErrorBarriers, [Values] bool dispose)
     {
         // Create a temp pool since we dispose the reader (and check the state afterwards) and it can be reused by another connection
-        await using var dataSource = CreateDataSource(x => x.IncludeFailedStatement = true);
+        await using var dataSource = CreateDataSource(x => x.IncludeFailedBatchedCommand = true);
         await using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id INT");
 
@@ -805,7 +805,7 @@ LANGUAGE 'plpgsql'");
     // ReSharper restore InconsistentNaming
 
     NpgsqlDataSource? _dataSource;
-    protected override NpgsqlDataSource DataSource => _dataSource ??= CreateDataSource(csb => csb.IncludeFailedStatement = true);
+    protected override NpgsqlDataSource DataSource => _dataSource ??= CreateDataSource(csb => csb.IncludeFailedBatchedCommand = true);
 
     public BatchTests(MultiplexingMode multiplexingMode, CommandBehavior behavior) : base(multiplexingMode)
     {

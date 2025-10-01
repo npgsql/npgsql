@@ -46,6 +46,7 @@ public class NpgsqlException : DbException
         => InnerException is IOException or SocketException or TimeoutException or NpgsqlException { IsTransient: true };
 
     /// <inheritdoc cref="DbException.BatchCommand"/>
+    /// <remarks>This property is <c>null</c> unless <see cref="NpgsqlConnectionStringBuilder.IncludeFailedBatchedCommand"/> in connection string is set to <c>true</c>.</remarks>
     public new NpgsqlBatchCommand? BatchCommand { get; set; }
 
     /// <inheritdoc/>

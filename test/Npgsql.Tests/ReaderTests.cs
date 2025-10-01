@@ -623,9 +623,9 @@ LANGUAGE 'plpgsql';
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
-    public async Task NpgsqlException_references_BatchCommand_with_single_command([Values] bool includeFailedStatement)
+    public async Task NpgsqlException_references_BatchCommand_with_single_command([Values] bool includeFailedBatchedCommand)
     {
-        await using var dataSource = CreateDataSource(x => x.IncludeFailedStatement = includeFailedStatement);
+        await using var dataSource = CreateDataSource(x => x.IncludeFailedBatchedCommand = includeFailedBatchedCommand);
         await using var conn = await dataSource.OpenConnectionAsync();
         var function = await GetTempFunctionName(conn);
 
@@ -639,7 +639,7 @@ LANGUAGE 'plpgsql'");
         cmd.CommandText = $"SELECT {function}()";
 
         var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync(Behavior))!;
-        if (includeFailedStatement)
+        if (includeFailedBatchedCommand)
             Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
         else
             Assert.That(exception.BatchCommand, Is.Null);
@@ -652,9 +652,9 @@ LANGUAGE 'plpgsql'");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
-    public async Task NpgsqlException_references_BatchCommand_with_multiple_commands([Values] bool includeFailedStatement)
+    public async Task NpgsqlException_references_BatchCommand_with_multiple_commands([Values] bool includeFailedBatchedCommand)
     {
-        await using var dataSource = CreateDataSource(x => x.IncludeFailedStatement = includeFailedStatement);
+        await using var dataSource = CreateDataSource(x => x.IncludeFailedBatchedCommand = includeFailedBatchedCommand);
         await using var conn = await dataSource.OpenConnectionAsync();
         var function = await GetTempFunctionName(conn);
 
@@ -670,7 +670,7 @@ LANGUAGE 'plpgsql'");
         await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             var exception = Assert.ThrowsAsync<PostgresException>(() => reader.NextResultAsync())!;
-            if (includeFailedStatement)
+            if (includeFailedBatchedCommand)
                 Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
             else
                 Assert.That(exception.BatchCommand, Is.Null);
