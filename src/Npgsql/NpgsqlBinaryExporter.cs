@@ -24,8 +24,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     NpgsqlConnector _connector;
     NpgsqlReadBuffer _buf;
-    // We consider COPY operation as consumed until Init successfully completes
-    bool _isDisposed, _isConsumed = true;
+    // We consider COPY operation as Uninitialized until Init successfully completes
+    ExporterState _state = ExporterState.Uninitialized;
     long _endOfMessagePos;
 
     short _column;
@@ -92,7 +92,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             throw _connector.UnexpectedMessageReceived(msg.Code);
         }
 
-        _isConsumed = false;
+        _state = ExporterState.Ready;
         NumColumns = copyOutResponse.NumColumns;
         _columnInfoCache = new PgConverterInfo[NumColumns];
         _rowsExported = 0;
@@ -143,7 +143,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     async ValueTask<int> StartRow(bool async, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        if (_isConsumed)
+        if (_state == ExporterState.Consumed)
             return -1;
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
@@ -178,7 +178,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
             Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
             _column = BeforeRow;
-            _isConsumed = true;
+            _state = ExporterState.Consumed;
             return -1;
         }
 
@@ -439,7 +439,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     void ThrowIfDisposed()
     {
-        if (_isDisposed)
+        if (_state == ExporterState.Disposed)
             ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlBinaryExporter), "The COPY operation has already ended.");
     }
 
@@ -474,10 +474,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async ValueTask DisposeAsync(bool async)
     {
-        if (_isDisposed)
+        if (_state == ExporterState.Disposed)
             return;
 
-        if (_isConsumed)
+        if (_state is ExporterState.Consumed or ExporterState.Uninitialized)
         {
             LogMessages.BinaryCopyOperationCompleted(_copyLogger, _rowsExported, _connector.Id);
         }
@@ -514,7 +514,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         void Cleanup()
         {
-            Debug.Assert(!_isDisposed);
+            Debug.Assert(_state != ExporterState.Disposed);
             var connector = _connector;
 
             if (!ReferenceEquals(connector, null))
@@ -525,9 +525,21 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             }
 
             _buf = null!;
-            _isDisposed = true;
+            _state = ExporterState.Disposed;
         }
     }
 
     #endregion
+
+    #region Enums
+
+    enum ExporterState
+    {
+        Uninitialized,
+        Ready,
+        Consumed,
+        Disposed
+    }
+
+    #endregion Enums
 }

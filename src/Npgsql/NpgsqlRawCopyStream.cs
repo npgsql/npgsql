@@ -28,8 +28,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     NpgsqlWriteBuffer _writeBuf;
 
     int _leftToReadInDataMsg;
-    // We consider COPY operation as consumed until Init successfully completes
-    bool _isDisposed, _isConsumed = true;
+    // We consider COPY operation as Uninitialized until Init successfully completes
+    CopyStreamState _state = CopyStreamState.Uninitialized;
 
     bool _canRead;
     bool _canWrite;
@@ -85,14 +85,14 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         switch (msg.Code)
         {
         case BackendMessageCode.CopyInResponse:
-            _isConsumed = false;
+            _state = CopyStreamState.Ready;
             var copyInResponse = (CopyInResponseMessage) msg;
             IsBinary = copyInResponse.IsBinary;
             _canWrite = true;
             _writeBuf.StartCopyMode();
             break;
         case BackendMessageCode.CopyOutResponse:
-            _isConsumed = false;
+            _state = CopyStreamState.Ready;
             var copyOutResponse = (CopyOutResponseMessage) msg;
             IsBinary = copyOutResponse.IsBinary;
             _canRead = true;
@@ -248,7 +248,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
     async ValueTask<int> ReadCore(int count, bool async, CancellationToken cancellationToken = default)
     {
-        if (_isConsumed)
+        if (_state == CopyStreamState.Consumed)
             return 0;
 
         using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
@@ -264,7 +264,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             }
             catch
             {
-                if (!_isDisposed)
+                if (_state != CopyStreamState.Disposed)
                     Cleanup();
                 throw;
             }
@@ -277,7 +277,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             case BackendMessageCode.CopyDone:
                 Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-                _isConsumed = true;
+                _state = CopyStreamState.Consumed;
                 return 0;
             default:
                 throw _connector.UnexpectedMessageReceived(msg.Code);
@@ -334,6 +334,9 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             }
             catch (PostgresException e)
             {
+                // TODO: NpgsqlBinaryImporter doesn't cleanup on cancellation
+                // And instead relies on users disposing the object
+                // We probably should do the same here
                 Cleanup();
 
                 if (e.SqlState != PostgresErrorCodes.QueryCanceled)
@@ -358,7 +361,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
     async ValueTask DisposeAsync(bool disposing, bool async)
     {
-        if (_isDisposed || !disposing)
+        if (_state == CopyStreamState.Disposed || !disposing)
             return;
 
         try
@@ -376,7 +379,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             }
             else
             {
-                if (!_isConsumed)
+                if (_state is not CopyStreamState.Consumed and CopyStreamState.Uninitialized)
                 {
                     try
                     {
@@ -406,7 +409,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 #pragma warning disable CS8625
     void Cleanup()
     {
-        Debug.Assert(!_isDisposed);
+        Debug.Assert(_state != CopyStreamState.Disposed);
         LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
         _connector.EndUserAction();
         _connector.CurrentCopyOperation = null;
@@ -414,13 +417,13 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         _connector = null;
         _readBuf = null;
         _writeBuf = null;
-        _isDisposed = true;
+        _state = CopyStreamState.Disposed;
     }
 #pragma warning restore CS8625
 
     void CheckDisposed()
     {
-        if (_isDisposed) {
+        if (_state == CopyStreamState.Disposed) {
             throw new ObjectDisposedException(nameof(NpgsqlRawCopyStream), "The COPY operation has already ended.");
         }
     }
@@ -455,6 +458,18 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             ThrowHelper.ThrowArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
     }
     #endregion
+
+    #region Enums
+
+    enum CopyStreamState
+    {
+        Uninitialized,
+        Ready,
+        Consumed,
+        Disposed
+    }
+
+    #endregion Enums
 }
 
 /// <summary>
