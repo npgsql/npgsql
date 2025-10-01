@@ -379,7 +379,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             }
             else
             {
-                if (_state is not CopyStreamState.Consumed and CopyStreamState.Uninitialized)
+                if (_state != CopyStreamState.Consumed && _state != CopyStreamState.Uninitialized)
                 {
                     try
                     {
