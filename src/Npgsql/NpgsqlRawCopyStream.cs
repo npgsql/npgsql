@@ -28,7 +28,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     NpgsqlWriteBuffer _writeBuf;
 
     int _leftToReadInDataMsg;
-    // We consider COPY operation as Uninitialized until Init successfully completes
     CopyStreamState _state = CopyStreamState.Uninitialized;
 
     bool _canRead;

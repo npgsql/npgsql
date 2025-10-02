@@ -25,7 +25,6 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     NpgsqlConnector _connector;
     NpgsqlWriteBuffer _buf;
 
-    // We consider COPY operation as Uninitialized until Init successfully completes
     ImporterState _state = ImporterState.Uninitialized;
 
     /// <summary>
