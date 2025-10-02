@@ -2,7 +2,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0-rc.1.25451.107" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0-rc.1.25451.107" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.12.0" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.13.0" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
