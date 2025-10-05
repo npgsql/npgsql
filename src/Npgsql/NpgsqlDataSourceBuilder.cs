@@ -300,9 +300,9 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     /// <param name="rootCertificates">The CA certificates.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    public NpgsqlDataSourceBuilder UseRootCertificate(X509Certificate2Collection? rootCertificates)
+    public NpgsqlDataSourceBuilder UseRootCertificates(X509Certificate2Collection? rootCertificates)
     {
-        _internalBuilder.UseRootCertificate(rootCertificates);
+        _internalBuilder.UseRootCertificates(rootCertificates);
         return this;
     }
 
@@ -333,9 +333,9 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// When that's not the case, use the overload which directly accepts the certificate.
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    public NpgsqlDataSourceBuilder UseRootCertificateCallback(Func<X509Certificate2Collection>? rootCertificateCallback)
+    public NpgsqlDataSourceBuilder UseRootCertificatesCallback(Func<X509Certificate2Collection>? rootCertificateCallback)
     {
-        _internalBuilder.UseRootCertificateCallback(rootCertificateCallback);
+        _internalBuilder.UseRootCertificatesCallback(rootCertificateCallback);
         return this;
     }
 

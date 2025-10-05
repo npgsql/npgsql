@@ -1108,7 +1108,7 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }
-            else if (((caCerts = DataSource.TransportSecurityHandler.RootCertificateCallback?.Invoke()) is not null && caCerts.Count > 0) ||
+            else if (((caCerts = DataSource.TransportSecurityHandler.RootCertificatesCallback?.Invoke()) is not null && caCerts.Count > 0) ||
                      (certRootPath = Settings.RootCertificate ??
                                      PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
             {
@@ -1154,7 +1154,7 @@ public sealed partial class NpgsqlConnector
                     if (Settings.RootCertificate is not null)
                         throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithCustomValidationCallback);
 
-                    if (DataSource.TransportSecurityHandler.RootCertificateCallback is not null)
+                    if (DataSource.TransportSecurityHandler.RootCertificatesCallback is not null)
                         throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithCustomValidationCallback);
                 }
             }
@@ -1926,13 +1926,12 @@ public sealed partial class NpgsqlConnector
 
             if (certRootPath is null)
             {
-                Debug.Assert(caCertificates is not null);
-                Debug.Assert(caCertificates.Count > 0);
+                Debug.Assert(caCertificates is { Count: > 0 });
                 certs.AddRange(caCertificates);
             }
             else
             {
-                Debug.Assert(caCertificates is null || caCertificates.Count == 0);
+                Debug.Assert(caCertificates is null or { Count: > 0 });
                 if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
                     certs.ImportFromPemFile(certRootPath);
 
