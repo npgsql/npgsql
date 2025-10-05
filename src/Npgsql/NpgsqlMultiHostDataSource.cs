@@ -456,6 +456,6 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
     static TargetSessionAttributes GetTargetSessionAttributes(NpgsqlConnection connection)
         => connection.Settings.TargetSessionAttributesParsed ??
            (PostgresEnvironment.TargetSessionAttributes is { } s
-               ? NpgsqlConnectionStringBuilder.ParseTargetSessionAttributes(s)
+               ? NpgsqlConnectionStringBuilder.ParseTargetSessionAttributes(s.ToLowerInvariant())
                : TargetSessionAttributes.Any);
 }

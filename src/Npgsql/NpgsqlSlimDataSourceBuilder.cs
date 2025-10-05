@@ -855,8 +855,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     void ValidateMultiHost()
     {
-        if (ConnectionStringBuilder.TargetSessionAttributes is not null)
-            throw new InvalidOperationException(NpgsqlStrings.CannotSpecifyTargetSessionAttributes);
         if (ConnectionStringBuilder.Multiplexing)
             throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
         if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)

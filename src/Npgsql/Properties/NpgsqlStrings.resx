@@ -54,9 +54,6 @@
     <data name="ArgumentMustBePositive" xml:space="preserve">
         <value>'{0}' must be positive.</value>
     </data>
-    <data name="CannotSpecifyTargetSessionAttributes" xml:space="preserve">
-        <value>When creating a multi-host data source, TargetSessionAttributes cannot be specified. Create without TargetSessionAttributes, and then obtain DataSource wrappers from it. Consult the docs for more information.</value>
-    </data>
     <data name="CannotReadIntervalWithMonthsAsTimeSpan" xml:space="preserve">
         <value>Cannot read interval values with non-zero months as TimeSpan, since that type doesn't support months. Consider using NodaTime Period which better corresponds to PostgreSQL interval, or read the value as NpgsqlInterval, or transform the interval to not contain months or years in PostgreSQL before reading it.</value>
     </data>
