@@ -469,6 +469,13 @@ public readonly record struct NpgsqlInet
     public static implicit operator NpgsqlInet(IPAddress ip)
         => new(ip);
 
+    public static implicit operator NpgsqlInet(IPNetwork cidr)
+        => new(
+            cidr.BaseAddress,
+            cidr.PrefixLength <= byte.MaxValue
+                ? (byte)cidr.PrefixLength
+                : throw new ArgumentOutOfRangeException(nameof(cidr), "IPNetwork.PrefixLength is too large to fit in a byte"));
+
     public void Deconstruct(out IPAddress address, out byte netmask)
     {
         address = Address;
