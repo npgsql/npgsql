@@ -276,7 +276,7 @@ public sealed partial class NpgsqlConnector
     internal bool UserCancellationRequested => _userCancellationRequested;
     internal CancellationToken UserCancellationToken { get; set; }
     internal bool AttemptPostgresCancellation { get; private set; }
-    static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
+    static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.Zero;
 
     static readonly SslApplicationProtocol _alpnProtocol = new("postgresql");
 
@@ -2082,6 +2082,8 @@ public sealed partial class NpgsqlConnector
             var cancellationTimeout = Settings.CancellationTimeout;
             if (PerformPostgresCancellation() && cancellationTimeout >= 0)
             {
+                // TODO: according to docs, we treat 0 timeout as infinite, yet we do not change the actual value
+                // We should revisit this here and in NpgsqlReadBuffer
                 if (cancellationTimeout > 0)
                 {
                     ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
@@ -2799,8 +2801,9 @@ public sealed partial class NpgsqlConnector
 
             // We reset the ReadBuffer.Timeout for every user action, so it wouldn't leak from the previous query or action
             // For example, we might have successfully cancelled the previous query (so the connection is not broken)
-            // But the next time, we call the Prepare, which doesn't set it's own timeout
-            ReadBuffer.Timeout = TimeSpan.FromSeconds(command?.CommandTimeout ?? Settings.CommandTimeout);
+            // But the next time, we call the Prepare, which doesn't set its own timeout
+            var timeoutSeconds = command?.CommandTimeout ?? Settings.CommandTimeout;
+            ReadBuffer.Timeout = timeoutSeconds > 0 ? TimeSpan.FromSeconds(timeoutSeconds) : Timeout.InfiniteTimeSpan;
 
             return new UserAction(this);
         }
@@ -2935,12 +2938,15 @@ public sealed partial class NpgsqlConnector
         await Flush(async, cancellationToken).ConfigureAwait(false);
 
         var keepaliveMs = Settings.KeepAlive * 1000;
+        var isTimeoutInfinite = timeout <= 0;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var timeoutForKeepalive = _isKeepAliveEnabled && (timeout <= 0 || keepaliveMs < timeout);
-            ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
+            var timeoutForKeepalive = _isKeepAliveEnabled && (isTimeoutInfinite || keepaliveMs < timeout);
+            ReadBuffer.Timeout = timeoutForKeepalive
+                ? TimeSpan.FromMilliseconds(keepaliveMs)
+                : isTimeoutInfinite ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(timeout);
             try
             {
                 var msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
@@ -3000,7 +3006,11 @@ public sealed partial class NpgsqlConnector
             }
 
             if (timeout > 0)
+            {
                 timeout -= (keepaliveMs + (int)Stopwatch.GetElapsedTime(keepaliveStartTimestamp).TotalMilliseconds);
+                // Make sure we don't accidentally set -1 as a timeout (because it's infinite)
+                timeout = Math.Max(timeout, 0);
+            }
         }
     }
 
