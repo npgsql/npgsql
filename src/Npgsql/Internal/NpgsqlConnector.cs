@@ -286,7 +286,7 @@ public sealed partial class NpgsqlConnector
 #pragma warning disable CA1859
     // We're casting to IDisposable to not explicitly reference X509Certificate2 for NativeAOT
     // TODO: probably pointless now, needs to be rechecked
-    IDisposable? _certificate;
+    List<IDisposable>? _certificates;
 #pragma warning restore CA1859
 
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
@@ -859,27 +859,61 @@ public sealed partial class NpgsqlConnector
         {
             var password = Settings.SslPassword;
 
-            X509Certificate2? cert = null;
             if (!string.Equals(Path.GetExtension(certPath), ".pfx", StringComparison.OrdinalIgnoreCase))
             {
                 // It's PEM time
                 var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
-                cert = string.IsNullOrEmpty(password)
+
+                // With PEM certificates we might have multiple certificates in a single file
+                // Where the first one is a leaf (and it has to have a private key)
+                // And others are intermediate between it and CA cert
+                // To support this, we first load the leaf certificate with private key
+                // And then we load everything else including the leaf, but without private key
+                // And afterwards we just get rid of the duplicate
+                var firstClientCert = string.IsNullOrEmpty(password)
                     ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
                     : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                clientCertificates.Add(firstClientCert);
+
+                clientCertificates.ImportFromPemFile(certPath);
+                clientCertificates[1].Dispose();
+                clientCertificates.RemoveAt(1);
+
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    // Windows crypto API has a bug with pem certs
-                    // See #3650
-                    using var previousCert = cert;
-                    cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+                    for (var i = 0; i < clientCertificates.Count; i++)
+                    {
+                        var cert = clientCertificates[i];
+
+                        // Windows crypto API has a bug with pem certs
+                        // See #3650
+                        using var previousCert = cert;
+#if NET9_0_OR_GREATER
+                        cert = X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pkcs12), null);
+#else
+                        cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+#endif
+                        clientCertificates[i] = cert;
+                    }
                 }
             }
 
-            cert ??= new X509Certificate2(certPath, password);
-            clientCertificates.Add(cert);
+            // If it's empty, it's probably PFX
+            if (clientCertificates.Count == 0)
+            {
+#if NET9_0_OR_GREATER
+                var certs = X509CertificateLoader.LoadPkcs12CollectionFromFile(certPath, password);
+                clientCertificates.AddRange(certs);
+#else
+                var cert = new X509Certificate2(certPath, password);
+                clientCertificates.Add(cert);
+#endif
+            }
 
-            _certificate = cert;
+            var certificates = new List<IDisposable>();
+            foreach (var certificate in clientCertificates)
+                certificates.Add(certificate);
+            _certificates = certificates;
         }
 
         try
@@ -911,6 +945,21 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslVerifyFullValidation;
             }
 
+#if NET8_0_OR_GREATER
+            SslStreamCertificateContext? clientCertificateContext = null;
+            if (clientCertificates.Count > 0)
+            {
+                // SslClientAuthenticationOptions.ClientCertificates only sends trusted certificates or if they have private key
+                // Which makes us unable to send intermediate certificates
+                // Work around this by specifying the first certificate as target
+                // And others as additional
+                // See https://github.com/dotnet/runtime/issues/26323
+                var clientCertificate = clientCertificates[0];
+                clientCertificates.RemoveAt(0);
+
+                clientCertificateContext = SslStreamCertificateContext.Create(clientCertificate, clientCertificates);
+            }
+#endif
             var host = Host;
 
 #if !NET8_0_OR_GREATER
@@ -930,7 +979,11 @@ public sealed partial class NpgsqlConnector
             var sslStreamOptions = new SslClientAuthenticationOptions
             {
                 TargetHost = host,
+#if NET8_0_OR_GREATER
+                ClientCertificateContext = clientCertificateContext,
+#else
                 ClientCertificates = clientCertificates,
+#endif
                 EnabledSslProtocols = SslProtocols.None,
                 CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck,
                 RemoteCertificateValidationCallback = certificateValidationCallback,
@@ -978,8 +1031,8 @@ public sealed partial class NpgsqlConnector
         }
         catch
         {
-            _certificate?.Dispose();
-            _certificate = null;
+            _certificates?.ForEach(x => x.Dispose());
+            _certificates = null;
 
             throw;
         }
@@ -2291,11 +2344,8 @@ public sealed partial class NpgsqlConnector
         PostgresParameters.Clear();
         _currentCommand = null;
 
-        if (_certificate is not null)
-        {
-            _certificate.Dispose();
-            _certificate = null;
-        }
+        _certificates?.ForEach(x => x.Dispose());
+        _certificates = null;
     }
 
     void GenerateResetMessage()
