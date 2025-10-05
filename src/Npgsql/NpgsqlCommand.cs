@@ -1120,11 +1120,24 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
                 var batchCommand = InternalBatchCommands[i];
+                var pStatement = batchCommand.PreparedStatement;
 
-                if (batchCommand.PreparedStatement?.State == PreparedState.Prepared)
-                    continue; // Prepared, we already have the RowDescription
+                pStatement?.RefreshLastUsed();
 
-                await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName,
+                Debug.Assert(batchCommand.FinalCommandText is not null);
+
+                if (pStatement != null && !batchCommand.IsPreparing)
+                {
+                    // Prepared, we already have the RowDescription
+                    Debug.Assert(pStatement.IsPrepared);
+                    continue;
+                }
+
+                // We may have a prepared statement that replaces an existing statement - close the latter first.
+                if (pStatement?.StatementBeingReplaced != null)
+                    await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async, cancellationToken).ConfigureAwait(false);
+
+                await connector.WriteParse(batchCommand.FinalCommandText, batchCommand.StatementName,
                     batchCommand.CurrentParametersReadOnly,
                     async, cancellationToken).ConfigureAwait(false);
                 await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken).ConfigureAwait(false);
