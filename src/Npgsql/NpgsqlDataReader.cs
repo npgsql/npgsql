@@ -713,6 +713,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         break;
                     case BackendMessageCode.RowDescription:
                         // We have a resultset
+                        // RowDescription messages are cached on the connector, but if we're auto-preparing, we need to
+                        // clone our own copy which will last beyond the lifetime of this invocation.
                         RowDescription = _statements[StatementIndex].Description = preparedStatement == null
                             ? (RowDescriptionMessage)msg
                             : ((RowDescriptionMessage)msg).Clone();
