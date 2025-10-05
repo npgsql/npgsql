@@ -722,7 +722,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         break;
                     case BackendMessageCode.RowDescription:
                         // We have a resultset
-                        RowDescription = _statements[StatementIndex].Description = (RowDescriptionMessage)msg;
+                        // RowDescription messages are cached on the connector, but if we're auto-preparing, we need to
+                        // clone our own copy which will last beyond the lifetime of this invocation.
+                        RowDescription = _statements[StatementIndex].Description = preparedStatement == null
+                            ? (RowDescriptionMessage)msg
+                            : ((RowDescriptionMessage)msg).Clone();
                         Command.FixupRowDescription(RowDescription, StatementIndex == 0);
                         break;
                     default:
@@ -743,17 +747,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 // Found a resultset
                 if (RowDescription is not null)
-                {
-                    if (ColumnInfoCache?.Length >= ColumnCount)
-                        Array.Clear(ColumnInfoCache, 0, ColumnCount);
-                    else
-                    {
-                        if (ColumnInfoCache is { } cache)
-                            ArrayPool<ColumnInfo>.Shared.Return(cache, clearArray: true);
-                        ColumnInfoCache = ArrayPool<ColumnInfo>.Shared.Rent(ColumnCount);
-                    }
                     return true;
-                }
             }
 
             State = ReaderState.Consumed;
