@@ -64,6 +64,14 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             _wrappers[(int)targetSessionAttribute] = new(this, targetSessionAttribute);
     }
 
+    internal override async Task Bootstrap(NpgsqlConnector connector, NpgsqlTimeout timeout, bool forceReload, bool async, CancellationToken cancellationToken)
+    {
+        foreach (var pool in _pools)
+        {
+            await pool.Bootstrap(connector, timeout, forceReload, async, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     /// <summary>
     /// Returns a new, unopened connection from this data source.
     /// </summary>
