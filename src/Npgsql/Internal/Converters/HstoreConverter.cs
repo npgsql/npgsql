@@ -122,7 +122,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
             var length = size.Value;
             writer.WriteInt32(length);
             if (async)
-                await writer.WriteCharsAsync(kv.Key.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
+                await writer.WriteCharsAsync(kv.Key.AsMemory(), encoding, cancellationToken: cancellationToken).ConfigureAwait(false);
             else
                 writer.WriteChars(kv.Key.AsSpan(), encoding);
 
@@ -138,7 +138,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
             if (valueLength is not -1)
             {
                 if (async)
-                    await writer.WriteCharsAsync(kv.Value.AsMemory(), encoding, cancellationToken).ConfigureAwait(false);
+                    await writer.WriteCharsAsync(kv.Value.AsMemory(), encoding, cancellationToken: cancellationToken).ConfigureAwait(false);
                 else
                     writer.WriteChars(kv.Value.AsSpan(), encoding);
             }
