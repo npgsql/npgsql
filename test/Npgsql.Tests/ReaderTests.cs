@@ -304,7 +304,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn);
-        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior | CommandBehavior.SchemaOnly);
         reader.Read();
         Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
     }
