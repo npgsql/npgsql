@@ -143,4 +143,34 @@ static class NpgsqlActivitySource
         activity.SetStatus(ActivityStatusCode.Error, statusDescription);
         activity.Dispose();
     }
+
+    internal static Activity? ImportStart(string copyFromCommand, NpgsqlConnector connector)
+    {
+        var dbName = connector.Settings.Database ?? "UNKNOWN";
+
+        var activity = Source.StartActivity(dbName, ActivityKind.Client);
+
+        if (activity is not { IsAllDataRequested: true })
+            return activity;
+
+        activity.SetTag("db.statement", copyFromCommand);
+        activity.SetTag("db.operation", "COPY FROM");
+
+        Enrich(activity, connector);
+
+        return activity;
+    }
+
+    internal static void ImportStop(Activity activity, ulong rows)
+    {
+        activity.SetStatus(ActivityStatusCode.Ok);
+        activity.SetTag("db.rows", rows);
+        activity.Dispose();
+    }
+
+    internal static void SetCancelled(Activity activity)
+    {
+        activity.SetStatus(ActivityStatusCode.Error, "Cancelled");
+        activity.Dispose();
+    }
 }

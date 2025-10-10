@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,6 +46,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     readonly ILogger _copyLogger;
     PgWriter _pgWriter = null!; // Setup in Init
 
+    Activity? CurrentActivity;
+
     /// <summary>
     /// Current timeout
     /// </summary>
@@ -72,40 +75,50 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     internal async Task Init(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
     {
-        await _connector.WriteQuery(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
-        await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
+        TraceImportStart(copyFromCommand);
 
-        using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-        CopyInResponseMessage copyInResponse;
-        var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
-        switch (msg.Code)
+        try
         {
-        case BackendMessageCode.CopyInResponse:
-            copyInResponse = (CopyInResponseMessage)msg;
-            if (!copyInResponse.IsBinary)
-            {
-                throw _connector.Break(
-                    new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed",
-                        nameof(copyFromCommand)));
-            }
-            break;
-        case BackendMessageCode.CommandComplete:
-            throw new InvalidOperationException(
-                "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
-                "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
-                "Note that your data has been successfully imported/exported.");
-        default:
-            throw _connector.UnexpectedMessageReceived(msg.Code);
-        }
+            await _connector.WriteQuery(copyFromCommand, async, cancellationToken).ConfigureAwait(false);
+            await _connector.Flush(async, cancellationToken).ConfigureAwait(false);
 
-        _state = ImporterState.Ready;
-        _params = new NpgsqlParameter[copyInResponse.NumColumns];
-        _rowsImported = 0;
-        _buf.StartCopyMode();
-        WriteHeader();
-        // Only init after header.
-        _pgWriter = _buf.GetWriter(_connector.DatabaseInfo);
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+
+            CopyInResponseMessage copyInResponse;
+            var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
+            switch (msg.Code)
+            {
+            case BackendMessageCode.CopyInResponse:
+                copyInResponse = (CopyInResponseMessage)msg;
+                if (!copyInResponse.IsBinary)
+                {
+                    throw _connector.Break(
+                        new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed",
+                            nameof(copyFromCommand)));
+                }
+                break;
+            case BackendMessageCode.CommandComplete:
+                throw new InvalidOperationException(
+                    "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
+                    "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
+                    "Note that your data has been successfully imported/exported.");
+            default:
+                throw _connector.UnexpectedMessageReceived(msg.Code);
+            }
+
+            _state = ImporterState.Ready;
+            _params = new NpgsqlParameter[copyInResponse.NumColumns];
+            _rowsImported = 0;
+            _buf.StartCopyMode();
+            WriteHeader();
+            // Only init after header.
+            _pgWriter = _buf.GetWriter(_connector.DatabaseInfo);
+        }
+        catch(Exception e)
+        {
+            TraceSetException(e);
+            throw;
+        }
     }
 
     void WriteHeader()
@@ -426,8 +439,9 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             _state = ImporterState.Committed;
             return cmdComplete.Rows;
         }
-        catch
+        catch(Exception e)
         {
+            TraceSetException(e);
             Cleanup();
             throw;
         }
@@ -521,6 +535,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             throw new Exception("Invalid state: " + _state);
         }
 
+        TraceImportStop();
         Cleanup();
     }
 
@@ -581,4 +596,46 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     void ThrowColumnMismatch()
         => throw new InvalidOperationException($"The binary import operation was started with {NumColumns} column(s), but {_column + 1} value(s) were provided.");
+
+    #region Tracing
+
+    void TraceImportStart(string copyFromCommand)
+    {
+        Debug.Assert(CurrentActivity is null);
+        if (NpgsqlActivitySource.IsEnabled)
+        {
+            CurrentActivity = NpgsqlActivitySource.ImportStart(copyFromCommand, _connector);
+        }
+    }
+
+    void TraceImportStop()
+    {
+        if (CurrentActivity is not null)
+        {
+            switch (_state)
+            {
+            case ImporterState.Committed:
+                NpgsqlActivitySource.ImportStop(CurrentActivity, _rowsImported);
+                break;
+            case ImporterState.Cancelled:
+                NpgsqlActivitySource.SetCancelled(CurrentActivity);
+                break;
+            default:
+                throw new Exception("Invalid state: " + _state);
+            }
+
+            CurrentActivity = null;
+        }
+    }
+
+    void TraceSetException(Exception exception)
+    {
+        if (CurrentActivity is not null)
+        {
+            NpgsqlActivitySource.SetException(CurrentActivity, exception);
+            CurrentActivity = null;
+        }
+    }
+
+    #endregion Tracing
 }
