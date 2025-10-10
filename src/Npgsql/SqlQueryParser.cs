@@ -506,6 +506,7 @@ sealed class SqlQueryParser
             else
             {
                 batchCommand = new NpgsqlBatchCommand { _parameters = parameters };
+                batchCommand.CommandText = sql;
                 batchCommands.Add(batchCommand);
             }
         }
