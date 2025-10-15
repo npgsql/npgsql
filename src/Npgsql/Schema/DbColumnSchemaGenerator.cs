@@ -260,7 +260,10 @@ ORDER BY attnum";
     {
         var serializerOptions = _connection.Connector!.SerializerOptions;
 
-        column.NpgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
+        // Call GetRepresentationalType to also handle domain types
+        // Because NpgsqlCommandBuilder relies on NpgsqlDbType for correct type mapping
+        // And otherwise we'll get NpgsqlDbType.Unknown
+        column.NpgsqlDbType = column.PostgresType.GetRepresentationalType().DataTypeName.ToNpgsqlDbType();
         if (serializerOptions.GetObjectOrDefaultTypeInfoInternal(serializerOptions.ToCanonicalTypeId(column.PostgresType)) is { } typeInfo)
         {
             column.DataType = typeInfo.Type;
