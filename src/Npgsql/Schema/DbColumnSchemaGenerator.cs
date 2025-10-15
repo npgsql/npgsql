@@ -259,8 +259,11 @@ ORDER BY attnum";
     {
         var serializerOptions = _connection.Connector!.SerializerOptions;
 
-        column.NpgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
-        if (serializerOptions.GetDefaultTypeInfo(serializerOptions.ToCanonicalTypeId(column.PostgresType)) is { } typeInfo)
+        // Call GetRepresentationalType to also handle domain types
+        // Because NpgsqlCommandBuilder relies on NpgsqlDbType for correct type mapping
+        // And otherwise we'll get NpgsqlDbType.Unknown
+        column.NpgsqlDbType = column.PostgresType.GetRepresentationalType().DataTypeName.ToNpgsqlDbType();
+        if (serializerOptions.GetTypeInfo(typeof(object), serializerOptions.ToCanonicalTypeId(column.PostgresType)) is { } typeInfo)
         {
             column.DataType = typeInfo.Type;
             column.IsLong = column.PostgresType.DataTypeName == DataTypeNames.Bytea;
