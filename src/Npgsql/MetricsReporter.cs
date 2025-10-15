@@ -276,7 +276,7 @@ sealed class MetricsReporter : IDisposable
     internal void ReportConnectionPoolTimeout() {}
     internal void ReportPendingConnectionRequestStart() {}
     internal void ReportPendingConnectionRequestStop() {}
-    internal void ReportConnectionCreateTime(TimeSpan duration) {}
+    internal void ReportConnectionCreateTime(long startTimestamp) {}
     public void Dispose() {}
 }
 #endif
