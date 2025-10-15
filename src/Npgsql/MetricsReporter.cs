@@ -164,8 +164,15 @@ sealed class MetricsReporter : IDisposable
     internal void ReportPendingConnectionRequestStop()
         => PendingConnectionRequests.Add(-1, _poolNameTag);
 
-    internal void ReportConnectionCreateTime(TimeSpan duration)
-        => ConnectionCreateTime.Record(duration.TotalSeconds, _poolNameTag);
+    internal void ReportConnectionCreateTime(long startTimestamp)
+    {
+#if NET7_0_OR_GREATER
+        var duration = Stopwatch.GetElapsedTime(startTimestamp);
+#else
+        var duration = new TimeSpan((long)((Stopwatch.GetTimestamp() - startTimestamp) * StopWatchTickFrequency));
+#endif
+        ConnectionCreateTime.Record(duration.TotalSeconds, _poolNameTag);
+    }
 
     static IEnumerable<Measurement<int>> GetConnectionUsage()
     {

@@ -268,14 +268,10 @@ class PoolingDataSource : NpgsqlDataSource
             try
             {
                 // We've managed to increase the open counter, open a physical connections.
-#if NET7_0_OR_GREATER
                 var startTime = Stopwatch.GetTimestamp();
-#endif
                 var connector = new NpgsqlConnector(this, conn) { ClearCounter = _clearCounter };
                 await connector.Open(timeout, async, cancellationToken).ConfigureAwait(false);
-#if NET7_0_OR_GREATER
-                MetricsReporter.ReportConnectionCreateTime(Stopwatch.GetElapsedTime(startTime));
-#endif
+                MetricsReporter.ReportConnectionCreateTime(startTime);
 
                 var i = 0;
                 for (; i < MaxConnections; i++)
