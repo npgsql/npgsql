@@ -984,11 +984,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // state for auto-prepared statements
         //
         // The only exception is when the connector is broken (which can happen in the middle of consuming)
-        // As then there is no point in going forward
+        // As then there is no point in going forward.
+        // An exception to the exception above is when connector is concurrently closed while
+        // the reader is still going over the result set.
+        // While this is undefined behavior and user error, we should try to at least do our best to not loop indefinitely.
         //
         // While we can also check our local state (State == Closed)
         // It's probably better to rely on connector since it's private and its state can't be changed
-        while (!Connector.IsBroken)
+        while (Connector.IsConnected)
         {
             try
             {

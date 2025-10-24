@@ -467,7 +467,7 @@ public sealed partial class NpgsqlConnector
     /// <summary>
     /// Returns whether the connector is open, regardless of any task it is currently performing
     /// </summary>
-    bool IsConnected => State is not (ConnectorState.Closed or ConnectorState.Connecting or ConnectorState.Broken);
+    internal bool IsConnected => State is not (ConnectorState.Closed or ConnectorState.Connecting or ConnectorState.Broken);
 
     internal bool IsReady => State == ConnectorState.Ready;
     internal bool IsClosed => State == ConnectorState.Closed;
