@@ -30,6 +30,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal NpgsqlDbType? _npgsqlDbType;
     internal string? _dataTypeName;
+    internal DbType? _dbType;
 
     private protected string _name = string.Empty;
     object? _value;
@@ -315,11 +316,23 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         get
         {
-            if (_npgsqlDbType is { } npgsqlDbType)
-                return npgsqlDbType.ToDbType();
+            if (_dbType is { } dbType)
+                return dbType;
 
             if (_dataTypeName is not null)
-                return Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+            {
+                var dataTypeName = Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName);
+                if (TypeInfo?.Options.DbTypeResolver is { } dbTypeResolver)
+                {
+                    var mapppedDbType = dbTypeResolver.GetDbType(dataTypeName, TypeInfo.Options);
+                    if (mapppedDbType is { } mappedDbType)
+                        return mappedDbType;
+                }
+                return dataTypeName.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+            }
+
+            if (_npgsqlDbType is { } npgsqlDbType)
+                return npgsqlDbType.ToDbType();
 
             // Infer from value but don't cache
             if (Value is not null)
@@ -331,10 +344,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         set
         {
             ResetTypeInfo();
-            _npgsqlDbType = value == DbType.Object
-                ? null
-                : value.ToNpgsqlDbType()
-                  ?? throw new NotSupportedException($"The parameter type DbType.{value} isn't supported by PostgreSQL or Npgsql");
+            _dbType = value;
         }
     }
 
@@ -354,6 +364,20 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             if (_dataTypeName is not null)
                 return Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+
+            if (_dbType is { } dbType)
+            {
+                if (TypeInfo?.Options.DbTypeResolver is { } dbTypeResolver)
+                {
+                    var mapppedDataTypeName = dbTypeResolver.GetDataTypeName(dbType, TypeInfo.Options);
+                    if (mapppedDataTypeName is not null)
+                        return Internal.Postgres.DataTypeName.FromDisplayName(mapppedDataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+                }
+                else if (dbType.ToNpgsqlDbType() is { } npgsqlDbType)
+                {
+                    return npgsqlDbType;
+                }
+            }
 
             // Infer from value but don't cache
             if (Value is not null)
@@ -390,6 +414,22 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 var unqualifiedName = npgsqlDbType.ToUnqualifiedDataTypeName();
                 return unqualifiedName is null ? null : Internal.Postgres.DataTypeName.ValidatedName(
                     "pg_catalog." + unqualifiedName).UnqualifiedDisplayName;
+            }
+
+            if (_dbType is { } dbType)
+            {
+                if (TypeInfo?.Options.DbTypeResolver is { } dbTypeResolver)
+                {
+                    var mapppedDataTypeName = dbTypeResolver.GetDataTypeName(dbType, TypeInfo.Options);
+                    if (mapppedDataTypeName is not null)
+                        return mapppedDataTypeName;
+                }
+                else if (dbType.ToNpgsqlDbType() is { } npgsqlDbTypeFromDbType)
+                {
+                    var unqualifiedName = npgsqlDbTypeFromDbType.ToUnqualifiedDataTypeName();
+                    if (unqualifiedName is not null)
+                        return Internal.Postgres.DataTypeName.ValidatedName("pg_catalog." + unqualifiedName).UnqualifiedDisplayName;
+                }
             }
 
             // Infer from value but don't cache
@@ -548,6 +588,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     : _npgsqlDbType is { } npgsqlDbType
                         ? npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow()
                         : null;
+
+            if (dataTypeName is null && _dbType is { } dbType)
+            {
+                if (options.DbTypeResolver?.GetDataTypeName(dbType, options) is { } mappedDbTypeName)
+                {
+                    dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(mappedDbTypeName);
+                } else {
+                    var npgsqlDbTypeFromDbType = dbType.ToNpgsqlDbType();
+                    dataTypeName = npgsqlDbTypeFromDbType?.ToDataTypeName() ?? npgsqlDbTypeFromDbType?.ToUnqualifiedDataTypeNameOrThrow();
+                }
+            }
 
             PgTypeId? pgTypeId = null;
             if (dataTypeName is not null)
@@ -755,6 +806,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// <inheritdoc />
     public override void ResetDbType()
     {
+        _dbType = null;
         _npgsqlDbType = null;
         _dataTypeName = null;
         ResetTypeInfo();
@@ -815,6 +867,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             _precision = _precision,
             _scale = _scale,
             _size = _size,
+            _dbType = _dbType,
             _npgsqlDbType = _npgsqlDbType,
             _dataTypeName = _dataTypeName,
             Direction = Direction,
