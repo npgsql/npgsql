@@ -20,6 +20,7 @@ public sealed class PgSerializerOptions
     readonly PgTypeInfoResolverChain _resolverChain;
     readonly Func<string>? _timeZoneProvider;
     IPgTypeInfoResolver? _typeInfoResolver;
+    IDbTypeResolver? _dbTypeResolver;
     object? _typeInfoCache;
 
     internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, PgTypeInfoResolverChain? resolverChain = null, Func<string>? timeZoneProvider = null)
@@ -53,6 +54,11 @@ public sealed class PgSerializerOptions
     {
         get => _typeInfoResolver ??= new ChainTypeInfoResolver(_resolverChain);
         internal init => _typeInfoResolver = value;
+    }
+    public IDbTypeResolver DbTypeResolver
+    {
+        get => _dbTypeResolver ??= new ChainDbTypeResolver(_resolverChain.GetDbTypeResolvers());
+        internal init => _dbTypeResolver = value;
     }
     public bool EnableDateTimeInfinityConversions { get; init; } = true;
 

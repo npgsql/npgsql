@@ -66,6 +66,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             builder.EnableRanges();
             builder.EnableMultiranges();
             builder.EnableArrays();
+            builder.EnableDbTypes();
             return builder;
         }, overwrite);
 
@@ -95,6 +96,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         _internalBuilder.EnableRanges();
         _internalBuilder.EnableMultiranges();
         _internalBuilder.EnableArrays();
+        _internalBuilder.EnableDbTypes();
     }
 
     /// <summary>
