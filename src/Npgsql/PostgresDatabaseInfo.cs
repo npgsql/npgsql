@@ -183,12 +183,14 @@ WHERE
   NOT attisdropped
 ORDER BY typ.oid, att.attnum;";
 
-    static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder)
+    static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder, string? schemaListSqlFragment)
         => $@"
 -- Load enum fields
-SELECT pg_type.oid, enumlabel
+SELECT typ.oid, enumlabel
 FROM pg_enum
-JOIN pg_type ON pg_type.oid=enumtypid
+JOIN pg_type AS typ ON typ.oid = enumtypid
+JOIN pg_namespace AS ns ON ns.oid = typ.typnamespace
+{(schemaListSqlFragment is not null ? $"WHERE (ns.nspname IN ({BuiltinSchemaListSqlFragment}{(schemaListSqlFragment.Length > 0 ? $", {schemaListSqlFragment}" : "")}))" : "")}
 ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
     /// <summary>
@@ -230,7 +232,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites, schemaListSqlFragment, HasTypeCategory);
         var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites, schemaListSqlFragment);
         var loadEnumFieldsQuery = SupportsEnumTypes
-            ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
+            ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder, schemaListSqlFragment)
             : string.Empty;
 
         timeout.CheckAndApply(conn);
