@@ -27,7 +27,12 @@ public class IntervalConverter(PgConverter<NpgsqlRange<Instant>> rangeConverter)
             : range.LowerBoundIsInclusive
                 ? range.LowerBound
                 : range.LowerBound + Duration.Epsilon;
-        Instant? end = range.UpperBoundInfinite
+        // For ranges with element types with infinity values (datetime, date etc.) an
+        // inclusive lower/upper bound causes their -/+ infinity (respectively) to fall within the range.
+        // If those values are returned for such a range postgres will not mark the affected bound as infinite accordingly.
+        // This is documented in https://www.postgresql.org/docs/current/rangetypes.html#RANGETYPES-INFINITE
+        // As NodaTime uses an exclusive upper bound we must consider this case as being another form of infinity (null).
+        Instant? end = range.UpperBoundInfinite || (range.UpperBoundIsInclusive && range.UpperBound == Instant.MaxValue)
             ? null
             : range.UpperBoundIsInclusive
                 ? range.UpperBound + Duration.Epsilon
