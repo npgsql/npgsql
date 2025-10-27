@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
@@ -47,6 +48,15 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                 mappings.AddStructType<JsonElement>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options,
                         new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
+
+                mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
             }
 
             return mappings;
