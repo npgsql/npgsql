@@ -314,7 +314,7 @@ class PoolTests : TestBase
                 }
 
                 // Now have one connection in the pool
-                Assert.True(PoolManager.Pools.TryGetValue(connString, out var pool));
+                Assert.That(PoolManager.Pools.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, open: 1, idle: 1);
 
                 NpgsqlConnection.ClearPool(conn);
@@ -346,7 +346,7 @@ class PoolTests : TestBase
                 NpgsqlConnection.ClearPool(conn);
                 // conn is still busy but should get closed when returned to the pool
 
-                Assert.True(PoolManager.Pools.TryGetValue(connString, out pool));
+                Assert.That(PoolManager.Pools.TryGetValue(connString, out pool));
                 AssertPoolState(pool, open: 1, idle: 0);
             }
 

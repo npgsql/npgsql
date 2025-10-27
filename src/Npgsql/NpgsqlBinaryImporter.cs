@@ -25,7 +25,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     NpgsqlConnector _connector;
     NpgsqlWriteBuffer _buf;
 
-    ImporterState _state;
+    ImporterState _state = ImporterState.Uninitialized;
 
     /// <summary>
     /// The number of columns in the current (not-yet-written) row.
@@ -99,6 +99,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             throw _connector.UnexpectedMessageReceived(msg.Code);
         }
 
+        _state = ImporterState.Ready;
         _params = new NpgsqlParameter[copyInResponse.NumColumns];
         _rowsImported = 0;
         _buf.StartCopyMode();
@@ -512,6 +513,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         case ImporterState.Ready:
             await Cancel(async, cancellationToken).ConfigureAwait(false);
             break;
+        case ImporterState.Uninitialized:
         case ImporterState.Cancelled:
         case ImporterState.Committed:
             break;
@@ -553,6 +555,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         static void Throw(ImporterState state)
             => throw (state switch
             {
+                ImporterState.Uninitialized => throw new InvalidOperationException("The COPY operation has not been initialized."),
                 ImporterState.Disposed => new ObjectDisposedException(typeof(NpgsqlBinaryImporter).FullName,
                     "The COPY operation has already ended."),
                 ImporterState.Cancelled => new InvalidOperationException("The COPY operation has already been cancelled."),
@@ -567,6 +570,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     enum ImporterState
     {
+        Uninitialized,
         Ready,
         Committed,
         Cancelled,

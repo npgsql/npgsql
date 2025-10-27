@@ -42,7 +42,7 @@ public class EnumTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         var isUnmapSuccessful = dataSourceBuilder.UnmapEnum<Mood>(type);
         await using var dataSource = dataSourceBuilder.Build();
 
-        Assert.IsTrue(isUnmapSuccessful);
+        Assert.That(isUnmapSuccessful);
         Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null));
     }
 
@@ -72,7 +72,7 @@ public class EnumTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         var isUnmapSuccessful = dataSourceBuilder.UnmapEnum(typeof(Mood), type);
         await using var dataSource = dataSourceBuilder.Build();
 
-        Assert.IsTrue(isUnmapSuccessful);
+        Assert.That(isUnmapSuccessful);
         Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null));
     }
 
@@ -170,11 +170,11 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
             nameof(NpgsqlDataSourceBuilder));
 
         var exception = await AssertTypeUnsupportedWrite(Mood.Happy, enumType);
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
         exception = await AssertTypeUnsupportedRead<Mood>("happy", enumType);
-        Assert.IsInstanceOf<NotSupportedException>(exception.InnerException);
+        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
 

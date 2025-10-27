@@ -21,7 +21,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
 
     [Test]
     public async Task SuccessfulResultTaskAsync() =>
-        Assert.AreEqual(TestResultValue, await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None));
+        Assert.That(await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None), Is.EqualTo(TestResultValue));
 
     [Test]
     public async Task SuccessfulVoidTaskAsync() =>
@@ -112,7 +112,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
             await test(() => unobservedTaskException);
 
             // Verify the unobserved Task exception event has not been received.
-            Assert.IsNull(unobservedTaskException, unobservedTaskException?.Message);
+            Assert.That(unobservedTaskException, Is.Null, unobservedTaskException?.Message);
         }
         finally
         {
@@ -157,6 +157,6 @@ public class TaskTimeoutAndCancellationTest : TestBase
         {
             // Expected due to preemptive cancellation.
         }
-        Assert.False(nonCancellableTask.IsCompleted);
+        Assert.That(nonCancellableTask.IsCompleted, Is.False);
     }
 }

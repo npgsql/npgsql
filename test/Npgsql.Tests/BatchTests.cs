@@ -12,7 +12,7 @@ namespace Npgsql.Tests;
 [TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.Default)]
 [TestFixture(MultiplexingMode.NonMultiplexing, CommandBehavior.SequentialAccess)]
 [TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.SequentialAccess)]
-public class BatchTests : MultiplexingTestBase
+public class BatchTests : MultiplexingTestBase, IDisposable
 {
     #region Parameters
 
@@ -294,10 +294,10 @@ public class BatchTests : MultiplexingTestBase
     }
 
     [Test]
-    public void CanCreateParameter() => Assert.True(new NpgsqlBatchCommand().CanCreateParameter);
+    public void CanCreateParameter() => Assert.That(new NpgsqlBatchCommand().CanCreateParameter);
 
     [Test]
-    public void CreateParameter() => Assert.NotNull(new NpgsqlBatchCommand().CreateParameter());
+    public void CreateParameter() => Assert.That(new NpgsqlBatchCommand().CreateParameter(), Is.Not.Null);
 
     #endregion NpgsqlBatchCommand
 
@@ -477,7 +477,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_close_dispose_reader_with_multiple_errors([Values] bool withErrorBarriers, [Values] bool dispose)
     {
         // Create a temp pool since we dispose the reader (and check the state afterwards) and it can be reused by another connection
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(x => x.IncludeFailedBatchedCommand = true);
         await using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id INT");
 
@@ -702,7 +702,7 @@ LANGUAGE 'plpgsql'");
         // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
         batch.Dispose();
         var cmd2 = conn.CreateBatch();
-        Assert.AreNotSame(cmd2, batch);
+        Assert.That(batch, Is.Not.SameAs(cmd2));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
@@ -731,7 +731,7 @@ LANGUAGE 'plpgsql'");
         // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
         batch.Dispose();
         var cmd2 = conn.CreateBatch();
-        Assert.AreNotSame(cmd2, batch);
+        Assert.That(batch, Is.Not.SameAs(cmd2));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4202")]
@@ -804,11 +804,16 @@ LANGUAGE 'plpgsql'");
     readonly CommandBehavior Behavior;
     // ReSharper restore InconsistentNaming
 
+    NpgsqlDataSource? _dataSource;
+    protected override NpgsqlDataSource DataSource => _dataSource ??= CreateDataSource(csb => csb.IncludeFailedBatchedCommand = true);
+
     public BatchTests(MultiplexingMode multiplexingMode, CommandBehavior behavior) : base(multiplexingMode)
     {
         Behavior = behavior;
         IsSequential = (Behavior & CommandBehavior.SequentialAccess) != 0;
     }
+
+    public void Dispose() => DataSource.Dispose();
 
     #endregion
 }

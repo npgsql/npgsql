@@ -107,12 +107,12 @@ $$ LANGUAGE plpgsql");
         command.Parameters.AddWithValue("sec", 4);
         var dt = (DateTime)(await command.ExecuteScalarAsync())!;
 
-        Assert.AreEqual(new DateTime(2015, 8, 1, 2, 3, 4), dt);
+        Assert.That(dt, Is.EqualTo(new DateTime(2015, 8, 1, 2, 3, 4)));
 
         command.Parameters[0].Value = 2014;
         command.Parameters[0].ParameterName = ""; // 2014 will be sent as a positional parameter
         dt = (DateTime)(await command.ExecuteScalarAsync())!;
-        Assert.AreEqual(new DateTime(2014, 8, 1, 2, 3, 4), dt);
+        Assert.That(dt, Is.EqualTo(new DateTime(2014, 8, 1, 2, 3, 4)));
     }
 
     [Test]
@@ -174,7 +174,7 @@ $$ LANGUAGE plpgsql");
         var i = 0;
         while (dr.Read())
             i++;
-        Assert.AreEqual(0, i);
+        Assert.That(i, Is.EqualTo(0));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5820")]
@@ -290,8 +290,8 @@ $$ LANGUAGE plpgsql");
         {
             await using var command = new NpgsqlCommand(@"""FunctionCaseSensitive""", conn) { CommandType = CommandType.StoredProcedure };
             NpgsqlCommandBuilder.DeriveParameters(command);
-            Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
-            Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
+            Assert.That(command.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+            Assert.That(command.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
         }
         finally
         {
@@ -310,8 +310,8 @@ $$ LANGUAGE plpgsql");
         {
             await using var command = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
             NpgsqlCommandBuilder.DeriveParameters(command);
-            Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
-            Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
+            Assert.That(command.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+            Assert.That(command.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
         }
         finally
         {
@@ -330,8 +330,8 @@ $$ LANGUAGE plpgsql");
         {
             await using var command = new NpgsqlCommand(@"""My.Dotted.Function""", conn) { CommandType = CommandType.StoredProcedure };
             NpgsqlCommandBuilder.DeriveParameters(command);
-            Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
-            Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
+            Assert.That(command.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+            Assert.That(command.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
         }
         finally
         {
@@ -349,8 +349,8 @@ $$ LANGUAGE plpgsql");
             $"CREATE FUNCTION {function}(x int, y int, out sum int, out product int) AS 'SELECT $1 + $2, $1 * $2' LANGUAGE sql");
         await using var command = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
         NpgsqlCommandBuilder.DeriveParameters(command);
-        Assert.AreEqual("x", command.Parameters[0].ParameterName);
-        Assert.AreEqual("y", command.Parameters[1].ParameterName);
+        Assert.That(command.Parameters[0].ParameterName, Is.EqualTo("x"));
+        Assert.That(command.Parameters[1].ParameterName, Is.EqualTo("y"));
     }
 
     [Test]

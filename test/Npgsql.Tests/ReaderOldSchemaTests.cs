@@ -124,12 +124,12 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
         var metadata = await GetSchemaTable(dr);
 
         var idRow = metadata!.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "id");
-        Assert.IsNotNull(idRow, "Unable to find metadata for id column");
+        Assert.That(idRow, Is.Not.Null, "Unable to find metadata for id column");
         var int2Row = metadata.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "int2");
-        Assert.IsNotNull(int2Row, "Unable to find metadata for int2 column");
+        Assert.That(int2Row, Is.Not.Null, "Unable to find metadata for int2 column");
 
-        Assert.IsFalse((bool)idRow!["IsReadonly"]);
-        Assert.IsTrue((bool)int2Row!["IsReadonly"]);
+        Assert.That((bool)idRow!["IsReadonly"], Is.False);
+        Assert.That((bool)int2Row!["IsReadonly"]);
     }
 
     // ReSharper disable once InconsistentNaming
@@ -144,12 +144,12 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
         using var metadata = await GetSchemaTable(reader);
 
         var nullableRow = metadata!.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "nullable");
-        Assert.IsNotNull(nullableRow, "Unable to find metadata for nullable column");
+        Assert.That(nullableRow, Is.Not.Null, "Unable to find metadata for nullable column");
         var nonNullableRow = metadata.Rows.OfType<DataRow>().FirstOrDefault(x => (string)x["ColumnName"] == "non_nullable");
-        Assert.IsNotNull(nonNullableRow, "Unable to find metadata for non_nullable column");
+        Assert.That(nonNullableRow, Is.Not.Null, "Unable to find metadata for non_nullable column");
 
-        Assert.IsTrue((bool)nullableRow!["AllowDBNull"]);
-        Assert.IsFalse((bool)nonNullableRow!["AllowDBNull"]);
+        Assert.That((bool)nullableRow!["AllowDBNull"]);
+        Assert.That((bool)nonNullableRow!["AllowDBNull"], Is.False);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1027")]

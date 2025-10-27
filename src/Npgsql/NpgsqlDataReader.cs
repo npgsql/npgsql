@@ -516,7 +516,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 var statement = _statements[StatementIndex];
 
                 // Reference the triggering statement from the exception
-                postgresException.BatchCommand = statement;
+                if (Connector.Settings.IncludeFailedBatchedCommand)
+                    postgresException.BatchCommand = statement;
 
                 // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
                 // the exception is very likely to escape the using statement of the command, and by that time some other user may
@@ -713,7 +714,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         break;
                     case BackendMessageCode.RowDescription:
                         // We have a resultset
-                        RowDescription = _statements[StatementIndex].Description = (RowDescriptionMessage)msg;
+                        // RowDescription messages are cached on the connector, but if we're auto-preparing, we need to
+                        // clone our own copy which will last beyond the lifetime of this invocation.
+                        RowDescription = _statements[StatementIndex].Description = preparedStatement == null
+                            ? (RowDescriptionMessage)msg
+                            : ((RowDescriptionMessage)msg).Clone();
                         Command.FixupRowDescription(RowDescription, StatementIndex == 0);
                         break;
                     default:
@@ -734,17 +739,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 // Found a resultset
                 if (RowDescription is not null)
-                {
-                    if (ColumnInfoCache?.Length >= ColumnCount)
-                        Array.Clear(ColumnInfoCache, 0, ColumnCount);
-                    else
-                    {
-                        if (ColumnInfoCache is { } cache)
-                            ArrayPool<ColumnInfo>.Shared.Return(cache, clearArray: true);
-                        ColumnInfoCache = ArrayPool<ColumnInfo>.Shared.Rent(ColumnCount);
-                    }
                     return true;
-                }
             }
 
             State = ReaderState.Consumed;
@@ -760,7 +755,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // Reference the triggering statement from the exception
             if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
             {
-                postgresException.BatchCommand = _statements[StatementIndex];
+                // Reference the triggering statement from the exception
+                if (Connector.Settings.IncludeFailedBatchedCommand)
+                    postgresException.BatchCommand = _statements[StatementIndex];
 
                 // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
                 // the exception is very likely to escape the using statement of the command, and by that time some other user may
@@ -987,11 +984,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // state for auto-prepared statements
         //
         // The only exception is when the connector is broken (which can happen in the middle of consuming)
-        // As then there is no point in going forward
+        // As then there is no point in going forward.
+        // An exception to the exception above is when connector is concurrently closed while
+        // the reader is still going over the result set.
+        // While this is undefined behavior and user error, we should try to at least do our best to not loop indefinitely.
         //
         // While we can also check our local state (State == Closed)
         // It's probably better to rely on connector since it's private and its state can't be changed
-        while (!Connector.IsBroken)
+        while (Connector.IsConnected)
         {
             try
             {

@@ -276,14 +276,14 @@ public sealed partial class NpgsqlConnector
     internal bool UserCancellationRequested => _userCancellationRequested;
     internal CancellationToken UserCancellationToken { get; set; }
     internal bool AttemptPostgresCancellation { get; private set; }
-    static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
+    static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.Zero;
 
     static readonly SslApplicationProtocol _alpnProtocol = new("postgresql");
 
 #pragma warning disable CA1859
     // We're casting to IDisposable to not explicitly reference X509Certificate2 for NativeAOT
     // TODO: probably pointless now, needs to be rechecked
-    IDisposable? _certificate;
+    List<IDisposable>? _certificates;
 #pragma warning restore CA1859
 
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
@@ -400,7 +400,10 @@ public sealed partial class NpgsqlConnector
 
         _isKeepAliveEnabled = Settings.KeepAlive > 0;
         if (_isKeepAliveEnabled)
-            _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
+        {
+            using (ExecutionContext.SuppressFlow()) // Don't capture the current ExecutionContext and its AsyncLocals onto the timer causing them to live forever
+                _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
+        }
 
         DataReader = new NpgsqlDataReader(this);
 
@@ -464,7 +467,7 @@ public sealed partial class NpgsqlConnector
     /// <summary>
     /// Returns whether the connector is open, regardless of any task it is currently performing
     /// </summary>
-    bool IsConnected => State is not (ConnectorState.Closed or ConnectorState.Connecting or ConnectorState.Broken);
+    internal bool IsConnected => State is not (ConnectorState.Closed or ConnectorState.Connecting or ConnectorState.Broken);
 
     internal bool IsReady => State == ConnectorState.Ready;
     internal bool IsClosed => State == ConnectorState.Closed;
@@ -1063,36 +1066,61 @@ public sealed partial class NpgsqlConnector
         {
             var password = Settings.SslPassword;
 
-            X509Certificate2? cert = null;
             if (!string.Equals(Path.GetExtension(certPath), ".pfx", StringComparison.OrdinalIgnoreCase))
             {
                 // It's PEM time
                 var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
-                cert = string.IsNullOrEmpty(password)
+
+                // With PEM certificates we might have multiple certificates in a single file
+                // Where the first one is a leaf (and it has to have a private key)
+                // And others are intermediate between it and CA cert
+                // To support this, we first load the leaf certificate with private key
+                // And then we load everything else including the leaf, but without private key
+                // And afterwards we just get rid of the duplicate
+                var firstClientCert = string.IsNullOrEmpty(password)
                     ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
                     : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                clientCertificates.Add(firstClientCert);
+
+                clientCertificates.ImportFromPemFile(certPath);
+                clientCertificates[1].Dispose();
+                clientCertificates.RemoveAt(1);
+
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    // Windows crypto API has a bug with pem certs
-                    // See #3650
-                    using var previousCert = cert;
+                    for (var i = 0; i < clientCertificates.Count; i++)
+                    {
+                        var cert = clientCertificates[i];
+
+                        // Windows crypto API has a bug with pem certs
+                        // See #3650
+                        using var previousCert = cert;
 #if NET9_0_OR_GREATER
-                    cert = X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pkcs12), null);
+                        cert = X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pkcs12), null);
 #else
-                    cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+                        cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
 #endif
+                        clientCertificates[i] = cert;
+                    }
                 }
             }
 
+            // If it's empty, it's probably PFX
+            if (clientCertificates.Count == 0)
+            {
 #if NET9_0_OR_GREATER
-            // If it's null, it's probably PFX
-            cert ??= X509CertificateLoader.LoadPkcs12FromFile(certPath, password);
+                var certs = X509CertificateLoader.LoadPkcs12CollectionFromFile(certPath, password);
+                clientCertificates.AddRange(certs);
 #else
-            cert ??= new X509Certificate2(certPath, password);
+                var cert = new X509Certificate2(certPath, password);
+                clientCertificates.Add(cert);
 #endif
-            clientCertificates.Add(cert);
+            }
 
-            _certificate = cert;
+            var certificates = new List<IDisposable>();
+            foreach (var certificate in clientCertificates)
+                certificates.Add(certificate);
+            _certificates = certificates;
         }
 
         try
@@ -1124,6 +1152,20 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslVerifyFullValidation;
             }
 
+            SslStreamCertificateContext? clientCertificateContext = null;
+            if (clientCertificates.Count > 0)
+            {
+                // SslClientAuthenticationOptions.ClientCertificates only sends trusted certificates or if they have private key
+                // Which makes us unable to send intermediate certificates
+                // Work around this by specifying the first certificate as target
+                // And others as additional
+                // See https://github.com/dotnet/runtime/issues/26323
+                var clientCertificate = clientCertificates[0];
+                clientCertificates.RemoveAt(0);
+
+                clientCertificateContext = SslStreamCertificateContext.Create(clientCertificate, clientCertificates);
+            }
+
             var host = Host;
 
             timeout.CheckAndApply(this);
@@ -1133,7 +1175,7 @@ public sealed partial class NpgsqlConnector
             var sslStreamOptions = new SslClientAuthenticationOptions
             {
                 TargetHost = host,
-                ClientCertificates = clientCertificates,
+                ClientCertificateContext = clientCertificateContext,
                 EnabledSslProtocols = SslProtocols.None,
                 CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck,
                 RemoteCertificateValidationCallback = certificateValidationCallback,
@@ -1181,8 +1223,8 @@ public sealed partial class NpgsqlConnector
         }
         catch
         {
-            _certificate?.Dispose();
-            _certificate = null;
+            _certificates?.ForEach(x => x.Dispose());
+            _certificates = null;
 
             throw;
         }
@@ -1217,6 +1259,9 @@ public sealed partial class NpgsqlConnector
 
             try
             {
+                // Some options are not applied after the socket is open, see #6013
+                SetSocketOptions(socket);
+
                 try
                 {
                     socket.Connect(endpoint);
@@ -1235,7 +1280,6 @@ public sealed partial class NpgsqlConnector
                 if (write.Count is 0)
                     throw new TimeoutException("Timeout during connection attempt");
                 socket.Blocking = true;
-                SetSocketOptions(socket);
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
                 return;
@@ -1289,8 +1333,11 @@ public sealed partial class NpgsqlConnector
             var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
             try
             {
-                await OpenSocketConnectionAsync(socket, endpoint, endpointTimeout, cancellationToken).ConfigureAwait(false);
+                // Some options are not applied after the socket is open, see #6013
                 SetSocketOptions(socket);
+
+                await OpenSocketConnectionAsync(socket, endpoint, endpointTimeout, cancellationToken).ConfigureAwait(false);
+
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
                 return;
@@ -2035,6 +2082,8 @@ public sealed partial class NpgsqlConnector
             var cancellationTimeout = Settings.CancellationTimeout;
             if (PerformPostgresCancellation() && cancellationTimeout >= 0)
             {
+                // TODO: according to docs, we treat 0 timeout as infinite, yet we do not change the actual value
+                // We should revisit this here and in NpgsqlReadBuffer
                 if (cancellationTimeout > 0)
                 {
                     ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
@@ -2517,11 +2566,8 @@ public sealed partial class NpgsqlConnector
         PostgresParameters.Clear();
         _currentCommand = null;
 
-        if (_certificate is not null)
-        {
-            _certificate.Dispose();
-            _certificate = null;
-        }
+        _certificates?.ForEach(x => x.Dispose());
+        _certificates = null;
     }
 
     void GenerateResetMessage()
@@ -2755,8 +2801,9 @@ public sealed partial class NpgsqlConnector
 
             // We reset the ReadBuffer.Timeout for every user action, so it wouldn't leak from the previous query or action
             // For example, we might have successfully cancelled the previous query (so the connection is not broken)
-            // But the next time, we call the Prepare, which doesn't set it's own timeout
-            ReadBuffer.Timeout = TimeSpan.FromSeconds(command?.CommandTimeout ?? Settings.CommandTimeout);
+            // But the next time, we call the Prepare, which doesn't set its own timeout
+            var timeoutSeconds = command?.CommandTimeout ?? Settings.CommandTimeout;
+            ReadBuffer.Timeout = timeoutSeconds > 0 ? TimeSpan.FromSeconds(timeoutSeconds) : Timeout.InfiniteTimeSpan;
 
             return new UserAction(this);
         }
@@ -2891,12 +2938,15 @@ public sealed partial class NpgsqlConnector
         await Flush(async, cancellationToken).ConfigureAwait(false);
 
         var keepaliveMs = Settings.KeepAlive * 1000;
+        var isTimeoutInfinite = timeout <= 0;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var timeoutForKeepalive = _isKeepAliveEnabled && (timeout <= 0 || keepaliveMs < timeout);
-            ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeoutForKeepalive ? keepaliveMs : timeout);
+            var timeoutForKeepalive = _isKeepAliveEnabled && (isTimeoutInfinite || keepaliveMs < timeout);
+            ReadBuffer.Timeout = timeoutForKeepalive
+                ? TimeSpan.FromMilliseconds(keepaliveMs)
+                : isTimeoutInfinite ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(timeout);
             try
             {
                 var msg = await ReadMessageWithNotifications(async).ConfigureAwait(false);
@@ -2956,7 +3006,11 @@ public sealed partial class NpgsqlConnector
             }
 
             if (timeout > 0)
+            {
                 timeout -= (keepaliveMs + (int)Stopwatch.GetElapsedTime(keepaliveStartTimestamp).TotalMilliseconds);
+                // Make sure we don't accidentally set -1 as a timeout (because it's infinite)
+                timeout = Math.Max(timeout, 0);
+            }
         }
     }
 

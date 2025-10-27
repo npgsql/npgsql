@@ -684,6 +684,24 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     bool _includeErrorDetail;
 
     /// <summary>
+    /// When enabled, failed statements are included on <see cref="NpgsqlException.BatchCommand" />.
+    /// </summary>
+    [Category("Security")]
+    [Description("When enabled, failed batched commands are included on NpgsqlException.BatchCommand.")]
+    [DisplayName("Include Failed Batched Command")]
+    [NpgsqlConnectionStringProperty]
+    public bool IncludeFailedBatchedCommand
+    {
+        get => _includeFailedBatchedCommand;
+        set
+        {
+            _includeFailedBatchedCommand = value;
+            SetValue(nameof(IncludeFailedBatchedCommand), value);
+        }
+    }
+    bool _includeFailedBatchedCommand;
+
+    /// <summary>
     /// Controls whether channel binding is required, disabled or preferred, depending on server support.
     /// </summary>
     [Category("Security")]
@@ -1001,7 +1019,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
         set
         {
-            TargetSessionAttributesParsed = value is null ? null : ParseTargetSessionAttributes(value);
+            TargetSessionAttributesParsed = value is null ? null : ParseTargetSessionAttributes(value.ToLowerInvariant());
             SetValue(nameof(TargetSessionAttributes), value);
         }
     }

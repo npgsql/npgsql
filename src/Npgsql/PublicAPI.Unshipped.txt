@@ -9,6 +9,8 @@ Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.get -> System.Act
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.GssEncryptionMode.get -> Npgsql.GssEncryptionMode
 Npgsql.NpgsqlConnectionStringBuilder.GssEncryptionMode.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.IncludeFailedBatchedCommand.get -> bool
+Npgsql.NpgsqlConnectionStringBuilder.IncludeFailedBatchedCommand.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.get -> Npgsql.SslNegotiation
@@ -84,6 +86,7 @@ Npgsql.NpgsqlConnection.ReloadTypesAsync(System.Threading.CancellationToken canc
 *REMOVED*Npgsql.NpgsqlSlimDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+static NpgsqlTypes.NpgsqlInet.implicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPNetwork cidr) -> NpgsqlTypes.NpgsqlInet
 static readonly NpgsqlTypes.NpgsqlTsVector.Empty -> NpgsqlTypes.NpgsqlTsVector!
 Npgsql.Replication.LogicalReplicationConnection.LogicalReplicationConnection(Npgsql.NpgsqlConnection! connection) -> void
 Npgsql.Replication.PhysicalReplicationConnection.PhysicalReplicationConnection(Npgsql.NpgsqlConnection! connection) -> void

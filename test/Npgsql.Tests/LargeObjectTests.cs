@@ -24,23 +24,23 @@ public class LargeObjectTests : TestBase
             stream.ReadExactly(buf2, 0, buf2.Length);
             Assert.That(buf.SequenceEqual(buf2));
 
-            Assert.AreEqual(5, stream.Position);
+            Assert.That(stream.Position, Is.EqualTo(5));
 
-            Assert.AreEqual(5, stream.Length);
+            Assert.That(stream.Length, Is.EqualTo(5));
 
             stream.Seek(-1, System.IO.SeekOrigin.Current);
-            Assert.AreEqual((int)'o', stream.ReadByte());
+            Assert.That(stream.ReadByte(), Is.EqualTo((int)'o'));
 
             manager.MaxTransferBlockSize = 3;
 
             stream.Write(buf, 0, buf.Length);
             stream.Seek(-5, System.IO.SeekOrigin.End);
             var buf3 = new byte[100];
-            Assert.AreEqual(5, stream.Read(buf3, 0, 100));
+            Assert.That(stream.Read(buf3, 0, 100), Is.EqualTo(5));
             Assert.That(buf.SequenceEqual(buf3.Take(5)));
 
             stream.SetLength(43);
-            Assert.AreEqual(43, stream.Length);
+            Assert.That(stream.Length, Is.EqualTo(43));
         }
 
         manager.Unlink(oid);

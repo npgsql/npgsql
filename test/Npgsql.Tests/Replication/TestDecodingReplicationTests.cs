@@ -327,7 +327,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
     static async ValueTask<TestDecodingData> NextMessage(IAsyncEnumerator<TestDecodingData> enumerator)
     {
-        Assert.True(await enumerator.MoveNextAsync());
+        Assert.That(await enumerator.MoveNextAsync());
         return enumerator.Current!;
     }
 

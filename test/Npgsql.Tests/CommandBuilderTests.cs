@@ -364,7 +364,7 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
         using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
 
         daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
-        Assert.True(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
+        Assert.That(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2846")]
@@ -386,5 +386,61 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
         dtTable.Rows[0]["vettore"] = new[] { "aaa", "bbb" };
 
         daDataAdapter.Update(dtTable);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6240")]
+    public async Task Get_update_command_with_domain_column_type()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var domainTypeName = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE DOMAIN {domainTypeName} AS smallint");
+
+        var tableName = await CreateTempTable(adminConnection, $"id serial PRIMARY KEY, domtest {domainTypeName}");
+
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        using var adapter = new NpgsqlDataAdapter($"select * from {tableName}", conn);
+
+        var builder = new NpgsqlCommandBuilder(adapter)
+        {
+            ConflictOption = ConflictOption.CompareAllSearchableValues,
+            SetAllValues = true
+        };
+
+        adapter.InsertCommand = builder.GetInsertCommand();
+        adapter.UpdateCommand = builder.GetUpdateCommand();
+        adapter.DeleteCommand = builder.GetDeleteCommand();
+
+        using var dataTable = new DataTable();
+
+        adapter.Fill(dataTable);
+
+        const short sval = 5;
+
+        var newRow = dataTable.NewRow();
+        newRow[1] = sval;
+        dataTable.Rows.Add(newRow);
+
+        adapter.Update(dataTable);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6240")]
+    public async Task Fill_datatable_with_array_column_type()
+    {
+        await using var connection = await OpenConnectionAsync();
+
+        var tableName = await CreateTempTable(connection, "id serial PRIMARY KEY, textarr text[] COLLATE pg_catalog.\"default\"");
+
+        using var adapter = new NpgsqlDataAdapter($"select * from {tableName}", connection);
+
+        using var dataTable = new DataTable();
+
+        adapter.FillSchema(dataTable, SchemaType.Source);
+
+        adapter.MissingSchemaAction = MissingSchemaAction.Ignore;
+
+        adapter.Fill(dataTable);
     }
 }

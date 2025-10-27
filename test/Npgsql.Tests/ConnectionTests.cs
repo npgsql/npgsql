@@ -111,7 +111,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         Assert.That(eventClosed, Is.True);
         Assert.That(conn.Connector is null);
-        Assert.AreEqual(0, conn.NpgsqlDataSource.Statistics.Total);
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
 
         if (openFromClose)
         {
@@ -123,8 +123,8 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         }
 
         Assert.DoesNotThrowAsync(conn.OpenAsync);
-        Assert.AreEqual(1, await conn.ExecuteScalarAsync("SELECT 1"));
-        Assert.AreEqual(1, conn.NpgsqlDataSource.Statistics.Total);
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
         Assert.DoesNotThrowAsync(conn.CloseAsync);
     }
 
@@ -743,23 +743,23 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
             using var conn = await dataSource.OpenConnectionAsync();
             if (enabled)
             {
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
+                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
                 if (testSchema == "public" || otherSchema == "public")
                 {
-                    Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                    Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
                 }
                 else
                 {
-                    Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                    Assert.False(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"), Is.False);
                 }
             }
             else
             {
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                Assert.True(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
+                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
             }
         }
         finally
@@ -945,7 +945,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         var cs1 = csb1.ToString();
         var csb2 = new NpgsqlConnectionStringBuilder(cs1);
         var cs2 = csb2.ToString();
-        Assert.IsTrue(cs1 == cs2);
+        Assert.That(cs1 == cs2);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/pull/164")]
@@ -953,7 +953,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     {
         var c = new NpgsqlConnection();
         c.Dispose();
-        Assert.AreEqual(ConnectionState.Closed, c.State);
+        Assert.That(c.State, Is.EqualTo(ConnectionState.Closed));
     }
 
     [Test]
@@ -1131,9 +1131,9 @@ LANGUAGE 'plpgsql'");
 
         var sslClientAuthenticationOptions = new SslClientAuthenticationOptions();
         clonedConnection.SslClientAuthenticationOptionsCallback!(sslClientAuthenticationOptions);
-        Assert.True(clientCertificatesCallbackCalled);
+        Assert.That(clientCertificatesCallbackCalled);
         sslClientAuthenticationOptions.RemoteCertificateValidationCallback!(null!, null, null, SslPolicyErrors.None);
-        Assert.True(userCertificateValidationCallbackCalled);
+        Assert.That(userCertificateValidationCallbackCalled);
 
         bool UserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors errors)
             => userCertificateValidationCallbackCalled = true;
@@ -1359,7 +1359,7 @@ CREATE TABLE record ()");
                 await using var cmd = conn.CreateCommand();
                 cmd.CommandText = "SELECT * FROM foo";
                 await using var reader = await cmd.ExecuteReaderAsync();
-                Assert.IsTrue(await reader.ReadAsync());
+                Assert.That(await reader.ReadAsync());
 
                 using (var textReader = await reader.GetTextReaderAsync(0))
                     Assert.That(textReader.ReadToEnd(), Is.EqualTo(value));
@@ -1555,7 +1555,7 @@ CREATE TABLE record ()");
 
         foreach (var sameThreadTask in sameThreadTasks)
         {
-            Assert.IsTrue(await sameThreadTask, "Synchronous open completed on different thread");
+            Assert.That(await sameThreadTask, "Synchronous open completed on different thread");
         }
     }
 

@@ -93,7 +93,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
@@ -107,7 +107,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.3.1
+        uses: actions/setup-dotnet@v5.0.0
 
       - name: Write script
         run: echo "$AOT_Compat" > test-aot-compatibility.ps1
@@ -127,7 +127,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
@@ -141,7 +141,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.3.1
+        uses: actions/setup-dotnet@v5.0.0
 
       - name: Start PostgreSQL
         run: |
@@ -154,7 +154,7 @@ jobs:
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v4
+      #- uses: actions/checkout@v5
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 
@@ -170,21 +170,21 @@ jobs:
         run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f ${{ matrix.tfm }} -- "test/Npgsql.NativeAotTests/obj/Release/net9.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload mstat
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: npgsql.mstat
           path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.mstat"
           retention-days: 3
 
       - name: Upload codedgen dgml
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: npgsql.codegen.dgml.xml
           path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
           retention-days: 3
 
       - name: Upload scan dgml
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: npgsql.scan.dgml.xml
           path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"

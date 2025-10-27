@@ -11,7 +11,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
-using Npgsql.Properties;
 using static Npgsql.Tests.Support.MockState;
 using static Npgsql.Tests.TestUtil;
 using IsolationLevel = System.Transactions.IsolationLevel;
@@ -94,6 +93,55 @@ public class MultipleHostsTests : TestBase
 
     [Test]
     [TestCaseSource(nameof(MyCases))]
+    public async Task Connect_to_correct_host_legacy(TargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
+    {
+        var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+        await using var __ = new DisposableWrapper(postmasters);
+
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(postmasters),
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            TargetSessionAttributes = TargetSessionAttributesAsString(targetSessionAttributes)
+        };
+
+        using var pool = CreateTempPool(connectionStringBuilder, out var connectionString);
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+
+        Assert.That(conn.Port, Is.EqualTo(postmasters[expectedServer].Port));
+
+        for (var i = 0; i <= expectedServer; i++)
+            _ = await postmasters[i].WaitForServerConnection();
+    }
+
+    [Test]
+    [TestCaseSource(nameof(MyCases))]
+    public async Task Connect_to_correct_host_connection_string(TargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
+    {
+        var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+        await using var __ = new DisposableWrapper(postmasters);
+
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(postmasters),
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            TargetSessionAttributes = TargetSessionAttributesAsString(targetSessionAttributes)
+        };
+
+        await using var dataSource = new NpgsqlDataSourceBuilder(connectionStringBuilder.ConnectionString)
+            .Build();
+        Assert.That(dataSource, Is.TypeOf<NpgsqlMultiHostDataSource>());
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        Assert.That(conn.Port, Is.EqualTo(postmasters[expectedServer].Port));
+
+        for (var i = 0; i <= expectedServer; i++)
+            _ = await postmasters[i].WaitForServerConnection();
+    }
+
+    [Test]
+    [TestCaseSource(nameof(MyCases))]
     public async Task Connect_to_correct_host_with_available_idle(
         TargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
     {
@@ -130,6 +178,40 @@ public class MultipleHostsTests : TestBase
 
         for (var i = 0; i <= expectedServer; i++)
             _ = await postmasters[i].WaitForServerConnection();
+    }
+
+    [Test]
+    public async Task Legacy_connection_shares_datasource()
+    {
+        await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+        await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+        var builder1 = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            TargetSessionAttributes = "Prefer-Primary"
+        };
+
+        // Use the exact same pool for both connections as CreateTempPool adds a unique `ApplicationName` to connection string
+        using var pool = CreateTempPool(builder1, out var connectionString1);
+        var connectionString2 = new NpgsqlConnectionStringBuilder(connectionString1)
+        {
+            TargetSessionAttributes = "Prefer-Standby"
+        }.ConnectionString;
+
+        await using var conn1 = new NpgsqlConnection(connectionString1);
+        await conn1.OpenAsync();
+        Assert.That(conn1.Port, Is.EqualTo(primaryPostmaster.Port));
+
+        await using var conn2 = new NpgsqlConnection(connectionString2);
+        await conn2.OpenAsync();
+        Assert.That(conn2.Port, Is.EqualTo(standbyPostmaster.Port));
+
+        Assert.That(conn1.NpgsqlDataSource, Is.Not.SameAs(conn2.NpgsqlDataSource));
+        Assert.That(conn1.NpgsqlDataSource, Is.TypeOf<MultiHostDataSourceWrapper>());
+        Assert.That(conn2.NpgsqlDataSource, Is.TypeOf<MultiHostDataSourceWrapper>());
+        Assert.That(((MultiHostDataSourceWrapper)conn1.NpgsqlDataSource).WrappedSource, Is.SameAs(((MultiHostDataSourceWrapper)conn2.NpgsqlDataSource).WrappedSource));
     }
 
     [Test]
@@ -254,7 +336,7 @@ public class MultipleHostsTests : TestBase
 
         if (targetSessionAttributes == "any")
         {
-            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            await using var postmasterMock = PgPostmasterMock.Start(connectionString);
             using var pool = CreateTempPool(postmasterMock.ConnectionString, out connectionString);
             await using var conn = new NpgsqlConnection(connectionString);
             await conn.OpenAsync();
@@ -359,21 +441,21 @@ public class MultipleHostsTests : TestBase
             secondConnector = secondConnection.Connector!;
         }
 
-        Assert.AreNotSame(firstConnector, secondConnector);
+        Assert.That(secondConnector, Is.Not.SameAs(firstConnector));
 
         await using (var firstBalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, firstBalancedConnection.Connector);
+            Assert.That(firstBalancedConnection.Connector, Is.SameAs(firstConnector));
         }
 
         await using (var secondBalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(secondConnector, secondBalancedConnection.Connector);
+            Assert.That(secondBalancedConnection.Connector, Is.SameAs(secondConnector));
         }
 
         await using (var thirdBalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, thirdBalancedConnection.Connector);
+            Assert.That(thirdBalancedConnection.Connector, Is.SameAs(firstConnector));
         }
     }
 
@@ -403,7 +485,7 @@ public class MultipleHostsTests : TestBase
         }
         await using (var secondConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, secondConnection.Connector);
+            Assert.That(secondConnection.Connector, Is.SameAs(firstConnector));
         }
         await using (var firstConnection = await dataSource.OpenConnectionAsync())
         await using (var secondConnection = await dataSource.OpenConnectionAsync())
@@ -411,16 +493,16 @@ public class MultipleHostsTests : TestBase
             secondConnector = secondConnection.Connector!;
         }
 
-        Assert.AreNotSame(firstConnector, secondConnector);
+        Assert.That(secondConnector, Is.Not.SameAs(firstConnector));
 
         await using (var firstUnbalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, firstUnbalancedConnection.Connector);
+            Assert.That(firstUnbalancedConnection.Connector, Is.SameAs(firstConnector));
         }
 
         await using (var secondUnbalancedConnection = await dataSource.OpenConnectionAsync())
         {
-            Assert.AreSame(firstConnector, secondUnbalancedConnection.Connector);
+            Assert.That(secondUnbalancedConnection.Connector, Is.SameAs(firstConnector));
         }
     }
 
@@ -481,7 +563,7 @@ public class MultipleHostsTests : TestBase
         }
 
         await using var thirdConnection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.PreferPrimary);
-        Assert.AreSame(alwaysCheckHostState ? secondConnector : firstConnector, thirdConnection.Connector);
+        Assert.That(thirdConnection.Connector, Is.SameAs(alwaysCheckHostState ? secondConnector : firstConnector));
 
         await firstServerTask;
         await secondServerTask;
@@ -494,22 +576,22 @@ public class MultipleHostsTests : TestBase
         var timeStamp = DateTime.UtcNow;
 
         dataSource.UpdateDatabaseState(DatabaseState.PrimaryReadWrite, timeStamp, TimeSpan.Zero);
-        Assert.AreEqual(DatabaseState.PrimaryReadWrite, dataSource.GetDatabaseState());
+        Assert.That(dataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadWrite));
 
         // Update with the same timestamp - shouldn't change anything
         dataSource.UpdateDatabaseState(DatabaseState.Standby, timeStamp, TimeSpan.Zero);
-        Assert.AreEqual(DatabaseState.PrimaryReadWrite, dataSource.GetDatabaseState());
+        Assert.That(dataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadWrite));
 
         // Update with a new timestamp
         timeStamp = timeStamp.AddSeconds(1);
         dataSource.UpdateDatabaseState(DatabaseState.PrimaryReadOnly, timeStamp, TimeSpan.Zero);
-        Assert.AreEqual(DatabaseState.PrimaryReadOnly, dataSource.GetDatabaseState());
+        Assert.That(dataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadOnly));
 
         // Expired state returns as Unknown (depending on ignoreExpiration)
         timeStamp = timeStamp.AddSeconds(1);
         dataSource.UpdateDatabaseState(DatabaseState.PrimaryReadWrite, timeStamp, TimeSpan.FromSeconds(-1));
-        Assert.AreEqual(DatabaseState.Unknown, dataSource.GetDatabaseState(ignoreExpiration: false));
-        Assert.AreEqual(DatabaseState.PrimaryReadWrite, dataSource.GetDatabaseState(ignoreExpiration: true));
+        Assert.That(dataSource.GetDatabaseState(ignoreExpiration: false), Is.EqualTo(DatabaseState.Unknown));
+        Assert.That(dataSource.GetDatabaseState(ignoreExpiration: true), Is.EqualTo(DatabaseState.PrimaryReadWrite));
     }
 
     [Test]
@@ -925,7 +1007,7 @@ public class MultipleHostsTests : TestBase
         Assert.DoesNotThrowAsync(() => clientsTask);
         Assert.ThrowsAsync<NpgsqlException>(() => onlyStandbyClient);
         Assert.ThrowsAsync<NpgsqlException>(() => readOnlyClient);
-        Assert.AreEqual(125, queriesDone);
+        Assert.That(queriesDone, Is.EqualTo(125));
 
         Task Client(NpgsqlMultiHostDataSource multiHostDataSource, TargetSessionAttributes targetSessionAttributes)
         {
@@ -1021,15 +1103,6 @@ public class MultipleHostsTests : TestBase
 
         await using var standbyConnection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Standby);
         Assert.That(standbyConnection.Port, Is.EqualTo(standbyPostmasterMock.Port));
-    }
-
-    [Test]
-    public void DataSource_with_TargetSessionAttributes_is_not_supported()
-    {
-        var builder = new NpgsqlDataSourceBuilder("Host=foo,bar;Target Session Attributes=primary");
-
-        Assert.That(() => builder.BuildMultiHost(), Throws.Exception.TypeOf<InvalidOperationException>()
-            .With.Message.EqualTo(NpgsqlStrings.CannotSpecifyTargetSessionAttributes));
     }
 
     [Test]
@@ -1171,7 +1244,20 @@ public class MultipleHostsTests : TestBase
     static string MultipleHosts(params PgPostmasterMock[] postmasters)
         => string.Join(",", postmasters.Select(p => $"{p.Host}:{p.Port}"));
 
-    class DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) : IAsyncDisposable
+    static string? TargetSessionAttributesAsString(TargetSessionAttributes targetSessionAttributes)
+        => targetSessionAttributes switch
+        {
+            TargetSessionAttributes.Any => "Any",
+            TargetSessionAttributes.Primary => "Primary",
+            TargetSessionAttributes.Standby => "Standby",
+            TargetSessionAttributes.PreferPrimary => "Prefer-Primary",
+            TargetSessionAttributes.PreferStandby => "Prefer-Standby",
+            TargetSessionAttributes.ReadOnly => "Read-Only",
+            TargetSessionAttributes.ReadWrite => "Read-Write",
+            _ => null
+        };
+
+    sealed class DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {

@@ -177,7 +177,7 @@ SELECT onedim, twodim FROM (VALUES
 
         var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
-        Assert.AreEqual(expected, reader.GetFieldValue<int[]>(0));
+        Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(expected));
     }
 
     [Test, Description("Verifies that an InvalidOperationException is thrown when the returned array has a different number of dimensions from what was requested.")]
@@ -389,9 +389,9 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         await using var cmd = new NpgsqlCommand("SELECT '{}'::INT[], '{}'::INT[]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
-        Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
+        Assert.That(reader.GetFieldValue<int[]>(1), Is.SameAs(reader.GetFieldValue<int[]>(0)));
         // Unlike T[], List<T> is mutable so we should not return the same instance
-        Assert.AreNotSame(reader.GetFieldValue<List<int>>(0), reader.GetFieldValue<List<int>>(1));
+        Assert.That(reader.GetFieldValue<List<int>>(1), Is.Not.SameAs(reader.GetFieldValue<List<int>>(0)));
     }
 
     [Test]

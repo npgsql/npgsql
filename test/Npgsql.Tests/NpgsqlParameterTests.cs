@@ -147,17 +147,17 @@ public class NpgsqlParameterTest : TestBase
     public void Constructor1()
     {
         var p = new NpgsqlParameter();
-        Assert.AreEqual(DbType.Object, p.DbType, "DbType");
-        Assert.AreEqual(ParameterDirection.Input, p.Direction, "Direction");
-        Assert.IsFalse(p.IsNullable, "IsNullable");
-        Assert.AreEqual(string.Empty, p.ParameterName, "ParameterName");
-        Assert.AreEqual(0, p.Precision, "Precision");
-        Assert.AreEqual(0, p.Scale, "Scale");
-        Assert.AreEqual(0, p.Size, "Size");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "SourceColumn");
-        Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "SourceVersion");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "NpgsqlDbType");
-        Assert.IsNull(p.Value, "Value");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "DbType");
+        Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "Direction");
+        Assert.That(p.IsNullable, Is.False, "IsNullable");
+        Assert.That(p.ParameterName, Is.Empty, "ParameterName");
+        Assert.That(p.Precision, Is.EqualTo(0), "Precision");
+        Assert.That(p.Scale, Is.EqualTo(0), "Scale");
+        Assert.That(p.Size, Is.EqualTo(0), "Size");
+        Assert.That(p.SourceColumn, Is.Empty, "SourceColumn");
+        Assert.That(p.SourceVersion, Is.EqualTo(DataRowVersion.Current), "SourceVersion");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "NpgsqlDbType");
+        Assert.That(p.Value, Is.Null, "Value");
     }
 
     [Test]
@@ -166,51 +166,51 @@ public class NpgsqlParameterTest : TestBase
         var value = new DateTime(2004, 8, 24);
 
         var p = new NpgsqlParameter("address", value);
-        Assert.AreEqual(DbType.DateTime2, p.DbType, "B:DbType");
-        Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
-        Assert.IsFalse(p.IsNullable, "B:IsNullable");
-        Assert.AreEqual("address", p.ParameterName, "B:ParameterName");
-        Assert.AreEqual(0, p.Precision, "B:Precision");
-        Assert.AreEqual(0, p.Scale, "B:Scale");
+        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime2), "B:DbType");
+        Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "B:Direction");
+        Assert.That(p.IsNullable, Is.False, "B:IsNullable");
+        Assert.That(p.ParameterName, Is.EqualTo("address"), "B:ParameterName");
+        Assert.That(p.Precision, Is.EqualTo(0), "B:Precision");
+        Assert.That(p.Scale, Is.EqualTo(0), "B:Scale");
         //Assert.AreEqual (0, p.Size, "B:Size");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "B:SourceColumn");
-        Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "B:NpgsqlDbType");
-        Assert.AreEqual(value, p.Value, "B:Value");
+        Assert.That(p.SourceColumn, Is.Empty, "B:SourceColumn");
+        Assert.That(p.SourceVersion, Is.EqualTo(DataRowVersion.Current), "B:SourceVersion");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "B:NpgsqlDbType");
+        Assert.That(p.Value, Is.EqualTo(value), "B:Value");
     }
 
     [Test]
     public void Constructor2_Value_DBNull()
     {
         var p = new NpgsqlParameter("address", DBNull.Value);
-        Assert.AreEqual(DbType.Object, p.DbType, "B:DbType");
-        Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
-        Assert.IsFalse(p.IsNullable, "B:IsNullable");
-        Assert.AreEqual("address", p.ParameterName, "B:ParameterName");
-        Assert.AreEqual(0, p.Precision, "B:Precision");
-        Assert.AreEqual(0, p.Scale, "B:Scale");
-        Assert.AreEqual(0, p.Size, "B:Size");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "B:SourceColumn");
-        Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "B:NpgsqlDbType");
-        Assert.AreEqual(DBNull.Value, p.Value, "B:Value");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "B:DbType");
+        Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "B:Direction");
+        Assert.That(p.IsNullable, Is.False, "B:IsNullable");
+        Assert.That(p.ParameterName, Is.EqualTo("address"), "B:ParameterName");
+        Assert.That(p.Precision, Is.EqualTo(0), "B:Precision");
+        Assert.That(p.Scale, Is.EqualTo(0), "B:Scale");
+        Assert.That(p.Size, Is.EqualTo(0), "B:Size");
+        Assert.That(p.SourceColumn, Is.Empty, "B:SourceColumn");
+        Assert.That(p.SourceVersion, Is.EqualTo(DataRowVersion.Current), "B:SourceVersion");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "B:NpgsqlDbType");
+        Assert.That(p.Value, Is.EqualTo(DBNull.Value), "B:Value");
     }
 
     [Test]
     public void Constructor2_Value_null()
     {
         var p = new NpgsqlParameter("address", null);
-        Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
-        Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
-        Assert.IsFalse(p.IsNullable, "A:IsNullable");
-        Assert.AreEqual("address", p.ParameterName, "A:ParameterName");
-        Assert.AreEqual(0, p.Precision, "A:Precision");
-        Assert.AreEqual(0, p.Scale, "A:Scale");
-        Assert.AreEqual(0, p.Size, "A:Size");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "A:SourceColumn");
-        Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "A:SourceVersion");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "A:NpgsqlDbType");
-        Assert.IsNull(p.Value, "A:Value");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "A:DbType");
+        Assert.That(p.Direction, Is.EqualTo(ParameterDirection.Input), "A:Direction");
+        Assert.That(p.IsNullable, Is.False, "A:IsNullable");
+        Assert.That(p.ParameterName, Is.EqualTo("address"), "A:ParameterName");
+        Assert.That(p.Precision, Is.EqualTo(0), "A:Precision");
+        Assert.That(p.Scale, Is.EqualTo(0), "A:Scale");
+        Assert.That(p.Size, Is.EqualTo(0), "A:Size");
+        Assert.That(p.SourceColumn, Is.Empty, "A:SourceColumn");
+        Assert.That(p.SourceVersion, Is.EqualTo(DataRowVersion.Current), "A:SourceVersion");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "A:NpgsqlDbType");
+        Assert.That(p.Value, Is.Null, "A:Value");
     }
 
     [Test]
@@ -220,20 +220,20 @@ public class NpgsqlParameterTest : TestBase
         var p1 = new NpgsqlParameter("p1Name", NpgsqlDbType.Varchar, 20,
             "srcCol", ParameterDirection.InputOutput, false, 0, 0,
             DataRowVersion.Original, "foo");
-        Assert.AreEqual(DbType.String, p1.DbType, "DbType");
-        Assert.AreEqual(ParameterDirection.InputOutput, p1.Direction, "Direction");
-        Assert.AreEqual(false, p1.IsNullable, "IsNullable");
+        Assert.That(p1.DbType, Is.EqualTo(DbType.String), "DbType");
+        Assert.That(p1.Direction, Is.EqualTo(ParameterDirection.InputOutput), "Direction");
+        Assert.That(p1.IsNullable, Is.EqualTo(false), "IsNullable");
         //Assert.AreEqual (999, p1.LocaleId, "#");
-        Assert.AreEqual("p1Name", p1.ParameterName, "ParameterName");
-        Assert.AreEqual(0, p1.Precision, "Precision");
-        Assert.AreEqual(0, p1.Scale, "Scale");
-        Assert.AreEqual(20, p1.Size, "Size");
-        Assert.AreEqual("srcCol", p1.SourceColumn, "SourceColumn");
-        Assert.AreEqual(false, p1.SourceColumnNullMapping, "SourceColumnNullMapping");
-        Assert.AreEqual(DataRowVersion.Original, p1.SourceVersion, "SourceVersion");
-        Assert.AreEqual(NpgsqlDbType.Varchar, p1.NpgsqlDbType, "NpgsqlDbType");
+        Assert.That(p1.ParameterName, Is.EqualTo("p1Name"), "ParameterName");
+        Assert.That(p1.Precision, Is.EqualTo(0), "Precision");
+        Assert.That(p1.Scale, Is.EqualTo(0), "Scale");
+        Assert.That(p1.Size, Is.EqualTo(20), "Size");
+        Assert.That(p1.SourceColumn, Is.EqualTo("srcCol"), "SourceColumn");
+        Assert.That(p1.SourceColumnNullMapping, Is.EqualTo(false), "SourceColumnNullMapping");
+        Assert.That(p1.SourceVersion, Is.EqualTo(DataRowVersion.Original), "SourceVersion");
+        Assert.That(p1.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Varchar), "NpgsqlDbType");
         //Assert.AreEqual (3210, p1.NpgsqlValue, "#");
-        Assert.AreEqual("foo", p1.Value, "Value");
+        Assert.That(p1.Value, Is.EqualTo("foo"), "Value");
         //Assert.AreEqual ("database", p1.XmlSchemaCollectionDatabase, "XmlSchemaCollectionDatabase");
         //Assert.AreEqual ("name", p1.XmlSchemaCollectionName, "XmlSchemaCollectionName");
         //Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
@@ -263,22 +263,22 @@ public class NpgsqlParameterTest : TestBase
         };
         var actual = expected.Clone();
 
-        Assert.AreEqual(expected.Value, actual.Value);
-        Assert.AreEqual(expected.ParameterName, actual.ParameterName);
+        Assert.That(actual.Value, Is.EqualTo(expected.Value));
+        Assert.That(actual.ParameterName, Is.EqualTo(expected.ParameterName));
 
-        Assert.AreEqual(expected.DbType, actual.DbType);
-        Assert.AreEqual(expected.NpgsqlDbType, actual.NpgsqlDbType);
-        Assert.AreEqual(expected.DataTypeName, actual.DataTypeName);
+        Assert.That(actual.DbType, Is.EqualTo(expected.DbType));
+        Assert.That(actual.NpgsqlDbType, Is.EqualTo(expected.NpgsqlDbType));
+        Assert.That(actual.DataTypeName, Is.EqualTo(expected.DataTypeName));
 
-        Assert.AreEqual(expected.Direction, actual.Direction);
-        Assert.AreEqual(expected.IsNullable, actual.IsNullable);
-        Assert.AreEqual(expected.Precision, actual.Precision);
-        Assert.AreEqual(expected.Scale, actual.Scale);
-        Assert.AreEqual(expected.Size, actual.Size);
+        Assert.That(actual.Direction, Is.EqualTo(expected.Direction));
+        Assert.That(actual.IsNullable, Is.EqualTo(expected.IsNullable));
+        Assert.That(actual.Precision, Is.EqualTo(expected.Precision));
+        Assert.That(actual.Scale, Is.EqualTo(expected.Scale));
+        Assert.That(actual.Size, Is.EqualTo(expected.Size));
 
-        Assert.AreEqual(expected.SourceVersion, actual.SourceVersion);
-        Assert.AreEqual(expected.SourceColumn, actual.SourceColumn);
-        Assert.AreEqual(expected.SourceColumnNullMapping, actual.SourceColumnNullMapping);
+        Assert.That(actual.SourceVersion, Is.EqualTo(expected.SourceVersion));
+        Assert.That(actual.SourceColumn, Is.EqualTo(expected.SourceColumn));
+        Assert.That(actual.SourceColumnNullMapping, Is.EqualTo(expected.SourceColumnNullMapping));
     }
 
     [Test]
@@ -305,23 +305,23 @@ public class NpgsqlParameterTest : TestBase
         };
         var actual = (NpgsqlParameter<int>)expected.Clone();
 
-        Assert.AreEqual(expected.Value, actual.Value);
-        Assert.AreEqual(expected.TypedValue, actual.TypedValue);
-        Assert.AreEqual(expected.ParameterName, actual.ParameterName);
+        Assert.That(actual.Value, Is.EqualTo(expected.Value));
+        Assert.That(actual.TypedValue, Is.EqualTo(expected.TypedValue));
+        Assert.That(actual.ParameterName, Is.EqualTo(expected.ParameterName));
 
-        Assert.AreEqual(expected.DbType, actual.DbType);
-        Assert.AreEqual(expected.NpgsqlDbType, actual.NpgsqlDbType);
-        Assert.AreEqual(expected.DataTypeName, actual.DataTypeName);
+        Assert.That(actual.DbType, Is.EqualTo(expected.DbType));
+        Assert.That(actual.NpgsqlDbType, Is.EqualTo(expected.NpgsqlDbType));
+        Assert.That(actual.DataTypeName, Is.EqualTo(expected.DataTypeName));
 
-        Assert.AreEqual(expected.Direction, actual.Direction);
-        Assert.AreEqual(expected.IsNullable, actual.IsNullable);
-        Assert.AreEqual(expected.Precision, actual.Precision);
-        Assert.AreEqual(expected.Scale, actual.Scale);
-        Assert.AreEqual(expected.Size, actual.Size);
+        Assert.That(actual.Direction, Is.EqualTo(expected.Direction));
+        Assert.That(actual.IsNullable, Is.EqualTo(expected.IsNullable));
+        Assert.That(actual.Precision, Is.EqualTo(expected.Precision));
+        Assert.That(actual.Scale, Is.EqualTo(expected.Scale));
+        Assert.That(actual.Size, Is.EqualTo(expected.Size));
 
-        Assert.AreEqual(expected.SourceVersion, actual.SourceVersion);
-        Assert.AreEqual(expected.SourceColumn, actual.SourceColumn);
-        Assert.AreEqual(expected.SourceColumnNullMapping, actual.SourceColumnNullMapping);
+        Assert.That(actual.SourceVersion, Is.EqualTo(expected.SourceVersion));
+        Assert.That(actual.SourceColumn, Is.EqualTo(expected.SourceColumn));
+        Assert.That(actual.SourceColumnNullMapping, Is.EqualTo(expected.SourceColumnNullMapping));
     }
 
     #endregion
@@ -356,10 +356,10 @@ public class NpgsqlParameterTest : TestBase
             catch (ArgumentException ex)
             {
                 // The parameter data type of ... is invalid
-                Assert.AreEqual(typeof(ArgumentException), ex.GetType(), "#A2");
-                Assert.IsNull(ex.InnerException, "#A3");
-                Assert.IsNotNull(ex.Message, "#A4");
-                Assert.IsNull(ex.ParamName, "#A5");
+                Assert.That(ex.GetType(), Is.EqualTo(typeof(ArgumentException)), "#A2");
+                Assert.That(ex.InnerException, Is.Null, "#A3");
+                Assert.That(ex.Message, Is.Not.Null, "#A4");
+                Assert.That(ex.ParamName, Is.Null, "#A5");
             }
         }
     }
@@ -368,14 +368,14 @@ public class NpgsqlParameterTest : TestBase
     public void Parameter_null()
     {
         var param = new NpgsqlParameter("param", NpgsqlDbType.Numeric);
-        Assert.AreEqual(0, param.Scale, "#A1");
+        Assert.That(param.Scale, Is.EqualTo(0), "#A1");
         param.Value = DBNull.Value;
-        Assert.AreEqual(0, param.Scale, "#A2");
+        Assert.That(param.Scale, Is.EqualTo(0), "#A2");
 
         param = new NpgsqlParameter("param", NpgsqlDbType.Integer);
-        Assert.AreEqual(0, param.Scale, "#B1");
+        Assert.That(param.Scale, Is.EqualTo(0), "#B1");
         param.Value = DBNull.Value;
-        Assert.AreEqual(0, param.Scale, "#B2");
+        Assert.That(param.Scale, Is.EqualTo(0), "#B2");
     }
 
     [Test]
@@ -388,53 +388,53 @@ public class NpgsqlParameterTest : TestBase
         // assigned. The Type should be inferred everytime Value is assigned
         // If value is null or DBNull, then the current Type should be reset to Text.
         p = new NpgsqlParameter();
-        Assert.AreEqual(DbType.String, p.DbType, "#A1");
-        Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#A2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#A1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#A2");
         p.Value = DBNull.Value;
-        Assert.AreEqual(DbType.String, p.DbType, "#B1");
-        Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#B2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#B1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#B2");
         p.Value = 1;
-        Assert.AreEqual(DbType.Int32, p.DbType, "#C1");
-        Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#C2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Int32), "#C1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer), "#C2");
         p.Value = DBNull.Value;
-        Assert.AreEqual(DbType.String, p.DbType, "#D1");
-        Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#D2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#D1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#D2");
         p.Value = new byte[] { 0x0a };
-        Assert.AreEqual(DbType.Binary, p.DbType, "#E1");
-        Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#E2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Binary), "#E1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea), "#E2");
         p.Value = null;
-        Assert.AreEqual(DbType.String, p.DbType, "#F1");
-        Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#F2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#F1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#F2");
         p.Value = DateTime.Now;
-        Assert.AreEqual(DbType.DateTime, p.DbType, "#G1");
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#G2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime), "#G1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#G2");
         p.Value = null;
-        Assert.AreEqual(DbType.String, p.DbType, "#H1");
-        Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#H2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#H1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#H2");
 
         // If DbType is set, then the NpgsqlDbType should not be
         // inferred from the value assigned.
         p = new NpgsqlParameter();
         p.DbType = DbType.DateTime;
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I1");
         p.Value = 1;
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I2");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I2");
         p.Value = null;
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I3");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I3");
         p.Value = DBNull.Value;
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I4");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I4");
 
         // If NpgsqlDbType is set, then the DbType should not be
         // inferred from the value assigned.
         p = new NpgsqlParameter();
         p.NpgsqlDbType = NpgsqlDbType.Bytea;
-        Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea), "#J1");
         p.Value = 1;
-        Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J2");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea), "#J2");
         p.Value = null;
-        Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J3");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea), "#J3");
         p.Value = DBNull.Value;
-        Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J4");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea), "#J4");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5428")]
@@ -452,24 +452,24 @@ public class NpgsqlParameterTest : TestBase
     {
         var p = new NpgsqlParameter();
         p.ParameterName = "name";
-        Assert.AreEqual("name", p.ParameterName, "#A:ParameterName");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "#A:SourceColumn");
+        Assert.That(p.ParameterName, Is.EqualTo("name"), "#A:ParameterName");
+        Assert.That(p.SourceColumn, Is.Empty, "#A:SourceColumn");
 
         p.ParameterName = null;
-        Assert.AreEqual(string.Empty, p.ParameterName, "#B:ParameterName");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "#B:SourceColumn");
+        Assert.That(p.ParameterName, Is.Empty, "#B:ParameterName");
+        Assert.That(p.SourceColumn, Is.Empty, "#B:SourceColumn");
 
         p.ParameterName = " ";
-        Assert.AreEqual(" ", p.ParameterName, "#C:ParameterName");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "#C:SourceColumn");
+        Assert.That(p.ParameterName, Is.EqualTo(" "), "#C:ParameterName");
+        Assert.That(p.SourceColumn, Is.Empty, "#C:SourceColumn");
 
         p.ParameterName = " name ";
-        Assert.AreEqual(" name ", p.ParameterName, "#D:ParameterName");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "#D:SourceColumn");
+        Assert.That(p.ParameterName, Is.EqualTo(" name "), "#D:ParameterName");
+        Assert.That(p.SourceColumn, Is.Empty, "#D:SourceColumn");
 
         p.ParameterName = string.Empty;
-        Assert.AreEqual(string.Empty, p.ParameterName, "#E:ParameterName");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "#E:SourceColumn");
+        Assert.That(p.ParameterName, Is.Empty, "#E:ParameterName");
+        Assert.That(p.SourceColumn, Is.Empty, "#E:SourceColumn");
     }
 
     [Test]
@@ -480,59 +480,59 @@ public class NpgsqlParameterTest : TestBase
         //Parameter with an assigned value but no DbType specified
         p = new NpgsqlParameter("foo", 42);
         p.ResetDbType();
-        Assert.AreEqual(DbType.Int32, p.DbType, "#A:DbType");
-        Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#A:NpgsqlDbType");
-        Assert.AreEqual(42, p.Value, "#A:Value");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Int32), "#A:DbType");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer), "#A:NpgsqlDbType");
+        Assert.That(p.Value, Is.EqualTo(42), "#A:Value");
 
         p.DbType = DbType.DateTime; //assigning a DbType
-        Assert.AreEqual(DbType.DateTime, p.DbType, "#B:DbType1");
-        Assert.AreEqual(NpgsqlDbType.TimestampTz, p.NpgsqlDbType, "#B:SqlDbType1");
+        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime), "#B:DbType1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz), "#B:SqlDbType1");
         p.ResetDbType();
-        Assert.AreEqual(DbType.Int32, p.DbType, "#B:DbType2");
-        Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#B:SqlDbtype2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Int32), "#B:DbType2");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer), "#B:SqlDbtype2");
 
         //Parameter with an assigned NpgsqlDbType but no specified value
         p = new NpgsqlParameter("foo", NpgsqlDbType.Integer);
         p.ResetDbType();
-        Assert.AreEqual(DbType.Object, p.DbType, "#C:DbType");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#C:NpgsqlDbType");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#C:DbType");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#C:NpgsqlDbType");
 
         p.NpgsqlDbType = NpgsqlDbType.TimestampTz; //assigning a NpgsqlDbType
-        Assert.AreEqual(DbType.DateTime, p.DbType, "#D:DbType1");
-        Assert.AreEqual(NpgsqlDbType.TimestampTz, p.NpgsqlDbType, "#D:SqlDbType1");
+        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime), "#D:DbType1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz), "#D:SqlDbType1");
         p.ResetDbType();
-        Assert.AreEqual(DbType.Object, p.DbType, "#D:DbType2");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#D:SqlDbType2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#D:DbType2");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#D:SqlDbType2");
 
         p = new NpgsqlParameter();
         p.Value = DateTime.MaxValue;
-        Assert.AreEqual(DbType.DateTime2, p.DbType, "#E:DbType1");
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#E:SqlDbType1");
+        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime2), "#E:DbType1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#E:SqlDbType1");
         p.Value = null;
         p.ResetDbType();
-        Assert.AreEqual(DbType.Object, p.DbType, "#E:DbType2");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#E:SqlDbType2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#E:DbType2");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#E:SqlDbType2");
 
         p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
         p.Value = DateTime.MaxValue;
         p.ResetDbType();
-        Assert.AreEqual(DbType.DateTime2, p.DbType, "#F:DbType");
-        Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#F:NpgsqlDbType");
-        Assert.AreEqual(DateTime.MaxValue, p.Value, "#F:Value");
+        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime2), "#F:DbType");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#F:NpgsqlDbType");
+        Assert.That(p.Value, Is.EqualTo(DateTime.MaxValue), "#F:Value");
 
         p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
         p.Value = DBNull.Value;
         p.ResetDbType();
-        Assert.AreEqual(DbType.Object, p.DbType, "#G:DbType");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#G:NpgsqlDbType");
-        Assert.AreEqual(DBNull.Value, p.Value, "#G:Value");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#G:DbType");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#G:NpgsqlDbType");
+        Assert.That(p.Value, Is.EqualTo(DBNull.Value), "#G:Value");
 
         p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
         p.Value = null;
         p.ResetDbType();
-        Assert.AreEqual(DbType.Object, p.DbType, "#G:DbType");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#G:NpgsqlDbType");
-        Assert.IsNull(p.Value, "#G:Value");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#G:DbType");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#G:NpgsqlDbType");
+        Assert.That(p.Value, Is.Null, "#G:Value");
     }
 
     [Test]
@@ -545,24 +545,24 @@ public class NpgsqlParameterTest : TestBase
     {
         var p = new NpgsqlParameter();
         p.SourceColumn = "name";
-        Assert.AreEqual(string.Empty, p.ParameterName, "#A:ParameterName");
-        Assert.AreEqual("name", p.SourceColumn, "#A:SourceColumn");
+        Assert.That(p.ParameterName, Is.Empty, "#A:ParameterName");
+        Assert.That(p.SourceColumn, Is.EqualTo("name"), "#A:SourceColumn");
 
         p.SourceColumn = null;
-        Assert.AreEqual(string.Empty, p.ParameterName, "#B:ParameterName");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "#B:SourceColumn");
+        Assert.That(p.ParameterName, Is.Empty, "#B:ParameterName");
+        Assert.That(p.SourceColumn, Is.Empty, "#B:SourceColumn");
 
         p.SourceColumn = " ";
-        Assert.AreEqual(string.Empty, p.ParameterName, "#C:ParameterName");
-        Assert.AreEqual(" ", p.SourceColumn, "#C:SourceColumn");
+        Assert.That(p.ParameterName, Is.Empty, "#C:ParameterName");
+        Assert.That(p.SourceColumn, Is.EqualTo(" "), "#C:SourceColumn");
 
         p.SourceColumn = " name ";
-        Assert.AreEqual(string.Empty, p.ParameterName, "#D:ParameterName");
-        Assert.AreEqual(" name ", p.SourceColumn, "#D:SourceColumn");
+        Assert.That(p.ParameterName, Is.Empty, "#D:ParameterName");
+        Assert.That(p.SourceColumn, Is.EqualTo(" name "), "#D:SourceColumn");
 
         p.SourceColumn = string.Empty;
-        Assert.AreEqual(string.Empty, p.ParameterName, "#E:ParameterName");
-        Assert.AreEqual(string.Empty, p.SourceColumn, "#E:SourceColumn");
+        Assert.That(p.ParameterName, Is.Empty, "#E:ParameterName");
+        Assert.That(p.SourceColumn, Is.Empty, "#E:SourceColumn");
     }
 
     [Test]
@@ -570,8 +570,8 @@ public class NpgsqlParameterTest : TestBase
     {
         var p = new NpgsqlParameter();
         p.Value = DBNull.Value;
-        Assert.AreEqual(DbType.Object, p.DbType, "#A:DbType");
-        Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#A:NpgsqlDbType");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#A:DbType");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#A:NpgsqlDbType");
 
         // Now change parameter value.
         // Note that as we didn't explicitly specified a dbtype, the dbtype property should change when
@@ -579,8 +579,8 @@ public class NpgsqlParameterTest : TestBase
 
         p.Value = 8;
 
-        Assert.AreEqual(DbType.Int32, p.DbType, "#A:DbType");
-        Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#A:NpgsqlDbType");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Int32), "#A:DbType");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer), "#A:NpgsqlDbType");
 
         //Assert.AreEqual(3510, p.Value, "#A:Value");
         //p.NpgsqlDbType = NpgsqlDbType.Varchar;
@@ -608,19 +608,19 @@ public class NpgsqlParameterTest : TestBase
 
         var newParam = param.Clone();
 
-        Assert.AreEqual(param.Value, newParam.Value);
-        Assert.AreEqual(param.Precision, newParam.Precision);
-        Assert.AreEqual(param.Scale, newParam.Scale);
-        Assert.AreEqual(param.Size, newParam.Size);
-        Assert.AreEqual(param.Direction, newParam.Direction);
-        Assert.AreEqual(param.IsNullable, newParam.IsNullable);
-        Assert.AreEqual(param.ParameterName, newParam.ParameterName);
-        Assert.AreEqual(param.TrimmedName, newParam.TrimmedName);
-        Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
-        Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
-        Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
-        Assert.AreEqual(param.SourceColumnNullMapping, newParam.SourceColumnNullMapping);
-        Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
+        Assert.That(newParam.Value, Is.EqualTo(param.Value));
+        Assert.That(newParam.Precision, Is.EqualTo(param.Precision));
+        Assert.That(newParam.Scale, Is.EqualTo(param.Scale));
+        Assert.That(newParam.Size, Is.EqualTo(param.Size));
+        Assert.That(newParam.Direction, Is.EqualTo(param.Direction));
+        Assert.That(newParam.IsNullable, Is.EqualTo(param.IsNullable));
+        Assert.That(newParam.ParameterName, Is.EqualTo(param.ParameterName));
+        Assert.That(newParam.TrimmedName, Is.EqualTo(param.TrimmedName));
+        Assert.That(newParam.SourceColumn, Is.EqualTo(param.SourceColumn));
+        Assert.That(newParam.SourceVersion, Is.EqualTo(param.SourceVersion));
+        Assert.That(newParam.NpgsqlValue, Is.EqualTo(param.NpgsqlValue));
+        Assert.That(newParam.SourceColumnNullMapping, Is.EqualTo(param.SourceColumnNullMapping));
+        Assert.That(newParam.NpgsqlValue, Is.EqualTo(param.NpgsqlValue));
 
     }
 
@@ -632,7 +632,7 @@ public class NpgsqlParameterTest : TestBase
 
         paramIface.Precision = 42;
 
-        Assert.AreEqual((byte)42, paramIface.Precision);
+        Assert.That(paramIface.Precision, Is.EqualTo((byte)42));
     }
 
     [Test]
@@ -643,7 +643,7 @@ public class NpgsqlParameterTest : TestBase
 
         paramBase.Precision = 42;
 
-        Assert.AreEqual((byte)42, paramBase.Precision);
+        Assert.That(paramBase.Precision, Is.EqualTo((byte)42));
     }
 
     [Test]
@@ -654,7 +654,7 @@ public class NpgsqlParameterTest : TestBase
 
         paramIface.Scale = 42;
 
-        Assert.AreEqual((byte)42, paramIface.Scale);
+        Assert.That(paramIface.Scale, Is.EqualTo((byte)42));
     }
 
     [Test]
@@ -665,7 +665,7 @@ public class NpgsqlParameterTest : TestBase
 
         paramBase.Scale = 42;
 
-        Assert.AreEqual((byte)42, paramBase.Scale);
+        Assert.That(paramBase.Scale, Is.EqualTo((byte)42));
     }
 
     [Test]

@@ -19,7 +19,7 @@ public class NotificationTests : TestBase
         conn.ExecuteNonQuery($"LISTEN {notify}");
         conn.Notification += (o, e) => receivedNotification = true;
         conn.ExecuteNonQuery($"NOTIFY {notify}");
-        Assert.IsTrue(receivedNotification);
+        Assert.That(receivedNotification);
     }
 
     [Test, Description("Generates a notification that arrives after reader data that is already being read")]
@@ -53,12 +53,12 @@ public class NotificationTests : TestBase
             // Allow some time for the notification to get delivered
             await Task.Delay(2000);
 
-            Assert.IsTrue(reader.Read());
-            Assert.AreEqual(1, reader.GetValue(0));
+            Assert.That(reader.Read());
+            Assert.That(reader.GetValue(0), Is.EqualTo(1));
         }
 
         Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-        Assert.IsTrue(receivedNotification);
+        Assert.That(receivedNotification);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
@@ -73,7 +73,7 @@ public class NotificationTests : TestBase
         notifyingConn.ExecuteNonQuery($"NOTIFY {notify}");
         conn.Notification += (o, e) => receivedNotification = true;
         Assert.That(conn.Wait(0), Is.EqualTo(true));
-        Assert.IsTrue(receivedNotification);
+        Assert.That(receivedNotification);
         Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
     }
 
@@ -106,7 +106,7 @@ public class NotificationTests : TestBase
         await notifyingConn.ExecuteNonQueryAsync($"NOTIFY {notify}");
         conn.Notification += (o, e) => receivedNotification = true;
         await conn.WaitAsync(0);
-        Assert.IsTrue(receivedNotification);
+        Assert.That(receivedNotification);
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 

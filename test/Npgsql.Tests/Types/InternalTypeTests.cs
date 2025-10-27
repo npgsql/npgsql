@@ -52,10 +52,10 @@ public class InternalTypeTests(MultiplexingMode multiplexingMode) : Multiplexing
         cmd.Parameters.AddWithValue("p", NpgsqlDbType.Tid, expected);
         using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
-        Assert.AreEqual(1234, reader.GetFieldValue<NpgsqlTid>(0).BlockNumber);
-        Assert.AreEqual(40000, reader.GetFieldValue<NpgsqlTid>(0).OffsetNumber);
-        Assert.AreEqual(expected.BlockNumber, reader.GetFieldValue<NpgsqlTid>(1).BlockNumber);
-        Assert.AreEqual(expected.OffsetNumber, reader.GetFieldValue<NpgsqlTid>(1).OffsetNumber);
+        Assert.That(reader.GetFieldValue<NpgsqlTid>(0).BlockNumber, Is.EqualTo(1234));
+        Assert.That(reader.GetFieldValue<NpgsqlTid>(0).OffsetNumber, Is.EqualTo(40000));
+        Assert.That(reader.GetFieldValue<NpgsqlTid>(1).BlockNumber, Is.EqualTo(expected.BlockNumber));
+        Assert.That(reader.GetFieldValue<NpgsqlTid>(1).OffsetNumber, Is.EqualTo(expected.OffsetNumber));
     }
 
     #region NpgsqlLogSequenceNumber / PgLsn
@@ -78,7 +78,7 @@ public class InternalTypeTests(MultiplexingMode multiplexingMode) : Multiplexing
     public async Task NpgsqlLogSequenceNumber()
     {
         var expected1 = new NpgsqlLogSequenceNumber(42949672971ul);
-        Assert.AreEqual(expected1, NpgsqlTypes.NpgsqlLogSequenceNumber.Parse("A/B"));
+        Assert.That(NpgsqlTypes.NpgsqlLogSequenceNumber.Parse("A/B"), Is.EqualTo(expected1));
         await using var conn = await OpenConnectionAsync();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT 'A/B'::pg_lsn, @p::pg_lsn";
@@ -87,12 +87,12 @@ public class InternalTypeTests(MultiplexingMode multiplexingMode) : Multiplexing
         reader.Read();
         var result1 = reader.GetFieldValue<NpgsqlLogSequenceNumber>(0);
         var result2 = reader.GetFieldValue<NpgsqlLogSequenceNumber>(1);
-        Assert.AreEqual(expected1, result1);
-        Assert.AreEqual(42949672971ul, (ulong)result1);
-        Assert.AreEqual("A/B", result1.ToString());
-        Assert.AreEqual(expected1, result2);
-        Assert.AreEqual(42949672971ul, (ulong)result2);
-        Assert.AreEqual("A/B", result2.ToString());
+        Assert.That(result1, Is.EqualTo(expected1));
+        Assert.That((ulong)result1, Is.EqualTo(42949672971ul));
+        Assert.That(result1.ToString(), Is.EqualTo("A/B"));
+        Assert.That(result2, Is.EqualTo(expected1));
+        Assert.That((ulong)result2, Is.EqualTo(42949672971ul));
+        Assert.That(result2.ToString(), Is.EqualTo("A/B"));
     }
 
     #endregion NpgsqlLogSequenceNumber / PgLsn
