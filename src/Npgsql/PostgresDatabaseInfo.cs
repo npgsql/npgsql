@@ -149,8 +149,8 @@ FROM (
 ) AS t
 JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
-    {(schemaListSqlFragment is not null ? $"(ns.nspname IN ({BuiltinSchemaListSqlFragment}{(schemaListSqlFragment.Length > 0 ? $", {schemaListSqlFragment}" : "")}){(hasTypeCategory ? " OR typcategory = 'U'" : "" )}) AND (" : "(")}
-    typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
+    {(schemaListSqlFragment is not null ? $"(ns.nspname IN ({schemaListSqlFragment}){(hasTypeCategory ? " OR typcategory = 'U'" : "" )}) AND " : "")}
+    (typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? $"ns.nspname NOT IN ({BuiltinSchemaListSqlFragment})" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
     (typtype = 'p' AND typname IN ('record', 'void', 'unknown')) OR -- Some special supported pseudo-types
     (typtype = 'a' AND (  -- Array of...
@@ -178,17 +178,19 @@ JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
   (typ.typtype = 'c' AND {(loadTableComposites ? $"ns.nspname NOT IN ({BuiltinSchemaListSqlFragment})" : "cls.relkind='c'")}) AND
-  {(schemaListSqlFragment is not null ? $"(ns.nspname IN ({BuiltinSchemaListSqlFragment}{(schemaListSqlFragment.Length > 0 ? $", {schemaListSqlFragment}" : "")})) AND " : "")}
+  {(schemaListSqlFragment is not null ? $"(ns.nspname IN ({schemaListSqlFragment})) AND " : "")}
   attnum > 0 AND     -- Don't load system attributes
   NOT attisdropped
 ORDER BY typ.oid, att.attnum;";
 
-    static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder)
+    static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder, string? schemaListSqlFragment)
         => $@"
 -- Load enum fields
-SELECT pg_type.oid, enumlabel
+SELECT typ.oid, enumlabel
 FROM pg_enum
-JOIN pg_type ON pg_type.oid=enumtypid
+JOIN pg_type AS typ ON typ.oid = enumtypid
+JOIN pg_namespace AS ns ON ns.oid = typ.typnamespace
+{(schemaListSqlFragment is not null ? $"WHERE (ns.nspname IN ({schemaListSqlFragment}))" : "")}
 ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
     /// <summary>
@@ -213,11 +215,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         string? schemaListSqlFragment = null;
         if (typeLoading.TypeLoadingSchemas is not null)
         {
-            var builder = new StringBuilder();
+            var builder = new StringBuilder(BuiltinSchemaListSqlFragment);
             for (var i = 0; i < typeLoading.TypeLoadingSchemas.Length; i++)
             {
-                if (i > 0)
-                    builder.Append(", ");
+                builder.Append(", ");
                 var schema = typeLoading.TypeLoadingSchemas[i];
                 builder.Append('\'');
                 builder.Append(EscapeLiteral(schema));
@@ -230,7 +231,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, loadTableComposites, schemaListSqlFragment, HasTypeCategory);
         var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(loadTableComposites, schemaListSqlFragment);
         var loadEnumFieldsQuery = SupportsEnumTypes
-            ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
+            ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder, schemaListSqlFragment)
             : string.Empty;
 
         timeout.CheckAndApply(conn);
