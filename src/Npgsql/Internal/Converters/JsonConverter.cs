@@ -107,8 +107,8 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
 static class JsonConverter
 {
     public const byte JsonbProtocolVersion = 1;
-    // We pick a value that is the largest multiple of 4096 that is still smaller than the large object heap threshold (85K).
-    const int StreamingThreshold = 81920;
+    // Largest value that is a power of 2 and a multiple of 4096 while staying under the large object heap threshold (85K).
+    const int StreamingThreshold = 65536;
 
     public static bool TryReadStream(bool jsonb, Encoding encoding, PgReader reader, out int byteCount, [NotNullWhen(true)]out Stream? stream)
     {
