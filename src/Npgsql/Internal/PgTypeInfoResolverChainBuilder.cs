@@ -12,7 +12,6 @@ struct PgTypeInfoResolverChainBuilder
     RangeArrayHandler _rangeArrayHandler = RangeArrayHandler.Instance;
     MultirangeArrayHandler _multirangeArrayHandler = MultirangeArrayHandler.Instance;
     Action<PgTypeInfoResolverChainBuilder, List<IPgTypeInfoResolver>>? _addArrayResolvers;
-    Action<PgTypeInfoResolverChainBuilder, List<IDbTypeResolver>>? _addDbTypeResolvers;
 
     public PgTypeInfoResolverChainBuilder()
     {
@@ -107,18 +106,6 @@ struct PgTypeInfoResolverChainBuilder
         }
     }
 
-    public void EnableDbTypes()
-    {
-        _addDbTypeResolvers ??= AddResolvers;
-
-        static void AddResolvers(PgTypeInfoResolverChainBuilder instance, List<IDbTypeResolver> resolvers)
-        {
-            foreach (var factory in instance._factories)
-                if (GetInstance(factory).CreateDbTypeResolver() is { } resolver)
-                    resolvers.Add(resolver);
-        }
-    }
-
     public PgTypeInfoResolverChain Build(Action<List<IPgTypeInfoResolver>>? configure = null)
     {
         var resolvers = new List<IPgTypeInfoResolver>();
@@ -136,12 +123,11 @@ struct PgTypeInfoResolverChainBuilder
         _addRangeResolvers?.Invoke(instance, resolvers);
         _addMultirangeResolvers?.Invoke(instance, resolvers);
         _addArrayResolvers?.Invoke(instance, resolvers);
-        _addDbTypeResolvers?.Invoke(instance, dbTypeResolvers);
 
         configure?.Invoke(resolvers);
         return new(
             resolvers,
-            dbTypeResolvers,
+            dbTypeResolvers.Count == 0 ? null : dbTypeResolvers,
             rangesEnabled: _addRangeResolvers is not null,
             multirangesEnabled: _addMultirangeResolvers is not null,
             arraysEnabled: _addArrayResolvers is not null
@@ -190,9 +176,9 @@ readonly struct PgTypeInfoResolverChain : IEnumerable<IPgTypeInfoResolver>
 
     readonly EnabledFlags _enabled;
     readonly List<IPgTypeInfoResolver> _resolvers;
-    readonly List<IDbTypeResolver> _dbTypeResolvers;
+    readonly List<IDbTypeResolver>? _dbTypeResolvers;
 
-    public PgTypeInfoResolverChain(List<IPgTypeInfoResolver> resolvers, List<IDbTypeResolver> dbTypeResolvers, bool rangesEnabled, bool multirangesEnabled, bool arraysEnabled)
+    public PgTypeInfoResolverChain(List<IPgTypeInfoResolver> resolvers, List<IDbTypeResolver>? dbTypeResolvers, bool rangesEnabled, bool multirangesEnabled, bool arraysEnabled)
     {
         _enabled = rangesEnabled ? EnabledFlags.Ranges | _enabled : _enabled;
         _enabled = multirangesEnabled ? EnabledFlags.Multiranges | _enabled : _enabled;
@@ -210,5 +196,5 @@ readonly struct PgTypeInfoResolverChain : IEnumerable<IPgTypeInfoResolver>
     IEnumerator IEnumerable.GetEnumerator()
         => _resolvers?.GetEnumerator() ?? Array.Empty<IPgTypeInfoResolver>().GetEnumerator();
 
-    public IEnumerable<IDbTypeResolver> GetDbTypeResolvers() => _dbTypeResolvers;
+    public IEnumerable<IDbTypeResolver>? GetDbTypeResolvers() => _dbTypeResolvers;
 }

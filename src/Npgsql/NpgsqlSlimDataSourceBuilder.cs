@@ -559,16 +559,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// Sets up custom mappings for the DbType to PostgreSQL types.
-    /// </summary>
-    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    public NpgsqlSlimDataSourceBuilder EnableDbTypes()
-    {
-        _resolverChainBuilder.EnableDbTypes();
-        return this;
-    }
-
-    /// <summary>
     /// Sets up mappings for the PostgreSQL <c>record</c> type as a .NET <c>object[]</c>.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>

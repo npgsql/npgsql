@@ -5,7 +5,7 @@ using Npgsql.Internal.Postgres;
 namespace Npgsql.Internal;
 
 /// <summary>
-/// An Npgsql resolver for DbType. Used by Npgsql map DbType and DataTypeName.
+/// An Npgsql resolver for DbType. Used by Npgsql to map DbType to DataTypeName and back.
 /// </summary>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public interface IDbTypeResolver

@@ -533,10 +533,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (!previouslyResolved)
         {
             string? dataTypeName;
-            if (options.DbTypeResolver.GetDataTypeName(DbType, options) is { } mappedDbTypeName)
+            if (options.DbTypeResolver?.GetDataTypeName(DbType, options) is { } mappedDbTypeName)
             {
-                dataTypeName = mappedDbTypeName;
-                _npgsqlDbType = null;
+                dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(mappedDbTypeName);
             }
             else
             {
