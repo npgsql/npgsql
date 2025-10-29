@@ -45,7 +45,6 @@ public class DataTypeNameTests
         => new DataTypeName(name).ToDefaultMultirangeName();
 
     [TestCase("public.name", null, ExpectedResult = "public.name")]
-    [TestCase("public.name ", null, ExpectedResult = "public.name ")]
     [TestCase("public._name", null, ExpectedResult = "public._name")]
     [TestCase("public.name[]", null, ExpectedResult = "public._name")]
     [TestCase("public.integer", null, ExpectedResult = "public.integer")]
@@ -60,6 +59,7 @@ public class DataTypeNameTests
     [TestCase("name[]", "public", ExpectedResult = "public._name")]
     [TestCase("timestamp with time zone", "public", ExpectedResult = "public.timestamptz")]
     [TestCase("boolean(facet_name)", "public", ExpectedResult = "public.bool")]
-    public string FromDisplayName(string name, string schema)
+    [TestCase(" public.name ", null, ExpectedResult = "public.name")]
+    public string FromDisplayName(string name, string? schema)
     => DataTypeName.FromDisplayName(name, schema).Value;
 }

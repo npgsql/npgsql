@@ -1,4 +1,6 @@
-﻿namespace Npgsql.PostgresTypes;
+﻿using Npgsql.Internal.Postgres;
+
+namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL data type that isn't known to Npgsql and cannot be handled.
@@ -10,5 +12,5 @@ public sealed class UnknownBackendType : PostgresType
     /// <summary>
     /// Constructs a the unknown backend type.
     /// </summary>
-    UnknownBackendType() : base("", "<unknown>", 0) { }
+    UnknownBackendType() : base(DataTypeName.Unspecified,0) { }
 }

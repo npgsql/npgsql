@@ -24,7 +24,7 @@ public abstract class PostgresType
     /// <param name="oid">The data type's OID.</param>
     private protected PostgresType(string ns, string name, uint oid)
     {
-        DataTypeName = DataTypeName.FromDisplayName(name, ns);
+        DataTypeName = DataTypeName.FromDisplayName(name, ns, assumeUnqualified: true);
         OID = oid;
         FullName = Namespace + "." + Name;
     }
