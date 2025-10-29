@@ -1463,39 +1463,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Retrieves data as a <see cref="Stream"/>.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
-    /// <returns>A stream object.</returns>
-    /// <remarks>
-    /// <para>The following <see cref="T:System.IO.Stream" /> members are not available for objects returned by <b>GetStream</b>:</para>
-    /// <list type="bullet">
-    /// <item>BeginWrite</item>
-    /// <item>EndWrite</item>
-    /// <item>ReadTimeout</item>
-    /// <item>SetLength</item>
-    /// <item>Write</item>
-    /// <item>WriteAsync</item>
-    /// <item>WriteByte</item>
-    /// <item>WriteTimeout</item>
-    /// </list>
-    /// </remarks>
-    /// <exception cref="T:System.InvalidOperationException">
-    /// <list type="bullet">
-    /// <item>The connection drops or is closed during the data retrieval.</item>
-    /// <item>The reader is closed during the data retrieval.</item>
-    /// <item>Tried to read a previously-read column in sequential mode.</item>
-    /// <item>There is no data ready to be read (for example, the first <see cref="M:Npgsql.NpgsqlDataReader.Read" /> hasn't been called, or returned false).</item>
-    /// <item>A stream is already open for this reader</item>
-    /// </list>
-    /// </exception>
-    /// <exception cref="T:System.IndexOutOfRangeException">
-    /// Trying to read a column that does not exist.
-    /// </exception>
-    /// <exception cref="T:System.InvalidCastException">
-    /// <list type="bullet">
-    /// <item>Column value is null</item>
-    /// </list>
-    /// </exception>
-    /// <exception cref="T:System.ObjectDisposedException">
-    /// </exception>
+    /// <returns>The returned object.</returns>
     public override Stream GetStream(int ordinal)
         => GetFieldValueCore<Stream>(ordinal);
 
@@ -1506,39 +1474,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
-    /// <returns>A stream object.</returns>
-    /// <remarks>
-    /// <para>The following <see cref="T:System.IO.Stream" /> members are not available for objects returned by <b>GetStreamAsync</b>:</para>
-    /// <list type="bullet">
-    /// <item>BeginWrite</item>
-    /// <item>EndWrite</item>
-    /// <item>ReadTimeout</item>
-    /// <item>SetLength</item>
-    /// <item>Write</item>
-    /// <item>WriteAsync</item>
-    /// <item>WriteByte</item>
-    /// <item>WriteTimeout</item>
-    /// </list>
-    /// </remarks>
-    /// <exception cref="T:System.InvalidOperationException">
-    /// <list type="bullet">
-    /// <item>The connection drops or is closed during the data retrieval.</item>
-    /// <item>The reader is closed during the data retrieval.</item>
-    /// <item>Tried to read a previously-read column in sequential mode.</item>
-    /// <item>There is no data ready to be read (for example, the first <see cref="M:Npgsql.NpgsqlDataReader.Read" /> hasn't been called, or returned false).</item>
-    /// <item>A stream is already open for this reader</item>
-    /// </list>
-    /// </exception>
-    /// <exception cref="T:System.IndexOutOfRangeException">
-    /// Trying to read a column that does not exist.
-    /// </exception>
-    /// <exception cref="T:System.InvalidCastException">
-    /// <list type="bullet">
-    /// <item>Column value is null</item>
-    /// </list>
-    /// </exception>
-    /// <exception cref="T:System.ObjectDisposedException">
-    /// </exception>
+    /// <returns>The returned object.</returns>
     public Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default)
         => GetFieldValueAsync<Stream>(ordinal, cancellationToken);
 
