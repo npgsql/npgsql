@@ -88,3 +88,12 @@ Npgsql.NpgsqlConnection.ReloadTypesAsync(System.Threading.CancellationToken canc
 *REMOVED*Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 static NpgsqlTypes.NpgsqlInet.implicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPNetwork cidr) -> NpgsqlTypes.NpgsqlInet
 static readonly NpgsqlTypes.NpgsqlTsVector.Empty -> NpgsqlTypes.NpgsqlTsVector!
+NpgsqlTypes.NpgsqlBox.Deconstruct(out double left, out double right, out double bottom, out double top) -> void
+NpgsqlTypes.NpgsqlBox.Deconstruct(out double left, out double right, out double bottom, out double top, out double width, out double height) -> void
+NpgsqlTypes.NpgsqlBox.Deconstruct(out NpgsqlTypes.NpgsqlPoint lowerLeft, out NpgsqlTypes.NpgsqlPoint upperRight) -> void
+NpgsqlTypes.NpgsqlCircle.Deconstruct(out double x, out double y, out double radius) -> void
+NpgsqlTypes.NpgsqlCircle.Deconstruct(out NpgsqlTypes.NpgsqlPoint center, out double radius) -> void
+NpgsqlTypes.NpgsqlLine.Deconstruct(out double a, out double b, out double c) -> void
+NpgsqlTypes.NpgsqlLSeg.Deconstruct(out NpgsqlTypes.NpgsqlPoint start, out NpgsqlTypes.NpgsqlPoint end) -> void
+NpgsqlTypes.NpgsqlPoint.Deconstruct(out double x, out double y) -> void
+NpgsqlTypes.NpgsqlTid.Deconstruct(out uint blockNumber, out ushort offsetNumber) -> void

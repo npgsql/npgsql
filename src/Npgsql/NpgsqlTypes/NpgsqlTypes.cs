@@ -38,6 +38,8 @@ public struct NpgsqlPoint(double x, double y) : IEquatable<NpgsqlPoint>
 
     public override string ToString()
         => string.Format(CultureInfo.InvariantCulture, "({0},{1})", X, Y);
+
+    public void Deconstruct(out double x, out double y) => (x, y) = (X, Y);
 }
 
 /// <summary>
@@ -66,6 +68,8 @@ public struct NpgsqlLine(double a, double b, double c) : IEquatable<NpgsqlLine>
 
     public static bool operator ==(NpgsqlLine x, NpgsqlLine y) => x.Equals(y);
     public static bool operator !=(NpgsqlLine x, NpgsqlLine y) => !(x == y);
+
+    public void Deconstruct(out double a, out double b, out double c) => (a, b, c) = (A, B, C);
 }
 
 /// <summary>
@@ -103,6 +107,8 @@ public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
 
     public static bool operator ==(NpgsqlLSeg x, NpgsqlLSeg y) => x.Equals(y);
     public static bool operator !=(NpgsqlLSeg x, NpgsqlLSeg y) => !(x == y);
+
+    public void Deconstruct(out NpgsqlPoint start, out NpgsqlPoint end) => (start, end) = (Start, End);
 }
 
 /// <summary>
@@ -177,6 +183,30 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
 
         if (_upperRight.Y < _lowerLeft.Y)
             (_upperRight.Y, _lowerLeft.Y) = (_lowerLeft.Y, _upperRight.Y);
+    }
+
+    public void Deconstruct(out NpgsqlPoint lowerLeft, out NpgsqlPoint upperRight)
+    {
+        lowerLeft = LowerLeft;
+        upperRight = UpperRight;
+    }
+
+    public void Deconstruct(out double left, out double right, out double bottom, out double top)
+    {
+        left = Left;
+        right = Right;
+        bottom = Bottom;
+        top = Top;
+    }
+
+    public void Deconstruct(out double left, out double right, out double bottom, out double top, out double width, out double height)
+    {
+        left = Left;
+        right = Right;
+        bottom = Bottom;
+        top = Top;
+        width = Width;
+        height = Height;
     }
 }
 
@@ -413,6 +443,19 @@ public struct NpgsqlCircle(double x, double y, double radius) : IEquatable<Npgsq
 
     public override int GetHashCode()
         => HashCode.Combine(X, Y, Radius);
+
+    public void Deconstruct(out double x, out double y, out double radius)
+    {
+        x = X;
+        y = Y;
+        radius = Radius;
+    }
+
+    public void Deconstruct(out NpgsqlPoint center, out double radius)
+    {
+        center = Center;
+        radius = Radius;
+    }
 }
 
 /// <summary>
@@ -562,6 +605,12 @@ public readonly struct NpgsqlTid(uint blockNumber, ushort offsetNumber) : IEquat
     public static bool operator ==(NpgsqlTid left, NpgsqlTid right) => left.Equals(right);
     public static bool operator !=(NpgsqlTid left, NpgsqlTid right) => !(left == right);
     public override string ToString() => $"({BlockNumber},{OffsetNumber})";
+
+    public void Deconstruct(out uint blockNumber, out ushort offsetNumber)
+    {
+        blockNumber = BlockNumber;
+        offsetNumber = OffsetNumber;
+    }
 }
 
 #pragma warning restore 1591
