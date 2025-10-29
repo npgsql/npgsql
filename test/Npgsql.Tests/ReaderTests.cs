@@ -817,6 +817,7 @@ LANGUAGE 'plpgsql'");
             Assert.That(reader.GetFieldValue<object>(i), Is.EqualTo(DBNull.Value));
             Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(DBNull.Value));
             Assert.That(() => reader.GetString(i), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader.GetStream(i), Throws.Exception.TypeOf<InvalidCastException>());
         }
     }
 
@@ -1434,6 +1435,25 @@ LANGUAGE plpgsql VOLATILE";
 
         Assert.That(async () => await streamGetter(reader, 0),
             Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public async Task GetBytes_before_getstream([Values(true, false)] bool isAsync)
+    {
+        var expected = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+        var streamGetter = BuildStreamGetter(isAsync);
+
+        using var conn = await OpenConnectionAsync();
+        using var cmd = new NpgsqlCommand($"SELECT {EncodeByteaHex(expected)}::bytea", conn);
+        using var reader = await cmd.ExecuteReaderAsync(Behavior);
+
+        await reader.ReadAsync();
+
+        // GetBytes with null buffer won't consume column in any way
+        Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+
+        using var stream = await streamGetter(reader, 0);
+        Assert.That(stream.Length, Is.EqualTo(expected.Length));
     }
 
     public static IEnumerable GetStreamCases()
