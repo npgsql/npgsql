@@ -424,7 +424,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         var databaseStateInfo = _databaseStateInfo;
 
         if (!ignoreTimeStamp && timeStamp <= databaseStateInfo.TimeStamp)
-            return _databaseStateInfo.State;
+            return databaseStateInfo.State;
 
         _databaseStateInfo = new(newState, new NpgsqlTimeout(stateExpiration), timeStamp);
 
