@@ -158,7 +158,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         ActivitySource.AddActivityListener(activityListener);
 
         await using var dataSource = CreateDataSource(x => x.Host = "not-existing-host");
-        var ex = Assert.ThrowsAsync<SocketException>(async () =>
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () =>
         {
             await using var conn = async
                 ? await dataSource.OpenConnectionAsync()
