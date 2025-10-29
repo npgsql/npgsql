@@ -315,14 +315,6 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
         sb.Append(Open ? ']' : ')');
         return sb.ToString();
     }
-
-    public void Deconstruct(out bool open, out int capacity, out int count, out bool isReadOnly)
-    {
-        open = Open;
-        capacity = Capacity;
-        count = Count;
-        isReadOnly = IsReadOnly;
-    }
 }
 
 /// <summary>
@@ -412,13 +404,6 @@ public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
         }
         sb.Append(')');
         return sb.ToString();
-    }
-
-    public void Deconstruct(out int capacity, out int count, out bool isReadOnly)
-    {
-        capacity = Capacity;
-        count = Count;
-        isReadOnly = IsReadOnly;
     }
 }
 
