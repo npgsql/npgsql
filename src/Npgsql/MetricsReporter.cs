@@ -1,7 +1,6 @@
-using System;
-
 namespace Npgsql;
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -9,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 
 // .NET docs on metric instrumentation: https://learn.microsoft.com/en-us/dotnet/core/diagnostics/metrics-instrumentation
-// OpenTelemetry semantic conventions for database metric: https://opentelemetry.io/docs/specs/otel/metrics/semantic_conventions/database-metrics
+// OpenTelemetry semantic conventions for database metric: https://opentelemetry.io/docs/specs/semconv/database/database-metrics
 sealed class MetricsReporter : IDisposable
 {
     const string Version = "0.1.0";
@@ -32,6 +31,11 @@ sealed class MetricsReporter : IDisposable
     readonly KeyValuePair<string, object?> _poolNameTag;
 
     static readonly List<MetricsReporter> Reporters = [];
+
+    static readonly InstrumentAdvice<double> ShortHistogramAdvice = new()
+    {
+        HistogramBucketBoundaries = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]
+    };
 
     CommandCounters _commandCounters;
 
@@ -60,7 +64,8 @@ sealed class MetricsReporter : IDisposable
         CommandDuration = Meter.CreateHistogram<double>(
             "db.client.commands.duration",
             unit: "s",
-            description: "The duration of database commands, in seconds.");
+            description: "The duration of database commands, in seconds.",
+            advice: ShortHistogramAdvice);
 
         BytesWritten = Meter.CreateCounter<long>(
             "db.client.commands.bytes_written",
@@ -85,7 +90,8 @@ sealed class MetricsReporter : IDisposable
         ConnectionCreateTime = Meter.CreateHistogram<double>(
             "db.client.connections.create_time",
             unit: "s",
-            description: "The time it took to create a new connection.");
+            description: "The time it took to create a new connection.",
+            advice: ShortHistogramAdvice);
 
         // Observable metrics; these are for values we already track internally (and efficiently) inside the connection pool implementation.
         Meter.CreateObservableUpDownCounter(
