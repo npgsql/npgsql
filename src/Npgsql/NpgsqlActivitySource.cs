@@ -4,12 +4,13 @@ using System.Data;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 
 namespace Npgsql;
 
 static class NpgsqlActivitySource
 {
-    static readonly ActivitySource Source = new("Npgsql", "0.2.0");
+    static readonly ActivitySource Source = new("Npgsql", GetLibraryVersion());
 
     internal static bool IsEnabled => Source.HasListeners();
 
@@ -143,4 +144,9 @@ static class NpgsqlActivitySource
         activity.SetStatus(ActivityStatusCode.Error, statusDescription);
         activity.Dispose();
     }
+
+    static string GetLibraryVersion()
+        => typeof(NpgsqlDataSource).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion ?? "UNKNOWN";
 }
