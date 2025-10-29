@@ -31,7 +31,7 @@ sealed partial class NodaTimeTypeInfoResolverFactory
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options,
                         new IntervalConverter(
-                            CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options))),
+                            CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options), options.EnableDateTimeInfinityConversions)),
                 isDefault: true);
             mappings.AddStructType<NpgsqlRange<Instant>>(TimestampTzRangeDataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options,
