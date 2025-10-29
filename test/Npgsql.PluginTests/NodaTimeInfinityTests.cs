@@ -361,6 +361,26 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         }
     }
 
+    [Test]
+    public async Task Inclusive_End_Range_Infinity_read()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT tstzrange('-infinity', 'infinity','[]') as val", conn);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        if (Statics.DisableDateTimeInfinityConversions)
+        {
+            Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+        }
+        else
+        {
+            Assert.That(reader[0], Is.EqualTo(new Interval(Instant.MinValue, null)));
+        }
+    }
+
     protected override NpgsqlDataSource DataSource { get; }
 
     public NodaTimeInfinityTests(bool disableDateTimeInfinityConversions)

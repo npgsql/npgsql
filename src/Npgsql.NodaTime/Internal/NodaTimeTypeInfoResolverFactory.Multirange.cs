@@ -31,12 +31,12 @@ sealed partial class NodaTimeTypeInfoResolverFactory
             mappings.AddType<Interval[]>(TimestampTzMultirangeDataTypeName,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, CreateArrayMultirangeConverter(new IntervalConverter(
-                        CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options)), options)),
+                        CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options), options.EnableDateTimeInfinityConversions), options)),
                 isDefault: true);
             mappings.AddType<List<Interval>>(TimestampTzMultirangeDataTypeName,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, CreateListMultirangeConverter(new IntervalConverter(
-                        CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options)), options)));
+                        CreateRangeConverter(new InstantConverter(options.EnableDateTimeInfinityConversions), options), options.EnableDateTimeInfinityConversions), options)));
             mappings.AddType<NpgsqlRange<Instant>[]>(TimestampTzMultirangeDataTypeName,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options,
