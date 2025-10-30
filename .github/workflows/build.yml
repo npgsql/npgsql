@@ -59,6 +59,12 @@ jobs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
       is_prerelease: ${{ steps.analyze_tag.outputs.is_prerelease }}
 
+    # Installing PostGIS on Windows is complicated/unreliable, so we don't test on it.
+    # The NPGSQL_TEST_POSTGIS environment variable ensures that if PostGIS isn't installed,
+    # the PostGIS tests fail and therefore fail the build.
+    env:
+      NPGSQL_TEST_POSTGIS: ${{ !startsWith(matrix.os, 'windows') }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -164,28 +170,6 @@ jobs:
 
           # Match Npgsql CI Docker image and stash one level up
           cp $GITHUB_WORKSPACE/.build/{server.crt,server.key,ca.crt} pgsql
-
-          # Find OSGEO version number
-          OSGEO_VERSION=$(\
-            curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }} |
-            sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p' |
-            tail -n 1)
-          if [ -z "$OSGEO_VERSION" ]; then
-              OSGEO_VERSION=$(\
-                curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/archive |
-                sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p' |
-                tail -n 1)
-              POSTGIS_PATH="archive/"
-          else
-              POSTGIS_PATH=""
-          fi
-
-          # Install PostGIS
-          echo "Installing PostGIS (version: ${OSGEO_VERSION})"
-          POSTGIS_FILE="postgis-bundle-pg${{ matrix.pg_major }}-${OSGEO_VERSION}x64"
-          curl -o postgis.zip -L https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/${POSTGIS_PATH}${POSTGIS_FILE}.zip
-          unzip postgis.zip -d postgis
-          cp -a postgis/$POSTGIS_FILE/. pgsql/
 
           # Start PostgreSQL
           pgsql/bin/initdb -D pgsql/PGDATA -E UTF8 -U postgres

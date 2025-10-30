@@ -100,9 +100,6 @@ public static class TestUtil
         }
     }
 
-    public static async Task<bool> IsPgPrerelease(NpgsqlConnection conn)
-        => ((string) (await conn.ExecuteScalarAsync("SELECT version()"))!).Contains("beta");
-
     public static void EnsureExtension(NpgsqlConnection conn, string extension, string? minVersion = null)
         => EnsureExtension(conn, extension, minVersion, async: false).GetAwaiter().GetResult();
 
@@ -168,21 +165,19 @@ public static class TestUtil
 
     public static async Task EnsurePostgis(NpgsqlConnection conn)
     {
-        var isPreRelease = await IsPgPrerelease(conn);
         try
         {
             await EnsureExtensionAsync(conn, "postgis");
         }
-        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UndefinedFile)
+        catch (PostgresException)
         {
-            // PostGIS packages aren't available for PostgreSQL prereleases
-            if (isPreRelease)
+            if (Environment.GetEnvironmentVariable("NPGSQL_TEST_POSTGIS")?.ToLower(CultureInfo.InvariantCulture) is "1" or "true")
             {
-                Assert.Ignore($"PostGIS could not be installed, but PostgreSQL is prerelease ({conn.ServerVersion}), ignoring test suite.");
+                throw;
             }
             else
             {
-                throw;
+                Assert.Ignore($"PostGIS isn't installed, skipping tests");
             }
         }
     }
