@@ -1,14 +1,14 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Diagnostics.Tracing;
+using System.Runtime.CompilerServices;
 
 namespace Npgsql;
 
 sealed class NpgsqlEventSource : EventSource
 {
     public static readonly NpgsqlEventSource Log = new();
+    static readonly NpgsqlEventSourceDataSources DataSources = new(Log);
 
     const string EventSourceName = "Npgsql";
 
@@ -25,8 +25,6 @@ sealed class NpgsqlEventSource : EventSource
     PollingCounter? _preparedCommandsRatioCounter;
 
     PollingCounter? _poolsCounter;
-    readonly object _dataSourcesLock = new();
-    readonly Dictionary<NpgsqlDataSource, (PollingCounter IdleConnectionsCounter, PollingCounter BusyConnectionsCounter)?> _dataSources = new();
 
     PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
     PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
@@ -64,7 +62,7 @@ sealed class NpgsqlEventSource : EventSource
             Interlocked.Add(ref _bytesRead, bytesRead);
     }
 
-    public void CommandStart(string sql)
+    internal void CommandStart(string sql)
     {
         if (IsEnabled())
         {
@@ -74,7 +72,7 @@ sealed class NpgsqlEventSource : EventSource
         NpgsqlSqlEventSource.Log.CommandStart(sql);
     }
 
-    public void CommandStop()
+    internal void CommandStop()
     {
         if (IsEnabled())
             Interlocked.Decrement(ref _currentCommands);
@@ -94,13 +92,7 @@ sealed class NpgsqlEventSource : EventSource
     }
 
     internal void DataSourceCreated(NpgsqlDataSource dataSource)
-    {
-        lock (_dataSourcesLock)
-        {
-            if (_dataSources is not null && !_dataSources.ContainsKey(dataSource))
-                _dataSources.Add(dataSource, null);
-        }
-    }
+        => DataSources.DataSourceCreated(dataSource);
 
     internal void MultiplexingBatchSent(int numCommands, long elapsedTicks)
     {
@@ -113,13 +105,7 @@ sealed class NpgsqlEventSource : EventSource
         }
     }
 
-    double GetDataSourceCount()
-    {
-        lock (_dataSourcesLock)
-        {
-            return _dataSources.Count;
-        }
-    }
+    double GetDataSourceCount() => DataSources.GetDataSourceCount();
 
     double GetMultiplexingAverageCommandsPerBatch()
     {
@@ -143,7 +129,7 @@ sealed class NpgsqlEventSource : EventSource
 
     protected override void OnEventCommand(EventCommandEventArgs command)
     {
-        if (command.Command == EventCommand.Enable)
+        if (command.Command is EventCommand.Enable)
         {
             // Comment taken from RuntimeEventSource in CoreCLR
             // NOTE: These counters will NOT be disposed on disable command because we may be introducing
@@ -208,18 +194,86 @@ sealed class NpgsqlEventSource : EventSource
                 DisplayName = "Average write time per multiplexing batch",
                 DisplayUnits = "us"
             };
-            lock (_dataSourcesLock)
+
+            DataSources.InitializeAll();
+        }
+    }
+}
+
+// This is a separate class to avoid accidentally making a CWT key or the CWT instance itself reachable through the value.
+// The EventSource is stored in the counters, part of the value, so the EventSource *must not* reference this instance on an instance field.
+// This goes for any state captured by the value, which is why the count also has its own object for the value to reference.
+// See https://github.com/dotnet/runtime/issues/12255.
+sealed class NpgsqlEventSourceDataSources(EventSource eventSource)
+{
+    readonly ConditionalWeakTable<NpgsqlDataSource, DataSourceEvents> _dataSources = new();
+    readonly StrongBox<int> _dataSourcesCount = new();
+
+    internal double GetDataSourceCount() => _dataSourcesCount.Value;
+
+    internal void DataSourceCreated(NpgsqlDataSource dataSource)
+    {
+        var value = new DataSourceEvents(new(dataSource), _dataSourcesCount);
+        // We must initialize directly when the event source is already enabled.
+        if (_dataSources.TryAdd(dataSource, value) && eventSource.IsEnabled())
+            value.EnsureInitialized(eventSource);
+    }
+
+    internal void InitializeAll()
+    {
+        foreach (var dataSource in _dataSources)
+        {
+            dataSource.Value.EnsureInitialized(eventSource);
+        }
+    }
+
+    sealed class DataSourceEvents(WeakReference<NpgsqlDataSource> weakDataSource, StrongBox<int> dataSourcesCount)
+    {
+        readonly WeakReference<NpgsqlDataSource> _weakDataSource = weakDataSource;
+        readonly StrongBox<int> _dataSourcesCount = dataSourcesCount;
+        int _initialized;
+        PollingCounter? _idleConnections;
+        PollingCounter? _busyConnections;
+
+        public void EnsureInitialized(EventSource eventSource)
+        {
+            if (Volatile.Read(ref _initialized) is 1 || Interlocked.Exchange(ref _initialized, 1) is 1)
             {
-                foreach (var dataSource in _dataSources.Keys)
-                {
-                    if (!_dataSources[dataSource].HasValue)
-                    {
-                        _dataSources[dataSource] = (
-                            new PollingCounter($"Idle Connections ({dataSource.Settings.ToStringWithoutPassword()}])", this, () => dataSource.Statistics.Idle),
-                            new PollingCounter($"Busy Connections ({dataSource.Settings.ToStringWithoutPassword()}])", this, () => dataSource.Statistics.Busy));
-                    }
-                }
+                if (_idleConnections?.EventSource is { } existingSource && !ReferenceEquals(eventSource, existingSource))
+                    throw new ArgumentException("Cannot be registered to multiple event sources.");
+
+                return;
             }
+
+            // Raced with a GC.
+            if (!_weakDataSource.TryGetTarget(out var dataSource))
+                return;
+
+            Interlocked.Increment(ref _dataSourcesCount.Value);
+
+            var connectionstring = dataSource.Settings.ToStringWithoutPassword();
+            _idleConnections = new($"Idle Connections ({connectionstring}])", eventSource,
+                () =>
+                {
+                    if (_weakDataSource.TryGetTarget(out var dataSource))
+                        return dataSource.Statistics.Idle;
+
+                    _idleConnections?.Dispose();
+
+                    // We let the first counter decrement count when the weak reference was cleaned up.
+                    Interlocked.Decrement(ref _dataSourcesCount.Value);
+                    return 0;
+                });
+
+            _busyConnections = new($"Busy Connections ({connectionstring}])", eventSource,
+                () =>
+                {
+                    if (_weakDataSource.TryGetTarget(out var dataSource))
+                        return dataSource.Statistics.Busy;
+
+                    _busyConnections?.Dispose();
+                    return 0;
+                });
         }
     }
 }
