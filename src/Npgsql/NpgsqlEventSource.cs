@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Diagnostics.Tracing;
 using System.Runtime.CompilerServices;
@@ -8,7 +11,9 @@ namespace Npgsql;
 sealed class NpgsqlEventSource : EventSource
 {
     public static readonly NpgsqlEventSource Log = new();
-    static readonly NpgsqlEventSourceDataSources DataSources = new(Log);
+    // A static to keep the CWT values from making themselves uncollectable if they would have a reference through the
+    // NpgsqlEventSource instance to the CWT table, which they would if this was an instance field.
+    static readonly NpgsqlEventSourceDataSources DataSourceEvents = new(Log);
 
     const string EventSourceName = "Npgsql";
 
@@ -91,8 +96,8 @@ sealed class NpgsqlEventSource : EventSource
             Interlocked.Increment(ref _failedCommands);
     }
 
-    internal void DataSourceCreated(NpgsqlDataSource dataSource)
-        => DataSources.DataSourceCreated(dataSource);
+    internal bool TryTrackDataSource(string name, NpgsqlDataSource dataSource, [NotNullWhen(true)]out IDisposable? untrack)
+        => DataSourceEvents.TryTrack(name, dataSource, out untrack);
 
     internal void MultiplexingBatchSent(int numCommands, long elapsedTicks)
     {
@@ -105,7 +110,7 @@ sealed class NpgsqlEventSource : EventSource
         }
     }
 
-    double GetDataSourceCount() => DataSources.GetDataSourceCount();
+    double GetDataSourceCount() => DataSourceEvents.GetDataSourceCount();
 
     double GetMultiplexingAverageCommandsPerBatch()
     {
@@ -195,85 +200,93 @@ sealed class NpgsqlEventSource : EventSource
                 DisplayUnits = "us"
             };
 
-            DataSources.InitializeAll();
+            DataSourceEvents.EnableAll();
         }
     }
 }
 
-// This is a separate class to avoid accidentally making a CWT key or the CWT instance itself reachable through the value.
+// This is a separate class to avoid accidentally making the CWT instance reachable through the value.
 // The EventSource is stored in the counters, part of the value, so the EventSource *must not* reference this instance on an instance field.
-// This goes for any state captured by the value, which is why the count also has its own object for the value to reference.
+// This goes for any state captured by the value, which is why the other state has its own object for the value to reference.
 // See https://github.com/dotnet/runtime/issues/12255.
 sealed class NpgsqlEventSourceDataSources(EventSource eventSource)
 {
-    readonly ConditionalWeakTable<NpgsqlDataSource, DataSourceEvents> _dataSources = new();
-    readonly StrongBox<int> _dataSourcesCount = new();
+    readonly ConditionalWeakTable<NpgsqlDataSource, Lazy<DataSourceEvents>> _dataSources = new();
+    readonly StrongBox<(int DataSourceCount, ConcurrentDictionary<string, bool> DataSourceNames)> _nonCwtState = new((0, new()));
 
-    internal double GetDataSourceCount() => _dataSourcesCount.Value;
+    internal double GetDataSourceCount() => _nonCwtState.Value.DataSourceCount;
 
-    internal void DataSourceCreated(NpgsqlDataSource dataSource)
+    internal bool TryTrack(string name, NpgsqlDataSource dataSource, [NotNullWhen(true)]out IDisposable? untrack)
     {
-        var value = new DataSourceEvents(new(dataSource), _dataSourcesCount);
-        // We must initialize directly when the event source is already enabled.
-        if (_dataSources.TryAdd(dataSource, value) && eventSource.IsEnabled())
-            value.EnsureInitialized(eventSource);
+        untrack = null;
+        if (!_nonCwtState.Value.DataSourceNames.TryAdd(name, default))
+            return false;
+
+        var lazy = new Lazy<DataSourceEvents>(
+            () => new DataSourceEvents(name: name, dataSource, eventSource, _nonCwtState),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        var tracked = _dataSources.TryAdd(dataSource, lazy);
+
+        if (tracked)
+        {
+            Interlocked.Increment(ref _nonCwtState.Value.DataSourceCount);
+            // We must initialize directly when the event source is already enabled.
+            if (eventSource.IsEnabled())
+                untrack = lazy.Value;
+            else
+                untrack = new DataSourceEventsDisposable(lazy);
+        }
+
+        return tracked;
     }
 
-    internal void InitializeAll()
+    internal void EnableAll()
     {
-        foreach (var dataSource in _dataSources)
+        foreach (var dataSourceKv in _dataSources)
         {
-            dataSource.Value.EnsureInitialized(eventSource);
+            _ = dataSourceKv.Value.Value;
         }
     }
 
-    sealed class DataSourceEvents(WeakReference<NpgsqlDataSource> weakDataSource, StrongBox<int> dataSourcesCount)
+    sealed class DataSourceEventsDisposable(Lazy<DataSourceEvents> events) : IDisposable
     {
-        readonly WeakReference<NpgsqlDataSource> _weakDataSource = weakDataSource;
-        readonly StrongBox<int> _dataSourcesCount = dataSourcesCount;
-        int _initialized;
-        PollingCounter? _idleConnections;
-        PollingCounter? _busyConnections;
+        public void Dispose() => events.Value.Dispose();
+    }
 
-        public void EnsureInitialized(EventSource eventSource)
+    sealed class DataSourceEvents : IDisposable
+    {
+        readonly string _name;
+        readonly StrongBox<(int Count, ConcurrentDictionary<string, bool> Names)> _state;
+        readonly PollingCounter _idleConnections;
+        readonly PollingCounter _busyConnections;
+
+        int _disposed;
+
+        public DataSourceEvents(string name, NpgsqlDataSource dataSource, EventSource eventSource, StrongBox<(int, ConcurrentDictionary<string, bool>)> state)
         {
-            if (Volatile.Read(ref _initialized) is 1 || Interlocked.Exchange(ref _initialized, 1) is 1)
+            _name = name;
+            _state = state;
+            _idleConnections = new($"idle-connections-{name}", eventSource, () => dataSource.Statistics.Idle)
             {
-                if (_idleConnections?.EventSource is { } existingSource && !ReferenceEquals(eventSource, existingSource))
-                    throw new ArgumentException("Cannot be registered to multiple event sources.");
+                DisplayName = $"Idle Connections [{name}]"
+            };
+            _busyConnections = new($"busy-connections-{name}", eventSource, () => dataSource.Statistics.Busy)
+            {
+                DisplayName = $"Busy Connections [{name}]"
+            };
+        }
 
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) is 1)
                 return;
-            }
 
-            // Raced with a GC.
-            if (!_weakDataSource.TryGetTarget(out var dataSource))
-                return;
+            _idleConnections.Dispose();
+            _busyConnections.Dispose();
 
-            Interlocked.Increment(ref _dataSourcesCount.Value);
-
-            var connectionstring = dataSource.Settings.ToStringWithoutPassword();
-            _idleConnections = new($"Idle Connections ({connectionstring}])", eventSource,
-                () =>
-                {
-                    if (_weakDataSource.TryGetTarget(out var dataSource))
-                        return dataSource.Statistics.Idle;
-
-                    _idleConnections?.Dispose();
-
-                    // We let the first counter decrement count when the weak reference was cleaned up.
-                    Interlocked.Decrement(ref _dataSourcesCount.Value);
-                    return 0;
-                });
-
-            _busyConnections = new($"Busy Connections ({connectionstring}])", eventSource,
-                () =>
-                {
-                    if (_weakDataSource.TryGetTarget(out var dataSource))
-                        return dataSource.Statistics.Busy;
-
-                    _busyConnections?.Dispose();
-                    return 0;
-                });
+            Interlocked.Decrement(ref _state.Value.Count);
+            var success = _state.Value.Names.TryRemove(_name, out _);
+            Debug.Assert(success);
         }
     }
 }

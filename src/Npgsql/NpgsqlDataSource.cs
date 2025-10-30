@@ -88,6 +88,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
+    IDisposable? _eventSourceEvents;
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
@@ -99,16 +100,6 @@ public abstract class NpgsqlDataSource : DbDataSource
             : settings.ToStringWithoutPassword();
 
         Configuration = dataSourceConfig;
-
-        if (this is NpgsqlMultiHostDataSource multiHostConnectorPool)
-        {
-            foreach (var hostPool in (multiHostConnectorPool.Pools ?? []))
-                NpgsqlEventSource.Log.DataSourceCreated(hostPool);
-        }
-        else
-        {
-            NpgsqlEventSource.Log.DataSourceCreated(this);
-        }
 
         (var name,
                 LoggingConfiguration,
@@ -312,6 +303,10 @@ public abstract class NpgsqlDataSource : DbDataSource
             connector.ReloadableState = CurrentReloadableState = new ReloadableState(
                 databaseInfo: databaseInfo,
                 serializerOptions: serializerOptions);
+
+            if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
+                _connectionLogger.LogDebug("NpgsqlEventSource could not start tracking a DataSource, " +
+                                           "this can happen if more than one data source uses the same connection string.");
 
             IsBootstrapped = true;
         }
@@ -518,6 +513,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         _periodicPasswordProviderTimer?.Dispose();
         MetricsReporter.Dispose();
+        _eventSourceEvents?.Dispose();
+
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
         // See issue #6115
@@ -548,6 +545,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
 
         MetricsReporter.Dispose();
+        _eventSourceEvents?.Dispose();
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
         // See issue #6115

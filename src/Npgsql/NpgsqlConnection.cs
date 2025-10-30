@@ -220,20 +220,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         _cloningInstantiator = s => new NpgsqlConnection(s);
 
         _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
-        if (_dataSource == newDataSource)
-        {
-            Debug.Assert(_dataSource is not MultiHostDataSourceWrapper);
-            // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
-            // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-            if (_dataSource is NpgsqlMultiHostDataSource multiHostConnectorPool)
-                foreach (var hostPool in multiHostConnectorPool.Pools)
-                    NpgsqlEventSource.Log.DataSourceCreated(hostPool);
-            else
-            {
-                NpgsqlEventSource.Log.DataSourceCreated(newDataSource);
-            }
-        }
-        else
+        if (_dataSource != newDataSource)
             newDataSource.Dispose();
 
         // If this is a multi-host data source and the user specified a TargetSessionAttributes, create a wrapper in front of the
