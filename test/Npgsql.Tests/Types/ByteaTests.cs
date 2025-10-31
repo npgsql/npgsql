@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -282,6 +283,19 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         Assert.That(retVal!.Length, Is.EqualTo(inVal.Length));
         Assert.That(retVal[0], Is.EqualTo(inVal[0]));
         Assert.That(retVal[1], Is.EqualTo(inVal[1]));
+    }
+
+    [Test]
+    public async Task InvalidCastException_unknown_stream_read()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT :p1", conn);
+        cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Bytea, new byte[] { 1 });
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<NetworkStream>(0));
+        }
     }
 
     sealed class NonSeekableStream(byte[] data) : MemoryStream(data)

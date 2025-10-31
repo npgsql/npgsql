@@ -21,6 +21,7 @@ public class PgTypeInfo
         Options = options;
         IsBoxing = unboxedType is not null;
         Type = unboxedType ?? type;
+        SupportsReading = GetDefaultSupportsReading(type, unboxedType);
         SupportsWriting = true;
     }
 
@@ -54,6 +55,7 @@ public class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
+    public bool SupportsReading { get; init; }
     public bool SupportsWriting { get; init; }
     public DataFormat? PreferredFormat { get; init; }
 
@@ -240,6 +242,11 @@ public class PgTypeInfo
             return default;
         }
     }
+
+    // We assume a boxing type info does not support reading as the converter won't be able to produce the derived type statically.
+    // Cases like Array converters unboxing to int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
+    internal static bool GetDefaultSupportsReading(Type type, Type? unboxedType)
+        => unboxedType is null || unboxedType == type;
 }
 
 public sealed class PgResolverTypeInfo(

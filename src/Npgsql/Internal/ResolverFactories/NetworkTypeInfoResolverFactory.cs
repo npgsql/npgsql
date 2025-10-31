@@ -31,14 +31,9 @@ sealed class NetworkTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // inet
             // There are certain IPAddress values like Loopback or Any that return a *private* derived type (see https://github.com/dotnet/runtime/issues/27870).
-            // However we still need to be able to resolve some typed converter for those values.
-            // We do so by returning a boxing info when we deal with a derived type, as a result we don't need an exact typed converter.
-            // For arrays users can't actually reference the private type so we'll only see some version of ArrayType<IPAddress>.
-            // For reads we'll only see the public type so we never surface an InvalidCastException trying to cast IPAddress to ReadOnlyIPAddress.
-            // Finally we add a custom predicate to be able to match any type which values are assignable to IPAddress.
             mappings.AddType<IPAddress>(DataTypeNames.Inet,
-                static (options, mapping, _) => new PgTypeInfo(options, new IPAddressConverter(),
-                    new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type == typeof(IPAddress) ? null : mapping.Type),
+                static (options, mapping, _) => new PgTypeInfo(options, new IPAddressConverter(), new DataTypeName(mapping.DataTypeName),
+                    unboxedType: mapping.Type != typeof(IPAddress) ? mapping.Type : null),
                 mapping => mapping with
                 {
                     MatchRequirement = MatchRequirement.Single,

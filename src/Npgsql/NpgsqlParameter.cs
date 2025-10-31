@@ -618,9 +618,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (TypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
-        if (!TypeInfo.SupportsWriting)
-            ThrowHelper.ThrowNotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.DatabaseInfo.GetDataTypeName(PgTypeId).DisplayName}'.");
-
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
         if (WriteSize is null)
         {
