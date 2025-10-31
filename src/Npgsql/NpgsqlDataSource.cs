@@ -410,7 +410,9 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         return ignoreExpiration || !databaseStateInfo.Timeout.HasExpired
             ? databaseStateInfo.State
-            : DatabaseState.Unknown;
+            : databaseStateInfo.State == DatabaseState.Offline
+                ? DatabaseState.UnknownAfterError
+                : DatabaseState.Unknown;
     }
 
     internal DatabaseState UpdateDatabaseState(
