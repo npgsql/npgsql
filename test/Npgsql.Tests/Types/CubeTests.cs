@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -21,7 +22,7 @@ public class CubeTests : MultiplexingTestBase
 
     [Test, TestCaseSource(nameof(CubeValues))]
     public Task Cube(NpgsqlCube cube, string sqlLiteral)
-        => AssertType(cube, sqlLiteral, "cube", NpgsqlDbType.Cube, isNpgsqlDbTypeInferredFromClrType: false);
+        => AssertType(cube, sqlLiteral, "cube", NpgsqlDbType.Cube, isDefaultForWriting: false);
 
     [Test]
     public void Cube_Constructor_SingleValue()
@@ -167,7 +168,7 @@ public class CubeTests : MultiplexingTestBase
             @"{""(1, 2),(3, 4)"",""(5, 6)"",""(1),(2)""}",
             "cube[]",
             NpgsqlDbType.Cube | NpgsqlDbType.Array,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForWriting: false);
     }
 
     [Test]
@@ -194,7 +195,7 @@ public class CubeTests : MultiplexingTestBase
             "(-1, -2, -3),(-4, -5, -6)",
             "cube",
             NpgsqlDbType.Cube,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForWriting: false);
 
     [Test]
     public void Cube_Equality_HashCode()
@@ -222,7 +223,7 @@ public class CubeTests : MultiplexingTestBase
             "(0)",
             "cube",
             NpgsqlDbType.Cube,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForWriting: false);
 
     [Test]
     public Task Cube_MaxDimensions()
@@ -244,7 +245,44 @@ public class CubeTests : MultiplexingTestBase
             expected,
             "cube",
             NpgsqlDbType.Cube,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForWriting: false);
+    }
+
+    [Test]
+    public async Task Cube_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
+    {
+        var errorMessage = string.Format(
+            NpgsqlStrings.CubeNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableCube), nameof(NpgsqlSlimDataSourceBuilder));
+
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        await using var dataSource = dataSourceBuilder.Build();
+
+        var exception =
+            await AssertTypeUnsupportedRead<NpgsqlCube>("(1),(2)", "cube", dataSource);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+        exception = await AssertTypeUnsupportedWrite<NpgsqlCube>(new NpgsqlCube(1.0, 2.0), "cube", dataSource);
+        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
+    }
+
+    [Test]
+    public async Task NpgsqlSlimSourceBuilder_EnableCube()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.EnableCube();
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertType(dataSource, new NpgsqlCube(1.0, 2.0), "(1),(2)", "cube", NpgsqlDbType.Cube, isDefaultForWriting: false, skipArrayCheck: true);
+    }
+
+    [Test]
+    public async Task NpgsqlSlimSourceBuilder_EnableArrays()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.EnableCube();
+        dataSourceBuilder.EnableArrays();
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertType(dataSource, new NpgsqlCube(1.0, 2.0), "(1),(2)", "cube", NpgsqlDbType.Cube, isDefaultForWriting: false);
     }
 
     [OneTimeSetUp]

@@ -589,6 +589,16 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>cube</c> extension type.
+    /// </summary>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder EnableCube()
+    {
+        AddTypeInfoResolverFactory(new CubeTypeInfoResolverFactory());
+        return this;
+    }
+
+    /// <summary>
     /// Sets up mappings for extra conversions from PostgreSQL to .NET types.
     /// </summary>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>

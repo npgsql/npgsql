@@ -34,8 +34,6 @@ sealed class GeometricTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new PathConverter()), isDefault: true);
             mappings.AddStructType<NpgsqlCircle>(DataTypeNames.Circle,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CircleConverter()), isDefault: true);
-            mappings.AddStructType<NpgsqlCube>(DataTypeNames.Cube,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CubeConverter()), isDefault: true);
 
             return mappings;
         }
@@ -58,7 +56,6 @@ sealed class GeometricTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddStructArrayType<NpgsqlLSeg>(DataTypeNames.LSeg);
             mappings.AddStructArrayType<NpgsqlPath>(DataTypeNames.Path);
             mappings.AddStructArrayType<NpgsqlCircle>(DataTypeNames.Circle);
-            mappings.AddStructArrayType<NpgsqlCube>(DataTypeNames.Cube);
 
             return mappings;
         }

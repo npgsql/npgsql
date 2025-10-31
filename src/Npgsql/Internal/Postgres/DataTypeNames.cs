@@ -31,7 +31,6 @@ static class DataTypeNames
     public static DataTypeName Path => ValidatedName("pg_catalog.path");
     public static DataTypeName Point => ValidatedName("pg_catalog.point");
     public static DataTypeName Polygon => ValidatedName("pg_catalog.polygon");
-    public static DataTypeName Cube => ValidatedName("public.cube");
     public static DataTypeName Bpchar => ValidatedName("pg_catalog.bpchar");
     public static DataTypeName Text => ValidatedName("pg_catalog.text");
     public static DataTypeName Varchar => ValidatedName("pg_catalog.varchar");

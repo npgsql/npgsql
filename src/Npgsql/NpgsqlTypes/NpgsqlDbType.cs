@@ -127,7 +127,7 @@ public enum NpgsqlDbType
     /// Corresponds to the PostgreSQL "cube" type, a geometric type representing multi-dimensional cubes.
     /// </summary>
     /// <remarks>See https://www.postgresql.org/docs/current/cube.html</remarks>
-    Cube = 63,
+    Cube = 63, // Extension type
 
     #endregion
 
@@ -704,7 +704,6 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Path    => "path",
             NpgsqlDbType.Point   => "point",
             NpgsqlDbType.Polygon => "polygon",
-            NpgsqlDbType.Cube    => "cube",
 
 
             // UInt types
@@ -747,6 +746,7 @@ static class NpgsqlDbTypeExtensions
 
             // Plugin types
             NpgsqlDbType.Citext    => "citext",
+            NpgsqlDbType.Cube      => "cube",
             NpgsqlDbType.LQuery    => "lquery",
             NpgsqlDbType.LTree     => "ltree",
             NpgsqlDbType.LTxtQuery => "ltxtquery",
@@ -822,7 +822,6 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Path => DataTypeNames.Path,
             NpgsqlDbType.Point => DataTypeNames.Point,
             NpgsqlDbType.Polygon => DataTypeNames.Polygon,
-            NpgsqlDbType.Cube => DataTypeNames.Cube,
 
             // UInt types
             NpgsqlDbType.Oid => DataTypeNames.Oid,
@@ -931,8 +930,6 @@ static class NpgsqlDbTypeExtensions
                 "path" => NpgsqlDbType.Path,
                 "point" => NpgsqlDbType.Point,
                 "polygon" => NpgsqlDbType.Polygon,
-                "cube" => NpgsqlDbType.Cube,
-                "public.cube" => NpgsqlDbType.Cube,
 
                 // UInt types
                 "oid" => NpgsqlDbType.Oid,
@@ -974,6 +971,7 @@ static class NpgsqlDbTypeExtensions
 
                 // Plugin types
                 "citext" => NpgsqlDbType.Citext,
+                "cube" => NpgsqlDbType.Cube,
                 "lquery" => NpgsqlDbType.LQuery,
                 "ltree" => NpgsqlDbType.LTree,
                 "ltxtquery" => NpgsqlDbType.LTxtQuery,
