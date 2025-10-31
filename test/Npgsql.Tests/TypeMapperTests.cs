@@ -1,6 +1,7 @@
 ﻿using Npgsql.Internal;
 using NUnit.Framework;
 using System;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
@@ -58,6 +59,27 @@ public class TypeMapperTests : TestBase
         Assert.That(command.ExecuteScalar(), Is.True);
     }
 
+    [Test]
+    [NonParallelizable] // Depends on citext which could be dropped concurrently
+    public async Task String_to_citext_with_db_type_string()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await EnsureExtensionAsync(adminConnection, "citext");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.AddTypeInfoResolverFactory(new ForceStringToCitextResolverFactory());
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var command = new NpgsqlCommand("SELECT @p = 'hello'::citext", connection);
+        command.Parameters.Add(new NpgsqlParameter("p", DbType.String)
+        {
+            Value = "HeLLo"
+        });
+
+        Assert.That(command.ExecuteScalar(), Is.True);
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4582")]
     [NonParallelizable] // Drops extension
     public async Task Type_in_non_default_schema()
@@ -107,6 +129,30 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             }
         }
 
+    }
+
+    class ForceStringToCitextResolverFactory : CitextToStringTypeHandlerResolverFactory
+    {
+        public override IDbTypeResolver? CreateDbTypeResolver() => new DbTypeResolver();
+
+        sealed class DbTypeResolver : IDbTypeResolver
+        {
+            public string? GetDataTypeName(DbType dbType, PgSerializerOptions options)
+            {
+                if (dbType == DbType.String)
+                    return "citext";
+
+                return null;
+            }
+
+            public DbType? GetDbType(DataTypeName dataTypeName, PgSerializerOptions options)
+            {
+                if (dataTypeName.UnqualifiedName == "citext")
+                    return DbType.String;
+
+                return null;
+            }
+        }
     }
 
     enum Mood { Sad, Ok, Happy }

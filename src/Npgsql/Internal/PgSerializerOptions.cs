@@ -19,6 +19,7 @@ public sealed class PgSerializerOptions
 
     readonly PgTypeInfoResolverChain _resolverChain;
     readonly Func<string>? _timeZoneProvider;
+    readonly IDbTypeResolver? _dbTypeResolver;
     IPgTypeInfoResolver? _typeInfoResolver;
     object? _typeInfoCache;
 
@@ -28,6 +29,11 @@ public sealed class PgSerializerOptions
         _timeZoneProvider = timeZoneProvider;
         DatabaseInfo = databaseInfo;
         UnspecifiedDBNullTypeInfo = new(this, new Converters.Internal.VoidConverter(), DataTypeName.Unspecified, unboxedType: typeof(DBNull));
+
+        var dbTypeResolvers = _resolverChain.GetDbTypeResolvers();
+        if (dbTypeResolvers is not null) {
+            _dbTypeResolver = new ChainDbTypeResolver(dbTypeResolvers);
+        }
     }
 
     internal PgTypeInfo UnspecifiedDBNullTypeInfo { get; }
@@ -54,6 +60,7 @@ public sealed class PgSerializerOptions
         get => _typeInfoResolver ??= new ChainTypeInfoResolver(_resolverChain);
         internal init => _typeInfoResolver = value;
     }
+    public IDbTypeResolver? DbTypeResolver => _dbTypeResolver;
     public bool EnableDateTimeInfinityConversions { get; init; } = true;
 
     public ArrayNullabilityMode ArrayNullabilityMode { get; init; } = ArrayNullabilityMode.Never;
