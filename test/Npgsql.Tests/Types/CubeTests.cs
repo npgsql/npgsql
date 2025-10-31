@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -149,6 +150,101 @@ public class CubeTests : MultiplexingTestBase
     {
         var cube = new NpgsqlCube(new[] { 1.0, 2.0, 3.0 });
         Assert.That(cube.ToString(), Is.EqualTo("(1, 2, 3)"));
+    }
+
+    [Test]
+    public async Task Cube_Array()
+    {
+        var data = new[]
+        {
+            new NpgsqlCube(new[] { 1.0, 2.0 }, new[] { 3.0, 4.0 }),
+            new NpgsqlCube(new[] { 5.0, 6.0 }),
+            new NpgsqlCube(1.0, 2.0)
+        };
+
+        await AssertType(
+            data,
+            @"{""(1, 2),(3, 4)"",""(5, 6)"",""(1),(2)""}",
+            "cube[]",
+            NpgsqlDbType.Cube | NpgsqlDbType.Array,
+            isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
+    [Test]
+    public void Cube_DimensionMismatch_ThrowsFormatException()
+    {
+        var ex = Assert.Throws<FormatException>(() => new NpgsqlCube(new[] { 1.0, 2.0 }, new[] { 3.0 }));
+        Assert.That(ex!.Message, Does.Contain("Different point dimensions"));
+    }
+
+    [Test]
+    public void Cube_ExceedsMaxDimensions_ThrowsFormatException()
+    {
+        var lowerLeft = new double[101];
+        var upperRight = new double[101];
+
+        var ex = Assert.Throws<FormatException>(() => new NpgsqlCube(lowerLeft, upperRight));
+        Assert.That(ex!.Message, Does.Contain("exceeds 100 dimensions"));
+    }
+
+    [Test]
+    public Task Cube_NegativeValues()
+        => AssertType(
+            new NpgsqlCube(new[] { -1.0, -2.0, -3.0 }, new[] { -4.0, -5.0, -6.0 }),
+            "(-1, -2, -3),(-4, -5, -6)",
+            "cube",
+            NpgsqlDbType.Cube,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+    [Test]
+    public void Cube_Equality_HashCode()
+    {
+        var cube1 = new NpgsqlCube(new[] { 1.0, 2.0 }, new[] { 3.0, 4.0 });
+        var cube2 = new NpgsqlCube(new[] { 1.0, 2.0 }, new[] { 3.0, 4.0 });
+        var cube3 = new NpgsqlCube(new[] { 1.0, 2.0 }, new[] { 3.0, 5.0 });
+
+        // Test equality
+        Assert.That(cube1, Is.EqualTo(cube2));
+        Assert.That(cube1 == cube2, Is.True);
+        Assert.That(cube1 != cube3, Is.True);
+        Assert.That(cube1.Equals(cube2), Is.True);
+        Assert.That(cube1.Equals(cube3), Is.False);
+
+        // Test hash code consistency
+        Assert.That(cube1.GetHashCode(), Is.EqualTo(cube2.GetHashCode()));
+        Assert.That(cube1.GetHashCode(), Is.Not.EqualTo(cube3.GetHashCode()));
+    }
+
+    [Test]
+    public Task Cube_ZeroValues()
+        => AssertType(
+            new NpgsqlCube(0.0, 0.0),
+            "(0)",
+            "cube",
+            NpgsqlDbType.Cube,
+            isNpgsqlDbTypeInferredFromClrType: false);
+
+    [Test]
+    public Task Cube_MaxDimensions()
+    {
+        var lowerLeft = new double[100];
+        var upperRight = new double[100];
+        for (var i = 0; i < 100; i++)
+        {
+            lowerLeft[i] = i;
+            upperRight[i] = i + 100;
+        }
+
+        var expectedLower = string.Join(", ", lowerLeft);
+        var expectedUpper = string.Join(", ", upperRight);
+        var expected = $"({expectedLower}),({expectedUpper})";
+
+        return AssertType(
+            new NpgsqlCube(lowerLeft, upperRight),
+            expected,
+            "cube",
+            NpgsqlDbType.Cube,
+            isNpgsqlDbTypeInferredFromClrType: false);
     }
 
     [OneTimeSetUp]
