@@ -50,9 +50,10 @@ dataSourceBuilder.ConfigureTracing(o => o
 This allows you to:
 
 * Specify a filter which determines which commands get traced
-* Set the the tracing span name (e.g. use the command's SQL as the span name)
+* Set the tracing span name (e.g. use the command's SQL as the span name)
 * Add arbitrary tags to the tracing span, based on the command
 * Disable the time-to-first-read event that's emitted in spans
+* Disable tracing physical connection open span
 
 ## Using `AsyncLocal` to pass arbitrary information to your callbacks
 
