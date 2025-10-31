@@ -1,8 +1,7 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Diagnostics.Tracing;
+using System.Runtime.CompilerServices;
 
 namespace Npgsql;
 
@@ -25,8 +24,8 @@ sealed class NpgsqlEventSource : EventSource
     PollingCounter? _preparedCommandsRatioCounter;
 
     PollingCounter? _poolsCounter;
-    readonly object _dataSourcesLock = new();
-    readonly Dictionary<NpgsqlDataSource, (PollingCounter IdleConnectionsCounter, PollingCounter BusyConnectionsCounter)?> _dataSources = new();
+    readonly ConditionalWeakTable<NpgsqlDataSource, DataSourceEvents> _dataSources = new();
+    int _dataSourcesCount;
 
     PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
     PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
@@ -95,10 +94,10 @@ sealed class NpgsqlEventSource : EventSource
 
     internal void DataSourceCreated(NpgsqlDataSource dataSource)
     {
-        lock (_dataSourcesLock)
-        {
-            _dataSources.Add(dataSource, null);
-        }
+        var value = new DataSourceEvents(new(dataSource));
+        // We must initialize directly when the event source is already enabled.
+        if (_dataSources.TryAdd(dataSource, value) && IsEnabled() && value.EnsureInitialized())
+            Interlocked.Increment(ref _dataSourcesCount);
     }
 
     internal void MultiplexingBatchSent(int numCommands, long elapsedTicks)
@@ -112,13 +111,7 @@ sealed class NpgsqlEventSource : EventSource
         }
     }
 
-    double GetDataSourceCount()
-    {
-        lock (_dataSourcesLock)
-        {
-            return _dataSources.Count;
-        }
-    }
+    double GetDataSourceCount() => _dataSourcesCount;
 
     double GetMultiplexingAverageCommandsPerBatch()
     {
@@ -207,18 +200,57 @@ sealed class NpgsqlEventSource : EventSource
                 DisplayName = "Average write time per multiplexing batch",
                 DisplayUnits = "us"
             };
-            lock (_dataSourcesLock)
+
+            foreach (var dataSource in _dataSources)
             {
-                foreach (var dataSource in _dataSources.Keys)
-                {
-                    if (!_dataSources[dataSource].HasValue)
-                    {
-                        _dataSources[dataSource] = (
-                            new PollingCounter($"Idle Connections ({dataSource.Settings.ToStringWithoutPassword()}])", this, () => dataSource.Statistics.Idle),
-                            new PollingCounter($"Busy Connections ({dataSource.Settings.ToStringWithoutPassword()}])", this, () => dataSource.Statistics.Busy));
-                    }
-                }
+                if (dataSource.Value.EnsureInitialized())
+                    Interlocked.Increment(ref _dataSourcesCount);
             }
+        }
+    }
+
+    sealed class DataSourceEvents(WeakReference<NpgsqlDataSource> weakDataSource)
+    {
+        int _initialized;
+        PollingCounter? _idleConnections;
+        PollingCounter? _busyConnections;
+
+        public bool EnsureInitialized()
+        {
+            if (Volatile.Read(ref _initialized) is 1 || Interlocked.Exchange(ref _initialized, 1) is 1)
+                return false;
+
+            // Raced with a GC.
+            if (!weakDataSource.TryGetTarget(out var dataSource))
+                return false;
+
+            var connectionstring = dataSource.Settings.ToStringWithoutPassword();
+
+            // We must make sure not to capture dataSource directly, see https://github.com/dotnet/runtime/issues/12255
+            _idleConnections = new($"Idle Connections ({connectionstring}])", Log,
+                () =>
+                {
+                    if (weakDataSource.TryGetTarget(out var target))
+                        return target.Statistics.Idle;
+
+                    _idleConnections?.Dispose();
+
+                    // We let the first counter decrement count when the weak reference was cleaned up.
+                    Interlocked.Decrement(ref Log._dataSourcesCount);
+                    return 0;
+                });
+
+            _busyConnections = new($"Busy Connections ({connectionstring}])", Log,
+                () =>
+                {
+                    if (weakDataSource.TryGetTarget(out var target))
+                        return target.Statistics.Busy;
+
+                    _busyConnections?.Dispose();
+                    return 0;
+                });
+
+            return true;
         }
     }
 }
