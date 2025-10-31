@@ -66,20 +66,6 @@ sealed class JsonDynamicTypeInfoResolverFactory(
             // We do GetTypeInfo calls directly so we need a resolver.
             serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
 
-            // These live in the RUC/RDC part as JsonValues can contain any .NET type.
-            foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
-            {
-                var jsonb = dataTypeName == DataTypeNames.Jsonb;
-                mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
-                mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
-                mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
-                mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
-            }
-
             AddUserMappings(jsonb: true, jsonbClrTypes);
             AddUserMappings(jsonb: false, jsonClrTypes);
 
