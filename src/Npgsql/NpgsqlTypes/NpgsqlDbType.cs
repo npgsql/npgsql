@@ -123,6 +123,12 @@ public enum NpgsqlDbType
     /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-geometric.html</remarks>
     Polygon = 16,
 
+    /// <summary>
+    /// Corresponds to the PostgreSQL "cube" type, a geometric type representing multi-dimensional cubes.
+    /// </summary>
+    /// <remarks>See https://www.postgresql.org/docs/current/cube.html</remarks>
+    Cube = 63,
+
     #endregion
 
     #region Character Types
@@ -698,6 +704,7 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Path    => "path",
             NpgsqlDbType.Point   => "point",
             NpgsqlDbType.Polygon => "polygon",
+            NpgsqlDbType.Cube    => "cube",
 
 
             // UInt types
@@ -815,6 +822,7 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Path => DataTypeNames.Path,
             NpgsqlDbType.Point => DataTypeNames.Point,
             NpgsqlDbType.Polygon => DataTypeNames.Polygon,
+            NpgsqlDbType.Cube => DataTypeNames.Cube,
 
             // UInt types
             NpgsqlDbType.Oid => DataTypeNames.Oid,
@@ -923,6 +931,8 @@ static class NpgsqlDbTypeExtensions
                 "path" => NpgsqlDbType.Path,
                 "point" => NpgsqlDbType.Point,
                 "polygon" => NpgsqlDbType.Polygon,
+                "cube" => NpgsqlDbType.Cube,
+                "public.cube" => NpgsqlDbType.Cube,
 
                 // UInt types
                 "oid" => NpgsqlDbType.Oid,
