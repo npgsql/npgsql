@@ -59,7 +59,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new FullTextSearchTypeInfoResolverFactory(),
             new NetworkTypeInfoResolverFactory(),
             new GeometricTypeInfoResolverFactory(),
-            new LTreeTypeInfoResolverFactory()
+            new LTreeTypeInfoResolverFactory(),
+            new CubeTypeInfoResolverFactory()
         ], static () =>
         {
             var builder = new PgTypeInfoResolverChainBuilder();
@@ -88,6 +89,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             instance.AppendResolverFactory(new NetworkTypeInfoResolverFactory());
             instance.AppendResolverFactory(new GeometricTypeInfoResolverFactory());
             instance.AppendResolverFactory(new LTreeTypeInfoResolverFactory());
+            instance.AppendResolverFactory(new CubeTypeInfoResolverFactory());
         };
         _internalBuilder.ConfigureResolverChain = static chain => chain.Add(UnsupportedTypeInfoResolver);
         _internalBuilder.EnableTransportSecurity();
