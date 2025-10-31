@@ -448,5 +448,135 @@ public class DataSourceTests : TestBase
         Assert.DoesNotThrowAsync(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
     }
 
+    [Test]
+    public async Task Resolve_type_mapping([Values] bool async)
+    {
+        var dataSource = DataSource;
+
+        var intClrTypeMapping = async
+            ? await dataSource.TryGetMappingAsync<int>()
+            : dataSource.TryGetMapping<int>();
+
+        Assert.That(intClrTypeMapping, Is.Not.Null);
+        Assert.That(intClrTypeMapping!.Type, Is.EqualTo(typeof(int)));
+
+        var int4DataTypeNameMapping = async
+            ? await dataSource.TryGetMappingAsync(dataTypeName: "int4")
+            : dataSource.TryGetMapping(dataTypeName: "int4");
+
+        Assert.That(int4DataTypeNameMapping, Is.Not.Null);
+        Assert.That(int4DataTypeNameMapping!.Type, Is.EqualTo(typeof(int)));
+    }
+
+    [Test]
+    public async Task Resolve_unknown_enum_type_mapping([Values] bool async)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        var dataSource = DataSource;
+        // Reload types to load the new enum from the database
+        await dataSource.ReloadTypesAsync();
+
+        var enumClrTypeMapping = async
+            ? await dataSource.TryGetMappingAsync<Mood>()
+            : dataSource.TryGetMapping<Mood>();
+
+        Assert.That(enumClrTypeMapping, Is.Null);
+
+        var enumDataTypeNameMapping = async
+            ? await dataSource.TryGetMappingAsync(dataTypeName: type)
+            : dataSource.TryGetMapping(dataTypeName: type);
+
+        // We support mapping unknown enums to text
+        Assert.That(enumDataTypeNameMapping, Is.Not.Null);
+        Assert.That(enumDataTypeNameMapping!.Type, Is.EqualTo(typeof(string)));
+    }
+
+    [Test]
+    public async Task Resolve_registered_enum_type_mapping([Values] bool async)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        await using var dataSource = CreateDataSource(dataSourceBuilder =>
+        {
+            dataSourceBuilder.MapEnum<Mood>(type);
+        });
+
+        var enumClrTypeMapping = async
+            ? await dataSource.TryGetMappingAsync<Mood>()
+            : dataSource.TryGetMapping<Mood>();
+
+        Assert.That(enumClrTypeMapping, Is.Not.Null);
+        Assert.That(enumClrTypeMapping!.Type, Is.EqualTo(typeof(Mood)));
+
+        var enumDataTypeNameMapping = async
+            ? await dataSource.TryGetMappingAsync(dataTypeName: type)
+            : dataSource.TryGetMapping(dataTypeName: type);
+
+        Assert.That(enumDataTypeNameMapping, Is.Not.Null);
+        Assert.That(enumDataTypeNameMapping!.Type, Is.EqualTo(typeof(Mood)));
+    }
+
+    [Test]
+    public async Task Resolve_unknown_composite_type_mapping([Values] bool async)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
+
+        var dataSource = DataSource;
+        // Reload types to load the new enum from the database
+        await dataSource.ReloadTypesAsync();
+
+        var compositeClrTypeMapping = async
+            ? await dataSource.TryGetMappingAsync<SomeComposite>()
+            : dataSource.TryGetMapping<SomeComposite>();
+
+        Assert.That(compositeClrTypeMapping, Is.Null);
+
+        var compositeDataTypeNameMapping = async
+            ? await dataSource.TryGetMappingAsync(dataTypeName: type)
+            : dataSource.TryGetMapping(dataTypeName: type);
+
+        Assert.That(compositeDataTypeNameMapping, Is.Null);
+    }
+
+    [Test]
+    public async Task Resolve_registered_composite_type_mapping([Values] bool async)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
+
+        await using var dataSource = CreateDataSource(dataSourceBuilder =>
+        {
+            dataSourceBuilder.MapComposite<SomeComposite>(type);
+        });
+
+        var compositeClrTypeMapping = async
+            ? await dataSource.TryGetMappingAsync<SomeComposite>()
+            : dataSource.TryGetMapping<SomeComposite>();
+
+        Assert.That(compositeClrTypeMapping, Is.Not.Null);
+        Assert.That(compositeClrTypeMapping!.Type, Is.EqualTo(typeof(SomeComposite)));
+
+        var compositeDataTypeNameMapping = async
+            ? await dataSource.TryGetMappingAsync(dataTypeName: type)
+            : dataSource.TryGetMapping(dataTypeName: type);
+
+        Assert.That(compositeDataTypeNameMapping, Is.Not.Null);
+        Assert.That(compositeDataTypeNameMapping!.Type, Is.EqualTo(typeof(SomeComposite)));
+    }
+
     enum Mood { Sad, Ok, Happy }
+
+    record SomeComposite
+    {
+        public int X { get; set; }
+        public string SomeText { get; set; } = null!;
+    }
 }
