@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 
@@ -41,6 +42,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// <inheritdoc cref="DbBatchCommand.Parameters"/>
     public new NpgsqlParameterCollection Parameters => _parameters ??= [];
 
+    internal bool HasOutputParameters => _parameters?.HasOutputParameters == true;
 
     /// <inheritdoc/>
     public override NpgsqlParameter CreateParameter() => new();
@@ -272,6 +274,62 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     }
 
     internal void ResetPreparation() => ConnectorPreparedOn = null;
+
+    internal void PopulateOutputParameters(NpgsqlDataReader reader, ILogger logger)
+    {
+        Debug.Assert(_parameters is not null);
+        var parameters = _parameters;
+        var placeholderType = parameters.PlaceholderType;
+
+        // In the case of named and mixed parameters we first try to populate based on a named match.
+        // If we can't find the name we fill the foremost output direction parameter and increment our position.
+        // In positional and mixed modes we only populate by ordinal if the parameter is positional.
+
+        // For backwards compat we allow populating named parameters by ordinal as long as they haven't been filled yet.
+        // This means a row like {"a" => 1, "some_field" => 2} will populate the following output db params {"a" => 1, "b" => 2}.
+        // Not taking into account filled named parameters would otherwise result in these output db params {"a" => 2, "b" => null}.
+        HashSet<NpgsqlParameter>? filled = null;
+        var paramIndex = 0;
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            if (placeholderType is PlaceholderType.Named or PlaceholderType.Mixed &&
+                parameters.TryGetValue(reader.GetName(i), out var p) && p.IsOutputDirection)
+            {
+                if (placeholderType is PlaceholderType.Named)
+                    (filled ??= new()).Add(p);
+                SetValue(reader, logger, p, i);
+            }
+            else
+            {
+                var parameterList = parameters.InternalList;
+                while (paramIndex < parameterList.Count)
+                {
+                    var idx = paramIndex++;
+                    if (parameterList[idx] is { IsOutputDirection: true } parameter
+                        && ((placeholderType is PlaceholderType.Named && filled?.Contains(parameter) != true)
+                                || parameter.IsPositional))
+                    {
+                        SetValue(reader, logger, parameter, i, idx);
+                        break;
+                    }
+                }
+            }
+        }
+
+        static void SetValue(NpgsqlDataReader reader, ILogger logger, NpgsqlParameter p, int ordinal, int index = -1)
+        {
+            try
+            {
+                p.SetOutputValue(reader, ordinal);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to set value on output parameter instance '{ParameterNameOrIndex}' for output parameter {OutputName}",
+                    index is -1 ? p.ParameterName : index, reader.GetName(ordinal));
+                throw;
+            }
+        }
+    }
 
     /// <summary>
     /// Returns the <see cref="CommandText"/>.
