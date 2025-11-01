@@ -219,6 +219,10 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 exceptions.Add(ex);
