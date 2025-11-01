@@ -1138,11 +1138,9 @@ public class MultipleHostsTests : TestBase
     {
         var builder = new NpgsqlDataSourceBuilder(ConnectionString);
         await using var dataSource = builder.BuildMultiHost();
-        var cts = new CancellationTokenSource();
-        await cts.CancelAsync();
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
         {
-            await using var connection = await dataSource.OpenConnectionAsync(cts.Token);
+            await using var connection = await dataSource.OpenConnectionAsync(new CancellationToken(true));
         });
     }
 
