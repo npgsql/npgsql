@@ -221,6 +221,8 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             }
             catch (OperationCanceledException)
             {
+                if (connector is not null)
+                    pool.Return(connector);
                 throw;
             }
             catch (Exception ex)
