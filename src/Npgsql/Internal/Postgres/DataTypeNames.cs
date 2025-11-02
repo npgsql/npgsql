@@ -51,7 +51,6 @@ static class DataTypeNames
     public static DataTypeName TimeTz => ValidatedName("pg_catalog.timetz");
     public static DataTypeName Inet => ValidatedName("pg_catalog.inet");
     public static DataTypeName Cidr => ValidatedName("pg_catalog.cidr");
-    public static DataTypeName Cube => ValidatedName("pg_catalog.cube");
     public static DataTypeName MacAddr => ValidatedName("pg_catalog.macaddr");
     public static DataTypeName MacAddr8 => ValidatedName("pg_catalog.macaddr8");
     public static DataTypeName Bit => ValidatedName("pg_catalog.bit");

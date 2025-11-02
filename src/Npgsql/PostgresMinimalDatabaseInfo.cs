@@ -83,7 +83,6 @@ sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
         Add(DataTypeNames.PgLsn, oid: 3220, arrayOid: 3221);
         Add(DataTypeNames.Unknown, oid: 705, arrayOid: 0);
         Add(DataTypeNames.Void, oid: 2278, arrayOid: 0);
-        Add(DataTypeNames.Cube, oid: 100000, arrayOid: 100001);
 
         return types.ToArray();
 
