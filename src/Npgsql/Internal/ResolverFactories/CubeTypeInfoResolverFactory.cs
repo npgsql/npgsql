@@ -15,7 +15,7 @@ sealed class CubeTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     public static void ThrowIfUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
-        if (dataTypeName is { UnqualifiedNameSpan: "cube" or "_cube" })
+        if (dataTypeName is { UnqualifiedNameSpan: "cube" or "_cube" } || type == typeof(NpgsqlCube))
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.CubeNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableCube),
                     typeof(TBuilder).Name));
@@ -32,8 +32,7 @@ sealed class CubeTypeInfoResolverFactory : PgTypeInfoResolverFactory
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
         {
             mappings.AddStructType<NpgsqlCube>(CubeTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CubeConverter()),
-                MatchRequirement.DataTypeName);
+                static (options, mapping, _) => mapping.CreateInfo(options, new CubeConverter()), isDefault: true);
 
             return mappings;
         }

@@ -48,7 +48,7 @@ sealed class CubeConverter : PgStreamingConverter<NpgsqlCube>
     }
 
     public override Size GetSize(SizeContext context, NpgsqlCube value, ref object? writeState)
-        => sizeof(int) + sizeof(double) * (value.Point ? value.Dimensions : value.Dimensions * 2);
+        => sizeof(int) + sizeof(double) * (value.IsPoint ? value.Dimensions : value.Dimensions * 2);
 
     public override void Write(PgWriter writer, NpgsqlCube value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
@@ -62,7 +62,7 @@ sealed class CubeConverter : PgStreamingConverter<NpgsqlCube>
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
         var header = value.Dimensions;
-        if (value.Point)
+        if (value.IsPoint)
             header |= 1 << 31;
 
         writer.WriteInt32(header);
@@ -74,7 +74,7 @@ sealed class CubeConverter : PgStreamingConverter<NpgsqlCube>
             writer.WriteDouble(value.LowerLeft[i]);
         }
 
-        if (value.Point)
+        if (value.IsPoint)
             return;
 
         for (var i = 0; i < value.Dimensions; i++)

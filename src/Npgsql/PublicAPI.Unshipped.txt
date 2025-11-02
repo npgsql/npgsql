@@ -94,12 +94,10 @@ NpgsqlTypes.NpgsqlBox.Deconstruct(out double left, out double right, out double 
 NpgsqlTypes.NpgsqlBox.Deconstruct(out NpgsqlTypes.NpgsqlPoint lowerLeft, out NpgsqlTypes.NpgsqlPoint upperRight) -> void
 NpgsqlTypes.NpgsqlCircle.Deconstruct(out double x, out double y, out double radius) -> void
 NpgsqlTypes.NpgsqlCircle.Deconstruct(out NpgsqlTypes.NpgsqlPoint center, out double radius) -> void
-const NpgsqlTypes.NpgsqlCube.MaxDimensions = 100 -> int
 NpgsqlTypes.NpgsqlCube
 NpgsqlTypes.NpgsqlCube.NpgsqlCube() -> void
 NpgsqlTypes.NpgsqlCube.Dimensions.get -> int
 NpgsqlTypes.NpgsqlCube.Equals(NpgsqlTypes.NpgsqlCube other) -> bool
-NpgsqlTypes.NpgsqlCube.LlCoord(int n) -> double
 NpgsqlTypes.NpgsqlCube.LowerLeft.get -> System.Collections.Generic.IReadOnlyList<double>!
 NpgsqlTypes.NpgsqlCube.NpgsqlCube(double coord) -> void
 NpgsqlTypes.NpgsqlCube.NpgsqlCube(double lowerLeft, double upperRight) -> void
@@ -107,11 +105,9 @@ NpgsqlTypes.NpgsqlCube.NpgsqlCube(NpgsqlTypes.NpgsqlCube cube, double coord) -> 
 NpgsqlTypes.NpgsqlCube.NpgsqlCube(NpgsqlTypes.NpgsqlCube cube, double lowerLeft, double upperRight) -> void
 NpgsqlTypes.NpgsqlCube.NpgsqlCube(System.Collections.Generic.IEnumerable<double>! coords) -> void
 NpgsqlTypes.NpgsqlCube.NpgsqlCube(System.Collections.Generic.IEnumerable<double>! lowerLeft, System.Collections.Generic.IEnumerable<double>! upperRight) -> void
-NpgsqlTypes.NpgsqlCube.Point.get -> bool
-NpgsqlTypes.NpgsqlCube.Subset(params int[]! indexes) -> NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.IsPoint.get -> bool
+NpgsqlTypes.NpgsqlCube.ToSubset(params int[]! indexes) -> NpgsqlTypes.NpgsqlCube
 NpgsqlTypes.NpgsqlCube.UpperRight.get -> System.Collections.Generic.IReadOnlyList<double>!
-NpgsqlTypes.NpgsqlCube.UrCoord(int n) -> double
-NpgsqlTypes.NpgsqlCube.Write(System.Text.StringBuilder! stringBuilder) -> void
 NpgsqlTypes.NpgsqlDbType.Cube = 63 -> NpgsqlTypes.NpgsqlDbType
 override NpgsqlTypes.NpgsqlCube.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlCube.GetHashCode() -> int
