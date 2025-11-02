@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
@@ -47,6 +48,15 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                 mappings.AddStructType<JsonElement>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options,
                         new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
+
+                mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
             }
 
             return mappings;
@@ -63,6 +73,12 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                     return JsonMetadataServices.CreateValueInfo<JsonDocument>(options, JsonMetadataServices.JsonDocumentConverter);
                 if (type == typeof(JsonElement))
                     return JsonMetadataServices.CreateValueInfo<JsonElement>(options, JsonMetadataServices.JsonElementConverter);
+                if (type == typeof(JsonObject))
+                    return JsonMetadataServices.CreateValueInfo<JsonObject>(options, JsonMetadataServices.JsonObjectConverter);
+                if (type == typeof(JsonArray))
+                    return JsonMetadataServices.CreateValueInfo<JsonArray>(options, JsonMetadataServices.JsonArrayConverter);
+                if (type == typeof(JsonValue))
+                    return JsonMetadataServices.CreateValueInfo<JsonValue>(options, JsonMetadataServices.JsonValueConverter);
                 return null;
             }
         }
@@ -82,6 +98,9 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
             {
                 mappings.AddArrayType<JsonDocument>(dataTypeName);
                 mappings.AddStructArrayType<JsonElement>(dataTypeName);
+                mappings.AddArrayType<JsonObject>(dataTypeName);
+                mappings.AddArrayType<JsonArray>(dataTypeName);
+                mappings.AddArrayType<JsonValue>(dataTypeName);
             }
 
             return mappings;
