@@ -609,8 +609,7 @@ public sealed partial class NpgsqlConnector
                 // Any error after trying with GSS encryption
                 (gssEncMode == GssEncryptionMode.Prefer ||
                 // Auth error with/without SSL
-                (e is PostgresException { SqlState: PostgresErrorCodes.InvalidAuthorizationSpecification } &&
-                 (sslMode == SslMode.Prefer && conn.IsSslEncrypted || sslMode == SslMode.Allow && !conn.IsSslEncrypted)))
+                (sslMode == SslMode.Prefer && conn.IsSslEncrypted || sslMode == SslMode.Allow && !conn.IsSslEncrypted))
             {
                 if (gssEncMode == GssEncryptionMode.Prefer)
                 {
