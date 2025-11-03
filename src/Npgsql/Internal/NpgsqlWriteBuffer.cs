@@ -361,8 +361,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
                 {
                     if (buffer.WriteSpaceLeft < minBufferSize)
                         await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
-                    encoder.Convert(data.Span, buffer.Span, flush: data.Length * minBufferSize <= buffer.Span.Length,
-                        out var charsUsed, out var bytesUsed, out completed);
+                    encoder.Convert(data.Span, buffer.Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
                     data = data.Slice(charsUsed);
                     buffer.WritePosition += bytesUsed;
                 } while (!completed);
