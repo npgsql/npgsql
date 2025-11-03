@@ -351,15 +351,18 @@ sealed class NpgsqlWriteBuffer : IDisposable
             }
             else
             {
+                var encoder = buffer._textEncoder;
+                encoder.Reset();
                 var data = s.AsMemory();
                 var minBufferSize = buffer.TextEncoding.GetMaxByteCount(1);
-                bool completed;
 
+                bool completed;
                 do
                 {
                     if (buffer.WriteSpaceLeft < minBufferSize)
                         await buffer.Flush(async, cancellationToken).ConfigureAwait(false);
-                    buffer._textEncoder.Convert(data.Span, buffer.Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
+                    encoder.Convert(data.Span, buffer.Span, flush: data.Length * minBufferSize <= buffer.Span.Length,
+                        out var charsUsed, out var bytesUsed, out completed);
                     data = data.Slice(charsUsed);
                     buffer.WritePosition += bytesUsed;
                 } while (!completed);

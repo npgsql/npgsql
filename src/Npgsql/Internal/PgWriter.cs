@@ -298,7 +298,8 @@ public sealed class PgWriter
                 if (ShouldFlush(minBufferSize))
                     Flush();
                 Ensure(minBufferSize);
-                encoder.Convert(data, Span, flush: data.Length <= Span.Length, out var charsUsed, out var bytesUsed, out completed);
+                encoder.Convert(data, Span, flush: data.Length * minBufferSize <= Span.Length,
+                    out var charsUsed, out var bytesUsed, out completed);
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
             } while (!completed);
