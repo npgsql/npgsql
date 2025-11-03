@@ -161,7 +161,7 @@ readonly struct PgArrayConverter(
         public required int[]? Lengths { get; init; }
     }
 
-    unsafe object ReadDimsAndCreateCollection(PgReader reader, int dimensions, out int lastDimLength)
+    object ReadDimsAndCreateCollection(PgReader reader, int dimensions, out int lastDimLength)
     {
         Debug.Assert(!reader.ShouldBuffer((sizeof(int) + sizeof(int)) * dimensions));
 
