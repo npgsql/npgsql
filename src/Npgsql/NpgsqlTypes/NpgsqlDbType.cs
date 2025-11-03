@@ -123,6 +123,12 @@ public enum NpgsqlDbType
     /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-geometric.html</remarks>
     Polygon = 16,
 
+    /// <summary>
+    /// Corresponds to the PostgreSQL "cube" type, a geometric type representing multi-dimensional cubes.
+    /// </summary>
+    /// <remarks>See https://www.postgresql.org/docs/current/cube.html</remarks>
+    Cube = 63, // Extension type
+
     #endregion
 
     #region Character Types
@@ -740,6 +746,7 @@ static class NpgsqlDbTypeExtensions
 
             // Plugin types
             NpgsqlDbType.Citext    => "citext",
+            NpgsqlDbType.Cube      => "cube",
             NpgsqlDbType.LQuery    => "lquery",
             NpgsqlDbType.LTree     => "ltree",
             NpgsqlDbType.LTxtQuery => "ltxtquery",
@@ -964,6 +971,7 @@ static class NpgsqlDbTypeExtensions
 
                 // Plugin types
                 "citext" => NpgsqlDbType.Citext,
+                "cube" => NpgsqlDbType.Cube,
                 "lquery" => NpgsqlDbType.LQuery,
                 "ltree" => NpgsqlDbType.LTree,
                 "ltxtquery" => NpgsqlDbType.LTxtQuery,

@@ -16,6 +16,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         RecordTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
         FullTextSearchTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
         LTreeTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
+        CubeTypeInfoResolverFactory.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
 
         JsonDynamicTypeInfoResolverFactory.Support.ThrowIfUnsupported<TBuilder>(type, dataTypeName);
 

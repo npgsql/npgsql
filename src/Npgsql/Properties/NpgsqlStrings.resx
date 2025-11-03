@@ -79,6 +79,9 @@
     <data name="LTreeNotEnabled" xml:space="preserve">
         <value>Ltree isn't enabled; please call {0} on {1} to enable LTree.</value>
     </data>
+    <data name="CubeNotEnabled" xml:space="preserve">
+        <value>Cube isn't enabled; please call {0} on {1} to enable Cube.</value>
+    </data>
     <data name="RangesNotEnabled" xml:space="preserve">
         <value>Ranges aren't enabled; please call {0} on {1} to enable ranges.</value>
     </data>

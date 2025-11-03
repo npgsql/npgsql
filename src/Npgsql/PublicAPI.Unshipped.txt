@@ -27,6 +27,7 @@ Npgsql.NpgsqlMetricsOptions
 Npgsql.NpgsqlMetricsOptions.NpgsqlMetricsOptions() -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.ConfigureTracing(System.Action<Npgsql.NpgsqlTracingOptionsBuilder!>! configureAction) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.ConfigureTypeLoading(System.Action<Npgsql.NpgsqlTypeLoadingOptionsBuilder!>! configureAction) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.EnableCube() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableGeometricTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableJsonTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableNetworkTypes() -> Npgsql.NpgsqlSlimDataSourceBuilder!
@@ -93,6 +94,26 @@ NpgsqlTypes.NpgsqlBox.Deconstruct(out double left, out double right, out double 
 NpgsqlTypes.NpgsqlBox.Deconstruct(out NpgsqlTypes.NpgsqlPoint lowerLeft, out NpgsqlTypes.NpgsqlPoint upperRight) -> void
 NpgsqlTypes.NpgsqlCircle.Deconstruct(out double x, out double y, out double radius) -> void
 NpgsqlTypes.NpgsqlCircle.Deconstruct(out NpgsqlTypes.NpgsqlPoint center, out double radius) -> void
+NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.NpgsqlCube() -> void
+NpgsqlTypes.NpgsqlCube.Dimensions.get -> int
+NpgsqlTypes.NpgsqlCube.Equals(NpgsqlTypes.NpgsqlCube other) -> bool
+NpgsqlTypes.NpgsqlCube.LowerLeft.get -> System.Collections.Generic.IReadOnlyList<double>!
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(double coord) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(double lowerLeft, double upperRight) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(NpgsqlTypes.NpgsqlCube cube, double coord) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(NpgsqlTypes.NpgsqlCube cube, double lowerLeft, double upperRight) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(System.Collections.Generic.IEnumerable<double>! coords) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(System.Collections.Generic.IEnumerable<double>! lowerLeft, System.Collections.Generic.IEnumerable<double>! upperRight) -> void
+NpgsqlTypes.NpgsqlCube.IsPoint.get -> bool
+NpgsqlTypes.NpgsqlCube.ToSubset(params int[]! indexes) -> NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.UpperRight.get -> System.Collections.Generic.IReadOnlyList<double>!
+NpgsqlTypes.NpgsqlDbType.Cube = 63 -> NpgsqlTypes.NpgsqlDbType
+override NpgsqlTypes.NpgsqlCube.Equals(object? obj) -> bool
+override NpgsqlTypes.NpgsqlCube.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlCube.ToString() -> string!
+static NpgsqlTypes.NpgsqlCube.operator !=(NpgsqlTypes.NpgsqlCube x, NpgsqlTypes.NpgsqlCube y) -> bool
+static NpgsqlTypes.NpgsqlCube.operator ==(NpgsqlTypes.NpgsqlCube x, NpgsqlTypes.NpgsqlCube y) -> bool
 NpgsqlTypes.NpgsqlLine.Deconstruct(out double a, out double b, out double c) -> void
 NpgsqlTypes.NpgsqlLSeg.Deconstruct(out NpgsqlTypes.NpgsqlPoint start, out NpgsqlTypes.NpgsqlPoint end) -> void
 NpgsqlTypes.NpgsqlPoint.Deconstruct(out double x, out double y) -> void
