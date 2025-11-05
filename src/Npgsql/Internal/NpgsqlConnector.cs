@@ -590,9 +590,7 @@ public sealed partial class NpgsqlConnector
             {
                 await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
             }
-            catch (PostgresException e)
-                when (e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification &&
-                      (sslMode == SslMode.Prefer && conn.IsSecure || sslMode == SslMode.Allow && !conn.IsSecure))
+            catch when (sslMode == SslMode.Prefer && conn.IsSecure || sslMode == SslMode.Allow && !conn.IsSecure)
             {
                 cancellationRegistration.Dispose();
                 Debug.Assert(!conn.IsBroken);
