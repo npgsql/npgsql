@@ -471,22 +471,32 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         Debug.Assert(RowDescription != null);
                         Debug.Assert(State == ReaderState.BeforeResult);
 
-                        // Temporarily set our state to InResult to allow us to read the values
-                        var currentPosition = Buffer.ReadPosition;
-                        State = ReaderState.InResult;
                         try
                         {
-                            command.PopulateOutputParameters(this, _commandLogger);
+                            // Temporarily set our state to InResult and non-sequential to allow us to read the values, and in any order.
+                            var isSequential = _isSequential;
+                            var currentPosition = Buffer.ReadPosition;
+                            State = ReaderState.InResult;
+                            _isSequential = false;
+                            try
+                            {
+                                command.PopulateOutputParameters(this, _commandLogger);
 
-                            // Revert row state.
-                            if (async)
-                                await PgReader.CommitAsync().ConfigureAwait(false);
-                            else
-                                PgReader.Commit();
+                                // On success we want to revert any row and column state for the user to be able to read the same row again.
+                                if (async)
+                                    await PgReader.CommitAsync().ConfigureAwait(false);
+                                else
+                                    PgReader.Commit();
 
-                            State = ReaderState.BeforeResult; // Set the state back
-                            Buffer.ReadPosition = currentPosition; // Restore position
-                            _column = -1;
+                                State = ReaderState.BeforeResult; // Set the state back
+                                Buffer.ReadPosition = currentPosition; // Restore position
+                                _column = -1;
+                            }
+                            finally
+                            {
+                                // To be on the safe side we always revert this CommandBehavior state change, including on failure.
+                                _isSequential = isSequential;
+                            }
                         }
                         catch (Exception e)
                         {
