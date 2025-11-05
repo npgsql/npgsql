@@ -219,7 +219,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException oce) when (cancellationToken.IsCancellationRequested && oce.CancellationToken == cancellationToken)
             {
                 if (connector is not null)
                     pool.Return(connector);
