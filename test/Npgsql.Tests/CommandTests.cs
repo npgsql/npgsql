@@ -741,14 +741,14 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     public async Task Statement_mapped_output_parameters(CommandBehavior behavior)
     {
         await using var conn = await OpenConnectionAsync();
-        var command = new NpgsqlCommand("select 3, 4 as param1, 5 as param2, 6;", conn);
+        var command = new NpgsqlCommand("select 3 as unknown, 4 as param1, 5 as param2, 6;", conn);
 
-        var p = new NpgsqlParameter("param2", NpgsqlDbType.Integer);
+        var p = new NpgsqlParameter("param1", NpgsqlDbType.Integer);
         p.Direction = ParameterDirection.Output;
         p.Value = -1;
         command.Parameters.Add(p);
 
-        p = new NpgsqlParameter("param1", NpgsqlDbType.Integer);
+        p = new NpgsqlParameter("param2", NpgsqlDbType.Integer);
         p.Direction = ParameterDirection.Output;
         p.Value = -1;
         command.Parameters.Add(p);
@@ -760,6 +760,7 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         await using var reader = await command.ExecuteReaderAsync(behavior);
 
+        Assert.That(command.Parameters["p"].Value, Is.EqualTo(3));
         Assert.That(command.Parameters["param1"].Value, Is.EqualTo(4));
         Assert.That(command.Parameters["param2"].Value, Is.EqualTo(5));
 
