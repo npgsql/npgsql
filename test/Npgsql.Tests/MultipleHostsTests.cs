@@ -1133,6 +1133,17 @@ public class MultipleHostsTests : TestBase
         await using var connection = await dataSource.OpenConnectionAsync();
     }
 
+    [Test]
+    public async Task OpenConnection_when_canceled_throws_TaskCanceledException()
+    {
+        var builder = new NpgsqlDataSourceBuilder(ConnectionString);
+        await using var dataSource = builder.BuildMultiHost();
+        Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        {
+            await using var connection = await dataSource.OpenConnectionAsync(new CancellationToken(true));
+        });
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4181")]
     [Explicit("Fails until #4181 is fixed.")]
     public async Task LoadBalancing_is_fair_if_first_host_is_down([Values]TargetSessionAttributes targetSessionAttributes)
