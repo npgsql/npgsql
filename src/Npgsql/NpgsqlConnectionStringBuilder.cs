@@ -1673,9 +1673,22 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         foreach (var value in propertyDescriptors.Values)
         {
             var d = (PropertyDescriptor)value;
+            var isConnectionStringProperty = false;
+            var isObsolete = false;
             foreach (var attribute in d.Attributes)
-                if (attribute is NpgsqlConnectionStringPropertyAttribute or ObsoleteAttribute)
-                    toRemove.Add(d);
+            {
+                if (attribute is NpgsqlConnectionStringPropertyAttribute)
+                {
+                    isConnectionStringProperty = true;
+                }
+                else if (attribute is ObsoleteAttribute)
+                {
+                    isObsolete = true;
+                }
+            }
+
+            if (!isConnectionStringProperty || isObsolete)
+                toRemove.Add(d);
         }
 
         foreach (var o in toRemove)
