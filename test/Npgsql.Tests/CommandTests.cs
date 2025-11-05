@@ -772,6 +772,45 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(reader.GetInt32(3), Is.EqualTo(6));
     }
 
+
+    [Test]
+    [TestCase(CommandBehavior.Default)]
+    [TestCase(CommandBehavior.SequentialAccess)]
+    public async Task Statement_mapped_generic_output_parameters(CommandBehavior behavior)
+    {
+        await using var conn = await OpenConnectionAsync();
+        var command = new NpgsqlCommand("select '' as unknown, 4 as param1, 5 as param2, 6;", conn);
+
+        var p = new NpgsqlParameter<int>("param1", NpgsqlDbType.Integer);
+        p.Direction = ParameterDirection.Output;
+        p.Value = -1;
+        command.Parameters.Add(p);
+
+        p = new NpgsqlParameter<int>("param2", NpgsqlDbType.Integer);
+        p.Direction = ParameterDirection.Output;
+        p.Value = -1;
+        command.Parameters.Add(p);
+
+        // char[] is one alternative mapping for text.
+        var textP = new NpgsqlParameter<char[]>("p", NpgsqlDbType.Text);
+        textP.Direction = ParameterDirection.Output;
+        textP.Value = "text".ToCharArray();
+        command.Parameters.Add(textP);
+
+        await using var reader = await command.ExecuteReaderAsync(behavior);
+
+        Assert.That(command.Parameters["p"].Value, Is.EquivalentTo(Array.Empty<char>()));
+        Assert.That(command.Parameters["param1"].Value, Is.EqualTo(4));
+        Assert.That(command.Parameters["param2"].Value, Is.EqualTo(5));
+
+        reader.Read();
+
+        Assert.That(reader.GetFieldValue<char[]>(0), Is.EquivalentTo(Array.Empty<char>()));
+        Assert.That(reader.GetInt32(1), Is.EqualTo(4));
+        Assert.That(reader.GetInt32(2), Is.EqualTo(5));
+        Assert.That(reader.GetInt32(3), Is.EqualTo(6));
+    }
+
     [Test]
     public async Task Bug1006158_output_parameters()
     {
