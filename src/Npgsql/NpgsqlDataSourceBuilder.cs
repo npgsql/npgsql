@@ -41,7 +41,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// A connection string builder that can be used to configured the connection string on the builder.
+    /// A connection string builder that can be used to configure the connection string on the builder.
     /// </summary>
     public NpgsqlConnectionStringBuilder ConnectionStringBuilder => _internalBuilder.ConnectionStringBuilder;
 

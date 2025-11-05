@@ -60,7 +60,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     internal Action<NpgsqlSlimDataSourceBuilder> ConfigureDefaultFactories { get; set; }
 
     /// <summary>
-    /// A connection string builder that can be used to configured the connection string on the builder.
+    /// A connection string builder that can be used to configure the connection string on the builder.
     /// </summary>
     public NpgsqlConnectionStringBuilder ConnectionStringBuilder { get; }
 
