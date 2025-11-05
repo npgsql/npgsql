@@ -1315,9 +1315,6 @@ public sealed partial class NpgsqlConnector
 
     async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
-        // Whether the framework and/or the OS platform support Dns.GetHostAddressesAsync cancellation API or they do not,
-        // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteAsync. It stops waiting
-        // and raises the exception, while the actual task may be left running.
         EndPoint[] endpoints;
         if (NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath))
         {
@@ -1328,8 +1325,18 @@ public sealed partial class NpgsqlConnector
             IPAddress[] ipAddresses;
             try
             {
-                ipAddresses = await Dns.GetHostAddressesAsync(Host, cancellationToken)
-                    .WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken).ConfigureAwait(false);
+                using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
+                combinedCts?.CancelAfter(timeout.CheckAndGetTimeLeft());
+                var combinedToken = combinedCts?.Token ?? cancellationToken;
+                try
+                {
+                    ipAddresses = await Dns.GetHostAddressesAsync(Host,  combinedToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException oce) when (
+                    oce.CancellationToken == combinedToken && !cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException();
+                }
             }
             catch (SocketException ex)
             {
@@ -1361,7 +1368,18 @@ public sealed partial class NpgsqlConnector
                 // Some options are not applied after the socket is open, see #6013
                 SetSocketOptions(socket);
 
-                await OpenSocketConnectionAsync(socket, endpoint, endpointTimeout, cancellationToken).ConfigureAwait(false);
+                using var combinedCts = endpointTimeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
+                combinedCts?.CancelAfter(endpointTimeout.CheckAndGetTimeLeft());
+                var combinedToken = combinedCts?.Token ?? cancellationToken;
+                try
+                {
+                    await socket.ConnectAsync(endpoint, combinedToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException oce) when (
+                    oce.CancellationToken == combinedToken && !cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException();
+                }
 
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
@@ -1388,16 +1406,6 @@ public sealed partial class NpgsqlConnector
                 if (i == endpoints.Length - 1)
                     throw new NpgsqlException($"Failed to connect to {endpoint}", e);
             }
-        }
-
-        static Task OpenSocketConnectionAsync(Socket socket, EndPoint endpoint, NpgsqlTimeout perIpTimeout, CancellationToken cancellationToken)
-        {
-            // Whether the OS platform supports Socket.ConnectAsync cancellation API or not,
-            // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteAsync. It stops waiting
-            // and raises the exception, while the actual task may be left running.
-            Task ConnectAsync(CancellationToken ct) =>
-                socket.ConnectAsync(endpoint, ct).AsTask();
-            return TaskTimeoutAndCancellation.ExecuteAsync(ConnectAsync, perIpTimeout, cancellationToken);
         }
     }
 
