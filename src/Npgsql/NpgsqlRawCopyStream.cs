@@ -486,6 +486,20 @@ public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     }
 
     /// <summary>
+    /// Gets or sets a value, in milliseconds, that determines how long the text writer will attempt to write before timing out.
+    /// </summary>
+    public int Timeout
+    {
+        get => ((NpgsqlRawCopyStream)BaseStream).WriteTimeout;
+        set
+        {
+            var stream = (NpgsqlRawCopyStream)BaseStream;
+            stream.ReadTimeout = value;
+            stream.WriteTimeout = value;
+        }
+    }
+
+    /// <summary>
     /// Cancels and terminates an ongoing import. Any data already written will be discarded.
     /// </summary>
     public void Cancel()
@@ -509,6 +523,20 @@ public sealed class NpgsqlCopyTextReader : StreamReader, ICancelable
     {
         if (underlying.IsBinary)
             throw connector.Break(new Exception("Can't use a binary copy stream for text reading"));
+    }
+
+    /// <summary>
+    /// Gets or sets a value, in milliseconds, that determines how long the text reader will attempt to read before timing out.
+    /// </summary>
+    public int Timeout
+    {
+        get => ((NpgsqlRawCopyStream)BaseStream).ReadTimeout;
+        set
+        {
+            var stream = (NpgsqlRawCopyStream)BaseStream;
+            stream.ReadTimeout = value;
+            stream.WriteTimeout = value;
+        }
     }
 
     /// <summary>

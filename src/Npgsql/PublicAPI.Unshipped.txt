@@ -5,6 +5,10 @@ Npgsql.GssEncryptionMode.Disable = 0 -> Npgsql.GssEncryptionMode
 Npgsql.GssEncryptionMode.Prefer = 1 -> Npgsql.GssEncryptionMode
 Npgsql.GssEncryptionMode.Require = 2 -> Npgsql.GssEncryptionMode
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddDbTypeResolverFactory(Npgsql.Internal.DbTypeResolverFactory! factory) -> void
+Npgsql.NpgsqlConnection.BeginTextExport(string! copyToCommand) -> Npgsql.NpgsqlCopyTextReader!
+Npgsql.NpgsqlConnection.BeginTextExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlCopyTextReader!>!
+Npgsql.NpgsqlConnection.BeginTextImport(string! copyFromCommand) -> Npgsql.NpgsqlCopyTextWriter!
+Npgsql.NpgsqlConnection.BeginTextImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlCopyTextWriter!>!
 Npgsql.NpgsqlConnection.CloneWithAsync(string! connectionString, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.get -> System.Action<System.Net.Security.SslClientAuthenticationOptions!>?
 Npgsql.NpgsqlConnection.SslClientAuthenticationOptionsCallback.set -> void
@@ -16,6 +20,10 @@ Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.RequireAuth.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.get -> Npgsql.SslNegotiation
 Npgsql.NpgsqlConnectionStringBuilder.SslNegotiation.set -> void
+Npgsql.NpgsqlCopyTextReader.Timeout.get -> int
+Npgsql.NpgsqlCopyTextReader.Timeout.set -> void
+Npgsql.NpgsqlCopyTextWriter.Timeout.get -> int
+Npgsql.NpgsqlCopyTextWriter.Timeout.set -> void
 Npgsql.NpgsqlDataSourceBuilder.ConfigureTypeLoading(System.Action<Npgsql.NpgsqlTypeLoadingOptionsBuilder!>! configureAction) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
@@ -123,3 +131,7 @@ NpgsqlTypes.NpgsqlLine.Deconstruct(out double a, out double b, out double c) -> 
 NpgsqlTypes.NpgsqlLSeg.Deconstruct(out NpgsqlTypes.NpgsqlPoint start, out NpgsqlTypes.NpgsqlPoint end) -> void
 NpgsqlTypes.NpgsqlPoint.Deconstruct(out double x, out double y) -> void
 NpgsqlTypes.NpgsqlTid.Deconstruct(out uint blockNumber, out ushort offsetNumber) -> void
+*REMOVED*Npgsql.NpgsqlConnection.BeginTextExport(string! copyToCommand) -> System.IO.TextReader!
+*REMOVED*Npgsql.NpgsqlConnection.BeginTextExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
+*REMOVED*Npgsql.NpgsqlConnection.BeginTextImport(string! copyFromCommand) -> System.IO.TextWriter!
+*REMOVED*Npgsql.NpgsqlConnection.BeginTextImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextWriter!>!
