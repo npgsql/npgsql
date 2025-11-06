@@ -41,7 +41,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// A connection string builder that can be used to configured the connection string on the builder.
+    /// A connection string builder that can be used to configure the connection string on the builder.
     /// </summary>
     public NpgsqlConnectionStringBuilder ConnectionStringBuilder => _internalBuilder.ConnectionStringBuilder;
 
@@ -298,6 +298,17 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Sets the <see cref="X509Certificate2Collection" /> that will be used validate SSL certificate, received from the server.
+    /// </summary>
+    /// <param name="rootCertificates">The CA certificates.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseRootCertificates(X509Certificate2Collection? rootCertificates)
+    {
+        _internalBuilder.UseRootCertificates(rootCertificates);
+        return this;
+    }
+
+    /// <summary>
     /// Specifies a callback that will be used to validate SSL certificate, received from the server.
     /// </summary>
     /// <param name="rootCertificateCallback">The callback to get CA certificate.</param>
@@ -310,6 +321,23 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSourceBuilder UseRootCertificateCallback(Func<X509Certificate2>? rootCertificateCallback)
     {
         _internalBuilder.UseRootCertificateCallback(rootCertificateCallback);
+        return this;
+    }
+
+    /// <summary>
+    /// Specifies a callback that will be used to validate SSL certificate, received from the server.
+    /// </summary>
+    /// <param name="rootCertificateCallback">The callback to get CA certificates.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    /// <remarks>
+    /// This overload, which accepts a callback, is suitable for scenarios where the certificate rotates
+    /// and might change during the lifetime of the application.
+    /// When that's not the case, use the overload which directly accepts the certificate.
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseRootCertificatesCallback(Func<X509Certificate2Collection>? rootCertificateCallback)
+    {
+        _internalBuilder.UseRootCertificatesCallback(rootCertificateCallback);
         return this;
     }
 

@@ -60,7 +60,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     internal Action<NpgsqlSlimDataSourceBuilder> ConfigureDefaultFactories { get; set; }
 
     /// <summary>
-    /// A connection string builder that can be used to configured the connection string on the builder.
+    /// A connection string builder that can be used to configure the connection string on the builder.
     /// </summary>
     public NpgsqlConnectionStringBuilder ConnectionStringBuilder { get; }
 
@@ -252,8 +252,18 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder UseRootCertificate(X509Certificate2? rootCertificate)
         => rootCertificate is null
-            ? UseRootCertificateCallback(null)
+            ? UseRootCertificatesCallback((Func<X509Certificate2Collection>?)null)
             : UseRootCertificateCallback(() => rootCertificate);
+
+    /// <summary>
+    /// Sets the <see cref="X509Certificate2Collection" /> that will be used validate SSL certificate, received from the server.
+    /// </summary>
+    /// <param name="rootCertificates">The CA certificates.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder UseRootCertificates(X509Certificate2Collection? rootCertificates)
+        => rootCertificates is null
+            ? UseRootCertificatesCallback((Func<X509Certificate2Collection>?)null)
+            : UseRootCertificatesCallback(() => rootCertificates);
 
     /// <summary>
     /// Specifies a callback that will be used to validate SSL certificate, received from the server.
@@ -268,7 +278,27 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     public NpgsqlSlimDataSourceBuilder UseRootCertificateCallback(Func<X509Certificate2>? rootCertificateCallback)
     {
-        _transportSecurityHandler.RootCertificateCallback = rootCertificateCallback;
+        _transportSecurityHandler.RootCertificatesCallback = () => rootCertificateCallback is not null
+            ? new X509Certificate2Collection(rootCertificateCallback())
+            : null;
+
+        return this;
+    }
+
+    /// <summary>
+    /// Specifies a callback that will be used to validate SSL certificate, received from the server.
+    /// </summary>
+    /// <param name="rootCertificateCallback">The callback to get CA certificates.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    /// <remarks>
+    /// This overload, which accepts a callback, is suitable for scenarios where the certificate rotates
+    /// and might change during the lifetime of the application.
+    /// When that's not the case, use the overload which directly accepts the certificate.
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlSlimDataSourceBuilder UseRootCertificatesCallback(Func<X509Certificate2Collection>? rootCertificateCallback)
+    {
+        _transportSecurityHandler.RootCertificatesCallback = rootCertificateCallback;
 
         return this;
     }

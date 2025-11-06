@@ -22,6 +22,8 @@ Npgsql.NpgsqlDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = nu
 Npgsql.NpgsqlDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.ConfigureTracing(System.Action<Npgsql.NpgsqlTracingOptionsBuilder!>! configureAction) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseRootCertificates(System.Security.Cryptography.X509Certificates.X509Certificate2Collection? rootCertificates) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseRootCertificatesCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2Collection!>? rootCertificateCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlMetricsOptions
 Npgsql.NpgsqlMetricsOptions.NpgsqlMetricsOptions() -> void
@@ -36,6 +38,8 @@ Npgsql.NpgsqlSlimDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql
 Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseNegotiateOptionsCallback(System.Action<System.Net.Security.NegotiateAuthenticationClientOptions!>? negotiateOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificates(System.Security.Cryptography.X509Certificates.X509Certificate2Collection? rootCertificates) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificatesCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2Collection!>? rootCertificateCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseSslClientAuthenticationOptionsCallback(System.Action<System.Net.Security.SslClientAuthenticationOptions!>? sslClientAuthenticationOptionsCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 *REMOVED*Npgsql.NpgsqlTracingOptions
 *REMOVED*Npgsql.NpgsqlTracingOptions.NpgsqlTracingOptions() -> void

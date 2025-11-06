@@ -2,6 +2,8 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Properties;
@@ -561,6 +563,45 @@ public class SecurityTests : TestBase
             var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
+    }
+
+    [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    public async Task Connect_with_verify_and_multiple_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode, [Values] bool realCaFirst)
+    {
+        if (!IsOnBuildServer)
+            Assert.Ignore("Only executed in CI");
+
+        var certificates = new X509Certificate2Collection();
+
+#if NET9_0_OR_GREATER
+        using var realCaCert = X509CertificateLoader.LoadCertificateFromFile("ca.crt");
+#else
+        using var realCaCert = new X509Certificate2("ca.crt");
+#endif
+
+        using var ecdsa = ECDsa.Create();
+        var req = new CertificateRequest("cn=localhost", ecdsa, HashAlgorithmName.SHA256);
+        using var unrelatedCaCert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+
+        if (realCaFirst)
+        {
+            certificates.Add(realCaCert);
+            certificates.Add(unrelatedCaCert);
+        }
+        else
+        {
+            certificates.Add(unrelatedCaCert);
+            certificates.Add(realCaCert);
+        }
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.SslMode = sslMode;
+        dataSourceBuilder.UseRootCertificates(certificates);
+
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using var _ = await dataSource.OpenConnectionAsync();
     }
 
     [Test]
