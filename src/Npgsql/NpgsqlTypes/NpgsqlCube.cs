@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -7,7 +8,7 @@ using System.Text;
 namespace NpgsqlTypes
 {
     /// <summary>
-    /// Represents a PostgreSQl cube data type.
+    /// Represents a PostgreSQL cube data type.
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/cube.html
@@ -214,8 +215,8 @@ namespace NpgsqlTypes
 
             for (var i = 0; i < Dimensions; i++)
             {
-                leftBuilder.Append(_lowerLeft[i]);
-                rightBuilder.Append(_upperRight[i]);
+                leftBuilder.Append(_lowerLeft[i].ToString("G17", CultureInfo.InvariantCulture));
+                rightBuilder.Append(_upperRight[i].ToString("G17", CultureInfo.InvariantCulture));
 
                 if (i >= Dimensions - 1) continue;
 
