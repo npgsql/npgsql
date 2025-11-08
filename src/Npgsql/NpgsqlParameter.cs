@@ -43,9 +43,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     IDbTypeResolver? _dbTypeResolver;
     private protected PgTypeInfo? TypeInfo { get; private set; }
+    private protected PgConcreteTypeInfo? ConcreteTypeInfo { get; private set; }
 
-    internal PgTypeId PgTypeId { get; private set; }
-    private protected PgConverter? Converter { get; private set; }
+    internal PgTypeId PgTypeId => ConcreteTypeInfo?.PgTypeId ?? default;
+    private protected PgConverter? Converter => ConcreteTypeInfo?.Converter;
 
     internal DataFormat Format { get; private protected set; }
     private protected Size? WriteSize { get; set; }
@@ -570,21 +571,19 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         return valueType != typeof(DBNull) && currentType != valueType;
     }
 
-    internal void GetResolutionInfo(out PgTypeInfo? typeInfo, out PgConverter? converter, out PgTypeId pgTypeId)
+    internal void GetResolutionInfo(out PgTypeInfo? typeInfo, out PgConcreteTypeInfo? concreteTypeInfo)
     {
         typeInfo = TypeInfo;
-        converter = Converter;
-        pgTypeId = PgTypeId;
+        concreteTypeInfo = ConcreteTypeInfo;
     }
 
-    internal void SetResolutionInfo(PgTypeInfo typeInfo, PgConverter converter, PgTypeId pgTypeId)
+    internal void SetResolutionInfo(PgTypeInfo typeInfo, PgConcreteTypeInfo concreteTypeInfo)
     {
         if (WriteSize is not null)
             ResetBindingInfo();
 
         TypeInfo = typeInfo;
-        Converter = converter;
-        PgTypeId = pgTypeId;
+        ConcreteTypeInfo = concreteTypeInfo;
     }
 
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
@@ -665,9 +664,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (!previouslyResolved || typeInfo is not PgConcreteTypeInfo)
         {
             ResetBindingInfo();
-            var concreteTypeInfo = GetConcreteTypeInfo(typeInfo!);
-            Converter = concreteTypeInfo.Converter;
-            PgTypeId = concreteTypeInfo.PgTypeId;
+            ConcreteTypeInfo = GetConcreteTypeInfo(typeInfo!);
         }
 
         void ThrowNoTypeInfo()
@@ -834,8 +831,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         TypeInfo = null;
         _asObject = false;
-        Converter = null;
-        PgTypeId = default;
+        ConcreteTypeInfo = null;
         ResetBindingInfo();
     }
 
