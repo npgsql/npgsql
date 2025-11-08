@@ -43,7 +43,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (type != typeof(Stream))
                 return null;
 
-            return new PgTypeInfo(options, new StreamConverter(supportsTextFormat: true), dataTypeName) { SupportsWriting = false };
+            return new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), dataTypeName) { SupportsWriting = false };
         }
 
         static PgTypeInfo? GetEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
@@ -52,7 +52,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
                 return null;
 
-            return new PgTypeInfo(options, TextConverter.CreateStringConverter(options.TextEncoding), dataTypeName,
+            return new PgConcreteTypeInfo(options, TextConverter.CreateStringConverter(options.TextEncoding), dataTypeName,
                 unboxedType: type == typeof(object) ? typeof(string) : null);
         }
 
@@ -97,7 +97,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Text,
-                static (options, mapping, _) => new PgTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Text,
@@ -124,7 +124,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                     static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
                     MatchRequirement.DataTypeName);
                 mappings.AddType<Stream>(dataTypeName,
-                    static (options, mapping, _) => new PgTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                    static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                     mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
                 //Special mappings, these have no corresponding array mapping.
                 mappings.AddType<TextReader>(dataTypeName,
@@ -148,7 +148,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, new ReadOnlyMemoryByteaConverter())),
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => new PgTypeInfo(options, new VersionPrefixedTextConverter<Stream>(jsonbVersion, new StreamConverter(supportsTextFormat: true)), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                static (options, mapping, _) => new PgConcreteTypeInfo(options, new VersionPrefixedTextConverter<Stream>(jsonbVersion, new StreamConverter(supportsTextFormat: true)), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Jsonb,
@@ -177,13 +177,13 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
             mappings.AddType<Stream>(DataTypeNames.Bytea,
                 // TODO handling bytea textually would require conversions to hex strings, so currently we don't support it.
-                static (options, mapping, _) => new PgTypeInfo(options, new StreamConverter(supportsTextFormat: false), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: false), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                 mapping => mapping with { TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
 
             // Varbit
             mappings.AddType<object>(DataTypeNames.Varbit,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), includeDataTypeName: true, supportsWriting: false));
+                    new PolymorphicBitStringConverterResolver(options, options.GetCanonicalTypeId(DataTypeNames.Varbit)), includeDataTypeName: true, supportsWriting: false));
             mappings.AddType<BitArray>(DataTypeNames.Varbit,
                 static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
             mappings.AddStructType<bool>(DataTypeNames.Varbit,
@@ -194,7 +194,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Bit
             mappings.AddType<object>(DataTypeNames.Bit,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), includeDataTypeName: true, supportsWriting: false));
+                    new PolymorphicBitStringConverterResolver(options, options.GetCanonicalTypeId(DataTypeNames.Bit)), includeDataTypeName: true, supportsWriting: false));
             mappings.AddType<BitArray>(DataTypeNames.Bit,
                 static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
             mappings.AddStructType<bool>(DataTypeNames.Bit,
@@ -331,14 +331,14 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<uint[]>(
                 DataTypeNames.OidVector,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    ArrayConverter<uint[]>.CreateArrayBased<uint>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
+                    ArrayConverter<uint[]>.CreateArrayBased<uint>(new(options, new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
                 MatchRequirement.DataTypeName);
 
             // Int2vector
             mappings.AddType<short[]>(
                 DataTypeNames.Int2Vector,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    ArrayConverter<short[]>.CreateArrayBased<short>(new(new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
+                    ArrayConverter<short[]>.CreateArrayBased<short>(new(options, new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
                 MatchRequirement.DataTypeName);
 
             // Tid
@@ -430,13 +430,13 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Varbit
             // Object mapping first.
-            mappings.AddPolymorphicResolverArrayType(DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
+            mappings.AddPolymorphicResolverArrayType(DataTypeNames.Varbit, static options => concreteTypeInfo => concreteTypeInfo.Converter switch
             {
                 BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
-                    () => ArrayConverter<Array>.CreateArrayBased<bool>(resolution, typeof(Array)),
-                    () => ArrayConverter<Array>.CreateArrayBased<bool>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
+                    () => ArrayConverter<Array>.CreateArrayBased<bool>(concreteTypeInfo, typeof(Array)),
+                    () => ArrayConverter<Array>.CreateArrayBased<bool?>(new(options, new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.Converter), concreteTypeInfo.PgTypeId), typeof(Array)),
                     options),
-                BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(resolution, typeof(Array)),
+                BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(concreteTypeInfo, typeof(Array)),
                 _ => throw new NotSupportedException()
             });
             mappings.AddArrayType<BitArray>(DataTypeNames.Varbit);
@@ -445,13 +445,13 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Bit
             // Object mapping first.
-            mappings.AddPolymorphicResolverArrayType(DataTypeNames.Bit, static options => resolution => resolution.Converter switch
+            mappings.AddPolymorphicResolverArrayType(DataTypeNames.Bit, static options => concreteTypeInfo => concreteTypeInfo.Converter switch
             {
                 BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
-                    () => ArrayConverter<Array>.CreateArrayBased<bool>(resolution, typeof(Array)),
-                    () => ArrayConverter<Array>.CreateArrayBased<bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
+                    () => ArrayConverter<Array>.CreateArrayBased<bool>(concreteTypeInfo, typeof(Array)),
+                    () => ArrayConverter<Array>.CreateArrayBased<bool?>(new(options, new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.Converter), concreteTypeInfo.PgTypeId), typeof(Array)),
                     options),
-                BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(resolution, typeof(Array)),
+                BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(concreteTypeInfo, typeof(Array)),
                 _ => throw new NotSupportedException()
             });
             mappings.AddArrayType<BitArray>(DataTypeNames.Bit);
