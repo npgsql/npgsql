@@ -42,7 +42,7 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
         var concreteTypeInfo = typeInfo is PgProviderTypeInfo providerTypeInfo
             ? providerTypeInfo.GetDefaultConcreteTypeInfo(null)
             : (PgConcreteTypeInfo)typeInfo;
-        if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, context.Format) is not { } bufferRequirements)
+        if (concreteTypeInfo.GetBufferRequirements(context.Format) is not { } bufferRequirements)
         {
             ThrowHelper.ThrowNotSupportedException($"Resolved converter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
             return default;
@@ -85,7 +85,7 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
         var concreteTypeInfo = typeInfo is PgProviderTypeInfo providerTypeInfo
             ? providerTypeInfo.GetDefaultConcreteTypeInfo(null)
             : (PgConcreteTypeInfo)typeInfo;
-        var writeRequirement = concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary)!.Value.Write;
+        var writeRequirement = concreteTypeInfo.GetBufferRequirements(DataFormat.Binary)!.Value.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
