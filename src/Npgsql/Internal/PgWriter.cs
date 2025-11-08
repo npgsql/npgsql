@@ -1,3 +1,4 @@
+using Npgsql.Internal.Postgres;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -7,9 +8,9 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
@@ -21,7 +22,7 @@ enum FlushMode
 }
 
 // A streaming alternative to a System.IO.Stream, instead based on the preferable IBufferWriter.
-interface IStreamingWriter<T>: IBufferWriter<T>
+interface IStreamingWriter<T> : IBufferWriter<T>
 {
     void Flush(TimeSpan timeout = default);
     ValueTask FlushAsync(CancellationToken cancellationToken = default);
@@ -305,6 +306,32 @@ public sealed class PgWriter
         }
     }
 
+    public void WriteUtf8Chars(ReadOnlySpan<char> data)
+    {
+        const int MinBufferSize = 6; // Encoding.UTF8.GetMaxByteCount(1);
+
+        do
+        {
+            var status = Utf8.FromUtf16(data, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: false, isFinalBlock: true);
+            Advance(bytesWritten);
+
+            switch (status)
+            {
+            case OperationStatus.DestinationTooSmall:
+                Flush();
+                Ensure(MinBufferSize);
+                data = data.Slice(charsRead);
+                break;
+            case OperationStatus.InvalidData:
+                ThrowHelper.ThrowEncoderFallbackException();
+                break;
+            default:
+                return;
+            }
+        }
+        while (true);
+    }
+
     public ValueTask WriteCharsAsync(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken = default)
     {
         var dataSpan = data.Span;
@@ -338,6 +365,51 @@ public sealed class PgWriter
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
             } while (!completed);
+        }
+    }
+
+    public ValueTask WriteUtf8CharsAsync(ReadOnlyMemory<char> data, CancellationToken cancellationToken = default)
+    {
+        // Worth a shot to see if we can convert into the existing buffer without creating the async state machine.
+        var status = Utf8.FromUtf16(data.Span, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: false, isFinalBlock: true);
+        Advance(bytesWritten);
+
+        switch (status)
+        {
+        case OperationStatus.DestinationTooSmall:
+            data = data.Slice(charsRead);
+            return Core(data, cancellationToken);
+        case OperationStatus.InvalidData:
+            ThrowHelper.ThrowEncoderFallbackException();
+            break;
+        }
+
+        return new();
+
+        async ValueTask Core(ReadOnlyMemory<char> data, CancellationToken cancellationToken)
+        {
+            const int MinBufferSize = 6; // Encoding.UTF8.GetMaxByteCount(1);
+
+            while (true)
+            {
+                await FlushAsync(cancellationToken).ConfigureAwait(false);
+                Ensure(MinBufferSize);
+
+                var status = Utf8.FromUtf16(data.Span, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: false, isFinalBlock: true);
+                Advance(bytesWritten);
+
+                switch (status)
+                {
+                case OperationStatus.DestinationTooSmall:
+                    data = data.Slice(charsRead);
+                    break;
+                case OperationStatus.InvalidData:
+                    ThrowHelper.ThrowEncoderFallbackException();
+                    break;
+                default:
+                    return;
+                }
+            }
         }
     }
 

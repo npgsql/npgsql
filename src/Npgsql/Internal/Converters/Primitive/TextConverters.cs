@@ -20,7 +20,7 @@ abstract class StringBasedTextConverter<T>(Encoding encoding) : PgStreamingConve
         => Read(async: true, reader, encoding, cancellationToken);
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
-        => TextConverter.GetSize(ref context, ConvertTo(value), encoding);
+        => TextConverter.GetSize(ConvertTo(value), encoding);
 
     public override void Write(PgWriter writer, T value)
         => writer.WriteChars(ConvertTo(value).Span, encoding);
@@ -57,8 +57,28 @@ sealed class ReadOnlyMemoryTextConverter(Encoding encoding) : StringBasedTextCon
 
 sealed class StringTextConverter(Encoding encoding) : StringBasedTextConverter<string>(encoding)
 {
+    public static StringBasedTextConverter<string> Create(Encoding encoding)
+    {
+        if (ReferenceEquals(encoding, NpgsqlWriteBuffer.UTF8Encoding))
+            return new StringUtf8TextConverter(encoding);
+
+        return new StringTextConverter(encoding);
+    }
+
     protected override ReadOnlyMemory<char> ConvertTo(string value) => value.AsMemory();
     protected override string ConvertFrom(string value) => value;
+}
+
+sealed class StringUtf8TextConverter(Encoding encoding) : StringBasedTextConverter<string>(encoding)
+{
+    protected override ReadOnlyMemory<char> ConvertTo(string value) => value.AsMemory();
+    protected override string ConvertFrom(string value) => value;
+
+    public override void Write(PgWriter writer, string value)
+        => writer.WriteUtf8Chars(value);
+
+    public override ValueTask WriteAsync(PgWriter writer, string value, CancellationToken cancellationToken = default)
+        => writer.WriteUtf8CharsAsync(ConvertTo(value), cancellationToken);
 }
 
 abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConverter<T>
@@ -69,7 +89,7 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
         => Read(async: true, reader, encoding);
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
-        => TextConverter.GetSize(ref context, ConvertTo(value), encoding);
+        => TextConverter.GetSize(ConvertTo(value), encoding);
 
     public override void Write(PgWriter writer, T value)
         => writer.WriteChars(ConvertTo(value).AsSpan(), encoding);
@@ -250,7 +270,7 @@ sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<Get
 // Moved out for code size/sharing.
 static class TextConverter
 {
-    public static Size GetSize(ref SizeContext context, ReadOnlyMemory<char> value, Encoding encoding)
+    public static Size GetSize(ReadOnlyMemory<char> value, Encoding encoding)
         => encoding.GetByteCount(value.Span);
 
     // Adapted version of GetString(ROSeq) removing the intermediate string allocation to make a contiguous char array.

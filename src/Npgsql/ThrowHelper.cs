@@ -1,8 +1,9 @@
 ﻿using Npgsql.BackendMessages;
+using Npgsql.Internal;
 using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using Npgsql.Internal;
+using System.Text;
 
 namespace Npgsql;
 
@@ -107,4 +108,8 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowNpgsqlExceptionWithInnerTimeoutException(string message)
         => throw new NpgsqlException(message, new TimeoutException());
+
+    [DoesNotReturn]
+    internal static void ThrowEncoderFallbackException()
+        => throw new EncoderFallbackException("Unable to translate Unicode character to specified code page");
 }
