@@ -117,30 +117,6 @@ public abstract class PgTypeInfo
         return concreteTypeInfo;
     }
 
-    bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        if (HasCachedInfo(converter))
-        {
-            switch (format)
-            {
-            case DataFormat.Binary:
-                bufferRequirements = _binaryBufferRequirements;
-                return _canBinaryConvert;
-            case DataFormat.Text:
-                bufferRequirements = _textBufferRequirements;
-                return _canTextConvert;
-            }
-        }
-
-        return converter.CanConvert(format, out bufferRequirements);
-    }
-
-    public BufferRequirements? GetBufferRequirements(PgConverter converter, DataFormat format)
-    {
-        var success = CanConvert(converter, format, out var bufferRequirements);
-        return success ? bufferRequirements : null;
-    }
-
     // TryBind for reading.
     internal bool TryBind(Field field, DataFormat format, out PgConverterInfo info)
     {
@@ -219,6 +195,24 @@ public abstract class PgTypeInfo
 
         size = sizeOrDbNull;
         return new(this, converter, bufferRequirements.Write);
+    }
+
+    protected bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        if (HasCachedInfo(converter))
+        {
+            switch (format)
+            {
+            case DataFormat.Binary:
+                bufferRequirements = _binaryBufferRequirements;
+                return _canBinaryConvert;
+            case DataFormat.Text:
+                bufferRequirements = _textBufferRequirements;
+                return _canTextConvert;
+            }
+        }
+
+        return converter.CanConvert(format, out bufferRequirements);
     }
 
     DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
@@ -318,6 +312,12 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
     public new PgConverter Converter => base.Converter!;
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
+
+    public BufferRequirements? GetBufferRequirements(DataFormat format)
+    {
+        var success = CanConvert(Converter, format, out var bufferRequirements);
+        return success ? bufferRequirements : null;
+    }
 }
 
 readonly struct PgConverterInfo

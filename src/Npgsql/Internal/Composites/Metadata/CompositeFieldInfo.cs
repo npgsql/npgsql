@@ -31,7 +31,7 @@ abstract class CompositeFieldInfo
         if (!typeInfo.IsProviderInfo)
         {
             var concreteTypeInfo = typeInfo.AsConcreteTypeInfo();
-            if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary) is not { } bufferRequirements)
+            if (concreteTypeInfo.GetBufferRequirements(DataFormat.Binary) is not { } bufferRequirements)
             {
                 ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
                 return;
@@ -194,7 +194,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         var concreteTypeInfo = PgTypeInfo.IsBoxing
             ? PgTypeInfo.GetObjectConcreteTypeInfo(value)
             : PgTypeInfo.GetConcreteTypeInfo(value);
-        if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary) is not { } bufferRequirements)
+        if (concreteTypeInfo.GetBufferRequirements(DataFormat.Binary) is not { } bufferRequirements)
         {
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
             writeRequirement = default;
