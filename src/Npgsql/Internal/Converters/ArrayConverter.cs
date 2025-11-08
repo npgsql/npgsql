@@ -710,7 +710,6 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
 {
     readonly PgProviderTypeInfo _effectiveTypeInfo;
     readonly PgProviderTypeInfo _effectiveNullableTypeInfo;
-    readonly PgTypeId _pgTypeId;
     readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
     public PolymorphicArrayTypeInfoProvider(PgProviderTypeInfo effectiveTypeInfo, PgProviderTypeInfo effectiveNullableTypeInfo)
@@ -721,22 +720,16 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
 
         _effectiveTypeInfo = effectiveTypeInfo;
         _effectiveNullableTypeInfo = effectiveNullableTypeInfo;
-        _pgTypeId = effectiveTypeInfo.PgTypeId.GetValueOrDefault();
     }
 
     protected override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
-        => pgTypeId is { } id && id != _pgTypeId
-            ? throw CreateUnsupportedPgTypeIdException(id)
-            : GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
+        => GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
 
     protected override PgConcreteTypeInfo? Get(TBase? value, PgTypeId? expectedPgTypeId)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
     protected override PgConcreteTypeInfo? Get(Field field)
     {
-        if (field.PgTypeId != _pgTypeId)
-            throw CreateUnsupportedPgTypeIdException(field.PgTypeId);
-
         var concreteTypeInfo = _effectiveTypeInfo.GetConcreteTypeInfo(field);
         var concreteNullableTypeInfo = _effectiveNullableTypeInfo.GetConcreteTypeInfo(field);
 

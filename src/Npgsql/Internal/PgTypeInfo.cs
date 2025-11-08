@@ -267,6 +267,9 @@ public sealed class PgProviderTypeInfo(
 
     public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(T? value, PgTypeId? expectedPgTypeId)
     {
+        if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
+
         return typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
             ? providerT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
             : ThrowNotSupportedType(typeof(T));
@@ -278,15 +281,33 @@ public sealed class PgProviderTypeInfo(
     }
 
     public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(object? value, PgTypeId? expectedPgTypeId)
-        => typeInfoProvider.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+    {
+        if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
+
+        return typeInfoProvider.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+    }
 
     public PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)
-        => typeInfoProvider.GetInternal(this, field);
+    {
+        if (PgTypeId is { } decidedId && field.PgTypeId != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(field));
 
-    public PgConcreteTypeInfo GetDefaultConcreteTypeInfo(PgTypeId? expectedPgTypeId)
-        => typeInfoProvider.GetDefaultInternal(ValidateProviderResults, Options.PortableTypeIds, expectedPgTypeId ?? PgTypeId);
+        return typeInfoProvider.GetInternal(this, field);
+    }
 
-    public PgConcreteTypeInfoProvider GetProvider() => typeInfoProvider;
+    public PgConcreteTypeInfo GetDefaultConcreteTypeInfo(PgTypeId? pgTypeId)
+    {
+        if (pgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(pgTypeId));
+
+        return typeInfoProvider.GetDefaultInternal(ValidateProviderResults, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
+    }
+
+    public PgConcreteTypeInfoProvider GetTypeInfoProvider() => typeInfoProvider;
+
+    static void ThrowUnexpectedPgTypeId(string parameterName)
+        => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
 }
 
 public sealed class PgConcreteTypeInfo : PgTypeInfo

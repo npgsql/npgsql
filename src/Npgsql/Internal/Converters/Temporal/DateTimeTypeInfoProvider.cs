@@ -36,7 +36,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         if (pgTypeId is null || pgTypeId == _timestamp)
             return _timestampConcreteTypeInfo ??= new(_options, _factory(_timestamp), _timestamp);
 
-        throw CreateUnsupportedPgTypeIdException(pgTypeId.Value);
+        throw new ArgumentOutOfRangeException(nameof(pgTypeId), pgTypeId, "Unsupported PgTypeId.");
     }
 
     protected override PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId)
