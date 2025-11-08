@@ -71,9 +71,6 @@ public abstract class PgConcreteTypeInfoProvider
                 $"'{methodName}' returned a different {nameof(result.PgTypeId)} than was passed in as expected." +
                 $" If such a mismatch occurs an exception should be thrown instead.");
     }
-
-    protected ArgumentOutOfRangeException CreateUnsupportedPgTypeIdException(PgTypeId pgTypeId)
-        => new(nameof(pgTypeId), pgTypeId, "Unsupported PgTypeId.");
 }
 
 public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
