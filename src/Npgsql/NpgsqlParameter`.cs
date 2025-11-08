@@ -84,13 +84,13 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     private protected override void SetOutputValueCore(NpgsqlDataReader reader, int ordinal)
         => TypedValue = reader.GetFieldValue<T>(ordinal);
 
-    private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
+    private protected override PgConcreteTypeInfo GetConcreteTypeInfo(PgTypeInfo typeInfo)
     {
         if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing)
-            return base.ResolveConverter(typeInfo);
+            return base.GetConcreteTypeInfo(typeInfo);
 
         _asObject = false;
-        return typeInfo.GetResolution(TypedValue);
+        return typeInfo.GetConcreteTypeInfo(TypedValue);
     }
 
     // We ignore allowNullReference, it's just there to control the base implementation.

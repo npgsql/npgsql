@@ -51,11 +51,11 @@ sealed class CastingConverterResolver<T>(PgResolverTypeInfo effectiveResolverTyp
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
-        => new CastingConverter<T>(effectiveResolution.Converter);
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
+        => new CastingConverter<T>(effectiveConcreteTypeInfo.Converter);
 
-    protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectiveTypeId)
-        => EffectiveTypeInfo.GetResolutionAsObject(value, expectedEffectiveTypeId);
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectiveTypeId)
+        => EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(value, expectedEffectiveTypeId);
 }
 
 static class CastingTypeInfoExtensions
@@ -72,8 +72,8 @@ static class CastingTypeInfoExtensions
                 (PgConverterResolver)Activator.CreateInstance(typeof(CastingConverterResolver<>).MakeGenericType(type),
                     resolverTypeInfo)!, typeInfo.PgTypeId);
 
-        var resolution = typeInfo.GetResolution();
-        return new PgTypeInfo(typeInfo.Options,
-            (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), resolution.Converter)!, resolution.PgTypeId);
+        var concreteTypeInfo = typeInfo.AsConcreteTypeInfo();
+        return new PgConcreteTypeInfo(typeInfo.Options,
+            (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), concreteTypeInfo.Converter)!, concreteTypeInfo.PgTypeId);
     }
 }

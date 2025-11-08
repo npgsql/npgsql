@@ -210,7 +210,7 @@ public sealed class TypeInfoMappingCollection
             var readingSupported = innerInfo.SupportsReading && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, unboxedType));
             var writingSupported = innerInfo.SupportsWriting && (supportsWriting ?? true);
 
-            return new PgTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType)
+            return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType)
             {
                 PreferredFormat = preferredFormat,
                 SupportsReading = readingSupported,
@@ -306,7 +306,7 @@ public sealed class TypeInfoMappingCollection
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.GetResolution().Converter, copyPreferredFormat: true))
+                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.AsConcreteTypeInfo().Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -415,15 +415,15 @@ public sealed class TypeInfoMappingCollection
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetResolution().GetConverter<T>()), GetDefaultConfigure(isDefault));
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.AsConcreteTypeInfo().Converter), GetDefaultConfigure(isDefault));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetResolution().GetConverter<T>()), GetDefaultConfigure(matchRequirement));
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.AsConcreteTypeInfo().Converter), GetDefaultConfigure(matchRequirement));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>(innerInfo.GetResolution().GetConverter<T>()), configure);
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.AsConcreteTypeInfo().Converter), configure);
 
     // Lives outside to prevent capture of T.
     void AddStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
@@ -433,7 +433,7 @@ public sealed class TypeInfoMappingCollection
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(type, mapping, static (_, info) => info.GetResolution().Converter, copyPreferredFormat: true))
+                CreateComposedFactory(type, mapping, static (_, info) => info.AsConcreteTypeInfo().Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -522,10 +522,10 @@ public sealed class TypeInfoMappingCollection
         {
             var converter =
                 new PolymorphicArrayConverter<Array>(
-                    innerTypeInfo.GetResolution().GetConverter<Array>(),
-                    nullableInnerTypeInfo.GetResolution().GetConverter<Array>());
+                    (PgConverter<Array>)innerTypeInfo.AsConcreteTypeInfo().Converter,
+                    (PgConverter<Array>)nullableInnerTypeInfo.AsConcreteTypeInfo().Converter);
 
-            return new PgTypeInfo(innerTypeInfo.Options, converter,
+            return new PgConcreteTypeInfo(innerTypeInfo.Options, converter,
                 innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
         }
     }
@@ -644,14 +644,14 @@ public sealed class TypeInfoMappingCollection
             }
         }
 
-    public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
+    public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
         => AddPolymorphicResolverArrayType(GetMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
 
-    public void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
+    public void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
     {
         AddPolymorphicResolverArrayType(elementMapping, typeof(object),
-            (mapping, elemInfo) => new ArrayPolymorphicConverterResolver(
-                elemInfo.Options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elemInfo, elementToArrayConverterFactory(elemInfo.Options))
+            (mapping, elementInfo) => new PolymorphicArrayConverterResolver(
+                elementInfo.Options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elementInfo, elementToArrayConverterFactory(elementInfo.Options))
         , null);
 
         void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> converter, Func<Type?, bool>? typeMatchPredicate)
@@ -708,7 +708,7 @@ public sealed class TypeInfoMappingCollection
     static ArrayBasedArrayConverter<Array, TElement> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.GetResolution(), mapping.Type);
+            return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.AsConcreteTypeInfo(), mapping.Type);
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
@@ -717,7 +717,7 @@ public sealed class TypeInfoMappingCollection
     static ListBasedArrayConverter<IList<TElement>, TElement> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ListBasedArrayConverter<IList<TElement>, TElement>(elemInfo.GetResolution());
+            return new ListBasedArrayConverter<IList<TElement>, TElement>(elemInfo.AsConcreteTypeInfo());
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
@@ -780,7 +780,7 @@ public static class TypeInfoMappingHelpers
     /// <param name="converter">The converter to create a PgTypeInfo for.</param>
     /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter)
-        => new(options, converter, new DataTypeName(mapping.DataTypeName))
+        => new PgConcreteTypeInfo(options, converter, new DataTypeName(mapping.DataTypeName))
         {
             PreferredFormat = null,
             SupportsWriting = true
@@ -796,7 +796,7 @@ public static class TypeInfoMappingHelpers
     /// <param name="supportsWriting">Whether the converters returned from the given converter resolver support writing.</param>
     /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
-        => new(options, converter, new DataTypeName(mapping.DataTypeName))
+        => new PgConcreteTypeInfo(options, converter, new DataTypeName(mapping.DataTypeName))
         {
             PreferredFormat = preferredFormat,
             SupportsWriting = supportsWriting

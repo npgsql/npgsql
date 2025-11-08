@@ -8,8 +8,8 @@ namespace Npgsql.Internal;
 abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
 {
     readonly PgTypeId? _pgTypeId;
-    public PgResolverTypeInfo EffectiveTypeInfo { get; }
-    readonly ConcurrentDictionary<PgConverter, PgConverter> _converters = new(ReferenceEqualityComparer.Instance);
+    protected PgResolverTypeInfo EffectiveTypeInfo { get; }
+    readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
     protected PgComposingConverterResolver(PgTypeId? pgTypeId, PgResolverTypeInfo effectiveTypeInfo)
     {
@@ -22,34 +22,44 @@ abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
-    protected abstract PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution);
-    protected abstract PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId);
+    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo);
+    protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectivePgTypeId);
 
-    public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
+    public override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
     {
-        PgTypeId? effectivePgTypeId = pgTypeId is not null ? GetEffectiveTypeId(pgTypeId.GetValueOrDefault()) : null;
-        var effectiveResolution = EffectiveTypeInfo.GetDefaultResolution(effectivePgTypeId);
-        return new(GetOrAdd(effectiveResolution), pgTypeId ?? _pgTypeId ?? GetPgTypeId(effectiveResolution.PgTypeId));
+        PgTypeId? effectiveTypeId = pgTypeId is { } id ? GetEffectiveTypeId(id) : null;
+        var concreteTypeInfo = EffectiveTypeInfo.GetDefaultConcreteTypeInfo(effectiveTypeId);
+        var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
+        if (pgTypeId is not null && pgTypeId.GetValueOrDefault() != composingPgTypeId)
+            throw CreateUnsupportedPgTypeIdException(pgTypeId.GetValueOrDefault());
+
+        return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
 
-    public override PgConverterResolution? Get(T? value, PgTypeId? expectedPgTypeId)
+    public override PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId)
     {
-        PgTypeId? expectedEffectiveId = expectedPgTypeId is not null ? GetEffectiveTypeId(expectedPgTypeId.GetValueOrDefault()) : null;
-        if (GetEffectiveResolution(value, expectedEffectiveId) is { } resolution)
-            return new PgConverterResolution(GetOrAdd(resolution), expectedPgTypeId ?? _pgTypeId ?? GetPgTypeId(resolution.PgTypeId));
+        PgTypeId? effectiveTypeId = expectedPgTypeId is { } id ? GetEffectiveTypeId(id) : null;
+        if (GetEffectiveTypeInfo(value, effectiveTypeId) is { } effectiveTypeInfo)
+            return GetOrAdd(effectiveTypeInfo, expectedPgTypeId ?? _pgTypeId ?? GetPgTypeId(effectiveTypeInfo.PgTypeId));
 
         return null;
     }
 
-    public override PgConverterResolution Get(Field field)
+    public override PgConcreteTypeInfo? Get(Field field)
     {
-        var effectiveResolution = EffectiveTypeInfo.GetResolution(field with { PgTypeId = GetEffectiveTypeId(field.PgTypeId) });
-        return new PgConverterResolution(GetOrAdd(effectiveResolution), field.PgTypeId);
+        if (EffectiveTypeInfo.GetConcreteTypeInfo(field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId)}) is not { } concreteTypeInfo)
+            return null;
+
+        var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
+        return field.PgTypeId != composingPgTypeId
+            ? throw CreateUnsupportedPgTypeIdException(field.PgTypeId)
+            : GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
 
     PgTypeId GetEffectiveTypeId(PgTypeId pgTypeId)
     {
-        if (_pgTypeId == pgTypeId)
+        // If we have a _pgTypeId match we already know the effective id, and the constructor has verified it is non-null.
+        if (pgTypeId == _pgTypeId)
             return EffectiveTypeInfo.PgTypeId.GetValueOrDefault();
 
         // We have an undecided type info which is asked to resolve for a specific type id
@@ -57,12 +67,14 @@ abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
         return GetEffectivePgTypeId(pgTypeId);
     }
 
-    PgConverter<T> GetOrAdd(PgConverterResolution effectiveResolution)
+    PgConcreteTypeInfo GetOrAdd(PgConcreteTypeInfo concreteTypeInfo, PgTypeId pgTypeId)
     {
-        (PgComposingConverterResolver<T> Instance, PgConverterResolution EffectiveResolution) state = (this, effectiveResolution);
-        return (PgConverter<T>)_converters.GetOrAdd(
-            effectiveResolution.Converter,
-            static (_, state) => state.Instance.CreateConverter(state.EffectiveResolution),
+        (PgComposingConverterResolver<T> Instance, PgConcreteTypeInfo ConcreteTypeInfo, PgTypeId PgTypeId)
+            state = (this, concreteTypeInfo, pgTypeId);
+        return _concreteInfoCache.GetOrAdd(
+            concreteTypeInfo,
+            static (_, state)
+                => new(state.ConcreteTypeInfo.Options, state.Instance.CreateConverter(state.ConcreteTypeInfo), state.PgTypeId),
             state);
     }
 }

@@ -10,65 +10,65 @@ public abstract class PgConverterResolver
     private protected PgConverterResolver() { }
 
     /// <summary>
-    /// Gets the appropriate converter solely based on PgTypeId.
+    /// Gets the appropriate type info solely based on PgTypeId.
     /// </summary>
     /// <param name="pgTypeId"></param>
-    /// <returns>The converter resolution.</returns>
+    /// <returns>The concrete type info to use.</returns>
     /// <remarks>
-    /// Implementations should not return new instances of the possible converters that can be returned, instead its expected these are cached once used.
-    /// Array or other collection converters depend on this to cache their own converter - which wraps the element converter - with the cache key being the element converter reference.
+    /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
+    /// Array or other collection resolvers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public abstract PgConverterResolution GetDefault(PgTypeId? pgTypeId);
+    public abstract PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId);
 
     /// <summary>
-    /// Gets the appropriate converter to read with based on the given field info.
+    /// Gets the appropriate type info based on the given field info.
     /// </summary>
     /// <param name="field"></param>
-    /// <returns>The converter resolution.</returns>
+    /// <returns>The concrete type info to use.</returns>
     /// <remarks>
-    /// Implementations should not return new instances of the possible converters that can be returned, instead its expected these are cached once used.
-    /// Array or other collection converters depend on this to cache their own converter - which wraps the element converter - with the cache key being the element converter reference.
+    /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
+    /// Array or other collection resolvers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public virtual PgConverterResolution Get(Field field) => GetDefault(field.PgTypeId);
+    public virtual PgConcreteTypeInfo? Get(Field field) => null;
 
     internal abstract Type TypeToConvert { get; }
 
-    internal abstract PgConverterResolution? GetAsObjectInternal(PgTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
+    internal abstract PgConcreteTypeInfo? GetAsObjectInternal(PgResolverTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
 
-    internal PgConverterResolution GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId? pgTypeId)
+    internal PgConcreteTypeInfo GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId? pgTypeId)
     {
-        var resolution = GetDefault(pgTypeId);
+        var concreteTypeInfo = GetDefault(pgTypeId);
         if (validate)
-            Validate(nameof(GetDefault), resolution, TypeToConvert, pgTypeId, expectPortableTypeIds);
-        return resolution;
+            Validate(nameof(GetDefault), concreteTypeInfo, TypeToConvert, pgTypeId, expectPortableTypeIds);
+        return concreteTypeInfo;
     }
 
-    internal PgConverterResolution GetInternal(PgTypeInfo typeInfo, Field field)
+    internal PgConcreteTypeInfo? GetInternal(PgResolverTypeInfo typeInfo, Field field)
     {
-        var resolution = Get(field);
-        if (typeInfo.ValidateResolution)
-            Validate(nameof(Get), resolution, TypeToConvert, field.PgTypeId, typeInfo.Options.PortableTypeIds);
-        return resolution;
+        var concreteTypeInfo = Get(field);
+        if (typeInfo.ValidateResolverResults && concreteTypeInfo is not null)
+            Validate(nameof(Get), concreteTypeInfo, TypeToConvert, field.PgTypeId, typeInfo.Options.PortableTypeIds);
+        return concreteTypeInfo;
     }
 
-    private protected static void Validate(string methodName, PgConverterResolution resolution, Type expectedTypeToConvert, PgTypeId? expectedPgTypeId, bool expectPortableTypeIds)
+    private protected static void Validate(string methodName, PgConcreteTypeInfo result, Type expectedTypeToConvert, PgTypeId? expectedPgTypeId, bool expectPortableTypeIds)
     {
-        if (resolution.Converter is null)
-            throw new InvalidOperationException($"'{methodName}' returned a null {nameof(PgConverterResolution.Converter)} unexpectedly.");
+        ArgumentNullException.ThrowIfNull(result);
 
+        // TODO check this now we return a PgConcreteTypeInfo which can convey its own unboxedType.
         // We allow object resolvers to return any converter, this is to help:
         //   - Composing resolvers being able to use converter type identity (instead of everything being CastingConverter<object>).
         //   - Reduce indirection by allowing disparate type converters to be returned directly.
         // As a consequence any object typed resolver info is always a boxing one, to reduce the chances invalid casts to PgConverter<object> are attempted.
-        if (expectedTypeToConvert != typeof(object) && resolution.Converter.TypeToConvert != expectedTypeToConvert)
-            throw new InvalidOperationException($"'{methodName}' returned a {nameof(PgConverterResolution.Converter)} of type {resolution.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
+        if (expectedTypeToConvert != typeof(object) && result.Converter.TypeToConvert != expectedTypeToConvert)
+            throw new InvalidOperationException($"'{methodName}' returned a {nameof(result.Converter)} of type {result.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
 
-        if (expectPortableTypeIds && resolution.PgTypeId.IsOid || !expectPortableTypeIds && resolution.PgTypeId.IsDataTypeName)
-            throw new InvalidOperationException($"{methodName}' returned a resolution with a {nameof(PgConverterResolution.PgTypeId)} that was not in canonical form.");
+        if (expectPortableTypeIds && result.PgTypeId.IsOid || !expectPortableTypeIds && result.PgTypeId.IsDataTypeName)
+            throw new InvalidOperationException($"{methodName}' returned a resolution with a {nameof(result.PgTypeId)} that was not in canonical form.");
 
-        if (expectedPgTypeId is not null && resolution.PgTypeId != expectedPgTypeId)
+        if (expectedPgTypeId is not null && result.PgTypeId != expectedPgTypeId)
             throw new InvalidOperationException(
-                $"'{methodName}' returned a different {nameof(PgConverterResolution.PgTypeId)} than was passed in as expected." +
+                $"'{methodName}' returned a different {nameof(result.PgTypeId)} than was passed in as expected." +
                 $" If such a mismatch occurs an exception should be thrown instead.");
     }
 
@@ -79,33 +79,32 @@ public abstract class PgConverterResolver
 public abstract class PgConverterResolver<T> : PgConverterResolver
 {
     /// <summary>
-    /// Gets the appropriate converter to write with based on the given value.
+    /// Gets the appropriate type info based on the given value and expected type id.
     /// </summary>
     /// <param name="value"></param>
     /// <param name="expectedPgTypeId"></param>
-    /// <returns>The converter resolution.</returns>
+    /// <returns>The concrete type info to use.</returns>
     /// <remarks>
-    /// Implementations should not return new instances of the possible converters that can be returned, instead its expected these are
-    /// cached once used. Array or other collection converters depend on this to cache their own converter - which wraps the element
-    /// converter - with the cache key being the element converter reference.
+    /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
+    /// Array or other collection resolvers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public abstract PgConverterResolution? Get(T? value, PgTypeId? expectedPgTypeId);
+    public abstract PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId);
 
     internal sealed override Type TypeToConvert => typeof(T);
 
-    internal PgConverterResolution? GetInternal(PgTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
+    internal PgConcreteTypeInfo? GetInternal(PgResolverTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
     {
-        var resolution = Get(value, expectedPgTypeId);
-        if (typeInfo.ValidateResolution && resolution is not null)
-            Validate(nameof(Get), resolution.GetValueOrDefault(), TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
-        return resolution;
+        var concreteTypeInfo = Get(value, expectedPgTypeId);
+        if (typeInfo.ValidateResolverResults && concreteTypeInfo is not null)
+            Validate(nameof(Get), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
+        return concreteTypeInfo;
     }
 
-    internal sealed override PgConverterResolution? GetAsObjectInternal(PgTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
+    internal sealed override PgConcreteTypeInfo? GetAsObjectInternal(PgResolverTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
     {
-        var resolution = Get(value is null ? default : (T)value, expectedPgTypeId);
-        if (typeInfo.ValidateResolution && resolution is not null)
-            Validate(nameof(Get), resolution.GetValueOrDefault(), TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
-        return resolution;
+        var concreteTypeInfo = Get(value is null ? default : (T)value, expectedPgTypeId);
+        if (typeInfo.ValidateResolverResults && concreteTypeInfo is not null)
+            Validate(nameof(Get), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
+        return concreteTypeInfo;
     }
 }
