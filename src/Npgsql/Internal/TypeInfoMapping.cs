@@ -325,7 +325,7 @@ public sealed class TypeInfoMappingCollection
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.GetProvider(), copyPreferredFormat: true))
+                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.GetTypeInfoProvider(), copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -550,7 +550,7 @@ public sealed class TypeInfoMappingCollection
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(type, mapping, static (_, info) => info.GetProvider(), copyPreferredFormat: true))
+                CreateComposedFactory(type, mapping, static (_, info) => info.GetTypeInfoProvider(), copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });

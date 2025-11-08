@@ -30,9 +30,6 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         PgTypeId? effectiveTypeId = pgTypeId is { } id ? GetEffectiveTypeId(id) : null;
         var concreteTypeInfo = EffectiveTypeInfo.GetDefaultConcreteTypeInfo(effectiveTypeId);
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
-        if (pgTypeId is not null && pgTypeId.GetValueOrDefault() != composingPgTypeId)
-            throw CreateUnsupportedPgTypeIdException(pgTypeId.GetValueOrDefault());
-
         return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
 
@@ -51,9 +48,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             return null;
 
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
-        return field.PgTypeId != composingPgTypeId
-            ? throw CreateUnsupportedPgTypeIdException(field.PgTypeId)
-            : GetOrAdd(concreteTypeInfo, composingPgTypeId);
+        return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
 
     PgTypeId GetEffectiveTypeId(PgTypeId pgTypeId)
