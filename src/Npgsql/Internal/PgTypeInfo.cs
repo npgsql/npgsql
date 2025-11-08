@@ -83,7 +83,7 @@ public abstract class PgTypeInfo
         if (this is not PgProviderTypeInfo providerTypeInfo)
             return (PgConcreteTypeInfo)this;
 
-        return providerTypeInfo.GetConcreteTypeInfo(value, null) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+        return providerTypeInfo.GetConcreteTypeInfo(value, PgTypeId) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(PgTypeId);
     }
 
     // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
@@ -96,8 +96,8 @@ public abstract class PgTypeInfo
         case PgProviderTypeInfo providerTypeInfo:
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is not DBNull)
-                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(value, null);
-            return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(value, PgTypeId);
+            return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(PgTypeId);
         default:
             return ThrowNotSupported();
         }
