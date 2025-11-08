@@ -29,7 +29,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
     }
 
-    public override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
+    protected override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
     {
         if (pgTypeId == _timestampTz)
             return _timestampTzConcreteTypeInfo ??= new(_options, _factory(_timestampTz), _timestampTz);
@@ -38,6 +38,9 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
         throw CreateUnsupportedPgTypeIdException(pgTypeId.Value);
     }
+
+    protected override PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId)
+        => _provider(this, value, expectedPgTypeId);
 
     public PgConcreteTypeInfo? Get(DateTime value, PgTypeId? expectedPgTypeId, bool validateOnly = false)
     {
@@ -64,9 +67,6 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         // We coalesce with expectedPgTypeId to throw on unknown type ids.
         return GetDefault(expectedPgTypeId ?? _timestamp);
     }
-
-    public override PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId)
-        => _provider(this, value, expectedPgTypeId);
 }
 
 sealed class DateTimeTypeInfoProvider

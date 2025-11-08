@@ -724,15 +724,15 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
         _pgTypeId = effectiveTypeInfo.PgTypeId.GetValueOrDefault();
     }
 
-    public override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
+    protected override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
         => pgTypeId is { } id && id != _pgTypeId
             ? throw CreateUnsupportedPgTypeIdException(id)
             : GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
 
-    public override PgConcreteTypeInfo? Get(TBase? value, PgTypeId? expectedPgTypeId)
+    protected override PgConcreteTypeInfo? Get(TBase? value, PgTypeId? expectedPgTypeId)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    public override PgConcreteTypeInfo? Get(Field field)
+    protected override PgConcreteTypeInfo? Get(Field field)
     {
         if (field.PgTypeId != _pgTypeId)
             throw CreateUnsupportedPgTypeIdException(field.PgTypeId);
