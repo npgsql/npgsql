@@ -215,8 +215,8 @@ public readonly struct NpgsqlCube : IEquatable<NpgsqlCube>
 
         for (var i = 0; i < Dimensions; i++)
         {
-            leftBuilder.Append(_lowerLeft[i].ToString("G17", CultureInfo.InvariantCulture));
-            rightBuilder.Append(_upperRight[i].ToString("G17", CultureInfo.InvariantCulture));
+            leftBuilder.Append(CultureInfo.InvariantCulture, $"{_lowerLeft[i]:G17}");
+            rightBuilder.Append(CultureInfo.InvariantCulture, $"{_upperRight[i]:G17}");
 
             if (i >= Dimensions - 1) continue;
 
