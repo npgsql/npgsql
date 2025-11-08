@@ -18,7 +18,7 @@ public abstract class PgConcreteTypeInfoProvider
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
     /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public abstract PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId);
+    protected abstract PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId);
 
     /// <summary>
     /// Gets the appropriate type info based on the given field info.
@@ -29,7 +29,7 @@ public abstract class PgConcreteTypeInfoProvider
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
     /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public virtual PgConcreteTypeInfo? Get(Field field) => null;
+    protected virtual PgConcreteTypeInfo? Get(Field field) => null;
 
     internal abstract Type TypeToConvert { get; }
 
@@ -88,7 +88,7 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
     /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public abstract PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId);
+    protected abstract PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId);
 
     internal sealed override Type TypeToConvert => typeof(T);
 
