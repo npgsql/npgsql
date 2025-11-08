@@ -657,17 +657,17 @@ public class NpgsqlParameterTest : TestBase
     {
         var param = generic ? new NpgsqlParameter<object> { Value = "value" } : new NpgsqlParameter { Value = "value" };
         param.ResolveTypeInfo(DataSource.CurrentReloadableState.SerializerOptions, null);
-        param.GetResolutionInfo(out var typeInfo, out _, out _);
+        param.GetResolutionInfo(out var typeInfo, out _);
         Assert.That(typeInfo, Is.Not.Null);
 
         // Make sure we don't reset the type info when setting DBNull.
         param.Value = DBNull.Value;
-        param.GetResolutionInfo(out var secondTypeInfo, out _, out _);
+        param.GetResolutionInfo(out var secondTypeInfo, out _);
         Assert.That(secondTypeInfo, Is.SameAs(typeInfo));
 
         // Make sure we don't resolve a different type info either.
         param.ResolveTypeInfo(DataSource.CurrentReloadableState.SerializerOptions, null);
-        param.GetResolutionInfo(out var thirdTypeInfo, out _, out _);
+        param.GetResolutionInfo(out var thirdTypeInfo, out _);
         Assert.That(thirdTypeInfo, Is.SameAs(secondTypeInfo));
     }
 
@@ -676,17 +676,16 @@ public class NpgsqlParameterTest : TestBase
     {
         var param = generic ? new NpgsqlParameter<object> { Value = DBNull.Value } : new NpgsqlParameter { Value = DBNull.Value };
         param.ResolveTypeInfo(DataSource.CurrentReloadableState.SerializerOptions, null);
-        param.GetResolutionInfo(out var typeInfo, out _, out var pgTypeId);
+        param.GetResolutionInfo(out var typeInfo, out _);
         Assert.That(typeInfo, Is.Not.Null);
-        Assert.That(pgTypeId.IsUnspecified, Is.True);
 
         param.Value = "value";
-        param.GetResolutionInfo(out var secondTypeInfo, out _, out _);
+        param.GetResolutionInfo(out var secondTypeInfo, out _);
         Assert.That(secondTypeInfo, Is.Null);
 
         // Make sure we don't resolve the same type info either.
         param.ResolveTypeInfo(DataSource.CurrentReloadableState.SerializerOptions, null);
-        param.GetResolutionInfo(out var thirdTypeInfo, out _, out _);
+        param.GetResolutionInfo(out var thirdTypeInfo, out _);
         Assert.That(thirdTypeInfo, Is.Not.SameAs(typeInfo));
     }
 
@@ -695,16 +694,16 @@ public class NpgsqlParameterTest : TestBase
     {
         var param = generic ? new NpgsqlParameter<object> { Value = "value" } : new NpgsqlParameter { Value = "value" };
         param.ResolveTypeInfo(DataSource.CurrentReloadableState.SerializerOptions, null);
-        param.GetResolutionInfo(out var typeInfo, out _, out _);
+        param.GetResolutionInfo(out var typeInfo, out _);
         Assert.That(typeInfo, Is.Not.Null);
 
         param.Value = 1;
-        param.GetResolutionInfo(out var secondTypeInfo, out _, out _);
+        param.GetResolutionInfo(out var secondTypeInfo, out _);
         Assert.That(secondTypeInfo, Is.Null);
 
         // Make sure we don't resolve a different type info either.
         param.ResolveTypeInfo(DataSource.CurrentReloadableState.SerializerOptions, null);
-        param.GetResolutionInfo(out var thirdTypeInfo, out _, out _);
+        param.GetResolutionInfo(out var thirdTypeInfo, out _);
         Assert.That(thirdTypeInfo, Is.Not.SameAs(typeInfo));
     }
 
@@ -723,7 +722,7 @@ public class NpgsqlParameterTest : TestBase
             Value = "value"
         };
         param.ResolveTypeInfo(DataSource.CurrentReloadableState.SerializerOptions, null);
-        param.GetResolutionInfo(out var typeInfo, out _, out _);
+        param.GetResolutionInfo(out var typeInfo, out _);
         Assert.That(typeInfo, Is.Not.Null);
         Assert.That(typeInfo.PgTypeId, Is.EqualTo(DataSource.CurrentReloadableState.SerializerOptions.TextPgTypeId));
     }
