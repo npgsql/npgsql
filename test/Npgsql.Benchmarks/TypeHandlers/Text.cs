@@ -7,7 +7,7 @@ using Npgsql.Internal.Converters;
 namespace Npgsql.Benchmarks.TypeHandlers;
 
 [Config(typeof(Config))]
-public class Text() : TypeHandlerBenchmarks<string>(new StringTextConverter(Encoding.UTF8))
+public class Text() : TypeHandlerBenchmarks<string>(StringTextConverter.Create(NpgsqlWriteBuffer.UTF8Encoding))
 {
     protected override IEnumerable<string> ValuesOverride()
     {
