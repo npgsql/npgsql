@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal.Postgres;
 
@@ -84,8 +85,24 @@ public abstract class PgTypeInfo
 
     // We assume a boxing type info does not support reading as the converter won't be able to produce the derived type statically.
     // Cases like Array converters unboxing to int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
-    internal static bool GetDefaultSupportsReading(Type type, Type? unboxedType)
-        => unboxedType is null || unboxedType == type;
+    internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
+        => requestedType is null || ComputeUnboxedType(type, requestedType) is not { } unboxedType || unboxedType == type;
+
+    protected static Type? ComputeUnboxedType(Type converterType, Type requestedType)
+    {
+        // The hierarchy that should hold for things to work correctly is object < converterType < requestedType.
+        Debug.Assert(converterType.IsAssignableFrom(requestedType) || requestedType == typeof(object));
+
+        // A special case for object matches, where we return a more specific type than was requested.
+        // This is to report e.g. Array converters as Array when their requested type was object.
+        if (requestedType == typeof(object))
+        {
+            return converterType != typeof(object) ? converterType : null;
+        }
+
+        // This is to report e.g. Array converters as int[,,,] when their requested type was such.
+        return requestedType != converterType ? requestedType : null;
+    }
 }
 
 public sealed class PgProviderTypeInfo : PgTypeInfo
@@ -94,8 +111,10 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     readonly PgConcreteTypeInfo? _defaultConcrete;
 
     // We always mark providers with type object as boxing, as they may freely return converters for any type (see PgConcreteTypeInfoProvider.Validate).
-    public PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? unboxedType = null)
-        : base(options, typeInfoProvider.TypeToConvert, pgTypeId, unboxedType ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
+    public PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? requestedType = null)
+        : base(options, typeInfoProvider.TypeToConvert, pgTypeId,
+            (requestedType is null ? null : ComputeUnboxedType(typeInfoProvider.TypeToConvert, requestedType))
+            ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
     {
         _typeInfoProvider = typeInfoProvider;
 
@@ -198,7 +217,8 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     readonly bool _canTextConvert;
     readonly BufferRequirements _textBufferRequirements;
 
-    public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null) : base(options, converter, pgTypeId, unboxedType)
+    public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType = null)
+        : base(options, converter, pgTypeId, requestedType is null ? null : ComputeUnboxedType(converter.TypeToConvert, requestedType))
     {
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);

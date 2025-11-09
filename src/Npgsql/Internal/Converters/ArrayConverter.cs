@@ -250,7 +250,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     }
 }
 
-sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type requestedType)
+sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type requestedMappingType)
     : PgComposingTypeInfoProvider<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
         elementTypeInfo)
     where T : notnull
@@ -260,17 +260,17 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
-    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? unboxedType)
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType)
     {
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
         {
-            unboxedType = requestedType == typeof(object) ? typeof(Array) : requestedType;
+            requestedType = requestedMappingType;
             return ArrayConverter<T>.CreateArrayBased<TElement>(effectiveConcreteTypeInfo, requestedType);
         }
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
         {
-            unboxedType = requestedType;
+            requestedType = requestedMappingType;
             return ArrayConverter<T>.CreateListBased<TElement>(effectiveConcreteTypeInfo);
         }
 
