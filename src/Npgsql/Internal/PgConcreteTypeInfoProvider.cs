@@ -51,13 +51,13 @@ public abstract class PgConcreteTypeInfoProvider
         return concreteTypeInfo;
     }
 
+    // TODO check unboxedType now we return a PgConcreteTypeInfo which can convey its own.
     private protected static void Validate(string methodName, PgConcreteTypeInfo result, Type expectedTypeToConvert, PgTypeId? expectedPgTypeId, bool expectPortableTypeIds)
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        // TODO check this now we return a PgConcreteTypeInfo which can convey its own unboxedType.
-        // We allow object providers to return any converter, this is to help:
-        //   - Composing providers being able to use converter type identity (instead of everything being CastingConverter<object>).
+        // We allow object resolvers to return any converter, this is to help:
+        //   - Composing resolvers being able to use converter type identity (instead of everything being CastingConverter<object>).
         //   - Reduce indirection by allowing disparate type converters to be returned directly.
         // As a consequence any object typed provider info is always a boxing one, to reduce the chances invalid casts to PgConverter<object> are attempted.
         if (expectedTypeToConvert != typeof(object) && result.Converter.TypeToConvert != expectedTypeToConvert)

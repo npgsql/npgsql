@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal.Postgres;
 
@@ -20,23 +19,13 @@ public abstract class PgTypeInfo
         SupportsWriting = true;
     }
 
-    private protected PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
-        : this(options, converter.TypeToConvert, unboxedType)
-    {
-        Converter = converter;
-        PgTypeId = options.GetCanonicalTypeId(pgTypeId);
-    }
-
-    private protected PgTypeInfo(PgSerializerOptions options, Type type, PgConcreteTypeInfo? defaultConcrete, Type? unboxedType = null)
+    private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? unboxedType = null)
         : this(options, type, unboxedType)
-    {
-        if (defaultConcrete is not null)
-        {
-            Debug.Assert(options.PortableTypeIds && defaultConcrete.PgTypeId.IsDataTypeName || !options.PortableTypeIds && defaultConcrete.PgTypeId.IsOid);
-            PgTypeId = defaultConcrete.PgTypeId;
-            Converter = defaultConcrete.Converter;
-        }
-    }
+        => PgTypeId = pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null;
+
+    private protected PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
+        : this(options, converter.TypeToConvert, pgTypeId, unboxedType)
+        => Converter = converter;
 
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
@@ -51,9 +40,6 @@ public abstract class PgTypeInfo
     [MemberNotNullWhen(false, nameof(PgTypeId))]
     internal bool IsProviderInfo => GetType() == typeof(PgProviderTypeInfo);
 
-    // TODO pull validate from options + internal exempt for perf?
-    internal bool ValidateProviderResults => true;
-
     // Used for internal converters to save on binary bloat.
     internal bool IsBoxing { get; }
 
@@ -61,10 +47,10 @@ public abstract class PgTypeInfo
 
     public PgConcreteTypeInfo GetConcreteTypeInfo(Field field)
     {
-        if (this is not PgResolverTypeInfo resolverInfo)
+        if (this is not PgProviderTypeInfo providerTypeInfo)
             return (PgConcreteTypeInfo)this;
 
-        return resolverInfo.GetConcreteTypeInfo(field) ?? resolverInfo.GetDefaultConcreteTypeInfo(field.PgTypeId);
+        return providerTypeInfo.GetConcreteTypeInfo(field) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(field.PgTypeId);
     }
 
     public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value)
@@ -112,28 +98,30 @@ public abstract class PgTypeInfo
         => unboxedType is null || unboxedType == type;
 }
 
-// We always mark providers with type object as boxing, as they may freely return converters for any type (see PgConcreteTypeInfoProvider.Validate).
-public sealed class PgProviderTypeInfo(
-    PgSerializerOptions options,
-    PgConcreteTypeInfoProvider typeInfoProvider,
-    PgTypeId? pgTypeId,
-    Type? unboxedType = null)
-    : PgTypeInfo(options,
-        typeInfoProvider.TypeToConvert,
-        pgTypeId is { } typeId ? GetDefault(options, typeInfoProvider, typeId) : null,
-        unboxedType ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
+public sealed class PgProviderTypeInfo : PgTypeInfo
 {
+    readonly PgConcreteTypeInfoProvider _typeInfoProvider;
+    readonly PgConcreteTypeInfo? _defaultConcrete;
 
-    // We'll always validate the default provider result, the info will be re-used so there is no real downside.
-    static PgConcreteTypeInfo GetDefault(PgSerializerOptions options, PgConcreteTypeInfoProvider concreteTypeInfoProvider, PgTypeId typeId)
-        => concreteTypeInfoProvider.GetDefaultInternal(validate: true, options.PortableTypeIds, options.GetCanonicalTypeId(typeId));
+    // TODO pull validate from options + internal exempt for perf?
+    internal bool ValidateProviderResults => true;
+
+    // We always mark providers with type object as boxing, as they may freely return converters for any type (see PgConcreteTypeInfoProvider.Validate).
+    public PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? unboxedType = null)
+        : base(options, typeInfoProvider.TypeToConvert, pgTypeId, unboxedType ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
+    {
+        _typeInfoProvider = typeInfoProvider;
+        // Always validate the default provider result, the info will be re-used so there is no real downside.
+        _defaultConcrete = typeInfoProvider.GetDefaultInternal(
+            validate: true, options.PortableTypeIds, pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null);
+    }
 
     public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(T? value, PgTypeId? expectedPgTypeId)
     {
         if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
             ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
 
-        return typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
+        return _typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
             ? providerT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
             : ThrowNotSupportedType(typeof(T));
 
@@ -148,7 +136,7 @@ public sealed class PgProviderTypeInfo(
         if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
             ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
 
-        return typeInfoProvider.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+        return _typeInfoProvider.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
     }
 
     public new PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)
@@ -156,7 +144,7 @@ public sealed class PgProviderTypeInfo(
         if (PgTypeId is { } decidedId && field.PgTypeId != decidedId)
             ThrowUnexpectedPgTypeId(nameof(field));
 
-        return typeInfoProvider.GetInternal(this, field);
+        return _typeInfoProvider.GetInternal(this, field);
     }
 
     public PgConcreteTypeInfo GetDefaultConcreteTypeInfo(PgTypeId? pgTypeId)
@@ -164,10 +152,10 @@ public sealed class PgProviderTypeInfo(
         if (pgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
             ThrowUnexpectedPgTypeId(nameof(pgTypeId));
 
-        return typeInfoProvider.GetDefaultInternal(ValidateProviderResults, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
+        return _typeInfoProvider.GetDefaultInternal(ValidateProviderResults, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
     }
 
-    public PgConcreteTypeInfoProvider GetTypeInfoProvider() => typeInfoProvider;
+    public PgConcreteTypeInfoProvider GetTypeInfoProvider() => _typeInfoProvider;
 
     static void ThrowUnexpectedPgTypeId(string parameterName)
         => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
