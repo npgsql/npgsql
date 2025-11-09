@@ -694,7 +694,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_writeState is { } ws)
         {
             _writeState = null;
-            TypeInfo?.DisposeWriteState(ws);
+            ConcreteTypeInfo?.DisposeWriteState(ws);
         }
     }
 
@@ -766,8 +766,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_useSubStream && value is not null)
             value = _subStream = new SubReadStream((Stream)value, _size);
 
-        Size size = default;
-        if (TypeInfo!.BindObject(Converter!, value, ref size, ref _writeState, out var dataFormat, formatPreference) is { } info)
+        if (ConcreteTypeInfo!.BindObject(value, out var size, ref _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
@@ -856,7 +855,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         if (_writeState is not null)
         {
-            TypeInfo?.DisposeWriteState(_writeState);
+            ConcreteTypeInfo?.DisposeWriteState(_writeState);
             _writeState = null;
         }
         if (_useSubStream)
