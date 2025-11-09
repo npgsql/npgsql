@@ -669,12 +669,30 @@ public class BatchTests : MultiplexingTestBase, IDisposable
     }
 
     [Test]
-    public async Task Semicolon_is_not_allowed()
+    public async Task Semicolon_is_not_allowed_with_no_parameters()
     {
         await using var conn = await OpenConnectionAsync();
         await using var batch = new NpgsqlBatch(conn)
         {
             BatchCommands = { new("SELECT 1; SELECT 2") }
+        };
+
+        Assert.That(() => batch.ExecuteReaderAsync(Behavior), Throws.Exception.TypeOf<PostgresException>());
+    }
+
+    [Test]
+    public async Task Semicolon_is_not_allowed_with_named_parameters()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new("SELECT @p1; SELECT 2")
+                {
+                    Parameters = { new("p1", 1) }
+                }
+            }
         };
 
         Assert.That(() => batch.ExecuteReaderAsync(Behavior), Throws.Exception.TypeOf<NotSupportedException>());

@@ -911,6 +911,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 break;
 
             case PlaceholderType.NoParameters:
+                if (batchCommand is not null)
+                {
+                    batchCommand.FinalCommandText = batchCommand.CommandText;
+                    break;
+                }
                 // Unless the EnableSqlRewriting AppContext switch is explicitly disabled, queries with no parameters are parsed just
                 // like queries with named parameters, since they may contain a semicolon (legacy batching).
                 if (EnableSqlRewriting)
