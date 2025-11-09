@@ -363,12 +363,13 @@ public sealed class FieldDescription
             {
                 // Try to resolve some 'pg_catalog.text' type info for the expected clr type.
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgTypeId, _serializerOptions);
+                var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(Field);
 
                 // We start binding to DataFormat.Binary as it's the broadest supported format.
                 // The format however is irrelevant as 'pg_catalog.text' data is identical across either.
                 // Given we did a resolution against 'pg_catalog.text' and not the actual field type we're in reinterpretation territory anyway.
-                if (!typeInfo.TryBind(Field, DataFormat.Binary, out converterInfo))
-                    converterInfo = typeInfo.Bind(Field, DataFormat.Text);
+                if (!concreteTypeInfo.TryBind(DataFormat.Binary, out converterInfo))
+                    converterInfo = concreteTypeInfo.Bind(DataFormat.Text);
 
                 lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
 
@@ -377,9 +378,10 @@ public sealed class FieldDescription
             case DataFormat.Binary or DataFormat.Text:
             {
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), _serializerOptions.ToCanonicalTypeId(PostgresType), _serializerOptions);
+                var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(Field);
 
                 // If we don't support the DataFormat we'll just throw.
-                converterInfo = typeInfo.Bind(Field, DataFormat);
+                converterInfo = concreteTypeInfo.Bind(DataFormat);
                 lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
                 break;
             }

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Data;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -104,7 +102,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         }
 
         var value = TypedValue;
-        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
+        if (ConcreteTypeInfo!.Bind(value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;

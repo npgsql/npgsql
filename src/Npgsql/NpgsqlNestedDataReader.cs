@@ -41,11 +41,12 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         public PgConverterInfo LastConverterInfo { get; init; }
 
         public PgTypeInfo ObjectOrDefaultTypeInfo { get; } = objectOrDefaultTypeInfo;
-        public PgConverterInfo GetObjectOrDefaultInfo() => ObjectOrDefaultTypeInfo.Bind(Field, format);
+        public PgConverterInfo GetObjectOrDefaultInfo()
+            => ObjectOrDefaultTypeInfo.GetConcreteTypeInfo(Field).Bind(format);
 
         Field Field => new("?", ObjectOrDefaultTypeInfo.Options.PortableTypeIds ? PostgresType.DataTypeName : (Oid)PostgresType.OID, -1);
 
-        public PgConverterInfo Bind(PgTypeInfo typeInfo) => typeInfo.Bind(Field, format);
+        public PgConverterInfo Bind(PgTypeInfo typeInfo) => typeInfo.GetConcreteTypeInfo(Field).Bind(format);
     }
 
     PgReader PgReader => _outermostReader.Buffer.PgReader;
@@ -371,7 +372,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             {
                 var pgType = SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
                 var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
-                _columns.Add(new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format));
+                _columns.Add(new ColumnInfo(pgType, bufferPos,
+                    AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format));
             }
             else
             {
@@ -379,7 +381,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
                     ? _columns[i].PostgresType
                     : SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
                 var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
-                _columns[i] = new ColumnInfo(pgType, bufferPos, AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format);
+                _columns[i] = new ColumnInfo(pgType, bufferPos,
+                    AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), Format);
             }
 
             var columnLen = PgReader.ReadInt32();
