@@ -738,8 +738,6 @@ public class PgReader
             ? Math.Min(CurrentRemaining, bufferRequirement.Value)
             : bufferRequirement.GetValueOrDefault();
 
-    internal bool ShouldBufferCurrent() => ShouldBuffer(CurrentBufferRequirement);
-
     public bool ShouldBuffer(Size bufferRequirement)
         => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
     public bool ShouldBuffer(int byteCount)
