@@ -123,7 +123,7 @@ public abstract class PgTypeInfo
                 info = default;
                 return false;
             }
-            info = new(this, concreteTypeInfo.Converter, bufferRequirements.Read);
+            info = new(concreteTypeInfo, concreteTypeInfo.Converter, bufferRequirements.Read);
             return true;
         default:
             throw new NotSupportedException("Should not happen, please file a bug.");
@@ -312,18 +312,11 @@ readonly struct PgConverterInfo
         _typeInfo = pgTypeInfo;
         Converter = converter;
         BufferRequirement = bufferRequirement;
-
-        // Object typed providers can return any type of converter, so we check the type of the converter instead.
-        // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
-        if (pgTypeInfo is PgProviderTypeInfo && pgTypeInfo.Type == typeof(object))
-            TypeToConvert = Converter.TypeToConvert;
-        else
-            TypeToConvert = pgTypeInfo.Type;
     }
 
     public bool IsDefault => _typeInfo is null;
 
-    public Type TypeToConvert { get; }
+    public Type TypeToConvert => _typeInfo.Type;
 
     public PgTypeInfo TypeInfo => _typeInfo;
 

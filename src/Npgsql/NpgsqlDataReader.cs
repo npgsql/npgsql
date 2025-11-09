@@ -2087,7 +2087,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         Debug.Assert(info.ConverterInfo.IsDefault || ReferenceEquals(Connector.SerializerOptions, info.ConverterInfo.TypeInfo.Options), "Cache is bleeding over");
 
-        if (info.ConverterInfo.TypeToConvert == type)
+        if (info.ConverterInfo is { IsDefault: false, TypeToConvert: var typeToConvert } && typeToConvert == type)
         {
             converter = info.ConverterInfo.Converter;
             bufferRequirement = info.ConverterInfo.BufferRequirement;

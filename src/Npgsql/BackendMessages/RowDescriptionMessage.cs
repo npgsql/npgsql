@@ -330,7 +330,7 @@ public sealed class FieldDescription
                 lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
 
-        if (!lastColumnInfo.ConverterInfo.IsDefault && lastColumnInfo.ConverterInfo.TypeToConvert == type)
+        if (lastColumnInfo.ConverterInfo is { IsDefault: false, TypeToConvert: var typeToConvert } && typeToConvert == type)
             return;
 
         var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectInfo : _objectInfo.ConverterInfo;

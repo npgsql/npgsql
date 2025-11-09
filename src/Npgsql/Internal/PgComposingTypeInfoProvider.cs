@@ -13,6 +13,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected PgComposingTypeInfoProvider(PgTypeId? pgTypeId, PgProviderTypeInfo effectiveTypeInfo)
     {
+        ArgumentNullException.ThrowIfNull(effectiveTypeInfo);
         if (pgTypeId is null && effectiveTypeInfo.PgTypeId is not null)
             throw new ArgumentNullException(nameof(pgTypeId), $"Cannot be null if {nameof(effectiveTypeInfo)}.{nameof(PgTypeInfo.PgTypeId)} is not null.");
 
@@ -22,7 +23,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
-    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo);
+    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? unboxedType);
     protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectivePgTypeId);
 
     protected override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
@@ -69,7 +70,10 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return _concreteInfoCache.GetOrAdd(
             concreteTypeInfo,
             static (_, state)
-                => new(state.ConcreteTypeInfo.Options, state.Instance.CreateConverter(state.ConcreteTypeInfo), state.PgTypeId),
+                => new(state.ConcreteTypeInfo.Options,
+                    state.Instance.CreateConverter(state.ConcreteTypeInfo, out var unboxedType),
+                    state.PgTypeId,
+                    unboxedType),
             state);
     }
 }

@@ -595,7 +595,7 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConcreteTypeInfo elementType
     }
 }
 
-sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type effectiveType)
+sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type requestedType)
     : PgComposingTypeInfoProvider<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
         elementTypeInfo)
     where T : class
@@ -605,13 +605,19 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
-    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? unboxedType)
     {
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
-            return new ArrayBasedArrayConverter<T, TElement>(effectiveConcreteTypeInfo, effectiveType);
+        {
+            unboxedType = requestedType == typeof(object) ? typeof(Array) : requestedType;
+            return new ArrayBasedArrayConverter<T, TElement>(effectiveConcreteTypeInfo, requestedType);
+        }
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
+        {
+            unboxedType = requestedType;
             return new ListBasedArrayConverter<T, TElement>(effectiveConcreteTypeInfo);
+        }
 
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
