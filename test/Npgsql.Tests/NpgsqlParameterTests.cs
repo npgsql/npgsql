@@ -750,6 +750,26 @@ public class NpgsqlParameterTest : TestBase
         Assert.That(thirdTypeInfo, Is.Not.SameAs(typeInfo));
     }
 
+    [Test]
+    public void DataTypeName_prioritized_over_NpgsqlDbType([Values]bool generic)
+    {
+        var param = generic ? new NpgsqlParameter<object>
+        {
+            NpgsqlDbType = NpgsqlDbType.Integer,
+            DataTypeName = "text",
+            Value = "value"
+        } : new NpgsqlParameter
+        {
+            NpgsqlDbType = NpgsqlDbType.Integer,
+            DataTypeName = "text",
+            Value = "value"
+        };
+        param.ResolveTypeInfo(DataSource.SerializerOptions);
+        param.GetResolutionInfo(out var typeInfo, out _, out _);
+        Assert.That(typeInfo, Is.Not.Null);
+        Assert.That(typeInfo.PgTypeId, Is.EqualTo(DataSource.SerializerOptions.TextPgTypeId));
+    }
+
 #if NeedsPorting
     [Test]
     [Category ("NotWorking")]
