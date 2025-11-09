@@ -23,7 +23,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
-    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? unboxedType);
+    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? reportedType);
     protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectivePgTypeId);
 
     protected override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
@@ -71,9 +71,9 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             concreteTypeInfo,
             static (_, state)
                 => new(state.ConcreteTypeInfo.Options,
-                    state.Instance.CreateConverter(state.ConcreteTypeInfo, out var unboxedType),
+                    state.Instance.CreateConverter(state.ConcreteTypeInfo, out var reportedType),
                     state.PgTypeId,
-                    unboxedType),
+                    reportedType: reportedType),
             state);
     }
 }
