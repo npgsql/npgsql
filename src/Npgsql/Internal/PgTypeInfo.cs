@@ -8,12 +8,6 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgTypeInfo
 {
-    readonly bool _canBinaryConvert;
-    readonly BufferRequirements _binaryBufferRequirements;
-
-    readonly bool _canTextConvert;
-    readonly BufferRequirements _textBufferRequirements;
-
     PgTypeInfo(PgSerializerOptions options, Type type, Type? unboxedType)
     {
         if (unboxedType is not null && !type.IsAssignableFrom(unboxedType))
@@ -31,8 +25,6 @@ public abstract class PgTypeInfo
     {
         Converter = converter;
         PgTypeId = options.GetCanonicalTypeId(pgTypeId);
-        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
-        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgConcreteTypeInfo? defaultConcrete, Type? unboxedType = null)
@@ -43,12 +35,8 @@ public abstract class PgTypeInfo
             Debug.Assert(options.PortableTypeIds && defaultConcrete.PgTypeId.IsDataTypeName || !options.PortableTypeIds && defaultConcrete.PgTypeId.IsOid);
             PgTypeId = defaultConcrete.PgTypeId;
             Converter = defaultConcrete.Converter;
-            _canBinaryConvert = defaultConcrete.Converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
-            _canTextConvert = defaultConcrete.Converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
         }
     }
-
-    bool HasCachedInfo(PgConverter converter) => ReferenceEquals(Converter, converter);
 
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
@@ -102,24 +90,6 @@ public abstract class PgTypeInfo
 
         static PgConcreteTypeInfo ThrowNotSupported()
             => throw new NotSupportedException("Should not happen, please file a bug.");
-    }
-
-    protected bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        if (HasCachedInfo(converter))
-        {
-            switch (format)
-            {
-            case DataFormat.Binary:
-                bufferRequirements = _binaryBufferRequirements;
-                return _canBinaryConvert;
-            case DataFormat.Text:
-                bufferRequirements = _textBufferRequirements;
-                return _canTextConvert;
-            }
-        }
-
-        return converter.CanConvert(format, out bufferRequirements);
     }
 
     // We assume a boxing type info does not support reading as the converter won't be able to produce the derived type statically.
@@ -189,11 +159,37 @@ public sealed class PgProviderTypeInfo(
         => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
 }
 
-public sealed class PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
-    : PgTypeInfo(options, converter, pgTypeId, unboxedType)
+public sealed class PgConcreteTypeInfo : PgTypeInfo
 {
+    readonly bool _canBinaryConvert;
+    readonly BufferRequirements _binaryBufferRequirements;
+
+    readonly bool _canTextConvert;
+    readonly BufferRequirements _textBufferRequirements;
+
+    public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null) : base(options, converter, pgTypeId, unboxedType)
+    {
+        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
+        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
+    }
+
     public new PgConverter Converter => base.Converter!;
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
+
+    bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        switch (format)
+        {
+        case DataFormat.Binary:
+            bufferRequirements = _binaryBufferRequirements;
+            return _canBinaryConvert;
+        case DataFormat.Text:
+            bufferRequirements = _textBufferRequirements;
+            return _canTextConvert;
+        }
+
+        return converter.CanConvert(format, out bufferRequirements);
+    }
 
     public BufferRequirements? GetBufferRequirements(DataFormat format)
     {
