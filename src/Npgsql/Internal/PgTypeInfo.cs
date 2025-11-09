@@ -235,46 +235,40 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
     // Bind for writing.
     /// When result is null, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? Bind<T>(T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgValueBindingContext BindValue<T>(T? value, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
-        writeState = null;
-        if (((PgConverter<T>)Converter).GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
-        {
-            size = default;
-            return null;
-        }
+        object? writeState = null;
+        if (((PgConverter<T>)Converter).GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+            return new(format, bufferRequirements.Write, null, null);
 
-        size = sizeOrDbNull;
-        return new(this, bufferRequirements.Write);
+        return new(format, bufferRequirements.Write, size, writeState);
     }
 
     // Bind for writing.
     // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
     /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? BindObject(object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgValueBindingContext BindObjectValue(object? value, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        writeState = null;
-        if (value is DBNull && Type != typeof(DBNull) || Converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
+        object? writeState = null;
+        if (value is DBNull && Type != typeof(DBNull) || Converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } size)
         {
-            size = default;
-            return null;
+            return new(format, bufferRequirements.Write, null, null);
         }
 
-        size = sizeOrDbNull;
-        return new(this, bufferRequirements.Write);
+        return new(format, bufferRequirements.Write, size, writeState);
     }
 
     DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
@@ -298,6 +292,25 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             return default;
         }
     }
+}
+
+readonly struct PgValueBindingContext
+{
+    public DataFormat DataFormat { get; }
+    public Size BufferRequirement { get; }
+    public Size? Size { get; }
+    public object? WriteState { get; }
+
+    internal PgValueBindingContext(DataFormat dataFormat, Size bufferRequirement, Size? size, object? writeState)
+    {
+        DataFormat = dataFormat;
+        BufferRequirement = bufferRequirement;
+        Size = size;
+        WriteState = writeState;
+    }
+
+    [MemberNotNullWhen(false, nameof(Size))]
+    public bool IsDbNullBinding => Size is null;
 }
 
 readonly struct PgConverterInfo

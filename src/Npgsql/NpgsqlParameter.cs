@@ -48,10 +48,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal PgTypeId PgTypeId => ConcreteTypeInfo?.PgTypeId ?? default;
     private protected PgConverter? Converter => ConcreteTypeInfo?.Converter;
 
-    internal DataFormat Format { get; private protected set; }
-    private protected Size? WriteSize { get; set; }
-    private protected object? _writeState;
-    private protected Size _bufferRequirement;
+    internal DataFormat Format => _bindingContext?.DataFormat ?? DataFormat.Binary;
+    private protected PgValueBindingContext? _bindingContext;
     private protected bool _asObject;
 
     #endregion
@@ -284,7 +282,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
-                ResetBindingInfo();
+                DisposeBindingState();
             _value = value;
         }
     }
@@ -484,7 +482,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (value < -1)
                 ThrowHelper.ThrowArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
-            ResetBindingInfo();
+            DisposeBindingState();
             _size = value;
         }
     }
@@ -579,8 +577,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal void SetResolutionInfo(PgTypeInfo typeInfo, PgConcreteTypeInfo concreteTypeInfo)
     {
-        if (WriteSize is not null)
-            ResetBindingInfo();
+        if (_bindingContext is not null)
+            DisposeBindingState();
 
         TypeInfo = typeInfo;
         ConcreteTypeInfo = concreteTypeInfo;
@@ -663,7 +661,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
         if (!previouslyResolved || typeInfo is not PgConcreteTypeInfo)
         {
-            ResetBindingInfo();
+            DisposeBindingState();
             ConcreteTypeInfo = GetConcreteTypeInfo(typeInfo!);
         }
 
@@ -695,7 +693,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
-        if (WriteSize is null)
+        if (_bindingContext is null)
         {
             if (_size > 0)
                 HandleSizeTruncation();
@@ -704,7 +702,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
 
         format = Format;
-        size = WriteSize!.Value;
+        size = _bindingContext.GetValueOrDefault().Size ?? -1;
         if (requiredFormat is not null && format != requiredFormat)
             ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
 
@@ -756,23 +754,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_useSubStream && value is not null)
             value = _subStream = new SubReadStream((Stream)value, _size);
 
-        if (ConcreteTypeInfo!.BindObject(value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
-        {
-            WriteSize = size;
-            _bufferRequirement = info.BufferRequirement;
-        }
-        else
-        {
-            WriteSize = -1;
-            _bufferRequirement = default;
-        }
-
-        Format = dataFormat;
+        _bindingContext = ConcreteTypeInfo!.BindObjectValue(value, formatPreference);
     }
 
     internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (WriteSize is not { } writeSize)
+        if (_bindingContext is not { } bindingContext)
         {
             ThrowHelper.ThrowInvalidOperationException("Missing type info or binding info.");
             return;
@@ -783,27 +770,20 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
-            writer.WriteInt32(writeSize.Value);
-            if (writeSize.Value is -1)
-            {
-                writer.Commit(sizeof(int));
-                return;
-            }
+            var size = bindingContext.Size?.Value ?? -1;
+            writer.WriteInt32(size);
+            writer.CommitAndResetTotal(sizeof(int));
 
-            var current = new ValueMetadata
+            if (!bindingContext.IsDbNullBinding)
             {
-                Format = Format,
-                BufferRequirement = _bufferRequirement,
-                Size = writeSize,
-                WriteState = _writeState
-            };
-            await writer.BeginWrite(async, current, cancellationToken).ConfigureAwait(false);
-            await WriteValue(async, writer, cancellationToken).ConfigureAwait(false);
-            writer.Commit(writeSize.Value + sizeof(int));
+                await writer.StartWrite(async, bindingContext, cancellationToken).ConfigureAwait(false);
+                await WriteValue(async, writer, cancellationToken).ConfigureAwait(false);
+                writer.EndWrite(size);
+            }
         }
         finally
         {
-            ResetBindingInfo();
+            DisposeBindingState();
         }
     }
 
@@ -832,31 +812,53 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         TypeInfo = null;
         _asObject = false;
         ConcreteTypeInfo = null;
-        ResetBindingInfo();
+        DisposeBindingState();
     }
 
-    private protected void ResetBindingInfo()
+    private protected void DisposeBindingState()
     {
-        if (WriteSize is null)
+        try
         {
-            Debug.Assert(_writeState == default && _useSubStream == default && Format == default && _bufferRequirement == default);
-            return;
-        }
+            if (_bindingContext is not { } bindingContext)
+            {
+                Debug.Assert(!_useSubStream && _subStream is null);
+                return;
+            }
 
-        if (_writeState is not null)
-        {
-            ConcreteTypeInfo?.DisposeWriteState(_writeState);
-            _writeState = null;
+            // Dispose write state first as it may hold a reference to _subStream.
+            Debug.Assert(ConcreteTypeInfo is not null);
+            Exception? disposalException = null;
+            if (bindingContext.WriteState is { } writeState)
+            {
+                try
+                {
+                    ConcreteTypeInfo.DisposeWriteState(writeState);
+                }
+                catch (Exception ex)
+                {
+                    disposalException = ex;
+                }
+            }
+
+            if (_useSubStream)
+            {
+                Debug.Assert(_subStream is not null);
+                try
+                {
+                    _subStream.Dispose();
+                }
+                catch (Exception ex) when (disposalException is not null)
+                {
+                    throw new AggregateException(disposalException, ex);
+                }
+            }
         }
-        if (_useSubStream)
+        finally
         {
             _useSubStream = false;
-            _subStream?.Dispose();
             _subStream = null;
+            _bindingContext = null;
         }
-        WriteSize = null;
-        Format = default;
-        _bufferRequirement = default;
     }
 
     internal bool IsInputDirection => Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Input;
