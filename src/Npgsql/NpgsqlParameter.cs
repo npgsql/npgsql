@@ -533,10 +533,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (!previouslyResolved)
         {
             var dataTypeName =
-                _npgsqlDbType is { } npgsqlDbType
-                    ? npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow()
-                    : _dataTypeName is not null
-                        ? Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName)
+                _dataTypeName is not null
+                    ? Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName)
+                    : _npgsqlDbType is { } npgsqlDbType
+                        ? npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow()
                         : null;
 
             PgTypeId? pgTypeId = null;
