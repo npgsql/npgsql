@@ -4,11 +4,10 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using Npgsql.Internal;
-
-#nullable disable
 
 namespace Npgsql.Benchmarks.TypeHandlers;
 
@@ -37,17 +36,17 @@ public abstract class TypeHandlerBenchmarks<T>
         public override void Write(byte[] buffer, int offset, int count) { }
     }
 
-    readonly PgConverter _converter;
-    readonly PgReader _reader;
+    readonly PgConverter<T> _converter;
     readonly PgWriter _writer;
     readonly NpgsqlWriteBuffer _writeBuffer;
     readonly NpgsqlReadBuffer _readBuffer;
     readonly BufferRequirements _binaryRequirements;
 
-    T _value;
-    Size _elementSize;
+    PgReader _reader;
+    T? _value;
+    PgValueBindingContext _bindingContext;
 
-    protected TypeHandlerBenchmarks(PgConverter handler)
+    protected TypeHandlerBenchmarks(PgConverter<T> handler)
     {
         var stream = new EndlessStream();
         _converter = handler ?? throw new ArgumentNullException(nameof(handler));
@@ -59,36 +58,46 @@ public abstract class TypeHandlerBenchmarks<T>
         _converter.CanConvert(DataFormat.Binary, out _binaryRequirements);
     }
 
-    public IEnumerable<T> Values() => ValuesOverride();
+    public IEnumerable<T?> Values() => ValuesOverride();
 
-    protected virtual IEnumerable<T> ValuesOverride() => [default(T)];
+    protected virtual IEnumerable<T?> ValuesOverride() => [default];
 
-    [ParamsSource(nameof(Values))]
+    [ParamsSource(nameof(Values)), MaybeNull]
     public T Value
     {
         get => _value;
         set
         {
             _value = value;
-            object state = null;
-            var size = _elementSize = _converter.GetSizeAsObject(new(DataFormat.Binary, _binaryRequirements.Write), value, ref state);
-            var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = size, WriteState = state };
-            _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
-            _converter.WriteAsObject(_writer, value);
-            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, size.Value);
 
-            _writer.Commit(size.Value);
-            _readBuffer.FilledBytes = size.Value;
+            object? writeState = null;
+            var size = _converter.GetSizeOrDbNull(DataFormat.Binary, _binaryRequirements.Write, value, ref writeState);
+            _bindingContext = new PgValueBindingContext(DataFormat.Binary, _binaryRequirements.Write, size, writeState);
+
+            if (!_bindingContext.IsDbNullBinding)
+            {
+                _writer.StartWrite(async: false, _bindingContext, CancellationToken.None).GetAwaiter().GetResult();
+                _converter.Write(_writer, value!);
+                _writer.EndWrite(_bindingContext.Size.Value);
+            }
+
+            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
+            _readBuffer.FilledBytes = _writeBuffer.WritePosition;
             _writeBuffer.WritePosition = 0;
+            _reader = new PgReader(_readBuffer);
+            _reader.Init((size ?? -1).Value, DataFormat.Binary);
         }
     }
 
     [Benchmark]
     public T Read()
     {
-        _readBuffer.ReadPosition = sizeof(int);
+        if (_bindingContext.IsDbNullBinding)
+            return default!;
+
+        _readBuffer.ReadPosition = 0;
         _reader.StartRead(_binaryRequirements.Read);
-        var value = ((PgConverter<T>)_converter).Read(_reader);
+        var value = _converter.Read(_reader);
         _reader.EndRead();
         return value;
     }
@@ -96,9 +105,12 @@ public abstract class TypeHandlerBenchmarks<T>
     [Benchmark]
     public void Write()
     {
+        if (_bindingContext.IsDbNullBinding)
+            return;
+
         _writeBuffer.WritePosition = 0;
-        var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = _elementSize, WriteState = null };
-        _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
-        ((PgConverter<T>)_converter).Write(_writer, _value);
+        _writer.StartWrite(async: false, _bindingContext, CancellationToken.None).GetAwaiter().GetResult();
+        _converter.Write(_writer, Value!);
+        _writer.EndWrite(_bindingContext.Size.GetValueOrDefault());
     }
 }

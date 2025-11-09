@@ -27,7 +27,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
             if (typeof(T) == typeof(object) && ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
-                ResetBindingInfo();
+                DisposeBindingState();
             _typedValue = value;
         }
     }
@@ -102,18 +102,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         }
 
         var value = TypedValue;
-        if (ConcreteTypeInfo!.Bind(value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
-        {
-            WriteSize = size;
-            _bufferRequirement = info.BufferRequirement;
-        }
-        else
-        {
-            WriteSize = -1;
-            _bufferRequirement = default;
-        }
-
-        Format = dataFormat;
+        _bindingContext = ConcreteTypeInfo!.BindValue(value, formatPreference);
     }
 
     private protected override ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
