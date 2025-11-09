@@ -68,11 +68,12 @@ public abstract class PgTypeInfo
 
     public PgTypeId? PgTypeId { get; }
 
-    // Having it here so we can easily extend any behavior.
-    internal void DisposeWriteState(object writeState)
+    public PgConcreteTypeInfo GetConcreteTypeInfo(Field field)
     {
-        if (writeState is IDisposable disposable)
-            disposable.Dispose();
+        if (this is not PgProviderTypeInfo resolverInfo)
+            return (PgConcreteTypeInfo)this;
+
+        return resolverInfo.GetConcreteTypeInfo(field) ?? resolverInfo.GetDefaultConcreteTypeInfo(field.PgTypeId);
     }
 
     public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value)
@@ -103,86 +104,6 @@ public abstract class PgTypeInfo
             => throw new NotSupportedException("Should not happen, please file a bug.");
     }
 
-    // TryBind for reading.
-    internal bool TryBind(Field field, DataFormat format, out PgConverterInfo info)
-    {
-        switch (this)
-        {
-        case PgConcreteTypeInfo v:
-            if (!CanConvert(v.Converter, format, out var bufferRequirements))
-            {
-                info = default;
-                return false;
-            }
-            info = new(this, v.Converter, bufferRequirements.Read);
-            return true;
-        case PgProviderTypeInfo providerTypeInfo:
-            var concreteTypeInfo = providerTypeInfo.GetConcreteTypeInfo(field) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(field.PgTypeId);
-            if (!CanConvert(concreteTypeInfo.Converter, format, out bufferRequirements))
-            {
-                info = default;
-                return false;
-            }
-            info = new(concreteTypeInfo, concreteTypeInfo.Converter, bufferRequirements.Read);
-            return true;
-        default:
-            throw new NotSupportedException("Should not happen, please file a bug.");
-        }
-    }
-
-    // Bind for reading.
-    internal PgConverterInfo Bind(Field field, DataFormat format)
-    {
-        if (!TryBind(field, format, out var info))
-            ThrowHelper.ThrowInvalidOperationException($"Resolved converter does not support {format} format.");
-
-        return info;
-    }
-
-    // Bind for writing.
-    /// When result is null, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? Bind<T>(PgConverter<T> converter, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
-    {
-        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
-        if (!SupportsWriting)
-            ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
-
-        format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
-
-        writeState = null;
-        if (converter.GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
-        {
-            size = default;
-            return null;
-        }
-
-        size = sizeOrDbNull;
-        return new(this, converter, bufferRequirements.Write);
-    }
-
-    // Bind for writing.
-    // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
-    /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? BindObject(PgConverter converter, object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
-    {
-        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
-        if (!SupportsWriting)
-            throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
-
-        format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
-
-        // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        writeState = null;
-        if (value is DBNull && Type != typeof(DBNull) || converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
-        {
-            size = default;
-            return null;
-        }
-
-        size = sizeOrDbNull;
-        return new(this, converter, bufferRequirements.Write);
-    }
-
     protected bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
     {
         if (HasCachedInfo(converter))
@@ -199,28 +120,6 @@ public abstract class PgTypeInfo
         }
 
         return converter.CanConvert(format, out bufferRequirements);
-    }
-
-    DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
-    {
-        // First try to check for preferred support.
-        switch (formatPreference)
-        {
-        case DataFormat.Binary when CanConvert(converter, DataFormat.Binary, out bufferRequirements):
-            return DataFormat.Binary;
-        case DataFormat.Text when CanConvert(converter, DataFormat.Text, out bufferRequirements):
-            return DataFormat.Text;
-        default:
-            // The common case, no preference given (or no match) means we default to binary if supported.
-            if (CanConvert(converter, DataFormat.Binary, out bufferRequirements))
-                return DataFormat.Binary;
-            if (CanConvert(converter, DataFormat.Text, out bufferRequirements))
-                return DataFormat.Text;
-
-            ThrowHelper.ThrowInvalidOperationException("Converter doesn't support any data format.");
-            bufferRequirements = default;
-            return default;
-        }
     }
 
     // We assume a boxing type info does not support reading as the converter won't be able to produce the derived type statically.
@@ -268,7 +167,7 @@ public sealed class PgProviderTypeInfo(
         return typeInfoProvider.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
     }
 
-    public PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)
+    public new PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)
     {
         if (PgTypeId is { } decidedId && field.PgTypeId != decidedId)
             ThrowUnexpectedPgTypeId(nameof(field));
@@ -301,16 +200,109 @@ public sealed class PgConcreteTypeInfo(PgSerializerOptions options, PgConverter 
         var success = CanConvert(Converter, format, out var bufferRequirements);
         return success ? bufferRequirements : null;
     }
+
+    // Having it here so we can easily extend any behavior.
+    internal void DisposeWriteState(object writeState)
+    {
+        if (writeState is IDisposable disposable)
+            disposable.Dispose();
+    }
+
+    // TryBind for reading.
+    internal bool TryBind(DataFormat format, out PgConverterInfo info)
+    {
+        if (!CanConvert(Converter, format, out var bufferRequirements))
+        {
+            info = default;
+            return false;
+        }
+        info = new(this, bufferRequirements.Read);
+        return true;
+    }
+
+    // Bind for reading.
+    internal PgConverterInfo Bind(DataFormat format)
+    {
+        if (!TryBind(format, out var info))
+            ThrowHelper.ThrowInvalidOperationException($"Converter does not support {format} format.");
+
+        return info;
+    }
+
+    // Bind for writing.
+    /// When result is null, the value was interpreted to be a SQL NULL.
+    internal PgConverterInfo? Bind<T>(T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    {
+        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
+        if (!SupportsWriting)
+            ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
+
+        format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+
+        writeState = null;
+        if (((PgConverter<T>)Converter).GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
+        {
+            size = default;
+            return null;
+        }
+
+        size = sizeOrDbNull;
+        return new(this, bufferRequirements.Write);
+    }
+
+    // Bind for writing.
+    // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
+    /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
+    internal PgConverterInfo? BindObject(object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    {
+        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
+        if (!SupportsWriting)
+            throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
+
+        format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+
+        // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
+        writeState = null;
+        if (value is DBNull && Type != typeof(DBNull) || Converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
+        {
+            size = default;
+            return null;
+        }
+
+        size = sizeOrDbNull;
+        return new(this, bufferRequirements.Write);
+    }
+
+    DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
+    {
+        // First try to check for preferred support.
+        switch (formatPreference)
+        {
+        case DataFormat.Binary when CanConvert(converter, DataFormat.Binary, out bufferRequirements):
+            return DataFormat.Binary;
+        case DataFormat.Text when CanConvert(converter, DataFormat.Text, out bufferRequirements):
+            return DataFormat.Text;
+        default:
+            // The common case, no preference given (or no match) means we default to binary if supported.
+            if (CanConvert(converter, DataFormat.Binary, out bufferRequirements))
+                return DataFormat.Binary;
+            if (CanConvert(converter, DataFormat.Text, out bufferRequirements))
+                return DataFormat.Text;
+
+            ThrowHelper.ThrowInvalidOperationException("Converter doesn't support any data format.");
+            bufferRequirements = default;
+            return default;
+        }
+    }
 }
 
 readonly struct PgConverterInfo
 {
-    readonly PgTypeInfo _typeInfo;
+    readonly PgConcreteTypeInfo _typeInfo;
 
-    public PgConverterInfo(PgTypeInfo pgTypeInfo, PgConverter converter, Size bufferRequirement)
+    public PgConverterInfo(PgConcreteTypeInfo pgTypeInfo, Size bufferRequirement)
     {
         _typeInfo = pgTypeInfo;
-        Converter = converter;
         BufferRequirement = bufferRequirement;
     }
 
@@ -320,7 +312,7 @@ readonly struct PgConverterInfo
 
     public PgTypeInfo TypeInfo => _typeInfo;
 
-    public PgConverter Converter { get; }
+    public PgConverter Converter => _typeInfo.Converter;
     public Size BufferRequirement { get; }
 
     /// Whether Converter.TypeToConvert matches PgTypeInfo.Type, if it doesn't object apis should be used.

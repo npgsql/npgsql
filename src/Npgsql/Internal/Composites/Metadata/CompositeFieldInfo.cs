@@ -48,7 +48,8 @@ abstract class CompositeFieldInfo
             return Converter;
         }
 
-        if (!PgTypeInfo.TryBind(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1), DataFormat.Binary, out var converterInfo))
+        var concreteTypeInfo = PgTypeInfo.GetConcreteTypeInfo(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
+        if (!concreteTypeInfo.TryBind(DataFormat.Binary, out var converterInfo))
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
 
         readRequirement = converterInfo.BufferRequirement;
