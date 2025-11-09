@@ -47,9 +47,9 @@ sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T?> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? unboxedType)
+    protected override PgConverter<T?> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? reportedType)
     {
-        unboxedType = null;
+        reportedType = null;
         return new NullableConverter<T>((PgConverter<T>)effectiveConcreteTypeInfo.Converter);
     }
 

@@ -605,17 +605,17 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
-    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? unboxedType)
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? reportedType)
     {
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
         {
-            unboxedType = requestedType == typeof(object) ? typeof(Array) : requestedType;
+            reportedType = requestedType;
             return new ArrayBasedArrayConverter<T, TElement>(effectiveConcreteTypeInfo, requestedType);
         }
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
         {
-            unboxedType = requestedType;
+            reportedType = requestedType;
             return new ListBasedArrayConverter<T, TElement>(effectiveConcreteTypeInfo);
         }
 
