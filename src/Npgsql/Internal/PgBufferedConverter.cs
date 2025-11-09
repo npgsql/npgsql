@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
@@ -16,8 +17,7 @@ public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false)
 
     public sealed override T Read(PgReader reader)
     {
-        // We check FieldAtStart to speed up simple value reads, as field level buffering was handled by reader.StartRead() already.
-        if (!reader.FieldAtStart && reader.ShouldBufferCurrent())
+        if (BufferedConverterChecks && reader.ShouldBuffer(reader.CurrentBufferRequirement))
             ThrowIORequired(reader.CurrentBufferRequirement);
 
         return ReadCore(reader);
@@ -31,7 +31,7 @@ public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false)
 
     public sealed override void Write(PgWriter writer, T value)
     {
-        if (!writer.BufferingWrite && writer.ShouldFlush(writer.CurrentBufferRequirement))
+        if (BufferedConverterChecks && !writer.BufferingWrite && writer.ShouldFlush(writer.CurrentBufferRequirement))
             ThrowIORequired(writer.CurrentBufferRequirement);
 
         WriteCore(writer, value);

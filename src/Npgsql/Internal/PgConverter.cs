@@ -5,12 +5,15 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConverter
 {
+    private protected static readonly bool BufferedConverterChecks = Statics.EnableAssertions;
+
     internal DbNullPredicate DbNullPredicateKind { get; }
     public bool IsDbNullable => DbNullPredicateKind is not DbNullPredicate.None;
 
