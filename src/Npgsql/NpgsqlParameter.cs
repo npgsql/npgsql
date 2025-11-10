@@ -593,19 +593,23 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var previouslyResolved = ReferenceEquals(typeInfo?.Options, options);
         if (!previouslyResolved)
         {
-            var dataTypeName =
-                _dataTypeName is not null
-                    ? Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName)
-                    : _npgsqlDbType is { } npgsqlDbType
-                        ? npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow()
-                        : null;
-
-            if (dataTypeName is null && _dbType is { } dbType)
+            string? dataTypeName = null;
+            if (_dataTypeName is not null)
             {
-                if (options.DbTypeResolver?.GetDataTypeName(dbType, options) is { } mappedDbTypeName)
+                dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName);
+            }
+            else if (_npgsqlDbType is { } npgsqlDbType)
+            {
+                dataTypeName = npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow();
+            }
+            else if (_dbType is { } dbType)
+            {
+                if (options.DbTypeResolver?.GetDataTypeName(dbType, options) is { } result)
                 {
-                    dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(mappedDbTypeName);
-                } else {
+                    dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
+                }
+                else
+                {
                     var npgsqlDbTypeFromDbType = dbType.ToNpgsqlDbType();
                     dataTypeName = npgsqlDbTypeFromDbType?.ToDataTypeName() ?? npgsqlDbTypeFromDbType?.ToUnqualifiedDataTypeNameOrThrow();
                 }
