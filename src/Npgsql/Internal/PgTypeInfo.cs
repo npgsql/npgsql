@@ -110,8 +110,12 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     readonly PgConcreteTypeInfoProvider _typeInfoProvider;
     readonly PgConcreteTypeInfo? _defaultConcrete;
 
+    public PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId)
+        : this(options, typeInfoProvider, pgTypeId, requestedType: null)
+    {}
+
     // We always mark providers with type object as boxing, as they may freely return converters for any type (see PgConcreteTypeInfoProvider.Validate).
-    public PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? requestedType = null)
+    internal PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? requestedType)
         : base(options, typeInfoProvider.TypeToConvert, pgTypeId,
             (requestedType is null ? null : ComputeUnboxedType(typeInfoProvider.TypeToConvert, requestedType))
             ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
@@ -217,7 +221,11 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     readonly bool _canTextConvert;
     readonly BufferRequirements _textBufferRequirements;
 
-    public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType = null)
+    public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
+        : this(options, converter, pgTypeId, requestedType: null)
+    {}
+
+    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
         : base(options, converter, pgTypeId, requestedType is null ? null : ComputeUnboxedType(converter.TypeToConvert, requestedType))
     {
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
