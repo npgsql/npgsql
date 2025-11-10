@@ -148,7 +148,8 @@ public abstract class TestBase
         bool skipArrayCheck = false)
     {
         await using var connection = await OpenConnectionAsync();
-        await AssertTypeWrite(connection, valueFactory, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault, isNpgsqlDbTypeInferredFromClrType, skipArrayCheck);
+        await AssertTypeWrite(connection, valueFactory, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault,
+            isNpgsqlDbTypeInferredFromClrType, skipArrayCheck);
     }
 
     internal static async Task<T> AssertTypeRead<T>(
@@ -254,7 +255,7 @@ public abstract class TestBase
         }
     }
 
-    internal static async Task AssertTypeWriteCore<T>(
+    static async Task AssertTypeWriteCore<T>(
         NpgsqlConnection connection,
         Func<T> valueFactory,
         string expectedSqlLiteral,
@@ -263,12 +264,10 @@ public abstract class TestBase
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefault = true,
-        bool isNpgsqlDbTypeInferredFromClrType = true)
+        bool isDataTypeInferredFromClrType = true)
     {
         if (npgsqlDbType is null)
-            isNpgsqlDbTypeInferredFromClrType = false;
-
-        inferredDbType ??= isNpgsqlDbTypeInferredFromClrType ? dbType ?? DbType.Object : DbType.Object;
+            isDataTypeInferredFromClrType = false;
 
         // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
         // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
@@ -280,6 +279,10 @@ public abstract class TestBase
         var pgTypeNameWithoutFacets = parenIndex > -1
             ? pgTypeName[..parenIndex] + pgTypeName[(pgTypeName.IndexOf(')') + 1)..]
             : pgTypeName;
+
+        // For composite type with dots in name, Postgresql returns name with quotes - scheme."My.type.name"
+        // but for npgsql mapping we should use names without quotes - scheme.My.type.name
+        var pgTypeNameWithoutFacetsAndQuotes = pgTypeNameWithoutFacets.Replace("\"", string.Empty);
 
         // We test the following scenarios (between 2 and 5 in total):
         // 1. With NpgsqlDbType explicitly set
@@ -293,6 +296,13 @@ public abstract class TestBase
 
         await using var cmd = new NpgsqlCommand { Connection = connection };
         NpgsqlParameter p;
+
+        // With data type name
+        p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacetsAndQuotes };
+        cmd.Parameters.Add(p);
+        errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacetsAndQuotes}";
+        CheckInference();
+
         // With NpgsqlDbType
         if (npgsqlDbType is not null)
         {
@@ -302,22 +312,13 @@ public abstract class TestBase
             CheckInference();
         }
 
-        // With data type name
-        // For composite type with dots in name, Postgresql returns name with quotes - scheme."My.type.name"
-        // but for npgsql mapping we should use names without quotes - scheme.My.type.name
-        var pgTypeNameWithoutFacetsAndDots = pgTypeNameWithoutFacets.Replace("\"", string.Empty);
-        p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacetsAndDots };
-        cmd.Parameters.Add(p);
-        errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacetsAndDots}";
-        CheckInference();
-
         // With DbType
         if (dbType is not null)
         {
             p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType.Value };
             cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
-            CheckInference();
+            CheckInference(dbTypeApplied: true);
         }
 
         if (isDefault)
@@ -326,13 +327,13 @@ public abstract class TestBase
             p = new NpgsqlParameter { Value = valueFactory() };
             cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
-            CheckInference(valueOnlyInference: true);
+            CheckInference(valueSolelyApplied: true);
 
             // With (generic) value only
             p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
             cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
-            CheckInference(valueOnlyInference: true);
+            CheckInference(valueSolelyApplied: true);
         }
 
         Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
@@ -349,20 +350,25 @@ public abstract class TestBase
             Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
         }
 
-        void CheckInference(bool valueOnlyInference = false)
+        void CheckInference(bool dbTypeApplied = false, bool valueSolelyApplied = false)
         {
-            if (isNpgsqlDbTypeInferredFromClrType && npgsqlDbType is not null)
-            {
-                Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType),
-                    () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
-            }
-
-            Assert.That(p.DbType, Is.EqualTo(valueOnlyInference ? inferredDbType : isNpgsqlDbTypeInferredFromClrType ? inferredDbType : dbType ?? DbType.Object),
-                () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
-
-            if (isNpgsqlDbTypeInferredFromClrType)
-                Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacets),
+            if (!valueSolelyApplied || isDataTypeInferredFromClrType)
+                Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacetsAndQuotes),
                     () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
+
+            if (!valueSolelyApplied || isDataTypeInferredFromClrType)
+                Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType ?? NpgsqlDbType.Unknown),
+                    () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+
+            DbType expectedDbType;
+            if (dbTypeApplied)
+                expectedDbType = dbType.GetValueOrDefault();
+            else if (!valueSolelyApplied || isDataTypeInferredFromClrType)
+                expectedDbType = inferredDbType ?? dbType ?? DbType.Object;
+            else
+                expectedDbType = DbType.Object;
+            Assert.That(p.DbType, Is.EqualTo(expectedDbType),
+                () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
         }
     }
 
