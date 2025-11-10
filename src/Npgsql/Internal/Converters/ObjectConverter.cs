@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
@@ -37,6 +38,7 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
 
         // We can call GetDefaultResolution here as validation has already happened in IsDbNullValue.
         // And we know it was called due to the writeState being filled.
+        Debug.Assert(typeInfo.PgTypeId is not null);
         var converter = typeInfo is PgResolverTypeInfo resolverTypeInfo
             ? resolverTypeInfo.GetDefaultResolution(null).Converter
             : typeInfo.GetResolution().Converter;
@@ -79,6 +81,7 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
 
         // We can call GetDefaultResolution here as validation has already happened in IsDbNullValue.
         // And we know it was called due to the writeState being filled.
+        Debug.Assert(typeInfo.PgTypeId is not null);
         var converter = typeInfo is PgResolverTypeInfo resolverTypeInfo
             ? resolverTypeInfo.GetDefaultResolution(null).Converter
             : typeInfo.GetResolution().Converter;
