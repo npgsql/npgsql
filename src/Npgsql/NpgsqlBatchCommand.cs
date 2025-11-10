@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 
@@ -41,6 +43,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// <inheritdoc cref="DbBatchCommand.Parameters"/>
     public new NpgsqlParameterCollection Parameters => _parameters ??= [];
 
+    internal bool HasOutputParameters => _parameters?.HasOutputParameters == true;
 
     /// <inheritdoc/>
     public override NpgsqlParameter CreateParameter() => new();
@@ -272,6 +275,112 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     }
 
     internal void ResetPreparation() => ConnectorPreparedOn = null;
+
+    internal void PopulateOutputParameters(NpgsqlDataReader reader, ILogger logger)
+    {
+        Debug.Assert(_parameters is not null);
+        var parameters = _parameters;
+        var fieldCount = reader.FieldCount;
+        switch (parameters.PlaceholderType)
+        {
+        case PlaceholderType.Mixed:
+        case PlaceholderType.Named:
+        {
+            // In the case of named and mixed parameters we first try to populate all parameters with a named column match.
+            // For backwards compat we allow populating named parameters as long as they haven't been filled yet.
+            // So for every column that we couldn't match by name we fill the first output direction parameter that wasn't filled previously.
+            // This means a row like {"a" => 1, "some_field" => 2} will populate the following output db params {"a" => 1, "b" => 2}.
+            // And a row like {"some_field" => 1, "a" => 2} will populate them as follows {"a" => 2, "b" => 1}.
+
+            var parameterIndices = new ArraySegment<int>(ArrayPool<int>.Shared.Rent(fieldCount), 0, fieldCount);
+            var secondPassOrdinal = -1;
+            for (var ordinal = 0; ordinal < fieldCount; ordinal++)
+            {
+                var name = reader.GetName(ordinal);
+                var i = parameters.IndexOf(name);
+                if (i is not -1 && parameters[i] is { IsOutputDirection: true } parameter)
+                {
+                    SetValue(reader, logger, parameter, ordinal, i);
+                    parameterIndices[ordinal] = i;
+                }
+                else
+                {
+                    parameterIndices[ordinal] = -1;
+                    if (secondPassOrdinal is -1)
+                        secondPassOrdinal = ordinal;
+                }
+            }
+
+            if (secondPassOrdinal is -1)
+            {
+                ArrayPool<int>.Shared.Return(parameterIndices.Array!);
+                break;
+            }
+
+            // This set will also contain -1, but that's not a valid index so we can ignore it is included.
+            var matchedParameters = new HashSet<int>(parameterIndices);
+            var parameterList = parameters.InternalList;
+            for (var i = 0; i < parameterList.Count; i++)
+            {
+                // Find an output parameter that wasn't matched by name.
+                if (parameterList[i] is not { IsOutputDirection: true } parameter || matchedParameters.Contains(i))
+                    continue;
+
+                SetValue(reader, logger, parameter, secondPassOrdinal, i);
+
+                // And find the next unhandled ordinal.
+                secondPassOrdinal = NextSecondPassOrdinal(parameterIndices, secondPassOrdinal);
+                if (secondPassOrdinal is -1)
+                    break;
+            }
+
+            ArrayPool<int>.Shared.Return(parameterIndices.Array!);
+            break;
+
+            static int NextSecondPassOrdinal(ArraySegment<int> indices, int offset)
+            {
+                for (var i = offset + 1; i < indices.Count; i++)
+                {
+                    if (indices[i] is -1)
+                        return i;
+                }
+
+                return -1;
+            }
+        }
+        case PlaceholderType.Positional:
+        {
+            var parameterList = parameters.InternalList;
+            var ordinal = 0;
+            for (var i = 0; i < parameterList.Count; i++)
+            {
+                if (parameterList[i] is not { IsOutputDirection: true } parameter)
+                    continue;
+
+                SetValue(reader, logger, parameter, ordinal, i);
+
+                ordinal++;
+                if (ordinal == fieldCount)
+                    break;
+            }
+            break;
+        }
+        }
+
+        static void SetValue(NpgsqlDataReader reader, ILogger logger, NpgsqlParameter p, int ordinal, int index)
+        {
+            try
+            {
+                p.SetOutputValue(reader, ordinal);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to set value on output parameter instance '{ParameterNameOrIndex}' for output parameter {OutputName}",
+                    p.ParameterName is NpgsqlParameter.PositionalName ? index : p.ParameterName, reader.GetName(ordinal));
+                throw;
+            }
+        }
+    }
 
     /// <summary>
     /// Returns the <see cref="CommandText"/>.

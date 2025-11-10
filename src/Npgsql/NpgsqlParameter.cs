@@ -497,6 +497,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
+    internal void SetOutputValue(NpgsqlDataReader reader, int ordinal)
+    {
+        if (GetType() == typeof(NpgsqlParameter))
+            Value = reader.GetValue(ordinal);
+        else
+            SetOutputValueCore(reader, ordinal);
+    }
+
+    private protected virtual void SetOutputValueCore(NpgsqlDataReader reader, int ordinal) {}
+
     internal bool ShouldResetObjectTypeInfo(object? value)
     {
         var currentType = TypeInfo?.Type;
