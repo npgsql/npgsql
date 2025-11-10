@@ -2087,12 +2087,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         ref var info = ref ColumnInfoCache![ordinal];
 
-        Debug.Assert(info.ConverterInfo.IsDefault || ReferenceEquals(Connector.SerializerOptions, info.ConverterInfo.TypeInfo.Options), "Cache is bleeding over");
+        Debug.Assert(info.IsDefault || ReferenceEquals(Connector.SerializerOptions, info.TypeInfo.Options), "Cache is bleeding over");
 
-        if (info.ConverterInfo is { IsDefault: false, TypeToConvert: var typeToConvert } && typeToConvert == type)
+        if (info is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type)
         {
-            converter = info.ConverterInfo.Converter;
-            bufferRequirement = info.ConverterInfo.BufferRequirement;
+            converter = info.TypeInfo.Converter;
+            bufferRequirement = info.BindingContext.BufferRequirement;
             asObject = info.AsObject;
             return info.DataFormat;
         }
@@ -2104,8 +2104,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             var field = RowDescription![ordinal];
             field.GetInfo(type, ref info);
-            converter = info.ConverterInfo.Converter;
-            bufferRequirement = info.ConverterInfo.BufferRequirement;
+            converter = info.TypeInfo.Converter;
+            bufferRequirement = info.BindingContext.BufferRequirement;
             asObject = info.AsObject;
             return field.DataFormat;
         }
@@ -2116,8 +2116,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         var field = RowDescription![ordinal];
 
-        converter = field.ObjectInfo.Converter;
-        bufferRequirement = field.ObjectInfo.BufferRequirement;
+        converter = field.ObjectInfo.TypeInfo.Converter;
+        bufferRequirement = field.ObjectInfo.BindingContext.BufferRequirement;
         return field.DataFormat;
     }
 
