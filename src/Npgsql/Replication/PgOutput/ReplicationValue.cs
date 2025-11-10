@@ -152,10 +152,10 @@ public class ReplicationValue
 
         var reader = PgReader;
         reader.Init(Length, _fieldDescription.DataFormat);
-        reader.StartRead(info.ConverterInfo.BufferRequirement);
+        reader.StartRead(info.Binding.BufferRequirement);
         var result = info.AsObject
-            ? (T)info.ConverterInfo.Converter.ReadAsObject(reader)
-            : info.ConverterInfo.Converter.UnsafeDowncast<T>().Read(reader);
+            ? (T)info.TypeInfo.Converter.ReadAsObject(reader)
+            : info.TypeInfo.Converter.UnsafeDowncast<T>().Read(reader);
         reader.EndRead();
         return result;
     }
@@ -189,10 +189,10 @@ public class ReplicationValue
 
         var reader = PgReader;
         reader.Init(Length, _fieldDescription.DataFormat);
-        await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
+        await reader.StartReadAsync(info.Binding.BufferRequirement, cancellationToken).ConfigureAwait(false);
         var result = info.AsObject
-            ? (T)await info.ConverterInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await info.ConverterInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            ? (T)await info.TypeInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+            : await info.TypeInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
     }

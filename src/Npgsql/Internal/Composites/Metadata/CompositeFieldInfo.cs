@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,25 +66,27 @@ abstract class CompositeFieldInfo
         if (!IsProviderBacked)
         {
             readRequirement = _binaryBufferRequirements.Read;
-            return Converter!;
+            return Converter;
         }
 
         var concreteTypeInfo = PgTypeInfo.GetConcreteTypeInfo(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
-        if (!concreteTypeInfo.TryBind(DataFormat.Binary, out var converterInfo))
+        if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var binding))
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
 
-        readRequirement = converterInfo.BufferRequirement;
-        return converterInfo.Converter;
+        readRequirement = binding.BufferRequirement;
+        return concreteTypeInfo.Converter;
     }
 
     public PgConverter GetWriteInfo(object instance, out Size writeRequirement, out object? writeState)
     {
-        if (IsProviderBacked)
-            return BindValue(instance, out writeRequirement, out writeState);
+        if (!IsProviderBacked)
+        {
+            writeState = null;
+            writeRequirement = _binaryBufferRequirements.Write;
+            return Converter;
+        }
 
-        writeState = null;
-        writeRequirement = _binaryBufferRequirements.Write;
-        return Converter!;
+        return BindValue(instance, out writeRequirement, out writeState);
     }
 
     /// <summary>
@@ -137,6 +140,7 @@ abstract class CompositeFieldInfo
     public Size BinaryWriteRequirement => _binaryBufferRequirements.Write;
 
     /// True when this field defers converter resolution to bind time via a provider.
+    [MemberNotNullWhen(false, nameof(Converter))]
     public bool IsProviderBacked { get; }
 
     public abstract Type Type { get; }
