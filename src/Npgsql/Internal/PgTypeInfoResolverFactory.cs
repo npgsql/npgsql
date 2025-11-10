@@ -13,6 +13,4 @@ public abstract class PgTypeInfoResolverFactory
 
     public virtual IPgTypeInfoResolver? CreateMultirangeResolver() => null;
     public virtual IPgTypeInfoResolver? CreateMultirangeArrayResolver() => null;
-
-    public virtual IDbTypeResolver? CreateDbTypeResolver() => null;
 }

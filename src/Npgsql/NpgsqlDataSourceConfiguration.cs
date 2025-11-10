@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ sealed record NpgsqlDataSourceConfiguration(string? Name,
     TimeSpan PeriodicPasswordSuccessRefreshInterval,
     TimeSpan PeriodicPasswordFailureRefreshInterval,
     PgTypeInfoResolverChain ResolverChain,
+    IEnumerable<DbTypeResolverFactory> DbTypeResolverFactories,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
     Func<NpgsqlConnection, Task>? ConnectionInitializerAsync,

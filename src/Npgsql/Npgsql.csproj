@@ -9,6 +9,7 @@
     <NoWarn>$(NoWarn);CA2017</NoWarn>
     <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
     <NoWarn>$(NoWarn);NPG9002</NoWarn> <!-- DatabaseInfo-related APIs are experimental -->
+    <NoWarn>$(NoWarn);NPG9003</NoWarn> <!-- DbTypeResolver-related APIs are experimental -->
   </PropertyGroup>
 
   <ItemGroup>

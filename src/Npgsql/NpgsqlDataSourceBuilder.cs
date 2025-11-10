@@ -18,7 +18,7 @@ namespace Npgsql;
 /// <summary>
 /// Provides a simple API for configuring and creating an <see cref="NpgsqlDataSource" />, from which database connections can be obtained.
 /// </summary>
-public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
+public sealed class NpgsqlDataSourceBuilder : INpgsqlDataSourceBuilder
 {
     static UnsupportedTypeInfoResolver<NpgsqlDataSourceBuilder> UnsupportedTypeInfoResolver { get; } = new();
 
@@ -415,6 +415,10 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     #region Type mapping
 
     /// <inheritdoc />
+    public void AddDbTypeResolverFactory(DbTypeResolverFactory factory)
+        => _internalBuilder.AddDbTypeResolverFactory(factory);
+
+    /// <inheritdoc />
     [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
     public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
         => _internalBuilder.AddTypeInfoResolverFactory(factory);
@@ -653,4 +657,6 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         _internalBuilder.MapComposite(clrType, pgName, nameTranslator);
         return this;
     }
+
+    INpgsqlDataSourceBuilder INpgsqlDataSourceBuilder.Instance() => this;
 }

@@ -73,6 +73,10 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     // Given this is an invalid name it's fine for us to represent a fully qualified 'unspecified' name with it.
     public static DataTypeName Unspecified => new("-.-", validated: true);
 
+    public static string GetUnqualifiedName(string dataTypeName)
+        => dataTypeName.IndexOf('.') is not -1 and var index
+            ? dataTypeName.Substring(index + 1) : dataTypeName;
+
     public bool IsArray => UnqualifiedNameSpan.StartsWith("_".AsSpan(), StringComparison.Ordinal);
 
     internal static DataTypeName CreateFullyQualifiedName(string dataTypeName)

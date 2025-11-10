@@ -8,22 +8,22 @@ sealed class ChainDbTypeResolver(IEnumerable<IDbTypeResolver> resolvers) : IDbTy
 {
     readonly IDbTypeResolver[] _resolvers = new List<IDbTypeResolver>(resolvers).ToArray();
 
-    public string? GetDataTypeName(DbType dbType, PgSerializerOptions options)
+    public string? GetDataTypeName(DbType dbType)
     {
         foreach (var resolver in _resolvers)
         {
-            if (resolver.GetDataTypeName(dbType, options) is { } dataTypeName)
+            if (resolver.GetDataTypeName(dbType) is { } dataTypeName)
                 return dataTypeName;
         }
 
         return null;
     }
 
-    public DbType? GetDbType(DataTypeName dataTypeName, PgSerializerOptions options)
+    public DbType? GetDbType(string dataTypeName)
     {
         foreach (var resolver in _resolvers)
         {
-            if (resolver.GetDbType(dataTypeName, options) is { } dbType)
+            if (resolver.GetDbType(dataTypeName) is { } dbType)
                 return dbType;
         }
 

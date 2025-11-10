@@ -876,11 +876,11 @@ static class NpgsqlDbTypeExtensions
 
     internal static NpgsqlDbType? ToNpgsqlDbType(this DataTypeName dataTypeName) => ToNpgsqlDbType(dataTypeName.UnqualifiedName);
     /// Should not be used with display names, first normalize it instead.
-    internal static NpgsqlDbType? ToNpgsqlDbType(string dataTypeName)
+    internal static NpgsqlDbType? ToNpgsqlDbType(string normalizedDataTypeName)
     {
-        var unqualifiedName = dataTypeName;
-        if (dataTypeName.IndexOf(".", StringComparison.Ordinal) is not -1 and var index)
-            unqualifiedName = dataTypeName.Substring(0, index);
+        var unqualifiedName = normalizedDataTypeName.AsSpan();
+        if (unqualifiedName.IndexOf('.') is not -1 and var index)
+            unqualifiedName = unqualifiedName.Slice(index + 1);
 
         return unqualifiedName switch
             {
@@ -979,12 +979,12 @@ static class NpgsqlDbTypeExtensions
                 "geometry" => NpgsqlDbType.Geometry,
                 "geography" => NpgsqlDbType.Geography,
 
-                _ when unqualifiedName.Contains("unknown")
+                _ when unqualifiedName.IndexOf("unknown") != -1
                     => !unqualifiedName.StartsWith("_", StringComparison.Ordinal)
                         ? NpgsqlDbType.Unknown
                         : null,
                 _ when unqualifiedName.StartsWith("_", StringComparison.Ordinal)
-                    => ToNpgsqlDbType(unqualifiedName.Substring(1)) is { } elementNpgsqlDbType
+                    => ToNpgsqlDbType(unqualifiedName.Slice(1).ToString()) is { } elementNpgsqlDbType
                         ? elementNpgsqlDbType | NpgsqlDbType.Array
                         : null,
                 // e.g. custom ranges, plugin types etc.

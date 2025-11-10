@@ -124,6 +124,7 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     public NpgsqlDatabaseInfo DatabaseInfo => ReloadableState.DatabaseInfo;
     internal PgSerializerOptions SerializerOptions => ReloadableState.SerializerOptions;
+    internal IDbTypeResolver? DbTypeResolver => ReloadableState.DbTypeResolver;
 
     /// <summary>
     /// The current transaction status for this connector.

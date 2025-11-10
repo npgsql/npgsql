@@ -724,7 +724,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 break;
             }
 
-            p.ResolveTypeInfo(reloadableState.SerializerOptions);
+            p.ResolveTypeInfo(reloadableState.SerializerOptions, reloadableState.DbTypeResolver);
 
             if (validateValues)
             {

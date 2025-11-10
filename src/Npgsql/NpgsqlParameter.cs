@@ -41,6 +41,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal string TrimmedName { get; private protected set; } = PositionalName;
     internal const string PositionalName = "";
 
+    IDbTypeResolver? _dbTypeResolver;
     private protected PgTypeInfo? TypeInfo { get; private set; }
 
     internal PgTypeId PgTypeId { get; private set; }
@@ -321,11 +322,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             if (_dataTypeName is not null)
             {
-                var dataTypeName = Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName);
+                var dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName);
                 if (TryResolveDbType(dataTypeName, out var resolvedDbType))
                     return resolvedDbType;
 
-                return dataTypeName.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+                return NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDbType() ?? DbType.Object;
             }
 
             if (_npgsqlDbType is { } npgsqlDbType)
@@ -364,8 +365,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             if (_dbType is { } dbType)
             {
-                if (TryResolveDbTypeDataTypeName(dbType, out var dataTypeName))
-                    return Internal.Postgres.DataTypeName.FromDisplayName(dataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+                if (TryResolveDbTypeDataTypeName(dbType, out var normalizedDataTypeName))
+                    return NpgsqlDbTypeExtensions.ToNpgsqlDbType(normalizedDataTypeName) ?? NpgsqlDbType.Unknown;
 
                 return dbType.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
             }
@@ -522,10 +523,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
-    bool TryResolveDbType(DataTypeName dataTypeName, out DbType dbType)
+    bool TryResolveDbType(string dataTypeName, out DbType dbType)
     {
-        if (TypeInfo?.Options is { DbTypeResolver: { } dbTypeResolver } options
-            && dbTypeResolver.GetDbType(dataTypeName, options) is { } result)
+        if (_dbTypeResolver?.GetDbType(dataTypeName) is { } result)
         {
             dbType = result;
             return true;
@@ -535,16 +535,15 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         return false;
     }
 
-    bool TryResolveDbTypeDataTypeName(DbType dbType, [NotNullWhen(true)]out string? dataTypeName)
+    bool TryResolveDbTypeDataTypeName(DbType dbType, [NotNullWhen(true)]out string? normalizedDataTypeName)
     {
-        if (TypeInfo?.Options is { DbTypeResolver: { } dbTypeResolver } options
-                                  && dbTypeResolver.GetDataTypeName(dbType, options) is { } result)
+        if (_dbTypeResolver?.GetDataTypeName(dbType) is { } result)
         {
-            dataTypeName = result;
+            normalizedDataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
             return true;
         }
 
-        dataTypeName = null;
+        normalizedDataTypeName = null;
         return false;
     }
 
@@ -587,7 +586,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
-    internal void ResolveTypeInfo(PgSerializerOptions options)
+    internal void ResolveTypeInfo(PgSerializerOptions options, IDbTypeResolver? dbTypeResolver)
     {
         var typeInfo = TypeInfo;
         var previouslyResolved = ReferenceEquals(typeInfo?.Options, options);
@@ -604,7 +603,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else if (_dbType is { } dbType)
             {
-                if (options.DbTypeResolver?.GetDataTypeName(dbType, options) is { } result)
+                if (dbTypeResolver?.GetDataTypeName(dbType) is { } result)
                 {
                     dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
                 }
@@ -655,6 +654,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (!unspecifiedDBNull)
                 typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
 
+            if (dbTypeResolver is not null)
+                _dbTypeResolver = dbTypeResolver;
             TypeInfo = typeInfo;
         }
 

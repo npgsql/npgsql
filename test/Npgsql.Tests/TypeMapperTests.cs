@@ -68,7 +68,7 @@ public class TypeMapperTests : TestBase
         await EnsureExtensionAsync(adminConnection, "citext");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.AddTypeInfoResolverFactory(new ForceStringToCitextResolverFactory());
+        dataSourceBuilder.AddDbTypeResolverFactory(new ForceStringToCitextResolverFactory());
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -93,6 +93,7 @@ public class TypeMapperTests : TestBase
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.AddTypeInfoResolverFactory(new GuidTextConverterFactory(type));
+        dataSourceBuilder.AddDbTypeResolverFactory(new GuidTextDbTypeResolverFactory(type));
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -200,13 +201,13 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
 
     }
 
-    class ForceStringToCitextResolverFactory : CitextToStringTypeHandlerResolverFactory
+    class ForceStringToCitextResolverFactory : DbTypeResolverFactory
     {
-        public override IDbTypeResolver? CreateDbTypeResolver() => new DbTypeResolver();
+        public override IDbTypeResolver CreateDbTypeResolver(NpgsqlDatabaseInfo databaseInfo) => new DbTypeResolver();
 
         sealed class DbTypeResolver : IDbTypeResolver
         {
-            public string? GetDataTypeName(DbType dbType, PgSerializerOptions options)
+            public string? GetDataTypeName(DbType dbType)
             {
                 if (dbType == DbType.String)
                     return "citext";
@@ -214,9 +215,9 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
                 return null;
             }
 
-            public DbType? GetDbType(DataTypeName dataTypeName, PgSerializerOptions options)
+            public DbType? GetDbType(string dataTypeName)
             {
-                if (dataTypeName.UnqualifiedName == "citext")
+                if (DataTypeName.GetUnqualifiedName(dataTypeName) == "citext")
                     return DbType.String;
 
                 return null;
@@ -228,7 +229,6 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
     {
         public override IPgTypeInfoResolver? CreateArrayResolver() => null;
         public override IPgTypeInfoResolver CreateResolver() => new GuidTextTypeInfoResolver(typeName);
-        public override IDbTypeResolver? CreateDbTypeResolver() => new DbTypeResolver(typeName);
 
         sealed class GuidTextTypeInfoResolver(string typeName) : IPgTypeInfoResolver
         {
@@ -252,19 +252,24 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             protected override Guid ConvertFrom(string value) => Guid.Parse(value);
             protected override ReadOnlyMemory<char> ConvertTo(Guid value) => value.ToString().AsMemory();
         }
+    }
+
+    class GuidTextDbTypeResolverFactory(string typeName) : DbTypeResolverFactory
+    {
+        public override IDbTypeResolver CreateDbTypeResolver(NpgsqlDatabaseInfo databaseInfo) => new DbTypeResolver(typeName);
 
         sealed class DbTypeResolver(string typeName) : IDbTypeResolver
         {
-            public string? GetDataTypeName(DbType dbType, PgSerializerOptions options)
+            public string? GetDataTypeName(DbType dbType)
             {
                 if (dbType == DbType.Guid)
                     return typeName;
                 return null;
             }
 
-            public DbType? GetDbType(DataTypeName dataTypeName, PgSerializerOptions options)
+            public DbType? GetDbType(string dataTypeName)
             {
-                if (dataTypeName.UnqualifiedName == typeName)
+                if (dataTypeName == typeName)
                     return DbType.Guid;
                 return null;
             }
