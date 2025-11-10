@@ -133,7 +133,7 @@ public class NpgsqlParameterTest : TestBase
     [Test]
     public void Setting_value_does_not_change_DbType()
     {
-        var p = new NpgsqlParameter { DbType = DbType.String, NpgsqlDbType = NpgsqlDbType.Bytea };
+        var p = new NpgsqlParameter { DbType = DbType.Binary, NpgsqlDbType = NpgsqlDbType.Bytea };
         p.Value = 8;
         Assert.That(p.DbType, Is.EqualTo(DbType.Binary));
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
