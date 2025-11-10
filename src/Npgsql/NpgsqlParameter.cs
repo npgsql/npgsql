@@ -322,12 +322,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (_dataTypeName is not null)
             {
                 var dataTypeName = Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName);
-                if (TypeInfo?.Options.DbTypeResolver is { } dbTypeResolver)
-                {
-                    var mapppedDbType = dbTypeResolver.GetDbType(dataTypeName, TypeInfo.Options);
-                    if (mapppedDbType is { } mappedDbType)
-                        return mappedDbType;
-                }
+                if (TryResolveDbType(dataTypeName, out var resolvedDbType))
+                    return resolvedDbType;
+
                 return dataTypeName.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
             }
 
@@ -367,16 +364,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             if (_dbType is { } dbType)
             {
-                if (TypeInfo?.Options.DbTypeResolver is { } dbTypeResolver)
-                {
-                    var mapppedDataTypeName = dbTypeResolver.GetDataTypeName(dbType, TypeInfo.Options);
-                    if (mapppedDataTypeName is not null)
-                        return Internal.Postgres.DataTypeName.FromDisplayName(mapppedDataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
-                }
-                else if (dbType.ToNpgsqlDbType() is { } npgsqlDbType)
-                {
-                    return npgsqlDbType;
-                }
+                if (TryResolveDbTypeDataTypeName(dbType, out var dataTypeName))
+                    return Internal.Postgres.DataTypeName.FromDisplayName(dataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+
+                return dbType.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
             }
 
             // Infer from value but don't cache
@@ -418,18 +409,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             if (_dbType is { } dbType)
             {
-                if (TypeInfo?.Options.DbTypeResolver is { } dbTypeResolver)
-                {
-                    var mapppedDataTypeName = dbTypeResolver.GetDataTypeName(dbType, TypeInfo.Options);
-                    if (mapppedDataTypeName is not null)
-                        return mapppedDataTypeName;
-                }
-                else if (dbType.ToNpgsqlDbType() is { } npgsqlDbTypeFromDbType)
-                {
-                    var unqualifiedName = npgsqlDbTypeFromDbType.ToUnqualifiedDataTypeName();
-                    if (unqualifiedName is not null)
-                        return Internal.Postgres.DataTypeName.ValidatedName("pg_catalog." + unqualifiedName).UnqualifiedDisplayName;
-                }
+                if (TryResolveDbTypeDataTypeName(dbType, out var dataTypeName))
+                    return dataTypeName;
+
+                var unqualifiedName = dbType.ToNpgsqlDbType()?.ToUnqualifiedDataTypeName();
+                return unqualifiedName is null ? null : Internal.Postgres.DataTypeName.ValidatedName(
+                    "pg_catalog." + unqualifiedName).UnqualifiedDisplayName;
             }
 
             // Infer from value but don't cache
@@ -536,6 +521,32 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected virtual Type StaticValueType => typeof(object);
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
+
+    bool TryResolveDbType(DataTypeName dataTypeName, out DbType dbType)
+    {
+        if (TypeInfo?.Options is { DbTypeResolver: { } dbTypeResolver } options
+            && dbTypeResolver.GetDbType(dataTypeName, options) is { } result)
+        {
+            dbType = result;
+            return true;
+        }
+
+        dbType = default;
+        return false;
+    }
+
+    bool TryResolveDbTypeDataTypeName(DbType dbType, [NotNullWhen(true)]out string? dataTypeName)
+    {
+        if (TypeInfo?.Options is { DbTypeResolver: { } dbTypeResolver } options
+                                  && dbTypeResolver.GetDataTypeName(dbType, options) is { } result)
+        {
+            dataTypeName = result;
+            return true;
+        }
+
+        dataTypeName = null;
+        return false;
+    }
 
     internal void SetOutputValue(NpgsqlDataReader reader, int ordinal)
     {
