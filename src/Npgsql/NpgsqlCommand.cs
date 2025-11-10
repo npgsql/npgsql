@@ -671,7 +671,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateValues: false, batchCommand.CommandType);
+                batchCommand._parameters?.ProcessParameters(connector.ReloadableState, validateValues: false, batchCommand.CommandType);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
@@ -689,7 +689,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
         else
         {
-            _parameters?.ProcessParameters(connector.SerializerOptions, validateValues: false, CommandType);
+            _parameters?.ProcessParameters(connector.ReloadableState, validateValues: false, CommandType);
             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
             foreach (var batchCommand in InternalBatchCommands)
@@ -1410,6 +1410,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (connector is not null)
             {
                 var logger = connector.CommandLogger;
+                var reloadableState = connector.ReloadableState;
 
                 cancellationToken.ThrowIfCancellationRequested();
                 // We cannot pass a token here, as we'll cancel a non-send query
@@ -1440,7 +1441,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     goto case false;
                                 }
 
-                                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, batchCommand.CommandType);
+                                batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
                             }
                         }
                         else
@@ -1453,7 +1454,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 ResetPreparation();
                                 goto case false;
                             }
-                            _parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
+                            _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
                         }
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
@@ -1469,7 +1470,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var batchCommand = InternalBatchCommands[i];
 
-                                batchCommand._parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, batchCommand.CommandType);
+                                batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
                                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                                 if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1481,7 +1482,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                         else
                         {
-                            _parameters?.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
+                            _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
                             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
@@ -1565,6 +1566,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 // The connection isn't bound to a connector - it's multiplexing time.
                 var dataSource = (MultiplexingDataSource)conn.NpgsqlDataSource;
+                var reloadableState = dataSource.CurrentReloadableState;
 
                 if (!async)
                 {
@@ -1577,13 +1579,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
-                        batchCommand._parameters?.ProcessParameters(dataSource.SerializerOptions, validateValues: true, batchCommand.CommandType);
+                        batchCommand._parameters?.ProcessParameters(reloadableState, validateValues: true, batchCommand.CommandType);
                         ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
                     }
                 }
                 else
                 {
-                    _parameters?.ProcessParameters(dataSource.SerializerOptions, validateValues: true, CommandType);
+                    _parameters?.ProcessParameters(reloadableState, validateValues: true, CommandType);
                     ProcessRawQuery(null, standardConformingStrings: true, batchCommand: null);
                 }
 

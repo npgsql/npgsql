@@ -117,12 +117,13 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     internal int Id => BackendProcessId;
 
-    internal PgSerializerOptions SerializerOptions { get; set; } = default!;
+    internal NpgsqlDataSource.ReloadableState ReloadableState = null!;
 
     /// <summary>
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
     /// </summary>
-    public NpgsqlDatabaseInfo DatabaseInfo { get; internal set; } = default!;
+    public NpgsqlDatabaseInfo DatabaseInfo => ReloadableState.DatabaseInfo;
+    internal PgSerializerOptions SerializerOptions => ReloadableState.SerializerOptions;
 
     /// <summary>
     /// The current transaction status for this connector.
@@ -507,10 +508,9 @@ public sealed partial class NpgsqlConnector
 
             await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken).ConfigureAwait(false);
 
-            Debug.Assert(DataSource.SerializerOptions is not null);
-            Debug.Assert(DataSource.DatabaseInfo is not null);
-            SerializerOptions = DataSource.SerializerOptions;
-            DatabaseInfo = DataSource.DatabaseInfo;
+            // The connector directly references the current reloadable state reference, to protect it against changes by a concurrent
+            // ReloadTypes. We update them here before returning the connector from the pool.
+            ReloadableState = DataSource.CurrentReloadableState;
 
             if (Settings.Pooling && Settings is { Multiplexing: false, NoResetOnClose: false } && DatabaseInfo.SupportsDiscard)
             {

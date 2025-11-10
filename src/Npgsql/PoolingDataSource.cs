@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Util;
@@ -239,12 +238,9 @@ class PoolingDataSource : NpgsqlDataSource
             return false;
         }
 
-        // The connector directly references the data source type mapper into the connector, to protect it against changes by a concurrent
+        // The connector directly references the current reloadable state reference, to protect it against changes by a concurrent
         // ReloadTypes. We update them here before returning the connector from the pool.
-        Debug.Assert(SerializerOptions is not null);
-        Debug.Assert(DatabaseInfo is not null);
-        connector.SerializerOptions = SerializerOptions;
-        connector.DatabaseInfo = DatabaseInfo;
+        connector.ReloadableState = CurrentReloadableState;
 
         Debug.Assert(connector.State == ConnectorState.Ready,
             $"Got idle connector but {nameof(connector.State)} is {connector.State}");

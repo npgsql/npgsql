@@ -431,7 +431,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     public async Task Application_name_env_var()
     {
         const string testAppName = "MyTestApp";
-        
+
         // Note that the pool is unaware of the environment variable, so if a connection is
         // returned from the pool it may contain the wrong application name
         using var _ = SetEnvironmentVariable("PGAPPNAME", testAppName);
@@ -444,7 +444,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     public async Task Application_name_connection_param()
     {
         const string testAppName = "MyTestApp2";
-        
+
         await using var dataSource = CreateDataSource(csb => csb.ApplicationName = testAppName);
         await using var conn = await dataSource.OpenConnectionAsync();
         Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo(testAppName));
@@ -456,7 +456,7 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     {
         const string envAppName = "EnvApp";
         const string connAppName = "ConnApp";
-        
+
         using var _ = SetEnvironmentVariable("PGAPPNAME", envAppName);
         await using var dataSource = CreateDataSource(csb => csb.ApplicationName = connAppName);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -774,25 +774,26 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
                 });
             });
             using var conn = await dataSource.OpenConnectionAsync();
+            var databaseInfo = dataSource.CurrentReloadableState.DatabaseInfo;
             if (enabled)
             {
-                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
+                Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
                 if (testSchema == "public" || otherSchema == "public")
                 {
-                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                    Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                    Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
                 }
                 else
                 {
-                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                    Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"), Is.False);
+                    Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                    Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"), Is.False);
                 }
             }
             else
             {
-                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
-                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
-                Assert.That(dataSource.DatabaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
+                Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_1"));
+                Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_2"));
+                Assert.That(databaseInfo.CompositeTypes.Any(x => x.Name == "test_type_3"));
             }
         }
         finally
