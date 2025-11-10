@@ -7,9 +7,9 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.Tests.Types;
 
-[TestFixture(true)]
-#if DEBUG
 [TestFixture(false)]
+#if DEBUG
+[TestFixture(true)]
 [NonParallelizable]
 #endif
 public sealed class DateTimeInfinityTests : TestBase, IDisposable
@@ -70,7 +70,7 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
         => AssertType(new(dateTime.Ticks, DateTimeKind.Utc), DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
             "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTime, DbType.DateTime,
             comparer: MaxValuePrecisionLenientComparer,
-            isDefault: true, isNpgsqlDbTypeInferredFromClrType: false);
+            isDefault: true);
 
     [Test, TestCaseSource(nameof(TimestampTzDateTimeOffsetValues))]
     public Task TimestampTz_DateTimeOffset(DateTimeOffset dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
