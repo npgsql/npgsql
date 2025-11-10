@@ -213,21 +213,21 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 
     // TryBind for reading.
-    internal bool TryBind(DataFormat format, out PgConverterInfo info)
+    internal bool TryBindField(DataFormat format, out PgFieldBindingContext context)
     {
         if (!CanConvert(Converter, format, out var bufferRequirements))
         {
-            info = default;
+            context = default;
             return false;
         }
-        info = new(this, bufferRequirements.Read);
+        context = new(format, bufferRequirements.Read);
         return true;
     }
 
     // Bind for reading.
-    internal PgConverterInfo Bind(DataFormat format)
+    internal PgFieldBindingContext BindField(DataFormat format)
     {
-        if (!TryBind(format, out var info))
+        if (!TryBindField(format, out var info))
             ThrowHelper.ThrowInvalidOperationException($"Converter does not support {format} format.");
 
         return info;
@@ -294,6 +294,18 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 }
 
+readonly struct PgFieldBindingContext
+{
+    internal PgFieldBindingContext(DataFormat dataFormat, Size bufferRequirement)
+    {
+        DataFormat = dataFormat;
+        BufferRequirement = bufferRequirement;
+    }
+
+    public DataFormat DataFormat { get; }
+    public Size BufferRequirement { get; }
+}
+
 readonly struct PgValueBindingContext
 {
     public DataFormat DataFormat { get; }
@@ -311,27 +323,4 @@ readonly struct PgValueBindingContext
 
     [MemberNotNullWhen(false, nameof(Size))]
     public bool IsDbNullBinding => Size is null;
-}
-
-readonly struct PgConverterInfo
-{
-    readonly PgConcreteTypeInfo _typeInfo;
-
-    public PgConverterInfo(PgConcreteTypeInfo pgTypeInfo, Size bufferRequirement)
-    {
-        _typeInfo = pgTypeInfo;
-        BufferRequirement = bufferRequirement;
-    }
-
-    public bool IsDefault => _typeInfo is null;
-
-    public Type TypeToConvert => _typeInfo.Type;
-
-    public PgTypeInfo TypeInfo => _typeInfo;
-
-    public PgConverter Converter => _typeInfo.Converter;
-    public Size BufferRequirement { get; }
-
-    /// Whether Converter.TypeToConvert matches PgTypeInfo.Type, if it doesn't object apis should be used.
-    public bool IsBoxingConverter => _typeInfo.IsBoxing;
 }

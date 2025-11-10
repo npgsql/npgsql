@@ -49,21 +49,22 @@ abstract class CompositeFieldInfo
         }
 
         var concreteTypeInfo = PgTypeInfo.GetConcreteTypeInfo(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
-        if (!concreteTypeInfo.TryBind(DataFormat.Binary, out var converterInfo))
+        if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var bindingContext))
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
 
-        readRequirement = converterInfo.BufferRequirement;
-        return converterInfo.Converter;
+        readRequirement = bindingContext.BufferRequirement;
+        return concreteTypeInfo.Converter;
     }
 
     public PgConverter GetWriteInfo(object instance, out Size writeRequirement)
     {
-        if (Converter is null)
-            return BindValue(instance, out writeRequirement);
+        if (Converter is not null)
+        {
+            writeRequirement = _binaryBufferRequirements.Write;
+            return Converter;
+        }
 
-        writeRequirement = _binaryBufferRequirements.Write;
-        return Converter;
-
+        return BindValue(instance, out writeRequirement);
     }
 
     protected ValueTask ReadAsObject(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken)
