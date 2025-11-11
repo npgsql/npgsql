@@ -52,7 +52,7 @@ public class MultirangeTests : TestBase
                     new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
                     new(new(2020, 1, 10), true, false, default, false, true)
                 },
-                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", true, false, default(NpgsqlRange<DateOnly>))
+                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", true, true, default(NpgsqlRange<DateOnly>))
             .SetName("DateTime DateMultirange"),
 
         // tsmultirange
@@ -81,23 +81,23 @@ public class MultirangeTests : TestBase
                     new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
                     new(new(2020, 1, 10), true, false, default, false, true)
                 },
-                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", false, false, default(NpgsqlRange<DateOnly>))
+                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", false, true, default(NpgsqlRange<DateOnly>))
             .SetName("DateOnly")
     ];
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_array<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string pgTypeName, bool isDefaultForReading, bool isDefaultForWriting, TRange _)
-        => AssertType(multirangeAsArray, sqlLiteral, pgTypeName, isDefaultForReading: isDefaultForReading,
-            isDefaultForWriting: isDefaultForWriting);
+        T multirangeAsArray, string sqlLiteral, string pgTypeName, bool isDataTypeInferredFromValue, bool isValueTypeDefaultFieldType, TRange _)
+        => AssertType(multirangeAsArray, sqlLiteral, pgTypeName,
+            isDataTypeInferredFromValue: isDataTypeInferredFromValue, isValueTypeDefaultFieldType: isValueTypeDefaultFieldType);
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_list<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string pgTypeName, bool isDefaultForReading, bool isDefaultForWriting, TRange _)
+        T multirangeAsArray, string sqlLiteral, string pgTypeName, bool isDataTypeInferredFromValue, bool isValueTypeDefaultFieldType, TRange _)
         where T : IList<TRange>
         => AssertType(
-            new List<TRange>(multirangeAsArray),
-            sqlLiteral, pgTypeName, isDefaultForReading: false, isDefaultForWriting: isDefaultForWriting);
+            new List<TRange>(multirangeAsArray), sqlLiteral, pgTypeName,
+            isDataTypeInferredFromValue: isDataTypeInferredFromValue, isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Unmapped_multirange_with_mapped_subtype()

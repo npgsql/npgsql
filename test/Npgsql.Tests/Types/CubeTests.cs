@@ -22,7 +22,7 @@ public class CubeTests : MultiplexingTestBase
 
     [Test, TestCaseSource(nameof(CubeValues))]
     public Task Cube(NpgsqlCube cube, string sqlLiteral)
-        => AssertType(cube, sqlLiteral, "cube", isDefault: true, isDataTypeInferredFromValue: false);
+        => AssertType(cube, sqlLiteral, "cube", isDataTypeInferredFromValue: false);
 
     [Test]
     public void Cube_Constructor_SingleValue()
@@ -153,7 +153,6 @@ public class CubeTests : MultiplexingTestBase
             data,
             @"{""(1, 2),(3, 4)"",""(5, 6)"",""(1),(2)""}",
             "cube[]",
-            isDefault: true,
             isDataTypeInferredFromValue: false);
     }
 
@@ -170,7 +169,6 @@ public class CubeTests : MultiplexingTestBase
             new NpgsqlCube(new[] { -1.0, -2.0, -3.0 }, new[] { -4.0, -5.0, -6.0 }),
             "(-1, -2, -3),(-4, -5, -6)",
             "cube",
-            isDefault: true,
             isDataTypeInferredFromValue: false);
 
     [Test]
@@ -198,7 +196,6 @@ public class CubeTests : MultiplexingTestBase
             new NpgsqlCube(0.0, 0.0),
             "(0)",
             "cube",
-            isDefault: true,
             isDataTypeInferredFromValue: false);
 
     [Test]
@@ -220,7 +217,6 @@ public class CubeTests : MultiplexingTestBase
             new NpgsqlCube(lowerLeft, upperRight),
             expected,
             "cube",
-            isDefault: true,
             isDataTypeInferredFromValue: false);
     }
 
@@ -247,7 +243,7 @@ public class CubeTests : MultiplexingTestBase
         dataSourceBuilder.EnableCube();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new NpgsqlCube(1.0, 2.0), "(1),(2)", "cube", isDefaultForWriting: false, skipArrayCheck: true);
+        await AssertType(dataSource, new NpgsqlCube(1.0, 2.0), "(1),(2)", "cube", isDataTypeInferredFromValue: false, skipArrayCheck: true);
     }
 
     [Test]
@@ -258,7 +254,7 @@ public class CubeTests : MultiplexingTestBase
         dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new NpgsqlCube(1.0, 2.0), "(1),(2)", "cube", isDefaultForWriting: false);
+        await AssertType(dataSource, new NpgsqlCube(1.0, 2.0), "(1),(2)", "cube", isDataTypeInferredFromValue: false);
     }
 
     [OneTimeSetUp]

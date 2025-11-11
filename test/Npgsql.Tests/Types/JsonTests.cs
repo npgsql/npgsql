@@ -16,7 +16,8 @@ public class JsonTests : MultiplexingTestBase
 {
     [Test]
     public async Task As_string()
-        => await AssertType("""{"K": "V"}""", """{"K": "V"}""", PostgresType, isDefaultForWriting: false);
+        => await AssertType("""{"K": "V"}""", """{"K": "V"}""",
+            PostgresType, isDataTypeInferredFromValue: false);
 
     [Test]
     public async Task As_string_long()
@@ -29,7 +30,8 @@ public class JsonTests : MultiplexingTestBase
             .Append(@"""}")
             .ToString();
 
-        await AssertType(value, value, PostgresType, isDefaultForWriting: false);
+        await AssertType(value, value,
+            PostgresType, isDataTypeInferredFromValue: false);
     }
 
     [Test]
@@ -45,25 +47,30 @@ public class JsonTests : MultiplexingTestBase
 
     [Test]
     public async Task As_char_array()
-        => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""", PostgresType, isDefault: false);
+        => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""", PostgresType,
+            isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task As_bytes()
-        => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""", PostgresType, isDefault: false);
+        => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""", PostgresType,
+            isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Write_as_ReadOnlyMemory_of_byte()
-        => await AssertTypeWrite(new ReadOnlyMemory<byte>("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""", PostgresType,
-            isDefault: false);
+        => await AssertTypeWrite(new ReadOnlyMemory<byte>("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
+            PostgresType, isDataTypeInferredFromValue: false);
 
     [Test]
     public async Task Write_as_ArraySegment_of_char()
-        => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""", PostgresType,
-            isDefault: false);
+        => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""",
+            PostgresType, isDataTypeInferredFromValue: false);
 
     [Test]
     public Task As_MemoryStream()
-        => AssertTypeWrite(() => new MemoryStream("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""", PostgresType, isDefault: false);
+        => AssertTypeWrite(() => new MemoryStream("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
+            PostgresType, isDataTypeInferredFromValue: false);
 
     [Test]
     public async Task As_JsonDocument()
@@ -71,8 +78,9 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("""{"K": "V"}"""),
             IsJsonb ? """{"K": "V"}""" : """{"K":"V"}""",
             PostgresType,
-            isDefault: false,
-            comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString());
+            isDataTypeInferredFromValue: false,
+            comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString(),
+            isValueTypeDefaultFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5540")]
     public async Task As_JsonDocument_with_null_root()
@@ -80,8 +88,9 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("null"),
             "null",
             PostgresType,
-            isDefault: false,
+            isDataTypeInferredFromValue: false,
             comparer: (x, y) => x.RootElement.ValueKind == y.RootElement.ValueKind,
+            isValueTypeDefaultFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -90,8 +99,9 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("null").RootElement,
             "null",
             PostgresType,
-            isDefault: false,
+            isDataTypeInferredFromValue: false,
             comparer: (x, y) => x.ValueKind == y.ValueKind,
+            isValueTypeDefaultFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -112,8 +122,8 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}",
             @"{""p"": 1}",
             PostgresType,
-            isDefault: false,
-            isDataTypeInferredFromValue: false);
+            isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: true);
 
     [Test]
     public Task Roundtrip_char_array()
@@ -121,8 +131,8 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
             PostgresType,
-            isDefault: false,
-            isDataTypeInferredFromValue: false);
+            isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Roundtrip_byte_array()
@@ -130,8 +140,8 @@ public class JsonTests : MultiplexingTestBase
             Encoding.ASCII.GetBytes(@"{""p"": 1}"),
             @"{""p"": 1}",
             PostgresType,
-            isDefault: false,
-            isDataTypeInferredFromValue: false);
+            isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]
@@ -166,9 +176,8 @@ public class JsonTests : MultiplexingTestBase
             IsJsonb ? """{"Bar": 8}""" : """{"Bar":8}""",
             PostgresType,
             // By default we map JsonObject to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isDataTypeInferredFromValue: false,
+            isDataTypeInferredFromValue: IsJsonb,
+            isValueTypeDefaultFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]
@@ -178,9 +187,8 @@ public class JsonTests : MultiplexingTestBase
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             PostgresType,
             // By default we map JsonArray to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isDataTypeInferredFromValue: false,
+            isDataTypeInferredFromValue: IsJsonb,
+            isValueTypeDefaultFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]
