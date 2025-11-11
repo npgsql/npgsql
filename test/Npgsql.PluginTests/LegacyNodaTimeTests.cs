@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
+using Npgsql.NodaTime.Internal;
 using Npgsql.Tests;
 using NUnit.Framework;
 
