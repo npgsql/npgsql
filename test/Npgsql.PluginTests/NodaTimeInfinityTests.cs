@@ -26,7 +26,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
             new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue),
             "[-infinity,infinity]",
             "daterange",
-            isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
+            isDataTypeInferredFromValue: false, skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
 
         await AssertType(
             new [] {new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue)},
@@ -41,7 +41,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         await AssertType(
             new [] {new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue)},
             """{[-infinity,infinity]}""",
-            "datemultirange", isNpgsqlDbTypeInferredFromClrType: false, skipArrayCheck: true);
+            "datemultirange", isDataTypeInferredFromValue: false, skipArrayCheck: true);
     }
 
     [Test]

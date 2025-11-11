@@ -160,7 +160,7 @@ public class NetTopologySuiteTests : TestBase
             new Geometry[] { point },
             '{' + GetSqlLiteral(point) + '}',
             "geometry[]",
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
     }
 
     [Test]

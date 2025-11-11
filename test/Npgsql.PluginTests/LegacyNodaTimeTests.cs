@@ -19,7 +19,7 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             "1998-04-12 13:26:38.789+02",
             "timestamp with time zone",
             DbType.DateTimeOffset,
-            isNpgsqlDbTypeInferredFromClrType: false, isDefault: false);
+            isDataTypeInferredFromValue: false, isDefault: false);
 
     [Test]
     public Task Timestamp_as_Instant()
@@ -28,7 +28,7 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             "1998-04-12 13:26:38.789",
             "timestamp without time zone",
             DbType.DateTime,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Timestamp_as_LocalDateTime()
@@ -38,7 +38,7 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             "timestamp without time zone",
             DbType.DateTime,
             isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Timestamptz_as_Instant()
@@ -48,7 +48,7 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             "timestamp with time zone",
             DbType.DateTimeOffset,
             isDefaultForWriting: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public async Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()

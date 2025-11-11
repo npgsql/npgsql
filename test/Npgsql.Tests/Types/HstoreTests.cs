@@ -17,11 +17,11 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
                 {"cd", "hello"}
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
-            "hstore", isNpgsqlDbTypeInferredFromClrType: false);
+            "hstore", isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Hstore_empty()
-        => AssertType(new Dictionary<string, string?>(), @"", "hstore", isNpgsqlDbTypeInferredFromClrType: false);
+        => AssertType(new Dictionary<string, string?>(), @"", "hstore", isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Hstore_as_ImmutableDictionary()
@@ -36,7 +36,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             immutableDictionary,
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            isDefaultForReading: false, isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForReading: false, isDataTypeInferredFromValue: false);
     }
 
     [Test]
@@ -50,7 +50,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            isDefaultForReading: false, isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForReading: false, isDataTypeInferredFromValue: false);
 
     [OneTimeSetUp]
     public async Task SetUp()

@@ -27,7 +27,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName,
             isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_string()
@@ -37,7 +37,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}",
             dataTypeName,
             isDefaultForWriting: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_char_array()
@@ -47,7 +47,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}",
             dataTypeName,
             isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_byte_array()
@@ -57,7 +57,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}",
             dataTypeName,
             isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Roundtrip_JObject()
@@ -69,7 +69,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             // By default we map JObject to jsonb
             isDefaultForWriting: IsJsonb,
             isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Roundtrip_JArray()
@@ -81,7 +81,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             // By default we map JArray to jsonb
             isDefaultForWriting: IsJsonb,
             isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public async Task Deserialize_failure()
@@ -113,7 +113,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName,
             isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
     }
 
     [Test]
@@ -132,7 +132,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             dataTypeName,
             isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
     }
 
     class DateWrapper
@@ -160,7 +160,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             IsJsonb ? "{\"Date\": \"The 20th of April, 2018\"}" : "{\"Date\":\"The 20th of April, 2018\"}",
             dataTypeName,
             isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
     }
 
     [Test]

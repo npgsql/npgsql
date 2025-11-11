@@ -113,7 +113,7 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}",
             PostgresType,
             isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Roundtrip_char_array()
@@ -122,7 +122,7 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}",
             PostgresType,
             isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Roundtrip_byte_array()
@@ -131,7 +131,7 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}",
             PostgresType,
             isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]
@@ -168,7 +168,7 @@ public class JsonTests : MultiplexingTestBase
             // By default we map JsonObject to jsonb
             isDefaultForWriting: IsJsonb,
             isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false,
+            isDataTypeInferredFromValue: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]
@@ -185,7 +185,7 @@ public class JsonTests : MultiplexingTestBase
             // By default we map JsonArray to jsonb
             isDefaultForWriting: IsJsonb,
             isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false,
+            isDataTypeInferredFromValue: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]
