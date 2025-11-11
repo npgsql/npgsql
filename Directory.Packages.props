@@ -32,7 +32,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-rc.2.25502.107" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.6" />
