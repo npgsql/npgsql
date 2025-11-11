@@ -69,7 +69,7 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
         => AssertType(new(dateTime.Ticks, DateTimeKind.Utc), DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
             "timestamp with time zone", DbType.DateTime, DbType.DateTime,
             comparer: MaxValuePrecisionLenientComparer,
-            isDefault: true, isNpgsqlDbTypeInferredFromClrType: false);
+            isDefault: true, isDataTypeInferredFromValue: false);
 
     [Test, TestCaseSource(nameof(TimestampTzDateTimeOffsetValues))]
     public Task TimestampTz_DateTimeOffset(DateTimeOffset dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)

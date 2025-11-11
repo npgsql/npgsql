@@ -39,14 +39,14 @@ public abstract class TestBase
         bool isDefaultForReading = true,
         bool isDefaultForWriting = true,
         bool? isDefault = null,
-        bool isNpgsqlDbTypeInferredFromClrType = true,
+        bool isDataTypeInferredFromValue = true,
         Func<T, T, bool>? comparer = null,
         bool skipArrayCheck = false)
     {
         await using var connection = await OpenConnectionAsync();
         return await AssertType(
             connection, value, sqlLiteral, pgTypeName, dbType, inferredDbType, isDefaultForReading, isDefaultForWriting,
-            isDefault, isNpgsqlDbTypeInferredFromClrType, comparer, skipArrayCheck);
+            isDefault, isDataTypeInferredFromValue, comparer, skipArrayCheck);
     }
 
     public async Task<T> AssertType<T>(
@@ -59,14 +59,14 @@ public abstract class TestBase
         bool isDefaultForReading = true,
         bool isDefaultForWriting = true,
         bool? isDefault = null,
-        bool isNpgsqlDbTypeInferredFromClrType = true,
+        bool isDataTypeInferredFromValue = true,
         Func<T, T, bool>? comparer = null,
         bool skipArrayCheck = false)
     {
         await using var connection = await dataSource.OpenConnectionAsync();
 
         return await AssertType(connection, value, sqlLiteral, pgTypeName, dbType, inferredDbType, isDefaultForReading,
-            isDefaultForWriting, isDefault, isNpgsqlDbTypeInferredFromClrType, comparer, skipArrayCheck);
+            isDefaultForWriting, isDefault, isDataTypeInferredFromValue, comparer, skipArrayCheck);
     }
 
     public async Task<T> AssertType<T>(
@@ -79,14 +79,14 @@ public abstract class TestBase
         bool isDefaultForReading = true,
         bool isDefaultForWriting = true,
         bool? isDefault = null,
-        bool isNpgsqlDbTypeInferredFromClrType = true,
+        bool isDataTypeInferredFromValue = true,
         Func<T, T, bool>? comparer = null,
         bool skipArrayCheck = false)
     {
         if (isDefault is not null)
             isDefaultForReading = isDefaultForWriting = isDefault.Value;
 
-        await AssertTypeWrite(connection, () => value, sqlLiteral, pgTypeName, dbType, inferredDbType, isDefaultForWriting, isNpgsqlDbTypeInferredFromClrType, skipArrayCheck);
+        await AssertTypeWrite(connection, () => value, sqlLiteral, pgTypeName, dbType, inferredDbType, isDefaultForWriting, isDataTypeInferredFromValue, skipArrayCheck);
         return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading, comparer, fieldType: null, skipArrayCheck);
     }
 
@@ -111,13 +111,13 @@ public abstract class TestBase
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefault = true,
-        bool isNpgsqlDbTypeInferredFromClrType = true,
+        bool isDataTypeInferredFromValue = true,
         bool skipArrayCheck = false)
     {
         await using var connection = await dataSource.OpenConnectionAsync();
 
         await AssertTypeWrite(connection, () => value, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault,
-            isNpgsqlDbTypeInferredFromClrType, skipArrayCheck);
+            isDataTypeInferredFromValue, skipArrayCheck);
     }
 
     public Task AssertTypeWrite<T>(
@@ -127,10 +127,10 @@ public abstract class TestBase
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefault = true,
-        bool isNpgsqlDbTypeInferredFromClrType = true,
+        bool isDataTypeInferredFromValue = true,
         bool skipArrayCheck = false)
         => AssertTypeWrite(() => value, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault,
-            isNpgsqlDbTypeInferredFromClrType, skipArrayCheck);
+            isDataTypeInferredFromValue, skipArrayCheck);
 
     public async Task AssertTypeWrite<T>(
         Func<T> valueFactory,
@@ -139,11 +139,11 @@ public abstract class TestBase
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefault = true,
-        bool isNpgsqlDbTypeInferredFromClrType = true,
+        bool isDataTypeInferredFromValue = true,
         bool skipArrayCheck = false)
     {
         await using var connection = await OpenConnectionAsync();
-        await AssertTypeWrite(connection, valueFactory, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault, isNpgsqlDbTypeInferredFromClrType, skipArrayCheck);
+        await AssertTypeWrite(connection, valueFactory, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault, isDataTypeInferredFromValue, skipArrayCheck);
     }
 
     internal static async Task<T> AssertTypeRead<T>(
@@ -225,12 +225,12 @@ public abstract class TestBase
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefault = true,
-        bool isNpgsqlDbTypeInferredFromClrType = true,
+        bool isDataTypeInferredFromValue = true,
         bool skipArrayCheck = false)
     {
         await AssertTypeWriteCore(
             connection, valueFactory, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault,
-            isNpgsqlDbTypeInferredFromClrType);
+            isDataTypeInferredFromValue);
 
         // Check the corresponding array type as well
         if (!skipArrayCheck && !pgTypeName.EndsWith("[]", StringComparison.Ordinal))
@@ -243,7 +243,7 @@ public abstract class TestBase
                 dbType: null,
                 inferredDbType: null,
                 isDefault,
-                isNpgsqlDbTypeInferredFromClrType);
+                isDataTypeInferredFromValue);
         }
     }
 
@@ -255,11 +255,11 @@ public abstract class TestBase
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefault = true,
-        bool isNpgsqlDbTypeInferredFromClrType = true)
+        bool isDataTypeInferredFromValue = true)
     {
         var npgsqlDbType = DataTypeName.FromDisplayName(pgTypeName).ToNpgsqlDbType();
 
-        inferredDbType ??= isNpgsqlDbTypeInferredFromClrType ? dbType ?? DbType.Object : DbType.Object;
+        inferredDbType ??= isDataTypeInferredFromValue ? dbType ?? DbType.Object : DbType.Object;
 
         // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
         // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
@@ -342,16 +342,16 @@ public abstract class TestBase
 
         void CheckInference(bool valueOnlyInference = false)
         {
-            if (isNpgsqlDbTypeInferredFromClrType && npgsqlDbType is not null)
+            if (isDataTypeInferredFromValue && npgsqlDbType is not null)
             {
                 Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType),
                     () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
             }
 
-            Assert.That(p.DbType, Is.EqualTo(valueOnlyInference ? inferredDbType : isNpgsqlDbTypeInferredFromClrType ? inferredDbType : dbType ?? DbType.Object),
+            Assert.That(p.DbType, Is.EqualTo(valueOnlyInference ? inferredDbType : isDataTypeInferredFromValue ? inferredDbType : dbType ?? DbType.Object),
                 () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
 
-            if (isNpgsqlDbTypeInferredFromClrType)
+            if (isDataTypeInferredFromValue)
                 Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacets),
                     () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
         }

@@ -196,9 +196,9 @@ public class CommandParameterTests(MultiplexingMode multiplexingMode) : Multiple
     public async Task Object_generic_param_does_runtime_lookup()
     {
         await AssertTypeWrite<object>(1, "1", "integer", DbType.Int32, DbType.Int32, isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: true, skipArrayCheck: true);
+            isDataTypeInferredFromValue: true, skipArrayCheck: true);
         await AssertTypeWrite<object>(new[] {1, 1}, "{1,1}", "integer[]", isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: true, skipArrayCheck: true);
+            isDataTypeInferredFromValue: true, skipArrayCheck: true);
     }
 
     [Test]

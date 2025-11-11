@@ -22,7 +22,7 @@ public class CubeTests : MultiplexingTestBase
 
     [Test, TestCaseSource(nameof(CubeValues))]
     public Task Cube(NpgsqlCube cube, string sqlLiteral)
-        => AssertType(cube, sqlLiteral, "cube", isDefault: true, isNpgsqlDbTypeInferredFromClrType: false);
+        => AssertType(cube, sqlLiteral, "cube", isDefault: true, isDataTypeInferredFromValue: false);
 
     [Test]
     public void Cube_Constructor_SingleValue()
@@ -154,7 +154,7 @@ public class CubeTests : MultiplexingTestBase
             @"{""(1, 2),(3, 4)"",""(5, 6)"",""(1),(2)""}",
             "cube[]",
             isDefault: true,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
     }
 
     [Test]
@@ -171,7 +171,7 @@ public class CubeTests : MultiplexingTestBase
             "(-1, -2, -3),(-4, -5, -6)",
             "cube",
             isDefault: true,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public void Cube_Equality_HashCode()
@@ -199,7 +199,7 @@ public class CubeTests : MultiplexingTestBase
             "(0)",
             "cube",
             isDefault: true,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Cube_MaxDimensions()
@@ -221,7 +221,7 @@ public class CubeTests : MultiplexingTestBase
             expected,
             "cube",
             isDefault: true,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
     }
 
     [Test]

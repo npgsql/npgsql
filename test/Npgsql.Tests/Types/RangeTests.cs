@@ -246,7 +246,7 @@ class RangeTests : MultiplexingTestBase
             """{"[3,4)","[5,6)"}""",
             "int4range[]",
             isDefaultForWriting: !supportsMultirange,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            isDataTypeInferredFromValue: false);
     }
 
     [Test]
