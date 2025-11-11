@@ -9,15 +9,18 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
 {
     [Test]
     public Task LQuery()
-        => AssertType("Top.Science.*", "Top.Science.*", "lquery", isDefaultForWriting: false);
+        => AssertType("Top.Science.*", "Top.Science.*",
+            "lquery", isDataTypeInferredFromValue: false);
 
     [Test]
     public Task LTree()
-        => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", isDefaultForWriting: false);
+        => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy",
+            "ltree", isDataTypeInferredFromValue: false);
 
     [Test]
     public Task LTxtQuery()
-        => AssertType("Science & Astronomy", "Science & Astronomy", "ltxtquery", isDefaultForWriting: false);
+        => AssertType("Science & Astronomy", "Science & Astronomy",
+            "ltxtquery", isDataTypeInferredFromValue: false);
 
     [Test]
     public async Task LTree_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
@@ -36,24 +39,17 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     }
 
     [Test]
-    public async Task NpgsqlSlimSourceBuilder_EnableLTree()
+    public async Task NpgsqlSlimSourceBuilder_EnableLTree([Values] bool withArrays)
     {
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
         dataSourceBuilder.EnableLTree();
+        if(withArrays)
+            dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", isDefaultForWriting: false, skipArrayCheck: true);
-    }
-
-    [Test]
-    public async Task NpgsqlSlimSourceBuilder_EnableArrays()
-    {
-        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        dataSourceBuilder.EnableLTree();
-        dataSourceBuilder.EnableArrays();
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", isDefaultForWriting: false);
+        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy",
+            "ltree", isDataTypeInferredFromValue: false,
+            skipArrayCheck: !withArrays);
     }
 
     [OneTimeSetUp]

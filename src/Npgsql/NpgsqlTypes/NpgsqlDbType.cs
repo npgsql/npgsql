@@ -633,10 +633,6 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Char => DbType.String,
             NpgsqlDbType.Name => DbType.String,
             NpgsqlDbType.Citext => DbType.String,
-            NpgsqlDbType.Refcursor => DbType.Object,
-            NpgsqlDbType.Jsonb => DbType.Object,
-            NpgsqlDbType.Json => DbType.Object,
-            NpgsqlDbType.JsonPath => DbType.Object,
 
             // Date/time types
             NpgsqlDbType.Timestamp => LegacyTimestampBehavior ? DbType.DateTime : DbType.DateTime2,
@@ -648,8 +644,6 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Bytea => DbType.Binary,
             NpgsqlDbType.Boolean => DbType.Boolean,
             NpgsqlDbType.Uuid => DbType.Guid,
-
-            NpgsqlDbType.Unknown => DbType.Object,
 
             _ => DbType.Object
         };

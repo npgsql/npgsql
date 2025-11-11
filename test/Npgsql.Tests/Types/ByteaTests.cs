@@ -21,7 +21,7 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     [TestCase(new byte[] { 1, 2, 3, 4, 5 }, "\\x0102030405", TestName = "Bytea")]
     [TestCase(new byte[] { }, "\\x", TestName = "Bytea_empty")]
     public Task Bytea(byte[] byteArray, string sqlLiteral)
-        => AssertType(byteArray, sqlLiteral, "bytea", DbType.Binary);
+        => AssertType(byteArray, sqlLiteral, "bytea", dbType: DbType.Binary);
 
     [Test]
     public async Task Bytea_long()
@@ -38,24 +38,26 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     [Test]
     public Task AsMemory()
         => AssertType(
-            new Memory<byte>([1, 2, 3]), "\\x010203", "bytea", DbType.Binary, isDefault: false,
-            comparer: (left, right) => left.Span.SequenceEqual(right.Span));
+            new Memory<byte>([1, 2, 3]), "\\x010203", "bytea", dbType: DbType.Binary,
+            comparer: (left, right) => left.Span.SequenceEqual(right.Span),
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task AsReadOnlyMemory()
         => AssertType(
-            new ReadOnlyMemory<byte>([1, 2, 3]), "\\x010203", "bytea", DbType.Binary, isDefault: false,
-            comparer: (left, right) => left.Span.SequenceEqual(right.Span));
+            new ReadOnlyMemory<byte>([1, 2, 3]), "\\x010203", "bytea", dbType: DbType.Binary,
+            comparer: (left, right) => left.Span.SequenceEqual(right.Span),
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task AsArraySegment()
-        => AssertType(
-            new ArraySegment<byte>([1, 2, 3]), "\\x010203", "bytea", DbType.Binary, isDefault: false);
+        => AssertType(new ArraySegment<byte>([1, 2, 3]), "\\x010203",
+            "bytea", dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Write_as_MemoryStream()
         => AssertTypeWrite(
-            () => new MemoryStream([1, 2, 3]), "\\x010203", "bytea", DbType.Binary, isDefault: false);
+            () => new MemoryStream([1, 2, 3]), "\\x010203", "bytea", dbType: DbType.Binary);
 
     [Test]
     public Task Write_as_MemoryStream_truncated()
@@ -67,8 +69,7 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
             return ms;
         };
 
-        return AssertTypeWrite(
-            msFactory, "\\x020304", "bytea", DbType.Binary, isDefault: false);
+        return AssertTypeWrite(valueFactory: msFactory, "\\x020304", "bytea", dbType: DbType.Binary);
     }
 
     [Test]
@@ -85,8 +86,7 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
             return ms;
         };
 
-        return AssertTypeWrite(
-            msFactory, "\\x020304", "bytea", DbType.Binary, isDefault: false);
+        return AssertTypeWrite(valueFactory: msFactory, "\\x020304", "bytea", dbType: DbType.Binary);
     }
 
     [Test]
@@ -97,8 +97,7 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         rnd.NextBytes(bytes);
         var expectedSql = "\\x" + ToHex(bytes);
 
-        await AssertTypeWrite(
-            () => new MemoryStream(bytes), expectedSql, "bytea", DbType.Binary, isDefault: false);
+        await AssertTypeWrite(() => new MemoryStream(bytes), expectedSql, "bytea", dbType: DbType.Binary);
     }
 
     [Test]
@@ -110,8 +109,7 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         {
             await File.WriteAllBytesAsync(filePath, [1, 2, 3]);
 
-            await AssertTypeWrite(
-                () => FileStreamFactory(filePath, fsList), "\\x010203", "bytea", DbType.Binary, isDefault: false);
+            await AssertTypeWrite(() => FileStreamFactory(filePath, fsList), "\\x010203", "bytea", dbType: DbType.Binary);
         }
         finally
         {
@@ -146,8 +144,7 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
             await File.WriteAllBytesAsync(filePath, bytes);
             var expectedSql = "\\x" + ToHex(bytes);
 
-            await AssertTypeWrite(
-                () => FileStreamFactory(filePath, fsList), expectedSql, "bytea", DbType.Binary, isDefault: false);
+            await AssertTypeWrite(() => FileStreamFactory(filePath, fsList), expectedSql, "bytea", dbType: DbType.Binary);
         }
         finally
         {

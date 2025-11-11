@@ -18,29 +18,30 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [Test]
     public async Task Int16()
     {
-        await AssertType((short)8, "8", "smallint", DbType.Int16);
+        await AssertType((short)8, "8", "smallint", dbType: DbType.Int16);
         // Clr byte/sbyte maps to 'int2' as there is no byte type in PostgreSQL, byte[] maps to bytea however.
-        await AssertType((byte)8, "8", "smallint", DbType.Int16, isDefaultForReading: false, skipArrayCheck: true);
-        await AssertType((sbyte)8, "8", "smallint", DbType.Int16, isDefaultForReading: false);
+        await AssertType((byte)8, "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16,
+            isValueTypeDefaultFieldType: false, skipArrayCheck: true);
+        await AssertType((sbyte)8, "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
 
-        await AssertType(8,       "8", "smallint", DbType.Int16, isDefault: false);
-        await AssertType(8L,      "8", "smallint", DbType.Int16, isDefault: false);
-        await AssertType(8F,      "8", "smallint", DbType.Int16, isDefault: false);
-        await AssertType(8D,      "8", "smallint", DbType.Int16, isDefault: false);
-        await AssertType(8M,      "8", "smallint", DbType.Int16, isDefault: false);
+        await AssertType(8,       "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8L,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8M,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
     }
 
     [Test]
     public async Task Int32()
     {
-        await AssertType(8, "8", "integer", DbType.Int32);
+        await AssertType(8, "8", "integer", dbType: DbType.Int32);
 
-        await AssertType((short)8, "8", "integer", DbType.Int32, isDefault: false);
-        await AssertType(8L,       "8", "integer", DbType.Int32, isDefault: false);
-        await AssertType((byte)8,  "8", "integer", DbType.Int32, isDefault: false);
-        await AssertType(8F,       "8", "integer", DbType.Int32, isDefault: false);
-        await AssertType(8D,       "8", "integer", DbType.Int32, isDefault: false);
-        await AssertType(8M,       "8", "integer", DbType.Int32, isDefault: false);
+        await AssertType((short)8, "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8L,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType((byte)8,  "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8M,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
     }
 
     [Test, Description("Tests some types which are aliased to UInt32")]
@@ -48,7 +49,7 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [TestCase("xid", TestName="XID")]
     [TestCase("cid", TestName="CID")]
     public Task UInt32(string pgTypeName)
-        => AssertType(8u, "8", pgTypeName, isDefaultForWriting: false);
+        => AssertType(8u, "8", pgTypeName, isDataTypeInferredFromValue: false);
 
     [Test]
     [TestCase("xid8", TestName="XID8")]
@@ -57,20 +58,20 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "13.0", "The xid8 type was introduced in PostgreSQL 13");
 
-        await AssertType(8ul, "8", pgTypeName, isDefaultForWriting: false);
+        await AssertType(8ul, "8", pgTypeName, isDataTypeInferredFromValue: false);
     }
 
     [Test]
     public async Task Int64()
     {
-        await AssertType(8L, "8", "bigint", DbType.Int64);
+        await AssertType(8L, "8", "bigint", dbType: DbType.Int64);
 
-        await AssertType((short)8, "8", "bigint", DbType.Int64, isDefault: false);
-        await AssertType(8,        "8", "bigint", DbType.Int64, isDefault: false);
-        await AssertType((byte)8,  "8", "bigint", DbType.Int64, isDefault: false);
-        await AssertType(8F,       "8", "bigint", DbType.Int64, isDefault: false);
-        await AssertType(8D,       "8", "bigint", DbType.Int64, isDefault: false);
-        await AssertType(8M,       "8", "bigint", DbType.Int64, isDefault: false);
+        await AssertType((short)8, "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8,        "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType((byte)8,  "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,       "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,       "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8M,       "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
     }
 
     [Test]
@@ -83,7 +84,7 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "12.0");
 
-        await AssertType(value, sqlLiteral, "double precision", DbType.Double);
+        await AssertType(value, sqlLiteral, "double precision", dbType: DbType.Double);
     }
 
     [Test]
@@ -92,7 +93,7 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [TestCase(float.PositiveInfinity, "Infinity", TestName = "Float_PositiveInfinity")]
     [TestCase(float.NegativeInfinity, "-Infinity", TestName = "Float_NegativeInfinity")]
     public Task Float(float value, string sqlLiteral)
-        => AssertType(value, sqlLiteral, "real", DbType.Single);
+        => AssertType(value, sqlLiteral, "real", dbType: DbType.Single);
 
     [Test]
     [TestCase(short.MaxValue + 1, "smallint")]
