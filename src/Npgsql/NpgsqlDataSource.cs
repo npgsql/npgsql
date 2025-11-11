@@ -35,7 +35,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal ReloadableState CurrentReloadableState = null!; // Initialized during bootstrapping.
 
     // Initialized at bootstrapping
-    internal class ReloadableState(NpgsqlDatabaseInfo databaseInfo, PgSerializerOptions serializerOptions)
+    internal sealed class ReloadableState(NpgsqlDatabaseInfo databaseInfo, PgSerializerOptions serializerOptions)
     {
         /// <summary>
         /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
