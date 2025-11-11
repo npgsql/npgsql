@@ -9,15 +9,15 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
 {
     [Test]
     public Task LQuery()
-        => AssertType("Top.Science.*", "Top.Science.*", "lquery", NpgsqlDbType.LQuery, isDefaultForWriting: false);
+        => AssertType("Top.Science.*", "Top.Science.*", "lquery", isDefaultForWriting: false);
 
     [Test]
     public Task LTree()
-        => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false);
+        => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", isDefaultForWriting: false);
 
     [Test]
     public Task LTxtQuery()
-        => AssertType("Science & Astronomy", "Science & Astronomy", "ltxtquery", NpgsqlDbType.LTxtQuery, isDefaultForWriting: false);
+        => AssertType("Science & Astronomy", "Science & Astronomy", "ltxtquery", isDefaultForWriting: false);
 
     [Test]
     public async Task LTree_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
@@ -42,7 +42,7 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         dataSourceBuilder.EnableLTree();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false, skipArrayCheck: true);
+        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", isDefaultForWriting: false, skipArrayCheck: true);
     }
 
     [Test]
@@ -53,7 +53,7 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false);
+        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", isDefaultForWriting: false);
     }
 
     [OneTimeSetUp]

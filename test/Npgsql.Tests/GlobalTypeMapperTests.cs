@@ -26,17 +26,17 @@ public class GlobalTypeMapperTests : TestBase
             await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
             await connection.ReloadTypesAsync();
 
-            await AssertType(connection, Mood.Happy, "happy", type, npgsqlDbType: null);
+            await AssertType(connection, Mood.Happy, "happy", type, isNpgsqlDbTypeInferredFromClrType: false);
         }
 
         NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>(type);
 
         // Global mapping changes have no effect on already-built data sources
-        await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
+        await AssertType(dataSource1, Mood.Happy, "happy", type, isNpgsqlDbTypeInferredFromClrType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
-        await AssertType(dataSource2, "happy", "happy", type, npgsqlDbType: null, isDefault: false);
+        await AssertType(dataSource2, "happy", "happy", type, isNpgsqlDbTypeInferredFromClrType: false, isDefault: false);
     }
 
     [Test]
@@ -55,17 +55,17 @@ public class GlobalTypeMapperTests : TestBase
                 await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
                 await connection.ReloadTypesAsync();
 
-                await AssertType(connection, Mood.Happy, "happy", type, npgsqlDbType: null);
+                await AssertType(connection, Mood.Happy, "happy", type, isNpgsqlDbTypeInferredFromClrType: false);
             }
 
             NpgsqlConnection.GlobalTypeMapper.UnmapEnum(typeof(Mood), type);
 
             // Global mapping changes have no effect on already-built data sources
-            await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
+            await AssertType(dataSource1, Mood.Happy, "happy", type, isNpgsqlDbTypeInferredFromClrType: false);
 
             // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
-            Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
+            Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, isNpgsqlDbTypeInferredFromClrType: false));
         }
         finally
         {
@@ -92,11 +92,11 @@ public class GlobalTypeMapperTests : TestBase
         NpgsqlConnection.GlobalTypeMapper.Reset();
 
         // Global mapping changes have no effect on already-built data sources
-        await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
+        await AssertType(dataSource1, Mood.Happy, "happy", type, isNpgsqlDbTypeInferredFromClrType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
-        await AssertType(dataSource2, "happy", "happy", type, npgsqlDbType: null, isDefault: false);
+        await AssertType(dataSource2, "happy", "happy", type, isNpgsqlDbTypeInferredFromClrType: false, isDefault: false);
     }
 
     [Test]
