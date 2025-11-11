@@ -16,46 +16,46 @@ class RangeTests : MultiplexingTestBase
 {
     static readonly TestCaseData[] RangeTestCases =
     [
-        new TestCaseData(new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", NpgsqlDbType.IntegerRange)
+        new TestCaseData(new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range")
             .SetName("IntegerRange"),
-        new TestCaseData(new NpgsqlRange<long>(1, true, 10, false), "[1,10)", "int8range", NpgsqlDbType.BigIntRange)
+        new TestCaseData(new NpgsqlRange<long>(1, true, 10, false), "[1,10)", "int8range")
             .SetName("BigIntRange"),
-        new TestCaseData(new NpgsqlRange<decimal>(1, true, 10, false), "[1,10)", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(new NpgsqlRange<decimal>(1, true, 10, false), "[1,10)", "numrange")
             .SetName("NumericRange"),
         new TestCaseData(new NpgsqlRange<DateTime>(
                     new DateTime(2020, 1, 1, 12, 0, 0), true,
                     new DateTime(2020, 1, 3, 13, 0, 0), false),
-                """["2020-01-01 12:00:00","2020-01-03 13:00:00")""", "tsrange", NpgsqlDbType.TimestampRange)
+                """["2020-01-01 12:00:00","2020-01-03 13:00:00")""", "tsrange")
             .SetName("TimestampRange"),
         // Note that the below text representations are local (according to TimeZone, which is set to Europe/Berlin in this test class),
         // because that's how PG does timestamptz *text* representation.
         new TestCaseData(new NpgsqlRange<DateTime>(
                     new DateTime(2020, 1, 1, 12, 0, 0, DateTimeKind.Utc), true,
                     new DateTime(2020, 1, 3, 13, 0, 0, DateTimeKind.Utc), false),
-                """["2020-01-01 13:00:00+01","2020-01-03 14:00:00+01")""", "tstzrange", NpgsqlDbType.TimestampTzRange)
+                """["2020-01-01 13:00:00+01","2020-01-03 14:00:00+01")""", "tstzrange")
             .SetName("TimestampTzRange"),
 
         // Note that numrange is a non-discrete range, and therefore doesn't undergo normalization to inclusive/exclusive in PG
-        new TestCaseData(NpgsqlRange<decimal>.Empty, "empty", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(NpgsqlRange<decimal>.Empty, "empty", "numrange")
             .SetName("EmptyRange"),
-        new TestCaseData(new NpgsqlRange<decimal>(1, true, 10, true), "[1,10]", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(new NpgsqlRange<decimal>(1, true, 10, true), "[1,10]", "numrange")
             .SetName("Inclusive"),
-        new TestCaseData(new NpgsqlRange<decimal>(1, false, 10, false), "(1,10)", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(new NpgsqlRange<decimal>(1, false, 10, false), "(1,10)", "numrange")
             .SetName("Exclusive"),
-        new TestCaseData(new NpgsqlRange<decimal>(1, true, 10, false), "[1,10)", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(new NpgsqlRange<decimal>(1, true, 10, false), "[1,10)", "numrange")
             .SetName("InclusiveExclusive"),
-        new TestCaseData(new NpgsqlRange<decimal>(1, false, 10, true), "(1,10]", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(new NpgsqlRange<decimal>(1, false, 10, true), "(1,10]", "numrange")
             .SetName("ExclusiveInclusive"),
-        new TestCaseData(new NpgsqlRange<decimal>(1, false, true, 10, false, false), "(,10)", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(new NpgsqlRange<decimal>(1, false, true, 10, false, false), "(,10)", "numrange")
             .SetName("InfiniteLowerBound"),
-        new TestCaseData(new NpgsqlRange<decimal>(1, true, false, 10, false, true), "[1,)", "numrange", NpgsqlDbType.NumericRange)
+        new TestCaseData(new NpgsqlRange<decimal>(1, true, false, 10, false, true), "[1,)", "numrange")
             .SetName("InfiniteUpperBound")
     ];
 
     // See more test cases in DateTimeTests
     [Test, TestCaseSource(nameof(RangeTestCases))]
-    public Task Range<T>(T range, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType)
-        => AssertType(range, sqlLiteral, pgTypeName, npgsqlDbType,
+    public Task Range<T>(T range, string sqlLiteral, string pgTypeName)
+        => AssertType(range, sqlLiteral, pgTypeName,
             // NpgsqlRange<T>[] is mapped to multirange by default, not array, so the built-in AssertType testing for arrays fails
             // (see below)
             skipArrayCheck: true);
@@ -63,8 +63,8 @@ class RangeTests : MultiplexingTestBase
     // This re-executes the same scenario as above, but with isDefaultForWriting: false and without skipArrayCheck: true.
     // This tests coverage of range arrays (as opposed to multiranges).
     [Test, TestCaseSource(nameof(RangeTestCases))]
-    public Task Range_array<T>(T range, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType)
-        => AssertType(range, sqlLiteral, pgTypeName, npgsqlDbType, isDefaultForWriting: false);
+    public Task Range_array<T>(T range, string sqlLiteral, string pgTypeName)
+        => AssertType(range, sqlLiteral, pgTypeName, isDefaultForWriting: false);
 
     [Test]
     public void Equality_finite()
@@ -244,7 +244,6 @@ class RangeTests : MultiplexingTestBase
             },
             """{"[3,4)","[5,6)"}""",
             "int4range[]",
-            NpgsqlDbType.IntegerRange | NpgsqlDbType.Array,
             isDefaultForWriting: !supportsMultirange,
             isNpgsqlDbTypeInferredFromClrType: false);
     }
@@ -273,7 +272,7 @@ class RangeTests : MultiplexingTestBase
 
         await AssertType(
             dataSource,
-            new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", NpgsqlDbType.IntegerRange, skipArrayCheck: true);
+            new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", skipArrayCheck: true);
     }
 
     protected override NpgsqlConnection OpenConnection()

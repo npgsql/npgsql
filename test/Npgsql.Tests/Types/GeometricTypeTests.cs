@@ -14,15 +14,15 @@ class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
 {
     [Test]
     public Task Point()
-        => AssertType(new NpgsqlPoint(1.2, 3.4), "(1.2,3.4)", "point", NpgsqlDbType.Point);
+        => AssertType(new NpgsqlPoint(1.2, 3.4), "(1.2,3.4)", "point");
 
     [Test]
     public Task Line()
-        => AssertType(new NpgsqlLine(1, 2, 3), "{1,2,3}", "line", NpgsqlDbType.Line);
+        => AssertType(new NpgsqlLine(1, 2, 3), "{1,2,3}", "line");
 
     [Test]
     public Task LineSegment()
-        => AssertType(new NpgsqlLSeg(1, 2, 3, 4), "[(1,2),(3,4)]", "lseg", NpgsqlDbType.LSeg);
+        => AssertType(new NpgsqlLSeg(1, 2, 3, 4), "[(1,2),(3,4)]", "lseg");
 
     [Test]
     public async Task Box()
@@ -31,21 +31,18 @@ class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             new NpgsqlBox(top: 3, right: 4, bottom: 1, left: 2),
             "(4,3),(2,1)",
             "box",
-            NpgsqlDbType.Box,
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
 
         await AssertType(
             new NpgsqlBox(top: -10, right: 0, bottom: -20, left: -10),
             "(0,-10),(-10,-20)",
             "box",
-            NpgsqlDbType.Box,
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
 
         await AssertType(
             new NpgsqlBox(top: 1, right: 2, bottom: 3, left: 4),
             "(4,3),(2,1)",
             "box",
-            NpgsqlDbType.Box,
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
 
         var swapped = new NpgsqlBox(top: -20, right: -10, bottom: -10, left: 0);
@@ -54,21 +51,18 @@ class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             swapped,
             "(0,-10),(-10,-20)",
             "box",
-            NpgsqlDbType.Box,
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
 
         await AssertType(
             swapped with { UpperRight = new NpgsqlPoint(-20,-10) },
             "(-10,-10),(-20,-20)",
             "box",
-            NpgsqlDbType.Box,
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
 
         await AssertType(
             swapped with { LowerLeft = new NpgsqlPoint(10, 10) },
             "(10,10),(0,-10)",
             "box",
-            NpgsqlDbType.Box,
             skipArrayCheck: true); // Uses semicolon instead of comma as separator
     }
 
@@ -85,9 +79,7 @@ class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
         await AssertType(
             data,
             "{(4,3),(2,1);(6,5),(4,3);(0,-10),(-10,-20)}",
-            "box[]",
-            NpgsqlDbType.Box | NpgsqlDbType.Array
-            );
+            "box[]");
 
         var swappedData = new[]
         {
@@ -99,9 +91,7 @@ class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
         await AssertType(
             swappedData,
             "{(4,3),(2,1);(6,5),(4,3);(0,-10),(-10,-20)}",
-            "box[]",
-            NpgsqlDbType.Box | NpgsqlDbType.Array
-            );
+            "box[]");
     }
 
     [Test]
@@ -109,30 +99,26 @@ class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
         => AssertType(
             new NpgsqlPath([new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)], false),
             "((1,2),(3,4))",
-            "path",
-            NpgsqlDbType.Path);
+            "path");
 
     [Test]
     public Task Path_open()
         => AssertType(
             new NpgsqlPath([new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)], true),
             "[(1,2),(3,4)]",
-            "path",
-            NpgsqlDbType.Path);
+            "path");
 
     [Test]
     public Task Polygon()
         => AssertType(
             new NpgsqlPolygon(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)),
             "((1,2),(3,4))",
-            "polygon",
-            NpgsqlDbType.Polygon);
+            "polygon");
 
     [Test]
     public Task Circle()
         => AssertType(
             new NpgsqlCircle(1, 2, 0.5),
             "<(1,2),0.5>",
-            "circle",
-            NpgsqlDbType.Circle);
+            "circle");
 }
