@@ -64,7 +64,7 @@ class RangeTests : MultiplexingTestBase
     // This tests coverage of range arrays (as opposed to multiranges).
     [Test, TestCaseSource(nameof(RangeTestCases))]
     public Task Range_array<T>(T range, string sqlLiteral, string pgTypeName)
-        => AssertType(range, sqlLiteral, pgTypeName, isDefaultForWriting: false);
+        => AssertType(range, sqlLiteral, pgTypeName, isDataTypeInferredFromValue: false);
 
     [Test]
     public void Equality_finite()
@@ -244,8 +244,7 @@ class RangeTests : MultiplexingTestBase
             },
             """{"[3,4)","[5,6)"}""",
             "int4range[]",
-            isDefaultForWriting: !supportsMultirange,
-            isDataTypeInferredFromValue: false);
+            isDataTypeInferredFromValue: !supportsMultirange);
     }
 
     [Test]

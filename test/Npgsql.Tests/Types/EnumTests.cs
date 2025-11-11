@@ -152,8 +152,8 @@ CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
 CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
         await connection.ReloadTypesAsync();
 
-        await AssertType(connection, Mood.Happy, "happy", type1, isDataTypeInferredFromValue: false, isDefault: false);
-        await AssertType(connection, AnotherEnum.Value2, "value2", type2, isDataTypeInferredFromValue: false, isDefault: false);
+        await AssertType(connection, Mood.Happy, "happy", type1, isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
+        await AssertType(connection, AnotherEnum.Value2, "value2", type2, isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
     }
 
     [Test]
@@ -186,7 +186,7 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
         await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
         await connection.ReloadTypesAsync();
 
-        await AssertType(connection, "happy", "happy", type, isDataTypeInferredFromValue: false, isDefaultForWriting: false);
+        await AssertType(connection, "happy", "happy", type, isDataTypeInferredFromValue: false);
     }
 
     enum NameTranslationEnum

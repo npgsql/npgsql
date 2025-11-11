@@ -27,7 +27,9 @@ public class MoneyTests : TestBase
     {
         using var conn = await OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync("SET lc_monetary='C'");
-        await AssertType(conn, money, sqlLiteral, "money", DbType.Currency, isDefault: false);
+        await AssertType(conn, money, sqlLiteral,
+            "money", isDataTypeInferredFromValue: false,
+            dbType: DbType.Currency);
     }
 
     [Test]

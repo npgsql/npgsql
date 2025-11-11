@@ -18,38 +18,32 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
         => await AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InZoneLeniently(DateTimeZoneProviders.Tzdb[TimeZone]),
             "1998-04-12 13:26:38.789+02",
-            "timestamp with time zone",
-            DbType.DateTimeOffset,
-            isDataTypeInferredFromValue: false, isDefault: false);
+            "timestamp with time zone", isDataTypeInferredFromValue: false,
+            dbType: DbType.DateTimeOffset, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamp_as_Instant()
         => AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InUtc().ToInstant(),
             "1998-04-12 13:26:38.789",
-            "timestamp without time zone",
-            DbType.DateTime,
-            isDataTypeInferredFromValue: false);
+            "timestamp without time zone", isDataTypeInferredFromValue: false,
+            dbType: DbType.DateTime);
 
     [Test]
     public Task Timestamp_as_LocalDateTime()
         => AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789),
             "1998-04-12 13:26:38.789",
-            "timestamp without time zone",
-            DbType.DateTime,
-            isDefaultForReading: false,
-            isDataTypeInferredFromValue: false);
+            "timestamp without time zone", isDataTypeInferredFromValue: false,
+            dbType: DbType.DateTime, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamptz_as_Instant()
         => AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InUtc().ToInstant(),
             "1998-04-12 15:26:38.789+02",
-            "timestamp with time zone",
-            DbType.DateTimeOffset,
-            isDefaultForWriting: false,
-            isDataTypeInferredFromValue: false);
+            "timestamp with time zone", isDataTypeInferredFromValue: false,
+            dbType: DbType.DateTimeOffset);
 
     [Test]
     public async Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()

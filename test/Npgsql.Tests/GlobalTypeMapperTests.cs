@@ -33,10 +33,12 @@ public class GlobalTypeMapperTests : TestBase
 
         // Global mapping changes have no effect on already-built data sources
         await AssertType(dataSource1, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false);
+        await AssertType(dataSource1, "happy", "happy", type, isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
-        await AssertType(dataSource2, "happy", "happy", type, isDataTypeInferredFromValue: false, isDefault: false);
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false));
+        await AssertType(dataSource2, "happy", "happy", "text");
     }
 
     [Test]
@@ -62,6 +64,7 @@ public class GlobalTypeMapperTests : TestBase
 
             // Global mapping changes have no effect on already-built data sources
             await AssertType(dataSource1, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false);
+            await AssertType(dataSource1, "happy", "happy", type, isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
 
             // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
@@ -93,10 +96,11 @@ public class GlobalTypeMapperTests : TestBase
 
         // Global mapping changes have no effect on already-built data sources
         await AssertType(dataSource1, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false);
+        await AssertType(dataSource1, "happy", "happy", type, isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
-        await AssertType(dataSource2, "happy", "happy", type, isDataTypeInferredFromValue: false, isDefault: false);
+        await AssertType(dataSource2, "happy", "happy", type, isDataTypeInferredFromValue: false);
     }
 
     [Test]

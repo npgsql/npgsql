@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Npgsql.Tests;
-using NpgsqlTypes;
 using NUnit.Framework;
 using System;
 using System.Text;
@@ -25,9 +24,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            dataTypeName,
-            isDefault: false,
-            isDataTypeInferredFromValue: false);
+            dataTypeName, isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_string()
@@ -36,7 +34,6 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}",
             @"{""p"": 1}",
             dataTypeName,
-            isDefaultForWriting: false,
             isDataTypeInferredFromValue: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
@@ -45,9 +42,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
-            dataTypeName,
-            isDefault: false,
-            isDataTypeInferredFromValue: false);
+            dataTypeName, isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_byte_array()
@@ -55,9 +51,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             Encoding.ASCII.GetBytes(@"{""p"": 1}"),
             @"{""p"": 1}",
-            dataTypeName,
-            isDefault: false,
-            isDataTypeInferredFromValue: false);
+            dataTypeName, isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Roundtrip_JObject()
@@ -65,11 +60,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new JObject { ["Bar"] = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            dataTypeName,
-            // By default we map JObject to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isDataTypeInferredFromValue: false);
+            dataTypeName, isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Roundtrip_JArray()
@@ -77,11 +69,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new JArray(new[] { 1, 2, 3 }),
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
-            dataTypeName,
-            // By default we map JArray to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isDataTypeInferredFromValue: false);
+            dataTypeName, isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Deserialize_failure()
@@ -112,8 +101,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName,
-            isDefaultForReading: false,
-            isDataTypeInferredFromValue: false);
+            isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
     }
 
     [Test]
@@ -130,9 +118,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             dataSource,
             new[] { 1, 2, 3 },
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
-            dataTypeName,
-            isDefaultForReading: false,
-            isDataTypeInferredFromValue: false);
+            dataTypeName, isDataTypeInferredFromValue: false,
+            isValueTypeDefaultFieldType: false);
     }
 
     class DateWrapper
@@ -159,8 +146,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new DateWrapper { Date = new DateTime(2018, 04, 20) },
             IsJsonb ? "{\"Date\": \"The 20th of April, 2018\"}" : "{\"Date\":\"The 20th of April, 2018\"}",
             dataTypeName,
-            isDefault: false,
-            isDataTypeInferredFromValue: false);
+            isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
     }
 
     [Test]

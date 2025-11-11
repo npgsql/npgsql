@@ -65,7 +65,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             new NpgsqlCidr(IPAddress.Parse("192.168.1.0"), netmask: 24),
             "192.168.1.0/24",
             "cidr",
-            isDefaultForReading: false);
+            isValueTypeDefaultFieldType: false);
 #pragma warning restore CS0618
 
     [Test]
@@ -74,7 +74,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             new NpgsqlInet(IPAddress.Parse("192.168.1.1"), 24),
             "192.168.1.1/24",
             "inet",
-            isDefaultForReading: false);
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Inet_v6_as_NpgsqlInet()
@@ -82,7 +82,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 24),
             "2001:1db8:85a3:1142:1000:8a2e:1370:7334/24",
             "inet",
-            isDefaultForReading: false);
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Macaddr()
@@ -95,8 +95,8 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         if (conn.PostgreSqlVersion < new Version(10, 0))
             Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
 
-        await AssertType(PhysicalAddress.Parse("08-00-2B-01-02-03-04-05"), "08:00:2b:01:02:03:04:05", "macaddr8",
-            isDefaultForWriting: false);
+        await AssertType(PhysicalAddress.Parse("08-00-2B-01-02-03-04-05"), "08:00:2b:01:02:03:04:05",
+            "macaddr8", isDataTypeInferredFromValue: false);
     }
 
     [Test]
@@ -106,8 +106,8 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         if (conn.PostgreSqlVersion < new Version(10, 0))
             Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
 
-        await AssertTypeWrite(PhysicalAddress.Parse("08-00-2B-01-02-03"), "08:00:2b:ff:fe:01:02:03", "macaddr8",
-            isDefault: false);
+        await AssertTypeWrite(PhysicalAddress.Parse("08-00-2B-01-02-03"), "08:00:2b:ff:fe:01:02:03",
+            "macaddr8", isDataTypeInferredFromValue: false);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]

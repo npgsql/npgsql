@@ -31,8 +31,7 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         await AssertType(
             new [] {new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue)},
             """{"[-infinity,infinity]"}""",
-            "daterange[]",
-            isDefault: false, skipArrayCheck: true);
+            "daterange[]", isDataTypeInferredFromValue: false, skipArrayCheck: true);
 
         await using var conn = await OpenConnectionAsync();
         if (conn.PostgreSqlVersion < new Version(14, 0))

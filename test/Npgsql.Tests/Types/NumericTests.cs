@@ -3,7 +3,6 @@ using System.Data;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
@@ -114,15 +113,14 @@ public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test]
     public async Task Numeric()
     {
-        await AssertType(5.5m, "5.5", "numeric", DbType.Decimal);
-        await AssertTypeWrite(5.5m, "5.5", "numeric", DbType.VarNumeric, inferredDbType: DbType.Decimal);
+        await AssertType(5.5m, "5.5", "numeric", dbType: DbType.Decimal);
+        await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: DbType.VarNumeric, inferredDbType: DbType.Decimal);
 
-        await AssertType((short)8, "8", "numeric", DbType.Decimal, isDefault: false);
-        await AssertType(8,        "8", "numeric", DbType.Decimal, isDefault: false);
-        await AssertType((byte)8,  "8", "numeric", DbType.Decimal, isDefault: false);
-        await AssertType(8F,       "8", "numeric", DbType.Decimal, isDefault: false);
-        await AssertType(8D,       "8", "numeric", DbType.Decimal, isDefault: false);
-        await AssertType(8M,       "8", "numeric", DbType.Decimal, isDefault: false);
+        await AssertType((short)8, "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType(8,        "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType((byte)8,  "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,       "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,       "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
     }
 
     [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]
