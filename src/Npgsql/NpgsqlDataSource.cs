@@ -31,12 +31,19 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
     readonly PgTypeInfoResolverChain _resolverChain;
-    internal PgSerializerOptions SerializerOptions { get; private set; } = null!; // Initialized at bootstrapping
 
-    /// <summary>
-    /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
-    /// </summary>
-    internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
+    internal ReloadableState CurrentReloadableState = null!; // Initialized during bootstrapping.
+
+    // Initialized at bootstrapping
+    internal sealed class ReloadableState(NpgsqlDatabaseInfo databaseInfo, PgSerializerOptions serializerOptions)
+    {
+        /// <summary>
+        /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
+        /// </summary>
+        public NpgsqlDatabaseInfo DatabaseInfo { get; } = databaseInfo;
+
+        public PgSerializerOptions SerializerOptions { get; } = serializerOptions;
+    }
 
     internal TransportSecurityHandler TransportSecurityHandler { get; }
 
@@ -105,7 +112,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
-                var resolverChain,
+                _resolverChain,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync,
@@ -115,7 +122,6 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Debug.Assert(_passwordProvider is null || _passwordProviderAsync is not null);
 
-        _resolverChain = resolverChain;
         _password = settings.Password;
 
         if (_periodicPasswordSuccessRefreshInterval != default)
@@ -272,27 +278,30 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
             // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
-            connector.SerializerOptions =
-                new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
+            connector.ReloadableState = new(
+                databaseInfo: PostgresMinimalDatabaseInfo.DefaultTypeCatalog,
+                serializerOptions: new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     TextEncoding = connector.TextEncoding,
                     TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver(),
-                };
+                });
 
             NpgsqlDatabaseInfo databaseInfo;
 
             using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
                 databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async).ConfigureAwait(false);
 
-            connector.DatabaseInfo = DatabaseInfo = databaseInfo;
-            connector.SerializerOptions = SerializerOptions =
-                new(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone))
-                {
-                    ArrayNullabilityMode = Settings.ArrayNullabilityMode,
-                    EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
-                    TextEncoding = connector.TextEncoding,
-                    DefaultNameTranslator = _defaultNameTranslator
-                };
+            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone))
+            {
+                ArrayNullabilityMode = Settings.ArrayNullabilityMode,
+                EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
+                TextEncoding = connector.TextEncoding,
+                DefaultNameTranslator = _defaultNameTranslator
+            };
+
+            connector.ReloadableState = CurrentReloadableState = new ReloadableState(
+                databaseInfo: databaseInfo,
+                serializerOptions: serializerOptions);
 
             IsBootstrapped = true;
         }

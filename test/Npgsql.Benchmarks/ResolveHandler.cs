@@ -22,7 +22,7 @@ public class ResolveHandler
         if (NumPlugins > 1)
             dataSourceBuilder.UseNetTopologySuite();
         _dataSource = dataSourceBuilder.Build();
-        _serializerOptions = _dataSource.SerializerOptions;
+        _serializerOptions = _dataSource.CurrentReloadableState.SerializerOptions;
     }
 
     [GlobalCleanup]
