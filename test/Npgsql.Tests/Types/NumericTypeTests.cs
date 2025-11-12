@@ -20,15 +20,21 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     {
         await AssertType((short)8, "8", "smallint", dbType: DbType.Int16);
         // Clr byte/sbyte maps to 'int2' as there is no byte type in PostgreSQL, byte[] maps to bytea however.
-        await AssertType((byte)8, "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16,
-            isValueTypeDefaultFieldType: false, skipArrayCheck: true);
-        await AssertType((sbyte)8, "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType((byte)8, "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int16, isValueTypeDefaultFieldType: false, skipArrayCheck: true);
+        await AssertType((sbyte)8, "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int16, isValueTypeDefaultFieldType: false);
 
-        await AssertType(8,       "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
-        await AssertType(8L,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
-        await AssertType(8F,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
-        await AssertType(8D,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
-        await AssertType(8M,      "8", "smallint", isDataTypeInferredFromValue: false, DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8,       "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8L,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int16, isValueTypeDefaultFieldType: false);
+        await AssertType(8M,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int16, isValueTypeDefaultFieldType: false);
     }
 
     [Test]
@@ -36,12 +42,18 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     {
         await AssertType(8, "8", "integer", dbType: DbType.Int32);
 
-        await AssertType((short)8, "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
-        await AssertType(8L,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
-        await AssertType((byte)8,  "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
-        await AssertType(8F,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
-        await AssertType(8D,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
-        await AssertType(8M,       "8", "integer", isDataTypeInferredFromValue: false, DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType((short)8, "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8L,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType((byte)8,  "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int32, isValueTypeDefaultFieldType: false);
+        await AssertType(8M,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int32, isValueTypeDefaultFieldType: false);
     }
 
     [Test, Description("Tests some types which are aliased to UInt32")]
@@ -49,7 +61,7 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [TestCase("xid", TestName="XID")]
     [TestCase("cid", TestName="CID")]
     public Task UInt32(string pgTypeName)
-        => AssertType(8u, "8", pgTypeName, isDataTypeInferredFromValue: false);
+        => AssertType(8u, "8", pgTypeName, dataTypeInference: false);
 
     [Test]
     [TestCase("xid8", TestName="XID8")]
@@ -58,7 +70,7 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "13.0", "The xid8 type was introduced in PostgreSQL 13");
 
-        await AssertType(8ul, "8", pgTypeName, isDataTypeInferredFromValue: false);
+        await AssertType(8ul, "8", pgTypeName, dataTypeInference: false);
     }
 
     [Test]
@@ -66,12 +78,18 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     {
         await AssertType(8L, "8", "bigint", dbType: DbType.Int64);
 
-        await AssertType((short)8, "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
-        await AssertType(8,        "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
-        await AssertType((byte)8,  "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
-        await AssertType(8F,       "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
-        await AssertType(8D,       "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
-        await AssertType(8M,       "8", "bigint", isDataTypeInferredFromValue: false, DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType((short)8, "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8,        "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType((byte)8,  "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,       "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,       "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int64, isValueTypeDefaultFieldType: false);
+        await AssertType(8M,       "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.Int64, isValueTypeDefaultFieldType: false);
     }
 
     [Test]

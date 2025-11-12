@@ -23,7 +23,8 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
 
     [Test]
     public Task Text_as_array_of_chars()
-        => AssertType("foo".ToCharArray(), "foo", "text", isDataTypeInferredFromValue: false, dbType: DbType.String, isValueTypeDefaultFieldType: false);
+        => AssertType("foo".ToCharArray(), "foo", "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Text_as_ArraySegment_of_chars()
@@ -31,16 +32,20 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
 
     [Test]
     public Task Text_as_array_of_bytes()
-        => AssertType("foo"u8.ToArray(), "foo", "text", isDataTypeInferredFromValue: false, DbType.String, isValueTypeDefaultFieldType: false);
+        => AssertType("foo"u8.ToArray(), "foo", "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Text_as_ReadOnlyMemory_of_bytes()
         => AssertTypeWrite(new ReadOnlyMemory<byte>("foo"u8.ToArray()), "foo",
-            "text", isDataTypeInferredFromValue: false, dbType: DbType.String);
+            "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public Task Char_as_char()
-        => AssertType('f', "f", "character", isDataTypeInferredFromValue: false, inferredDbType: DbType.String, isValueTypeDefaultFieldType: false);
+        => AssertType('f', "f",
+            "character", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            inferredDbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Citext_as_string()
@@ -49,13 +54,15 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         await EnsureExtensionAsync(conn, "citext");
 
         await AssertType("foo", "foo",
-                "citext", isDataTypeInferredFromValue: false,
-                inferredDbType: DbType.String);
+            "citext", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            inferredDbType: DbType.String);
     }
 
     [Test]
     public Task Text_as_MemoryStream()
-        => AssertTypeWrite(() => new MemoryStream("foo"u8.ToArray()), "foo", "text", isDataTypeInferredFromValue: false, DbType.String);
+        => AssertTypeWrite(() => new MemoryStream("foo"u8.ToArray()), "foo",
+            "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            DbType.String);
 
     [Test]
     public async Task Text_long()
@@ -106,7 +113,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     [TestCase("character varying")]
     [TestCase("name")]
     public Task Aliased_postgres_types(string pgTypeName)
-        => AssertType("foo", "foo", pgTypeName, inferredDbType: DbType.String, isDataTypeInferredFromValue: false);
+        => AssertType("foo", "foo", pgTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown, inferredDbType: DbType.String);
 
     [Test]
     [TestCase(DbType.AnsiString)]

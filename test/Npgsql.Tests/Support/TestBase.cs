@@ -34,7 +34,7 @@ public abstract class TestBase
         T value,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
@@ -42,7 +42,7 @@ public abstract class TestBase
         Func<T, T, bool>? comparer = null,
         bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-        => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
@@ -50,7 +50,7 @@ public abstract class TestBase
         T value,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
@@ -58,7 +58,7 @@ public abstract class TestBase
         Func<T, T, bool>? comparer = null,
         bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-        => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
@@ -66,7 +66,7 @@ public abstract class TestBase
         T value,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
@@ -74,14 +74,14 @@ public abstract class TestBase
         Func<T, T, bool>? comparer = null,
         bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-        => AssertTypeCore(new(connection), disposeConnection: false, () => value, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeCore(new(connection), disposeConnection: false, () => value, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
@@ -89,7 +89,7 @@ public abstract class TestBase
         Func<T, T, bool>? comparer = null,
         bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-        => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
@@ -97,7 +97,7 @@ public abstract class TestBase
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
@@ -105,7 +105,7 @@ public abstract class TestBase
         Func<T, T, bool>? comparer = null,
         bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-        => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
@@ -113,7 +113,7 @@ public abstract class TestBase
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
@@ -121,7 +121,7 @@ public abstract class TestBase
         Func<T, T, bool>? comparer = null,
         bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-        => AssertTypeCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
     static async Task<T> AssertTypeCore<T>(
@@ -130,7 +130,7 @@ public abstract class TestBase
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
@@ -142,7 +142,7 @@ public abstract class TestBase
         var connection = await connectionTask;
         await using var _ = disposeConnection ? connection : null;
 
-        await AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        await AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, skipArrayCheck);
         return await AssertTypeReadCore(new(connection), disposeConnection: false, sqlLiteral, pgTypeName, valueFactory(),
             isValueTypeDefaultFieldType: isValueTypeDefaultFieldType, comparer, fieldType, skipArrayCheck);
@@ -152,12 +152,12 @@ public abstract class TestBase
         T value,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
         bool skipArrayCheck = false)
-        => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, skipArrayCheck);
 
     public Task AssertTypeWrite<T>(
@@ -165,12 +165,12 @@ public abstract class TestBase
         T value,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
         bool skipArrayCheck = false)
-        => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, skipArrayCheck);
 
     public Task AssertTypeWrite<T>(
@@ -178,24 +178,24 @@ public abstract class TestBase
         T value,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
         bool skipArrayCheck = false)
-        => AssertTypeWriteCore(new(connection), disposeConnection: false, () => value, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeWriteCore(new(connection), disposeConnection: false, () => value, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, skipArrayCheck);
 
     public Task AssertTypeWrite<T>(
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
         bool skipArrayCheck = false)
-        => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, skipArrayCheck);
 
     public Task AssertTypeWrite<T>(
@@ -203,12 +203,12 @@ public abstract class TestBase
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
         bool skipArrayCheck = false)
-        => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, skipArrayCheck);
 
     public Task AssertTypeWrite<T>(
@@ -216,12 +216,12 @@ public abstract class TestBase
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue = true,
+        DataTypeInference? dataTypeInference = null,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDbTypeInferredFromDataType = true,
         bool skipArrayCheck = false)
-        => AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, pgTypeName, isDataTypeInferredFromValue,
+        => AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, pgTypeName, dataTypeInference,
             dbType, inferredDbType, isDbTypeInferredFromDataType, skipArrayCheck);
 
     static async Task AssertTypeWriteCore<T>(
@@ -230,7 +230,7 @@ public abstract class TestBase
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue,
+        DataTypeInference? dataTypeInference,
         DbType? dbType,
         DbType? inferredDbType,
         bool isDbTypeInferredFromDataType,
@@ -241,7 +241,7 @@ public abstract class TestBase
 
         await AssertTypeWriteCore(
             connection, valueFactory, sqlLiteral,
-            pgTypeName, isDataTypeInferredFromValue,
+            pgTypeName, dataTypeInference ?? true,
             dbType, inferredDbType, isDbTypeInferredFromDataType);
 
         // Check the corresponding array type as well
@@ -251,9 +251,25 @@ public abstract class TestBase
                 connection,
                 () => new[] { valueFactory(), valueFactory() },
                 ArrayLiteral(sqlLiteral),
-                pgTypeName + "[]", isDataTypeInferredFromValue,
+                pgTypeName + "[]", dataTypeInference ?? true,
                 dbType: null, inferredDbType: null, isDbTypeInferredFromDataType);
         }
+    }
+
+    public enum DataTypeInferenceKind
+    {
+        Exact,
+        WellKnown,
+        Unknown,
+    }
+
+    public readonly struct DataTypeInference(DataTypeInferenceKind kind)
+    {
+        public DataTypeInferenceKind Kind { get; } = kind;
+        public static implicit operator DataTypeInference(bool isDataTypeInferredFromValue)
+            => new(isDataTypeInferredFromValue ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.Unknown);
+        public static implicit operator DataTypeInference(DataTypeInferenceKind kind)
+            => new(kind);
     }
 
     static async Task AssertTypeWriteCore<T>(
@@ -261,7 +277,7 @@ public abstract class TestBase
         Func<T> valueFactory,
         string sqlLiteral,
         string pgTypeName,
-        bool isDataTypeInferredFromValue,
+        DataTypeInference dataTypeInference,
         DbType? dbType,
         DbType? inferredDbType,
         bool isDbTypeInferredFromDataType)
@@ -318,7 +334,7 @@ public abstract class TestBase
             p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType.Value };
             errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
             CheckInference(dbTypeApplied: true);
-            if (isDataTypeInferredFromValue)
+            if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
                 cmd.Parameters.Add(p);
         }
 
@@ -326,14 +342,14 @@ public abstract class TestBase
         p = new NpgsqlParameter { Value = valueFactory() };
         errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
         CheckInference(valueSolelyApplied: true);
-        if (isDataTypeInferredFromValue)
+        if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
 
         // With (generic) value only
         p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
         errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
         CheckInference(valueSolelyApplied: true);
-        if (isDataTypeInferredFromValue)
+        if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
 
         // Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
@@ -353,21 +369,29 @@ public abstract class TestBase
 
         void CheckInference(bool dbTypeApplied = false, bool valueSolelyApplied = false)
         {
-            if (dbTypeApplied)
+            var expectedDataTypeName = pgTypeNameWithoutFacetsAndQuotes;
+            var expectedNpgsqlDbType = npgsqlDbType ?? NpgsqlDbType.Unknown;
+            if (valueSolelyApplied)
             {
-                if (isDataTypeInferredFromValue)
+                switch (dataTypeInference.Kind)
                 {
-                    Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacetsAndQuotes),
-                        () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
-                    Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType ?? NpgsqlDbType.Unknown),
-                        () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+                    // Only respect WellKnown if the type is actually well known.
+                    case DataTypeInferenceKind.WellKnown when p.NpgsqlDbType is not NpgsqlDbType.Unknown:
+                        expectedDataTypeName = p.DataTypeName;
+                        expectedNpgsqlDbType = p.NpgsqlDbType;
+                        break;
+                    case DataTypeInferenceKind.Unknown:
+                        expectedDataTypeName = null;
+                        expectedNpgsqlDbType = NpgsqlDbType.Unknown;
+                        break;
                 }
             }
-            else if (!valueSolelyApplied || isDataTypeInferredFromValue)
+
+            if (!dbTypeApplied || dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             {
-                Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacetsAndQuotes),
+                Assert.That(p.DataTypeName, Is.EqualTo(expectedDataTypeName),
                     () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
-                Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType ?? NpgsqlDbType.Unknown),
+                Assert.That(p.NpgsqlDbType, Is.EqualTo(expectedNpgsqlDbType),
                     () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
             }
 
