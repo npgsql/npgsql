@@ -24,7 +24,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            dataTypeName, isDataTypeInferredFromValue: false,
+            dataTypeName, dataTypeInference: false,
             isValueTypeDefaultFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
@@ -33,8 +33,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             @"{""p"": 1}",
             @"{""p"": 1}",
-            dataTypeName,
-            isDataTypeInferredFromValue: false);
+            dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_char_array()
@@ -42,16 +41,16 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
-            dataTypeName, isDataTypeInferredFromValue: false,
+            dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
             isValueTypeDefaultFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_byte_array()
         => AssertType(
             JsonDataSource,
-            Encoding.ASCII.GetBytes(@"{""p"": 1}"),
+            @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
-            dataTypeName, isDataTypeInferredFromValue: false,
+            dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
             isValueTypeDefaultFieldType: false);
 
     [Test]
@@ -60,7 +59,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new JObject { ["Bar"] = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            dataTypeName, isDataTypeInferredFromValue: false,
+            dataTypeName, dataTypeInference: false,
             isValueTypeDefaultFieldType: false);
 
     [Test]
@@ -69,7 +68,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new JArray(new[] { 1, 2, 3 }),
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
-            dataTypeName, isDataTypeInferredFromValue: false,
+            dataTypeName, dataTypeInference: false,
             isValueTypeDefaultFieldType: false);
 
     [Test]
@@ -101,7 +100,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName,
-            isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, isValueTypeDefaultFieldType: false);
     }
 
     [Test]
@@ -118,8 +117,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             dataSource,
             new[] { 1, 2, 3 },
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
-            dataTypeName, isDataTypeInferredFromValue: false,
-            isValueTypeDefaultFieldType: false);
+            dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            isValueTypeDefaultFieldType: false, skipArrayCheck: true); // there is no value only mapping for int[][]
     }
 
     class DateWrapper
@@ -146,7 +145,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new DateWrapper { Date = new DateTime(2018, 04, 20) },
             IsJsonb ? "{\"Date\": \"The 20th of April, 2018\"}" : "{\"Date\":\"The 20th of April, 2018\"}",
             dataTypeName,
-            isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, isValueTypeDefaultFieldType: false);
     }
 
     [Test]

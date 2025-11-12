@@ -116,11 +116,16 @@ public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         await AssertType(5.5m, "5.5", "numeric", dbType: DbType.Decimal);
         await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: DbType.VarNumeric, inferredDbType: DbType.Decimal);
 
-        await AssertType((short)8, "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
-        await AssertType(8,        "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
-        await AssertType((byte)8,  "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
-        await AssertType(8F,       "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
-        await AssertType(8D,       "8", "numeric", isDataTypeInferredFromValue: false, dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType((short)8, "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType(8,        "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType((byte)8,  "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType(8F,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+        await AssertType(8D,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
     }
 
     [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]
