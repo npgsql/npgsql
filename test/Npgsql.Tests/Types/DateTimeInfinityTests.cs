@@ -83,8 +83,7 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
     public Task Date_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(DisableDateTimeInfinityConversions ? dateTime.Date : dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Date,
-            isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.DateTime2), isValueTypeDefaultFieldType: false);
 
     static readonly TestCaseData[] DateOnlyDateTimeValues =
     [

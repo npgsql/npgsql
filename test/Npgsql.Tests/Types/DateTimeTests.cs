@@ -21,22 +21,20 @@ public class DateTimeTests : TestBase
     public Task Date_as_DateTime()
         => AssertType(new DateTime(2020, 10, 1), "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime2, inferredDbType: DbType.Date,
-            isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.DateTime2), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Date_as_DateTime_with_date_and_time_before_2000()
         => AssertTypeWrite(new DateTime(1980, 10, 1, 11, 0, 0), "1980-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime2, inferredDbType: DbType.Date);
+            dbType: new(DbType.Date, DbType.DateTime2));
 
     // Internal PostgreSQL representation (days since 2020-01-01), for out-of-range values.
     [Test]
     public Task Date_as_int()
         => AssertType(7579, "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Date, inferredDbType: DbType.Int32,
-            isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.Int32), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Daterange_as_NpgsqlRange_of_DateOnly()
@@ -113,7 +111,7 @@ public class DateTimeTests : TestBase
     public Task Time_as_TimeSpan()
         => AssertType(new TimeSpan(0, 10, 45, 34, 500), "10:45:34.5",
             "time without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Time, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Time, DbType.Object), isValueTypeDefaultFieldType: false);
 
     #endregion
 
@@ -134,7 +132,8 @@ public class DateTimeTests : TestBase
     [Test, TestCaseSource(nameof(TimeTzValues))]
     public Task TimeTz_as_DateTimeOffset(DateTimeOffset time, string sqlLiteral)
         => AssertType(time, sqlLiteral,
-            "time with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown);
+            "time with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: new(DbType.Object, DbType.DateTime));
 
     #endregion
 
@@ -170,7 +169,7 @@ public class DateTimeTests : TestBase
     public Task Timestamp_as_long()
         => AssertType(-54297202000000, "1998-04-12 13:26:38",
             "timestamp without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime2, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime2, DbType.Int64), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamp_cannot_use_as_DateTimeOffset()
@@ -259,10 +258,10 @@ public class DateTimeTests : TestBase
     {
         await AssertType(DateTime.MinValue, "-infinity",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime);
+            dbType: new(DbType.DateTime, DbType.DateTime2));
         await AssertType(DateTime.MaxValue, "infinity",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime);
+            dbType: new(DbType.DateTime, DbType.DateTime2));
     }
 
     [Test]
@@ -291,7 +290,7 @@ public class DateTimeTests : TestBase
             new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.Zero),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTimeOffset, inferredDbType: DbType.DateTime);
+            dbType: new(DbType.DateTimeOffset, DbType.DateTime, DbType.DateTime));
 
     [Test]
     public Task Timestamptz_cannot_write_non_utc_DateTimeOffset()
@@ -301,7 +300,7 @@ public class DateTimeTests : TestBase
     public Task Timestamptz_as_long()
         => AssertType(-54297202000000, "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Int64), isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Timestamptz_array_as_DateTimeOffset_array()

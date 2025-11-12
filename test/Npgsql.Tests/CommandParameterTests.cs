@@ -195,7 +195,7 @@ public class CommandParameterTests(MultiplexingMode multiplexingMode) : Multiple
     [Test]
     public async Task Object_generic_param_does_runtime_lookup()
     {
-        await AssertTypeWrite<object>(1, "1", "integer", dbType: DbType.Int32, inferredDbType: DbType.Int32, skipArrayCheck: true);
+        await AssertTypeWrite<object>(1, "1", "integer", dbType: DbType.Int32, skipArrayCheck: true);
         await AssertTypeWrite<object>(new[] {1, 1}, "{1,1}", "integer[]", skipArrayCheck: true);
     }
 
