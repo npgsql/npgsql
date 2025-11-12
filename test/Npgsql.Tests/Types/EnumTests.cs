@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
@@ -186,7 +187,9 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
         await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
         await connection.ReloadTypesAsync();
 
-        await AssertType(connection, "happy", "happy", type, dataTypeInference: DataTypeInferenceKind.WellKnown);
+        await AssertType(connection, "happy", "happy", type,
+                dataTypeInference: DataTypeInferenceKind.WellKnown,
+                dbType: DbType.String);
     }
 
     enum NameTranslationEnum
