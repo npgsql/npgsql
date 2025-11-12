@@ -51,7 +51,7 @@ public class LegacyDateTimeTests : TestBase
         => AssertTypeWrite(
             new DateTime(1998, 4, 12, 13, 26, 38, 789, kind), "1998-04-12 15:26:38.789+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTimeOffset);
+            dbType: new(DbType.DateTimeOffset, DbType.DateTime));
 
     [Test]
     public Task Timestamptz_local_DateTime_converts()
@@ -63,7 +63,7 @@ public class LegacyDateTimeTests : TestBase
         return AssertType(
             dateTime, "1998-04-12 15:26:38.789+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTimeOffset);
+            dbType: new(DbType.DateTimeOffset, DbType.DateTime));
     }
 
     NpgsqlDataSource _dataSource = null!;

@@ -31,7 +31,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     public Task Timestamp_as_LocalDateTime(LocalDateTime localDateTime, string sqlLiteral)
         => AssertType(localDateTime, sqlLiteral,
             "timestamp without time zone", dataTypeInference: false,
-            dbType: DbType.DateTime2);
+            dbType: new(DbType.DateTime2, DbType.Object));
 
     [Test]
     public Task Timestamp_as_unspecified_DateTime()
@@ -47,7 +47,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             -54297202000000,
             "1998-04-12 13:26:38",
             "timestamp without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime2, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime2, DbType.Int64), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamp_cannot_use_as_Instant()
@@ -154,7 +154,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     public Task Timestamptz_as_Instant(Instant instant, string sqlLiteral)
         => AssertType(instant, sqlLiteral,
             "timestamp with time zone", dataTypeInference: false,
-            dbType: DbType.DateTime);
+            dbType: new(DbType.DateTime, DbType.Object));
 
     [Test]
     public Task Timestamptz_as_ZonedDateTime()
@@ -162,7 +162,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc(),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: false,
-            dbType: DbType.DateTime, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Object), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamptz_as_OffsetDateTime()
@@ -170,7 +170,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new LocalDateTime(1998, 4, 12, 13, 26, 38).WithOffset(Offset.Zero),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: false,
-            dbType: DbType.DateTime, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Object), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamptz_as_utc_DateTime()
@@ -194,7 +194,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             -54297202000000,
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Int64), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamptz_cannot_use_as_LocalDateTime()
@@ -440,19 +440,19 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     public Task Date_as_LocalDate()
         => AssertType(new LocalDate(2020, 10, 1), "2020-10-01",
             "date", dataTypeInference: false,
-            dbType: DbType.Date);
+            dbType: new(DbType.Date, DbType.Object));
 
     [Test]
     public Task Date_as_DateTime()
         => AssertType(new DateTime(2020, 10, 1), "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Date, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.DateTime2), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Date_as_int()
         => AssertType(7579, "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Date, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.Int32), isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Daterange_as_DateInterval()
@@ -611,7 +611,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     public Task Time_as_LocalTime()
         => AssertType(new LocalTime(10, 45, 34, 500), "10:45:34.5",
             "time without time zone", dataTypeInference: false,
-            dbType: DbType.Time);
+            dbType: new(DbType.Time, DbType.Object));
 
     [Test]
     public Task Time_as_TimeSpan()
@@ -619,7 +619,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new TimeSpan(0, 10, 45, 34, 500),
             "10:45:34.5",
             "time without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Time, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Time, DbType.Object), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Time_as_TimeOnly()
@@ -652,7 +652,8 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         await AssertTypeWrite(
             new DateTimeOffset(1, 1, 1, 13, 3, 45, 510, TimeSpan.FromHours(2)),
             "13:03:45.51+02",
-            "time with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown);
+            "time with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: new(DbType.Object, DbType.DateTime));
     }
 
     #endregion Time with time zone

@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
@@ -35,13 +36,13 @@ public class GlobalTypeMapperTests : TestBase
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
             type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
         Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy",
             type, dataTypeInference: false));
-        await AssertType(dataSource2, "happy", "happy", "text");
+        await AssertType(dataSource2, "happy", "happy", "text", dbType: DbType.String);
     }
 
     [Test]
@@ -69,11 +70,12 @@ public class GlobalTypeMapperTests : TestBase
             await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
             await AssertType(dataSource1, "happy", "happy",
                 type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-                isValueTypeDefaultFieldType: false);
+                dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
             // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
             Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: false));
+            await AssertType(dataSource2, "happy", "happy", "text", dbType: DbType.String);
         }
         finally
         {
@@ -94,6 +96,8 @@ public class GlobalTypeMapperTests : TestBase
         {
             await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
             await connection.ReloadTypesAsync();
+
+            await AssertType(connection, Mood.Happy, "happy", type, dataTypeInference: false);
         }
 
         // A global mapping change has no effects on data sources which have already been built
@@ -103,12 +107,14 @@ public class GlobalTypeMapperTests : TestBase
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
             type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: false));
         await AssertType(dataSource2, "happy", "happy",
-            type, dataTypeInference: DataTypeInferenceKind.WellKnown);
+            type, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
     }
 
     [Test]

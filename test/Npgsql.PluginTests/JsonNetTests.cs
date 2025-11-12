@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using Npgsql.Tests;
 using NUnit.Framework;
 using System;
+using System.Data;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -33,7 +34,8 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             @"{""p"": 1}",
             @"{""p"": 1}",
-            dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown);
+            dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_char_array()
@@ -42,7 +44,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_byte_array()
@@ -51,7 +53,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Roundtrip_JObject()

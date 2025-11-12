@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Data;
+using System.Threading.Tasks;
 using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -10,17 +11,20 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     [Test]
     public Task LQuery()
         => AssertType("Top.Science.*", "Top.Science.*",
-            "lquery", dataTypeInference: DataTypeInferenceKind.WellKnown);
+            "lquery", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public Task LTree()
         => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy",
-            "ltree", dataTypeInference: DataTypeInferenceKind.WellKnown);
+            "ltree", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public Task LTxtQuery()
         => AssertType("Science & Astronomy", "Science & Astronomy",
-            "ltxtquery", dataTypeInference: DataTypeInferenceKind.WellKnown);
+            "ltxtquery", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public async Task LTree_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
@@ -49,6 +53,7 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
 
         await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy",
             "ltree", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String,
             skipArrayCheck: !withArrays);
     }
 

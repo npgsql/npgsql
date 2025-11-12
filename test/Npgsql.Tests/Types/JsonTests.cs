@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -17,7 +18,8 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public async Task As_string()
         => await AssertType("""{"K": "V"}""", """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public async Task As_string_long()
@@ -31,7 +33,8 @@ public class JsonTests : MultiplexingTestBase
             .ToString();
 
         await AssertType(value, value,
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
     }
 
     [Test]
@@ -47,30 +50,33 @@ public class JsonTests : MultiplexingTestBase
 
     [Test]
     public async Task As_char_array()
-        => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""", PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+        => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task As_bytes()
-        => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""", PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+        => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Write_as_ReadOnlyMemory_of_byte()
         => await AssertTypeWrite(new ReadOnlyMemory<byte>("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary);
 
     [Test]
     public async Task Write_as_ArraySegment_of_char()
         => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public Task As_MemoryStream()
         => AssertTypeWrite(() => new MemoryStream("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary);
 
     [Test]
     public async Task As_JsonDocument()
@@ -121,27 +127,24 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             @"{""p"": 1}",
             @"{""p"": 1}",
-            PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: true);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: true);
 
     [Test]
     public Task Roundtrip_char_array()
         => AssertType(
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
-            PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Roundtrip_byte_array()
         => AssertType(
             @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
-            PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
 
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]

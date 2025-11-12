@@ -114,18 +114,20 @@ public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     public async Task Numeric()
     {
         await AssertType(5.5m, "5.5", "numeric", dbType: DbType.Decimal);
-        await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: DbType.VarNumeric, inferredDbType: DbType.Decimal);
+        await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: new(DbType.VarNumeric, DbType.Decimal, DbType.Decimal));
 
         await AssertType((short)8, "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Int16), isValueTypeDefaultFieldType: false);
         await AssertType(8,        "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Int32), isValueTypeDefaultFieldType: false);
+        await AssertType(8L,        "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: new(DbType.Decimal, DbType.Int64), isValueTypeDefaultFieldType: false);
         await AssertType((byte)8,  "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Int16), isValueTypeDefaultFieldType: false, skipArrayCheck: true);
         await AssertType(8F,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Single), isValueTypeDefaultFieldType: false);
         await AssertType(8D,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Decimal, isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Double), isValueTypeDefaultFieldType: false);
     }
 
     [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]

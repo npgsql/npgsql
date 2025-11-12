@@ -29,7 +29,7 @@ public class MoneyTests : TestBase
         await conn.ExecuteNonQueryAsync("SET lc_monetary='C'");
         await AssertType(conn, money, sqlLiteral,
             "money", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Currency);
+            dbType: new(DbType.Currency, DbType.Decimal));
     }
 
     [Test]

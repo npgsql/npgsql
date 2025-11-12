@@ -33,19 +33,19 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     [Test]
     public Task Text_as_array_of_bytes()
         => AssertType("foo"u8.ToArray(), "foo", "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            DbType.String, isValueTypeDefaultFieldType: false);
+            new(DbType.String, DbType.Binary), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Text_as_ReadOnlyMemory_of_bytes()
         => AssertTypeWrite(new ReadOnlyMemory<byte>("foo"u8.ToArray()), "foo",
             "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String);
+            new(DbType.String, DbType.Binary));
 
     [Test]
     public Task Char_as_char()
         => AssertType('f', "f",
             "character", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            inferredDbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, isValueTypeDefaultFieldType: false, skipArrayCheck: true); // char[] maps to text
 
     [Test]
     public async Task Citext_as_string()
@@ -55,14 +55,14 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
 
         await AssertType("foo", "foo",
             "citext", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            inferredDbType: DbType.String);
+            dbType: DbType.String);
     }
 
     [Test]
     public Task Text_as_MemoryStream()
         => AssertTypeWrite(() => new MemoryStream("foo"u8.ToArray()), "foo",
             "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            DbType.String);
+            new(DbType.String, DbType.Binary));
 
     [Test]
     public async Task Text_long()
@@ -113,7 +113,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     [TestCase("character varying")]
     [TestCase("name")]
     public Task Aliased_postgres_types(string pgTypeName)
-        => AssertType("foo", "foo", pgTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown, inferredDbType: DbType.String);
+        => AssertType("foo", "foo", pgTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown, dbType: DbType.String);
 
     [Test]
     [TestCase(DbType.AnsiString)]

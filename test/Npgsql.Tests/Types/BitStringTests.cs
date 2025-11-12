@@ -56,7 +56,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
 
     [Test]
     public Task Bool()
-        => AssertType(true, "1", "bit(1)", dataTypeInference: DataTypeInferenceKind.WellKnown);
+        => AssertType(true, "1", "bit(1)", dataTypeInference: DataTypeInferenceKind.WellKnown, dbType: DbType.Boolean);
 
     [Test]
     public async Task Bitstring_with_multiple_bits_as_bool_throws()
@@ -121,7 +121,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
     public Task As_string()
         => AssertType("010101", "010101",
             "bit varying", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Write_as_string_validation()
