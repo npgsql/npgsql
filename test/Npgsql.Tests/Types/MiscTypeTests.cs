@@ -173,30 +173,32 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
     public async Task ObjectArray()
     {
         await AssertTypeWrite(new object?[] { (short)4, null, (long)5, 6 }, "{4,NULL,5,6}",
-            "integer[]", isDataTypeInferredFromValue: false);
+            "integer[]", dataTypeInference: false);
         await AssertTypeWrite(new object?[] { "text", null, DBNull.Value, "chars".ToCharArray(), 'c' }, "{text,NULL,NULL,chars,c}",
-            "text[]", isDataTypeInferredFromValue: false);
+            "text[]", dataTypeInference: false);
 
         await using var dataSource = CreateDataSource(b => b.ConnectionStringBuilder.Timezone = "Europe/Berlin");
         await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) },
             "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}",
-            "timestamp with time zone[]", isDataTypeInferredFromValue: false);
+            "timestamp with time zone[]", dataTypeInference: false);
         Assert.ThrowsAsync<ArgumentException>(() => AssertTypeWrite(dataSource, new object?[]
             {
                 DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
             }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
-            isDataTypeInferredFromValue: false));
+            dataTypeInference: false));
     }
 
     [Test]
     public Task Int2Vector()
         => AssertType(new short[] { 4, 5, 6 }, "4 5 6",
-            "int2vector", isDataTypeInferredFromValue: false);
+            "int2vector", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            // int2vector mappings require a data type name, so passing a value of type short[][] will result in no mapping.
+            skipArrayCheck: true);
 
     [Test]
     public Task Oidvector()
         => AssertType(new uint[] { 4, 5, 6 }, "4 5 6",
-            "oidvector", isDataTypeInferredFromValue: false);
+            "oidvector", dataTypeInference: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1138")]
     public async Task Void()

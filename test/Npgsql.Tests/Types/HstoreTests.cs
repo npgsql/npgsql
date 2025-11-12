@@ -17,11 +17,11 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
                 {"cd", "hello"}
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
-            "hstore", isDataTypeInferredFromValue: false);
+            "hstore", dataTypeInference: false);
 
     [Test]
     public Task Hstore_empty()
-        => AssertType(new Dictionary<string, string?>(), @"", "hstore", isDataTypeInferredFromValue: false);
+        => AssertType(new Dictionary<string, string?>(), @"", "hstore", dataTypeInference: false);
 
     [Test]
     public Task Hstore_as_ImmutableDictionary()
@@ -36,7 +36,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             immutableDictionary,
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, isValueTypeDefaultFieldType: false);
     }
 
     [Test]
@@ -50,7 +50,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, isValueTypeDefaultFieldType: false);
 
     [OneTimeSetUp]
     public async Task SetUp()

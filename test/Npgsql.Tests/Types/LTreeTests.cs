@@ -10,17 +10,17 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     [Test]
     public Task LQuery()
         => AssertType("Top.Science.*", "Top.Science.*",
-            "lquery", isDataTypeInferredFromValue: false);
+            "lquery", dataTypeInference: DataTypeInferenceKind.WellKnown);
 
     [Test]
     public Task LTree()
         => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy",
-            "ltree", isDataTypeInferredFromValue: false);
+            "ltree", dataTypeInference: DataTypeInferenceKind.WellKnown);
 
     [Test]
     public Task LTxtQuery()
         => AssertType("Science & Astronomy", "Science & Astronomy",
-            "ltxtquery", isDataTypeInferredFromValue: false);
+            "ltxtquery", dataTypeInference: DataTypeInferenceKind.WellKnown);
 
     [Test]
     public async Task LTree_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
@@ -48,7 +48,7 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy",
-            "ltree", isDataTypeInferredFromValue: false,
+            "ltree", dataTypeInference: DataTypeInferenceKind.WellKnown,
             skipArrayCheck: !withArrays);
     }
 

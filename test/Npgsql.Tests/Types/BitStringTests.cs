@@ -31,7 +31,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
         await AssertType(bitArray, sqlLiteral, "bit varying");
 
         if (len > 0)
-            await AssertType(bitArray, sqlLiteral, $"bit({len})", isDataTypeInferredFromValue: false);
+            await AssertType(bitArray, sqlLiteral, $"bit({len})", dataTypeInference: DataTypeInferenceKind.WellKnown);
     }
 
     [Test]
@@ -56,7 +56,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
 
     [Test]
     public Task Bool()
-        => AssertType(true, "1", "bit(1)", isDataTypeInferredFromValue: false);
+        => AssertType(true, "1", "bit(1)", dataTypeInference: DataTypeInferenceKind.WellKnown);
 
     [Test]
     public async Task Bitstring_with_multiple_bits_as_bool_throws()
@@ -119,7 +119,9 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
 
     [Test]
     public Task As_string()
-        => AssertType("010101", "010101", "bit varying", isDataTypeInferredFromValue: false, isValueTypeDefaultFieldType: false);
+        => AssertType("010101", "010101",
+            "bit varying", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Write_as_string_validation()
