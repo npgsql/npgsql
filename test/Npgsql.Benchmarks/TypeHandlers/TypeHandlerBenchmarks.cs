@@ -85,7 +85,7 @@ public abstract class TypeHandlerBenchmarks<T>
             _readBuffer.FilledBytes = _writeBuffer.WritePosition;
             _writeBuffer.WritePosition = 0;
             _reader = new PgReader(_readBuffer);
-            _reader.Init((size ?? -1).Value, DataFormat.Binary);
+            _reader.Init((size ?? -1).Value);
         }
     }
 
@@ -96,7 +96,7 @@ public abstract class TypeHandlerBenchmarks<T>
             return default!;
 
         _readBuffer.ReadPosition = 0;
-        _reader.StartRead(_binaryRequirements.Read);
+        _reader.StartRead(DataFormat.Binary, _binaryRequirements.Read);
         var value = _converter.Read(_reader);
         _reader.EndRead();
         return value;

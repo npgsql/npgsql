@@ -181,13 +181,6 @@ static class PgConverterExtensions
 
         return size;
     }
-
-    internal static PgConverter<T> UnsafeDowncast<T>(this PgConverter converter)
-    {
-        // Justification: avoid perf cost of casting to a known base class type per read/write, see callers.
-        Debug.Assert(converter is PgConverter<T>);
-        return Unsafe.As<PgConverter<T>>(converter);
-    }
 }
 
 [method: SetsRequiredMembers]
