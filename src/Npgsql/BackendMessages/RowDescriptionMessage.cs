@@ -11,13 +11,12 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.BackendMessages;
 
-readonly struct ColumnInfo(PgConcreteTypeInfo typeInfo, PgFieldBinding binding, bool asObject)
+readonly struct ColumnInfo(PgConcreteTypeInfo typeInfo, PgFieldBinding binding)
 {
     public bool IsDefault => TypeInfo is null;
     public PgConcreteTypeInfo TypeInfo { get; } = typeInfo;
     public PgFieldBinding Binding { get; } = binding;
     public DataFormat DataFormat => Binding.DataFormat;
-    public bool AsObject { get; } = asObject;
 }
 
 /// <summary>
@@ -336,22 +335,10 @@ public sealed class FieldDescription
             return;
 
         var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectInfo : (_objectInfo.TypeInfo, Binding: _objectInfo.Binding);
-        if (objectInfo.TypeInfo is not null)
+        if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
         {
-            if (typeof(object) == type)
-            {
-                lastColumnInfo = new(objectInfo.TypeInfo, objectInfo.Binding, true);
-                return;
-            }
-            if (objectInfo.TypeInfo.Type == type)
-            {
-                // As TypeInfoMappingCollection always adds object mappings for
-                // default/datatypename mappings, we'll also check Converter.TypeToConvert.
-                // If we have an exact match we are still able to use e.g. a converter for ints in an unboxed fashion.
-                lastColumnInfo = new(objectInfo.TypeInfo, objectInfo.Binding,
-                    objectInfo.TypeInfo.IsBoxing && objectInfo.TypeInfo.Converter.TypeToConvert != type);
-                return;
-            }
+            lastColumnInfo = new(objectInfo.TypeInfo, objectInfo.Binding);
+            return;
         }
 
         GetInfoSlow(type, out lastColumnInfo);
@@ -374,7 +361,7 @@ public sealed class FieldDescription
                 if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out binding))
                     binding = concreteTypeInfo.BindField(DataFormat.Text);
 
-                lastColumnInfo = new(concreteTypeInfo, binding, type != concreteTypeInfo.Type || concreteTypeInfo.IsBoxing);
+                lastColumnInfo = new(concreteTypeInfo, binding);
 
                 break;
             }
@@ -385,7 +372,7 @@ public sealed class FieldDescription
 
                 // If we don't support the DataFormat we'll just throw.
                 binding = concreteTypeInfo.BindField(DataFormat);
-                lastColumnInfo = new(concreteTypeInfo, binding, typeof(object) == type || concreteTypeInfo.IsBoxing);
+                lastColumnInfo = new(concreteTypeInfo, binding);
                 break;
             }
             default:

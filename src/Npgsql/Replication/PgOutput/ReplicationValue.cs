@@ -153,7 +153,7 @@ public class ReplicationValue
         var reader = PgReader;
         reader.Init(Length, _fieldDescription.DataFormat);
         reader.StartRead(info.Binding.BufferRequirement);
-        var result = info.AsObject
+        var result = info.TypeInfo.ShouldReadAsObject<T>()
             ? (T)info.TypeInfo.Converter.ReadAsObject(reader)
             : info.TypeInfo.Converter.UnsafeDowncast<T>().Read(reader);
         reader.EndRead();
@@ -190,7 +190,7 @@ public class ReplicationValue
         var reader = PgReader;
         reader.Init(Length, _fieldDescription.DataFormat);
         await reader.StartReadAsync(info.Binding.BufferRequirement, cancellationToken).ConfigureAwait(false);
-        var result = info.AsObject
+        var result = info.TypeInfo.ShouldReadAsObject<T>()
             ? (T)await info.TypeInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
             : await info.TypeInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
         await reader.EndReadAsync().ConfigureAwait(false);
