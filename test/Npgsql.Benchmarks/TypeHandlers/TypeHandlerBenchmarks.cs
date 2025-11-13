@@ -95,7 +95,7 @@ public abstract class TypeHandlerBenchmarks<T>
             _readBuffer.ReadPosition = 0;
             _writeBuffer.WritePosition = 0;
 
-            _reader.Init((size ?? -1).Value, DataFormat.Binary);
+            _reader.Init((size ?? -1).Value);
         }
     }
 
@@ -106,7 +106,7 @@ public abstract class TypeHandlerBenchmarks<T>
             return default!;
 
         _readBuffer.ReadPosition = 0;
-        _reader.StartRead(_binaryRequirements.Read);
+        _reader.StartRead(DataFormat.Binary, _binaryRequirements.Read);
         var value = _converter.Read(_reader);
         _reader.EndRead();
         return value;

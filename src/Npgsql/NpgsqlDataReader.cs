@@ -1375,7 +1375,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (field.DataFormat is DataFormat.Text || (elementType.InternalName != "record" && compositeType == null))
             ThrowHelper.ThrowInvalidCastException("GetData() not supported for type " + field.TypeDisplayName);
 
-        if (SeekToColumn(ordinal, field.DataFormat, resumableOp: true) is DbNullSentinel)
+        if (SeekToColumn(ordinal, resumableOp: true) is DbNullSentinel)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
         Debug.Assert(!PgReader.NestedInitialized, "Unexpected nested read active, Seek(0) would seek to the start of the nested data.");
@@ -1423,7 +1423,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             ThrowHelper.ThrowIndexOutOfRangeException("bufferOffset must be between 0 and {0}", buffer.Length - bufferOffset);
 
-        if (SeekToColumn(ordinal, field.DataFormat, resumableOp: true) is var columnLength && columnLength is DbNullSentinel)
+        if (SeekToColumn(ordinal, resumableOp: true) is var columnLength && columnLength is DbNullSentinel)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
         if (buffer is null)
@@ -1481,7 +1481,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         ThrowIfNotInResult();
 
         // Check whether we have a GetChars implementation for this column type.
-        var typeInfo = GetInfo(ordinal, typeof(GetChars), out var dataFormat, out var bufferRequirement);
+        var typeInfo = GetBindingInfo(ordinal, typeof(GetChars), out var dataFormat);
 
         if (dataOffset is < 0 or > int.MaxValue)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(dataOffset), "dataOffset must be between 0 and {0}", int.MaxValue);
@@ -1490,7 +1490,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             ThrowHelper.ThrowIndexOutOfRangeException("bufferOffset must be between 0 and {0}", buffer.Length - bufferOffset);
 
-        if (SeekToColumn(ordinal, dataFormat, resumableOp: true) is DbNullSentinel)
+        if (SeekToColumn(ordinal, resumableOp: true) is DbNullSentinel)
             ThrowHelper.ThrowInvalidCastException_NoValue(RowDescription[ordinal]);
 
         var reader = PgReader;
@@ -1500,13 +1500,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         reader.StartCharsRead(checked((int)dataOffset),
             buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null);
-
-        reader.StartRead(bufferRequirement);
-        var result = typeInfo.ShouldReadAsObject<GetChars>()
-            ? (GetChars)typeInfo.Converter.ReadAsObject(reader)
-            : ((PgConverter<GetChars>)typeInfo.Converter).Read(reader);
-        reader.EndRead();
-
+        var result = typeInfo.ReadFieldValue<GetChars>(reader, dataFormat);
         reader.EndCharsRead();
         return result.Read;
     }
@@ -1561,19 +1555,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         async Task<T> Core(int ordinal, CancellationToken cancellationToken)
         {
             ThrowIfNotInResult();
-            var typeInfo = GetInfo(ordinal, typeof(T), out var dataFormat, out var bufferRequirement);
+            var typeInfo = GetBindingInfo(ordinal, typeof(T), out var dataFormat);
 
             using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-            if (await SeekToColumnAsync(ordinal, dataFormat).ConfigureAwait(false) is DbNullSentinel)
+
+            if (await SeekToColumnAsync(ordinal).ConfigureAwait(false) is DbNullSentinel)
                 return DbNullValueOrThrow<T>(ordinal);
 
-            var reader = PgReader;
-            await reader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
-            var result = typeInfo.ShouldReadAsObject<T>()
-                ? (T)await typeInfo.Converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
-                : await typeInfo.Converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
-            await PgReader.EndReadAsync().ConfigureAwait(false);
-            return result;
+            return await typeInfo.ReadFieldValueAsync<T>(PgReader, dataFormat, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -1588,18 +1577,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     T GetFieldValueCore<T>(int ordinal)
     {
         ThrowIfNotInResult();
-        var typeInfo = GetInfo(ordinal, typeof(T), out var dataFormat, out var bufferRequirement);
+        var typeInfo = GetBindingInfo(ordinal, typeof(T), out var dataFormat);
 
-        if (SeekToColumn(ordinal, dataFormat) is DbNullSentinel)
-            return DbNullValueOrThrow<T>(ordinal);
-
-        var reader = PgReader;
-        reader.StartRead(bufferRequirement);
-        var result = typeInfo.ShouldReadAsObject<T>()
-            ? (T)typeInfo.Converter.ReadAsObject(PgReader)
-            : typeInfo.Converter.UnsafeDowncast<T>().Read(PgReader);
-        reader.EndRead();
-        return result;
+        return SeekToColumn(ordinal) is DbNullSentinel ? DbNullValueOrThrow<T>(ordinal) : typeInfo.ReadFieldValue<T>(PgReader, dataFormat);
     }
 
     #endregion
@@ -1614,16 +1594,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override object GetValue(int ordinal)
     {
         ThrowIfNotInResult();
-        var format = GetDefaultInfo(ordinal, out var converter, out var bufferRequirement);
-        if (SeekToColumn(ordinal, format) is DbNullSentinel)
-            return DBNull.Value;
+        var typeInfo = GetDefaultBindingInfo(ordinal, out var dataFormat);
 
-        var reader = PgReader;
-        reader.StartRead(bufferRequirement);
-        var result = converter.ReadAsObject(reader);
-        reader.EndRead();
-
-        return result;
+        return SeekToColumn(ordinal) is DbNullSentinel ? DBNull.Value : typeInfo.ReadFieldValue<object>(PgReader, dataFormat);
     }
 
     /// <summary>
@@ -1645,7 +1618,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override bool IsDBNull(int ordinal)
     {
         ThrowIfNotInResult();
-        return SeekToColumn(ordinal, RowDescription[ordinal].DataFormat, resumableOp: true) is DbNullSentinel;
+        return SeekToColumn(ordinal, resumableOp: true) is DbNullSentinel;
     }
 
     /// <summary>
@@ -1668,7 +1641,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             ThrowIfNotInResult();
             using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-            return await SeekToColumnAsync(ordinal, RowDescription[ordinal].DataFormat, resumableOp: true).ConfigureAwait(false) is DbNullSentinel;
+            return await SeekToColumnAsync(ordinal, resumableOp: true).ConfigureAwait(false) is DbNullSentinel;
         }
     }
 
@@ -1861,7 +1834,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     #region Seeking
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    int SeekToColumn(int ordinal, DataFormat dataFormat, bool resumableOp = false)
+    int SeekToColumn(int ordinal, bool resumableOp = false)
     {
         Debug.Assert(_isRowBuffered || _isSequential);
         var reader = PgReader;
@@ -1883,7 +1856,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         reader.Commit();
         var columnLength = BufferSeekToColumn(column, ordinal, !_isRowBuffered);
-        reader.Init(columnLength, dataFormat, resumableOp);
+        reader.Init(columnLength, resumableOp);
         return columnLength;
 
         static void ThrowInvalidSequentialSeek(int column, int ordinal)
@@ -1892,23 +1865,23 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 $"you may only read from column ordinal '{column}' or greater.");
     }
 
-    ValueTask<int> SeekToColumnAsync(int ordinal, DataFormat dataFormat, bool resumableOp = false)
+    ValueTask<int> SeekToColumnAsync(int ordinal, bool resumableOp = false)
     {
         // When the row is buffered or we're rereading previous data no IO will be done.
         if (_isRowBuffered || _column >= ordinal)
-            return new(SeekToColumn(ordinal, dataFormat, resumableOp));
+            return new(SeekToColumn(ordinal, resumableOp));
 
-        return Core(ordinal, dataFormat, resumableOp);
+        return Core(ordinal, resumableOp);
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-        async ValueTask<int> Core(int ordinal, DataFormat dataFormat, bool resumableOp)
+        async ValueTask<int> Core(int ordinal, bool resumableOp)
         {
             Debug.Assert(!_isRowBuffered && _column < ordinal);
 
             var reader = PgReader;
             await reader.CommitAsync().ConfigureAwait(false);
             var columnLength = await BufferSeekToColumnAsync(_column, ordinal, !_isRowBuffered).ConfigureAwait(false);
-            reader.Init(columnLength, dataFormat, resumableOp);
+            reader.Init(columnLength, resumableOp);
             return columnLength;
         }
     }
@@ -2051,7 +2024,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    PgConcreteTypeInfo GetInfo(int ordinal, Type type, out DataFormat dataFormat, out Size bufferRequirement)
+    PgConcreteTypeInfo GetBindingInfo(int ordinal, Type type, out DataFormat dataFormat)
     {
         if ((uint)ordinal >= (uint)ColumnCount)
             ThrowHelper.ThrowIndexOutOfRangeException("Ordinal is out of range, value must be between 0 and {0} (exclusive).", ColumnCount);
@@ -2063,31 +2036,20 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (info is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type)
         {
             dataFormat = info.DataFormat;
-            bufferRequirement = info.Binding.BufferRequirement;
             return info.TypeInfo;
         }
 
-        return Slow(ref info, out dataFormat, out bufferRequirement);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        PgConcreteTypeInfo Slow(ref ColumnInfo info, out DataFormat dataFormat, out Size bufferRequirement)
-        {
-            var field = RowDescription![ordinal];
-            field.GetInfo(type, ref info);
-            dataFormat = info.DataFormat;
-            bufferRequirement = info.Binding.BufferRequirement;
-            return info.TypeInfo;
-        }
+        RowDescription![ordinal].GetInfo(type, ref info);
+        dataFormat = info.DataFormat;
+        return info.TypeInfo;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    DataFormat GetDefaultInfo(int ordinal, out PgConverter converter, out Size bufferRequirement)
+    PgConcreteTypeInfo GetDefaultBindingInfo(int ordinal, out DataFormat dataFormat)
     {
         var field = RowDescription![ordinal];
-
-        converter = field.ObjectInfo.TypeInfo.Converter;
-        bufferRequirement = field.ObjectInfo.Binding.BufferRequirement;
-        return field.DataFormat;
+        dataFormat = field.DataFormat;
+        return field.ObjectInfo.TypeInfo;
     }
 
     /// <summary>

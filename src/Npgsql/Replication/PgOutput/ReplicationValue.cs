@@ -118,7 +118,7 @@ public class ReplicationValue
 
         var reader = PgReader;
         if (!reader.Initialized)
-            reader.Init(Length, _fieldDescription.DataFormat);
+            reader.Init(Length);
         await reader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         await reader.CommitAsync().ConfigureAwait(false);
 
@@ -188,13 +188,8 @@ public class ReplicationValue
         using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
         var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        await reader.StartReadAsync(info.Binding.BufferRequirement, cancellationToken).ConfigureAwait(false);
-        var result = info.TypeInfo.ShouldReadAsObject<T>()
-            ? (T)await info.TypeInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await info.TypeInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
-        await reader.EndReadAsync().ConfigureAwait(false);
-        return result;
+        reader.Init(Length);
+        return await info.TypeInfo.ReadFieldValueAsync<T>(PgReader, _fieldDescription.DataFormat, cancellationToken).ConfigureAwait(false);
     }
 
     void ThrowIfInitialized()
