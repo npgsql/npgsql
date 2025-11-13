@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -209,10 +211,85 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal bool ShouldReadAsObject<T>()
+    bool ShouldReadAsObject<T>()
         // If we have an exact type match we can use e.g. a converter for ints in a strongly typed fashion.
         // If it's not a value type it doesn't matter so we can skip the check there.
-        => typeof(T) == typeof(object) || (IsBoxing && (!typeof(T).IsValueType || typeof(T) == Converter.TypeToConvert));
+        => typeof(T) == typeof(object) || (IsBoxing && (typeof(T).IsValueType || typeof(T) != Converter.TypeToConvert));
+
+    internal T ConverterRead<T>(PgReader reader)
+    {
+        if (ShouldReadAsObject<T>())
+            return (T)Converter.ReadAsObject(reader);
+
+        // Justification: avoid perf cost of casting to a known base class type per field read.
+        Debug.Assert(Converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(Converter).Read(reader);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ValueTask<T> ConverterReadAsync<T>(PgReader reader, CancellationToken cancellationToken)
+    {
+        var converter = Converter;
+        if (ShouldReadAsObject<T>())
+        {
+            var task = converter.ReadAsObjectAsync(reader, cancellationToken);
+            return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
+        }
+
+        // Justification: avoid perf cost of casting to a known base class type per field read.
+        Debug.Assert(converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(converter).ReadAsync(reader, cancellationToken);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        async ValueTask<T> ReadAndUnboxAsync(ValueTask<object> task)
+            => (T)await task.ConfigureAwait(false);
+    }
+
+    // TODO move asObject checks from NpgsqlParameter to here.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void ConverterWrite<T>(PgWriter writer, [DisallowNull]T value)
+    {
+        // Justification: avoid perf cost of casting to a known base class type per parameter write.
+        Debug.Assert(Converter is PgConverter<T>);
+        Unsafe.As<PgConverter<T>>(Converter).Write(writer, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ValueTask ConverterWriteAsync<T>(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
+    {
+        // Justification: avoid perf cost of casting to a known base class type per parameter write.
+        Debug.Assert(Converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(Converter).WriteAsync(writer, value, cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)
+    {
+        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
+        reader.StartRead(dataFormat, bufferRequirement);
+        var result = ConverterRead<T>(reader);
+        reader.EndRead();
+        return result;
+    }
+
+    internal async ValueTask<T> ReadFieldValueAsync<T>(PgReader reader, DataFormat dataFormat, CancellationToken cancellationToken)
+    {
+        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
+        await reader.StartReadAsync(dataFormat, bufferRequirement, cancellationToken).ConfigureAwait(false);
+        T result;
+        if (ShouldReadAsObject<T>())
+        {
+            result = (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            // Justification: avoid perf cost of casting to a known base class type per field read.
+            Debug.Assert(Converter is PgConverter<T>);
+            result = await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+        }
+        await reader.EndReadAsync().ConfigureAwait(false);
+        return result;
+    }
 
     public BufferRequirements? GetBufferRequirements(DataFormat format)
     {

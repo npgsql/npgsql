@@ -111,9 +111,9 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
             return base.WriteValue(async, writer, cancellationToken);
 
         if (async)
-            return Converter!.UnsafeDowncast<T>().WriteAsync(writer, TypedValue!, cancellationToken);
+            return ConcreteTypeInfo!.ConverterWriteAsync(writer, TypedValue!, cancellationToken);
 
-        Converter!.UnsafeDowncast<T>().Write(writer, TypedValue!);
+        ConcreteTypeInfo!.ConverterWrite(writer, TypedValue!);
         return new();
     }
 
