@@ -1479,7 +1479,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         ThrowIfNotInResult();
 
         // Check whether we have a GetChars implementation for this column type.
-        var field = GetInfo(ordinal, typeof(GetChars), out var converter, out var bufferRequirement, out var asObject);
+        var typeInfo = GetInfo(ordinal, typeof(GetChars), out var dataFormat, out var bufferRequirement);
 
         if (dataOffset is < 0 or > int.MaxValue)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(dataOffset), "dataOffset must be between 0 and {0}", int.MaxValue);
@@ -1488,7 +1488,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             ThrowHelper.ThrowIndexOutOfRangeException("bufferOffset must be between 0 and {0}", buffer.Length - bufferOffset);
 
-        if (SeekToColumn(ordinal, field, resumableOp: true) is -1)
+        if (SeekToColumn(ordinal, dataFormat, resumableOp: true) is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(RowDescription[ordinal]);
 
         var reader = PgReader;
@@ -1500,9 +1500,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null);
 
         reader.StartRead(bufferRequirement);
-        var result = asObject
-            ? (GetChars)converter.ReadAsObject(reader)
-            : ((PgConverter<GetChars>)converter).Read(reader);
+        var result = typeInfo.ShouldReadAsObject<GetChars>()
+            ? (GetChars)typeInfo.Converter.ReadAsObject(reader)
+            : ((PgConverter<GetChars>)typeInfo.Converter).Read(reader);
         reader.EndRead();
 
         reader.EndCharsRead();
@@ -1556,20 +1556,19 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         async ValueTask<T> Core(int ordinal, CancellationToken cancellationToken)
         {
             ThrowIfNotInResult();
-            var field = GetInfo(ordinal, typeof(T), out var converter, out var bufferRequirement, out var asObject);
+            var typeInfo = GetInfo(ordinal, typeof(T), out var dataFormat, out var bufferRequirement);
 
             using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-            if (await SeekToColumnAsync(ordinal, field).ConfigureAwait(false) is -1)
+            if (await SeekToColumnAsync(ordinal, dataFormat).ConfigureAwait(false) is -1)
                 return DbNullValueOrThrow<T>(ordinal);
 
             if (typeof(T) == typeof(TextReader))
                 PgReader.ThrowIfStreamActive();
 
-            Debug.Assert(asObject || converter is PgConverter<T>);
             await PgReader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
-            var result = asObject
-                ? (T)await converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
-                : await converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
+            var result = typeInfo.ShouldReadAsObject<T>()
+                ? (T)await typeInfo.Converter.ReadAsObjectAsync(PgReader, cancellationToken).ConfigureAwait(false)
+                : await typeInfo.Converter.UnsafeDowncast<T>().ReadAsync(PgReader, cancellationToken).ConfigureAwait(false);
             await PgReader.EndReadAsync().ConfigureAwait(false);
             return result;
         }
@@ -1604,19 +1603,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (typeof(T) == typeof(Stream))
             return GetStream(ordinal);
 
-        var field = GetInfo(ordinal, typeof(T), out var converter, out var bufferRequirement, out var asObject);
+        var typeInfo = GetInfo(ordinal, typeof(T), out var dataFormat, out var bufferRequirement);
 
         if (typeof(T) == typeof(TextReader))
             PgReader.ThrowIfStreamActive();
 
-        if (SeekToColumn(ordinal, field) is -1)
+        if (SeekToColumn(ordinal, dataFormat) is -1)
             return DbNullValueOrThrow<T>(ordinal);
 
-        Debug.Assert(asObject || converter is PgConverter<T>);
         PgReader.StartRead(bufferRequirement);
-        var result = asObject
-            ? (T)converter.ReadAsObject(PgReader)
-            : converter.UnsafeDowncast<T>().Read(PgReader);
+        var result = typeInfo.ShouldReadAsObject<T>()
+            ? (T)typeInfo.Converter.ReadAsObject(PgReader)
+            : typeInfo.Converter.UnsafeDowncast<T>().Read(PgReader);
         PgReader.EndRead();
         return result;
 
@@ -2078,7 +2076,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    DataFormat GetInfo(int ordinal, Type type, out PgConverter converter, out Size bufferRequirement, out bool asObject)
+    PgConcreteTypeInfo GetInfo(int ordinal, Type type, out DataFormat dataFormat, out Size bufferRequirement)
     {
         if ((uint)ordinal > (uint)ColumnCount)
             ThrowHelper.ThrowIndexOutOfRangeException("Ordinal must be between 0 and " + (ColumnCount - 1));
@@ -2089,23 +2087,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         if (info is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type)
         {
-            converter = info.TypeInfo.Converter;
+            dataFormat = info.DataFormat;
             bufferRequirement = info.BindingContext.BufferRequirement;
-            asObject = info.AsObject;
-            return info.DataFormat;
+            return info.TypeInfo;
         }
 
-        return Slow(ref info, out converter, out bufferRequirement, out asObject);
+        return Slow(ref info, out dataFormat, out bufferRequirement);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        DataFormat Slow(ref ColumnInfo info, out PgConverter converter, out Size bufferRequirement, out bool asObject)
+        PgConcreteTypeInfo Slow(ref ColumnInfo info, out DataFormat dataFormat, out Size bufferRequirement)
         {
             var field = RowDescription![ordinal];
             field.GetInfo(type, ref info);
-            converter = info.TypeInfo.Converter;
+            dataFormat = info.DataFormat;
             bufferRequirement = info.BindingContext.BufferRequirement;
-            asObject = info.AsObject;
-            return field.DataFormat;
+            return info.TypeInfo;
         }
     }
 

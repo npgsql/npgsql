@@ -276,12 +276,12 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
-            GetInfo(typeof(T), type, out var converter, out var bufferRequirement, out var asObject);
+            var typeInfo = GetInfo(typeof(T), type, out var bufferRequirement);
 
             reader.StartRead(bufferRequirement);
-            var result = asObject
-                ? (T)converter.ReadAsObject(reader)
-                : converter.UnsafeDowncast<T>().Read(reader);
+            var result = typeInfo.ShouldReadAsObject<T>()
+                ? (T)typeInfo.Converter.ReadAsObject(reader)
+                : typeInfo.Converter.UnsafeDowncast<T>().Read(reader);
             reader.EndRead();
 
             return result;
@@ -310,12 +310,12 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
-            GetInfo(typeof(T), type, out var converter, out var bufferRequirement, out var asObject);
+            var typeInfo = GetInfo(typeof(T), type, out var bufferRequirement);
 
             await reader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
-            var result = asObject
-                ? (T)await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-                : await converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            var result = typeInfo.ShouldReadAsObject<T>()
+                ? (T)await typeInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+                : await typeInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
             await reader.EndReadAsync().ConfigureAwait(false);
 
             return result;
@@ -338,13 +338,12 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     }
 
 
-    void GetInfo(Type type, NpgsqlDbType? npgsqlDbType, out PgConverter converter, out Size bufferRequirement, out bool asObject)
+    PgConcreteTypeInfo GetInfo(Type type, NpgsqlDbType? npgsqlDbType, out Size bufferRequirement)
     {
         ref var cachedInfo = ref _columnInfoCache[_column];
         var info = cachedInfo.IsDefault ? cachedInfo = GetInfoSlow(type, npgsqlDbType) : cachedInfo;
-        converter = info.TypeInfo.Converter;
         bufferRequirement = info.BindingContext.BufferRequirement;
-        asObject = info.AsObject;
+        return info.TypeInfo;
 
         ColumnInfo GetInfoSlow(Type type, NpgsqlDbType? npgsqlDbType = null)
         {
@@ -363,7 +362,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             // Binary export has no type info so we only do caller-directed interpretation of data.
             var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(
                 Field.CreateUnspecified(typeInfo.PgTypeId ?? ((PgProviderTypeInfo)typeInfo).GetDefaultConcreteTypeInfo(null).PgTypeId));
-            return new(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat.Binary), concreteTypeInfo.IsBoxing);
+            return new(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat.Binary));
 
             PgTypeId GetRepresentationalOrDefault(string dataTypeName)
             {

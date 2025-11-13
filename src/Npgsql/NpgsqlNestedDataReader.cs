@@ -346,7 +346,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         }
 
         using var _ = PgReader.BeginNestedRead(columnLength, info.BindingContext.BufferRequirement);
-        return info.AsObject
+        return info.TypeInfo.ShouldReadAsObject<T>()
             ? (T)info.TypeInfo.Converter.ReadAsObject(PgReader)!
             : info.TypeInfo.Converter.UnsafeDowncast<T>().Read(PgReader);
     }
@@ -493,26 +493,13 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             return lastInfo;
 
         var objectInfo = (TypeInfo: nestedColumn.ObjectTypeInfo, BindingContext: nestedColumn.ObjectBindingContext);
-        if (objectInfo.TypeInfo is not null)
-        {
-            if (typeof(object) == type)
-            {
-                return new(objectInfo.TypeInfo, objectInfo.BindingContext, true);
-            }
-            if (objectInfo.TypeInfo.Type == type)
-            {
-                // As TypeInfoMappingCollection always adds object mappings for
-                // default/datatypename mappings, we'll also check Converter.TypeToConvert.
-                // If we have an exact match we are still able to use e.g. a converter for ints in an unboxed fashion.
-                return new(objectInfo.TypeInfo, objectInfo.BindingContext,
-                    objectInfo.TypeInfo.IsBoxing && objectInfo.TypeInfo.Converter.TypeToConvert != type);
-            }
-        }
+        if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
+            return new(objectInfo.TypeInfo, objectInfo.BindingContext);
 
         var typeId = SerializerOptions.ToCanonicalTypeId(nestedColumn.PostgresType);
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type, typeId, SerializerOptions);
         var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(nestedColumn.Field);
-        var columnInfo = new ColumnInfo(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat), concreteTypeInfo.IsBoxing);
+        var columnInfo = new ColumnInfo(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat));
         _columns[ordinal] = nestedColumn with { LastInfo = columnInfo };
         return columnInfo;
     }

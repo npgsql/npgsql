@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -206,6 +207,12 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         return converter.CanConvert(format, out bufferRequirements);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool ShouldReadAsObject<T>()
+        // If we have an exact type match we can use e.g. a converter for ints in a strongly typed fashion.
+        // If it's not a value type it doesn't matter so we can skip the check there.
+        => typeof(T) == typeof(object) || (IsBoxing && (!typeof(T).IsValueType || typeof(T) == Converter.TypeToConvert));
 
     public BufferRequirements? GetBufferRequirements(DataFormat format)
     {
