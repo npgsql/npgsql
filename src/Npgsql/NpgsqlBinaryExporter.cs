@@ -276,15 +276,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
-            var typeInfo = GetInfo(typeof(T), type, out var bufferRequirement);
-
-            reader.StartRead(bufferRequirement);
-            var result = typeInfo.ShouldReadAsObject<T>()
-                ? (T)typeInfo.Converter.ReadAsObject(reader)
-                : typeInfo.Converter.UnsafeDowncast<T>().Read(reader);
-            reader.EndRead();
-
-            return result;
+            var typeInfo = GetInfo(typeof(T), type);
+            return typeInfo.ReadFieldValue<T>(reader, DataFormat.Binary);
         }
         finally
         {
@@ -310,15 +303,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
-            var typeInfo = GetInfo(typeof(T), type, out var bufferRequirement);
-
-            await reader.StartReadAsync(bufferRequirement, cancellationToken).ConfigureAwait(false);
-            var result = typeInfo.ShouldReadAsObject<T>()
-                ? (T)await typeInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-                : await typeInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
-            await reader.EndReadAsync().ConfigureAwait(false);
-
-            return result;
+            var typeInfo = GetInfo(typeof(T), type);
+            return await typeInfo.ReadFieldValueAsync<T>(reader, DataFormat.Binary, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -338,12 +324,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     }
 
 
-    PgConcreteTypeInfo GetInfo(Type type, NpgsqlDbType? npgsqlDbType, out Size bufferRequirement)
+    PgConcreteTypeInfo GetInfo(Type type, NpgsqlDbType? npgsqlDbType)
     {
         ref var cachedInfo = ref _columnInfoCache[_column];
-        var info = cachedInfo.IsDefault ? cachedInfo = GetInfoSlow(type, npgsqlDbType) : cachedInfo;
-        bufferRequirement = info.BindingContext.BufferRequirement;
-        return info.TypeInfo;
+        return (cachedInfo.IsDefault ? cachedInfo = GetInfoSlow(type, npgsqlDbType) : cachedInfo).TypeInfo;
 
         ColumnInfo GetInfoSlow(Type type, NpgsqlDbType? npgsqlDbType = null)
         {
@@ -430,7 +414,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _column++;
         _buf.Ensure(sizeof(int));
         var columnLen = _buf.ReadInt32();
-        PgReader.Init(columnLen, DataFormat.Binary, resumableOp);
+        PgReader.Init(columnLen, resumableOp);
     }
 
     async ValueTask MoveNextColumnAsync(bool resumableOp)
@@ -442,7 +426,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _column++;
         await _buf.Ensure(sizeof(int), async: true).ConfigureAwait(false);
         var columnLen = _buf.ReadInt32();
-        PgReader.Init(columnLen, DataFormat.Binary, resumableOp);
+        PgReader.Init(columnLen, resumableOp);
     }
 
     void ThrowIfNotOnRow()

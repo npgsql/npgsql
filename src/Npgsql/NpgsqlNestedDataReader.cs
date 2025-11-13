@@ -346,9 +346,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         }
 
         using var _ = PgReader.BeginNestedRead(columnLength, info.BindingContext.BufferRequirement);
-        return info.TypeInfo.ShouldReadAsObject<T>()
-            ? (T)info.TypeInfo.Converter.ReadAsObject(PgReader)!
-            : info.TypeInfo.Converter.UnsafeDowncast<T>().Read(PgReader);
+        return info.TypeInfo.ConverterRead<T>(PgReader);
     }
 
     /// <inheritdoc />
