@@ -39,8 +39,8 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
         // We can call GetDefaultConcreteTypeInfo here as validation has already happened in IsDbNullValue.
         // And we know it was called due to the writeState being filled.
         Debug.Assert(typeInfo.PgTypeId is not null);
-        var concreteTypeInfo = typeInfo is PgResolverTypeInfo resolverTypeInfo
-            ? resolverTypeInfo.GetDefaultConcreteTypeInfo(null)
+        var concreteTypeInfo = typeInfo is PgProviderTypeInfo providerTypeInfo
+            ? providerTypeInfo.GetDefaultConcreteTypeInfo(null)
             : typeInfo.AsConcreteTypeInfo();
         if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, context.Format) is not { } bufferRequirements)
         {
@@ -82,8 +82,8 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
         // We can call GetDefaultConcreteTypeInfo here as validation has already happened in IsDbNullValue.
         // And we know it was called due to the writeState being filled.
         Debug.Assert(typeInfo.PgTypeId is not null);
-        var concreteTypeInfo = typeInfo is PgResolverTypeInfo resolverTypeInfo
-            ? resolverTypeInfo.GetDefaultConcreteTypeInfo(null)
+        var concreteTypeInfo = typeInfo is PgProviderTypeInfo providerTypeInfo
+            ? providerTypeInfo.GetDefaultConcreteTypeInfo(null)
             : typeInfo.AsConcreteTypeInfo();
         var writeRequirement = concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary)!.Value.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);

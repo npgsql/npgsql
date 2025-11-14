@@ -7,10 +7,10 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
+sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 {
     readonly PgSerializerOptions _options;
-    readonly Func<DateTimeConverterResolver<T>, T?, PgTypeId?, PgConcreteTypeInfo?> _resolver;
+    readonly Func<DateTimeTypeInfoProvider<T>, T?, PgTypeId?, PgConcreteTypeInfo?> _provider;
     readonly Func<PgTypeId, PgConverter> _factory;
     readonly PgTypeId _timestampTz;
     PgConcreteTypeInfo? _timestampTzConcreteTypeInfo;
@@ -18,11 +18,11 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
     PgConcreteTypeInfo? _timestampConcreteTypeInfo;
     readonly bool _dateTimeInfinityConversions;
 
-    internal DateTimeConverterResolver(PgSerializerOptions options, Func<DateTimeConverterResolver<T>, T?, PgTypeId?, PgConcreteTypeInfo?> resolver,
+    internal DateTimeTypeInfoProvider(PgSerializerOptions options, Func<DateTimeTypeInfoProvider<T>, T?, PgTypeId?, PgConcreteTypeInfo?> provider,
         Func<PgTypeId, PgConverter> factory, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
     {
         _options = options;
-        _resolver = resolver;
+        _provider = provider;
         _factory = factory;
         _timestampTz = timestampTz;
         _timestamp = timestamp;
@@ -66,13 +66,13 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
     }
 
     public override PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId)
-        => _resolver(this, value, expectedPgTypeId);
+        => _provider(this, value, expectedPgTypeId);
 }
 
-sealed class DateTimeConverterResolver
+sealed class DateTimeTypeInfoProvider
 {
-    public static DateTimeConverterResolver<DateTime> CreateResolver(PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(options, static (resolver, value, expectedPgTypeId) => resolver.Get(value, expectedPgTypeId), pgTypeId =>
+    public static DateTimeTypeInfoProvider<DateTime> CreateProvider(PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
+        => new(options, static (provider, value, expectedPgTypeId) => provider.Get(value, expectedPgTypeId), pgTypeId =>
         {
             if (pgTypeId == timestampTz)
                 return new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc);
@@ -82,18 +82,18 @@ sealed class DateTimeConverterResolver
             throw new NotSupportedException();
         }, timestampTz, timestamp, dateTimeInfinityConversions);
 
-    public static DateTimeConverterResolver<NpgsqlRange<DateTime>> CreateRangeResolver(
+    public static DateTimeTypeInfoProvider<NpgsqlRange<DateTime>> CreateRangeProvider(
         PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(options, static (resolver, value, expectedPgTypeId) =>
+        => new(options, static (provider, value, expectedPgTypeId) =>
         {
             // Resolve both sides to make sure we end up with consistent PgTypeIds.
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (!value.LowerBoundInfinite)
-                concreteTypeInfo = resolver.Get(value.LowerBound, expectedPgTypeId);
+                concreteTypeInfo = provider.Get(value.LowerBound, expectedPgTypeId);
 
             if (!value.UpperBoundInfinite)
             {
-                var result = resolver.Get(value.UpperBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
+                var result = provider.Get(value.UpperBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
                 concreteTypeInfo ??= result;
             }
 
@@ -108,14 +108,14 @@ sealed class DateTimeConverterResolver
             throw new NotSupportedException();
         }, timestampTz, timestamp, dateTimeInfinityConversions);
 
-    public static DateTimeConverterResolver<T> CreateMultirangeResolver<T, TElement>(
+    public static DateTimeTypeInfoProvider<T> CreateMultirangeProvider<T, TElement>(
         PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
         where T : IList<TElement> where TElement : notnull
     {
         if (typeof(TElement) != typeof(NpgsqlRange<DateTime>))
             ThrowHelper.ThrowNotSupportedException("Unsupported element type");
 
-        return new DateTimeConverterResolver<T>(options, static (resolver, value, expectedPgTypeId) =>
+        return new DateTimeTypeInfoProvider<T>(options, static (provider, value, expectedPgTypeId) =>
         {
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is null)
@@ -126,12 +126,12 @@ sealed class DateTimeConverterResolver
                 PgConcreteTypeInfo? result;
                 if (!element.LowerBoundInfinite)
                 {
-                    result = resolver.Get(element.LowerBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
+                    result = provider.Get(element.LowerBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
                     concreteTypeInfo ??= result;
                 }
                 if (!element.UpperBoundInfinite)
                 {
-                    result = resolver.Get(element.UpperBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
+                    result = provider.Get(element.UpperBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
                     concreteTypeInfo ??= result;
                 }
             }
