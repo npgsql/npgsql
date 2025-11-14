@@ -7,17 +7,17 @@ namespace Npgsql.Internal.Converters;
 
 // Many ways to achieve strongly typed composition on top of a polymorphic element type.
 // Including pushing construction through a GVM visitor pattern on the element handler,
-// manual reimplementation of the element logic in the array resolver, and other ways.
+// manual reimplementation of the element logic in the array provider, and other ways.
 // This one however is by far the most lightweight on both the implementation duplication and code bloat axes.
-sealed class PolymorphicArrayConverterResolver : PgConverterResolver<object>
+sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<object>
 {
     readonly PgTypeId _pgTypeId;
-    readonly PgResolverTypeInfo _elementTypeInfo;
+    readonly PgProviderTypeInfo _elementTypeInfo;
     readonly Func<PgConcreteTypeInfo, PgConverter> _elementToArrayConverterFactory;
     readonly PgTypeId _elementPgTypeId;
     readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
-    public PolymorphicArrayConverterResolver(PgTypeId pgTypeId, PgResolverTypeInfo elementTypeInfo, Func<PgConcreteTypeInfo, PgConverter> elementToArrayConverterFactory)
+    public PolymorphicArrayTypeInfoProvider(PgTypeId pgTypeId, PgProviderTypeInfo elementTypeInfo, Func<PgConcreteTypeInfo, PgConverter> elementToArrayConverterFactory)
     {
         if (elementTypeInfo.PgTypeId is null)
             throw new ArgumentException("Type info cannot have an undecided PgTypeId.", nameof(elementTypeInfo));
@@ -47,7 +47,7 @@ sealed class PolymorphicArrayConverterResolver : PgConverterResolver<object>
 
     PgConcreteTypeInfo GetOrAdd(PgConcreteTypeInfo elementConcreteTypeInfo)
     {
-        (PolymorphicArrayConverterResolver Instance, PgConcreteTypeInfo ConcreteInfo) state = (this, elementConcreteTypeInfo);
+        (PolymorphicArrayTypeInfoProvider Instance, PgConcreteTypeInfo ConcreteInfo) state = (this, elementConcreteTypeInfo);
         return _concreteInfoCache.GetOrAdd(elementConcreteTypeInfo,
             static (_, state) =>
                 new(state.ConcreteInfo.Options, state.Instance._elementToArrayConverterFactory(state.ConcreteInfo), state.Instance._pgTypeId),

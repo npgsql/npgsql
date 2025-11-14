@@ -82,7 +82,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // We have no generic RangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
-            if (subInfo is not { IsResolverInfo: false })
+            if (subInfo is not { IsProviderInfo: false })
                 return null;
 
             subInfo = subInfo.ToNonBoxing();
@@ -136,7 +136,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // We have no generic MultirangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
-            if (subInfo is not { IsResolverInfo: false })
+            if (subInfo is not { IsProviderInfo: false })
                 return null;
 
             subInfo = subInfo.ToNonBoxing();

@@ -223,9 +223,9 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
     }
 }
 
-/// Note that for BIT(1), this resolver will return a bool converter by default, to align with SqlClient
+/// Note that for BIT(1), this provider will return a bool converter by default, to align with SqlClient
 /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
-sealed class PolymorphicBitStringConverterResolver(PgSerializerOptions options, PgTypeId bitString) : PgConverterResolver<object>
+sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, PgTypeId bitString) : PgConcreteTypeInfoProvider<object>
 {
     PgConcreteTypeInfo? _boolConcreteTypeInfo;
     PgConcreteTypeInfo? _bitArrayConcreteTypeInfo;
