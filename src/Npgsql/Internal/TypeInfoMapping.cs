@@ -17,7 +17,7 @@ namespace Npgsql.Internal;
 /// <param name="options"></param>
 /// <param name="mapping"></param>
 /// <param name="requiresDataTypeName">
-/// Relevant for `PgResolverTypeInfo` only: whether the instance can be constructed without passing mapping.DataTypeName, an exception occurs otherwise.
+/// Relevant for `PgProviderTypeInfo` only: whether the instance can be constructed without passing mapping.DataTypeName, an exception occurs otherwise.
 /// </param>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool requiresDataTypeName);
@@ -164,7 +164,7 @@ public sealed class TypeInfoMappingCollection
 
         static string ResolveFullyQualifiedDataTypeName(DataTypeName? dataTypeName, string mappingDataTypeName, PgSerializerOptions options)
         {
-            // Make sure plugins (which match on unqualified names) and converter resolvers get the fully qualified name to canonicalize.
+            // Make sure plugins (which match on unqualified names) and type info providers get the fully qualified name to canonicalize.
             if (dataTypeName is not null)
                 return dataTypeName.GetValueOrDefault().Value;
 
@@ -219,25 +219,25 @@ public sealed class TypeInfoMappingCollection
         };
 
     // Helper to eliminate generic display class duplication.
-    static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> mapper, bool copyPreferredFormat = false, bool? supportsReading = null, bool? supportsWriting = null)
+    static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> mapper, bool copyPreferredFormat = false, bool? supportsReading = null, bool? supportsWriting = null)
         => (options, mapping, requiresDataTypeName) =>
         {
             var resolvedInnerMapping = innerMapping;
             if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
                 resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
 
-            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
-            var resolver = mapper(mapping, innerInfo);
+            var innerInfo = (PgProviderTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
+            var typeInfoProvider = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var unboxedType = ComputeUnboxedType(defaultType: mappingType, resolver.TypeToConvert, mapping.Type);
-            var readingSupported = innerInfo.SupportsReading && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(resolver.TypeToConvert, unboxedType));
+            var unboxedType = ComputeUnboxedType(defaultType: mappingType, typeInfoProvider.TypeToConvert, mapping.Type);
+            var readingSupported = innerInfo.SupportsReading && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(typeInfoProvider.TypeToConvert, unboxedType));
             var writingSupported = innerInfo.SupportsWriting && (supportsWriting ?? true);
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
             PgTypeId? pgTypeId = innerInfo.PgTypeId is not null
                 ? options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName))
                 : null;
-            return new PgResolverTypeInfo(options, resolver, pgTypeId, unboxedType)
+            return new PgProviderTypeInfo(options, typeInfoProvider, pgTypeId, unboxedType)
             {
                 PreferredFormat = preferredFormat,
                 SupportsReading = readingSupported,
@@ -313,19 +313,19 @@ public sealed class TypeInfoMappingCollection
         _items.Add(mapping);
     }
 
-    public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
-        => AddResolverType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
+    public void AddProviderType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
+        => AddProviderType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
 
-    public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : class
-        => AddResolverType<T>(dataTypeName, createInfo, GetDefaultConfigure(matchRequirement));
+    public void AddProviderType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : class
+        => AddProviderType<T>(dataTypeName, createInfo, GetDefaultConfigure(matchRequirement));
 
-    public void AddResolverType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : class
+    public void AddProviderType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : class
     {
         var mapping = new TypeInfoMapping(typeof(T), dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.GetConverterResolver(), copyPreferredFormat: true))
+                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.GetProvider(), copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -390,10 +390,10 @@ public sealed class TypeInfoMappingCollection
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
-        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _));
-        AddResolverArrayType(elementMapping, typeof(IList<TElement>), CreateListBasedConverterResolver<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
+        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedTypeInfoProvider<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _));
+        AddResolverArrayType(elementMapping, typeof(IList<TElement>), CreateListBasedTypeInfoProvider<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
 
-        void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> converter, Func<Type?, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
+        void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> converter, Func<Type?, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
         {
             var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(type, elementMapping, converter, supportsReading: true))
             {
@@ -518,39 +518,39 @@ public sealed class TypeInfoMappingCollection
                 };
             }) { MatchRequirement = MatchRequirement.DataTypeName });
 
-        PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerTypeInfo, PgTypeInfo nullableInnerTypeInfo, string dataTypeName)
+        PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerInfo, PgTypeInfo nullableInnerInfo, string dataTypeName)
         {
             var converter =
                 new PolymorphicArrayConverter<Array>(
-                    (PgConverter<Array>)innerTypeInfo.AsConcreteTypeInfo().Converter,
-                    (PgConverter<Array>)nullableInnerTypeInfo.AsConcreteTypeInfo().Converter);
+                    (PgConverter<Array>)innerInfo.AsConcreteTypeInfo().Converter,
+                    (PgConverter<Array>)nullableInnerInfo.AsConcreteTypeInfo().Converter);
 
-            return new PgConcreteTypeInfo(innerTypeInfo.Options, converter,
-                innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
+            return new PgConcreteTypeInfo(innerInfo.Options, converter,
+                innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
         }
     }
 
-    public void AddResolverStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
-        => AddResolverStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverterResolver<T>(innerInfo), GetDefaultConfigure(isDefault));
+    public void AddProviderStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
+        => AddProviderStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
+            static (_, innerInfo) => new NullableTypeInfoProvider<T>(innerInfo), GetDefaultConfigure(isDefault));
 
-    public void AddResolverStructType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
-        => AddResolverStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverterResolver<T>(innerInfo), GetDefaultConfigure(matchRequirement));
+    public void AddProviderStructType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
+        => AddProviderStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
+            static (_, innerInfo) => new NullableTypeInfoProvider<T>(innerInfo), GetDefaultConfigure(matchRequirement));
 
-    public void AddResolverStructType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
-        => AddResolverStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverterResolver<T>(innerInfo), configure);
+    public void AddProviderStructType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
+        => AddProviderStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
+            static (_, innerInfo) => new NullableTypeInfoProvider<T>(innerInfo), configure);
 
     // Lives outside to prevent capture of T.
-    void AddResolverStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
-        Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> nullableConverter, Func<TypeInfoMapping, TypeInfoMapping>? configure)
+    void AddProviderStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
+        Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> nullableConverter, Func<TypeInfoMapping, TypeInfoMapping>? configure)
     {
         var mapping = new TypeInfoMapping(type, dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(type, mapping, static (_, info) => info.GetConverterResolver(), copyPreferredFormat: true))
+                CreateComposedFactory(type, mapping, static (_, info) => info.GetProvider(), copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -567,16 +567,16 @@ public sealed class TypeInfoMappingCollection
             });
     }
 
-    public void AddResolverStructArrayType<TElement>(string elementDataTypeName) where TElement : struct
-        => AddResolverStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping: false);
+    public void AddProviderStructArrayType<TElement>(string elementDataTypeName) where TElement : struct
+        => AddProviderStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping: false);
 
-    public void AddResolverStructArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping) where TElement : struct
-        => AddResolverStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
+    public void AddProviderStructArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping) where TElement : struct
+        => AddProviderStructArrayType<TElement>(GetMapping(typeof(TElement), elementDataTypeName), GetMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
 
-    public void AddResolverStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping) where TElement : struct
-        => AddResolverStructArrayType<TElement>(elementMapping, nullableElementMapping, suppressObjectMapping: false);
+    public void AddProviderStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping) where TElement : struct
+        => AddProviderStructArrayType<TElement>(elementMapping, nullableElementMapping, suppressObjectMapping: false);
 
-    public void AddResolverStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, bool suppressObjectMapping) where TElement : struct
+    public void AddProviderStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, bool suppressObjectMapping) where TElement : struct
     {
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type is null || type == typeof(TElement)));
@@ -588,19 +588,19 @@ public sealed class TypeInfoMappingCollection
 
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
-        AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
-            CreateArrayBasedConverterResolver<TElement>,
-            CreateArrayBasedConverterResolver<TElement?>, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _), arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate);
+        AddProviderStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
+            CreateArrayBasedTypeInfoProvider<TElement>,
+            CreateArrayBasedTypeInfoProvider<TElement?>, suppressObjectMapping: suppressObjectMapping || TryGetMapping(typeof(object), arrayDataTypeName, out _), arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate);
 
         // Don't add the object converter for the list based converter.
-        AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(IList<TElement>), typeof(IList<TElement?>),
-            CreateListBasedConverterResolver<TElement>,
-            CreateListBasedConverterResolver<TElement?>, suppressObjectMapping: true, listTypeMatchPredicate, nullableListTypeMatchPredicate);
+        AddProviderStructArrayType(elementMapping, nullableElementMapping, typeof(IList<TElement>), typeof(IList<TElement?>),
+            CreateListBasedTypeInfoProvider<TElement>,
+            CreateListBasedTypeInfoProvider<TElement?>, suppressObjectMapping: true, listTypeMatchPredicate, nullableListTypeMatchPredicate);
     }
 
     // Lives outside to prevent capture of TElement.
-    void AddResolverStructArrayType(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, Type type, Type nullableType,
-            Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> converter, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> nullableConverter,
+    void AddProviderStructArrayType(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, Type type, Type nullableType,
+            Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> converter, Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> nullableConverter,
             bool suppressObjectMapping, Func<Type?, bool>? typeMatchPredicate, Func<Type?, bool>? nullableTypeMatchPredicate)
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
@@ -633,28 +633,28 @@ public sealed class TypeInfoMappingCollection
                     _ => throw new ArgumentOutOfRangeException()
                 }) { MatchRequirement = MatchRequirement.DataTypeName });
 
-            PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerTypeInfo, PgTypeInfo nullableInnerTypeInfo, string dataTypeName)
+            PgTypeInfo CreateComposedPerInstance(PgTypeInfo innerInfo, PgTypeInfo nullableInnerInfo, string dataTypeName)
             {
-                var resolver =
-                    new PolymorphicArrayConverterResolver<Array>((PgResolverTypeInfo)innerTypeInfo,
-                        (PgResolverTypeInfo)nullableInnerTypeInfo);
+                var provider =
+                    new PolymorphicArrayTypeInfoProvider<Array>((PgProviderTypeInfo)innerInfo,
+                        (PgProviderTypeInfo)nullableInnerInfo);
 
-                return new PgResolverTypeInfo(innerTypeInfo.Options, resolver,
-                    innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
+                return new PgProviderTypeInfo(innerInfo.Options, provider,
+                    innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
             }
         }
 
-    public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
-        => AddPolymorphicResolverArrayType(GetMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
+    public void AddPolymorphicProviderArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
+        => AddPolymorphicProviderArrayType(GetMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
 
-    public void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
+    public void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
     {
-        AddPolymorphicResolverArrayType(elementMapping, typeof(object),
-            (mapping, elementInfo) => new PolymorphicArrayConverterResolver(
+        AddPolymorphicProviderArrayType(elementMapping, typeof(object),
+            (mapping, elementInfo) => new PolymorphicArrayTypeInfoProvider(
                 elementInfo.Options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elementInfo, elementToArrayConverterFactory(elementInfo.Options))
         , null);
 
-        void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgResolverTypeInfo, PgConverterResolver> converter, Func<Type?, bool>? typeMatchPredicate)
+        void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> converter, Func<Type?, bool>? typeMatchPredicate)
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
             var mapping = new TypeInfoMapping(type, arrayDataTypeName,
@@ -710,7 +710,7 @@ public sealed class TypeInfoMappingCollection
         if (!elemInfo.IsBoxing)
             return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.AsConcreteTypeInfo(), mapping.Type);
 
-        ThrowBoxingNotSupported(resolver: false);
+        ThrowBoxingNotSupported(provider: false);
         return default;
     }
 
@@ -719,31 +719,31 @@ public sealed class TypeInfoMappingCollection
         if (!elemInfo.IsBoxing)
             return new ListBasedArrayConverter<IList<TElement>, TElement>(elemInfo.AsConcreteTypeInfo());
 
-        ThrowBoxingNotSupported(resolver: false);
+        ThrowBoxingNotSupported(provider: false);
         return default;
     }
 
-    static ArrayConverterResolver<Array, TElement> CreateArrayBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo)
+    static ArrayTypeInfoProvider<Array, TElement> CreateArrayBasedTypeInfoProvider<TElement>(TypeInfoMapping mapping, PgProviderTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayConverterResolver<Array, TElement>(elemInfo, mapping.Type);
+            return new ArrayTypeInfoProvider<Array, TElement>(elemInfo, mapping.Type);
 
-        ThrowBoxingNotSupported(resolver: true);
+        ThrowBoxingNotSupported(provider: true);
         return default;
     }
 
-    static ArrayConverterResolver<IList<TElement>, TElement> CreateListBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo)
+    static ArrayTypeInfoProvider<IList<TElement>, TElement> CreateListBasedTypeInfoProvider<TElement>(TypeInfoMapping mapping, PgProviderTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayConverterResolver<IList<TElement>, TElement>(elemInfo, mapping.Type);
+            return new ArrayTypeInfoProvider<IList<TElement>, TElement>(elemInfo, mapping.Type);
 
-        ThrowBoxingNotSupported(resolver: true);
+        ThrowBoxingNotSupported(provider: true);
         return default;
     }
 
     [DoesNotReturn]
-    static void ThrowBoxingNotSupported(bool resolver)
-        => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(resolver ? " resolver" : "")} instead.");
+    static void ThrowBoxingNotSupported(bool provider)
+        => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(provider ? " type info provider" : "")} instead.");
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
@@ -793,7 +793,7 @@ public static class TypeInfoMappingHelpers
     /// <param name="options">The options to use.</param>
     /// <param name="converter">The converter to create a PgTypeInfo for.</param>
     /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
-    /// <param name="supportsWriting">Whether the converters returned from the given converter resolver support writing.</param>
+    /// <param name="supportsWriting">Whether the converters returned from the given provider support writing.</param>
     /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
         => new PgConcreteTypeInfo(options, converter, new DataTypeName(mapping.DataTypeName))
@@ -805,31 +805,31 @@ public static class TypeInfoMappingHelpers
     // NOTE: This method exists since 9.0 to be able to deprecate the method below that has optional arguments in 10.0 (potentially removing it directly or in 11.0).
     // It reduces how binary breaking that change will be if this method would not be there to be picked for the most common invocations.
     /// <summary>
-    /// Creates a PgResolverTypeInfo from a mapping, options, and a converter resolver.
+    /// Creates a PgProviderTypeInfo from a mapping, options, and a provider.
     /// </summary>
     /// <param name="mapping">The mapping to create an info for.</param>
     /// <param name="options">The options to use.</param>
-    /// <param name="resolver">The resolver to create a PgResolverTypeInfo for.</param>
-    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
+    /// <param name="provider">The provider to create a PgProviderTypeInfo for.</param>
+    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgProviderTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
     /// <returns>The created info instance.</returns>
-    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName)
-        => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
+    public static PgProviderTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConcreteTypeInfoProvider provider, bool includeDataTypeName)
+        => new(options, provider, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
             PreferredFormat = null
         };
 
     /// <summary>
-    /// Creates a PgResolverTypeInfo from a mapping, options, and a converter resolver.
+    /// Creates a PgProviderTypeInfo from a mapping, options, and a provider.
     /// </summary>
     /// <param name="mapping">The mapping to create an info for.</param>
     /// <param name="options">The options to use.</param>
-    /// <param name="resolver">The converter resolver to create a PgResolverTypeInfo for.</param>
-    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgResolverTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
+    /// <param name="provider">The provider to create a PgProviderTypeInfo for.</param>
+    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgProviderTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
     /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
-    /// <param name="supportsWriting">Whether the converters returned from the given converter resolver support writing.</param>
+    /// <param name="supportsWriting">Whether the converters returned from the given provider support writing.</param>
     /// <returns>The created info instance.</returns>
-    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName, DataFormat? preferredFormat = null, bool supportsWriting = true)
-        => new(options, resolver, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
+    public static PgProviderTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConcreteTypeInfoProvider provider, bool includeDataTypeName, DataFormat? preferredFormat = null, bool supportsWriting = true)
+        => new(options, provider, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
             PreferredFormat = preferredFormat,
             SupportsWriting = supportsWriting

@@ -595,8 +595,8 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConcreteTypeInfo elementType
     }
 }
 
-sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeInfo, Type effectiveType)
-    : PgComposingConverterResolver<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
+sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type effectiveType)
+    : PgComposingTypeInfoProvider<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
         elementTypeInfo)
     where T : class
 {
@@ -706,14 +706,14 @@ sealed class PolymorphicArrayConverter<TBase>(
         => throw new NotSupportedException("Polymorphic writing is not supported");
 }
 
-sealed class PolymorphicArrayConverterResolver<TBase> : PgConverterResolver<TBase>
+sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvider<TBase>
 {
-    readonly PgResolverTypeInfo _effectiveTypeInfo;
-    readonly PgResolverTypeInfo _effectiveNullableTypeInfo;
+    readonly PgProviderTypeInfo _effectiveTypeInfo;
+    readonly PgProviderTypeInfo _effectiveNullableTypeInfo;
     readonly PgTypeId _pgTypeId;
     readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
-    public PolymorphicArrayConverterResolver(PgResolverTypeInfo effectiveTypeInfo, PgResolverTypeInfo effectiveNullableTypeInfo)
+    public PolymorphicArrayTypeInfoProvider(PgProviderTypeInfo effectiveTypeInfo, PgProviderTypeInfo effectiveNullableTypeInfo)
     {
         if (effectiveTypeInfo.PgTypeId is null || effectiveNullableTypeInfo.PgTypeId is null)
             throw new ArgumentException("Type info cannot have an undecided PgTypeId.",

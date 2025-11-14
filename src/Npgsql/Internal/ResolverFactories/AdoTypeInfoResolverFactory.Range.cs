@@ -47,9 +47,9 @@ sealed partial class AdoTypeInfoResolverFactory
             }
             else
             {
-                mappings.AddResolverStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
+                mappings.AddProviderStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
                     static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
-                        DateTimeConverterResolver.CreateRangeResolver(options,
+                        DateTimeTypeInfoProvider.CreateRangeProvider(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                             options.GetCanonicalTypeId(DataTypeNames.TsRange),
                             options.EnableDateTimeInfinityConversions), requiresDataTypeName),
@@ -72,9 +72,9 @@ sealed partial class AdoTypeInfoResolverFactory
             }
             else
             {
-                mappings.AddResolverStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
+                mappings.AddProviderStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
                     static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
-                        DateTimeConverterResolver.CreateRangeResolver(options,
+                        DateTimeTypeInfoProvider.CreateRangeProvider(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                             options.GetCanonicalTypeId(DataTypeNames.TsRange),
                             options.EnableDateTimeInfinityConversions), requiresDataTypeName),
@@ -122,7 +122,7 @@ sealed partial class AdoTypeInfoResolverFactory
             if (Statics.LegacyTimestampBehavior)
                 mappings.AddStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange);
             else
-                mappings.AddResolverStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange);
+                mappings.AddProviderStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange);
             mappings.AddStructArrayType<NpgsqlRange<long>>(DataTypeNames.TsRange);
 
             // tstzrange
@@ -133,7 +133,7 @@ sealed partial class AdoTypeInfoResolverFactory
             }
             else
             {
-                mappings.AddResolverStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange);
+                mappings.AddProviderStructArrayType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange);
                 mappings.AddStructArrayType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange);
             }
             mappings.AddStructArrayType<NpgsqlRange<long>>(DataTypeNames.TsTzRange);

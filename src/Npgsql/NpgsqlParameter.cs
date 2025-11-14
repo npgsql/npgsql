@@ -660,9 +660,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
-        // We never reuse concrete type infos from resolvers across executions as a mutable value itself may influence the result.
+        // We never reuse concrete type infos from providers across executions as a mutable value itself may influence the result.
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
-        if (!previouslyResolved || typeInfo!.IsResolverInfo)
+        if (!previouslyResolved || typeInfo!.IsProviderInfo)
         {
             ResetBindingInfo();
             var concreteTypeInfo = GetConcreteTypeInfo(typeInfo!);

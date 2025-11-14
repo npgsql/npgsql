@@ -39,8 +39,8 @@ sealed class NullableConverter<T>(PgConverter<T> effectiveConverter)
         => effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
 }
 
-sealed class NullableConverterResolver<T>(PgResolverTypeInfo effectiveTypeInfo)
-    : PgComposingConverterResolver<T?>(effectiveTypeInfo.PgTypeId, effectiveTypeInfo)
+sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
+    : PgComposingTypeInfoProvider<T?>(effectiveTypeInfo.PgTypeId, effectiveTypeInfo)
     where T : struct
 {
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;

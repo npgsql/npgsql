@@ -5,13 +5,13 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
-abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
+abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 {
     readonly PgTypeId? _pgTypeId;
-    protected PgResolverTypeInfo EffectiveTypeInfo { get; }
+    protected PgProviderTypeInfo EffectiveTypeInfo { get; }
     readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
-    protected PgComposingConverterResolver(PgTypeId? pgTypeId, PgResolverTypeInfo effectiveTypeInfo)
+    protected PgComposingTypeInfoProvider(PgTypeId? pgTypeId, PgProviderTypeInfo effectiveTypeInfo)
     {
         if (pgTypeId is null && effectiveTypeInfo.PgTypeId is not null)
             throw new ArgumentNullException(nameof(pgTypeId), $"Cannot be null if {nameof(effectiveTypeInfo)}.{nameof(PgTypeInfo.PgTypeId)} is not null.");
@@ -69,7 +69,7 @@ abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
 
     PgConcreteTypeInfo GetOrAdd(PgConcreteTypeInfo concreteTypeInfo, PgTypeId pgTypeId)
     {
-        (PgComposingConverterResolver<T> Instance, PgConcreteTypeInfo ConcreteTypeInfo, PgTypeId PgTypeId)
+        (PgComposingTypeInfoProvider<T> Instance, PgConcreteTypeInfo ConcreteTypeInfo, PgTypeId PgTypeId)
             state = (this, concreteTypeInfo, pgTypeId);
         return _concreteInfoCache.GetOrAdd(
             concreteTypeInfo,

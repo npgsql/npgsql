@@ -5,9 +5,9 @@ using Npgsql.Internal.Postgres;
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public abstract class PgConverterResolver
+public abstract class PgConcreteTypeInfoProvider
 {
-    private protected PgConverterResolver() { }
+    private protected PgConcreteTypeInfoProvider() { }
 
     /// <summary>
     /// Gets the appropriate type info solely based on PgTypeId.
@@ -16,7 +16,7 @@ public abstract class PgConverterResolver
     /// <returns>The concrete type info to use.</returns>
     /// <remarks>
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
-    /// Array or other collection resolvers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
+    /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
     public abstract PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId);
 
@@ -27,13 +27,13 @@ public abstract class PgConverterResolver
     /// <returns>The concrete type info to use.</returns>
     /// <remarks>
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
-    /// Array or other collection resolvers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
+    /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
     public virtual PgConcreteTypeInfo? Get(Field field) => null;
 
     internal abstract Type TypeToConvert { get; }
 
-    internal abstract PgConcreteTypeInfo? GetAsObjectInternal(PgResolverTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
+    internal abstract PgConcreteTypeInfo? GetAsObjectInternal(PgProviderTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
 
     internal PgConcreteTypeInfo GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId? pgTypeId)
     {
@@ -43,10 +43,10 @@ public abstract class PgConverterResolver
         return concreteTypeInfo;
     }
 
-    internal PgConcreteTypeInfo? GetInternal(PgResolverTypeInfo typeInfo, Field field)
+    internal PgConcreteTypeInfo? GetInternal(PgProviderTypeInfo typeInfo, Field field)
     {
         var concreteTypeInfo = Get(field);
-        if (typeInfo.ValidateResolverResults && concreteTypeInfo is not null)
+        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
             Validate(nameof(Get), concreteTypeInfo, TypeToConvert, field.PgTypeId, typeInfo.Options.PortableTypeIds);
         return concreteTypeInfo;
     }
@@ -56,10 +56,10 @@ public abstract class PgConverterResolver
         ArgumentNullException.ThrowIfNull(result);
 
         // TODO check this now we return a PgConcreteTypeInfo which can convey its own unboxedType.
-        // We allow object resolvers to return any converter, this is to help:
-        //   - Composing resolvers being able to use converter type identity (instead of everything being CastingConverter<object>).
+        // We allow object providers to return any converter, this is to help:
+        //   - Composing providers being able to use converter type identity (instead of everything being CastingConverter<object>).
         //   - Reduce indirection by allowing disparate type converters to be returned directly.
-        // As a consequence any object typed resolver info is always a boxing one, to reduce the chances invalid casts to PgConverter<object> are attempted.
+        // As a consequence any object typed provider info is always a boxing one, to reduce the chances invalid casts to PgConverter<object> are attempted.
         if (expectedTypeToConvert != typeof(object) && result.Converter.TypeToConvert != expectedTypeToConvert)
             throw new InvalidOperationException($"'{methodName}' returned a {nameof(result.Converter)} of type {result.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
 
@@ -76,7 +76,7 @@ public abstract class PgConverterResolver
         => new(nameof(pgTypeId), pgTypeId, "Unsupported PgTypeId.");
 }
 
-public abstract class PgConverterResolver<T> : PgConverterResolver
+public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
 {
     /// <summary>
     /// Gets the appropriate type info based on the given value and expected type id.
@@ -86,24 +86,24 @@ public abstract class PgConverterResolver<T> : PgConverterResolver
     /// <returns>The concrete type info to use.</returns>
     /// <remarks>
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
-    /// Array or other collection resolvers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
+    /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
     public abstract PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId);
 
     internal sealed override Type TypeToConvert => typeof(T);
 
-    internal PgConcreteTypeInfo? GetInternal(PgResolverTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
+    internal PgConcreteTypeInfo? GetInternal(PgProviderTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
     {
         var concreteTypeInfo = Get(value, expectedPgTypeId);
-        if (typeInfo.ValidateResolverResults && concreteTypeInfo is not null)
+        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
             Validate(nameof(Get), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
         return concreteTypeInfo;
     }
 
-    internal sealed override PgConcreteTypeInfo? GetAsObjectInternal(PgResolverTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
+    internal sealed override PgConcreteTypeInfo? GetAsObjectInternal(PgProviderTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
     {
         var concreteTypeInfo = Get(value is null ? default : (T)value, expectedPgTypeId);
-        if (typeInfo.ValidateResolverResults && concreteTypeInfo is not null)
+        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
             Validate(nameof(Get), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
         return concreteTypeInfo;
     }
