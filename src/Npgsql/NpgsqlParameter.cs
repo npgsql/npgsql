@@ -621,6 +621,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 if (dataTypeName is null)
                 {
                     dataTypeName = dbType.ToNpgsqlDbType()?.ToDataTypeName();
+                    // If DbType.Object was specified we will only throw (see ThrowNoTypeInfo) if valueType is also null.
+                    if (dataTypeName is null && dbType is not DbType.Object)
+                        ThrowDbTypeNotSupported();
                 }
             }
 
@@ -669,7 +672,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         void ThrowNoTypeInfo()
             => ThrowHelper.ThrowInvalidOperationException(
-                $"Parameter '{(!string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}")}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
+                $"Parameter '{(!string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}")}' must have either its DbType, NpgsqlDbType, DataTypeName or its Value set.");
+
+        void ThrowDbTypeNotSupported()
+            => ThrowHelper.ThrowNotSupportedException(
+                $"The DbType '{_dbType}' isn't supported by Npgsql. There might be an Npgsql plugin with support for this DbType.");
 
         void ThrowNotSupported(string dataTypeName)
         {
