@@ -679,11 +679,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 $"The DbType '{_dbType}' isn't supported by Npgsql. There might be an Npgsql plugin with support for this DbType.");
 
         void ThrowNotSupported(string dataTypeName)
-        {
-            ThrowHelper.ThrowNotSupportedException(_npgsqlDbType is not null
-                ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
-                : $"The data type name '{dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
-        }
+            => ThrowHelper.ThrowNotSupportedException(
+                $"The data type name '{dataTypeName}'{(_npgsqlDbType is not null ? $", provided as NpgsqlDbType '{_npgsqlDbType}'," : null)} could not be found in the types that were loaded by Npgsql. " +
+                $"Your database details or Npgsql type loading configuration may be incorrect. Alternatively your PostgreSQL installation might need to be upgraded, or an extension adding the missing data type might not have been installed.");
     }
 
     // Pull from Value so we also support object typed generic params.
