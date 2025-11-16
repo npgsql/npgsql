@@ -611,15 +611,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 if (dbTypeResolver is not null)
                 {
                     _dbTypeResolver = dbTypeResolver;
+                    if (dbTypeResolver.GetDataTypeName(dbType, valueType) is { } result)
+                    {
+                        dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
+                    }
                 }
-                if (dbTypeResolver?.GetDataTypeName(dbType, valueType) is { } result)
+
+                // Fall back to builtin mappings if there was no resolver, or it didn't produce a result.
+                if (dataTypeName is null)
                 {
-                    dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
-                }
-                else
-                {
-                    var npgsqlDbTypeFromDbType = dbType.ToNpgsqlDbType();
-                    dataTypeName = npgsqlDbTypeFromDbType?.ToDataTypeName() ?? npgsqlDbTypeFromDbType?.ToUnqualifiedDataTypeNameOrThrow();
+                    dataTypeName = dbType.ToNpgsqlDbType()?.ToDataTypeName();
                 }
             }
 
