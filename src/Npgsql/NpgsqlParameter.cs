@@ -594,6 +594,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var previouslyResolved = ReferenceEquals(typeInfo?.Options, options);
         if (!previouslyResolved)
         {
+            var staticValueType = StaticValueType;
+            var valueType = GetValueType(staticValueType);
+
             string? dataTypeName = null;
             if (_dataTypeName is not null)
             {
@@ -605,6 +608,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else if (_dbType is { } dbType)
             {
+                if (dbTypeResolver is not null)
+                {
+                    _dbTypeResolver = dbTypeResolver;
+                }
                 if (dbTypeResolver?.GetDataTypeName(dbType) is { } result)
                 {
                     dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
@@ -628,37 +635,24 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
             }
 
-            var unspecifiedDBNull = false;
-            var valueType = StaticValueType;
-            if (valueType == typeof(object))
+            if (pgTypeId is null && valueType is null)
             {
-                valueType = Value?.GetType();
-                if (valueType is null && pgTypeId is null)
-                {
-                    ThrowNoTypeInfo();
-                    return;
-                }
-
-                // We treat object typed DBNull values as default info.
-                // Unless we don't have a pgTypeId either, at which point we'll use an 'unspecified' PgTypeInfo to help us write a NULL.
-                if (valueType == typeof(DBNull))
-                {
-                    if (pgTypeId is null)
-                    {
-                        unspecifiedDBNull = true;
-                        typeInfo = options.UnspecifiedDBNullTypeInfo;
-                    }
-                    else
-                        valueType = null;
-                }
+                ThrowNoTypeInfo();
+                return;
             }
 
-            if (!unspecifiedDBNull)
-                typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
-
-            if (dbTypeResolver is not null)
-                _dbTypeResolver = dbTypeResolver;
-            TypeInfo = typeInfo;
+            // We treat object typed DBNull values as default info (we don't supply a type).
+            // Unless we don't have a pgTypeId either, at which point we'll use an 'unspecified' PgTypeInfo to help us write a NULL.
+            if (valueType == typeof(DBNull) && staticValueType == typeof(object))
+            {
+                TypeInfo = typeInfo = pgTypeId is null
+                    ? options.UnspecifiedDBNullTypeInfo
+                    : AdoSerializerHelpers.GetTypeInfoForWriting(type: null, pgTypeId, options, _npgsqlDbType);
+            }
+            else
+            {
+                TypeInfo = typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+            }
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
