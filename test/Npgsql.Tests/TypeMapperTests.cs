@@ -207,7 +207,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
 
         sealed class DbTypeResolver : IDbTypeResolver
         {
-            public string? GetDataTypeName(DbType dbType)
+            public string? GetDataTypeName(DbType dbType, Type? type)
             {
                 if (dbType == DbType.String)
                     return "citext";
@@ -260,7 +260,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
 
         sealed class DbTypeResolver(string typeName) : IDbTypeResolver
         {
-            public string? GetDataTypeName(DbType dbType)
+            public string? GetDataTypeName(DbType dbType, Type? type)
             {
                 if (dbType == DbType.Guid)
                     return typeName;

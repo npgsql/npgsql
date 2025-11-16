@@ -366,8 +366,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             var valueType = GetValueType(StaticValueType);
             if (_dbType is { } dbType)
             {
-                if (TryResolveDbTypeDataTypeName(dbType, out var normalizedDataTypeName))
-                    return NpgsqlDbTypeExtensions.ToNpgsqlDbType(normalizedDataTypeName) ?? NpgsqlDbType.Unknown;
+                if (TryResolveDbTypeDataTypeName(dbType, valueType, out var dataTypeName))
+                    return NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName) ?? NpgsqlDbType.Unknown;
 
                 return dbType.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
             }
@@ -412,7 +412,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             var valueType = GetValueType(StaticValueType);
             if (_dbType is { } dbType)
             {
-                if (TryResolveDbTypeDataTypeName(dbType, out var dataTypeName))
+                if (TryResolveDbTypeDataTypeName(dbType, valueType, out var dataTypeName))
                     return dataTypeName;
 
                 var unqualifiedName = dbType.ToNpgsqlDbType()?.ToUnqualifiedDataTypeName();
@@ -537,9 +537,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         return false;
     }
 
-    bool TryResolveDbTypeDataTypeName(DbType dbType, [NotNullWhen(true)]out string? normalizedDataTypeName)
+    bool TryResolveDbTypeDataTypeName(DbType dbType, Type? type, [NotNullWhen(true)]out string? normalizedDataTypeName)
     {
-        if (_dbTypeResolver?.GetDataTypeName(dbType) is { } result)
+        if (_dbTypeResolver?.GetDataTypeName(dbType, type) is { } result)
         {
             normalizedDataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
             return true;
@@ -612,7 +612,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 {
                     _dbTypeResolver = dbTypeResolver;
                 }
-                if (dbTypeResolver?.GetDataTypeName(dbType) is { } result)
+                if (dbTypeResolver?.GetDataTypeName(dbType, valueType) is { } result)
                 {
                     dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
                 }

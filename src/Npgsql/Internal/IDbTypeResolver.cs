@@ -1,3 +1,4 @@
+using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 
@@ -13,8 +14,9 @@ public interface IDbTypeResolver
     /// Attempts to resolve a DbType to a data type name.
     /// </summary>
     /// <param name="dbType">The DbType name to resolve.</param>
+    /// <param name="type">The type of the value to resolve a data type name for.</param>
     /// <returns>The data type name if it could be mapped, the name can be non-normalized and without schema.</returns>
-    string? GetDataTypeName(DbType dbType);
+    string? GetDataTypeName(DbType dbType, Type? type);
 
     /// <summary>
     /// Attempts to resolve a data type name to a DbType.

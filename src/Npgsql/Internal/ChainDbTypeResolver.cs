@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
-using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
@@ -8,11 +8,11 @@ sealed class ChainDbTypeResolver(IEnumerable<IDbTypeResolver> resolvers) : IDbTy
 {
     readonly IDbTypeResolver[] _resolvers = new List<IDbTypeResolver>(resolvers).ToArray();
 
-    public string? GetDataTypeName(DbType dbType)
+    public string? GetDataTypeName(DbType dbType, Type? type)
     {
         foreach (var resolver in _resolvers)
         {
-            if (resolver.GetDataTypeName(dbType) is { } dataTypeName)
+            if (resolver.GetDataTypeName(dbType, type) is { } dataTypeName)
                 return dataTypeName;
         }
 
