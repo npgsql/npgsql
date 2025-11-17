@@ -11,11 +11,12 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.BackendMessages;
 
-readonly struct ColumnInfo(PgConverterInfo converterInfo, DataFormat dataFormat, bool asObject)
+readonly struct ColumnInfo(PgConcreteTypeInfo typeInfo, PgFieldBindingContext bindingContext)
 {
-    public PgConverterInfo ConverterInfo { get; } = converterInfo;
-    public DataFormat DataFormat { get; } = dataFormat;
-    public bool AsObject { get; } = asObject;
+    public bool IsDefault => TypeInfo is null;
+    public PgConcreteTypeInfo TypeInfo { get; } = typeInfo;
+    public PgFieldBindingContext BindingContext { get; } = bindingContext;
+    public DataFormat DataFormat => BindingContext.DataFormat;
 }
 
 /// <summary>
@@ -296,19 +297,19 @@ public sealed class FieldDescription
 
     internal PostgresType PostgresType { get; private set; }
 
-    internal Type FieldType => ObjectInfo.TypeToConvert;
+    internal Type FieldType => ObjectInfo.TypeInfo.Type;
 
     ColumnInfo _objectInfo;
-    internal PgConverterInfo ObjectInfo
+    internal (PgConcreteTypeInfo TypeInfo, PgFieldBindingContext BindingContext) ObjectInfo
     {
         get
         {
-            if (!_objectInfo.ConverterInfo.IsDefault)
-                return _objectInfo.ConverterInfo;
+            if (!_objectInfo.IsDefault)
+                return (_objectInfo.TypeInfo, _objectInfo.BindingContext);
 
             ref var info = ref _objectInfo;
             GetInfoCore(null, ref _objectInfo);
-            return info.ConverterInfo;
+            return (info.TypeInfo, info.BindingContext);
         }
     }
 
@@ -323,64 +324,52 @@ public sealed class FieldDescription
     internal void GetInfo(Type type, ref ColumnInfo lastColumnInfo) => GetInfoCore(type, ref lastColumnInfo);
     void GetInfoCore(Type? type, ref ColumnInfo lastColumnInfo)
     {
-        Debug.Assert(lastColumnInfo.ConverterInfo.IsDefault || (
-            ReferenceEquals(_serializerOptions, lastColumnInfo.ConverterInfo.TypeInfo.Options) && (
-                IsUnknownResultType() && lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.TextPgTypeId ||
+        Debug.Assert(lastColumnInfo.IsDefault || (
+            ReferenceEquals(_serializerOptions, lastColumnInfo.TypeInfo.Options) && (
+                IsUnknownResultType() && lastColumnInfo.TypeInfo.PgTypeId == _serializerOptions.TextPgTypeId ||
                 // Normal resolution
-                lastColumnInfo.ConverterInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
+                lastColumnInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
 
-        if (!lastColumnInfo.ConverterInfo.IsDefault && lastColumnInfo.ConverterInfo.TypeToConvert == type)
+        if (lastColumnInfo is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type)
             return;
 
-        var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectInfo : _objectInfo.ConverterInfo;
-        if (objectInfo is { IsDefault: false })
-        {
-            if (typeof(object) == type)
-            {
-                lastColumnInfo = new(objectInfo, DataFormat, true);
-                return;
-            }
-            if (objectInfo.TypeToConvert == type)
-            {
-                // As TypeInfoMappingCollection is always adding object mappings for
-                // default/datatypename mappings, we'll also check Converter.TypeToConvert.
-                // If we have an exact match we are still able to use e.g. a converter for ints in an unboxed fashion.
-                lastColumnInfo = new(objectInfo, DataFormat, objectInfo.IsBoxingConverter && objectInfo.Converter.TypeToConvert != type);
-                return;
-            }
-        }
+        var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectInfo : (_objectInfo.TypeInfo, _objectInfo.BindingContext);
+        if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
+            lastColumnInfo = new(objectInfo.TypeInfo, objectInfo.BindingContext);
 
         GetInfoSlow(type, out lastColumnInfo);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         void GetInfoSlow(Type? type, out ColumnInfo lastColumnInfo)
         {
-            PgConverterInfo converterInfo;
+            PgFieldBindingContext bindingContext;
             switch (DataFormat)
             {
             case DataFormat.Text when IsUnknownResultType():
             {
                 // Try to resolve some 'pg_catalog.text' type info for the expected clr type.
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgTypeId, _serializerOptions);
+                var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(Field);
 
                 // We start binding to DataFormat.Binary as it's the broadest supported format.
                 // The format however is irrelevant as 'pg_catalog.text' data is identical across either.
                 // Given we did a resolution against 'pg_catalog.text' and not the actual field type we're in reinterpretation territory anyway.
-                if (!typeInfo.TryBind(Field, DataFormat.Binary, out converterInfo))
-                    converterInfo = typeInfo.Bind(Field, DataFormat.Text);
+                if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out bindingContext))
+                    bindingContext = concreteTypeInfo.BindField(DataFormat.Text);
 
-                lastColumnInfo = new(converterInfo, DataFormat, type != converterInfo.TypeToConvert || converterInfo.IsBoxingConverter);
+                lastColumnInfo = new(concreteTypeInfo, bindingContext);
 
                 break;
             }
             case DataFormat.Binary or DataFormat.Text:
             {
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), _serializerOptions.ToCanonicalTypeId(PostgresType), _serializerOptions);
+                var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(Field);
 
                 // If we don't support the DataFormat we'll just throw.
-                converterInfo = typeInfo.Bind(Field, DataFormat);
-                lastColumnInfo = new(converterInfo, DataFormat, typeof(object) == type || converterInfo.IsBoxingConverter);
+                bindingContext = concreteTypeInfo.BindField(DataFormat);
+                lastColumnInfo = new(concreteTypeInfo, bindingContext);
                 break;
             }
             default:
@@ -391,7 +380,7 @@ public sealed class FieldDescription
 
             // We delay initializing ObjectOrDefaultInfo until after the first lookup (unless it is itself the first lookup).
             // When passed in an unsupported type it allows the error to be more specific, instead of just having object/null to deal with.
-            if (_objectInfo.ConverterInfo.IsDefault && type is not null)
+            if (_objectInfo.TypeInfo is null && type is not null)
                 _ = ObjectInfo;
         }
 

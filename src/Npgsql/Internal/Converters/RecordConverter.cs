@@ -44,11 +44,12 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 
-            var converterInfo = typeInfo.Bind(new Field("?", pgTypeId, -1), DataFormat.Binary);
-            var scope = await reader.BeginNestedRead(async, length, converterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
+            var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(Field.CreateUnspecified(pgTypeId));
+            var bindingContext = concreteTypeInfo.BindField(DataFormat.Binary);
+            var scope = await reader.BeginNestedRead(async, length, bindingContext.BufferRequirement, cancellationToken).ConfigureAwait(false);
             try
             {
-                result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
+                result[i] = await concreteTypeInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
             }
             finally
             {

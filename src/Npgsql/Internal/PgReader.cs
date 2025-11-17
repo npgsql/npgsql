@@ -434,7 +434,7 @@ public class PgReader
         _charsReadBuffer = null;
     }
 
-    internal void Init(int fieldSize, DataFormat fieldFormat, bool resumable = false)
+    internal void Init(int fieldSize, bool resumable = false)
     {
         if (Initialized)
             ThrowHelper.ThrowInvalidOperationException("Already initialized");
@@ -442,13 +442,13 @@ public class PgReader
         _fieldStartPos = _buffer.CumulativeReadPosition;
         _fieldConsumed = false;
         _fieldSize = fieldSize;
-        _fieldFormat = fieldFormat;
         _resumable = resumable;
     }
 
-    internal void StartRead(Size bufferRequirement)
+    internal void StartRead(DataFormat dataFormat, Size bufferRequirement)
     {
         Debug.Assert(FieldSize >= 0);
+        _fieldFormat = dataFormat;
         _fieldBufferRequirement = bufferRequirement;
         if (ShouldBuffer(bufferRequirement))
             BufferNoInlined(bufferRequirement);
@@ -458,9 +458,10 @@ public class PgReader
             => Buffer(bufferRequirement);
     }
 
-    internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
+    internal ValueTask StartReadAsync(DataFormat dataFormat, Size bufferRequirement, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
+        _fieldFormat = dataFormat;
         _fieldBufferRequirement = bufferRequirement;
         return ShouldBuffer(bufferRequirement) ? BufferAsync(bufferRequirement, cancellationToken) : new();
     }
@@ -737,8 +738,6 @@ public class PgReader
         => bufferRequirement is { Kind: SizeKind.UpperBound }
             ? Math.Min(CurrentRemaining, bufferRequirement.Value)
             : bufferRequirement.GetValueOrDefault();
-
-    internal bool ShouldBufferCurrent() => ShouldBuffer(CurrentBufferRequirement);
 
     public bool ShouldBuffer(Size bufferRequirement)
         => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));

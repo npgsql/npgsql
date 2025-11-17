@@ -101,10 +101,10 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             var typeInfo = TypeMappingOptions.GetTypeInfoInternal(type, null);
-            if (typeInfo is PgResolverTypeInfo info)
-                dataTypeName = info.GetObjectResolution(value).PgTypeId.DataTypeName;
+            if (typeInfo is PgProviderTypeInfo info)
+                dataTypeName = info.GetObjectConcreteTypeInfo(value).PgTypeId.DataTypeName;
             else
-                dataTypeName = typeInfo?.GetResolution().PgTypeId.DataTypeName;
+                dataTypeName = typeInfo?.AsConcreteTypeInfo().PgTypeId.DataTypeName;
         }
         catch
         {
