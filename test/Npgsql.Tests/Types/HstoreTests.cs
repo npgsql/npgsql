@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
@@ -18,12 +17,11 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
                 {"cd", "hello"}
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
-            "hstore",
-            NpgsqlDbType.Hstore, isNpgsqlDbTypeInferredFromClrType: false);
+            "hstore", isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Hstore_empty()
-        => AssertType(new Dictionary<string, string?>(), @"", "hstore", NpgsqlDbType.Hstore, isNpgsqlDbTypeInferredFromClrType: false);
+        => AssertType(new Dictionary<string, string?>(), @"", "hstore", isDataTypeInferredFromValue: false);
 
     [Test]
     public Task Hstore_as_ImmutableDictionary()
@@ -38,8 +36,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             immutableDictionary,
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            NpgsqlDbType.Hstore,
-            isDefaultForReading: false, isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForReading: false, isDataTypeInferredFromValue: false);
     }
 
     [Test]
@@ -53,8 +50,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            NpgsqlDbType.Hstore,
-            isDefaultForReading: false, isNpgsqlDbTypeInferredFromClrType: false);
+            isDefaultForReading: false, isDataTypeInferredFromValue: false);
 
     [OneTimeSetUp]
     public async Task SetUp()

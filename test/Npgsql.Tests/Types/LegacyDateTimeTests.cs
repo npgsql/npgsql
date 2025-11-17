@@ -18,7 +18,6 @@ public class LegacyDateTimeTests : TestBase
             new DateTime(1998, 4, 12, 13, 26, 38, 789, kind),
             "1998-04-12 13:26:38.789",
             "timestamp without time zone",
-            NpgsqlDbType.Timestamp,
             DbType.DateTime);
 
     [Test]
@@ -32,7 +31,7 @@ public class LegacyDateTimeTests : TestBase
     [Test]
     public async Task Timestamptz_negative_infinity()
     {
-        var dto = await AssertType(DateTimeOffset.MinValue, "-infinity", "timestamp with time zone", NpgsqlDbType.TimestampTz,
+        var dto = await AssertType(DateTimeOffset.MinValue, "-infinity", "timestamp with time zone",
             DbType.DateTimeOffset, isDefaultForReading: false);
         Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
     }
@@ -41,7 +40,7 @@ public class LegacyDateTimeTests : TestBase
     public async Task Timestamptz_infinity()
     {
         var dto = await AssertType(
-            DateTimeOffset.MaxValue, "infinity", "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset,
+            DateTimeOffset.MaxValue, "infinity", "timestamp with time zone", DbType.DateTimeOffset,
             isDefaultForReading: false);
         Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
     }
@@ -54,7 +53,6 @@ public class LegacyDateTimeTests : TestBase
             new DateTime(1998, 4, 12, 13, 26, 38, 789, kind),
             "1998-04-12 15:26:38.789+02",
             "timestamp with time zone",
-            NpgsqlDbType.TimestampTz,
             DbType.DateTimeOffset,
             isDefault: false);
 
@@ -69,7 +67,6 @@ public class LegacyDateTimeTests : TestBase
             dateTime,
             "1998-04-12 15:26:38.789+02",
             "timestamp with time zone",
-            NpgsqlDbType.TimestampTz,
             DbType.DateTimeOffset,
             isDefaultForWriting: false);
     }
