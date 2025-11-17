@@ -1,23 +1,25 @@
 using System;
+using System.Data;
 using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-[TestFixture(MultiplexingMode.NonMultiplexing, NpgsqlDbType.Json)]
-[TestFixture(MultiplexingMode.NonMultiplexing, NpgsqlDbType.Jsonb)]
-[TestFixture(MultiplexingMode.Multiplexing, NpgsqlDbType.Json)]
-[TestFixture(MultiplexingMode.Multiplexing, NpgsqlDbType.Jsonb)]
+[TestFixture(MultiplexingMode.NonMultiplexing, "json")]
+[TestFixture(MultiplexingMode.NonMultiplexing, "jsonb")]
+[TestFixture(MultiplexingMode.Multiplexing, "json")]
+[TestFixture(MultiplexingMode.Multiplexing, "jsonb")]
 public class JsonTests : MultiplexingTestBase
 {
     [Test]
     public async Task As_string()
-        => await AssertType("""{"K": "V"}""", """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefaultForWriting: false);
+        => await AssertType("""{"K": "V"}""", """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public async Task As_string_long()
@@ -30,7 +32,9 @@ public class JsonTests : MultiplexingTestBase
             .Append(@"""}")
             .ToString();
 
-        await AssertType(value, value, PostgresType, NpgsqlDbType, isDefaultForWriting: false);
+        await AssertType(value, value,
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
     }
 
     [Test]
@@ -46,25 +50,33 @@ public class JsonTests : MultiplexingTestBase
 
     [Test]
     public async Task As_char_array()
-        => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefault: false);
+        => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task As_bytes()
-        => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefault: false);
+        => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
 
     [Test]
     public async Task Write_as_ReadOnlyMemory_of_byte()
-        => await AssertTypeWrite(new ReadOnlyMemory<byte>("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""", PostgresType, NpgsqlDbType,
-            isDefault: false);
+        => await AssertTypeWrite(new ReadOnlyMemory<byte>("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary);
 
     [Test]
     public async Task Write_as_ArraySegment_of_char()
-        => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""", PostgresType, NpgsqlDbType,
-            isDefault: false);
+        => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
 
     [Test]
     public Task As_MemoryStream()
-        => AssertTypeWrite(() => new MemoryStream("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefault: false);
+        => AssertTypeWrite(() => new MemoryStream("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary);
 
     [Test]
     public async Task As_JsonDocument()
@@ -72,9 +84,9 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("""{"K": "V"}"""),
             IsJsonb ? """{"K": "V"}""" : """{"K":"V"}""",
             PostgresType,
-            NpgsqlDbType,
-            isDefault: false,
-            comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString());
+            dataTypeInference: DataTypeInferenceKind.WellKnown,
+            comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString(),
+            isValueTypeDefaultFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5540")]
     public async Task As_JsonDocument_with_null_root()
@@ -82,9 +94,9 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("null"),
             "null",
             PostgresType,
-            NpgsqlDbType,
-            isDefault: false,
+            dataTypeInference: DataTypeInferenceKind.WellKnown,
             comparer: (x, y) => x.RootElement.ValueKind == y.RootElement.ValueKind,
+            isValueTypeDefaultFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -93,9 +105,9 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("null").RootElement,
             "null",
             PostgresType,
-            NpgsqlDbType,
-            isDefault: false,
+            dataTypeInference: DataTypeInferenceKind.WellKnown,
             comparer: (x, y) => x.ValueKind == y.ValueKind,
+            isValueTypeDefaultFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -115,30 +127,24 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             @"{""p"": 1}",
             @"{""p"": 1}",
-            PostgresType,
-            NpgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: true);
 
     [Test]
     public Task Roundtrip_char_array()
         => AssertType(
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
-            PostgresType,
-            NpgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Roundtrip_byte_array()
         => AssertType(
-            Encoding.ASCII.GetBytes(@"{""p"": 1}"),
+            @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
-            PostgresType,
-            NpgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
 
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]
@@ -172,11 +178,9 @@ public class JsonTests : MultiplexingTestBase
             new JsonObject { ["Bar"] = 8 },
             IsJsonb ? """{"Bar": 8}""" : """{"Bar":8}""",
             PostgresType,
-            NpgsqlDbType,
             // By default we map JsonObject to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false,
+            dataTypeInference: IsJsonb ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.WellKnown,
+            isValueTypeDefaultFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]
@@ -185,11 +189,9 @@ public class JsonTests : MultiplexingTestBase
             new JsonArray { 1, 2, 3 },
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             PostgresType,
-            NpgsqlDbType,
             // By default we map JsonArray to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false,
+            dataTypeInference: IsJsonb ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.WellKnown,
+            isValueTypeDefaultFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]
@@ -224,17 +226,16 @@ public class JsonTests : MultiplexingTestBase
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public JsonTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)
+    public JsonTests(MultiplexingMode multiplexingMode, string dataTypeName)
         : base(multiplexingMode)
     {
-        if (npgsqlDbType == NpgsqlDbType.Jsonb)
+        if (dataTypeName == "jsonb")
             using (var conn = OpenConnection())
                 TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");
 
-        NpgsqlDbType = npgsqlDbType;
+        PostgresType = dataTypeName;
     }
 
-    bool IsJsonb => NpgsqlDbType == NpgsqlDbType.Jsonb;
-    string PostgresType => IsJsonb ? "jsonb" : "json";
-    readonly NpgsqlDbType NpgsqlDbType;
+    bool IsJsonb => PostgresType == "jsonb";
+    string PostgresType { get; }
 }

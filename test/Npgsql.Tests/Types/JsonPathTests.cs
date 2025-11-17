@@ -22,8 +22,8 @@ public class JsonPathTests(MultiplexingMode multiplexingMode) : MultiplexingTest
         using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
         await AssertType(
-            jsonPath, jsonPath, "jsonpath", NpgsqlDbType.JsonPath, isDefaultForWriting: false, isNpgsqlDbTypeInferredFromClrType: false,
-            inferredDbType: DbType.Object);
+            jsonPath, jsonPath, "jsonpath", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String);
     }
 
     [Test]

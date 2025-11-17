@@ -2,10 +2,9 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
-using Npgsql.Tests;
-using NpgsqlTypes;
-using NUnit.Framework;
 using Npgsql.NodaTime.Internal;
+using Npgsql.Tests;
+using NUnit.Framework;
 
 namespace Npgsql.PluginTests;
 
@@ -19,42 +18,32 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
         => await AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InZoneLeniently(DateTimeZoneProviders.Tzdb[TimeZone]),
             "1998-04-12 13:26:38.789+02",
-            "timestamp with time zone",
-            NpgsqlDbType.TimestampTz,
-            DbType.DateTimeOffset,
-            isNpgsqlDbTypeInferredFromClrType: false, isDefault: false);
+            "timestamp with time zone", dataTypeInference: false,
+            dbType: new(DbType.DateTimeOffset, DbType.Object), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamp_as_Instant()
         => AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InUtc().ToInstant(),
             "1998-04-12 13:26:38.789",
-            "timestamp without time zone",
-            NpgsqlDbType.Timestamp,
-            DbType.DateTime,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            "timestamp without time zone", dataTypeInference: false,
+            dbType: new(DbType.DateTime, DbType.Object));
 
     [Test]
     public Task Timestamp_as_LocalDateTime()
         => AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789),
             "1998-04-12 13:26:38.789",
-            "timestamp without time zone",
-            NpgsqlDbType.Timestamp,
-            DbType.DateTime,
-            isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            "timestamp without time zone", dataTypeInference: false,
+            dbType: new(DbType.DateTime, DbType.Object), isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Timestamptz_as_Instant()
         => AssertType(
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InUtc().ToInstant(),
             "1998-04-12 15:26:38.789+02",
-            "timestamp with time zone",
-            NpgsqlDbType.TimestampTz,
-            DbType.DateTimeOffset,
-            isDefaultForWriting: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            "timestamp with time zone", dataTypeInference: false,
+            dbType: new(DbType.DateTimeOffset, DbType.Object));
 
     [Test]
     public async Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()

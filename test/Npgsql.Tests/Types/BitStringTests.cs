@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Data;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -27,10 +28,10 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
         for (var i = 0; i < sqlLiteral.Length; i++)
             bitArray[i] = sqlLiteral[i] == '1';
 
-        await AssertType(bitArray, sqlLiteral, "bit varying", NpgsqlDbType.Varbit);
+        await AssertType(bitArray, sqlLiteral, "bit varying");
 
         if (len > 0)
-            await AssertType(bitArray, sqlLiteral, $"bit({len})", NpgsqlDbType.Bit, isDefaultForWriting: false);
+            await AssertType(bitArray, sqlLiteral, $"bit({len})", dataTypeInference: DataTypeInferenceKind.WellKnown);
     }
 
     [Test]
@@ -47,7 +48,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
     [Test]
     public Task BitVector32()
         => AssertType(
-            new BitVector32(4), "00000000000000000000000000000100", "bit varying", NpgsqlDbType.Varbit, isDefaultForReading: false);
+            new BitVector32(4), "00000000000000000000000000000100", "bit varying", isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task BitVector32_too_long()
@@ -55,7 +56,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
 
     [Test]
     public Task Bool()
-        => AssertType(true, "1", "bit(1)", NpgsqlDbType.Bit, isDefault: false);
+        => AssertType(true, "1", "bit(1)", dataTypeInference: DataTypeInferenceKind.WellKnown, dbType: DbType.Boolean);
 
     [Test]
     public async Task Bitstring_with_multiple_bits_as_bool_throws()
@@ -118,7 +119,9 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
 
     [Test]
     public Task As_string()
-        => AssertType("010101", "010101", "bit varying", NpgsqlDbType.Varbit, isDefault: false);
+        => AssertType("010101", "010101",
+            "bit varying", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dbType: DbType.String, isValueTypeDefaultFieldType: false);
 
     [Test]
     public Task Write_as_string_validation()
