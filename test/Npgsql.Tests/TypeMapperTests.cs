@@ -216,9 +216,9 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
                 return null;
             }
 
-            public DbType? GetDbType(string dataTypeName)
+            public DbType? GetDbType(DataTypeName dataTypeName)
             {
-                if (DataTypeName.GetUnqualifiedName(dataTypeName) == "citext")
+                if (dataTypeName.UnqualifiedName == "citext")
                     return DbType.String;
 
                 return null;
@@ -268,7 +268,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
                 return null;
             }
 
-            public DbType? GetDbType(string dataTypeName)
+            public DbType? GetDbType(DataTypeName dataTypeName)
             {
                 if (dataTypeName == typeName)
                     return DbType.Guid;

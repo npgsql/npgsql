@@ -5,12 +5,14 @@ using System.Diagnostics.CodeAnalysis;
 namespace Npgsql.Internal.Postgres;
 
 /// <summary>
-/// Represents the fully-qualified name of a PostgreSQL type.
+/// Represents the normalized name of a PostgreSQL data type.
 /// </summary>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 [DebuggerDisplay("{DisplayName,nq}")]
 public readonly struct DataTypeName : IEquatable<DataTypeName>
 {
+    const char InvalidIdentifier = '-';
+
     /// <summary>
     /// The maximum length of names in an unmodified PostgreSQL installation.
     /// </summary>
@@ -50,9 +52,9 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     internal static DataTypeName ValidatedName(string fullyQualifiedDataTypeName)
         => new(fullyQualifiedDataTypeName, validated: true);
 
-    // Includes schema unless it's pg_catalog or the name is unspecified.
+    // Includes schema unless it's pg_catalog or the schema is an invalid character used to represent an unspecified schema.
     public string DisplayName =>
-        Value.StartsWith("pg_catalog", StringComparison.Ordinal) || Value == Unspecified
+        Value.StartsWith("pg_catalog", StringComparison.Ordinal) || IsUnqualified
             ? UnqualifiedDisplayName
             : Schema + "." + UnqualifiedDisplayName;
 
@@ -71,16 +73,19 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
 
     // This contains two invalid sql identifiers (schema and name are both separate identifiers, and would both have to be quoted to be valid).
     // Given this is an invalid name it's fine for us to represent a fully qualified 'unspecified' name with it.
-    public static DataTypeName Unspecified => new("-.-", validated: true);
+    static string UnspecifiedName => $"{InvalidIdentifier}.{InvalidIdentifier}";
+    public static DataTypeName Unspecified => ValidatedName(UnspecifiedName);
 
     public static string GetUnqualifiedName(string dataTypeName)
         => dataTypeName.IndexOf('.') is not -1 and var index
             ? dataTypeName.Substring(index + 1) : dataTypeName;
 
+    public bool IsUnqualified => Value.StartsWith(InvalidIdentifier) && Value != UnspecifiedName;
+
     public bool IsArray => UnqualifiedNameSpan.StartsWith("_".AsSpan(), StringComparison.Ordinal);
 
     internal static DataTypeName CreateFullyQualifiedName(string dataTypeName)
-        => dataTypeName.IndexOf('.') != -1 ? new(dataTypeName) : new("pg_catalog." + dataTypeName);
+        => dataTypeName.IndexOf('.') != -1 ? new(dataTypeName) : new("-." + dataTypeName);
 
     // Static transform as defined by https://www.postgresql.org/docs/current/sql-createtype.html#SQL-CREATETYPE-ARRAY
     // We don't have to deal with [] as we're always starting from a normalized fully qualified name.
@@ -139,7 +144,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         }
         else
         {
-            schemaSpan = schema is null ? "pg_catalog" : schema.AsSpan();
+            schemaSpan = schema is null ? $"{InvalidIdentifier}" : schema.AsSpan();
         }
 
         // Then we strip either of the two valid array representations to get the base type name (with or without facets).
@@ -190,6 +195,9 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             "character varying" => "varchar",
             var value => value
         };
+
+        if (schema is null && DataTypeNames.IsWellKnownUnqualifiedName(mapped))
+            schemaSpan = "pg_catalog".AsSpan();
 
         return new(string.Concat(schemaSpan, ".", isArray ? "_" : "", mapped));
     }

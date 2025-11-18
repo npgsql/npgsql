@@ -322,11 +322,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             if (_dataTypeName is not null)
             {
-                var dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName);
+                var dataTypeName = Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName);
                 if (TryResolveDbType(dataTypeName, out var resolvedDbType))
                     return resolvedDbType;
 
-                return NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDbType() ?? DbType.Object;
+                return dataTypeName.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
             }
 
             if (_npgsqlDbType is { } npgsqlDbType)
@@ -525,7 +525,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
-    bool TryResolveDbType(string dataTypeName, out DbType dbType)
+    bool TryResolveDbType(DataTypeName dataTypeName, out DbType dbType)
     {
         if (_dbTypeResolver?.GetDbType(dataTypeName) is { } result)
         {

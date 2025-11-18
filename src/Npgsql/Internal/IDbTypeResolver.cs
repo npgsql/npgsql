@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
@@ -23,5 +24,5 @@ public interface IDbTypeResolver
     /// </summary>
     /// <param name="dataTypeName">The data type name to map, in a normalized form but possibly without schema.</param>
     /// <returns>The DbType if it could be mapped, null otherwise.</returns>
-    DbType? GetDbType(string dataTypeName);
+    DbType? GetDbType(DataTypeName dataTypeName);
 }

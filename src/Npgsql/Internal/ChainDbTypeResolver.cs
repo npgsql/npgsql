@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
@@ -19,7 +20,7 @@ sealed class ChainDbTypeResolver(IEnumerable<IDbTypeResolver> resolvers) : IDbTy
         return null;
     }
 
-    public DbType? GetDbType(string dataTypeName)
+    public DbType? GetDbType(DataTypeName dataTypeName)
     {
         foreach (var resolver in _resolvers)
         {
