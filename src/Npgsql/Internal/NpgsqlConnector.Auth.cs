@@ -339,7 +339,7 @@ partial class NpgsqlConnector
         if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
         {
             // Unable to retrieve credentials or some other issue
-            throw new NpgsqlException($"Unable to authenticate with GSS: {statusCode}");
+            throw new NpgsqlException($"Unable to authenticate with GSS: received {statusCode} instead of the expected ContinueNeeded");
         }
         await WritePassword(data, 0, data.Length, async, cancellationToken).ConfigureAwait(false);
         await Flush(async, cancellationToken).ConfigureAwait(false);

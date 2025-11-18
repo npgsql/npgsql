@@ -968,7 +968,7 @@ public sealed partial class NpgsqlConnector
         // But since we have to return a specific result instead of generic true/false
         // To make absolutely sure we didn't miss anything, recheck again
         if (gssEncryptionMode == GssEncryptionMode.Require)
-            throw new NpgsqlException("Unable to negotiate GSS encryption");
+            throw new NpgsqlException($"Unable to negotiate GSS encryption: {gssEncryptResult}");
 
         timeout.CheckAndApply(this);
 
