@@ -336,7 +336,11 @@ partial class NpgsqlConnector
 
         using var authContext = new NegotiateAuthentication(clientOptions);
         var data = authContext.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
-        Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
+        if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
+        {
+            // Unable to retrieve credentials or some other issue
+            throw new NpgsqlException($"Unable to authenticate with GSS: {statusCode}");
+        }
         await WritePassword(data, 0, data.Length, async, cancellationToken).ConfigureAwait(false);
         await Flush(async, cancellationToken).ConfigureAwait(false);
         while (true)

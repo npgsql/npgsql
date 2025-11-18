@@ -620,7 +620,6 @@ public sealed partial class NpgsqlConnector
                     sslMode = sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require;
 
                 cancellationRegistration.Dispose();
-                Debug.Assert(!conn.IsBroken);
 
                 conn.Cleanup();
 
@@ -695,6 +694,8 @@ public sealed partial class NpgsqlConnector
             default:
                 throw new NpgsqlException($"Received unknown response {response} for GSSEncRequest (expecting G or N)");
             case 'N':
+                if (isRequired)
+                    throw new NpgsqlException("GGS encryption requested. No GSS encryption enabled connection from this host is configured.");
                 return GssEncryptionResult.NegotiateFailure;
             case 'G':
                 break;
@@ -943,6 +944,13 @@ public sealed partial class NpgsqlConnector
             if (gssEncryptResult == GssEncryptionResult.Success)
                 return;
 
+            // TryNegotiateGssEncryption should already throw a much more meaningful exception
+            // if GSS encryption is required but for some reason we can't negotiate it.
+            // But since we have to return a specific result instead of generic true/false
+            // To make absolutely sure we didn't miss anything, recheck again
+            if (gssEncryptionMode == GssEncryptionMode.Require)
+                throw new NpgsqlException("Unable to negotiate GSS encryption");
+
             timeout.CheckAndApply(this);
 
             if (GetSslNegotiation(Settings) == SslNegotiation.Direct)
@@ -1037,7 +1045,9 @@ public sealed partial class NpgsqlConnector
                 return sslNegotiation;
         }
 
-        return SslNegotiation.Postgres;
+        // If user hasn't provided the value via connection string or environment variable
+        // Retrieve the default value from property
+        return settings.SslNegotiation;
     }
 
     static GssEncryptionMode GetGssEncMode(NpgsqlConnectionStringBuilder settings)
@@ -1051,7 +1061,9 @@ public sealed partial class NpgsqlConnector
                 return gssEncMode;
         }
 
-        return GssEncryptionMode.Disable;
+        // If user hasn't provided the value via connection string or environment variable
+        // Retrieve the default value from property
+        return settings.GssEncryptionMode;
     }
 
     internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)

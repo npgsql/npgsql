@@ -488,7 +488,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [NpgsqlConnectionStringProperty]
     public GssEncryptionMode GssEncryptionMode
     {
-        get => UserProvidedGssEncMode ?? GssEncryptionMode.Disable;
+        get => UserProvidedGssEncMode ?? GssEncryptionMode.Prefer;
         set
         {
             UserProvidedGssEncMode = value;
