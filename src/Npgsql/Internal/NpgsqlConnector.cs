@@ -609,7 +609,8 @@ public sealed partial class NpgsqlConnector
                 await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when
-                //
+                // We might also get here OperationCancelledException/TimeoutException
+                // But it's fine to fall down and retry because we'll immediately exit with the exact same exception
                 // Any error after trying with GSS encryption
                 (gssEncMode == GssEncryptionMode.Prefer ||
                 // Auth error with/without SSL
