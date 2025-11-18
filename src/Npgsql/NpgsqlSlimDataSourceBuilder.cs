@@ -24,7 +24,7 @@ namespace Npgsql;
 /// On this builder, various features are disabled by default; unless you're looking to save on code size (e.g. when publishing with
 /// NativeAOT), use <see cref="NpgsqlDataSourceBuilder" /> instead.
 /// </remarks>
-public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlDataSourceBuilder
+public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 {
     static UnsupportedTypeInfoResolver<NpgsqlSlimDataSourceBuilder> UnsupportedTypeInfoResolver { get; } = new();
 
@@ -533,7 +533,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlDataSourceBuilder
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
 
     /// <inheritdoc />
-    public void AddDbTypeResolverFactory(DbTypeResolverFactory factory)
+    void INpgsqlTypeMapper.AddDbTypeResolverFactory(DbTypeResolverFactory factory)
         => (_dbTypeResolverFactories ??= new()).Add(factory);
 
     /// <inheritdoc />
@@ -965,6 +965,4 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlDataSourceBuilder
         _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
         return this;
     }
-
-    INpgsqlDataSourceBuilder INpgsqlDataSourceBuilder.Instance() => this;
 }

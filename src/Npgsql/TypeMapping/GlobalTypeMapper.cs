@@ -148,6 +148,9 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
+    public void AddDbTypeResolverFactory(DbTypeResolverFactory factory)
+        => throw new NotSupportedException("The global type mapper does not support DbTypeResolverFactories. Call this method on a data source builder instead.");
+
     void ReplaceTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
     {
         _lock.EnterWriteLock();

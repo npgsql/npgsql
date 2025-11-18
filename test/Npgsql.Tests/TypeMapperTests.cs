@@ -5,6 +5,7 @@ using System.Data;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using static Npgsql.Tests.TestUtil;
 
@@ -68,7 +69,7 @@ public class TypeMapperTests : TestBase
         await EnsureExtensionAsync(adminConnection, "citext");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.AddDbTypeResolverFactory(new ForceStringToCitextResolverFactory());
+        ((INpgsqlTypeMapper)dataSourceBuilder).AddDbTypeResolverFactory(new ForceStringToCitextResolverFactory());
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -93,7 +94,7 @@ public class TypeMapperTests : TestBase
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.AddTypeInfoResolverFactory(new GuidTextConverterFactory(type));
-        dataSourceBuilder.AddDbTypeResolverFactory(new GuidTextDbTypeResolverFactory(type));
+        ((INpgsqlTypeMapper)dataSourceBuilder).AddDbTypeResolverFactory(new GuidTextDbTypeResolverFactory(type));
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
