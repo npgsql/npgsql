@@ -196,6 +196,7 @@ public interface INpgsqlTypeMapper
     /// Typically used by plugins.
     /// </summary>
     /// <param name="factory">The type resolver factory to be added.</param>
+    [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
     void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory);
 
     /// <summary>
