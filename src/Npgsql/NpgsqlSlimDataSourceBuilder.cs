@@ -532,6 +532,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
 
     /// <inheritdoc />
+    [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
     public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.PrependResolverFactory(factory);
 
     /// <inheritdoc />
