@@ -1,11 +1,9 @@
 <Project>
+
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsLoggingAbstractionsPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsDependencyInjectionAbstractionsPackageVersion)" />
     <PackageVersion Include="OpenTelemetry.API" Version="1.14.0" />
-    
-    <!-- Compatibility -->
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
