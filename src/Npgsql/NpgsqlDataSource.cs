@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using Npgsql.Internal.ResolverFactories;
 using Npgsql.Properties;
 using Npgsql.Util;
@@ -252,6 +253,68 @@ public abstract class NpgsqlDataSource : DbDataSource
         {
             await connection.ReloadTypesAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Attempts to return a mapping for a specific type.
+    /// </summary>
+    public PgTypeInfo? TryGetMapping<T>(string? dataTypeName = null) => TryGetMapping(typeof(T), dataTypeName);
+
+    /// <summary>
+    /// Attempts to return a mapping for a specific type.
+    /// </summary>
+    public PgTypeInfo? TryGetMapping(Type? type = null, string? dataTypeName = null)
+    {
+        if (type is null && string.IsNullOrEmpty(dataTypeName))
+            throw new ArgumentException($"Either {nameof(type)} or {nameof(dataTypeName)} must be specified.");
+
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (SerializerOptions is null)
+            using (OpenConnection()) { }
+
+        return TryGetMappingCore(type, dataTypeName);
+    }
+
+    /// <summary>
+    /// Attempts to return a mapping for a specific type.
+    /// </summary>
+    public ValueTask<PgTypeInfo?> TryGetMappingAsync<T>(string? dataTypeName = null, CancellationToken cancellationToken = default)
+        => TryGetMappingAsync(typeof(T), dataTypeName, cancellationToken);
+
+    /// <summary>
+    /// Attempts to return a mapping for a specific type.
+    /// </summary>
+    public async ValueTask<PgTypeInfo?> TryGetMappingAsync(Type? type = null, string? dataTypeName = null, CancellationToken cancellationToken = default)
+    {
+        if (type is null && string.IsNullOrEmpty(dataTypeName))
+            throw new ArgumentException($"Either {nameof(type)} or {nameof(dataTypeName)} must be specified.");
+
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (SerializerOptions is null)
+        {
+            var connection = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
+
+        return TryGetMappingCore(type, dataTypeName);
+    }
+
+    PgTypeInfo? TryGetMappingCore(Type? type, string? dataTypeName)
+    {
+        Debug.Assert(IsBootstrapped);
+        Debug.Assert(SerializerOptions is not null);
+        Debug.Assert(DatabaseInfo is not null);
+
+        PgTypeId? pgTypeID = null;
+
+        if (!string.IsNullOrEmpty(dataTypeName))
+        {
+            if (!DatabaseInfo.TryGetPostgresTypeByName(DataTypeName.NormalizeName(dataTypeName), out var pgType))
+                throw new NotSupportedException($"The data type name '{dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
+            pgTypeID = SerializerOptions.ToCanonicalTypeId(pgType.GetRepresentationalType());
+        }
+
+        return SerializerOptions.GetTypeInfoInternal(type, pgTypeID);
     }
 
     internal async Task Bootstrap(
