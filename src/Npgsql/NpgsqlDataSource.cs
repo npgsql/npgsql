@@ -92,6 +92,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
+    IDisposable? _eventSourceEvents;
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
@@ -314,6 +315,10 @@ public abstract class NpgsqlDataSource : DbDataSource
                 serializerOptions: serializerOptions,
                 dbTypeResolver: new ChainDbTypeResolver(resolvers));
 
+            if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
+                _connectionLogger.LogDebug("NpgsqlEventSource could not start tracking a DataSource, " +
+                                           "this can happen if more than one data source uses the same connection string.");
+
             IsBootstrapped = true;
         }
         finally
@@ -519,6 +524,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         _periodicPasswordProviderTimer?.Dispose();
         MetricsReporter.Dispose();
+        _eventSourceEvents?.Dispose();
+
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
         // See issue #6115
@@ -549,6 +556,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
 
         MetricsReporter.Dispose();
+        _eventSourceEvents?.Dispose();
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
         // See issue #6115
