@@ -282,7 +282,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
             // These actions can reset or change the type info, we'll check afterwards whether we're still consistent with the original values.
             param.TypedValue = value;
-            param.ResolveTypeInfo(_connector.SerializerOptions);
+            param.ResolveTypeInfo(_connector.SerializerOptions, _connector.DbTypeResolver);
 
             if (previousTypeInfo is not null && previousConverter is not null && param.PgTypeId != previousTypeId)
             {

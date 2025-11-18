@@ -30,6 +30,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal NpgsqlDbType? _npgsqlDbType;
     internal string? _dataTypeName;
+    internal DbType? _dbType;
 
     private protected string _name = string.Empty;
     object? _value;
@@ -40,6 +41,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal string TrimmedName { get; private protected set; } = PositionalName;
     internal const string PositionalName = "";
 
+    IDbTypeResolver? _dbTypeResolver;
     private protected PgTypeInfo? TypeInfo { get; private set; }
 
     internal PgTypeId PgTypeId { get; private set; }
@@ -315,26 +317,32 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         get
         {
+            if (_dbType is { } dbType)
+                return dbType;
+
+            if (_dataTypeName is not null)
+            {
+                var dataTypeName = Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName);
+                if (TryResolveDbType(dataTypeName, out var resolvedDbType))
+                    return resolvedDbType;
+
+                return dataTypeName.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+            }
+
             if (_npgsqlDbType is { } npgsqlDbType)
                 return npgsqlDbType.ToDbType();
 
-            if (_dataTypeName is not null)
-                return Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
-
             // Infer from value but don't cache
-            if (Value is not null)
-                // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.FindDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+            // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
+            if (GetValueType(StaticValueType) is { } valueType)
+                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
 
             return DbType.Object;
         }
         set
         {
             ResetTypeInfo();
-            _npgsqlDbType = value == DbType.Object
-                ? null
-                : value.ToNpgsqlDbType()
-                  ?? throw new NotSupportedException($"The parameter type DbType.{value} isn't supported by PostgreSQL or Npgsql");
+            _dbType = value;
         }
     }
 
@@ -355,10 +363,19 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (_dataTypeName is not null)
                 return Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
+            var valueType = GetValueType(StaticValueType);
+            if (_dbType is { } dbType)
+            {
+                if (TryResolveDbTypeDataTypeName(dbType, valueType, out var dataTypeName))
+                    return NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName) ?? NpgsqlDbType.Unknown;
+
+                return dbType.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+            }
+
             // Infer from value but don't cache
-            if (Value is not null)
-                // We pass ValueType here for the generic derived type (NpgsqlParameter<T>) where we should respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.FindDataTypeName(GetValueType(StaticValueType)!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+            // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
+            if (valueType is not null)
+                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
             return NpgsqlDbType.Unknown;
         }
@@ -392,10 +409,21 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     "pg_catalog." + unqualifiedName).UnqualifiedDisplayName;
             }
 
+            var valueType = GetValueType(StaticValueType);
+            if (_dbType is { } dbType)
+            {
+                if (TryResolveDbTypeDataTypeName(dbType, valueType, out var dataTypeName))
+                    return dataTypeName;
+
+                var unqualifiedName = dbType.ToNpgsqlDbType()?.ToUnqualifiedDataTypeName();
+                return unqualifiedName is null ? null : Internal.Postgres.DataTypeName.ValidatedName(
+                    "pg_catalog." + unqualifiedName).UnqualifiedDisplayName;
+            }
+
             // Infer from value but don't cache
-            if (Value is not null)
-                // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
-                return GlobalTypeMapper.Instance.FindDataTypeName(GetValueType(StaticValueType)!, Value)?.DisplayName;
+            // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
+            if (valueType is not null)
+                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, Value)?.DisplayName;
 
             return null;
         }
@@ -497,6 +525,30 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     Type? GetValueType(Type staticValueType) => staticValueType != typeof(object) ? staticValueType : Value?.GetType();
 
+    bool TryResolveDbType(DataTypeName dataTypeName, out DbType dbType)
+    {
+        if (_dbTypeResolver?.GetDbType(dataTypeName) is { } result)
+        {
+            dbType = result;
+            return true;
+        }
+
+        dbType = default;
+        return false;
+    }
+
+    bool TryResolveDbTypeDataTypeName(DbType dbType, Type? type, [NotNullWhen(true)]out string? normalizedDataTypeName)
+    {
+        if (_dbTypeResolver?.GetDataTypeName(dbType, type) is { } result)
+        {
+            normalizedDataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
+            return true;
+        }
+
+        normalizedDataTypeName = null;
+        return false;
+    }
+
     internal void SetOutputValue(NpgsqlDataReader reader, int ordinal)
     {
         if (GetType() == typeof(NpgsqlParameter))
@@ -536,18 +588,44 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
-    internal void ResolveTypeInfo(PgSerializerOptions options)
+    internal void ResolveTypeInfo(PgSerializerOptions options, IDbTypeResolver? dbTypeResolver)
     {
         var typeInfo = TypeInfo;
         var previouslyResolved = ReferenceEquals(typeInfo?.Options, options);
         if (!previouslyResolved)
         {
-            var dataTypeName =
-                _dataTypeName is not null
-                    ? Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName)
-                    : _npgsqlDbType is { } npgsqlDbType
-                        ? npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow()
-                        : null;
+            var staticValueType = StaticValueType;
+            var valueType = GetValueType(staticValueType);
+
+            string? dataTypeName = null;
+            if (_dataTypeName is not null)
+            {
+                dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName);
+            }
+            else if (_npgsqlDbType is { } npgsqlDbType)
+            {
+                dataTypeName = npgsqlDbType.ToDataTypeName() ?? npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow();
+            }
+            else if (_dbType is { } dbType)
+            {
+                if (dbTypeResolver is not null)
+                {
+                    _dbTypeResolver = dbTypeResolver;
+                    if (dbTypeResolver.GetDataTypeName(dbType, valueType) is { } result)
+                    {
+                        dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(result);
+                    }
+                }
+
+                // Fall back to builtin mappings if there was no resolver, or it didn't produce a result.
+                if (dataTypeName is null)
+                {
+                    dataTypeName = dbType.ToNpgsqlDbType()?.ToDataTypeName();
+                    // If DbType.Object was specified we will only throw (see ThrowNoTypeInfo) if valueType is also null.
+                    if (dataTypeName is null && dbType is not DbType.Object)
+                        ThrowDbTypeNotSupported();
+                }
+            }
 
             PgTypeId? pgTypeId = null;
             if (dataTypeName is not null)
@@ -561,35 +639,24 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = options.ToCanonicalTypeId(pgType.GetRepresentationalType());
             }
 
-            var unspecifiedDBNull = false;
-            var valueType = StaticValueType;
-            if (valueType == typeof(object))
+            if (pgTypeId is null && valueType is null)
             {
-                valueType = Value?.GetType();
-                if (valueType is null && pgTypeId is null)
-                {
-                    ThrowNoTypeInfo();
-                    return;
-                }
-
-                // We treat object typed DBNull values as default info.
-                // Unless we don't have a pgTypeId either, at which point we'll use an 'unspecified' PgTypeInfo to help us write a NULL.
-                if (valueType == typeof(DBNull))
-                {
-                    if (pgTypeId is null)
-                    {
-                        unspecifiedDBNull = true;
-                        typeInfo = options.UnspecifiedDBNullTypeInfo;
-                    }
-                    else
-                        valueType = null;
-                }
+                ThrowNoTypeInfo();
+                return;
             }
 
-            if (!unspecifiedDBNull)
-                typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
-
-            TypeInfo = typeInfo;
+            // We treat object typed DBNull values as default info (we don't supply a type).
+            // Unless we don't have a pgTypeId either, at which point we'll use an 'unspecified' PgTypeInfo to help us write a NULL.
+            if (valueType == typeof(DBNull) && staticValueType == typeof(object))
+            {
+                TypeInfo = typeInfo = pgTypeId is null
+                    ? options.UnspecifiedDBNullTypeInfo
+                    : AdoSerializerHelpers.GetTypeInfoForWriting(type: null, pgTypeId, options, _npgsqlDbType);
+            }
+            else
+            {
+                TypeInfo = typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, pgTypeId, options, _npgsqlDbType);
+            }
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
@@ -605,14 +672,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         void ThrowNoTypeInfo()
             => ThrowHelper.ThrowInvalidOperationException(
-                $"Parameter '{(!string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}")}' must have either its NpgsqlDbType or its DataTypeName or its Value set.");
+                $"Parameter '{(!string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}")}' must have either its DbType, NpgsqlDbType, DataTypeName or its Value set.");
+
+        void ThrowDbTypeNotSupported()
+            => ThrowHelper.ThrowNotSupportedException(
+                $"The DbType '{_dbType}' isn't supported by Npgsql. There might be an Npgsql plugin with support for this DbType.");
 
         void ThrowNotSupported(string dataTypeName)
-        {
-            ThrowHelper.ThrowNotSupportedException(_npgsqlDbType is not null
-                ? $"The NpgsqlDbType '{_npgsqlDbType}' isn't present in your database. You may need to install an extension or upgrade to a newer version."
-                : $"The data type name '{dataTypeName}' isn't present in your database. You may need to install an extension or upgrade to a newer version.");
-        }
+            => ThrowHelper.ThrowNotSupportedException(
+                $"The data type name '{dataTypeName}'{(_npgsqlDbType is not null ? $", provided as NpgsqlDbType '{_npgsqlDbType}'," : null)} could not be found in the types that were loaded by Npgsql. " +
+                $"Your database details or Npgsql type loading configuration may be incorrect. Alternatively your PostgreSQL installation might need to be upgraded, or an extension adding the missing data type might not have been installed.");
     }
 
     // Pull from Value so we also support object typed generic params.
@@ -755,6 +824,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// <inheritdoc />
     public override void ResetDbType()
     {
+        _dbType = null;
         _npgsqlDbType = null;
         _dataTypeName = null;
         ResetTypeInfo();
@@ -815,6 +885,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             _precision = _precision,
             _scale = _scale,
             _size = _size,
+            _dbType = _dbType,
             _npgsqlDbType = _npgsqlDbType,
             _dataTypeName = _dataTypeName,
             Direction = Direction,

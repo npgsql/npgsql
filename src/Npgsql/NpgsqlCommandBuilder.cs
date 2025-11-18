@@ -212,7 +212,11 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
     {
         var param = (NpgsqlParameter)p;
-        param.NpgsqlDbType = (NpgsqlDbType)row[SchemaTableColumn.ProviderType];
+        // DbCommandBuilder is going to set DbType.Int32 onto an existing parameter, reset other db type fields.
+        if (param.SourceColumnNullMapping)
+            param.ResetDbType();
+        else
+            param.NpgsqlDbType = (NpgsqlDbType)row[SchemaTableColumn.ProviderType];
     }
 
     /// <summary>

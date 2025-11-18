@@ -138,6 +138,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
             _precision = _precision,
             _scale = _scale,
             _size = _size,
+            _dbType = _dbType,
             _npgsqlDbType = _npgsqlDbType,
             _dataTypeName = _dataTypeName,
             Direction = Direction,

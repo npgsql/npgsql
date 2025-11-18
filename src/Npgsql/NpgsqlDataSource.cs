@@ -31,11 +31,12 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
     readonly PgTypeInfoResolverChain _resolverChain;
+    readonly IEnumerable<DbTypeResolverFactory> _dbTypeResolverFactories;
 
     internal ReloadableState CurrentReloadableState = null!; // Initialized during bootstrapping.
 
     // Initialized at bootstrapping
-    internal sealed class ReloadableState(NpgsqlDatabaseInfo databaseInfo, PgSerializerOptions serializerOptions)
+    internal sealed class ReloadableState(NpgsqlDatabaseInfo databaseInfo, PgSerializerOptions serializerOptions, IDbTypeResolver? dbTypeResolver)
     {
         /// <summary>
         /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
@@ -43,7 +44,10 @@ public abstract class NpgsqlDataSource : DbDataSource
         public NpgsqlDatabaseInfo DatabaseInfo { get; } = databaseInfo;
 
         public PgSerializerOptions SerializerOptions { get; } = serializerOptions;
+
+        public IDbTypeResolver? DbTypeResolver { get; } = dbTypeResolver;
     }
+
 
     internal TransportSecurityHandler TransportSecurityHandler { get; }
 
@@ -113,6 +117,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
                 _resolverChain,
+                _dbTypeResolverFactories,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync,
@@ -284,7 +289,8 @@ public abstract class NpgsqlDataSource : DbDataSource
                 {
                     TextEncoding = connector.TextEncoding,
                     TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver(),
-                });
+                },
+                dbTypeResolver: null);
 
             NpgsqlDatabaseInfo databaseInfo;
 
@@ -299,9 +305,14 @@ public abstract class NpgsqlDataSource : DbDataSource
                 DefaultNameTranslator = _defaultNameTranslator
             };
 
+            var resolvers = new List<IDbTypeResolver>();
+            foreach (var dbTypeResolverFactory in _dbTypeResolverFactories)
+                resolvers.Add(dbTypeResolverFactory.CreateDbTypeResolver(databaseInfo));
+
             connector.ReloadableState = CurrentReloadableState = new ReloadableState(
                 databaseInfo: databaseInfo,
-                serializerOptions: serializerOptions);
+                serializerOptions: serializerOptions,
+                dbTypeResolver: new ChainDbTypeResolver(resolvers));
 
             IsBootstrapped = true;
         }

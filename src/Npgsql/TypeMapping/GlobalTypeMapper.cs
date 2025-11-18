@@ -95,7 +95,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    internal DataTypeName? FindDataTypeName(Type type, object value)
+    internal DataTypeName? FindDataTypeName(Type type, object? value)
     {
         DataTypeName? dataTypeName;
         try
@@ -147,6 +147,9 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             _lock.ExitWriteLock();
         }
     }
+
+    public void AddDbTypeResolverFactory(DbTypeResolverFactory factory)
+        => throw new NotSupportedException("The global type mapper does not support DbTypeResolverFactories. Call this method on a data source builder instead.");
 
     void ReplaceTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
     {

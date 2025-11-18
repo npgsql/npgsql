@@ -200,6 +200,14 @@ public interface INpgsqlTypeMapper
     void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory);
 
     /// <summary>
+    /// Adds a DbType resolver factory which can change how DbType cases are mapped to PostgreSQL data types.
+    /// Typically used by plugins.
+    /// </summary>
+    /// <param name="factory">The resolver factory to be added.</param>
+    [Experimental(NpgsqlDiagnostics.DbTypeResolverExperimental)]
+    public void AddDbTypeResolverFactory(DbTypeResolverFactory factory);
+
+    /// <summary>
     /// Configures the JSON serializer options used when reading and writing all System.Text.Json data.
     /// </summary>
     /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>

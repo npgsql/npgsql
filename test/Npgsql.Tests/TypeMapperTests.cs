@@ -1,9 +1,12 @@
 ﻿using Npgsql.Internal;
 using NUnit.Framework;
 using System;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -58,6 +61,96 @@ public class TypeMapperTests : TestBase
         Assert.That(command.ExecuteScalar(), Is.True);
     }
 
+    [Test]
+    [NonParallelizable] // Depends on citext which could be dropped concurrently
+    public async Task String_to_citext_with_db_type_string()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await EnsureExtensionAsync(adminConnection, "citext");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        ((INpgsqlTypeMapper)dataSourceBuilder).AddDbTypeResolverFactory(new ForceStringToCitextResolverFactory());
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var command = new NpgsqlCommand("SELECT @p = 'hello'::citext", connection);
+        var parameter = new NpgsqlParameter("p", DbType.String)
+        {
+            Value = "HeLLo"
+        };
+        command.Parameters.Add(parameter);
+
+        Assert.That(command.ExecuteScalar(), Is.True);
+        Assert.That(parameter.DbType, Is.EqualTo(DbType.String));
+        Assert.That(parameter.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Citext));
+        Assert.That(parameter.DataTypeName, Is.EqualTo("citext"));
+    }
+
+    [Test]
+    public async Task Guid_to_custom_type()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.AddTypeInfoResolverFactory(new GuidTextConverterFactory(type));
+        ((INpgsqlTypeMapper)dataSourceBuilder).AddDbTypeResolverFactory(new GuidTextDbTypeResolverFactory(type));
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type}");
+        await connection.ExecuteNonQueryAsync($"""
+            -- Input: cstring -> Custom type
+            CREATE FUNCTION {type}_in(cstring)
+            RETURNS {type}
+            AS 'textin'
+            LANGUAGE internal IMMUTABLE STRICT;
+
+            -- Output: Custom type -> cstring
+            CREATE FUNCTION {type}_out({type})
+            RETURNS cstring
+            AS 'textout'
+            LANGUAGE internal IMMUTABLE STRICT;
+
+            -- 3️⃣ Create wrappers for binary I/O
+            CREATE FUNCTION {type}_recv(internal)
+            RETURNS {type}
+            AS 'textrecv'
+            LANGUAGE internal IMMUTABLE STRICT;
+
+            CREATE FUNCTION {type}_send({type})
+            RETURNS bytea
+            AS 'textsend'
+            LANGUAGE internal IMMUTABLE STRICT;
+        """);
+
+        await connection.ExecuteNonQueryAsync($"""
+            CREATE TYPE {type} (
+                internallength = variable,
+                input = {type}_in,
+                output = {type}_out,
+                receive = {type}_recv,
+                send = {type}_send,
+                alignment = int4
+            );
+            CREATE CAST ({type} AS text) WITH INOUT AS IMPLICIT;
+            """);
+        await connection.ReloadTypesAsync();
+
+        var guid = Guid.NewGuid();
+        await using var command = new NpgsqlCommand($"SELECT @p::text = '{guid}'", connection);
+        var parameter = new NpgsqlParameter("p", DbType.Guid)
+        {
+            Value = guid
+        };
+        command.Parameters.Add(parameter);
+
+        Assert.That(command.ExecuteScalar(), Is.True);
+        Assert.That(parameter.DbType, Is.EqualTo(DbType.Guid));
+        Assert.That(parameter.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+        Assert.That(parameter.DataTypeName, Is.EqualTo(type));
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4582")]
     [NonParallelizable] // Drops extension
     public async Task Type_in_non_default_schema()
@@ -107,6 +200,81 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             }
         }
 
+    }
+
+    class ForceStringToCitextResolverFactory : DbTypeResolverFactory
+    {
+        public override IDbTypeResolver CreateDbTypeResolver(NpgsqlDatabaseInfo databaseInfo) => new DbTypeResolver();
+
+        sealed class DbTypeResolver : IDbTypeResolver
+        {
+            public string? GetDataTypeName(DbType dbType, Type? type)
+            {
+                if (dbType == DbType.String)
+                    return "citext";
+
+                return null;
+            }
+
+            public DbType? GetDbType(DataTypeName dataTypeName)
+            {
+                if (dataTypeName.UnqualifiedName == "citext")
+                    return DbType.String;
+
+                return null;
+            }
+        }
+    }
+
+    class GuidTextConverterFactory(string typeName) : PgTypeInfoResolverFactory
+    {
+        public override IPgTypeInfoResolver? CreateArrayResolver() => null;
+        public override IPgTypeInfoResolver CreateResolver() => new GuidTextTypeInfoResolver(typeName);
+
+        sealed class GuidTextTypeInfoResolver(string typeName) : IPgTypeInfoResolver
+        {
+            public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+            {
+                if (type == typeof(Guid) || dataTypeName?.UnqualifiedName == typeName)
+                    if (options.DatabaseInfo.TryGetPostgresTypeByName(typeName, out var pgType))
+                        return new(options, new GuidTextConverter(options.TextEncoding), options.ToCanonicalTypeId(pgType));
+
+                return null;
+            }
+        }
+
+        sealed class GuidTextConverter(System.Text.Encoding encoding) : StringBasedTextConverter<Guid>(encoding)
+        {
+            public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+            {
+                bufferRequirements = BufferRequirements.None;
+                return format is DataFormat.Text;
+            }
+            protected override Guid ConvertFrom(string value) => Guid.Parse(value);
+            protected override ReadOnlyMemory<char> ConvertTo(Guid value) => value.ToString().AsMemory();
+        }
+    }
+
+    class GuidTextDbTypeResolverFactory(string typeName) : DbTypeResolverFactory
+    {
+        public override IDbTypeResolver CreateDbTypeResolver(NpgsqlDatabaseInfo databaseInfo) => new DbTypeResolver(typeName);
+
+        sealed class DbTypeResolver(string typeName) : IDbTypeResolver
+        {
+            public string? GetDataTypeName(DbType dbType, Type? type)
+            {
+                if (dbType == DbType.Guid)
+                    return typeName;
+                return null;
+            }
+
+            public DbType? GetDbType(DataTypeName dataTypeName)
+            {
+                if (dataTypeName == typeName)
+                    return DbType.Guid;
+                return null;
+            }
+        }
     }
 
     enum Mood { Sad, Ok, Happy }

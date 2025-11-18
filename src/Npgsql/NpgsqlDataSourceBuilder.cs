@@ -415,6 +415,10 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     #region Type mapping
 
     /// <inheritdoc />
+    void INpgsqlTypeMapper.AddDbTypeResolverFactory(DbTypeResolverFactory factory)
+        => ((INpgsqlTypeMapper)_internalBuilder).AddDbTypeResolverFactory(factory);
+
+    /// <inheritdoc />
     [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
     public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
         => _internalBuilder.AddTypeInfoResolverFactory(factory);

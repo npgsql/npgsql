@@ -48,6 +48,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
+    List<DbTypeResolverFactory>? _dbTypeResolverFactories;
     PgTypeInfoResolverChainBuilder _resolverChainBuilder = new(); // mutable struct, don't make readonly.
 
     readonly UserTypeMapper _userTypeMapper;
@@ -532,8 +533,13 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
 
     /// <inheritdoc />
+    void INpgsqlTypeMapper.AddDbTypeResolverFactory(DbTypeResolverFactory factory)
+        => (_dbTypeResolverFactories ??= new()).Add(factory);
+
+    /// <inheritdoc />
     [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-    public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory) => _resolverChainBuilder.PrependResolverFactory(factory);
+    public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
+        => _resolverChainBuilder.PrependResolverFactory(factory);
 
     /// <inheritdoc />
     void INpgsqlTypeMapper.Reset() => _resolverChainBuilder.Clear();
@@ -888,6 +894,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
             _resolverChainBuilder.Build(ConfigureResolverChain),
+            _dbTypeResolverFactories ?? [],
             DefaultNameTranslator,
             _connectionInitializer,
             _connectionInitializerAsync,
