@@ -146,6 +146,9 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Name = name ?? ConnectionString;
         MetricsReporter = new MetricsReporter(this);
+        if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
+            _connectionLogger.LogDebug("NpgsqlEventSource could not start tracking a DataSource, " +
+                                       "this can happen if more than one data source uses the same connection string.");
     }
 
     /// <inheritdoc cref="DbDataSource.CreateConnection" />
