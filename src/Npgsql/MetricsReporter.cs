@@ -32,12 +32,10 @@ sealed class MetricsReporter : IDisposable
 
     static readonly List<MetricsReporter> Reporters = [];
 
-#if NET9_0_OR_GREATER
     static readonly InstrumentAdvice<double> ShortHistogramAdvice = new()
     {
         HistogramBucketBoundaries = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]
     };
-#endif
 
     CommandCounters _commandCounters;
 
@@ -66,11 +64,9 @@ sealed class MetricsReporter : IDisposable
         CommandDuration = Meter.CreateHistogram<double>(
             "db.client.commands.duration",
             unit: "s",
-            description: "The duration of database commands, in seconds."
-#if NET90_OR_GREATER
-            , advice: ShortHistogramAdvice
-#endif
-            );
+            description: "The duration of database commands, in seconds.",
+            advice: ShortHistogramAdvice);
+
         BytesWritten = Meter.CreateCounter<long>(
             "db.client.commands.bytes_written",
             unit: "By",
@@ -94,11 +90,8 @@ sealed class MetricsReporter : IDisposable
         ConnectionCreateTime = Meter.CreateHistogram<double>(
             "db.client.connections.create_time",
             unit: "s",
-            description: "The time it took to create a new connection."
-#if NET90_OR_GREATER
-            , advice: ShortHistogramAdvice
-#endif
-            );
+            description: "The time it took to create a new connection.",
+            advice: ShortHistogramAdvice);
 
         // Observable metrics; these are for values we already track internally (and efficiently) inside the connection pool implementation.
         Meter.CreateObservableUpDownCounter(
