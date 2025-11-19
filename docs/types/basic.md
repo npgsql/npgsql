@@ -51,6 +51,7 @@ polygon                     | NpgsqlPolygon              |
 line                        | NpgsqlLine                 |
 circle                      | NpgsqlCircle               |
 box                         | NpgsqlBox                  |
+cube                        | NpgsqlCube<sup>5</sup>     |
 hstore                      | Dictionary<string, string> |
 oid                         | uint                       |
 xid                         | uint                       |
@@ -73,6 +74,8 @@ array types                 | Array (of element type)    |
 <sup>3</sup> PostgreSQL intervals with month or year components cannot be read as `TimeSpan`. Consider using NodaTime's [Period](https://nodatime.org/3.0.x/api/NodaTime.Period.html) type, or <xref:NpgsqlTypes.NpgsqlInterval>.
 
 <sup>4</sup> Prior to version 8.0, the default mapping for `cidr` was `ValueTuple<IPAddress, int>`.
+
+<sup>5</sup> Introduced in Npgsql 10.0.0. Requires the PostgreSQL [`cube`](https://www.postgresql.org/docs/current/cube.html) extension.
 
 ## Write mappings
 
@@ -122,6 +125,7 @@ polygon                     | NpgsqlPolygon                              |      
 line                        | NpgsqlLine                                 |                                          | Line                  |
 circle                      | NpgsqlCircle                               |                                          | Circle                |
 box                         | NpgsqlBox                                  |                                          | Box                   |
+cube                        | NpgsqlCube<sup>4</sup>                     |                                          | Cube                  |
 hstore                      | IDictionary\<string, string\>              |                                          | Hstore                |
 oid                         |                                            | uint                                     | Oid                   |
 xid                         |                                            | uint                                     | Xid                   |
@@ -139,6 +143,8 @@ array types                 | T[], List\<T\>                             |      
 <sup>2</sup>In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), `DbType.DateTime` is mapped to `timestamp without time zone`.
 
 <sup>3</sup>Types which can be read as `byte[]` can also be written as `ReadOnlyMemory<byte>` and `Stream`.
+
+<sup>4</sup> Introduced in Npgsql 10.0.0. Requires the PostgreSQL [`cube`](https://www.postgresql.org/docs/current/cube.html) extension.
 
 Notes when using Range and Array, bitwise-or NpgsqlDbType.Range or NpgsqlDbType.Array with the child type. For example, to construct the NpgsqlDbType for a `int4range`, write `NpgsqlDbType.Range | NpgsqlDbType.Integer`. To construct the NpgsqlDbType for an `int[]`, write `NpgsqlDbType.Array | NpgsqlDbType.Integer`.
 
