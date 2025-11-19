@@ -74,7 +74,7 @@ class PoolingDataSource : NpgsqlDataSource
     internal PoolingDataSource(
         NpgsqlConnectionStringBuilder settings,
         NpgsqlDataSourceConfiguration dataSourceConfig)
-        : base(settings, dataSourceConfig)
+        : base(settings, dataSourceConfig, reportMetrics: true)
     {
         if (settings.MaxPoolSize < settings.MinPoolSize)
             throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");

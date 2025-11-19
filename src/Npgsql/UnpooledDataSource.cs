@@ -7,7 +7,7 @@ using Npgsql.Util;
 namespace Npgsql;
 
 sealed class UnpooledDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
-    : NpgsqlDataSource(settings, dataSourceConfig)
+    : NpgsqlDataSource(settings, dataSourceConfig, reportMetrics: true)
 {
     volatile int _numConnectors;
 

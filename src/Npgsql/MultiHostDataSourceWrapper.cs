@@ -8,7 +8,7 @@ using System.Transactions;
 namespace Npgsql;
 
 sealed class MultiHostDataSourceWrapper(NpgsqlMultiHostDataSource wrappedSource, TargetSessionAttributes targetSessionAttributes)
-    : NpgsqlDataSource(CloneSettingsForTargetSessionAttributes(wrappedSource.Settings, targetSessionAttributes), wrappedSource.Configuration)
+    : NpgsqlDataSource(CloneSettingsForTargetSessionAttributes(wrappedSource.Settings, targetSessionAttributes), wrappedSource.Configuration, reportMetrics: false)
 {
     internal NpgsqlMultiHostDataSource WrappedSource { get; } = wrappedSource;
 

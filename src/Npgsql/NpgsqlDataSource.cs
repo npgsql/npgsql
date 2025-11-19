@@ -92,11 +92,11 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
-    IDisposable? _eventSourceEvents;
+    readonly IDisposable? _eventSourceEvents;
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
-        NpgsqlDataSourceConfiguration dataSourceConfig)
+        NpgsqlDataSourceConfiguration dataSourceConfig, bool reportMetrics)
     {
         Settings = settings;
         ConnectionString = settings.PersistSecurityInfo
@@ -147,7 +147,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         Name = name ?? ConnectionString;
 
         // TODO this needs a rework, but for now we just avoid tracking multi-host data sources directly.
-        if (this is not NpgsqlMultiHostDataSource)
+        if (reportMetrics)
         {
             MetricsReporter = new MetricsReporter(this);
             if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
@@ -533,7 +533,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         _periodicPasswordProviderTimer?.Dispose();
-        if (this is not NpgsqlMultiHostDataSource)
+        if (MetricsReporter is not null)
         {
             MetricsReporter.Dispose();
             _eventSourceEvents?.Dispose();
@@ -568,7 +568,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         if (_periodicPasswordProviderTimer is not null)
             await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
 
-        if (this is not NpgsqlMultiHostDataSource)
+        if (MetricsReporter is not null)
         {
             MetricsReporter.Dispose();
             _eventSourceEvents?.Dispose();
