@@ -2,16 +2,28 @@
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <MicrosoftExtensionsLoggingAbstractionsPackageVersion>10.0.0</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
     <MicrosoftExtensionsDependencyInjectionAbstractionsPackageVersion>10.0.0</MicrosoftExtensionsDependencyInjectionAbstractionsPackageVersion>
+    
+    <!-- For tests only -->
+    <MicrosoftExtensionsDependencyInjectionPackageVersion>10.0.0</MicrosoftExtensionsDependencyInjectionPackageVersion>
+    <MicrosoftExtensionsLoggingPackageVersion>10.0.0</MicrosoftExtensionsLoggingPackageVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
     <MicrosoftExtensionsLoggingAbstractionsPackageVersion>9.0.0</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
     <MicrosoftExtensionsDependencyInjectionAbstractionsPackageVersion>9.0.0</MicrosoftExtensionsDependencyInjectionAbstractionsPackageVersion>
+    
+    <!-- For tests only -->
+    <MicrosoftExtensionsDependencyInjectionPackageVersion>9.0.11</MicrosoftExtensionsDependencyInjectionPackageVersion>
+    <MicrosoftExtensionsLoggingPackageVersion>9.0.11</MicrosoftExtensionsLoggingPackageVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <MicrosoftExtensionsLoggingAbstractionsPackageVersion>8.0.0</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
     <MicrosoftExtensionsDependencyInjectionAbstractionsPackageVersion>8.0.0</MicrosoftExtensionsDependencyInjectionAbstractionsPackageVersion>
+    
+    <!-- For tests only -->
+    <MicrosoftExtensionsDependencyInjectionPackageVersion>8.0.1</MicrosoftExtensionsDependencyInjectionPackageVersion>
+    <MicrosoftExtensionsLoggingPackageVersion>8.0.1</MicrosoftExtensionsLoggingPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,15 +48,15 @@
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="4.4.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.11.2" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsDependencyInjectionPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsLoggingPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsLoggingPackageVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.6" />
