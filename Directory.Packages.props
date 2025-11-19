@@ -22,7 +22,7 @@
     <DependencyInjectionAbstractionsPackageVersion>8.0.0</DependencyInjectionAbstractionsPackageVersion>
 
     <!-- Note that we lift up DiagnosticSource for net8.0 to use the 9.0 version, since that supports histogram advice. -->
-    <DiagnosticSourcePackageVersion>9.0.11</DiagnosticSourcePackageVersion>
+    <DiagnosticSourcePackageVersion>10.0.0</DiagnosticSourcePackageVersion>
 
     <!-- For tests only -->
     <DependencyInjectionPackageVersion>8.0.1</DependencyInjectionPackageVersion>
