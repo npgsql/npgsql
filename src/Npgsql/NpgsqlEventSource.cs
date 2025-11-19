@@ -257,8 +257,8 @@ sealed class NpgsqlEventSourceDataSources(EventSource eventSource)
     {
         readonly string _name;
         readonly StrongBox<(int Count, ConcurrentDictionary<string, bool> Names)> _state;
-        readonly PollingCounter? _idleConnections;
-        readonly PollingCounter? _busyConnections;
+        readonly PollingCounter _idleConnections;
+        readonly PollingCounter _busyConnections;
 
         int _disposed;
 
@@ -266,17 +266,14 @@ sealed class NpgsqlEventSourceDataSources(EventSource eventSource)
         {
             _name = name;
             _state = state;
-            if (dataSource is PoolingDataSource)
+            _idleConnections = new($"idle-connections-{name}", eventSource, () => dataSource.Statistics.Idle)
             {
-                _idleConnections = new($"idle-connections-{name}", eventSource, () => dataSource.Statistics.Idle)
-                {
-                    DisplayName = $"Idle Connections [{name}]"
-                };
-                _busyConnections = new($"busy-connections-{name}", eventSource, () => dataSource.Statistics.Busy)
-                {
-                    DisplayName = $"Busy Connections [{name}]"
-                };
-            }
+                DisplayName = $"Idle Connections [{name}]"
+            };
+            _busyConnections = new($"busy-connections-{name}", eventSource, () => dataSource.Statistics.Busy)
+            {
+                DisplayName = $"Busy Connections [{name}]"
+            };
         }
 
         public void Dispose()
@@ -284,8 +281,8 @@ sealed class NpgsqlEventSourceDataSources(EventSource eventSource)
             if (Interlocked.Exchange(ref _disposed, 1) is 1)
                 return;
 
-            _idleConnections?.Dispose();
-            _busyConnections?.Dispose();
+            _idleConnections.Dispose();
+            _busyConnections.Dispose();
 
             Interlocked.Decrement(ref _state.Value.Count);
             var success = _state.Value.Names.TryRemove(_name, out _);
