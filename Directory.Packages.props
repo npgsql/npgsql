@@ -1,11 +1,39 @@
 <Project>
-  <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.14.0" />
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <LoggingAbstractionsPackageVersion>10.0.0</LoggingAbstractionsPackageVersion>
+    <DependencyInjectionAbstractionsPackageVersion>10.0.0</DependencyInjectionAbstractionsPackageVersion>
     
-    <!-- Compatibility -->
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" />
+    <!-- For tests only -->
+    <DependencyInjectionPackageVersion>10.0.0</DependencyInjectionPackageVersion>
+    <LoggingPackageVersion>10.0.0</LoggingPackageVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <LoggingAbstractionsPackageVersion>9.0.0</LoggingAbstractionsPackageVersion>
+    <DependencyInjectionAbstractionsPackageVersion>9.0.0</DependencyInjectionAbstractionsPackageVersion>
+    
+    <!-- For tests only -->
+    <DependencyInjectionPackageVersion>9.0.11</DependencyInjectionPackageVersion>
+    <LoggingPackageVersion>9.0.11</LoggingPackageVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <LoggingAbstractionsPackageVersion>8.0.0</LoggingAbstractionsPackageVersion>
+    <DependencyInjectionAbstractionsPackageVersion>8.0.0</DependencyInjectionAbstractionsPackageVersion>
+
+    <!-- Note that we lift up DiagnosticSource for net8.0 to use the 9.0 version, since that supports histogram advice. -->
+    <DiagnosticSourcePackageVersion>9.0.11</DiagnosticSourcePackageVersion>
+
+    <!-- For tests only -->
+    <DependencyInjectionPackageVersion>8.0.1</DependencyInjectionPackageVersion>
+    <LoggingPackageVersion>8.0.1</LoggingPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(LoggingAbstractionsPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(DependencyInjectionAbstractionsPackageVersion)" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.14.0" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="$(DiagnosticSourcePackageVersion)" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
@@ -24,15 +52,15 @@
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="4.4.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.11.2" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(DependencyInjectionPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(LoggingPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(LoggingPackageVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.6" />
