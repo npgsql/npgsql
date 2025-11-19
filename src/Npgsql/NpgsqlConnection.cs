@@ -1241,7 +1241,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public TextWriter BeginTextImport(string copyFromCommand)
+    public NpgsqlCopyTextWriter BeginTextImport(string copyFromCommand)
         => BeginTextImport(async: false, copyFromCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
@@ -1256,10 +1256,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public Task<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
+    public Task<NpgsqlCopyTextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
         => BeginTextImport(async: true, copyFromCommand, cancellationToken);
 
-    async Task<TextWriter> BeginTextImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
+    async Task<NpgsqlCopyTextWriter> BeginTextImport(bool async, string copyFromCommand, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(copyFromCommand);
         if (!IsValidCopyCommand(copyFromCommand))
@@ -1307,7 +1307,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public TextReader BeginTextExport(string copyToCommand)
+    public NpgsqlCopyTextReader BeginTextExport(string copyToCommand)
         => BeginTextExport(async: false, copyToCommand, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
@@ -1322,10 +1322,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public Task<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
+    public Task<NpgsqlCopyTextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
         => BeginTextExport(async: true, copyToCommand, cancellationToken);
 
-    async Task<TextReader> BeginTextExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
+    async Task<NpgsqlCopyTextReader> BeginTextExport(bool async, string copyToCommand, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(copyToCommand);
         if (!IsValidCopyCommand(copyToCommand))
