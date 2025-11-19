@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using OpenTelemetry;
@@ -137,7 +138,7 @@ public class MetricTests : TestBase
     protected override NpgsqlDataSourceBuilder CreateDataSourceBuilder()
     {
         var dataSourceBuilder = base.CreateDataSourceBuilder();
-        dataSourceBuilder.Name = "MetricsDataSource" + _dataSourceCounter++;
+        dataSourceBuilder.Name = "MetricsDataSource" + Interlocked.Increment(ref _dataSourceCounter);
         return dataSourceBuilder;
     }
 
