@@ -600,7 +600,7 @@ public sealed partial class NpgsqlConnector
 
             try
             {
-                await conn.Encrypt(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
+                await conn.SetupEncryption(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
                 timeout.CheckAndApply(conn);
                 conn.WriteStartupMessage(username);
                 await conn.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -608,6 +608,10 @@ public sealed partial class NpgsqlConnector
                 using var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
                 await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
             }
+            // We handle any exception here because on Windows while receiving a response from Postgres
+            // We might hit connection reset, in which case the actual error will be lost
+            // And we only read some IO error
+            // In addition, this behavior mimics libpq, where it retries as long as GssEncryptionMode and SslMode allows it
             catch (Exception e) when
                 // We might also get here OperationCancelledException/TimeoutException
                 // But it's fine to fall down and retry because we'll immediately exit with the exact same exception
@@ -959,7 +963,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    async Task Encrypt(SslMode sslMode, GssEncryptionMode gssEncryptionMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    async Task SetupEncryption(SslMode sslMode, GssEncryptionMode gssEncryptionMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         var gssEncryptResult = await TryNegotiateGssEncryption(gssEncryptionMode, async, cancellationToken).ConfigureAwait(false);
         if (gssEncryptResult == GssEncryptionResult.Success)
@@ -2214,7 +2218,7 @@ public sealed partial class NpgsqlConnector
                 RawOpen(timeout, false,
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
-                Encrypt(Settings.SslMode, gssEncMode, timeout, false,
+                SetupEncryption(Settings.SslMode, gssEncMode, timeout, false,
                         CancellationToken.None).
                     GetAwaiter().GetResult();
             }
@@ -2229,7 +2233,7 @@ public sealed partial class NpgsqlConnector
                 RawOpen(timeout, false,
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
-                Encrypt(Settings.SslMode, GssEncryptionMode.Disable, timeout, false,
+                SetupEncryption(Settings.SslMode, GssEncryptionMode.Disable, timeout, false,
                         CancellationToken.None).
                     GetAwaiter().GetResult();
             }
