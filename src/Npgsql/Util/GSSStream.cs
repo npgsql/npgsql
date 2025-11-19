@@ -59,7 +59,7 @@ sealed class GSSStream : Stream
             Unsafe.WriteUnaligned(ref _writeLengthBuffer[0], BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(written.Length) : written.Length);
 
             _stream.Write(_writeLengthBuffer);
-            _stream.Write(buffer.Slice(start, lengthToWrite));
+            _stream.Write(_writeBuffer.WrittenMemory.Span);
 
             _writeBuffer.ResetWrittenCount();
             start += lengthToWrite;

@@ -596,17 +596,27 @@ public sealed partial class NpgsqlConnector
             bool async,
             CancellationToken cancellationToken)
         {
-            await conn.RawOpen(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
-            timeout.CheckAndApply(conn);
-            conn.WriteStartupMessage(username);
-            await conn.Flush(async, cancellationToken).ConfigureAwait(false);
+            // If we fail to connect to the socket, there is no reason to retry even if SslMode/GssEncryption allows it
+            await conn.RawOpen(timeout, async, cancellationToken).ConfigureAwait(false);
 
-            using var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
             try
             {
+                await conn.SetupEncryption(sslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
+                timeout.CheckAndApply(conn);
+                conn.WriteStartupMessage(username);
+                await conn.Flush(async, cancellationToken).ConfigureAwait(false);
+
+                using var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
                 await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
             }
+            // We handle any exception here because on Windows while receiving a response from Postgres
+            // We might hit connection reset, in which case the actual error will be lost
+            // And we only read some IO error
+            // In addition, this behavior mimics libpq, where it retries as long as GssEncryptionMode and SslMode allows it
             catch (Exception e) when
+                // We might also get here OperationCancelledException/TimeoutException
+                // But it's fine to fall down and retry because we'll immediately exit with the exact same exception
+                //
                 // Any error after trying with GSS encryption
                 (gssEncMode == GssEncryptionMode.Prefer ||
                 // Auth error with/without SSL
@@ -619,9 +629,6 @@ public sealed partial class NpgsqlConnector
                 }
                 else
                     sslMode = sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require;
-
-                cancellationRegistration.Dispose();
-                Debug.Assert(!conn.IsBroken);
 
                 conn.Cleanup();
 
@@ -696,6 +703,8 @@ public sealed partial class NpgsqlConnector
             default:
                 throw new NpgsqlException($"Received unknown response {response} for GSSEncRequest (expecting G or N)");
             case 'N':
+                if (isRequired)
+                    throw new NpgsqlException("GGS encryption requested. No GSS encryption enabled connection from this host is configured.");
                 return GssEncryptionResult.NegotiateFailure;
             case 'G':
                 break;
@@ -907,7 +916,7 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    async Task RawOpen(SslMode sslMode, GssEncryptionMode gssEncryptionMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         try
         {
@@ -939,59 +948,6 @@ public sealed partial class NpgsqlConnector
 
             IsSslEncrypted = false;
             IsGssEncrypted = false;
-
-            var gssEncryptResult = await TryNegotiateGssEncryption(gssEncryptionMode, async, cancellationToken).ConfigureAwait(false);
-            if (gssEncryptResult == GssEncryptionResult.Success)
-                return;
-
-            timeout.CheckAndApply(this);
-
-            if (GetSslNegotiation(Settings) == SslNegotiation.Direct)
-            {
-                // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but since we also allow environment variables...
-                if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
-                    throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
-                if (gssEncryptResult == GssEncryptionResult.NegotiateFailure)
-                {
-                    // We can be here only if it's fallback from preferred (but failed) gss encryption
-                    // In this case, direct encryption isn't going to work anymore, so we throw a bogus exception to retry again without gss
-                    // Alternatively, we can instead just go with the usual route of writing SslRequest, ignoring direct ssl
-                    // But this is how libpq works
-                    Debug.Assert(gssEncryptionMode == GssEncryptionMode.Prefer);
-                    // The exception message doesn't matter since we're going to retry again
-                    throw new NpgsqlException();
-                }
-
-                await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
-                if (ReadBuffer.ReadBytesLeft > 0)
-                    throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
-            }
-            else if ((sslMode is SslMode.Prefer && DataSource.TransportSecurityHandler.SupportEncryption) ||
-                sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
-            {
-                WriteSslRequest();
-                await Flush(async, cancellationToken).ConfigureAwait(false);
-
-                await ReadBuffer.Ensure(1, async).ConfigureAwait(false);
-                var response = (char)ReadBuffer.ReadByte();
-                timeout.CheckAndApply(this);
-
-                switch (response)
-                {
-                default:
-                    throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
-                case 'N':
-                    if (sslMode != SslMode.Prefer)
-                        throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
-                    break;
-                case 'S':
-                    await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
-                    break;
-                }
-
-                if (ReadBuffer.ReadBytesLeft > 0)
-                    throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
-            }
         }
         catch
         {
@@ -1008,11 +964,79 @@ public sealed partial class NpgsqlConnector
         }
     }
 
+    async Task SetupEncryption(SslMode sslMode, GssEncryptionMode gssEncryptionMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    {
+        var gssEncryptResult = await TryNegotiateGssEncryption(gssEncryptionMode, async, cancellationToken).ConfigureAwait(false);
+        if (gssEncryptResult == GssEncryptionResult.Success)
+            return;
+
+        // TryNegotiateGssEncryption should already throw a much more meaningful exception
+        // if GSS encryption is required but for some reason we can't negotiate it.
+        // But since we have to return a specific result instead of generic true/false
+        // To make absolutely sure we didn't miss anything, recheck again
+        if (gssEncryptionMode == GssEncryptionMode.Require)
+            throw new NpgsqlException($"Unable to negotiate GSS encryption: {gssEncryptResult}");
+
+        timeout.CheckAndApply(this);
+
+        if (GetSslNegotiation(Settings) == SslNegotiation.Direct)
+        {
+            // We already check that in NpgsqlConnectionStringBuilder.PostProcessAndValidate, but since we also allow environment variables...
+            if (Settings.SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
+                throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
+            if (gssEncryptResult == GssEncryptionResult.NegotiateFailure)
+            {
+                // We can be here only if it's fallback from preferred (but failed) gss encryption
+                // In this case, direct encryption isn't going to work anymore, so we throw a bogus exception to retry again without gss
+                // Alternatively, we can instead just go with the usual route of writing SslRequest, ignoring direct ssl
+                // But this is how libpq works
+                Debug.Assert(gssEncryptionMode == GssEncryptionMode.Prefer);
+                // The exception message doesn't matter since we're going to retry again
+                throw new NpgsqlException();
+            }
+
+            await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
+            if (ReadBuffer.ReadBytesLeft > 0)
+                throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
+        }
+        else if ((sslMode is SslMode.Prefer && DataSource.TransportSecurityHandler.SupportEncryption) ||
+            sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
+        {
+            WriteSslRequest();
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+
+            await ReadBuffer.Ensure(1, async).ConfigureAwait(false);
+            var response = (char)ReadBuffer.ReadByte();
+            timeout.CheckAndApply(this);
+
+            switch (response)
+            {
+            default:
+                throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
+            case 'N':
+                if (sslMode != SslMode.Prefer)
+                    throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
+                break;
+            case 'S':
+                await DataSource.TransportSecurityHandler.NegotiateEncryption(async, this, sslMode, timeout, cancellationToken).ConfigureAwait(false);
+                break;
+            }
+
+            if (ReadBuffer.ReadBytesLeft > 0)
+                throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
+        }
+    }
+
     async ValueTask<GssEncryptionResult> TryNegotiateGssEncryption(GssEncryptionMode gssEncryptionMode, bool async, CancellationToken cancellationToken)
     {
         // GetCredentialFailure is essentially a nop (since we didn't send anything over the wire)
         // So we can proceed further as if gss encryption wasn't even attempted
         if (gssEncryptionMode == GssEncryptionMode.Disable) return GssEncryptionResult.GetCredentialFailure;
+
+        // Same thing as above, though in this case user doesn't require GSS encryption but didn't enable encryption
+        // Most of the time they're using the default value, in which case also exit without throwing an error
+        if (gssEncryptionMode == GssEncryptionMode.Prefer && !DataSource.TransportSecurityHandler.SupportEncryption)
+            return GssEncryptionResult.GetCredentialFailure;
 
         if (ConnectedEndPoint!.AddressFamily == AddressFamily.Unix)
         {
@@ -1038,7 +1062,9 @@ public sealed partial class NpgsqlConnector
                 return sslNegotiation;
         }
 
-        return SslNegotiation.Postgres;
+        // If user hasn't provided the value via connection string or environment variable
+        // Retrieve the default value from property
+        return settings.SslNegotiation;
     }
 
     static GssEncryptionMode GetGssEncMode(NpgsqlConnectionStringBuilder settings)
@@ -1052,7 +1078,9 @@ public sealed partial class NpgsqlConnector
                 return gssEncMode;
         }
 
-        return GssEncryptionMode.Disable;
+        // If user hasn't provided the value via connection string or environment variable
+        // Retrieve the default value from property
+        return settings.GssEncryptionMode;
     }
 
     internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
@@ -2187,9 +2215,13 @@ public sealed partial class NpgsqlConnector
         {
             try
             {
-                RawOpen(Settings.SslMode, gssEncMode, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
+                var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+                RawOpen(timeout, false,
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
+                SetupEncryption(Settings.SslMode, gssEncMode, timeout, false,
+                        CancellationToken.None).
+                    GetAwaiter().GetResult();
             }
             catch (Exception e) when (gssEncMode == GssEncryptionMode.Prefer)
             {
@@ -2198,9 +2230,13 @@ public sealed partial class NpgsqlConnector
 
                 // If we hit an error with gss encryption
                 // Retry again without it
-                RawOpen(Settings.SslMode, GssEncryptionMode.Disable, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false,
+                var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+                RawOpen(timeout, false,
                         CancellationToken.None)
                     .GetAwaiter().GetResult();
+                SetupEncryption(Settings.SslMode, GssEncryptionMode.Disable, timeout, false,
+                        CancellationToken.None).
+                    GetAwaiter().GetResult();
             }
 
             WriteCancelRequest(backendProcessId, backendSecretKey);
