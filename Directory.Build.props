@@ -1,6 +1,4 @@
 ﻿<Project>
-  <Import Project="Versions.props" />
-
   <PropertyGroup>
     <VersionPrefix>10.0.0-rtm</VersionPrefix>
     <LangVersion>latest</LangVersion>
