@@ -53,7 +53,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 : new UnpooledDataSource(poolSettings, dataSourceConfig);
         }
 
-        var targetSessionAttributeValues = Enum.GetValues<TargetSessionAttributes>().ToArray();
+        var targetSessionAttributeValues = Enum.GetValues<TargetSessionAttributes>();
         var highestValue = 0;
         foreach (var value in targetSessionAttributeValues)
             if ((int)value > highestValue)

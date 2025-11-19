@@ -145,10 +145,21 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         Name = name ?? ConnectionString;
-        MetricsReporter = new MetricsReporter(this);
-        if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
-            _connectionLogger.LogDebug("NpgsqlEventSource could not start tracking a DataSource, " +
-                                       "this can happen if more than one data source uses the same connection string.");
+
+        // TODO this needs a rework, but for now we just avoid tracking multi-host data sources directly.
+        if (this is not NpgsqlMultiHostDataSource)
+        {
+            MetricsReporter = new MetricsReporter(this);
+            if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
+                _connectionLogger.LogDebug("NpgsqlEventSource could not start tracking a DataSource, " +
+                                           "this can happen if more than one data source uses the same connection string.");
+        }
+        else
+        {
+            // This is not accessed anywhere currently for multi-host data sources.
+            // Connectors which handle the metrics always access their nonpooling/pooling data source instead.
+            MetricsReporter = null!;
+        }
     }
 
     /// <inheritdoc cref="DbDataSource.CreateConnection" />
@@ -526,8 +537,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         _periodicPasswordProviderTimer?.Dispose();
-        MetricsReporter.Dispose();
-        _eventSourceEvents?.Dispose();
+        if (this is not NpgsqlMultiHostDataSource)
+        {
+            MetricsReporter.Dispose();
+            _eventSourceEvents?.Dispose();
+        }
 
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
@@ -558,8 +572,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         if (_periodicPasswordProviderTimer is not null)
             await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
 
-        MetricsReporter.Dispose();
-        _eventSourceEvents?.Dispose();
+        if (this is not NpgsqlMultiHostDataSource)
+        {
+            MetricsReporter.Dispose();
+            _eventSourceEvents?.Dispose();
+        }
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
         // See issue #6115
