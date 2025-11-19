@@ -178,20 +178,16 @@ sealed class MetricsReporter : IDisposable
             {
                 var reporter = Reporters[i];
 
-                if (reporter._dataSource is PoolingDataSource poolingDataSource)
-                {
-                    var stats = poolingDataSource.Statistics;
+                var connectionStats = reporter._dataSource.Statistics;
+                measurements.Add(new Measurement<int>(
+                    connectionStats.Idle,
+                    reporter._poolNameTag,
+                    new KeyValuePair<string, object?>("state", "idle")));
 
-                    measurements.Add(new Measurement<int>(
-                        stats.Idle,
-                        reporter._poolNameTag,
-                        new KeyValuePair<string, object?>("state", "idle")));
-
-                    measurements.Add(new Measurement<int>(
-                        stats.Busy,
-                        reporter._poolNameTag,
-                        new KeyValuePair<string, object?>("state", "used")));
-                }
+                measurements.Add(new Measurement<int>(
+                    connectionStats.Busy,
+                    reporter._poolNameTag,
+                    new KeyValuePair<string, object?>("state", "used")));
             }
 
             return measurements;

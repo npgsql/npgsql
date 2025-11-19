@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -31,7 +30,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
     volatile int _roundRobinIndex = -1;
 
     internal NpgsqlMultiHostDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
-        : base(settings, dataSourceConfig)
+        : base(settings, dataSourceConfig, reportMetrics: false)
     {
         var hosts = settings.Host!.Split(',');
         _pools = new NpgsqlDataSource[hosts.Length];
@@ -53,7 +52,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 : new UnpooledDataSource(poolSettings, dataSourceConfig);
         }
 
-        var targetSessionAttributeValues = Enum.GetValues<TargetSessionAttributes>().ToArray();
+        var targetSessionAttributeValues = Enum.GetValues<TargetSessionAttributes>();
         var highestValue = 0;
         foreach (var value in targetSessionAttributeValues)
             if ((int)value > highestValue)

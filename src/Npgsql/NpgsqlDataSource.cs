@@ -92,11 +92,11 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
-    IDisposable? _eventSourceEvents;
+    readonly IDisposable? _eventSourceEvents;
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
-        NpgsqlDataSourceConfiguration dataSourceConfig)
+        NpgsqlDataSourceConfiguration dataSourceConfig, bool reportMetrics)
     {
         Settings = settings;
         ConnectionString = settings.PersistSecurityInfo
@@ -145,7 +145,21 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         Name = name ?? ConnectionString;
-        MetricsReporter = new MetricsReporter(this);
+
+        // TODO this needs a rework, but for now we just avoid tracking multi-host data sources directly.
+        if (reportMetrics)
+        {
+            MetricsReporter = new MetricsReporter(this);
+            if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
+                _connectionLogger.LogDebug("NpgsqlEventSource could not start tracking a DataSource, " +
+                                           "this can happen if more than one data source uses the same connection string.");
+        }
+        else
+        {
+            // This is not accessed anywhere currently for multi-host data sources.
+            // Connectors which handle the metrics always access their nonpooling/pooling data source instead.
+            MetricsReporter = null!;
+        }
     }
 
     /// <inheritdoc cref="DbDataSource.CreateConnection" />
@@ -314,10 +328,6 @@ public abstract class NpgsqlDataSource : DbDataSource
                 databaseInfo: databaseInfo,
                 serializerOptions: serializerOptions,
                 dbTypeResolver: new ChainDbTypeResolver(resolvers));
-
-            if (!NpgsqlEventSource.Log.TryTrackDataSource(Name, this, out _eventSourceEvents))
-                _connectionLogger.LogDebug("NpgsqlEventSource could not start tracking a DataSource, " +
-                                           "this can happen if more than one data source uses the same connection string.");
 
             IsBootstrapped = true;
         }
@@ -523,8 +533,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         _periodicPasswordProviderTimer?.Dispose();
-        MetricsReporter.Dispose();
-        _eventSourceEvents?.Dispose();
+        if (MetricsReporter is not null)
+        {
+            MetricsReporter.Dispose();
+            _eventSourceEvents?.Dispose();
+        }
 
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
@@ -555,8 +568,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         if (_periodicPasswordProviderTimer is not null)
             await _periodicPasswordProviderTimer.DisposeAsync().ConfigureAwait(false);
 
-        MetricsReporter.Dispose();
-        _eventSourceEvents?.Dispose();
+        if (MetricsReporter is not null)
+        {
+            MetricsReporter.Dispose();
+            _eventSourceEvents?.Dispose();
+        }
         // We do not dispose _setupMappingsSemaphore explicitly, leaving it to finalizer
         // Due to possible concurrent access, which might lead to deadlock
         // See issue #6115
