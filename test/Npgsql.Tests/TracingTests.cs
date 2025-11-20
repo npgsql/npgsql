@@ -68,7 +68,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             Assert.That(tags["db.npgsql.connection.connection_string"], Is.EqualTo(conn.ConnectionString));
 
             if (isMultiplexing)
-                Assert.That(tags.ContainsKey("db.npgsql.connection.id"));
+                Assert.That(tags, Does.ContainKey("db.npgsql.connection.id"));
             else
                 Assert.That(tags["db.npgsql.connection.id"], Is.EqualTo(conn.ProcessID));
         }
@@ -119,7 +119,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(tags["db.npgsql.connection.connection_string"], Is.EqualTo(conn.ConnectionString));
 
         if (IsMultiplexing)
-            Assert.That(tags.ContainsKey("db.npgsql.connection.id"));
+            Assert.That(tags, Does.ContainKey("db.npgsql.connection.id"));
         else
             Assert.That(tags["db.npgsql.connection.id"], Is.EqualTo(conn.ProcessID));
     }
@@ -187,7 +187,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         using var activityListener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == "Npgsql",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity => activities.Add(activity)
         };
         ActivitySource.AddActivityListener(activityListener);
@@ -233,7 +233,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(activityTags["db.npgsql.connection.connection_string"], Is.EqualTo(conn.ConnectionString));
 
         if (IsMultiplexing)
-            Assert.That(activityTags.ContainsKey("db.npgsql.connection.id"));
+            Assert.That(activityTags, Does.ContainKey("db.npgsql.connection.id"));
         else
             Assert.That(activityTags["db.npgsql.connection.id"], Is.EqualTo(conn.ProcessID));
     }
@@ -249,7 +249,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         using var activityListener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == "Npgsql",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity => activities.Add(activity)
         };
         ActivitySource.AddActivityListener(activityListener);
