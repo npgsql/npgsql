@@ -1771,7 +1771,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     /// <returns></returns>
     public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
-        => GetColumnSchema(async: false).GetAwaiter().GetResult();
+        => GetColumnSchema<NpgsqlDbColumn>(async: false).GetAwaiter().GetResult();
 
     ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
     {
@@ -1788,14 +1788,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Asynchronously returns schema information for the columns in the current resultset.
     /// </summary>
     /// <returns></returns>
-    public new Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
-        => GetColumnSchema(async: true, cancellationToken);
+    public override Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
+        => GetColumnSchema<DbColumn>(async: true, cancellationToken);
 
-    Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
+    Task<ReadOnlyCollection<T>> GetColumnSchema<T>(bool async, CancellationToken cancellationToken = default) where T : DbColumn
         => RowDescription == null || ColumnCount == 0
-            ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
+            ? Task.FromResult(new List<T>().AsReadOnly())
             : new DbColumnSchemaGenerator(_connection!, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
-                .GetColumnSchema(async, cancellationToken);
+                .GetColumnSchema<T>(async, cancellationToken);
 
     #endregion
 
@@ -1853,7 +1853,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         table.Columns.Add("ProviderSpecificDataType", typeof(Type));
         table.Columns.Add("DataTypeName", typeof(string));
 
-        foreach (var column in await GetColumnSchema(async, cancellationToken).ConfigureAwait(false))
+        foreach (var column in await GetColumnSchema<NpgsqlDbColumn>(async, cancellationToken).ConfigureAwait(false))
         {
             var row = table.NewRow();
 
