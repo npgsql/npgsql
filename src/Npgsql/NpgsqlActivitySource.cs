@@ -71,8 +71,10 @@ static class NpgsqlActivitySource
         if (!connector.DataSource.Configuration.TracingOptions.EnablePhysicalOpenTracing)
             return null;
 
+        // Note that physical connection open is not part of the OpenTelemetry spec.
+        // We emit it if enabled, following the general name/tags guidelines.
         var dbName = connector.Settings.Database ?? connector.InferredUserName;
-        var activity = Source.StartActivity("connect " + dbName, ActivityKind.Client);
+        var activity = Source.StartActivity("CONNECT " + dbName, ActivityKind.Client);
         if (activity is not { IsAllDataRequested: true })
             return activity;
 

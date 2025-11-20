@@ -51,8 +51,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         static void ValidateActivity(Activity activity, NpgsqlConnection conn, bool isMultiplexing)
         {
-            Assert.That(activity.DisplayName, Is.EqualTo("connect " + conn.Settings.Database));
-            Assert.That(activity.OperationName, Is.EqualTo("connect " + conn.Settings.Database));
+            Assert.That(activity.DisplayName, Is.EqualTo("CONNECT " + conn.Settings.Database));
+            Assert.That(activity.OperationName, Is.EqualTo("CONNECT " + conn.Settings.Database));
             Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Unset));
 
             Assert.That(activity.Events.Count(), Is.EqualTo(0));
@@ -152,8 +152,8 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         Assert.That(activities, Has.Count.EqualTo(1));
         var activity = activities[0];
-        Assert.That(activity.DisplayName, Is.EqualTo("connect " + dataSource.Settings.Database));
-        Assert.That(activity.OperationName, Is.EqualTo("connect " + dataSource.Settings.Database));
+        Assert.That(activity.DisplayName, Is.EqualTo("CONNECT " + dataSource.Settings.Database));
+        Assert.That(activity.OperationName, Is.EqualTo("CONNECT " + dataSource.Settings.Database));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
         Assert.That(activity.StatusDescription, Is.EqualTo(ex.Message));
 
