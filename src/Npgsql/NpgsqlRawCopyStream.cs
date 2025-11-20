@@ -60,7 +60,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     ];
 
     readonly ILogger _copyLogger;
-    Activity? _copyActivity;
+    Activity? _activity;
 
     #endregion
 
@@ -74,9 +74,15 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
-    internal async Task Init(string copyCommand, CopyOperationType copyOperationType, bool async, CancellationToken cancellationToken = default)
+    internal async Task Init(string copyCommand, bool async, bool? forExport, CancellationToken cancellationToken = default)
     {
-        TraceCopyStart(copyCommand, copyOperationType);
+        Debug.Assert(_activity is null);
+        _activity = _connector.TraceCopyStart(copyCommand, forExport switch
+        {
+            true => "COPY TO",
+            false => "COPY FROM",
+            null => "COPY",
+        });
 
         try
         {
@@ -395,46 +401,43 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 await _connector.Flush(async).ConfigureAwait(false);
                 Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-                TraceImportStop();
+                TraceStop();
             }
             else
             {
                 if (_state != CopyStreamState.Consumed && _state != CopyStreamState.Uninitialized)
                 {
-                    try
+                    if (_leftToReadInDataMsg > 0)
                     {
-                        if (_leftToReadInDataMsg > 0)
-                        {
-                            await _readBuf.Skip(async, _leftToReadInDataMsg).ConfigureAwait(false);
-                        }
-                        _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
-
-                        if (_connector.PostgresCancellationPerformed)
-                        {
-                            LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
-                            TraceSetCancelled();
-                        }
-                        else
-                        {
-                            TraceExportStop();
-                        }
+                        await _readBuf.Skip(async, _leftToReadInDataMsg).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
+                    _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+
+                    if (_connector.PostgresCancellationPerformed)
                     {
                         LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
                         TraceSetCancelled();
                     }
-                    catch (Exception e)
+                    else
                     {
-                        LogMessages.ExceptionWhenDisposingCopyOperation(_copyLogger, _connector.Id, e);
-                        TraceSetException(e);
+                        TraceStop();
                     }
                 }
                 else
                 {
-                    TraceExportStop();
+                    TraceStop();
                 }
             }
+        }
+        catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
+        {
+            LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
+            TraceSetCancelled();
+        }
+        catch (Exception e)
+        {
+            LogMessages.ExceptionWhenDisposingCopyOperation(_copyLogger, _connector.Id, e);
+            TraceSetException(e);
         }
         finally
         {
@@ -497,75 +500,46 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
     #region Tracing
 
-    private void TraceCopyStart(string copyCommand, CopyOperationType copyOperationType)
-    {
-        Debug.Assert(_copyActivity is null);
-        if (NpgsqlActivitySource.IsEnabled)
-        {
-            var tracingOptions = _connector.DataSource.Configuration.TracingOptions;
-
-            if (tracingOptions.CopyOperationFilter?.Invoke(copyCommand, copyOperationType) ?? true)
-            {
-                var spanName = tracingOptions.CopyOperationSpanNameProvider?.Invoke(copyCommand, copyOperationType);
-                _copyActivity = NpgsqlActivitySource.CopyStart(copyCommand, _connector, spanName);
-
-                if (_copyActivity != null)
-                {
-                    tracingOptions.CopyOperationEnrichmentCallback?.Invoke(_copyActivity, copyCommand, copyOperationType);
-                }
-            }
-        }
-    }
-
     private void TraceSetImport()
     {
-        if (_copyActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.SetImport(_copyActivity);
+            NpgsqlActivitySource.SetOperation(_activity, "COPY FROM");
         }
     }
 
     private void TraceSetExport()
     {
-        if (_copyActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.SetExport(_copyActivity);
+            NpgsqlActivitySource.SetOperation(_activity, "COPY TO");
         }
     }
 
-    private void TraceImportStop()
+    private void TraceStop()
     {
-        if (_copyActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.ImportStop(_copyActivity);
-            _copyActivity = null;
-        }
-    }
-
-    private void TraceExportStop()
-    {
-        if (_copyActivity is not null)
-        {
-            NpgsqlActivitySource.ExportStop(_copyActivity);
-            _copyActivity = null;
+            NpgsqlActivitySource.CopyStop(_activity);
+            _activity = null;
         }
     }
 
     private void TraceSetCancelled()
     {
-        if (_copyActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.SetCancelled(_copyActivity);
-            _copyActivity = null;
+            NpgsqlActivitySource.SetCopyCancelled(_activity);
+            _activity = null;
         }
     }
 
     private void TraceSetException(Exception e)
     {
-        if (_copyActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.SetException(_copyActivity, e);
-            _copyActivity = null;
+            NpgsqlActivitySource.SetException(_activity, e);
+            _activity = null;
         }
     }
 

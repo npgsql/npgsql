@@ -1,4 +1,4 @@
-using Npgsql.Internal;
+﻿using Npgsql.Internal;
 using System;
 using System.Data;
 using System.Diagnostics;
@@ -153,55 +153,34 @@ static class NpgsqlActivitySource
         activity.Dispose();
     }
 
-    internal static Activity? CopyStart(string command, NpgsqlConnector connector, string? spanName, string? operation = null)
+    internal static Activity? CopyStart(string command, NpgsqlConnector connector, string? spanName, string operation)
     {
-        var dbName = connector.Settings.Database ?? "UNKNOWN";
-        var activity = Source.StartActivity(spanName ?? dbName, ActivityKind.Client);
+        var activity = Source.StartActivity(spanName ?? operation, ActivityKind.Client);
         if (activity is not { IsAllDataRequested: true })
             return activity;
-        activity.SetTag("db.statement", command);
-        if (operation is not null)
-            activity.SetTag("db.operation", operation);
+        activity.SetTag("db.query.text", command);
+        activity.SetTag("db.operation.name", operation);
         Enrich(activity, connector);
         return activity;
     }
 
-    internal static Activity? ImportStart(string copyFromCommand, NpgsqlConnector connector, string? spanName)
-        => CopyStart(copyFromCommand, connector, spanName, "COPY FROM");
-
-    internal static Activity? ExportStart(string copyToCommand, NpgsqlConnector connector, string? spanName)
-        => CopyStart(copyToCommand, connector, spanName, "COPY TO");
-
-    internal static void SetImport(Activity activity)
-        => SetOperation(activity, "COPY FROM");
-
-    internal static void SetExport(Activity activity)
-        => SetOperation(activity, "COPY TO");
-
-    static void SetOperation(Activity activity, string operation)
+    internal static void SetOperation(Activity activity, string operation)
     {
         if (!activity.IsAllDataRequested)
             return;
-        activity.SetTag("db.operation", operation);
+        activity.SetTag("db.operation.name", operation);
     }
 
-    private static void CopyStop(Activity activity, ulong? rows = null)
+    internal static void CopyStop(Activity activity, ulong? rows = null)
     {
-        activity.SetStatus(ActivityStatusCode.Ok);
         if (rows.HasValue)
-            activity.SetTag("db.rows", rows.Value);
+            activity.SetTag("db.npgsql.rows", rows.Value);
         activity.Dispose();
     }
 
-    internal static void ImportStop(Activity activity, ulong? rows = null)
-        => CopyStop(activity, rows);
-
-    internal static void ExportStop(Activity activity, ulong? rows = null)
-        => CopyStop(activity, rows);
-
-    internal static void SetCancelled(Activity activity)
+    internal static void SetCopyCancelled(Activity activity)
     {
-        activity.SetStatus(ActivityStatusCode.Error, "Cancelled");
+        activity.SetStatus(ActivityStatusCode.Error, "Cancelled"); // TODO: Probably bad?
         activity.Dispose();
     }
 

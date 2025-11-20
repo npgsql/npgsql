@@ -46,7 +46,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     readonly ILogger _copyLogger;
     PgWriter _pgWriter = null!; // Setup in Init
 
-    Activity? CurrentActivity;
+    Activity? _activity;
 
     /// <summary>
     /// Current timeout
@@ -75,7 +75,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     internal async Task Init(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
     {
-        TraceImportStart(copyFromCommand);
+        Debug.Assert(_activity is null);
+        _activity = _connector.TraceCopyStart(copyFromCommand, "COPY FROM");
 
         try
         {
@@ -114,7 +115,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             // Only init after header.
             _pgWriter = _buf.GetWriter(_connector.DatabaseInfo);
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             TraceSetException(e);
             throw;
@@ -440,7 +441,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             _state = ImporterState.Committed;
             return cmdComplete.Rows;
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             TraceSetException(e);
             Cleanup();
@@ -600,54 +601,33 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     #region Tracing
 
-    void TraceImportStart(string copyFromCommand)
-    {
-        Debug.Assert(CurrentActivity is null);
-        if (NpgsqlActivitySource.IsEnabled)
-        {
-            var tracingOptions = _connector.DataSource.Configuration.TracingOptions;
-            var copyOperationType = CopyOperationType.BinaryImport;
-
-            if (tracingOptions.CopyOperationFilter?.Invoke(copyFromCommand, copyOperationType) ?? true)
-            {
-                var spanName = tracingOptions.CopyOperationSpanNameProvider?.Invoke(copyFromCommand, copyOperationType);
-                CurrentActivity = NpgsqlActivitySource.ImportStart(copyFromCommand, _connector, spanName);
-
-                if (CurrentActivity != null)
-                {
-                    tracingOptions.CopyOperationEnrichmentCallback?.Invoke(CurrentActivity, copyFromCommand, copyOperationType);
-                }
-            }
-        }
-    }
-
     void TraceImportStop()
     {
-        if (CurrentActivity is not null)
+        if (_activity is not null)
         {
             switch (_state)
             {
             case ImporterState.Committed:
-                NpgsqlActivitySource.ImportStop(CurrentActivity, _rowsImported);
+                NpgsqlActivitySource.CopyStop(_activity, _rowsImported);
                 break;
             case ImporterState.Cancelled:
-                NpgsqlActivitySource.SetCancelled(CurrentActivity);
+                NpgsqlActivitySource.SetCopyCancelled(_activity);
                 break;
             default:
                 Debug.Fail("Invalid state: " + _state);
                 break;
             }
 
-            CurrentActivity = null;
+            _activity = null;
         }
     }
 
     void TraceSetException(Exception exception)
     {
-        if (CurrentActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.SetException(CurrentActivity, exception);
-            CurrentActivity = null;
+            NpgsqlActivitySource.SetException(_activity, exception);
+            _activity = null;
         }
     }
 

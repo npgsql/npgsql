@@ -49,7 +49,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         set => _buf.Timeout = value;
     }
 
-    Activity? CurrentActivity;
+    Activity? _activity;
 
     #endregion
 
@@ -66,7 +66,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     internal async Task Init(string copyToCommand, bool async, CancellationToken cancellationToken = default)
     {
-        TraceExportStart(copyToCommand);
+        Debug.Assert(_activity is null);
+        _activity = _connector.TraceCopyStart(copyToCommand, "COPY TO");
+
         try
         {
             await _connector.WriteQuery(copyToCommand, async, cancellationToken).ConfigureAwait(false);
@@ -561,51 +563,30 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     #region Tracing
 
-    void TraceExportStart(string copyToCommand)
-    {
-        Debug.Assert(CurrentActivity is null);
-        if (NpgsqlActivitySource.IsEnabled)
-        {
-            var tracingOptions = _connector.DataSource.Configuration.TracingOptions;
-            var copyOperationType = CopyOperationType.BinaryExport;
-
-            if (tracingOptions.CopyOperationFilter?.Invoke(copyToCommand, copyOperationType) ?? true)
-            {
-                var spanName = tracingOptions.CopyOperationSpanNameProvider?.Invoke(copyToCommand, copyOperationType);
-                CurrentActivity = NpgsqlActivitySource.ExportStart(copyToCommand, _connector, spanName);
-
-                if (CurrentActivity != null)
-                {
-                    tracingOptions.CopyOperationEnrichmentCallback?.Invoke(CurrentActivity, copyToCommand, copyOperationType);
-                }
-            }
-        }
-    }
-
     void TraceExportStop()
     {
-        if (CurrentActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.ExportStop(CurrentActivity, _rowsExported);
-            CurrentActivity = null;
+            NpgsqlActivitySource.CopyStop(_activity, _rowsExported);
+            _activity = null;
         }
     }
 
     private void TraceSetCancelled()
     {
-        if (CurrentActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.SetCancelled(CurrentActivity);
-            CurrentActivity = null;
+            NpgsqlActivitySource.SetCopyCancelled(_activity);
+            _activity = null;
         }
     }
 
     void TraceSetException(Exception exception)
     {
-        if (CurrentActivity is not null)
+        if (_activity is not null)
         {
-            NpgsqlActivitySource.SetException(CurrentActivity, exception);
-            CurrentActivity = null;
+            NpgsqlActivitySource.SetException(_activity, exception);
+            _activity = null;
         }
     }
 

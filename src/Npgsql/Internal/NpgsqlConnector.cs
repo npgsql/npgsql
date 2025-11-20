@@ -3204,6 +3204,27 @@ public sealed partial class NpgsqlConnector
         return null;
     }
 
+    internal Activity? TraceCopyStart(string copyCommand, string operation)
+    {
+        Activity? activity = null;
+        if (NpgsqlActivitySource.IsEnabled)
+        {
+            var tracingOptions = DataSource.Configuration.TracingOptions;
+
+            if (tracingOptions.CopyOperationFilter?.Invoke(copyCommand) ?? true)
+            {
+                var spanName = tracingOptions.CopyOperationSpanNameProvider?.Invoke(copyCommand);
+                activity = NpgsqlActivitySource.CopyStart(copyCommand, this, spanName, operation);
+
+                if (activity != null)
+                {
+                    tracingOptions.CopyOperationEnrichmentCallback?.Invoke(activity, copyCommand);
+                }
+            }
+        }
+        return activity;
+    }
+
     #endregion Misc
 }
 
