@@ -17,10 +17,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var activities = new List<Activity>();
 
-        using var activityListener = new ActivityListener();
-        activityListener.ShouldListenTo = source => source.Name == "Npgsql";
-        activityListener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        activityListener.ActivityStopped = activity => activities.Add(activity);
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Add(activity)
+        };
         ActivitySource.AddActivityListener(activityListener);
 
         await using var dataSource = CreateDataSource();
@@ -28,7 +30,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
                 ? await dataSource.OpenConnectionAsync()
                 : dataSource.OpenConnection();
 
-        Assert.That(activities.Count, Is.EqualTo(1));
+        Assert.That(activities, Has.Count.EqualTo(1));
         ValidateActivity(activities[0], conn, IsMultiplexing);
 
         if (!IsMultiplexing)
@@ -41,7 +43,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         await conn.ExecuteScalarAsync("SELECT 1");
 
-        Assert.That(activities.Count, Is.EqualTo(2));
+        Assert.That(activities, Has.Count.EqualTo(2));
         ValidateActivity(activities[0], conn, IsMultiplexing);
 
         // For multiplexing, query's activity can be considered as a parent for physical open's activity
@@ -49,36 +51,26 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         static void ValidateActivity(Activity activity, NpgsqlConnection conn, bool isMultiplexing)
         {
-            Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
-            Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
-            Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Ok));
+            Assert.That(activity.DisplayName, Is.EqualTo("CONNECT " + conn.Settings.Database));
+            Assert.That(activity.OperationName, Is.EqualTo("CONNECT " + conn.Settings.Database));
+            Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Unset));
 
             Assert.That(activity.Events.Count(), Is.EqualTo(0));
 
-            var expectedTagCount = conn.Settings.Port == 5432 ? 8 : 9;
-            Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
+            var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+            Assert.That(tags, Has.Count.EqualTo(conn.Settings.Port == 5432 ? 5 : 6));
 
-            Assert.That(activity.TagObjects.Any(x => x.Key == "db.statement"), Is.False);
+            Assert.That(tags["db.system.name"], Is.EqualTo("postgresql"));
+            Assert.That(tags["db.namespace"], Is.EqualTo(conn.Settings.Database));
 
-            var systemTag = activity.TagObjects.First(x => x.Key == "db.system");
-            Assert.That(systemTag.Value, Is.EqualTo("postgresql"));
+            Assert.That(tags, Does.Not.ContainKey("db.query.text"));
 
-            var userTag = activity.TagObjects.First(x => x.Key == "db.user");
-            Assert.That(userTag.Value, Is.EqualTo(conn.Settings.Username));
+            Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(conn.ConnectionString));
 
-            var dbNameTag = activity.TagObjects.First(x => x.Key == "db.name");
-            Assert.That(dbNameTag.Value, Is.EqualTo(conn.Settings.Database));
-
-            var connStringTag = activity.TagObjects.First(x => x.Key == "db.connection_string");
-            Assert.That(connStringTag.Value, Is.EqualTo(conn.ConnectionString));
-
-            if (!isMultiplexing)
-            {
-                var connIDTag = activity.TagObjects.First(x => x.Key == "db.connection_id");
-                Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
-            }
+            if (isMultiplexing)
+                Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
             else
-                Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+                Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(conn.ProcessID));
         }
     }
 
@@ -90,56 +82,48 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var activities = new List<Activity>();
 
-        using var activityListener = new ActivityListener();
-        activityListener.ShouldListenTo = source => source.Name == "Npgsql";
-        activityListener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        activityListener.ActivityStopped = activity => activities.Add(activity);
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Add(activity)
+        };
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.Name = "TestTracingDataSource";
+        await using var dataSource = dataSourceBuilder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
 
         // We're not interested in physical open's activity
-        Assert.That(activities.Count, Is.EqualTo(1));
+        Assert.That(activities, Has.Count.EqualTo(1));
         activities.Clear();
 
         await ExecuteScalar(conn, async, batch, "SELECT 42");
 
-        Assert.That(activities.Count, Is.EqualTo(1));
+        Assert.That(activities, Has.Count.EqualTo(1));
         var activity = activities[0];
-        Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
-        Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
-        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Ok));
+        Assert.That(activity.DisplayName, Is.EqualTo("postgresql"));
+        Assert.That(activity.OperationName, Is.EqualTo("postgresql"));
+        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Unset));
 
         Assert.That(activity.Events.Count(), Is.EqualTo(1));
         var firstResponseEvent = activity.Events.First();
         Assert.That(firstResponseEvent.Name, Is.EqualTo("received-first-response"));
 
-        var expectedTagCount = conn.Settings.Port == 5432 ? 9 : 10;
-        Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
+        var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(tags, Has.Count.EqualTo(conn.Settings.Port == 5432 ? 6 : 7));
 
-        var queryTag = activity.TagObjects.First(x => x.Key == "db.statement");
-        Assert.That(queryTag.Value, Is.EqualTo("SELECT 42"));
+        Assert.That(tags["db.query.text"], Is.EqualTo("SELECT 42"));
+        Assert.That(tags["db.system.name"], Is.EqualTo("postgresql"));
+        Assert.That(tags["db.namespace"], Is.EqualTo(conn.Settings.Database));
 
-        var systemTag = activity.TagObjects.First(x => x.Key == "db.system");
-        Assert.That(systemTag.Value, Is.EqualTo("postgresql"));
+        Assert.That(tags["db.npgsql.data_source"], Is.EqualTo("TestTracingDataSource"));
 
-        var userTag = activity.TagObjects.First(x => x.Key == "db.user");
-        Assert.That(userTag.Value, Is.EqualTo(conn.Settings.Username));
-
-        var dbNameTag = activity.TagObjects.First(x => x.Key == "db.name");
-        Assert.That(dbNameTag.Value, Is.EqualTo(conn.Settings.Database));
-
-        var connStringTag = activity.TagObjects.First(x => x.Key == "db.connection_string");
-        Assert.That(connStringTag.Value, Is.EqualTo(conn.ConnectionString));
-
-        if (!IsMultiplexing)
-        {
-            var connIDTag = activity.TagObjects.First(x => x.Key == "db.connection_id");
-            Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
-        }
+        if (IsMultiplexing)
+            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
         else
-            Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(conn.ProcessID));
     }
 
     [Test]
@@ -150,10 +134,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var activities = new List<Activity>();
 
-        using var activityListener = new ActivityListener();
-        activityListener.ShouldListenTo = source => source.Name == "Npgsql";
-        activityListener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        activityListener.ActivityStopped = activity => activities.Add(activity);
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Add(activity)
+        };
         ActivitySource.AddActivityListener(activityListener);
 
         await using var dataSource = CreateDataSource(x => x.Host = "not-existing-host");
@@ -164,10 +150,10 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
                 : dataSource.OpenConnection();
         })!;
 
-        Assert.That(activities.Count, Is.EqualTo(1));
+        Assert.That(activities, Has.Count.EqualTo(1));
         var activity = activities[0];
-        Assert.That(activity.DisplayName, Is.EqualTo(dataSource.Settings.Database));
-        Assert.That(activity.OperationName, Is.EqualTo(dataSource.Settings.Database));
+        Assert.That(activity.DisplayName, Is.EqualTo("CONNECT " + dataSource.Settings.Database));
+        Assert.That(activity.OperationName, Is.EqualTo("CONNECT " + dataSource.Settings.Database));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
         Assert.That(activity.StatusDescription, Is.EqualTo(ex.Message));
 
@@ -175,27 +161,20 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         var exceptionEvent = activity.Events.First();
         Assert.That(exceptionEvent.Name, Is.EqualTo("exception"));
 
-        Assert.That(exceptionEvent.Tags.Count(), Is.EqualTo(4));
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(exceptionTags, Has.Count.EqualTo(3));
 
-        var exceptionTypeTag = exceptionEvent.Tags.First(x => x.Key == "exception.type");
-        Assert.That(exceptionTypeTag.Value, Is.EqualTo(ex.GetType().FullName));
+        Assert.That(exceptionTags["exception.type"], Is.EqualTo(ex.GetType().FullName));
+        Assert.That(exceptionTags["exception.message"], Does.Contain(ex.Message));
+        Assert.That(exceptionTags["exception.stacktrace"], Does.Contain(ex.Message));
 
-        var exceptionMessageTag = exceptionEvent.Tags.First(x => x.Key == "exception.message");
-        Assert.That((string)exceptionMessageTag.Value!, Does.Contain(ex.Message));
+        var activityTags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(activityTags, Has.Count.EqualTo(3));
 
-        var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain(ex.Message));
+        Assert.That(activityTags["db.system.name"], Is.EqualTo("postgresql"));
+        Assert.That(activityTags["db.npgsql.data_source"], Is.EqualTo(dataSource.ConnectionString));
 
-        var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
-        Assert.That(exceptionEscapedTag.Value, Is.True);
-
-        Assert.That(activity.TagObjects.Count(), Is.EqualTo(2));
-
-        var systemTag = activity.TagObjects.First(x => x.Key == "db.system");
-        Assert.That(systemTag.Value, Is.EqualTo("postgresql"));
-
-        var connStringTag = activity.TagObjects.First(x => x.Key == "db.connection_string");
-        Assert.That(connStringTag.Value, Is.EqualTo(dataSource.ConnectionString));
+        Assert.That(activityTags["error.type"], Is.EqualTo("System.Net.Sockets.SocketException"));
     }
 
     [Test]
@@ -206,10 +185,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var activities = new List<Activity>();
 
-        using var activityListener = new ActivityListener();
-        activityListener.ShouldListenTo = source => source.Name == "Npgsql";
-        activityListener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        activityListener.ActivityStopped = activity => activities.Add(activity);
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Add(activity)
+        };
         ActivitySource.AddActivityListener(activityListener);
 
         await using var dataSource = CreateDataSource();
@@ -221,10 +202,10 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         Assert.ThrowsAsync<PostgresException>(async () => await ExecuteScalar(conn, async, batch, "SELECT * FROM non_existing_table"));
 
-        Assert.That(activities.Count, Is.EqualTo(1));
+        Assert.That(activities, Has.Count.EqualTo(1));
         var activity = activities[0];
-        Assert.That(activity.DisplayName, Is.EqualTo(conn.Settings.Database));
-        Assert.That(activity.OperationName, Is.EqualTo(conn.Settings.Database));
+        Assert.That(activity.DisplayName, Is.EqualTo("postgresql"));
+        Assert.That(activity.OperationName, Is.EqualTo("postgresql"));
         Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Error));
         Assert.That(activity.StatusDescription, Is.EqualTo(PostgresErrorCodes.UndefinedTable));
 
@@ -232,45 +213,29 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         var exceptionEvent = activity.Events.First();
         Assert.That(exceptionEvent.Name, Is.EqualTo("exception"));
 
-        Assert.That(exceptionEvent.Tags.Count(), Is.EqualTo(4));
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(exceptionTags, Has.Count.EqualTo(3));
 
-        var exceptionTypeTag = exceptionEvent.Tags.First(x => x.Key == "exception.type");
-        Assert.That(exceptionTypeTag.Value, Is.EqualTo("Npgsql.PostgresException"));
+        Assert.That(exceptionTags["exception.type"], Is.EqualTo("Npgsql.PostgresException"));
+        Assert.That(exceptionTags["exception.message"], Does.Contain("relation \"non_existing_table\" does not exist"));
+        Assert.That(exceptionTags["exception.stacktrace"], Does.Contain("relation \"non_existing_table\" does not exist"));
 
-        var exceptionMessageTag = exceptionEvent.Tags.First(x => x.Key == "exception.message");
-        Assert.That((string)exceptionMessageTag.Value!, Does.Contain("relation \"non_existing_table\" does not exist"));
+        var activityTags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(activityTags, Has.Count.EqualTo(conn.Settings.Port == 5432 ? 8 : 9));
 
-        var exceptionStacktraceTag = exceptionEvent.Tags.First(x => x.Key == "exception.stacktrace");
-        Assert.That((string)exceptionStacktraceTag.Value!, Does.Contain("relation \"non_existing_table\" does not exist"));
+        Assert.That(activityTags["db.query.text"], Is.EqualTo("SELECT * FROM non_existing_table"));
+        Assert.That(activityTags["db.system.name"], Is.EqualTo("postgresql"));
+        Assert.That(activityTags["db.namespace"], Is.EqualTo(conn.Settings.Database));
 
-        var exceptionEscapedTag = exceptionEvent.Tags.First(x => x.Key == "exception.escaped");
-        Assert.That(exceptionEscapedTag.Value, Is.True);
+        Assert.That(activityTags["db.response.status_code"], Is.EqualTo(PostgresErrorCodes.UndefinedTable));
+        Assert.That(activityTags["error.type"], Is.EqualTo(PostgresErrorCodes.UndefinedTable));
 
-        var expectedTagCount = conn.Settings.Port == 5432 ? 9 : 10;
-        Assert.That(activity.TagObjects.Count(), Is.EqualTo(expectedTagCount));
+        Assert.That(activityTags["db.npgsql.data_source"], Is.EqualTo(conn.ConnectionString));
 
-        var queryTag = activity.TagObjects.First(x => x.Key == "db.statement");
-        Assert.That(queryTag.Value, Is.EqualTo("SELECT * FROM non_existing_table"));
-
-        var systemTag = activity.TagObjects.First(x => x.Key == "db.system");
-        Assert.That(systemTag.Value, Is.EqualTo("postgresql"));
-
-        var userTag = activity.TagObjects.First(x => x.Key == "db.user");
-        Assert.That(userTag.Value, Is.EqualTo(conn.Settings.Username));
-
-        var dbNameTag = activity.TagObjects.First(x => x.Key == "db.name");
-        Assert.That(dbNameTag.Value, Is.EqualTo(conn.Settings.Database));
-
-        var connStringTag = activity.TagObjects.First(x => x.Key == "db.connection_string");
-        Assert.That(connStringTag.Value, Is.EqualTo(conn.ConnectionString));
-
-        if (!IsMultiplexing)
-        {
-            var connIDTag = activity.TagObjects.First(x => x.Key == "db.connection_id");
-            Assert.That(connIDTag.Value, Is.EqualTo(conn.ProcessID));
-        }
+        if (IsMultiplexing)
+            Assert.That(activityTags, Does.ContainKey("db.npgsql.connection_id"));
         else
-            Assert.That(activity.TagObjects.Any(x => x.Key == "db.connection_id"));
+            Assert.That(activityTags["db.npgsql.connection_id"], Is.EqualTo(conn.ProcessID));
     }
 
     [Test]
@@ -281,10 +246,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         var activities = new List<Activity>();
 
-        using var activityListener = new ActivityListener();
-        activityListener.ShouldListenTo = source => source.Name == "Npgsql";
-        activityListener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        activityListener.ActivityStopped = activity => activities.Add(activity);
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => activities.Add(activity)
+        };
         ActivitySource.AddActivityListener(activityListener);
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -308,19 +275,19 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         await ExecuteScalar(conn, async, batch, "SELECT 1");
 
-        Assert.That(activities.Count, Is.EqualTo(0));
+        Assert.That(activities, Is.Empty);
 
         await ExecuteScalar(conn, async, batch, "SELECT 2");
 
-        Assert.That(activities.Count, Is.EqualTo(1));
+        Assert.That(activities, Has.Count.EqualTo(1));
         var activity = activities[0];
         Assert.That(activity.DisplayName, Is.EqualTo("unknown_query"));
         Assert.That(activity.OperationName, Is.EqualTo("unknown_query"));
 
         Assert.That(activity.Events.Count(), Is.EqualTo(0));
 
-        var customTag = activity.TagObjects.First(x => x.Key == "custom_tag");
-        Assert.That(customTag.Value, Is.EqualTo("custom_value"));
+        var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(tags["custom_tag"], Is.EqualTo("custom_value"));
     }
 
     async Task<object?> ExecuteScalar(NpgsqlConnection connection, bool async, bool isBatch, string query)
