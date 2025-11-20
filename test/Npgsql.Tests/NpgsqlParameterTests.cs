@@ -346,7 +346,7 @@ public class NpgsqlParameterTest : TestBase
 
         // If Type is not set, then type is inferred from the value
         // assigned. The Type should be inferred everytime Value is assigned
-        // If value is null or DBNull, then the current Type should be reset to Text.
+        // If value is null or DBNull, then the current Type should be reset to Unknown (DbType.Object and NpgsqlDbType.Unknown).
         p = new NpgsqlParameter { Value = "" };
         Assert.That(p.DbType, Is.EqualTo(DbType.String), "#A1");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#A2");
