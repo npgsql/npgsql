@@ -645,7 +645,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await NextMessage<BeginMessage>(messages);
             }, nameof(Dispose_while_replicating));
 
-    [Platform(Exclude = "MacOsX", Reason = "Test is flaky in CI on Mac, see https://github.com/npgsql/npgsql/issues/5294")]
     [TestCase(true, true)]
     [TestCase(true, false)]
     [TestCase(false, false)]

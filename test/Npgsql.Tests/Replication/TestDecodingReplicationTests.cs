@@ -12,7 +12,6 @@ namespace Npgsql.Tests.Replication;
 /// implementation of logical replication was still somewhat incomplete.
 /// Please don't change them without confirming that they still work on those old versions.
 /// </summary>
-[Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
 [NonParallelizable] // These tests aren't designed to be parallelizable
 public class TestDecodingReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
