@@ -237,7 +237,15 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         return value;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Adds the specified <see cref="NpgsqlParameter"/> to the <see cref="NpgsqlParameterCollection"/>.
+    /// </summary>
+    /// <param name="value">
+    /// An <see cref="NpgsqlParameter"/> instance to add to the collection.
+    /// Passing a raw value (for example an int or string) is not supported and will result in an <see cref="InvalidCastException"/>.
+    /// To add a parameter by value, use <see cref="AddWithValue(object)"/>, <see cref="AddWithValue(string, object)"/>, or one of the typed <see cref="Add(object).)"/> overloads.
+    /// </param>
+    /// <returns>The zero-based index at which the parameter was added.</returns>
     void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
         => Add(item);
 
@@ -429,7 +437,14 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         Remove(InternalList[index]);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Inserts the specified <see cref="NpgsqlParameter"/> into the collection at the given index.
+    /// </summary>
+    /// <param name="index">Index before which to insert the new parameter.</param>
+    /// <param name="value">
+    /// An <see cref="NpgsqlParameter"/> instance to insert.
+    /// Passing a raw value is not supported and will result in an <see cref="InvalidCastException"/>.
+    /// </param>
     public override void Insert(int index, object value)
         => Insert(index, Cast(value));
 
