@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NUnit.Framework;
@@ -809,6 +811,6 @@ CREATE TABLE {table2} (foo INTEGER)");
         public int Foo { get; set; }
     }
 
-    async Task<ReadOnlyCollection<Schema.NpgsqlDbColumn>> GetColumnSchema(NpgsqlDataReader reader)
-        => IsAsync ? await reader.GetColumnSchemaAsync() : reader.GetColumnSchema();
+    async Task<IReadOnlyList<Schema.NpgsqlDbColumn>> GetColumnSchema(NpgsqlDataReader reader)
+        => IsAsync ? (await reader.GetColumnSchemaAsync(CancellationToken.None)).Cast<Schema.NpgsqlDbColumn>().ToArray() : reader.GetColumnSchema();
 }

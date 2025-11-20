@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -93,13 +94,13 @@ ORDER BY attnum";
 
     #endregion Column queries
 
-    internal async Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
+    internal async Task<ReadOnlyCollection<T>> GetColumnSchema<T>(bool async, CancellationToken cancellationToken = default) where T : DbColumn
     {
         // This is mainly for Amazon Redshift
         var oldQueryMode = _connection.PostgreSqlVersion < new Version(8, 2);
 
         var numFields = _rowDescription.Count;
-        var result = new List<NpgsqlDbColumn?>(numFields);
+        var result = new List<T?>(numFields);
         for (var i = 0; i < numFields; i++)
             result.Add(null);
         var populatedColumns = 0;
@@ -153,7 +154,7 @@ ORDER BY attnum";
 
                                 // The column's ordinal is with respect to the resultset, not its table
                                 column.ColumnOrdinal = ordinal;
-                                result[ordinal] = column;
+                                result[ordinal] = (T?)(object)column;
                             }
                         }
                     }
@@ -172,14 +173,14 @@ ORDER BY attnum";
         // Fill in whatever info we have from the RowDescription itself
         for (var i = 0; i < numFields; i++)
         {
-            var column = result[i];
+            var column = (NpgsqlDbColumn?)(object?)result[i];
             var field = _rowDescription[i];
 
             if (column is null)
             {
                 column = SetUpNonColumnField(field);
                 column.ColumnOrdinal = i;
-                result[i] = column;
+                result[i] = (T?)(object)column;
                 populatedColumns++;
             }
 
