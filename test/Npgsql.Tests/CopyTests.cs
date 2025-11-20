@@ -700,7 +700,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
             writer.StartRow();
             writer.Write(data);
             writer.Dispose();
-        }, Throws.Exception.TypeOf<NpgsqlException>());
+        }, Throws.Exception.InstanceOf<NpgsqlException>());
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
