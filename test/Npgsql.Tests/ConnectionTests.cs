@@ -1263,6 +1263,9 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
     public async Task Rollback_on_close()
     {
+        if (IsMultiplexing)
+            Assert.Ignore();
+
         // Npgsql 3.0.0 to 3.0.4 prepended a rollback for the next time the connector is used, as an optimization.
         // This caused some issues (#927) and was removed.
 
