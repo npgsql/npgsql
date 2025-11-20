@@ -614,6 +614,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Category("Security")]
     [Description("The Kerberos realm to be used for authentication.")]
     [DisplayName("Include Realm")]
+    [DefaultValue(true)]
     [NpgsqlConnectionStringProperty]
     public bool IncludeRealm
     {
