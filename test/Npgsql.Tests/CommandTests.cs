@@ -1694,4 +1694,18 @@ FROM
 
         Assert.Throws<InvalidOperationException>(() => cmd.Transaction = tx);
     }
+
+    [Test, Description("Writing to properties of a disposed command raises ObjectDisposedException.")]
+    public async Task Disposed_command_throws_on_assignment()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var command = new NpgsqlCommand("SELECT 1");
+        command.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => command.Connection = conn);
+        Assert.Throws<ObjectDisposedException>(() => command.CommandText = "SELECT 2");
+
+        Assert.That(command.Connection, Is.Null);
+        Assert.That(command.CommandText, Is.EqualTo("SELECT 1"));
+    }
 }
