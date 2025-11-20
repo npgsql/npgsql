@@ -45,7 +45,6 @@ public class TypeMapperTests : TestBase
     }
 
     [Test]
-    [NonParallelizable] // Depends on citext which could be dropped concurrently
     public async Task String_to_citext()
     {
         await using var adminConnection = await OpenConnectionAsync();
@@ -62,7 +61,6 @@ public class TypeMapperTests : TestBase
     }
 
     [Test]
-    [NonParallelizable] // Depends on citext which could be dropped concurrently
     public async Task String_to_citext_with_db_type_string()
     {
         await using var adminConnection = await OpenConnectionAsync();
@@ -152,7 +150,7 @@ public class TypeMapperTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4582")]
-    [NonParallelizable] // Drops extension
+    [NonParallelizable] // Drops global citext extension.
     public async Task Type_in_non_default_schema()
     {
         await using var conn = await OpenConnectionAsync();

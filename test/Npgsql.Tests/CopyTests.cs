@@ -677,7 +677,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test, NonParallelizable, IssueLink("https://github.com/npgsql/npgsql/issues/661")]
-    [Ignore("Unreliable")]
     public async Task Unexpected_exception_binary_import()
     {
         if (IsMultiplexing)
@@ -701,7 +700,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
             writer.StartRow();
             writer.Write(data);
             writer.Dispose();
-        }, Throws.Exception.TypeOf<IOException>());
+        }, Throws.Exception.TypeOf<NpgsqlException>());
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 

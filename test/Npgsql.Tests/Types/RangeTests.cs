@@ -165,7 +165,6 @@ class RangeTests : MultiplexingTestBase
     }
 
     [Test]
-    [NonParallelizable]
     public async Task Unmapped_range_with_mapped_subtype()
     {
         await using var dataSource = CreateDataSource(b => b.EnableUnmappedTypes().ConnectionStringBuilder.MaxPoolSize = 1);
