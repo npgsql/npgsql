@@ -78,7 +78,7 @@ static class NpgsqlActivitySource
 
         // We set these basic tags on the activity so that they're populated even when the physical open fails.
         activity.SetTag("db.system.name", "postgresql");
-        activity.SetTag("db.npgsql.connection.connection_string", connector.UserFacingConnectionString);
+        activity.SetTag("db.npgsql.data_source", connector.DataSource.Name);
 
         return activity;
     }
@@ -113,8 +113,8 @@ static class NpgsqlActivitySource
         }
 
         // Npgsql-specific tags
-        activity.SetTag("db.npgsql.connection.connection_string", connector.UserFacingConnectionString);
-        activity.SetTag("db.npgsql.connection.id", connector.Id);
+        activity.SetTag("db.npgsql.data_source", connector.DataSource.Name);
+        activity.SetTag("db.npgsql.connection_id", connector.Id);
     }
 
     internal static void ReceivedFirstResponse(Activity activity, NpgsqlTracingOptions tracingOptions)

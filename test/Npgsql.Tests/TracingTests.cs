@@ -65,12 +65,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
             Assert.That(tags, Does.Not.ContainKey("db.query.text"));
 
-            Assert.That(tags["db.npgsql.connection.connection_string"], Is.EqualTo(conn.ConnectionString));
+            Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(conn.ConnectionString));
 
             if (isMultiplexing)
-                Assert.That(tags, Does.ContainKey("db.npgsql.connection.id"));
+                Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
             else
-                Assert.That(tags["db.npgsql.connection.id"], Is.EqualTo(conn.ProcessID));
+                Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(conn.ProcessID));
         }
     }
 
@@ -90,7 +90,9 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         };
         ActivitySource.AddActivityListener(activityListener);
 
-        await using var dataSource = CreateDataSource();
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.Name = "TestTracingDataSource";
+        await using var dataSource = dataSourceBuilder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
 
         // We're not interested in physical open's activity
@@ -116,12 +118,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(tags["db.system.name"], Is.EqualTo("postgresql"));
         Assert.That(tags["db.namespace"], Is.EqualTo(conn.Settings.Database));
 
-        Assert.That(tags["db.npgsql.connection.connection_string"], Is.EqualTo(conn.ConnectionString));
+        Assert.That(tags["db.npgsql.data_source"], Is.EqualTo("TestTracingDataSource"));
 
         if (IsMultiplexing)
-            Assert.That(tags, Does.ContainKey("db.npgsql.connection.id"));
+            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
         else
-            Assert.That(tags["db.npgsql.connection.id"], Is.EqualTo(conn.ProcessID));
+            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(conn.ProcessID));
     }
 
     [Test]
@@ -171,7 +173,7 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(activityTags, Has.Count.EqualTo(3));
 
         Assert.That(activityTags["db.system.name"], Is.EqualTo("postgresql"));
-        Assert.That(activityTags["db.npgsql.connection.connection_string"], Is.EqualTo(dataSource.ConnectionString));
+        Assert.That(activityTags["db.npgsql.data_source"], Is.EqualTo(dataSource.ConnectionString));
 
         Assert.That(activityTags["error.type"], Is.EqualTo("System.Net.Sockets.SocketException"));
     }
@@ -230,12 +232,12 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(activityTags["db.response.status_code"], Is.EqualTo(PostgresErrorCodes.UndefinedTable));
         Assert.That(activityTags["error.type"], Is.EqualTo(PostgresErrorCodes.UndefinedTable));
 
-        Assert.That(activityTags["db.npgsql.connection.connection_string"], Is.EqualTo(conn.ConnectionString));
+        Assert.That(activityTags["db.npgsql.data_source"], Is.EqualTo(conn.ConnectionString));
 
         if (IsMultiplexing)
-            Assert.That(activityTags, Does.ContainKey("db.npgsql.connection.id"));
+            Assert.That(activityTags, Does.ContainKey("db.npgsql.connection_id"));
         else
-            Assert.That(activityTags["db.npgsql.connection.id"], Is.EqualTo(conn.ProcessID));
+            Assert.That(activityTags["db.npgsql.connection_id"], Is.EqualTo(conn.ProcessID));
     }
 
     [Test]
