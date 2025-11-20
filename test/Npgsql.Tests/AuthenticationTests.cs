@@ -368,9 +368,8 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
         // request. This should trigger a timeout
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var connection = dataSource.CreateConnection();
-        Assert.That(async () => await connection.OpenAsync(),
-            Throws.Exception.TypeOf<NpgsqlException>()
-                .With.InnerException.TypeOf<TimeoutException>());
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync());
+        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1180")]
