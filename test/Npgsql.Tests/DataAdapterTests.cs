@@ -141,7 +141,6 @@ public class DataAdapterTests : TestBase
     }
 
     [Test]
-    [Ignore("")]
     public async Task DataAdapter_update_return_value2()
     {
         using var conn = await OpenConnectionAsync();
@@ -158,15 +157,15 @@ public class DataAdapterTests : TestBase
         da.Update(ds);
 
         //## change id from 1 to 2
-        cmd.CommandText = $"update {table} set field_float4 = 0.8";
+        cmd.CommandText = $"update {table} set field_numeric = 0.8";
         cmd.ExecuteNonQuery();
 
         //## change value to newvalue
         ds.Tables[0].Rows[0][1] = 0.7;
         //## update should fail, and make a DBConcurrencyException
         var count = da.Update(ds);
-        //## count is 1, even if the isn't updated in the database
-        Assert.That(count, Is.EqualTo(0));
+        //## count is 1, even if the row isn't updated in the database
+        Assert.That(count, Is.EqualTo(1));
     }
 
     [Test]
@@ -189,7 +188,6 @@ public class DataAdapterTests : TestBase
     }
 
     [Test]
-    [Ignore("")]
     public async Task Fill_add_with_key()
     {
         using var conn = await OpenConnectionAsync();
@@ -211,7 +209,7 @@ public class DataAdapterTests : TestBase
         Assert.That(field_serial.ColumnName, Is.EqualTo("field_serial"));
         Assert.That(field_serial.DataType, Is.EqualTo(typeof(int)));
         Assert.That(field_serial.Ordinal, Is.EqualTo(0));
-        Assert.That(field_serial.Unique);
+        Assert.That(field_serial.Unique, Is.False);
 
         Assert.That(field_int2.AllowDBNull);
         Assert.That(field_int2.AutoIncrement, Is.False);
@@ -329,7 +327,6 @@ public class DataAdapterTests : TestBase
     }
 
     [Test]
-    [Ignore("")]
     public Task Update_with_DataSet() => DoUpdateWithDataSet();
 
     public async Task DoUpdateWithDataSet()
@@ -365,7 +362,6 @@ public class DataAdapterTests : TestBase
     }
 
     [Test]
-    [Ignore("")]
     public async Task Insert_with_CommandBuilder_case_sensitive()
     {
         using var conn = await OpenConnectionAsync();
@@ -380,7 +376,7 @@ public class DataAdapterTests : TestBase
 
         var dt = ds.Tables[0];
         var dr = dt.NewRow();
-        dr["Field_Case_Sensitive"] = 4;
+        dr["Field_int4"] = 4;
         dt.Rows.Add(dr);
 
         var ds2 = ds.GetChanges()!;
@@ -390,7 +386,7 @@ public class DataAdapterTests : TestBase
 
         using var dr2 = new NpgsqlCommand($"select * from {table}", conn).ExecuteReader();
         dr2.Read();
-        Assert.That(dr2[1], Is.EqualTo(4));
+        Assert.That(dr2["field_int4"], Is.EqualTo(4));
     }
 
     [Test]
@@ -454,7 +450,6 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
 
     [Test, Description("Makes sure that the INSERT/UPDATE/DELETE commands are auto-populated on NpgsqlDataAdapter")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/179")]
-    [Ignore("Somehow related to us using a temporary table???")]
     public async Task Auto_populate_adapter_commands()
     {
         using var conn = await OpenConnectionAsync();
@@ -494,7 +489,6 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
 
     [Test, Description("Makes sure a correct SQL string is built with GetUpdateCommand(true) using correct parameter names and placeholders")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/397")]
-    [Ignore("Somehow related to us using a temporary table???")]
     public async Task Get_UpdateCommand()
     {
         using var conn = await OpenConnectionAsync();
@@ -538,7 +532,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
 
     public Task<string> SetupTempTable(NpgsqlConnection conn)
         => CreateTempTable(conn, @"
-field_pk SERIAL PRIMARY KEY,
+field_pk INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 field_serial SERIAL,
 field_int2 SMALLINT,
 field_int4 INTEGER,

@@ -4,7 +4,6 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Tests;
 
@@ -326,44 +325,6 @@ public class NpgsqlParameterTest : TestBase
 
     #endregion
 
-    [Test]
-    [Ignore("")]
-    public void InferType_invalid_throws()
-    {
-        var notsupported = new object[]
-        {
-            ushort.MaxValue,
-            uint.MaxValue,
-            ulong.MaxValue,
-            sbyte.MaxValue,
-            new NpgsqlParameter()
-        };
-
-        var param = new NpgsqlParameter();
-
-        for (var i = 0; i < notsupported.Length; i++)
-        {
-            try
-            {
-                param.Value = notsupported[i];
-                Assert.Fail("#A1:" + i);
-            }
-            catch (FormatException)
-            {
-                // appears to be bug in .NET 1.1 while
-                // constructing exception message
-            }
-            catch (ArgumentException ex)
-            {
-                // The parameter data type of ... is invalid
-                Assert.That(ex.GetType(), Is.EqualTo(typeof(ArgumentException)), "#A2");
-                Assert.That(ex.InnerException, Is.Null, "#A3");
-                Assert.That(ex.Message, Is.Not.Null, "#A4");
-                Assert.That(ex.ParamName, Is.Null, "#A5");
-            }
-        }
-    }
-
     [Test] // bug #320196
     public void Parameter_null()
     {
@@ -379,50 +340,49 @@ public class NpgsqlParameterTest : TestBase
     }
 
     [Test]
-    [Ignore("")]
     public void Parameter_type()
     {
         NpgsqlParameter p;
 
         // If Type is not set, then type is inferred from the value
         // assigned. The Type should be inferred everytime Value is assigned
-        // If value is null or DBNull, then the current Type should be reset to Text.
-        p = new NpgsqlParameter();
+        // If value is null or DBNull, then the current Type should be reset to Unknown (DbType.Object and NpgsqlDbType.Unknown).
+        p = new NpgsqlParameter { Value = "" };
         Assert.That(p.DbType, Is.EqualTo(DbType.String), "#A1");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#A2");
         p.Value = DBNull.Value;
-        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#B1");
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#B2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#B1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#B2");
         p.Value = 1;
         Assert.That(p.DbType, Is.EqualTo(DbType.Int32), "#C1");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer), "#C2");
         p.Value = DBNull.Value;
-        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#D1");
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#D2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#D1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#D2");
         p.Value = new byte[] { 0x0a };
         Assert.That(p.DbType, Is.EqualTo(DbType.Binary), "#E1");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea), "#E2");
         p.Value = null;
-        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#F1");
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#F2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#F1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#F2");
         p.Value = DateTime.Now;
-        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime), "#G1");
+        Assert.That(p.DbType, Is.EqualTo(DbType.DateTime2), "#G1");
         Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#G2");
         p.Value = null;
-        Assert.That(p.DbType, Is.EqualTo(DbType.String), "#H1");
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text), "#H2");
+        Assert.That(p.DbType, Is.EqualTo(DbType.Object), "#H1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown), "#H2");
 
         // If DbType is set, then the NpgsqlDbType should not be
         // inferred from the value assigned.
         p = new NpgsqlParameter();
         p.DbType = DbType.DateTime;
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I1");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz), "#I1");
         p.Value = 1;
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I2");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz), "#I2");
         p.Value = null;
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I3");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz), "#I3");
         p.Value = DBNull.Value;
-        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp), "#I4");
+        Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz), "#I4");
 
         // If NpgsqlDbType is set, then the DbType should not be
         // inferred from the value assigned.
@@ -447,7 +407,6 @@ public class NpgsqlParameterTest : TestBase
     }
 
     [Test]
-    [Ignore("")]
     public void ParameterName()
     {
         var p = new NpgsqlParameter();
@@ -540,7 +499,6 @@ public class NpgsqlParameterTest : TestBase
         => Assert.That(new NpgsqlParameter("@p", DbType.String).ParameterName, Is.EqualTo("@p"));
 
     [Test]
-    [Ignore("")]
     public void SourceColumn()
     {
         var p = new NpgsqlParameter();

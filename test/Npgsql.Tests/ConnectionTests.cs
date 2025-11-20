@@ -188,9 +188,11 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 #endif
 
     [Test]
-    [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
     public void Invalid_Username()
     {
+        if (IsMultiplexing)
+            Assert.Ignore();
+
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             Username = "unknown", Pooling = false
@@ -1257,9 +1259,11 @@ LANGUAGE 'plpgsql'");
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/927")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
-    [Ignore("Fails when running the entire test suite but not on its own...")]
     public async Task Rollback_on_close()
     {
+        if (IsMultiplexing)
+            Assert.Ignore();
+
         // Npgsql 3.0.0 to 3.0.4 prepended a rollback for the next time the connector is used, as an optimization.
         // This caused some issues (#927) and was removed.
 
