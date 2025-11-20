@@ -1278,8 +1278,6 @@ public sealed partial class NpgsqlConnector
             }
         }
 
-        timeout.Check();
-
         // Give each endpoint an equal share of the remaining time
         var perEndpointTimeout = -1;  // Default to infinity
         if (timeout.IsSet)
@@ -1400,15 +1398,7 @@ public sealed partial class NpgsqlConnector
                 using var combinedCts = endpointTimeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
                 combinedCts?.CancelAfter(endpointTimeout.CheckAndGetTimeLeft());
                 var combinedToken = combinedCts?.Token ?? cancellationToken;
-                try
-                {
-                    await socket.ConnectAsync(endpoint, combinedToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException oce) when (
-                    oce.CancellationToken == combinedToken && !cancellationToken.IsCancellationRequested)
-                {
-                    throw new TimeoutException();
-                }
+                await socket.ConnectAsync(endpoint, combinedToken).ConfigureAwait(false);
 
                 _socket = socket;
                 ConnectedEndPoint = endpoint;
@@ -1429,6 +1419,8 @@ public sealed partial class NpgsqlConnector
 
                 if (e is OperationCanceledException)
                     e = new TimeoutException("Timeout during connection attempt");
+                else if (e is NpgsqlException)
+                    e = e.InnerException!; // We throw NpgsqlException for timeouts, wrapping TimeoutException
 
                 ConnectionLogger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
 
