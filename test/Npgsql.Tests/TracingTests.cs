@@ -162,12 +162,11 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(exceptionEvent.Name, Is.EqualTo("exception"));
 
         var exceptionTags = exceptionEvent.Tags.ToDictionary(t => t.Key, t => t.Value);
-        Assert.That(exceptionTags, Has.Count.EqualTo(4));
+        Assert.That(exceptionTags, Has.Count.EqualTo(3));
 
         Assert.That(exceptionTags["exception.type"], Is.EqualTo(ex.GetType().FullName));
         Assert.That(exceptionTags["exception.message"], Does.Contain(ex.Message));
         Assert.That(exceptionTags["exception.stacktrace"], Does.Contain(ex.Message));
-        Assert.That(exceptionTags["exception.escaped"], Is.True);
 
         var activityTags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
         Assert.That(activityTags, Has.Count.EqualTo(3));
@@ -215,12 +214,11 @@ public class TracingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(exceptionEvent.Name, Is.EqualTo("exception"));
 
         var exceptionTags = exceptionEvent.Tags.ToDictionary(t => t.Key, t => t.Value);
-        Assert.That(exceptionTags, Has.Count.EqualTo(4));
+        Assert.That(exceptionTags, Has.Count.EqualTo(3));
 
         Assert.That(exceptionTags["exception.type"], Is.EqualTo("Npgsql.PostgresException"));
         Assert.That(exceptionTags["exception.message"], Does.Contain("relation \"non_existing_table\" does not exist"));
         Assert.That(exceptionTags["exception.stacktrace"], Does.Contain("relation \"non_existing_table\" does not exist"));
-        Assert.That(exceptionTags["exception.escaped"], Is.True);
 
         var activityTags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
         Assert.That(activityTags, Has.Count.EqualTo(conn.Settings.Port == 5432 ? 8 : 9));

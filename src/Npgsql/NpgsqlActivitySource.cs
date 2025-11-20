@@ -128,11 +128,7 @@ static class NpgsqlActivitySource
 
     internal static void SetException(Activity activity, Exception exception, bool escaped = true)
     {
-        var tags = new TagList
-        {
-            { "exception.escaped", escaped }
-        };
-        activity.AddException(exception, tags);
+        activity.AddException(exception);
 
         if (exception is PostgresException { SqlState: var sqlState })
         {
