@@ -164,7 +164,7 @@ public class DataAdapterTests : TestBase
         ds.Tables[0].Rows[0][1] = 0.7;
         //## update should fail, and make a DBConcurrencyException
         var count = da.Update(ds);
-        //## count is 1, even if the isn't updated in the database
+        //## count is 1, even if the row isn't updated in the database
         Assert.That(count, Is.EqualTo(1));
     }
 
