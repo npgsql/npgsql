@@ -130,7 +130,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Flaky on MacOS")]
     public async Task Break_while_open()
     {
         if (IsMultiplexing)
@@ -818,7 +817,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     }
 
     [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
-    [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
     [TestCase(false, TestName = nameof(Break_connector_in_pool) + "_without_keep_alive")]
     [TestCase(true, TestName = nameof(Break_connector_in_pool) + "_with_keep_alive")]
     public async Task Break_connector_in_pool(bool keepAlive)
@@ -1358,8 +1356,7 @@ CREATE TABLE record ()");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
-    [NonParallelizable]
-    [Platform(Exclude = "MacOsX", Reason = "Flaky in CI on Mac")]
+    [NonParallelizable] // Drops and creates same database across modes
     public async Task Non_UTF8_Encoding()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);

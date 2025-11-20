@@ -14,7 +14,6 @@ namespace Npgsql.Tests.Replication;
 
 [TestFixture(typeof(LogicalReplicationConnection))]
 [TestFixture(typeof(PhysicalReplicationConnection))]
-[Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
 [NonParallelizable]
 public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConnection>
     where TConnection : ReplicationConnection, new()

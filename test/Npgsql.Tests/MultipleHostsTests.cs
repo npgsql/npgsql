@@ -296,7 +296,6 @@ public class MultipleHostsTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Flaky in CI on Mac")]
     public async Task First_host_is_down()
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
