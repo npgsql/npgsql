@@ -498,7 +498,7 @@ public sealed partial class NpgsqlConnector
         {
             var username = await GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
 
-            activity = NpgsqlActivitySource.ConnectionOpen(this);
+            activity = NpgsqlActivitySource.PhysicalConnectionOpen(this);
 
             var gssEncMode = GetGssEncMode(Settings);
 
@@ -572,8 +572,7 @@ public sealed partial class NpgsqlConnector
                 }
             }
 
-            if (activity is not null)
-                NpgsqlActivitySource.CommandStop(activity);
+            activity?.Dispose();
 
             LogMessages.OpenedPhysicalConnection(
                 ConnectionLogger, Host, Port, Database, UserFacingConnectionString,
