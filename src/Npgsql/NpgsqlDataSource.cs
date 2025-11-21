@@ -274,7 +274,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    internal async Task Bootstrap(
+    internal virtual async Task Bootstrap(
         NpgsqlConnector connector,
         NpgsqlTimeout timeout,
         bool forceReload,
