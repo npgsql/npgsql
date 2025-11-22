@@ -153,6 +153,31 @@ static class NpgsqlActivitySource
         activity.Dispose();
     }
 
+    internal static Activity? CopyStart(string command, NpgsqlConnector connector, string? spanName, string operation)
+    {
+        var activity = Source.StartActivity(spanName ?? operation, ActivityKind.Client);
+        if (activity is not { IsAllDataRequested: true })
+            return activity;
+        activity.SetTag("db.query.text", command);
+        activity.SetTag("db.operation.name", operation);
+        Enrich(activity, connector);
+        return activity;
+    }
+
+    internal static void SetOperation(Activity activity, string operation)
+    {
+        if (!activity.IsAllDataRequested)
+            return;
+        activity.SetTag("db.operation.name", operation);
+    }
+
+    internal static void CopyStop(Activity activity, ulong? rows = null)
+    {
+        if (rows.HasValue)
+            activity.SetTag("db.npgsql.rows", rows.Value);
+        activity.Dispose();
+    }
+
     static string GetLibraryVersion()
         => typeof(NpgsqlDataSource).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?

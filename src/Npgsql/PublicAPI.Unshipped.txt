@@ -59,6 +59,9 @@ Npgsql.NpgsqlTracingOptionsBuilder.ConfigureBatchSpanNameProvider(System.Func<Np
 Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandEnrichmentCallback(System.Action<System.Diagnostics.Activity!, Npgsql.NpgsqlCommand!>? commandEnrichmentCallback) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandFilter(System.Func<Npgsql.NpgsqlCommand!, bool>? commandFilter) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCommandSpanNameProvider(System.Func<Npgsql.NpgsqlCommand!, string?>? commandSpanNameProvider) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCopyOperationEnrichmentCallback(System.Action<System.Diagnostics.Activity!, string!>? copyOperationEnrichmentCallback) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCopyOperationFilter(System.Func<string!, bool>? copyOperationFilter) -> Npgsql.NpgsqlTracingOptionsBuilder!
+Npgsql.NpgsqlTracingOptionsBuilder.ConfigureCopyOperationSpanNameProvider(System.Func<string!, string?>? copyOperationSpanNameProvider) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTracingOptionsBuilder.EnableFirstResponseEvent(bool enable = true) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTracingOptionsBuilder.EnablePhysicalOpenTracing(bool enable = true) -> Npgsql.NpgsqlTracingOptionsBuilder!
 Npgsql.NpgsqlTypeLoadingOptionsBuilder
