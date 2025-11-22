@@ -466,7 +466,6 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// Removes the specified <see cref="NpgsqlParameter"/> from the collection.
     /// </summary>
     /// <param name="value">The <see cref="NpgsqlParameter"/> to remove from the collection.</param>
-
     public override void Remove(object value)
         => Remove(Cast(value));
 
