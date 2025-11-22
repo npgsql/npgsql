@@ -2,7 +2,7 @@ version: '3'
 
 services:
   npgsql-dev:
-    build: ./dotnet
+    image: mcr.microsoft.com/devcontainers/base:ubuntu
     volumes:
       - ..:/workspace:cached
     tty: true

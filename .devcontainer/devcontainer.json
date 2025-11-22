@@ -5,6 +5,13 @@
 
   "workspaceFolder": "/workspace",
 
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0",
+      "dotnetRuntimeVersions": "8.0,9.0"
+    }
+  },
+
   "customizations": {
     "vscode": {
       "settings": {
@@ -21,18 +28,14 @@
 
         "extensions": [
           "ms-dotnettools.csharp",
-          "formulahendry.dotnet-test-explorer",
+          "ms-dotnettools.csdevkit",
           "ms-azuretools.vscode-docker",
           "mutantdino.resourcemonitor"
         ]
     }
   },
-  
+
   "forwardPorts": [5432, 5050],
 
-  "remoteEnv": {
-    "DeveloperBuild": "True"
-  },
-
-  "postCreateCommand": "dotnet restore Npgsql.sln"
+  "postCreateCommand": "dotnet restore Npgsql.slnx"
 }
