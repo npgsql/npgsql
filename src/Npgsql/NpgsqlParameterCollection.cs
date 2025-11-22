@@ -442,7 +442,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         => Insert(index, Cast(value));
 
     /// <summary>
-    /// Removes the specified <see cref="NpgsqlParameter"/> from the collection.
+    /// Removes the <see cref="NpgsqlParameter"/> with the specified name from the collection.
     /// </summary>
     /// <param name="parameterName">The name of the <see cref="NpgsqlParameter"/> to remove from the collection.</param>
     public void Remove(string parameterName)
