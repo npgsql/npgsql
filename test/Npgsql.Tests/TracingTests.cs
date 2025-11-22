@@ -129,6 +129,7 @@ public class TracingTests : MultiplexingTestBase
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.Name = "TestTracingDataSource";
+        dataSourceBuilder.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false));
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -160,7 +161,7 @@ public class TracingTests : MultiplexingTestBase
     [Test]
     public async Task CommandExecute_error([Values] bool batch)
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
         using var activityListener = StartListener(out var activities);
@@ -205,6 +206,7 @@ public class TracingTests : MultiplexingTestBase
         dataSourceBuilder.ConfigureTracing(options =>
         {
             options
+                .EnablePhysicalOpenTracing(false)
                 .EnableFirstResponseEvent(enable: false)
                 .ConfigureCommandFilter(cmd => cmd.CommandText.Contains('2'))
                 .ConfigureBatchFilter(batch => batch.BatchCommands[0].CommandText.Contains('2'))
@@ -323,7 +325,7 @@ public class TracingTests : MultiplexingTestBase
     [Test]
     public async Task BinaryImport_error()
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
         using var activityListener = StartListener(out var activities);
@@ -358,7 +360,7 @@ public class TracingTests : MultiplexingTestBase
     [Test]
     public async Task BinaryExport()
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
         var table = await CreateTempTable(connection, "field_text TEXT, field_int2 SMALLINT");
@@ -409,7 +411,7 @@ public class TracingTests : MultiplexingTestBase
     [Test]
     public async Task BinaryExport_cancel()
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var conn = await dataSource.OpenConnectionAsync();
 
         using var activityListener = StartListener(out var activities);
@@ -438,7 +440,7 @@ public class TracingTests : MultiplexingTestBase
     [Test]
     public async Task BinaryExport_error()
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
         using var activityListener = StartListener(out var activities);
@@ -518,7 +520,7 @@ public class TracingTests : MultiplexingTestBase
     [Test]
     public async Task RawBinaryExport_cancel()
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
         var table = await CreateTempTable(connection, "field_text TEXT, field_int2 SMALLINT");
@@ -577,7 +579,7 @@ public class TracingTests : MultiplexingTestBase
     [Test]
     public async Task RawBinaryImport_error()
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
         using var activityListener = StartListener(out var activities);
