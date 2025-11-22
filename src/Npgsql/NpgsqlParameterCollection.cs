@@ -237,16 +237,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         return value;
     }
 
-    /// <summary>
-    /// Adds the specified <see cref="NpgsqlParameter"/> to the <see cref="NpgsqlParameterCollection"/>.
-    /// </summary>
-    /// <param name="item">The <see cref="NpgsqlParameter"/> to add to the collection.</param>
-    /// <remarks>
-    /// Although this method is part of the <see cref="ICollection{T}"/> interface and accepts an <see cref="NpgsqlParameter"/>,
-    /// it is functionally equivalent to <see cref="Add(NpgsqlParameter)"/>.
-    /// To add a parameter by value (e.g. an <c>int</c> or <c>string</c>), use <see cref="AddWithValue(object)"/>,
-    /// <see cref="AddWithValue(string, object)"/>, or one of the typed <see cref="Add(string, NpgsqlDbType)"/> overloads.
-    /// </remarks>
+    /// <inheritdoc />
     void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
         => Add(item);
 
