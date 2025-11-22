@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -227,6 +226,9 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
     public async Task CommandExecute_auto_prepare([Values] bool batch)
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
+        // With multiplexing we can't guarantee that both queries will be executed on the exact same connection
+        // Which is required for autoprepare to trigger
+        dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 1;
         dataSourceBuilder.ConnectionStringBuilder.MaxAutoPrepare = 10;
         dataSourceBuilder.ConnectionStringBuilder.AutoPrepareMinUsages = 2;
         dataSourceBuilder.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false));
