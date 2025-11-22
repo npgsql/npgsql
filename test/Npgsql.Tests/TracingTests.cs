@@ -227,6 +227,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
     public async Task CommandExecute_auto_prepare([Values] bool batch)
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 1;
         dataSourceBuilder.ConnectionStringBuilder.MaxAutoPrepare = 10;
         dataSourceBuilder.ConnectionStringBuilder.AutoPrepareMinUsages = 2;
         dataSourceBuilder.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false));
