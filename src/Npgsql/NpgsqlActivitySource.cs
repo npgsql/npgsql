@@ -178,12 +178,6 @@ static class NpgsqlActivitySource
         activity.Dispose();
     }
 
-    internal static void SetCopyCancelled(Activity activity)
-    {
-        activity.SetStatus(ActivityStatusCode.Error, "Cancelled"); // TODO: Probably bad?
-        activity.Dispose();
-    }
-
     static string GetLibraryVersion()
         => typeof(NpgsqlDataSource).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?

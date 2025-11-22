@@ -319,7 +319,7 @@ public class TracingTests : MultiplexingTestBase
             // No Complete() call - disposing cancels
         }
 
-        _ = GetSingleActivity(activities, "COPY FROM", "COPY FROM", ActivityStatusCode.Error, "Cancelled");
+        _ = GetSingleActivity(activities, "COPY FROM");
     }
 
     [Test]
@@ -434,7 +434,7 @@ public class TracingTests : MultiplexingTestBase
             exporter.Cancel();
         }
 
-        _ = GetSingleActivity(activities, "COPY TO", "COPY TO", ActivityStatusCode.Error, "Cancelled");
+        _ = GetSingleActivity(activities, "COPY TO");
     }
 
     [Test]
@@ -543,7 +543,7 @@ public class TracingTests : MultiplexingTestBase
             stream.Cancel();
         }
 
-        _ = GetSingleActivity(activities, "COPY", "COPY", ActivityStatusCode.Error, "Cancelled");
+        _ = GetSingleActivity(activities, "COPY");
     }
 
     [Test]
@@ -573,7 +573,7 @@ public class TracingTests : MultiplexingTestBase
             stream.Cancel();
         }
 
-        _ = GetSingleActivity(activities, "COPY", "COPY", ActivityStatusCode.Error, "Cancelled");
+        _ = GetSingleActivity(activities, "COPY");
     }
 
     [Test]

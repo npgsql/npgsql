@@ -366,7 +366,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                     throw;
                 }
 
-                TraceSetCancelled();
+                TraceStop();
             }
         }
         else
@@ -401,7 +401,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 await _connector.Flush(async).ConfigureAwait(false);
                 Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-                TraceStop();
             }
             else
             {
@@ -412,27 +411,15 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                         await _readBuf.Skip(async, _leftToReadInDataMsg).ConfigureAwait(false);
                     }
                     _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
-
-                    if (_connector.PostgresCancellationPerformed)
-                    {
-                        LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
-                        TraceSetCancelled();
-                    }
-                    else
-                    {
-                        TraceStop();
-                    }
-                }
-                else
-                {
-                    TraceStop();
                 }
             }
+
+            TraceStop();
         }
         catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
         {
             LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
-            TraceSetCancelled();
+            TraceStop();
         }
         catch (Exception e)
         {
@@ -521,15 +508,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         if (_activity is not null)
         {
             NpgsqlActivitySource.CopyStop(_activity);
-            _activity = null;
-        }
-    }
-
-    private void TraceSetCancelled()
-    {
-        if (_activity is not null)
-        {
-            NpgsqlActivitySource.SetCopyCancelled(_activity);
             _activity = null;
         }
     }

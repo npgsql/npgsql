@@ -611,7 +611,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
                 NpgsqlActivitySource.CopyStop(_activity, _rowsImported);
                 break;
             case ImporterState.Cancelled:
-                NpgsqlActivitySource.SetCopyCancelled(_activity);
+                NpgsqlActivitySource.CopyStop(_activity, rows: 0);
                 break;
             default:
                 Debug.Fail("Invalid state: " + _state);
