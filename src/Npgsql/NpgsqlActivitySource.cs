@@ -16,7 +16,7 @@ static class NpgsqlActivitySource
 
     internal static bool IsEnabled => Source.HasListeners();
 
-    internal static Activity? CommandStart(NpgsqlConnectionStringBuilder settings, string commandText, CommandType commandType, string? spanName)
+    internal static Activity? CommandStart(string commandText, CommandType commandType, bool? prepared, string? spanName)
     {
         string? operationName = null;
 
@@ -48,6 +48,9 @@ static class NpgsqlActivitySource
             return activity;
 
         activity.SetTag("db.query.text", commandText);
+
+        if (prepared is true)
+            activity.SetTag("db.npgsql.prepared", true);
 
         switch (commandType)
         {

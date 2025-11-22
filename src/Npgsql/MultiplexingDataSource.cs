@@ -236,11 +236,20 @@ sealed class MultiplexingDataSource : PoolingDataSource
             // to buffer in memory), and the actual flush will occur at the level above. For cases where the
             // command overflows the buffer, async I/O is done, and we schedule continuations separately -
             // but the main thread continues to handle other commands on other connectors.
+
+            var fullyPrepared = _autoPrepare;
+
             if (_autoPrepare)
             {
                 // TODO: Need to log based on numPrepared like in non-multiplexing mode...
                 for (var i = 0; i < command.InternalBatchCommands.Count; i++)
-                    command.InternalBatchCommands[i].TryAutoPrepare(connector);
+                    if (!command.InternalBatchCommands[i].TryAutoPrepare(connector))
+                        fullyPrepared = false;
+            }
+
+            if (command.CurrentActivity is not null && fullyPrepared)
+            {
+                command.CurrentActivity.SetTag("db.npgsql.prepared", true);
             }
 
             var written = connector.CommandsInFlightWriter!.TryWrite(command);
