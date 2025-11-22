@@ -5,6 +5,13 @@
 
   "workspaceFolder": "/workspace",
 
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0",
+      "dotnetRuntimeVersions": "8.0,9.0"
+    }
+  },
+
   "customizations": {
     "vscode": {
       "settings": {
