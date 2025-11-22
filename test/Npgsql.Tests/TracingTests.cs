@@ -198,6 +198,56 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
     }
 
     [Test]
+    public async Task CommandExecute_explicit_prepare([Values] bool batch)
+    {
+        if (IsMultiplexing)
+        {
+            Assert.Ignore("Explicit prepare is not supported with multiplexing");
+            return;
+        }
+
+        await using var dataSource = CreateDataSource(o => o.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        using var activityListener = StartListener(out var activities);
+
+        await ExecuteScalar(connection, async, batch, "SELECT 42", prepare: false);
+        var activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(tags, Does.Not.ContainKey("db.npgsql.prepared"));
+
+        activities.Clear();
+        await ExecuteScalar(connection, async, batch, "SELECT 42", prepare: true);
+        activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(tags["db.npgsql.prepared"], Is.True);
+    }
+
+    [Test]
+    public async Task CommandExecute_auto_prepare([Values] bool batch)
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.MaxAutoPrepare = 10;
+        dataSourceBuilder.ConnectionStringBuilder.AutoPrepareMinUsages = 2;
+        dataSourceBuilder.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false));
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        using var activityListener = StartListener(out var activities);
+
+        await ExecuteScalar(connection, async, batch, "SELECT 42");
+        var activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(tags, Does.Not.ContainKey("db.npgsql.prepared"));
+
+        activities.Clear();
+        await ExecuteScalar(connection, async, batch, "SELECT 42");
+        activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(tags["db.npgsql.prepared"], Is.True);
+    }
+
+    [Test]
     public async Task CommandExecute_ConfigureTracing([Values] bool batch)
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -793,26 +843,45 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
         return activity;
     }
 
-    static async Task<object?> ExecuteScalar(NpgsqlConnection connection, bool async, bool isBatch, string query)
+    static async Task<object?> ExecuteScalar(NpgsqlConnection connection, bool async, bool isBatch, string query, bool prepare = false)
     {
-        if (!isBatch)
-        {
-            if (async)
-                return await connection.ExecuteScalarAsync(query);
-            else
-                return connection.ExecuteScalar(query);
-        }
-        else
+        if (isBatch)
         {
             await using var batch = connection.CreateBatch();
             var batchCommand = batch.CreateBatchCommand();
             batchCommand.CommandText = query;
             batch.BatchCommands.Add(batchCommand);
 
+            if (prepare)
+            {
+                if (async)
+                    await batch.PrepareAsync();
+                else
+                    batch.Prepare();
+            }
+
             if (async)
                 return await batch.ExecuteScalarAsync();
             else
                 return batch.ExecuteScalar();
+        }
+        else
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = query;
+
+            if (prepare)
+            {
+                if (async)
+                    await command.PrepareAsync();
+                else
+                    command.Prepare();
+            }
+
+            if (async)
+                return await command.ExecuteScalarAsync();
+            else
+                return command.ExecuteScalar();
         }
     }
 }

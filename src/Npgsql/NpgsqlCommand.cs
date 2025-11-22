@@ -1429,6 +1429,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 try
                 {
+                    var fullyPrepared = false;
+
                     switch (IsExplicitlyPrepared)
                     {
                     case true:
@@ -1463,6 +1465,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
                         connector.DataSource.MetricsReporter.CommandStartPrepared();
+                        fullyPrepared = true;
                         break;
 
                     case false:
@@ -1502,6 +1505,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 NpgsqlEventSource.Log.CommandStartPrepared();
                                 connector.DataSource.MetricsReporter.CommandStartPrepared();
+                                fullyPrepared = true;
                             }
                         }
 
@@ -1524,7 +1528,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     NpgsqlEventSource.Log.CommandStart(CommandText);
                     startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
-                    TraceCommandStart(connector.Settings, connector.DataSource.Configuration.TracingOptions);
+                    TraceCommandStart(connector.DataSource.Configuration.TracingOptions, fullyPrepared);
                     TraceCommandEnrich(connector);
 
                     // We do not wait for the entire send to complete before proceeding to reading -
@@ -1594,7 +1598,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 State = CommandState.InProgress;
 
-                TraceCommandStart(conn.Settings, conn.NpgsqlDataSource.Configuration.TracingOptions);
+                // In multiplexing, we don't yet know whether the command will execute as prepared or not; that will be determined later.
+                TraceCommandStart(conn.NpgsqlDataSource.Configuration.TracingOptions, prepared: null);
 
                 // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
                 // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
@@ -1739,7 +1744,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     #region Tracing
 
-    internal void TraceCommandStart(NpgsqlConnectionStringBuilder settings, NpgsqlTracingOptions tracingOptions)
+    internal void TraceCommandStart(NpgsqlTracingOptions tracingOptions, bool? prepared)
     {
         Debug.Assert(CurrentActivity is null);
 
@@ -1756,9 +1761,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     : tracingOptions.CommandSpanNameProvider?.Invoke(this);
 
                 CurrentActivity = NpgsqlActivitySource.CommandStart(
-                    settings,
                     WrappingBatch is not null ? GetBatchFullCommandText() : CommandText,
                     CommandType,
+                    prepared,
                     spanName);
             }
         }
