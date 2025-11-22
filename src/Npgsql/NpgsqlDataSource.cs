@@ -53,6 +53,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; }
 
+    readonly Func<NpgsqlConnectionStringBuilder, (string Username, string Password)>? _credentialsProvider;
+    readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<(string Username, string Password)>>? _credentialsProviderAsync;
     readonly Func<NpgsqlConnectionStringBuilder, string>? _passwordProvider;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _passwordProviderAsync;
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
@@ -67,6 +69,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly CancellationTokenSource? _timerPasswordProviderCancellationTokenSource;
     readonly Task _passwordRefreshTask = null!;
     string? _password;
+    string? _username;
 
     internal bool IsBootstrapped { get; private set; }
 
@@ -112,6 +115,8 @@ public abstract class NpgsqlDataSource : DbDataSource
                 TransportSecurityHandler,
                 IntegratedSecurityHandler,
                 SslClientAuthenticationOptionsCallback,
+                _credentialsProvider,
+                _credentialsProviderAsync,
                 _passwordProvider,
                 _passwordProviderAsync,
                 _periodicPasswordProvider,
@@ -127,8 +132,10 @@ public abstract class NpgsqlDataSource : DbDataSource
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
         Debug.Assert(_passwordProvider is null || _passwordProviderAsync is not null);
+        Debug.Assert(_credentialsProvider is null || _credentialsProviderAsync is not null);
 
         _password = settings.Password;
+        _username = settings.Username;
 
         if (_periodicPasswordSuccessRefreshInterval != default)
         {
@@ -359,6 +366,9 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         set
         {
+            if (_credentialsProvider is not null)
+                throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
+
             if (_passwordProvider is not null || _periodicPasswordProvider is not null)
                 throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
 
@@ -366,7 +376,48 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    internal ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Manually sets the username to be used the next time a physical connection is opened.
+    /// Consider using <see cref="NpgsqlDataSourceBuilder.UseCredentialsProvider" /> instead.
+    /// </summary>
+    public string Username
+    {
+        set
+        {
+            if (_credentialsProvider is not null)
+                throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);            
+
+            _username = value;
+        }
+    }
+
+
+    internal async ValueTask<(string? Username, string? Password)> GetCredentials(bool async, CancellationToken cancellationToken = default)
+    {
+        if (_credentialsProvider is not null)
+            return await GetCredentials(async, cancellationToken).ConfigureAwait(false);
+
+
+        return(new(_username), await GetPassword(async, cancellationToken).ConfigureAwait(false));
+
+
+        async ValueTask<(string? Username, string? Password)> GetCredentials(bool async, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return async ? await _credentialsProviderAsync!(Settings, cancellationToken).ConfigureAwait(false) : _credentialsProvider(Settings);
+            }
+            catch (Exception e)
+            {
+                _connectionLogger.LogError(e, "Credentials provider threw an exception");
+
+                throw new NpgsqlException("An exception was thrown from the credentials provider", e);
+            }
+        }
+    }
+
+
+    ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken = default)
     {
         if (_passwordProvider is not null)
             return GetPassword(async, cancellationToken);

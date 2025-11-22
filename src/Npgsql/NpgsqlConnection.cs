@@ -1807,7 +1807,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckDisposed();
         var csb = new NpgsqlConnectionStringBuilder(connectionString);
-        csb.Password ??= _dataSource?.GetPassword(async: false).GetAwaiter().GetResult();
+        var credentials = _dataSource?.GetCredentials(async: false).GetAwaiter().GetResult();
+        csb.Password ??= credentials?.Password;
+        csb.Username ??= credentials?.Username;
         if (csb.PersistSecurityInfo && !Settings.PersistSecurityInfo)
             csb.PersistSecurityInfo = false;
 
@@ -1832,7 +1834,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckDisposed();
         var csb = new NpgsqlConnectionStringBuilder(connectionString);
-        csb.Password ??= _dataSource is null ? null : await _dataSource.GetPassword(async: true, cancellationToken).ConfigureAwait(false);
+        var credentials = _dataSource is null ? default : await _dataSource.GetCredentials(async: true, cancellationToken).ConfigureAwait(false);
+        csb.Password ??= credentials.Password;
+        csb.Username ??= credentials.Username;
+
         if (csb.PersistSecurityInfo && !Settings.PersistSecurityInfo)
             csb.PersistSecurityInfo = false;
 
