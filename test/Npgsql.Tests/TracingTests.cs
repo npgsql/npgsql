@@ -655,7 +655,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
     [Test]
     public async Task TextExport()
     {
-        await using var dataSource = CreateDataSource();
+        await using var dataSource = CreateDataSource(ds => ds.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
         var table = await CreateTempTable(connection, "field_text TEXT, field_int2 SMALLINT");

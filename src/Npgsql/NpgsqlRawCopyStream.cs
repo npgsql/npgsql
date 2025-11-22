@@ -395,36 +395,48 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
             if (CanWrite)
             {
-                await FlushAsync(async).ConfigureAwait(false);
-                _writeBuf.EndCopyMode();
-                await _connector.WriteCopyDone(async).ConfigureAwait(false);
-                await _connector.Flush(async).ConfigureAwait(false);
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+                try
+                {
+                    await FlushAsync(async).ConfigureAwait(false);
+                    _writeBuf.EndCopyMode();
+                    await _connector.WriteCopyDone(async).ConfigureAwait(false);
+                    await _connector.Flush(async).ConfigureAwait(false);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+                    TraceStop();
+                }
+                catch (Exception e)
+                {
+                    TraceSetException(e);
+                    throw;
+                }
             }
             else
             {
-                if (_state != CopyStreamState.Consumed && _state != CopyStreamState.Uninitialized)
+                try
                 {
-                    if (_leftToReadInDataMsg > 0)
+                    if (_state != CopyStreamState.Consumed && _state != CopyStreamState.Uninitialized)
                     {
-                        await _readBuf.Skip(async, _leftToReadInDataMsg).ConfigureAwait(false);
+                        if (_leftToReadInDataMsg > 0)
+                        {
+                            await _readBuf.Skip(async, _leftToReadInDataMsg).ConfigureAwait(false);
+                        }
+                        _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }
-                    _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+
+                    TraceStop();
+                }
+                catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
+                {
+                    LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
+                    TraceStop();
+                }
+                catch (Exception e)
+                {
+                    LogMessages.ExceptionWhenDisposingCopyOperation(_copyLogger, _connector.Id, e);
+                    TraceSetException(e);
                 }
             }
-
-            TraceStop();
-        }
-        catch (OperationCanceledException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.QueryCanceled })
-        {
-            LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
-            TraceStop();
-        }
-        catch (Exception e)
-        {
-            LogMessages.ExceptionWhenDisposingCopyOperation(_copyLogger, _connector.Id, e);
-            TraceSetException(e);
         }
         finally
         {
