@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -15,8 +13,8 @@ namespace Npgsql.Tests;
 [TestFixture(MultiplexingMode.NonMultiplexing, true)]
 [TestFixture(MultiplexingMode.NonMultiplexing, false)]
 [TestFixture(MultiplexingMode.Multiplexing, true)]
-[TestFixture(MultiplexingMode.Multiplexing, false)]
-public class TracingTests : MultiplexingTestBase
+// Sync I/O not supported with multiplexing
+public class TracingTests(MultiplexingMode multiplexingMode, bool async) : MultiplexingTestBase(multiplexingMode)
 {
     #region Physical open
 
@@ -25,7 +23,7 @@ public class TracingTests : MultiplexingTestBase
     {
         using var activityListener = StartListener(out var activities);
         await using var dataSource = CreateDataSource();
-        await using var connection = Async
+        await using var connection = async
             ? await dataSource.OpenConnectionAsync()
             : dataSource.OpenConnection();
 
@@ -80,7 +78,7 @@ public class TracingTests : MultiplexingTestBase
         await using var dataSource = CreateDataSource(x => x.Host = "not-existing-host");
         var exception = Assert.ThrowsAsync<NpgsqlException>(async () =>
         {
-            await using var connection = Async
+            await using var connection = async
                 ? await dataSource.OpenConnectionAsync()
                 : dataSource.OpenConnection();
         })!;
@@ -115,7 +113,7 @@ public class TracingTests : MultiplexingTestBase
         dataSourceBuilder.ConfigureTracing(options => options.EnablePhysicalOpenTracing(enable: false));
         await using var dataSource = dataSourceBuilder.Build();
 
-        await using var connection = Async ? await dataSource.OpenConnectionAsync() : dataSource.OpenConnection();
+        await using var connection = async ? await dataSource.OpenConnectionAsync() : dataSource.OpenConnection();
 
         Assert.That(activities, Is.Empty);
     }
@@ -135,7 +133,7 @@ public class TracingTests : MultiplexingTestBase
 
         using var activityListener = StartListener(out var activities);
 
-        await ExecuteScalar(connection, Async, batch, "SELECT 42");
+        await ExecuteScalar(connection, async, batch, "SELECT 42");
 
         var activity = GetSingleActivity(activities, "postgresql", "postgresql");
 
@@ -166,7 +164,7 @@ public class TracingTests : MultiplexingTestBase
 
         using var activityListener = StartListener(out var activities);
 
-        Assert.ThrowsAsync<PostgresException>(async () => await ExecuteScalar(connection, Async, batch, "SELECT * FROM non_existing_table"));
+        Assert.ThrowsAsync<PostgresException>(async () => await ExecuteScalar(connection, async, batch, "SELECT * FROM non_existing_table"));
 
         var activity = GetSingleActivity(activities, "postgresql", "postgresql", ActivityStatusCode.Error, PostgresErrorCodes.UndefinedTable);
 
@@ -220,11 +218,11 @@ public class TracingTests : MultiplexingTestBase
 
         using var activityListener = StartListener(out var activities);
 
-        await ExecuteScalar(connection, Async, batch, "SELECT 1");
+        await ExecuteScalar(connection, async, batch, "SELECT 1");
 
         Assert.That(activities, Is.Empty);
 
-        await ExecuteScalar(connection, Async, batch, "SELECT 2");
+        await ExecuteScalar(connection, async, batch, "SELECT 2");
 
         var activity = GetSingleActivity(activities, "unknown_query", "unknown_query");
 
@@ -250,7 +248,7 @@ public class TracingTests : MultiplexingTestBase
 
         var copyFromCommand = $"COPY {table} (field_text, field_int2) FROM STDIN BINARY";
 
-        if (Async)
+        if (async)
         {
             await using var writer = await connection.BeginBinaryImportAsync(copyFromCommand);
 
@@ -302,7 +300,7 @@ public class TracingTests : MultiplexingTestBase
 
         var copyFromCommand = $"COPY {table} (field_text, field_int2) FROM STDIN BINARY";
 
-        if (Async)
+        if (async)
         {
             await using var writer = await connection.BeginBinaryImportAsync(copyFromCommand);
             await writer.StartRowAsync();
@@ -334,7 +332,7 @@ public class TracingTests : MultiplexingTestBase
 
         var ex = Assert.ThrowsAsync<PostgresException>(async () =>
         {
-            await using var writer = Async
+            await using var writer = async
                 ? await connection.BeginBinaryImportAsync(copyFromCommand)
                 : connection.BeginBinaryImport(copyFromCommand);
         });
@@ -370,7 +368,7 @@ public class TracingTests : MultiplexingTestBase
 
         var copyToCommand = $"COPY {table} (field_text, field_int2) TO STDOUT BINARY";
 
-        if (Async)
+        if (async)
         {
             await using var reader = await connection.BeginBinaryExportAsync(copyToCommand);
             while (await reader.StartRowAsync() != -1)
@@ -419,7 +417,7 @@ public class TracingTests : MultiplexingTestBase
         // This must be large enough to cause Postgres to queue up CopyData messages.
         const string copyToCommand = "COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY";
 
-        if (Async)
+        if (async)
         {
             await using var exporter = await conn.BeginBinaryExportAsync(copyToCommand);
             await exporter.StartRowAsync();
@@ -448,7 +446,7 @@ public class TracingTests : MultiplexingTestBase
         var copyToCommand = $"COPY non_existing_table (field_text, field_int2) TO STDOUT BINARY";
         var ex = Assert.ThrowsAsync<PostgresException>(async () =>
         {
-            await using var reader = Async
+            await using var reader = async
                 ? await connection.BeginBinaryExportAsync(copyToCommand)
                 : connection.BeginBinaryExport(copyToCommand);
         });
@@ -485,7 +483,7 @@ public class TracingTests : MultiplexingTestBase
         // Raw binary export
         var copyToCommand = $"COPY {table} (field_text, field_int2) TO STDIN BINARY";
         var buffer = new byte[1024];
-        if (Async)
+        if (async)
         {
             await using var stream = await connection.BeginRawBinaryCopyAsync(copyToCommand);
             while (await stream.ReadAsync(buffer, 0, buffer.Length) > 0) { }
@@ -530,7 +528,7 @@ public class TracingTests : MultiplexingTestBase
 
         var copyToCommand = $"COPY {table} (field_text, field_int2) TO STDIN BINARY";
         var buffer = new byte[1024];
-        if (Async)
+        if (async)
         {
             await using var stream = await connection.BeginRawBinaryCopyAsync(copyToCommand);
             var _ = await stream.ReadAsync(buffer, 0, buffer.Length);
@@ -558,7 +556,7 @@ public class TracingTests : MultiplexingTestBase
 
         var copyToCommand = $"COPY {table} (field_text, field_int2) FROM STDIN BINARY";
         byte[] garbage = [1, 2, 3, 4];
-        if (Async)
+        if (async)
         {
             await using var stream = await connection.BeginRawBinaryCopyAsync(copyToCommand);
             await stream.WriteAsync(garbage);
@@ -587,7 +585,7 @@ public class TracingTests : MultiplexingTestBase
         var copyFromCommand = $"COPY non_existing_table (field_text, field_int2) FROM STDIN BINARY";
         var ex = Assert.ThrowsAsync<PostgresException>(async () =>
         {
-            await using var stream = Async
+            await using var stream = async
                 ? await connection.BeginRawBinaryCopyAsync(copyFromCommand)
                 : connection.BeginRawBinaryCopy(copyFromCommand);
         });
@@ -622,7 +620,7 @@ public class TracingTests : MultiplexingTestBase
 
         var copyFromCommand = $"COPY {table} (field_text, field_int2) FROM STDIN";
 
-        if (Async)
+        if (async)
         {
             await using var writer = await connection.BeginTextImportAsync(copyFromCommand);
             await writer.WriteAsync("Hello\t8\n");
@@ -670,7 +668,7 @@ public class TracingTests : MultiplexingTestBase
         var copyFromCommand = $"COPY {table} (field_text, field_int2) TO STDIN";
 
         var chars = new char[30];
-        if (Async)
+        if (async)
         {
             await using var reader = await connection.BeginTextExportAsync(copyFromCommand);
             _ = await reader.ReadAsync(chars);
@@ -730,7 +728,7 @@ public class TracingTests : MultiplexingTestBase
         using var activityListener = StartListener(out var activities);
 
 
-        if (Async)
+        if (async)
         {
             await using (var writer = await conn.BeginBinaryImportAsync(copyCommand))
             {
@@ -760,16 +758,6 @@ public class TracingTests : MultiplexingTestBase
 
         var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
         Assert.That(tags["custom_tag"], Is.EqualTo("custom_value"));
-    }
-
-    private bool Async { get; }
-
-    public TracingTests(MultiplexingMode multiplexingMode, bool async) : base(multiplexingMode)
-    {
-        if (IsMultiplexing && !async)
-            Assert.Ignore("Sync not supported in multiplexing mode");
-
-        Async = async;
     }
 
     static ActivityListener StartListener(out List<Activity> activities)
