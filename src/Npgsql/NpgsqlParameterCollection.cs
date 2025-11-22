@@ -240,11 +240,13 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <summary>
     /// Adds the specified <see cref="NpgsqlParameter"/> to the <see cref="NpgsqlParameterCollection"/>.
     /// </summary>
-    /// <param name="item">
-    /// An <see cref="NpgsqlParameter"/> instance to add to the collection.
-    /// Although this method accepts an <see cref="object"/>, passing a value of any other type will result in an <see cref="InvalidCastException"/>.
-    /// To add a parameter by value (e.g. an <c>int</c> or <c>string</c>), use <see cref="AddWithValue(object)"/>, <see cref="AddWithValue(string, object)"/>, or one of the typed <see cref="Add(string, NpgsqlDbType)"/> overloads.
-    /// </param>
+    /// <param name="item">The <see cref="NpgsqlParameter"/> to add to the collection.</param>
+    /// <remarks>
+    /// Although this method is part of the <see cref="ICollection{T}"/> interface and accepts an <see cref="NpgsqlParameter"/>,
+    /// it is functionally equivalent to <see cref="Add(NpgsqlParameter)"/>.
+    /// To add a parameter by value (e.g. an <c>int</c> or <c>string</c>), use <see cref="AddWithValue(object)"/>,
+    /// <see cref="AddWithValue(string, object)"/>, or one of the typed <see cref="Add(string, NpgsqlDbType)"/> overloads.
+    /// </remarks>
     void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
         => Add(item);
 
@@ -440,10 +442,11 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// Inserts a parameter into the <see cref="NpgsqlParameterCollection"/> at the specified index.
     /// </summary>
     /// <param name="index">The zero-based index at which to insert the parameter.</param>
-    /// <param name="value">
-    /// The parameter to insert. Although this method accepts <see cref="object"/>, only instances of <see cref="NpgsqlParameter"/>
-    /// are supported. Passing any other type will result in an <see cref="InvalidCastException"/>.
-    /// </param>
+    /// <param name="value">The parameter to insert.</param>
+    /// <remarks>
+    /// Although this method accepts <see cref="object"/>, only instances of <see cref="NpgsqlParameter"/> are supported.
+    /// Passing any other type will result in an <see cref="InvalidCastException"/>.
+    /// </remarks>
     public override void Insert(int index, object value)
         => Insert(index, Cast(value));
 
@@ -517,23 +520,26 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     /// <summary>
     /// Returns the index of the specified parameter in the <see cref="NpgsqlParameterCollection"/>.
     /// </summary>
-    /// <param name="value">
-    /// The parameter to find. Although this method accepts <see cref="object"/>, only instances of <see cref="NpgsqlParameter"/>
-    /// are supported. Passing any other type will result in an <see cref="InvalidCastException"/>.
-    /// </param>
+    /// <param name="value">The parameter to find.</param>
     /// <returns>The index of the parameter if found; otherwise, -1.</returns>
+    /// <remarks>
+    /// Although this method accepts <see cref="object"/>, only instances of <see cref="NpgsqlParameter"/> are supported.
+    /// Passing any other type will result in an <see cref="InvalidCastException"/>.
+    /// </remarks>
     public override int IndexOf(object value)
         => IndexOf(Cast(value));
 
     /// <summary>
     /// Adds a parameter to the <see cref="NpgsqlParameterCollection"/>.
     /// </summary>
-    /// <param name="value">
-    /// The parameter to add. Although this method accepts <see cref="object"/>, only instances of <see cref="NpgsqlParameter"/>
-    /// are supported. Passing any other type will result in an <see cref="InvalidCastException"/>.
-    /// To add a parameter by value, use <see cref="AddWithValue(object)"/>, <see cref="AddWithValue(string, object)"/>, or one of the typed <see cref="Add(string, NpgsqlDbType)"/> overloads.
-    /// </param>
+    /// <param name="value">The parameter to add.</param>
     /// <returns>The zero-based index at which the parameter was added.</returns>
+    /// <remarks>
+    /// Although this method accepts <see cref="object"/>, only instances of <see cref="NpgsqlParameter"/> are supported.
+    /// Passing any other type will result in an <see cref="InvalidCastException"/>.
+    /// To add a parameter by value, use <see cref="AddWithValue(object)"/>, <see cref="AddWithValue(string, object)"/>,
+    /// or one of the typed <see cref="Add(string, NpgsqlDbType)"/> overloads.
+    /// </remarks>
     public override int Add(object value)
     {
         Add(Cast(value));
