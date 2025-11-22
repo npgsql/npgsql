@@ -1,4 +1,3 @@
 {
-  "dotnet-test-explorer.testProjectPath": "**/*.Tests.csproj",
   "dotnet.defaultSolution": "Npgsql.slnx"
 }
