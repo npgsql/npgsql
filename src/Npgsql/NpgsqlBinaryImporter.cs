@@ -55,8 +55,9 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         set
         {
-            _buf.Timeout = value;
-            _connector.ReadBuffer.Timeout = value;
+            var timeout = value > TimeSpan.Zero ? value : System.Threading.Timeout.InfiniteTimeSpan;
+            _buf.Timeout = timeout;
+            _connector.ReadBuffer.Timeout = timeout;
         }
     }
 
