@@ -548,7 +548,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
     public async Task PostgresType()
     {
         // With multiplexing we can't guarantee that after ReloadTypesAsync we'll execute the query on a connection which has the new types
-        // Set max pool size to 1 go enforce this
+        // Set max pool size to 1 enforce this
         await using var dataSource = CreateDataSource(connectionStringBuilderAction: csb => csb.MaxPoolSize = 1);
         await using var connection = await dataSource.OpenConnectionAsync();
         var type1 = await GetTempTypeName(connection);
