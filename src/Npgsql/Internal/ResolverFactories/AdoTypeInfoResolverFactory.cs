@@ -230,13 +230,25 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 
             // Date
-            mappings.AddStructType<DateOnly>(DataTypeNames.Date,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
-            mappings.AddStructType<DateTime>(DataTypeNames.Date,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)),
-                MatchRequirement.DataTypeName);
+            if (Statics.EnableLegacyDateAndTimeBehavior)
+            {
+                mappings.AddStructType<DateTime>(DataTypeNames.Date,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+                mappings.AddStructType<DateOnly>(DataTypeNames.Date,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)));
+            }
+            else
+            {
+                mappings.AddStructType<DateOnly>(DataTypeNames.Date,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+                mappings.AddStructType<DateTime>(DataTypeNames.Date,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)),
+                    MatchRequirement.DataTypeName);
+            }
             mappings.AddStructType<int>(DataTypeNames.Date,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()));
 
@@ -247,10 +259,20 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
             // Time
-            mappings.AddStructType<TimeOnly>(DataTypeNames.Time,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TimeOnlyTimeConverter()), isDefault: true);
-            mappings.AddStructType<TimeSpan>(DataTypeNames.Time,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()));
+            if (Statics.EnableLegacyDateAndTimeBehavior)
+            {
+                mappings.AddStructType<TimeSpan>(DataTypeNames.Time,
+                    static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()), isDefault: true);
+                mappings.AddStructType<TimeOnly>(DataTypeNames.Time,
+                    static (options, mapping, _) => mapping.CreateInfo(options, new TimeOnlyTimeConverter()));
+            }
+            else
+            {
+                mappings.AddStructType<TimeOnly>(DataTypeNames.Time,
+                    static (options, mapping, _) => mapping.CreateInfo(options, new TimeOnlyTimeConverter()), isDefault: true);
+                mappings.AddStructType<TimeSpan>(DataTypeNames.Time,
+                    static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()));
+            }
             mappings.AddStructType<long>(DataTypeNames.Time,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 

@@ -13,9 +13,11 @@ static class Statics
     internal static readonly bool EnableAssertions;
 #if DEBUG
     internal static bool LegacyTimestampBehavior;
+    internal static bool EnableLegacyDateAndTimeBehavior;
     internal static bool DisableDateTimeInfinityConversions;
 #else
     internal static readonly bool LegacyTimestampBehavior;
+    internal static readonly bool EnableLegacyDateAndTimeBehavior;
     internal static readonly bool DisableDateTimeInfinityConversions;
 #endif
 
@@ -23,6 +25,7 @@ static class Statics
     {
         EnableAssertions = AppContext.TryGetSwitch("Npgsql.EnableAssertions", out var enabled) && enabled;
         LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out enabled) && enabled;
+        EnableLegacyDateAndTimeBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyDateAndTimeBehavior", out enabled) && enabled;
         DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
     }
 

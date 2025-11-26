@@ -159,15 +159,30 @@ sealed partial class AdoTypeInfoResolverFactory
                         CreateListMultirangeConverter(CreateRangeConverter(new Int8Converter<long>(), options), options)));
 
             // datemultirange
-            mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, CreateArrayMultirangeConverter(
-                        CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)),
-                isDefault: true);
-            mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange,
-                static (options, mapping, _) =>
-                    mapping.CreateInfo(options, CreateArrayMultirangeConverter(
-                        CreateRangeConverter(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
+            if (Statics.EnableLegacyDateAndTimeBehavior)
+            {
+                mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, CreateArrayMultirangeConverter(
+                            CreateRangeConverter(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions), options), options)),
+                    isDefault: true);
+                mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, CreateArrayMultirangeConverter(
+                            CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
+            }
+            else
+            {
+                mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, CreateArrayMultirangeConverter(
+                            CreateRangeConverter(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions), options), options)),
+                    isDefault: true);
+                mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange,
+                    static (options, mapping, _) =>
+                        mapping.CreateInfo(options, CreateArrayMultirangeConverter(
+                            CreateRangeConverter(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions), options), options)));
+            }
             mappings.AddType<List<NpgsqlRange<DateOnly>>>(DataTypeNames.DateMultirange,
                 static (options, mapping, _) =>
                     mapping.CreateInfo(options, CreateListMultirangeConverter(

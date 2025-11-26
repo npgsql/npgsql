@@ -10,7 +10,7 @@ namespace Npgsql.Tests.Types;
 
 // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
 [NonParallelizable]
-public class LegacyDateTimeTests : TestBase
+public class LegacyTimestampBehaviorTests : TestBase
 {
     [Test]
     public Task Timestamp_with_all_DateTime_kinds([Values] DateTimeKind kind)
