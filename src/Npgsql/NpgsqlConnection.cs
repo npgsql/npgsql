@@ -1663,9 +1663,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         return new EndScopeDisposable(this);
     }
 
-    internal async ValueTask<(EndScopeDisposable, NpgsqlConnector)> StartTemporaryBindingScopeAsync()
+    internal async ValueTask<(EndScopeDisposable, NpgsqlConnector)> StartTemporaryBindingScopeAsync(CancellationToken cancellationToken)
     {
-        var connector = await StartBindingScope(ConnectorBindingScope.Temporary, NpgsqlTimeout.Infinite, async: true, CancellationToken.None).ConfigureAwait(false);
+        var connector = await StartBindingScope(ConnectorBindingScope.Temporary, NpgsqlTimeout.Infinite, async: true, cancellationToken).ConfigureAwait(false);
         return (new EndScopeDisposable(this), connector);
     }
 
@@ -1935,7 +1935,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckReady();
 
-        var (scope, connector) = await StartTemporaryBindingScopeAsync().ConfigureAwait(false);
+        var (scope, connector) = await StartTemporaryBindingScopeAsync(cancellationToken).ConfigureAwait(false);
         using var _ = scope;
 
         await _dataSource!.Bootstrap(
