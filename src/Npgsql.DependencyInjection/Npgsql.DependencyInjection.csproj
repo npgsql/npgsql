@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <Authors>Shay Rojansky</Authors>
-        <TargetFrameworks>net8.0</TargetFrameworks>
+        <TargetFrameworks>net10.0</TargetFrameworks>
         <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql;di;dependency injection</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>

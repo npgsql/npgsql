@@ -8,32 +8,10 @@
     <LoggingPackageVersion>10.0.0</LoggingPackageVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <LoggingAbstractionsPackageVersion>9.0.0</LoggingAbstractionsPackageVersion>
-    <DependencyInjectionAbstractionsPackageVersion>9.0.0</DependencyInjectionAbstractionsPackageVersion>
-    
-    <!-- For tests only -->
-    <DependencyInjectionPackageVersion>9.0.11</DependencyInjectionPackageVersion>
-    <LoggingPackageVersion>9.0.11</LoggingPackageVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <LoggingAbstractionsPackageVersion>8.0.0</LoggingAbstractionsPackageVersion>
-    <DependencyInjectionAbstractionsPackageVersion>8.0.0</DependencyInjectionAbstractionsPackageVersion>
-
-    <!-- Note that we lift up DiagnosticSource for net8.0 to use the 9.0 version, since that supports histogram advice. -->
-    <DiagnosticSourcePackageVersion>9.0.11</DiagnosticSourcePackageVersion>
-
-    <!-- For tests only -->
-    <DependencyInjectionPackageVersion>8.0.1</DependencyInjectionPackageVersion>
-    <LoggingPackageVersion>8.0.1</LoggingPackageVersion>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(LoggingAbstractionsPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(DependencyInjectionAbstractionsPackageVersion)" />
     <PackageVersion Include="OpenTelemetry.API" Version="1.14.0" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="$(DiagnosticSourcePackageVersion)" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />

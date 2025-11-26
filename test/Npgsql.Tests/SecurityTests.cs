@@ -574,11 +574,7 @@ public class SecurityTests : TestBase
 
         var certificates = new X509Certificate2Collection();
 
-#if NET9_0_OR_GREATER
         using var realCaCert = X509CertificateLoader.LoadCertificateFromFile("ca.crt");
-#else
-        using var realCaCert = new X509Certificate2("ca.crt");
-#endif
 
         using var ecdsa = ECDsa.Create();
         var req = new CertificateRequest("cn=localhost", ecdsa, HashAlgorithmName.SHA256);

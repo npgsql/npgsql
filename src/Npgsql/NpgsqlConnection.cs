@@ -1033,7 +1033,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     /// <remarks>
     /// <para>
-    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions?view=net-8.0"/>.
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions"/>.
     /// </para>
     /// </remarks>
     public Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; set; }

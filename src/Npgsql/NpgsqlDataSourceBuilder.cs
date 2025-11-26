@@ -252,7 +252,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// <param name="sslClientAuthenticationOptionsCallback">The callback to customize SslStream's authentication options.</param>
     /// <remarks>
     /// <para>
-    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions?view=net-8.0"/>.
+    /// See <see href="https://learn.microsoft.com/en-us/dotnet/api/system.net.security.sslclientauthenticationoptions"/>.
     /// </para>
     /// </remarks>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>

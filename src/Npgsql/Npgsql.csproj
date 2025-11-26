@@ -5,7 +5,7 @@
     <Description>Npgsql is the open source .NET data provider for PostgreSQL.</Description>
     <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net10.0</TargetFrameworks>
     <NoWarn>$(NoWarn);CA2017</NoWarn>
     <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
     <NoWarn>$(NoWarn);NPG9002</NoWarn> <!-- DatabaseInfo-related APIs are experimental -->
@@ -15,9 +15,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
-
-    <!-- We lift up DiagnosticSource for net8.0 to use the 9.0 version, since that supports histogram advice. -->
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Condition="'$(TargetFramework)' == 'net8.0'" />
   </ItemGroup>
 
   <ItemGroup>
