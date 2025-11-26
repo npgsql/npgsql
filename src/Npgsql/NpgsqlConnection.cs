@@ -1663,6 +1663,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         return new EndScopeDisposable(this);
     }
 
+    internal async ValueTask<(EndScopeDisposable, NpgsqlConnector)> StartTemporaryBindingScopeAsync(CancellationToken cancellationToken)
+    {
+        var connector = await StartBindingScope(ConnectorBindingScope.Temporary, NpgsqlTimeout.Infinite, async: true, cancellationToken).ConfigureAwait(false);
+        return (new EndScopeDisposable(this), connector);
+    }
+
     internal T CheckOpenAndRunInTemporaryScope<T>(Func<NpgsqlConnector, T> func)
     {
         CheckOpen();
@@ -1929,7 +1935,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckReady();
 
-        using var scope = StartTemporaryBindingScope(out var connector);
+        var (scope, connector) = await StartTemporaryBindingScopeAsync(cancellationToken).ConfigureAwait(false);
+        using var _ = scope;
 
         await _dataSource!.Bootstrap(
             connector,
