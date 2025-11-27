@@ -15,6 +15,7 @@
     <File Path=".github/workflows/rich-code-nav.yml" />
   </Folder>
   <Folder Name="/src/">
+    <File Path="src/Directory.Build.props" />
     <Project Path="src/Npgsql.DependencyInjection/Npgsql.DependencyInjection.csproj" />
     <Project Path="src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
     <Project Path="src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
@@ -25,6 +26,7 @@
     <Project Path="src/Npgsql/Npgsql.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <File Path="test/Directory.Build.props" />
     <Project Path="test/Npgsql.Benchmarks/Npgsql.Benchmarks.csproj" />
     <Project Path="test/Npgsql.DependencyInjection.Tests/Npgsql.DependencyInjection.Tests.csproj" />
     <Project Path="test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj" />

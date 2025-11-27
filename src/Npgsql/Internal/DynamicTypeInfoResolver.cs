@@ -6,12 +6,7 @@ using Npgsql.PostgresTypes;
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-#if NET9_0_OR_GREATER
 [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-#else
-[RequiresUnreferencedCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-[RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-#endif
 public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 {
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
@@ -47,12 +42,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 
     protected abstract DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options);
 
-#if NET9_0_OR_GREATER
     [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-#else
-    [RequiresUnreferencedCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-    [RequiresDynamicCode("A dynamic type info resolver may need to construct a generic converter for a statically unknown type.")]
-#endif
     protected class DynamicMappingCollection
     {
         TypeInfoMappingCollection? _mappings;

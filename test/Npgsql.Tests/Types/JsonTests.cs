@@ -182,12 +182,7 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public Task Roundtrip_JsonArray()
         => AssertType(
-#if NET8_0
-            // Necessary until we drop STJ 8.0, see https://github.com/dotnet/runtime/pull/103733
-            new JsonArray { (JsonValue)1, (JsonValue)2, (JsonValue)3 },
-#else
             new JsonArray { 1, 2, 3 },
-#endif
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             PostgresType,
             NpgsqlDbType,

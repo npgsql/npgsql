@@ -3,7 +3,7 @@
     <Authors>Yoh Deadfall;Shay Rojansky</Authors>
     <Description>GeoJSON plugin for Npgsql, allowing mapping of PostGIS geometry types to GeoJSON types.</Description>
     <PackageTags>npgsql;postgresql;postgres;postgis;geojson;spatial;ado;ado.net;database;sql</PackageTags>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
   </PropertyGroup>
 
