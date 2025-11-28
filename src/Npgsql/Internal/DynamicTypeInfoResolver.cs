@@ -99,7 +99,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 
             if (type.IsValueType)
                 typeof(TypeInfoMappingCollection)
-                    .GetMethod(nameof(TypeInfoMappingCollection.AddResolverStructType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
+                    .GetMethod(nameof(TypeInfoMappingCollection.AddProviderStructType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
                     .MakeGenericMethod(type).Invoke(_mappings ??= new(),
                     [
                         dataTypeName,
@@ -108,7 +108,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
                     ]);
             else
                 typeof(TypeInfoMappingCollection)
-                    .GetMethod(nameof(TypeInfoMappingCollection.AddResolverType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
+                    .GetMethod(nameof(TypeInfoMappingCollection.AddProviderType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
                     .MakeGenericMethod(type).Invoke(_mappings ??= new(),
                     [
                         dataTypeName,
@@ -122,7 +122,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
         {
             if (elementType.IsValueType)
                 typeof(TypeInfoMappingCollection)
-                    .GetMethod(nameof(TypeInfoMappingCollection.AddResolverStructArrayType), [typeof(string)])!
+                    .GetMethod(nameof(TypeInfoMappingCollection.AddProviderStructArrayType), [typeof(string)])!
                     .MakeGenericMethod(elementType).Invoke(_mappings ??= new(), [dataTypeName]);
             else
                 typeof(TypeInfoMappingCollection)
