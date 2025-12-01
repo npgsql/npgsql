@@ -19,6 +19,7 @@ Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the p
 
 Parameter                    | Description                                                                                                                                 | Default
 ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------
+GSS Encryption Mode          | Controls whether GSS encryption is used, depending on server support. [See docs for possible values and more info](security.md).            | Prefer
 SSL Mode                     | Controls whether SSL is used, depending on server support. [See docs for possible values and more info](security.md).                       | Prefer
 Trust Server Certificate     | Whether to trust the server certificate without validating it. [See docs for more info](security.md).                                       | false
 SSL Certificate              | Location of a client certificate to be sent to the server. [See docs](security.md).                                                         | PGSSLCERT

@@ -37,13 +37,25 @@ dataSource.Password = <new password>;
 
 Any physical connection that's opened after this point will use the newly-injected password.
 
+## GSS session encryption (GSS-API)
+
+Connections to PostgreSQL are unencrypted by default, but you can turn on session encryption if you wish. Npgsql 10 supports GSS-API for session encryption, and defaults to it if PostgreSQL is set up to support GSS-API (GSS-API is preferred over SSL/TLS).
+
+To use GSS-API, configure your PostgreSQL for GSS-API session encryption ([docs](https://www.postgresql.org/docs/current/gssapi-enc.html)). Once that's done, you can use `GSS Encryption Mode` in your connection string to configure support (this is similar to the PG [`gccencmode`](https://www.postgresql.org/docs/16/libpq-connect.html#LIBPQ-CONNECT-GSSENCMODE) parameter):
+
+SSL Mode            | Meaning
+------------------- | ---------
+Disable             | Only try a non-GSSAPI-encrypted connection.
+Prefer (default)    | If there are GSSAPI credentials present (i.e., in a credentials cache), first try a GSSAPI-encrypted connection; if that fails or there are no credentials, try a non-GSSAPI-encrypted connection.
+Require             | Only try a GSSAPI-encrypted connection.
+
+The default mode is `Prefer`, which allows GSS-API session encryption but does not require it.
+
 ## Encryption (SSL/TLS)
 
-By default PostgreSQL connections are unencrypted, but you can turn on SSL/TLS encryption if you wish. First, you have to set up your PostgreSQL to receive SSL/TLS connections [as described here](http://www.postgresql.org/docs/current/static/ssl-tcp.html). Once that's done, specify `SSL Mode` in your connection string as detailed below.
+As an alternative to GSS-API, you can use SSL/TLS. First, you have to set up your PostgreSQL to receive SSL/TLS connections [as described here](http://www.postgresql.org/docs/current/static/ssl-tcp.html). Once that's done, specify `SSL Mode` in your connection string as detailed below.
 
-### [Version 6.0+](#tab/tabid-1)
-
-Starting with 6.0, the following `SSL Mode` values are supported (see the [PostgreSQL docs](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS) for more details):
+The following `SSL Mode` values are supported (see the [PostgreSQL docs](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS) for more details):
 
 SSL Mode            | Eavesdropping protection | Man-in-the-middle protection | Statement
 ------------------- | ------------------------ | ---------------------------- | ---------
@@ -54,25 +66,7 @@ Require<sup>1</sup> | Yes                      | No                           | 
 VerifyCA            | Yes                      | Depends on CA policy         | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust.
 VerifyFull          | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
 
-<sup>1</sup> Prior to Npgsql 8.0, `SSL Mode=Require` required explicitly setting `Trust Server Certificate=true` as well, to make it explicit that the server certificate isn't validated. Starting with 8.0, `Trust Server Certificate=true` is no longer required and does nothing.
-
-The default mode in 6.0+ is `Prefer`, which allows SSL but does not require it, and does not validate certificates.
-
-### [Older versions](#tab/tabid-2)
-
-Versions prior to 6.0 supported the following `SSL Mode` values:
-
-SSL Mode    | Eavesdropping protection | Man-in-the-middle protection | Statement
------------ | ------------------------ | ---------------------------- | ---------
-Disable     | No                       | No                           | I don't care about security, and I don't want to pay the overhead of encryption.
-Prefer      | Maybe                    | Maybe                        | I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
-Require     | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
-
-The default mode prior to 6.0 was `Disable`.
-
-To disable certificate validation when using `Require`, set `Trust Server Certificate` to true; this allows connecting to servers with e.g. self-signed certificates, while still requiring encryption.
-
----
+The default mode is `Prefer`, which allows SSL but does not require it, and does not validate certificates.
 
 ### SSL Negotiation
 
