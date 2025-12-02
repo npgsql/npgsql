@@ -51,6 +51,11 @@ Require             | Only try a GSSAPI-encrypted connection.
 
 The default mode is `Prefer`, which allows GSS-API session encryption but does not require it.
 
+> [!NOTE]
+> Some Linux environments do not have Kerberos installed; since Npgsql 10.0 defaults to `Prefer`, it will attempt to get GSSAPI credentials, and may generate an error such as the following:
+> Cannot load library libgssapi_krb5.so.2: cannot open shared object file: No such file or directory
+> Npgsql internally handles this and falls back to connecting without GSSAPI, so the error is harmless. You can specify `GSS Encryption Mode=Disable` to stop Npgsql from trying to use GSSAPI and remove the error.
+
 ## Encryption (SSL/TLS)
 
 As an alternative to GSS-API, you can use SSL/TLS. First, you have to set up your PostgreSQL to receive SSL/TLS connections [as described here](http://www.postgresql.org/docs/current/static/ssl-tcp.html). Once that's done, specify `SSL Mode` in your connection string as detailed below.
