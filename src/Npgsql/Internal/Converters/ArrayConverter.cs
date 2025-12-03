@@ -353,13 +353,13 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly PgArrayConverter _pgArrayConverter;
 
-    private protected ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
+    private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
-        if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
+        if (!elementTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
-        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsDbNullable, expectedDimensions,
-            bufferRequirements, elemResolution.PgTypeId, pgLowerBound);
+        _pgArrayConverter = new((IElementOperations)this, elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
+            bufferRequirements, elementTypeInfo.PgTypeId, pgLowerBound);
     }
 
     public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
@@ -420,12 +420,12 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     }
 }
 
-sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
+sealed class ArrayBasedArrayConverter<T, TElement>(PgConcreteTypeInfo elementTypeInfo, Type? effectiveType = null, int pgLowerBound = 1)
     : ArrayConverter<T>(expectedDimensions: effectiveType is null ? 1 : effectiveType.IsArray ? effectiveType.GetArrayRank() : null,
-        elemResolution, pgLowerBound), IElementOperations
+        elementTypeInfo, pgLowerBound), IElementOperations
     where T : class
 {
-    readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
+    readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.Converter;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static TElement? GetValue(object collection, Indices indices)
@@ -521,11 +521,11 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
     }
 }
 
-sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemResolution, int pgLowerBound = 1)
-    : ArrayConverter<T>(expectedDimensions: 1, elemResolution, pgLowerBound), IElementOperations
+sealed class ListBasedArrayConverter<T, TElement>(PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
+    : ArrayConverter<T>(expectedDimensions: 1, elementTypeInfo, pgLowerBound), IElementOperations
     where T : class
 {
-    readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
+    readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.Converter;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static TElement? GetValue(object collection, int index)
@@ -595,8 +595,8 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
     }
 }
 
-sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeInfo, Type effectiveType)
-    : PgComposingConverterResolver<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
+sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type effectiveType)
+    : PgComposingTypeInfoProvider<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
         elementTypeInfo)
     where T : class
 {
@@ -605,23 +605,23 @@ sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeI
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
-    protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
     {
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
-            return new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, effectiveType);
+            return new ArrayBasedArrayConverter<T, TElement>(effectiveConcreteTypeInfo, effectiveType);
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
-            return new ListBasedArrayConverter<T, TElement>(effectiveResolution);
+            return new ListBasedArrayConverter<T, TElement>(effectiveConcreteTypeInfo);
 
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
 
-    protected override PgConverterResolution? GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(T? values, PgTypeId? expectedEffectivePgTypeId)
     {
-        PgConverterResolution? resolution = null;
+        PgConcreteTypeInfo? concreteTypeInfo = null;
         if (values is null)
         {
-            resolution = EffectiveTypeInfo.GetDefaultResolution(expectedEffectivePgTypeId);
+            concreteTypeInfo = EffectiveTypeInfo.GetDefaultConcreteTypeInfo(expectedEffectivePgTypeId);
         }
         else
         {
@@ -630,29 +630,29 @@ sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeI
                 case TElement[] array:
                     foreach (var value in array)
                     {
-                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
+                        var result = EffectiveTypeInfo.GetConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
+                        concreteTypeInfo ??= result;
                     }
                     break;
                 case List<TElement> list:
                     foreach (var value in list)
                     {
-                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
+                        var result = EffectiveTypeInfo.GetConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
+                        concreteTypeInfo ??= result;
                     }
                     break;
                 case IList<TElement> list:
                     foreach (var value in list)
                     {
-                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
+                        var result = EffectiveTypeInfo.GetConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
+                        concreteTypeInfo ??= result;
                     }
                     break;
                 case Array array:
                     foreach (var value in array)
                     {
-                        var result = EffectiveTypeInfo.GetResolutionAsObject(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
+                        var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
+                        concreteTypeInfo ??= result;
                     }
                     break;
                 default:
@@ -660,7 +660,7 @@ sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeI
             }
         }
 
-        return resolution;
+        return concreteTypeInfo;
     }
 }
 
@@ -706,34 +706,46 @@ sealed class PolymorphicArrayConverter<TBase>(
         => throw new NotSupportedException("Polymorphic writing is not supported");
 }
 
-sealed class PolymorphicArrayConverterResolver<TBase> : PolymorphicConverterResolver<TBase>
+sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvider<TBase>
 {
-    readonly PgResolverTypeInfo _effectiveInfo;
-    readonly PgResolverTypeInfo _effectiveNullableInfo;
-    readonly ConcurrentDictionary<PgConverter, PgConverter> _converterCache = new(ReferenceEqualityComparer.Instance);
+    readonly PgProviderTypeInfo _effectiveTypeInfo;
+    readonly PgProviderTypeInfo _effectiveNullableTypeInfo;
+    readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
-    public PolymorphicArrayConverterResolver(PgResolverTypeInfo effectiveInfo, PgResolverTypeInfo effectiveNullableInfo)
-        : base(effectiveInfo.PgTypeId!.Value)
+    public PolymorphicArrayTypeInfoProvider(PgProviderTypeInfo effectiveTypeInfo, PgProviderTypeInfo effectiveNullableTypeInfo)
     {
-        if (effectiveInfo.PgTypeId is null || effectiveNullableInfo.PgTypeId is null)
-            throw new InvalidOperationException("Cannot accept undecided infos");
+        if (effectiveTypeInfo.PgTypeId is null || effectiveNullableTypeInfo.PgTypeId is null)
+            throw new ArgumentException("Type info cannot have an undecided PgTypeId.",
+                effectiveTypeInfo.PgTypeId is null ? nameof(effectiveTypeInfo) : nameof(effectiveNullableTypeInfo));
 
-        _effectiveInfo = effectiveInfo;
-        _effectiveNullableInfo = effectiveNullableInfo;
+        _effectiveTypeInfo = effectiveTypeInfo;
+        _effectiveNullableTypeInfo = effectiveNullableTypeInfo;
     }
 
-    protected override PgConverter Get(Field? maybeField)
-    {
-        var structResolution = maybeField is { } field
-            ? _effectiveInfo.GetResolution(field)
-            : _effectiveInfo.GetDefaultResolution(PgTypeId);
-        var nullableResolution = maybeField is { } field2
-            ? _effectiveNullableInfo.GetResolution(field2)
-            : _effectiveNullableInfo.GetDefaultResolution(PgTypeId);
+    protected override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
+        => GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
 
-        (PgConverter StructConverter, PgConverter NullableConverter) state = (structResolution.Converter, nullableResolution.Converter);
-        return _converterCache.GetOrAdd(structResolution.Converter,
-            static (_, state) => new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.StructConverter, (PgConverter<TBase>)state.NullableConverter),
+    protected override PgConcreteTypeInfo? Get(TBase? value, PgTypeId? expectedPgTypeId)
+        => throw new NotSupportedException("Polymorphic writing is not supported.");
+
+    protected override PgConcreteTypeInfo? Get(Field field)
+    {
+        var concreteTypeInfo = _effectiveTypeInfo.GetConcreteTypeInfo(field);
+        var concreteNullableTypeInfo = _effectiveNullableTypeInfo.GetConcreteTypeInfo(field);
+
+        return concreteTypeInfo is not null && concreteNullableTypeInfo is not null
+            ? GetOrAdd(concreteTypeInfo, concreteNullableTypeInfo)
+            : null;
+    }
+
+    PgConcreteTypeInfo GetOrAdd(PgConcreteTypeInfo concreteTypeInfo, PgConcreteTypeInfo concreteNullableTypeInfo)
+    {
+        (PgConcreteTypeInfo ConcreteInfo, PgConcreteTypeInfo ConcreteNullableInfo) state = (concreteTypeInfo, concreteNullableTypeInfo);
+        return _concreteInfoCache.GetOrAdd(concreteTypeInfo,
+            static (_, state) =>
+                new(state.ConcreteInfo.Options,
+                    new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.ConcreteInfo.Converter, (PgConverter<TBase>)state.ConcreteNullableInfo.Converter),
+                    state.ConcreteInfo.PgTypeId),
             state);
     }
 }
