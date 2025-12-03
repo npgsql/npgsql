@@ -42,12 +42,12 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     public override int WriteTimeout
     {
         get => (int) _writeBuf.Timeout.TotalMilliseconds;
-        set => _writeBuf.Timeout = TimeSpan.FromMilliseconds(value);
+        set => _writeBuf.Timeout = value > 0 ? TimeSpan.FromMilliseconds(value) : Timeout.InfiniteTimeSpan;
     }
     public override int ReadTimeout
     {
         get => (int) _readBuf.Timeout.TotalMilliseconds;
-        set => _readBuf.Timeout = TimeSpan.FromMilliseconds(value);
+        set => _readBuf.Timeout = value > 0 ? TimeSpan.FromMilliseconds(value) : Timeout.InfiniteTimeSpan;
     }
 
     /// <summary>

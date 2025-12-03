@@ -46,7 +46,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// </summary>
     public TimeSpan Timeout
     {
-        set => _buf.Timeout = value;
+        set => _buf.Timeout = value > TimeSpan.Zero ? value : System.Threading.Timeout.InfiniteTimeSpan;
     }
 
     Activity? _activity;
