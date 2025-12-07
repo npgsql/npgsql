@@ -63,8 +63,7 @@ static class SystemTextJsonConverter
 
     public static Size GetSize(bool jsonb, SizeContext context, Type type, JsonSerializerOptions options, Encoding encoding, object? value, ref object? writeState)
     {
-        var json = JsonSerializer.Serialize(value, type, options);
-        var bytes = encoding.GetBytes(json);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value, type, options);
         writeState = bytes;
         return bytes.Length + (jsonb ? sizeof(byte) : 0);
     }
