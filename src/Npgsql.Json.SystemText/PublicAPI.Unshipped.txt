@@ -1,2 +1,2 @@
 #nullable enable
-static Npgsql.NpgsqlJsonExtensions.UseJson<TMapper>(this TMapper mapper, System.Text.Json.JsonSerializerOptions? options = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> TMapper
+static Npgsql.NpgsqlJsonExtensions.UseSystemTextJson<TMapper>(this TMapper mapper, System.Text.Json.JsonSerializerOptions? options = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> TMapper

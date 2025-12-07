@@ -27,7 +27,7 @@ public static class NpgsqlJsonExtensions
     /// </param>
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    public static INpgsqlTypeMapper UseJson(
+    public static INpgsqlTypeMapper UseSystemTextJson(
         this INpgsqlTypeMapper mapper,
         JsonSerializerOptions? options = null,
         Type[]? jsonbClrTypes = null,
@@ -52,7 +52,7 @@ public static class NpgsqlJsonExtensions
     /// </param>
     [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
     [RequiresDynamicCode("Serializing arbitrary types to json can require creating new generic types or methods, which requires creating code at runtime. This may not work when AOT compiling.")]
-    public static TMapper UseJson<TMapper>(
+    public static TMapper UseSystemTextJson<TMapper>(
         this TMapper mapper,
         JsonSerializerOptions? options = null,
         Type[]? jsonbClrTypes = null,
