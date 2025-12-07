@@ -19,6 +19,7 @@
     <Project Path="src/Npgsql.DependencyInjection/Npgsql.DependencyInjection.csproj" />
     <Project Path="src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
     <Project Path="src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
+    <Project Path="src/Npgsql.Json/Npgsql.Json.csproj" />
     <Project Path="src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
     <Project Path="src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
     <Project Path="src/Npgsql.OpenTelemetry/Npgsql.OpenTelemetry.csproj" />

@@ -1,0 +1,3 @@
+#nullable enable
+Npgsql.NpgsqlJsonExtensions
+static Npgsql.NpgsqlJsonExtensions.UseJson(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, System.Text.Json.JsonSerializerOptions? options = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!

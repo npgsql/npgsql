@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Authors>Shay Rojansky</Authors>
+    <Description>System.Text.Json plugin for Npgsql, allowing transparent serialization/deserialization of JSON objects directly to and from the database.</Description>
+    <PackageTags>npgsql;postgresql;json;postgres;ado;ado.net;database;sql;system.text.json</PackageTags>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <IsAotCompatible>false</IsAotCompatible>
+    <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Npgsql\Npgsql.csproj" />
+  </ItemGroup>
+</Project>
