@@ -48,20 +48,22 @@ Note: in versions prior to 6.0, the connection string parameter `Convert Infinit
 
 ## Detailed Behavior: Reading values from the database
 
-PostgreSQL type             | Default .NET type          | Non-default .NET types
---------------------------- | -------------------------- | ----------------------
-timestamp with time zone    | DateTime (Utc<sup>1</sup>) | DateTimeOffset (Offset=0)<sup>2</sup>
-timestamp without time zone | DateTime (Unspecified)     |
-date                        | DateTime                   | DateOnly (6.0+)
-time without time zone      | TimeSpan                   | TimeOnly (6.0+)
-time with time zone         | DateTimeOffset             |
-interval                    | TimeSpan (<sup>3</sup>)    | <xref:NpgsqlTypes.NpgsqlInterval>
+PostgreSQL type             | Default .NET type            | Non-default .NET types
+--------------------------- | ---------------------------- | ----------------------
+timestamp with time zone    | DateTime (Utc<sup>1</sup>)   | DateTimeOffset (Offset=0)<sup>2</sup>
+timestamp without time zone | DateTime (Unspecified)       |
+date                        | DateOnly (10.0+)<sup>3</sup> | DateTime
+time without time zone      | TimeOnly (10.0+)<sup>3</sup> | TimeSpan
+time with time zone         | DateTimeOffset               |
+interval                    | TimeSpan (<sup>4</sup>)      | <xref:NpgsqlTypes.NpgsqlInterval>
 
 <sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc. [See the breaking change note for more info](../release-notes/6.0.md#major-changes-to-timestamp-mapping).
 
 <sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` as a DateTimeOffset returns a local offset based on the timezone of the server where Npgsql is running.
 
-<sup>3</sup> PostgreSQL intervals with month or year components cannot be read as TimeSpan. Consider using NodaTime's [Period](https://nodatime.org/3.0.x/api/NodaTime.Period.html) type, or <xref:NpgsqlTypes.NpgsqlInterval>.
+<sup>3</sup> In versions prior to 10.0, reading `date` and `time` returned .NET `DateTime` and `TimeSpan` by default (although reading `DateOnly` and `TimeOnly` was possible). To switch back to the old behavior, see the [10.0 breaking change note](../release-notes/10.0.md#date-and-time-are-now-mapped-to-dateonly-and-timeonly).
+
+<sup>4</sup> PostgreSQL intervals with month or year components cannot be read as TimeSpan. Consider using NodaTime's [Period](https://nodatime.org/3.0.x/api/NodaTime.Period.html) type, or <xref:NpgsqlTypes.NpgsqlInterval>.
 
 ## Detailed Behavior: Sending values to the database
 
