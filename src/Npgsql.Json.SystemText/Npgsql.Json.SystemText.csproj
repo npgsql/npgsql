@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <IsAotCompatible>false</IsAotCompatible>
     <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
+    <RootNamespace>Npgsql.Json</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
