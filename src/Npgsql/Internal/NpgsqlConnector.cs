@@ -1349,9 +1349,9 @@ public sealed partial class NpgsqlConnector
                 {
                     ipAddresses = await Dns.GetHostAddressesAsync(Host,  combinedToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException oce) when (
-                    oce.CancellationToken == combinedToken && !cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     throw new TimeoutException();
                 }
             }
