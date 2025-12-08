@@ -1137,10 +1137,13 @@ public class MultipleHostsTests : TestBase
     {
         var builder = new NpgsqlDataSourceBuilder(ConnectionString);
         await using var dataSource = builder.BuildMultiHost();
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var ex = Assert.ThrowsAsync<OperationCanceledException>(async () =>
         {
-            await using var connection = await dataSource.OpenConnectionAsync(new CancellationToken(true));
+            await using var connection = await dataSource.OpenConnectionAsync(cts.Token);
         });
+        Assert.That(ex.CancellationToken, Is.EqualTo(cts.Token));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4181")]
