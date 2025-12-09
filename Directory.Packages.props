@@ -5,7 +5,7 @@
     
     <!-- For tests only -->
     <DependencyInjectionPackageVersion>10.0.0</DependencyInjectionPackageVersion>
-    <LoggingPackageVersion>10.0.0</LoggingPackageVersion>
+    <LoggingPackageVersion>10.0.1</LoggingPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
