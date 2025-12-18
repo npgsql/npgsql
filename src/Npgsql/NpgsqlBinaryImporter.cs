@@ -8,6 +8,7 @@ using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
+using InfiniteTimeout = System.Threading.Timeout;
 using static Npgsql.Util.Statics;
 
 namespace Npgsql;
@@ -55,7 +56,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         set
         {
-            var timeout = value > TimeSpan.Zero ? value : System.Threading.Timeout.InfiniteTimeSpan;
+            var timeout = value > TimeSpan.Zero ? value : InfiniteTimeout.InfiniteTimeSpan;
             _buf.Timeout = timeout;
             _connector.ReadBuffer.Timeout = timeout;
         }

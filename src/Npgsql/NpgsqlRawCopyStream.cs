@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
+using InfiniteTimeout = System.Threading.Timeout;
 using static Npgsql.Util.Statics;
 
 #pragma warning disable 1591
@@ -42,12 +43,12 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     public override int WriteTimeout
     {
         get => (int) _writeBuf.Timeout.TotalMilliseconds;
-        set => _writeBuf.Timeout = value > 0 ? TimeSpan.FromMilliseconds(value) : Timeout.InfiniteTimeSpan;
+        set => _writeBuf.Timeout = value > 0 ? TimeSpan.FromMilliseconds(value) : InfiniteTimeout.InfiniteTimeSpan;
     }
     public override int ReadTimeout
     {
         get => (int) _readBuf.Timeout.TotalMilliseconds;
-        set => _readBuf.Timeout = value > 0 ? TimeSpan.FromMilliseconds(value) : Timeout.InfiniteTimeSpan;
+        set => _readBuf.Timeout = value > 0 ? TimeSpan.FromMilliseconds(value) : InfiniteTimeout.InfiniteTimeSpan;
     }
 
     /// <summary>
