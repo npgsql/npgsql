@@ -212,4 +212,18 @@ public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
 
         Assert.That(value.Scale, Is.EqualTo(2));
     }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6383")]
+    public async Task Read_Many_Numerics_As_BigInteger([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 1234567890::numeric FROM generate_series(1, 8000)";
+
+        await using var reader = await cmd.ExecuteReaderAsync(behavior);
+        while (await reader.ReadAsync())
+        {
+            Assert.DoesNotThrowAsync(async () => await reader.GetFieldValueAsync<BigInteger>(0));
+        }
+    }
 }
