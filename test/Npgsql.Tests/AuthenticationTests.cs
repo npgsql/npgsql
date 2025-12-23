@@ -48,6 +48,111 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
     }
 
     [Test]
+    public async Task Set_Username_on_NpgsqlDataSource()
+    {
+        var dataSourceBuilder = GetUsernamelessDataSourceBuilder();
+        await using var dataSource = dataSourceBuilder.Build();
+
+        // No password provided
+        Assert.That(() => dataSource.OpenConnectionAsync(), Throws.Exception.TypeOf<PostgresException>());
+
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString);
+        dataSource.Username = connectionStringBuilder.Username!;
+
+        await using var connection1 = await dataSource.OpenConnectionAsync();
+        await using var connection2 = dataSource.OpenConnection();
+    }
+
+    [Test]
+    public async Task Credentials_provider([Values] bool async)
+    {
+        var dataSourceBuilder = GetCredentialslessDataSourceBuilder();
+        
+        var builder = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString);
+
+        var username = builder.Username!;
+        var password = builder.Password!;
+
+        var syncProviderCalled = false;
+        var asyncProviderCalled = false;
+        dataSourceBuilder.UseCredentialsProvider(_ =>
+        {
+            syncProviderCalled = true;
+            return (username, password);
+        }, (_, _) =>
+        {
+            asyncProviderCalled = true;
+            return new((username, password));
+        });
+
+        using var dataSource = dataSourceBuilder.Build();
+        using var conn = async ? await dataSource.OpenConnectionAsync() : dataSource.OpenConnection();
+        Assert.That(async ? asyncProviderCalled : syncProviderCalled, "Password_provider not used");
+    }
+
+    [Test]
+    public void Credentials_provider_exception()
+    {
+        var dataSourceBuilder = GetCredentialslessDataSourceBuilder();
+        dataSourceBuilder.UseCredentialsProvider(_ => throw new Exception(), (_, _) => throw new Exception());
+
+        using var dataSource = dataSourceBuilder.Build();
+        Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync());
+    }
+
+    [Test]
+    public void Both_password_and_credentials_provider_is_not_supported()
+    {
+        var dataSourceBuilder = GetUsernamelessDataSourceBuilder();
+        dataSourceBuilder.UseCredentialsProvider(_ =>
+        {            
+            return ("foo", "bar");
+        }, (_, _) =>
+        {            
+            return new(("foo", "bar"));
+        });
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSetBothCredentialsProviderAndPasswordOrUsername));
+    }
+
+    [Test]
+    public void Both_username_and_credentials_provider_is_not_supported()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        dataSourceBuilder.UseCredentialsProvider(_ =>
+        {
+            return ("foo", "bar");
+        }, (_, _) =>
+        {
+            return new(("foo", "bar"));
+        });
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSetBothCredentialsProviderAndPasswordOrUsername));
+    }
+
+    [Test]
+    public void Credentials_and_password_provider_is_not_supported()
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
+        dataSourceBuilder
+            .UseCredentialsProvider(_ => ("foo", "bar"), (_, _) => new(("foo", "bar")))
+            .UsePasswordProvider(_ => "foo", (_, _) => new("foo"));
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSetCredentialProviderAndPasswordProvider));
+    }
+
+    [Test]
+    public void Credentials_and__periodic_password_provider_is_not_supported()
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
+        dataSourceBuilder
+            .UseCredentialsProvider(_ => ("foo", "bar"), (_, _) => new(("foo", "bar")))
+            .UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10));
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSetCredentialProviderAndPasswordProvider));
+    }
+
+    [Test]
     public async Task Password_provider([Values]bool async)
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
@@ -525,6 +630,25 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
         {
             ConnectionStringBuilder =
             {
+                Password = null
+            }
+        };
+
+    NpgsqlDataSourceBuilder GetUsernamelessDataSourceBuilder()
+        => new(TestUtil.ConnectionString)
+        {
+            ConnectionStringBuilder =
+            {
+                Username = null
+            }
+        };
+
+    NpgsqlDataSourceBuilder GetCredentialslessDataSourceBuilder()
+        => new(TestUtil.ConnectionString)
+        {
+            ConnectionStringBuilder =
+            {
+                Username = null,
                 Password = null
             }
         };
