@@ -302,6 +302,15 @@ jobs:
             dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.DependencyInjection.Tests --logger "GitHubActions;report-warnings=false"
         shell: bash
 
+      - name: Upload Hang Dumps
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: test-hang-dumps
+          path: |
+            **/*.dmp
+            **/Sequence*.xml
+
       - name: Test Plugins
         if: "!startsWith(matrix.os, 'macos')"
         run: |
