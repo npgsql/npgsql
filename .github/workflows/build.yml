@@ -9,6 +9,9 @@ on:
       - '*'
   pull_request:
 
+permissions:
+  contents: read
+
 # Cancel previous PR branch commits (head_ref is only defined on PRs)
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
