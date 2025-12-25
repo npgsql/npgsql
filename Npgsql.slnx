@@ -10,9 +10,8 @@
   <Folder Name="/Github/">
     <File Path=".github/dependabot.yml" />
     <File Path=".github/workflows/build.yml" />
-    <File Path=".github/workflows/codeql-analysis.yml" />
+    <File Path=".github/workflows/trigger-doc-build.yml" />
     <File Path=".github/workflows/native-aot.yml" />
-    <File Path=".github/workflows/rich-code-nav.yml" />
   </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
