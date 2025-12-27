@@ -811,6 +811,27 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
         Assert.That(tags["custom_tag"], Is.EqualTo("custom_value"));
     }
 
+    [Test]
+    public async Task Password_does_not_leak_via_datasource_name([Values] bool persistSecurityInfo)
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.PersistSecurityInfo = persistSecurityInfo;
+        // Do not set the data source name - this makes it default to the connection string, but without
+        // the password (even when Persist Security Info is true)
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        using var activityListener = StartListener(out var activities);
+
+        await ExecuteScalar(connection, async, isBatch: false, query: "SELECT 42");
+
+        var activity = GetSingleActivity(activities, "postgresql", "postgresql");
+
+        var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        var connectionString = new NpgsqlConnectionStringBuilder((string)tags["db.npgsql.data_source"]!);
+        Assert.That(connectionString.Password, Is.Null);
+    }
+
     static ActivityListener StartListener(out List<Activity> activities)
     {
         var a = new List<Activity>();
