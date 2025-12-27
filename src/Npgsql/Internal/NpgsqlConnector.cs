@@ -1339,7 +1339,7 @@ public sealed partial class NpgsqlConnector
         }
         else
         {
-            IPAddress[] ipAddresses;
+            IPAddress[] ipAddresses = [];
             try
             {
                 using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
@@ -1352,7 +1352,8 @@ public sealed partial class NpgsqlConnector
                 catch (OperationCanceledException)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    throw new TimeoutException();
+                    Debug.Assert(timeout.HasExpired);
+                    ThrowHelper.ThrowNpgsqlExceptionWithInnerTimeoutException("The operation has timed out");
                 }
             }
             catch (SocketException ex)

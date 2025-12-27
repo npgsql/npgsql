@@ -301,9 +301,18 @@ jobs:
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
         run: |
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.Tests --hangdump --hangdump-timeout 30s
+            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.Tests --crashdump --hangdump --hangdump-timeout 30s
             dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.DependencyInjection.Tests
         shell: bash
+
+      - name: Upload Test Hang Dumps
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: test-hang-dumps
+          path: |
+            **/*.dmp
+            **/Sequence*.xml
 
       - name: Test Plugins
         if: "!startsWith(matrix.os, 'macos')"
