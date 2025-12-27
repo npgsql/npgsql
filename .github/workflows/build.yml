@@ -312,7 +312,7 @@ jobs:
           name: test-hang-dumps
           path: |
             **/*.dmp
-            **/Sequence*.xml
+            **/*_Sequence.xml
 
       - name: Test Plugins
         if: "!startsWith(matrix.os, 'macos')"
