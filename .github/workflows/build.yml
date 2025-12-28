@@ -301,8 +301,8 @@ jobs:
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
         run: |
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.Tests --logger "GitHubActions;report-warnings=false" --blame-crash --blame-hang-timeout 30s
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.DependencyInjection.Tests --logger "GitHubActions;report-warnings=false"
+            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.Tests --crashdump --hangdump --hangdump-timeout 30s
+            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.DependencyInjection.Tests
         shell: bash
 
       - name: Upload Test Hang Dumps
@@ -318,7 +318,7 @@ jobs:
         if: "!startsWith(matrix.os, 'macos')"
         run: |
             if [ -z "${{ matrix.pg_prerelease }}" ]; then
-                dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
+                dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.PluginTests
             fi
         shell: bash
 

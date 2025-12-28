@@ -7,9 +7,9 @@
 
     <!-- Suppress warnings for [RequiresPreviewFeatures] (<EnablePreviewFeatures> doesn't seem to work across <ProjectReference>) -->
     <NoWarn>$(NoWarn);CA2252</NoWarn>
+
+    <EnableNUnitRunner>true</EnableNUnitRunner>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="GitHubActionsTestLogger" />
-  </ItemGroup>
 </Project>
