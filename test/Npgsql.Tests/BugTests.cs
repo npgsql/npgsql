@@ -4,6 +4,7 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using System;
 using System.Data;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1392,5 +1393,31 @@ $$;");
 
         Assert.DoesNotThrowAsync(stream.FlushAsync);
         Assert.DoesNotThrow(stream.Flush);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6389")]
+    public async Task Composite_with_BigInteger([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} as (value numeric)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<Composite_with_BigInteger_Composite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"SELECT ROW(1234567890::numeric)::{type} FROM generate_series(1, 8000)";
+        await using var reader = await cmd.ExecuteReaderAsync(behavior);
+        while (await reader.ReadAsync())
+        {
+            Assert.DoesNotThrowAsync(async () => await reader.GetFieldValueAsync<Composite_with_BigInteger_Composite>(0));
+        }
+    }
+
+    class Composite_with_BigInteger_Composite
+    {
+        public BigInteger Value { get; set; }
     }
 }
