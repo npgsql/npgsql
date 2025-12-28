@@ -298,11 +298,20 @@ jobs:
             done
             psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'" postgres
 
-      # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
+        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.Tests --crashdump --hangdump --hangdump-timeout 30s
+        shell: bash
+
+      - name: Test DependencyInjection
+        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.DependencyInjection.Tests --crashdump --hangdump --hangdump-timeout 30s
+        shell: bash
+
+      - name: Test Plugins
+        if: "!startsWith(matrix.os, 'macos')"
         run: |
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.Tests --crashdump --hangdump --hangdump-timeout 30s
-            dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.DependencyInjection.Tests
+            if [ -z "${{ matrix.pg_prerelease }}" ]; then
+                dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.PluginTests --crashdump --hangdump --hangdump-timeout 30s
+            fi
         shell: bash
 
       - name: Upload Test Hang Dumps
@@ -313,14 +322,6 @@ jobs:
           path: |
             **/*.dmp
             **/*_Sequence.xml
-
-      - name: Test Plugins
-        if: "!startsWith(matrix.os, 'macos')"
-        run: |
-            if [ -z "${{ matrix.pg_prerelease }}" ]; then
-                dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --no-progress --project test/Npgsql.PluginTests
-            fi
-        shell: bash
 
       - id: analyze_tag
         name: Analyze tag
