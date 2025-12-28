@@ -34,7 +34,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
     {
         // If we don't need a read and can read buffered we delegate to our sync read method which won't do IO in such a case.
         if (!reader.ShouldBuffer(reader.CurrentRemaining))
-            Read(reader);
+            return new(Read(reader));
 
         return AsyncCore(reader, cancellationToken);
 
