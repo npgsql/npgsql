@@ -89,11 +89,6 @@ public abstract class NpgsqlDataSource : DbDataSource
         NpgsqlConnectionStringBuilder settings,
         NpgsqlDataSourceConfiguration dataSourceConfig)
     {
-        Settings = settings;
-        ConnectionString = settings.PersistSecurityInfo
-            ? settings.ToString()
-            : settings.ToStringWithoutPassword();
-
         Configuration = dataSourceConfig;
 
         (var name,
@@ -117,6 +112,21 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Debug.Assert(_passwordProvider is null || _passwordProviderAsync is not null);
 
+        Settings = settings;
+
+        if (settings.PersistSecurityInfo)
+        {
+            ConnectionString = settings.ToString();
+
+            // The data source name is reported in tracing/metrics, so avoid leaking the password through there.
+            Name = name ?? settings.ToStringWithoutPassword();
+        }
+        else
+        {
+            ConnectionString = settings.ToStringWithoutPassword();
+            Name = name ?? ConnectionString;
+        }
+
         _resolverChain = resolverChain;
         _password = settings.Password;
 
@@ -133,7 +143,6 @@ public abstract class NpgsqlDataSource : DbDataSource
             _passwordRefreshTask = Task.Run(RefreshPassword);
         }
 
-        Name = name ?? ConnectionString;
         MetricsReporter = new MetricsReporter(this);
     }
 
