@@ -391,19 +391,7 @@ public abstract class TestBase
             DbType? dbType;
             var actualDbType = p.DbType;
             if (dbTypeApplied)
-            {
-                // As DbType uses NpgsqlDbType for storage we fail to roundtrip when multiple DbTypes map to one NpgsqlDbType.
-                // Can be removed when #6267 lands.
-                dbType = expectedDbType?.DbType switch {
-                    DbType.DateTimeOffset when actualDbType == DbType.DateTime => null,
-                    DbType.VarNumeric when actualDbType == DbType.Decimal => null,
-                    DbType.Byte when actualDbType == DbType.Int16 => null,
-                    DbType.AnsiString when actualDbType == DbType.String => null,
-                    DbType.AnsiStringFixedLength when actualDbType == DbType.String => null,
-                    DbType.StringFixedLength when actualDbType == DbType.String => null,
-                    var value => value
-                };
-            }
+                dbType = expectedDbType?.DbType;
             else if (valueSolelyApplied)
                 dbType = expectedDbType?.ValueInferredDbType ?? DbType.Object;
             else if (dataTypeInference.Kind is DataTypeInferenceKind.Exact || actualDbType != DbType.Object)
