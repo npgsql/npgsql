@@ -47,7 +47,7 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     {
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
         dataSourceBuilder.EnableLTree();
-        if(withArrays)
+        if (withArrays)
             dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
