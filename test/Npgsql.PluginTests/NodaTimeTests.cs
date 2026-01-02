@@ -466,7 +466,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         await AssertType(
             new [] {new DateInterval(new(2002, 3, 4), new(2002, 3, 6))},
             """{"[2002-03-04,2002-03-07)"}""",
-            "daterange[]", dataTypeInference: false,
+            "daterange[]", dataTypeInference:  false,
             skipArrayCheck: true);
 
         await using var conn = await OpenConnectionAsync();
@@ -493,7 +493,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
          await AssertType(
              new [] { new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
              """{"[2002-03-04,2002-03-06)"}""",
-             "daterange[]", dataTypeInference:false,
+             "daterange[]", dataTypeInference: false,
              skipArrayCheck: true);
 
          await using var conn = await OpenConnectionAsync();
@@ -558,7 +558,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         await AssertType(
             new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
             """{"[2002-03-04,2002-03-06)"}""",
-            "daterange[]", dataTypeInference:DataTypeInferenceKind.WellKnown,
+            "daterange[]", dataTypeInference: DataTypeInferenceKind.WellKnown,
             skipArrayCheck: true);
 
         await using var conn = await OpenConnectionAsync();
