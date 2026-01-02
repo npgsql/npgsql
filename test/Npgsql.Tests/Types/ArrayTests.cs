@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
@@ -25,19 +24,19 @@ public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
 {
     static readonly TestCaseData[] ArrayTestCases =
     [
-        new TestCaseData(new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+        new TestCaseData(new[] { 1, 2, 3 }, "{1,2,3}", "integer[]")
             .SetName("Integer_array"),
-        new TestCaseData(Array.Empty<int>(), "{}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+        new TestCaseData(Array.Empty<int>(), "{}", "integer[]")
             .SetName("Empty_array"),
-        new TestCaseData(new[,] { { 1, 2, 3 }, { 7, 8, 9 } }, "{{1,2,3},{7,8,9}}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+        new TestCaseData(new[,] { { 1, 2, 3 }, { 7, 8, 9 } }, "{{1,2,3},{7,8,9}}", "integer[]")
             .SetName("Two_dimensional_array"),
-        new TestCaseData(new[] { [1, 2], new byte[] { 3, 4 } }, """{"\\x0102","\\x0304"}""", "bytea[]", NpgsqlDbType.Bytea | NpgsqlDbType.Array)
+        new TestCaseData(new[] { [1, 2], new byte[] { 3, 4 } }, """{"\\x0102","\\x0304"}""", "bytea[]")
             .SetName("Bytea_array")
     ];
 
     [Test, TestCaseSource(nameof(ArrayTestCases))]
-    public Task Arrays<T>(T array, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType)
-        => AssertType(array, sqlLiteral, pgTypeName, npgsqlDbType);
+    public Task Arrays<T>(T array, string sqlLiteral, string pgTypeName)
+        => AssertType(array, sqlLiteral, pgTypeName);
 
     [Test]
     public async Task NullableInts()
@@ -49,7 +48,7 @@ public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionStringBuilder.ToString());
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new int?[] { 1, 2, null, 3 }, "{1,2,NULL,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+        await AssertType(dataSource, new int?[] { 1, 2, null, 3 }, "{1,2,NULL,3}", "integer[]");
     }
 
     [Test, Description("Checks that PG arrays containing nulls can't be read as CLR arrays of non-nullable value types (the default).")]
@@ -149,17 +148,17 @@ SELECT onedim, twodim FROM (VALUES
     // Note that PG normalizes empty multidimensional arrays to single-dimensional, e.g. ARRAY[[], []]::integer[] returns {}.
     [Test]
     public async Task Write_empty_multidimensional_array()
-        => await AssertTypeWrite(new int[0, 0], "{}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+        => await AssertTypeWrite(new int[0, 0], "{}", "integer[]");
 
     [Test]
     public async Task Generic_List()
         => await AssertType(
-            new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefaultForReading: false);
+            new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", isDefaultForReading: false);
 
     [Test]
     public async Task Write_IList_implementation()
         => await AssertTypeWrite(
-            ImmutableArray.Create(1, 2, 3), "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+            ImmutableArray.Create(1, 2, 3), "{1,2,3}", "integer[]");
 
     [Test]
     public void Read_IList_implementation_throws()
@@ -411,6 +410,6 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+        await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]");
     }
 }

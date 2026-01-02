@@ -1,7 +1,6 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
-using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
 
@@ -61,28 +60,28 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
     [Test, TestCaseSource(nameof(TimestampDateTimeValues))]
     public Task Timestamp_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "timestamp without time zone", NpgsqlDbType.Timestamp, DbType.DateTime2,
+            "timestamp without time zone", DbType.DateTime2,
             comparer: MaxValuePrecisionLenientComparer,
             isDefault: true);
 
     [Test, TestCaseSource(nameof(TimestampTzDateTimeValues))]
     public Task TimestampTz_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(new(dateTime.Ticks, DateTimeKind.Utc), DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTime, DbType.DateTime,
+            "timestamp with time zone", DbType.DateTime, DbType.DateTime,
             comparer: MaxValuePrecisionLenientComparer,
             isDefault: true);
 
     [Test, TestCaseSource(nameof(TimestampTzDateTimeOffsetValues))]
     public Task TimestampTz_DateTimeOffset(DateTimeOffset dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTime, DbType.DateTime,
+            "timestamp with time zone", DbType.DateTime, DbType.DateTime,
             comparer: (expected, actual) => MaxValuePrecisionLenientComparer(expected.DateTime, actual.DateTime),
             isDefault: false);
 
     [Test, TestCaseSource(nameof(DateDateTimeValues))]
     public Task Date_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(DisableDateTimeInfinityConversions ? dateTime.Date : dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "date", NpgsqlDbType.Date, DbType.Date,
+            "date", DbType.Date,
             isDefault: false);
 
     static readonly TestCaseData[] DateOnlyDateTimeValues =
@@ -98,7 +97,7 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
     [Test, TestCaseSource(nameof(DateOnlyDateTimeValues))]
     public Task Date_DateOnly(DateOnly dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(dateTime,
-            DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral, "date", NpgsqlDbType.Date, DbType.Date,
+            DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral, "date", DbType.Date,
             isDefault: false);
 
     NpgsqlDataSource? _dataSource;

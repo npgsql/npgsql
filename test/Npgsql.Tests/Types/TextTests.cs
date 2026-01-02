@@ -19,29 +19,29 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
 {
     [Test]
     public Task Text_as_string()
-        => AssertType("foo", "foo", "text", NpgsqlDbType.Text, DbType.String);
+        => AssertType("foo", "foo", "text", DbType.String);
 
     [Test]
     public Task Text_as_array_of_chars()
-        => AssertType("foo".ToCharArray(), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefaultForReading: false);
+        => AssertType("foo".ToCharArray(), "foo", "text", DbType.String, isDefaultForReading: false);
 
     [Test]
     public Task Text_as_ArraySegment_of_chars()
-        => AssertTypeWrite(new ArraySegment<char>("foo".ToCharArray()), "foo", "text", NpgsqlDbType.Text, DbType.String,
+        => AssertTypeWrite(new ArraySegment<char>("foo".ToCharArray()), "foo", "text", DbType.String,
             isDefault: false);
 
     [Test]
     public Task Text_as_array_of_bytes()
-        => AssertType(Encoding.UTF8.GetBytes("foo"), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+        => AssertType(Encoding.UTF8.GetBytes("foo"), "foo", "text", DbType.String, isDefault: false);
 
     [Test]
     public Task Text_as_ReadOnlyMemory_of_bytes()
-        => AssertTypeWrite(new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes("foo")), "foo", "text", NpgsqlDbType.Text, DbType.String,
+        => AssertTypeWrite(new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes("foo")), "foo", "text", DbType.String,
             isDefault: false);
 
     [Test]
     public Task Char_as_char()
-        => AssertType('f', "f", "character", NpgsqlDbType.Char, inferredDbType: DbType.String, isDefault: false);
+        => AssertType('f', "f", "character", inferredDbType: DbType.String, isDefault: false);
 
     [Test]
     public async Task Citext_as_string()
@@ -49,12 +49,12 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         await using var conn = await OpenConnectionAsync();
         await EnsureExtensionAsync(conn, "citext");
 
-        await AssertType("foo", "foo", "citext", NpgsqlDbType.Citext, inferredDbType: DbType.String, isDefaultForWriting: false);
+        await AssertType("foo", "foo", "citext", inferredDbType: DbType.String, isDefaultForWriting: false);
     }
 
     [Test]
     public Task Text_as_MemoryStream()
-        => AssertTypeWrite(() => new MemoryStream("foo"u8.ToArray()), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+        => AssertTypeWrite(() => new MemoryStream("foo"u8.ToArray()), "foo", "text", DbType.String, isDefault: false);
 
     [Test]
     public async Task Text_long()
@@ -64,7 +64,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         builder.Append('X', conn.Settings.WriteBufferSize);
         var value = builder.ToString();
 
-        await AssertType(value, value, "text", NpgsqlDbType.Text, DbType.String);
+        await AssertType(value, value, "text", DbType.String);
     }
 
     [Test, Description("Tests that strings are truncated when the NpgsqlParameter's Size is set")]
@@ -102,10 +102,10 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     }
 
     [Test, Description("Tests some types which are aliased to strings")]
-    [TestCase("character varying", NpgsqlDbType.Varchar)]
-    [TestCase("name", NpgsqlDbType.Name)]
-    public Task Aliased_postgres_types(string pgTypeName, NpgsqlDbType npgsqlDbType)
-        => AssertType("foo", "foo", pgTypeName, npgsqlDbType, inferredDbType: DbType.String, isDefaultForWriting: false);
+    [TestCase("character varying")]
+    [TestCase("name")]
+    public Task Aliased_postgres_types(string pgTypeName)
+        => AssertType("foo", "foo", pgTypeName, inferredDbType: DbType.String, isDefaultForWriting: false);
 
     [Test]
     [TestCase(DbType.AnsiString)]
