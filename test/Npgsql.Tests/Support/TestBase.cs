@@ -278,13 +278,8 @@ public abstract class TestBase
     {
         var npgsqlDbType = DataTypeName.FromDisplayName(dataTypeName).ToNpgsqlDbType();
 
-        // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
-        // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
-        // connection.TypeMapper.Reset();
-
         // Strip any facet information (length/precision/scale)
         var parenIndex = dataTypeName.IndexOf('(');
-        // var pgTypeNameWithoutFacets = parenIndex > -1 ? pgTypeName[..parenIndex] : pgTypeName;
         var pgTypeNameWithoutFacets = parenIndex > -1
             ? dataTypeName[..parenIndex] + dataTypeName[(dataTypeName.IndexOf(')') + 1)..]
             : dataTypeName;
@@ -344,8 +339,6 @@ public abstract class TestBase
         CheckInference(valueSolelyApplied: true);
         if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
-
-        // Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
 
         cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
             "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
