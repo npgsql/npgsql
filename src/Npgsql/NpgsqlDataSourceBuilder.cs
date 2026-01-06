@@ -395,6 +395,30 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Configures a credentials provider, which is called by the data source when opening connections.
+    /// </summary>
+    /// <param name="credentialsProvider">
+    /// A callback that may be invoked during <see cref="NpgsqlConnection.Open()" /> which returns the username and password to be sent to PostgreSQL.
+    /// </param>
+    /// <param name="credentialsProviderAsync">
+    /// A callback that may be invoked during <see cref="NpgsqlConnection.OpenAsync(CancellationToken)" /> which returns the username and password to be sent to PostgreSQL.
+    /// </param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    /// <remarks>
+    /// <para>
+    /// The provided callback is invoked when opening connections. Therefore its important the callback internally depends on cached
+    /// data or returns quickly otherwise. Any unnecessary delay will affect connection opening time.
+    /// </para>
+    /// </remarks>
+    public NpgsqlDataSourceBuilder UseCredentialsProvider(
+        Func<NpgsqlConnectionStringBuilder, (string Username, string Password)>? credentialsProvider,
+        Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<(string Username, string Password)>>? credentialsProviderAsync)
+    {
+        _internalBuilder.UseCredentialsProvider(credentialsProvider, credentialsProviderAsync);
+        return this;
+    }
+
+    /// <summary>
     /// When using Kerberos, this is a callback that allows customizing default settings for Kerberos authentication.
     /// </summary>
     /// <param name="negotiateOptionsCallback">The callback containing logic to customize Kerberos authentication settings.</param>

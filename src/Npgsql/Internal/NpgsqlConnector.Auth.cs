@@ -1,22 +1,23 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using Npgsql.BackendMessages;
+using Npgsql.Util;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Npgsql.BackendMessages;
-using Npgsql.Util;
 using static Npgsql.Util.Statics;
 
 namespace Npgsql.Internal;
 
 partial class NpgsqlConnector
 {
-    async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    async Task Authenticate(string username, string? password, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         var requiredAuthModes = Settings.RequireAuthModes;
         if (requiredAuthModes == default)
@@ -44,17 +45,17 @@ partial class NpgsqlConnector
 
             case AuthenticationRequestType.CleartextPassword:
                 ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.Password);
-                await AuthenticateCleartext(username, async, cancellationToken).ConfigureAwait(false);
+                await AuthenticateCleartext(username, password, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.MD5Password:
                 ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.MD5);
-                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
+                await AuthenticateMD5(username, password, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken).ConfigureAwait(false);
                 break;
 
             case AuthenticationRequestType.SASL:
                 ThrowIfNotAllowed(requiredAuthModes, RequireAuthMode.ScramSHA256);
-                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
+                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, password, async,
                     cancellationToken).ConfigureAwait(false);
                 break;
 
@@ -81,20 +82,19 @@ partial class NpgsqlConnector
         }
     }
 
-    async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
-    {
-        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(passwd))
+    async Task AuthenticateCleartext(string username, string? password, bool async, CancellationToken cancellationToken = default)
+    {        
+        if (string.IsNullOrEmpty(password))
             throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
-        var encoded = new byte[Encoding.UTF8.GetByteCount(passwd) + 1];
-        Encoding.UTF8.GetBytes(passwd, 0, passwd.Length, encoded, 0);
+        var encoded = new byte[Encoding.UTF8.GetByteCount(password) + 1];
+        Encoding.UTF8.GetBytes(password, 0, password.Length, encoded, 0);
 
         await WritePassword(encoded, async, cancellationToken).ConfigureAwait(false);
         await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
-    async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
+    async Task AuthenticateSASL(List<string> mechanisms, string username, string? password, bool async, CancellationToken cancellationToken)
     {
         // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
         var serverSupportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
@@ -140,9 +140,8 @@ partial class NpgsqlConnector
             // We can get here if PostgreSQL supports only SCRAM-SHA-256-PLUS but there was an error while binding to it
             throw new NpgsqlException("Unable to bind to SCRAM-SHA-256-PLUS, check logs for more information");
         }
-
-        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(passwd))
+       
+        if (string.IsNullOrEmpty(password))
             throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
         // Assumption: the write buffer is big enough to contain all our outgoing messages
@@ -159,7 +158,7 @@ partial class NpgsqlConnector
             throw new NpgsqlException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
 
         var saltBytes = Convert.FromBase64String(firstServerMsg.Salt);
-        var saltedPassword = Hi(passwd.Normalize(NormalizationForm.FormKC), saltBytes, firstServerMsg.Iteration);
+        var saltedPassword = Hi(password.Normalize(NormalizationForm.FormKC), saltBytes, firstServerMsg.Iteration);
 
         var clientKey = HMAC(saltedPassword, "Client Key");
         var storedKey = SHA256.HashData(clientKey);
@@ -282,16 +281,15 @@ partial class NpgsqlConnector
 
     static byte[] HMAC(byte[] key, string data) => HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(data));
 
-    async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
-    {
-        var passwd = await GetPassword(username, async, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(passwd))
+    async Task AuthenticateMD5(string username, string? password, byte[] salt, bool async, CancellationToken cancellationToken = default)
+    {        
+        if (string.IsNullOrEmpty(password))
             throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
         byte[] result;
         {
             // First phase
-            var passwordBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(passwd);
+            var passwordBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(password);
             var usernameBytes = NpgsqlWriteBuffer.UTF8Encoding.GetBytes(username);
             var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
             passwordBytes.CopyTo(cryptBuf, 0);
@@ -362,43 +360,106 @@ partial class NpgsqlConnector
         }
     }
 
-    async ValueTask<string?> GetPassword(string username, bool async, CancellationToken cancellationToken = default)
+    async ValueTask<(string Username, string? Password)> GetCredentials(bool async, CancellationToken cancellationToken = default)
     {
-        var password = await DataSource.GetPassword(async, cancellationToken).ConfigureAwait(false);
+        var (Username, Password) = await DataSource.GetCredentials(async, cancellationToken).ConfigureAwait(false);
 
-        if (password is not null)
-            return password;
-
-        if (ProvidePasswordCallback is { } passwordCallback)
+        if(Username?.Length > 0)
         {
-            try
-            {
-                ConnectionLogger.LogTrace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
-                password = passwordCallback(Host, Port, Settings.Database!, username);
-            }
-            catch (Exception e)
-            {
-                throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
-            }
+            InferredUserName = Username;            
+        }
+        else
+        {
+            Username = await GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
         }
 
-        password ??= PostgresEnvironment.Password;
-
-        if (password != null)
-            return password;
-
-        var passFile = Settings.Passfile ?? PostgresEnvironment.PassFile ?? PostgresEnvironment.PassFileDefault;
-        if (passFile != null)
+        if (Password is null)
         {
-            var matchingEntry = new PgPassFile(passFile!)
-                .GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
-            if (matchingEntry != null)
-            {
-                ConnectionLogger.LogTrace("Taking password from pgpass file");
-                password = matchingEntry.Password;
-            }
+            Password = await GetPassword(Username, async, cancellationToken).ConfigureAwait(false);
         }
 
-        return password;
+        return (Username, Password);
+
+
+        async ValueTask<string?> GetPassword(string username, bool async, CancellationToken cancellationToken = default)
+        {
+            string? password = null;
+
+            if (ProvidePasswordCallback is { } passwordCallback)
+            {
+                try
+                {
+                    ConnectionLogger.LogTrace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
+                    password = passwordCallback(Host, Port, Settings.Database!, username);
+                }
+                catch (Exception e)
+                {
+                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
+                }
+            }
+
+            password ??= PostgresEnvironment.Password;
+
+            if (password != null)
+                return password;
+
+            var passFile = Settings.Passfile ?? PostgresEnvironment.PassFile ?? PostgresEnvironment.PassFileDefault;
+            if (passFile != null)
+            {
+                var matchingEntry = new PgPassFile(passFile!)
+                    .GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
+                if (matchingEntry != null)
+                {
+                    ConnectionLogger.LogTrace("Taking password from pgpass file");
+                    password = matchingEntry.Password;
+                }
+            }
+
+            return password;
+        }
+
+        ValueTask<string> GetUsernameAsync(bool async, CancellationToken cancellationToken)
+        {
+            var username = Settings.Username;
+            if (username?.Length > 0)
+            {
+                InferredUserName = username;
+                return new(username);
+            }
+
+            username = PostgresEnvironment.User;
+            if (username?.Length > 0)
+            {
+                InferredUserName = username;
+                return new(username);
+            }
+
+            return GetUsernameAsyncInternal();
+
+            async ValueTask<string> GetUsernameAsyncInternal()
+            {
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    username = await DataSource.IntegratedSecurityHandler.GetUsername(async, Settings.IncludeRealm, ConnectionLogger,
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (username?.Length > 0)
+                    {
+                        InferredUserName = username;
+                        return username;
+                    }
+                }
+
+                username = Environment.UserName;
+                if (username?.Length > 0)
+                {
+                    InferredUserName = username;
+                    return username;
+                }
+
+                throw new NpgsqlException("No username could be found, please specify one explicitly");
+            }
+        }
     }
+    
 }
