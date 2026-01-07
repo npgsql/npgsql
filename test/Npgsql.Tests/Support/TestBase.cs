@@ -2,7 +2,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +10,7 @@ using Npgsql.Internal.Postgres;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests;
 
@@ -30,245 +30,259 @@ public abstract class TestBase
 
     #region Type testing
 
-    public async Task<T> AssertType<T>(
+    public Task<T> AssertType<T>(
         T value,
         string sqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefaultForReading = true,
-        bool isDefaultForWriting = true,
-        bool? isDefault = null,
-        bool isDataTypeInferredFromValue = true,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
+        bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-    {
-        await using var connection = await OpenConnectionAsync();
-        return await AssertType(
-            connection, value, sqlLiteral, pgTypeName, dbType, inferredDbType, isDefaultForReading, isDefaultForWriting,
-            isDefault, isDataTypeInferredFromValue, comparer, skipArrayCheck);
-    }
+        => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, dataTypeName, dataTypeInference,
+            dbType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
-    public async Task<T> AssertType<T>(
+    public Task<T> AssertType<T>(
         NpgsqlDataSource dataSource,
         T value,
         string sqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefaultForReading = true,
-        bool isDefaultForWriting = true,
-        bool? isDefault = null,
-        bool isDataTypeInferredFromValue = true,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
+        bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-    {
-        await using var connection = await dataSource.OpenConnectionAsync();
+        => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, dataTypeName, dataTypeInference,
+            dbType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
-        return await AssertType(connection, value, sqlLiteral, pgTypeName, dbType, inferredDbType, isDefaultForReading,
-            isDefaultForWriting, isDefault, isDataTypeInferredFromValue, comparer, skipArrayCheck);
-    }
-
-    public async Task<T> AssertType<T>(
+    public Task<T> AssertType<T>(
         NpgsqlConnection connection,
         T value,
         string sqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefaultForReading = true,
-        bool isDefaultForWriting = true,
-        bool? isDefault = null,
-        bool isDataTypeInferredFromValue = true,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
+        bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
-    {
-        if (isDefault is not null)
-            isDefaultForReading = isDefaultForWriting = isDefault.Value;
+        => AssertTypeCore(new(connection), disposeConnection: false, () => value, sqlLiteral, dataTypeName, dataTypeInference,
+            dbType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
-        await AssertTypeWrite(connection, () => value, sqlLiteral, pgTypeName, dbType, inferredDbType, isDefaultForWriting, isDataTypeInferredFromValue, skipArrayCheck);
-        return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading, comparer, fieldType: null, skipArrayCheck);
-    }
+    public Task<T> AssertType<T>(
+        Func<T> valueFactory,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        Type? fieldType = null,
+        Func<T, T, bool>? comparer = null,
+        bool isValueTypeDefaultFieldType = true,
+        bool skipArrayCheck = false)
+        => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, dataTypeName, dataTypeInference,
+            dbType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
 
-    public async Task<T> AssertTypeRead<T>(string sqlLiteral, string pgTypeName, T expected, bool isDefault = true, bool skipArrayCheck = false)
-    {
-        await using var connection = await OpenConnectionAsync();
-        return await AssertTypeRead(connection, sqlLiteral, pgTypeName, expected, isDefault, comparer: null, fieldType: null, skipArrayCheck);
-    }
-
-    public async Task<T> AssertTypeRead<T>(NpgsqlDataSource dataSource, string sqlLiteral, string pgTypeName, T expected,
-        bool isDefault = true, Func<T, T, bool>? comparer = null, Type? fieldType = null, bool skipArrayCheck = false)
-    {
-        await using var connection = await dataSource.OpenConnectionAsync();
-        return await AssertTypeRead(connection, sqlLiteral, pgTypeName, expected, isDefault, comparer, fieldType, skipArrayCheck);
-    }
-
-    public async Task AssertTypeWrite<T>(
+    public Task<T> AssertType<T>(
         NpgsqlDataSource dataSource,
-        T value,
-        string expectedSqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefault = true,
-        bool isDataTypeInferredFromValue = true,
+        Func<T> valueFactory,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        Type? fieldType = null,
+        Func<T, T, bool>? comparer = null,
+        bool isValueTypeDefaultFieldType = true,
+        bool skipArrayCheck = false)
+        => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, dataTypeName, dataTypeInference,
+            dbType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
+
+    public Task<T> AssertType<T>(
+        NpgsqlConnection connection,
+        Func<T> valueFactory,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        Type? fieldType = null,
+        Func<T, T, bool>? comparer = null,
+        bool isValueTypeDefaultFieldType = true,
+        bool skipArrayCheck = false)
+        => AssertTypeCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, dataTypeName, dataTypeInference,
+            dbType, fieldType, comparer, isValueTypeDefaultFieldType, skipArrayCheck);
+
+    static async Task<T> AssertTypeCore<T>(
+        ValueTask<NpgsqlConnection> connectionTask,
+        bool disposeConnection,
+        Func<T> valueFactory,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        Type? fieldType = null,
+        Func<T, T, bool>? comparer = null,
+        bool isValueTypeDefaultFieldType = true,
         bool skipArrayCheck = false)
     {
-        await using var connection = await dataSource.OpenConnectionAsync();
+        var connection = await connectionTask;
+        await using var _ = disposeConnection ? connection : null;
 
-        await AssertTypeWrite(connection, () => value, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault,
-            isDataTypeInferredFromValue, skipArrayCheck);
+        await AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral,
+            dataTypeName, dataTypeInference, dbType, skipArrayCheck);
+        return await AssertTypeReadCore(new(connection), disposeConnection: false, sqlLiteral, dataTypeName, valueFactory(),
+            isValueTypeDefaultFieldType: isValueTypeDefaultFieldType, comparer, fieldType, skipArrayCheck);
     }
 
     public Task AssertTypeWrite<T>(
         T value,
-        string expectedSqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefault = true,
-        bool isDataTypeInferredFromValue = true,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
         bool skipArrayCheck = false)
-        => AssertTypeWrite(() => value, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault,
-            isDataTypeInferredFromValue, skipArrayCheck);
+        => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral,
+            dataTypeName, dataTypeInference, dbType, skipArrayCheck);
 
-    public async Task AssertTypeWrite<T>(
+    public Task AssertTypeWrite<T>(
+        NpgsqlDataSource dataSource,
+        T value,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        bool skipArrayCheck = false)
+        => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral,
+            dataTypeName, dataTypeInference, dbType, skipArrayCheck);
+
+    public Task AssertTypeWrite<T>(
+        NpgsqlConnection connection,
+        T value,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        bool skipArrayCheck = false)
+        => AssertTypeWriteCore(new(connection), disposeConnection: false, () => value, sqlLiteral, dataTypeName, dataTypeInference,
+            dbType, skipArrayCheck);
+
+    public Task AssertTypeWrite<T>(
         Func<T> valueFactory,
-        string expectedSqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefault = true,
-        bool isDataTypeInferredFromValue = true,
-        bool skipArrayCheck = false)
-    {
-        await using var connection = await OpenConnectionAsync();
-        await AssertTypeWrite(connection, valueFactory, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault, isDataTypeInferredFromValue, skipArrayCheck);
-    }
-
-    internal static async Task<T> AssertTypeRead<T>(
-        NpgsqlConnection connection,
         string sqlLiteral,
-        string pgTypeName,
-        T expected,
-        bool isDefault = true,
-        Func<T, T, bool>? comparer = null,
-        Type? fieldType = null,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
         bool skipArrayCheck = false)
-    {
-        var result = await AssertTypeReadCore(connection, sqlLiteral, pgTypeName, expected, isDefault, comparer);
+        => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral,
+            dataTypeName, dataTypeInference, dbType, skipArrayCheck);
 
-        // Check the corresponding array type as well
-        if (!skipArrayCheck && !pgTypeName.EndsWith("[]", StringComparison.Ordinal))
-        {
-            await AssertTypeReadCore(
-                connection,
-                ArrayLiteral(sqlLiteral),
-                pgTypeName + "[]",
-                new[] { expected, expected },
-                isDefault,
-                comparer is null ? null : (array1, array2) => comparer(array1[0], array2[0]) && comparer(array1[1], array2[1]));
-        }
-
-        return result;
-    }
-
-    internal static async Task<T> AssertTypeReadCore<T>(
-        NpgsqlConnection connection,
+    public Task AssertTypeWrite<T>(
+        NpgsqlDataSource dataSource,
+        Func<T> valueFactory,
         string sqlLiteral,
-        string pgTypeName,
-        T expected,
-        bool isDefault = true,
-        Func<T, T, bool>? comparer = null,
-        Type? fieldType = null)
-    {
-        if (sqlLiteral.Contains('\''))
-            sqlLiteral = sqlLiteral.Replace("'", "''");
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
+        bool skipArrayCheck = false)
+        => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral,
+            dataTypeName, dataTypeInference, dbType, skipArrayCheck);
 
-        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", connection);
-        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        await reader.ReadAsync();
-
-        var truncatedSqlLiteral = sqlLiteral.Length > 40 ? sqlLiteral[..40] + "..." : sqlLiteral;
-
-        var dataTypeName = reader.GetDataTypeName(0);
-        var dotIndex = dataTypeName.IndexOf('.');
-        if (dotIndex > -1 && dataTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
-            dataTypeName = dataTypeName.Substring(dotIndex + 1);
-
-        // For composite type with dots, postgres works only with quoted name - scheme."My.type.name"
-        // but npgsql converts it to name without quotes
-        var pgTypeNameWithoutQuotes = dataTypeName.Replace("\"", string.Empty);
-        Assert.That(dataTypeName, Is.EqualTo(pgTypeNameWithoutQuotes),
-            $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
-
-        if (isDefault)
-        {
-            // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(dataTypeName.EndsWith("[]") ? typeof(Array) : fieldType ?? typeof(T)),
-                $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
-        }
-
-        var actual = isDefault ? (T)reader.GetValue(0) : reader.GetFieldValue<T>(0);
-
-        Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
-            $"Got wrong result from GetFieldValue value when reading '{truncatedSqlLiteral}'");
-
-        return actual;
-    }
-
-    internal static async Task AssertTypeWrite<T>(
+    public Task AssertTypeWrite<T>(
         NpgsqlConnection connection,
         Func<T> valueFactory,
-        string expectedSqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefault = true,
-        bool isDataTypeInferredFromValue = true,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference = null,
+        ExpectedDbType? dbType = null,
         bool skipArrayCheck = false)
+        => AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral,
+            dataTypeName, dataTypeInference, dbType, skipArrayCheck);
+
+    static async Task AssertTypeWriteCore<T>(
+        ValueTask<NpgsqlConnection> connectionTask,
+        bool disposeConnection,
+        Func<T> valueFactory,
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference? dataTypeInference,
+        ExpectedDbType? dbType,
+        bool skipArrayCheck)
     {
+        var connection = await connectionTask;
+        await using var _ = disposeConnection ? connection : null;
+
         await AssertTypeWriteCore(
-            connection, valueFactory, expectedSqlLiteral, pgTypeName, dbType, inferredDbType, isDefault,
-            isDataTypeInferredFromValue);
+            connection, valueFactory, sqlLiteral,
+            dataTypeName, dataTypeInference ?? true,
+            dbType);
 
         // Check the corresponding array type as well
-        if (!skipArrayCheck && !pgTypeName.EndsWith("[]", StringComparison.Ordinal))
+        if (!skipArrayCheck && !dataTypeName.EndsWith("[]", StringComparison.Ordinal))
         {
             await AssertTypeWriteCore(
                 connection,
                 () => new[] { valueFactory(), valueFactory() },
-                ArrayLiteral(expectedSqlLiteral),
-                pgTypeName + "[]",
-                dbType: null,
-                inferredDbType: null,
-                isDefault,
-                isDataTypeInferredFromValue);
+                ArrayLiteral(sqlLiteral),
+                dataTypeName + "[]", dataTypeInference ?? true,
+                expectedDbType: null);
         }
+    }
+
+    public enum DataTypeInferenceKind
+    {
+        Exact,
+        WellKnown,
+        Unknown,
+    }
+
+    public readonly struct DataTypeInference(DataTypeInferenceKind kind)
+    {
+        public DataTypeInferenceKind Kind { get; } = kind;
+        public static implicit operator DataTypeInference(bool isDataTypeInferredFromValue)
+            => new(isDataTypeInferredFromValue ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.Unknown);
+        public static implicit operator DataTypeInference(DataTypeInferenceKind kind)
+            => new(kind);
+    }
+
+    public readonly struct ExpectedDbType
+    {
+        public DbType DbType { get; }
+        public DbType DataTypeNameDbType { get; }
+        public DbType ValueInferredDbType { get; }
+
+        public ExpectedDbType(DbType dbType, DbType dataTypeNameDbType, DbType valueInferredDbType)
+        {
+            DbType = dbType;
+            DataTypeNameDbType = dataTypeNameDbType;
+            ValueInferredDbType = valueInferredDbType;
+        }
+
+        public ExpectedDbType(DbType dataTypeNameDbType, DbType valueInferredDbType)
+        {
+            DataTypeNameDbType = dataTypeNameDbType;
+            DbType = ValueInferredDbType = valueInferredDbType;
+        }
+
+        ExpectedDbType(DbType dbType) : this(dbType, dbType, dbType) {}
+
+        public static implicit operator ExpectedDbType(DbType dbType) => new(dbType);
     }
 
     static async Task AssertTypeWriteCore<T>(
         NpgsqlConnection connection,
         Func<T> valueFactory,
-        string expectedSqlLiteral,
-        string pgTypeName,
-        DbType? dbType = null,
-        DbType? inferredDbType = null,
-        bool isDefault = true,
-        bool isDataTypeInferredFromValue = true)
+        string sqlLiteral,
+        string dataTypeName,
+        DataTypeInference dataTypeInference,
+        ExpectedDbType? expectedDbType)
     {
-        var npgsqlDbType = DataTypeName.FromDisplayName(pgTypeName).ToNpgsqlDbType();
-
-        // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
-        // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
-        // connection.TypeMapper.Reset();
+        var npgsqlDbType = DataTypeName.FromDisplayName(dataTypeName).ToNpgsqlDbType();
 
         // Strip any facet information (length/precision/scale)
-        var parenIndex = pgTypeName.IndexOf('(');
-        // var pgTypeNameWithoutFacets = parenIndex > -1 ? pgTypeName[..parenIndex] : pgTypeName;
+        var parenIndex = dataTypeName.IndexOf('(');
         var pgTypeNameWithoutFacets = parenIndex > -1
-            ? pgTypeName[..parenIndex] + pgTypeName[(pgTypeName.IndexOf(')') + 1)..]
-            : pgTypeName;
+            ? dataTypeName[..parenIndex] + dataTypeName[(dataTypeName.IndexOf(')') + 1)..]
+            : dataTypeName;
 
         // For composite type with dots in name, Postgresql returns name with quotes - scheme."My.type.name"
         // but for npgsql mapping we should use names without quotes - scheme.My.type.name
@@ -289,44 +303,42 @@ public abstract class TestBase
 
         // With data type name
         p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacetsAndQuotes };
-        cmd.Parameters.Add(p);
         errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacetsAndQuotes}";
         CheckInference();
+        cmd.Parameters.Add(p);
 
         // With NpgsqlDbType
         if (npgsqlDbType is not null)
         {
             p = new NpgsqlParameter { Value = valueFactory(), NpgsqlDbType = npgsqlDbType.Value };
-            cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"NpgsqlDbType={npgsqlDbType}";
             CheckInference();
+            cmd.Parameters.Add(p);
         }
 
         // With DbType
-        if (dbType is not null)
+        if (expectedDbType?.DbType is { } dbType)
         {
-            p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType.Value };
-            cmd.Parameters.Add(p);
+            p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType };
             errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
             CheckInference(dbTypeApplied: true);
+            if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
+                cmd.Parameters.Add(p);
         }
 
-        if (isDefault)
-        {
-            // With (non-generic) value only
-            p = new NpgsqlParameter { Value = valueFactory() };
+        // With (non-generic) value only
+        p = new NpgsqlParameter { Value = valueFactory() };
+        errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
+        CheckInference(valueSolelyApplied: true);
+        if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
-            errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
-            CheckInference(valueSolelyApplied: true);
 
-            // With (generic) value only
-            p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
+        // With (generic) value only
+        p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
+        errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
+        CheckInference(valueSolelyApplied: true);
+        if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
-            errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
-            CheckInference(valueSolelyApplied: true);
-        }
-
-        Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
 
         cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
             "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
@@ -336,72 +348,189 @@ public abstract class TestBase
 
         for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
         {
-            Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {errorIdentifier[i / 2]}");
-            Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
+            var error = errorIdentifier[i / 2];
+            Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {error}");
+            Assert.That(reader[i+1], Is.EqualTo(sqlLiteral), $"Got wrong SQL literal when writing with {error}");
         }
 
         void CheckInference(bool dbTypeApplied = false, bool valueSolelyApplied = false)
         {
-            if (!valueSolelyApplied || isDataTypeInferredFromValue)
-                Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacetsAndQuotes),
+            var expectedDataTypeName = pgTypeNameWithoutFacetsAndQuotes;
+            var expectedNpgsqlDbType = npgsqlDbType ?? NpgsqlDbType.Unknown;
+            if (valueSolelyApplied)
+            {
+                switch (dataTypeInference.Kind)
+                {
+                    // Only respect WellKnown if the type is actually well known.
+                    case DataTypeInferenceKind.WellKnown when p.NpgsqlDbType is not NpgsqlDbType.Unknown:
+                        expectedDataTypeName = p.DataTypeName;
+                        expectedNpgsqlDbType = p.NpgsqlDbType;
+                        break;
+                    case DataTypeInferenceKind.Unknown:
+                        expectedDataTypeName = null;
+                        expectedNpgsqlDbType = NpgsqlDbType.Unknown;
+                        break;
+                }
+            }
+
+            if (!dbTypeApplied || dataTypeInference.Kind is DataTypeInferenceKind.Exact)
+            {
+                Assert.That(p.DataTypeName, Is.EqualTo(expectedDataTypeName),
                     () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
-
-            if (!valueSolelyApplied || isDataTypeInferredFromValue)
-                Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType ?? NpgsqlDbType.Unknown),
+                Assert.That(p.NpgsqlDbType, Is.EqualTo(expectedNpgsqlDbType),
                     () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+            }
 
-            DbType expectedDbType;
+            DbType? dbType;
+            var actualDbType = p.DbType;
             if (dbTypeApplied)
-                expectedDbType = dbType.GetValueOrDefault();
-            else if (!valueSolelyApplied || isDataTypeInferredFromValue)
-                expectedDbType = inferredDbType ?? dbType ?? DbType.Object;
+                dbType = expectedDbType?.DbType;
+            else if (valueSolelyApplied)
+                dbType = expectedDbType?.ValueInferredDbType ?? DbType.Object;
+            else if (dataTypeInference.Kind is DataTypeInferenceKind.Exact || actualDbType != DbType.Object)
+                dbType = expectedDbType?.DataTypeNameDbType ?? DbType.Object;
+            // If data type is not inferrable from the value and the actual db type is object we'll skip the DbType check.
+            // This allows callers to pass DbType through implicit conversion instead of requiring new ExpectedDbType(DbType.Object, #DbType#)
             else
-                expectedDbType = DbType.Object;
-            Assert.That(p.DbType, Is.EqualTo(expectedDbType),
-                () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+                dbType = null;
+
+            if (dbType is not null)
+                Assert.That(actualDbType, Is.EqualTo(dbType),
+                    () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
         }
     }
 
-    public async Task AssertTypeUnsupported<T>(T value, string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    public Task<T> AssertTypeRead<T>(string sqlLiteral, string dataTypeName, T expected,
+        bool isValueTypeDefaultFieldType = true, Func<T, T, bool>? comparer = null, Type? fieldType = null, bool skipArrayCheck = false)
+        => AssertTypeReadCore(OpenConnectionAsync(), disposeConnection: true, sqlLiteral, dataTypeName,
+            expected, isValueTypeDefaultFieldType, comparer, fieldType, skipArrayCheck);
+
+    public Task<T> AssertTypeRead<T>(NpgsqlDataSource dataSource, string sqlLiteral, string dataTypeName, T expected,
+        bool isValueTypeDefaultFieldType = true, Func<T, T, bool>? comparer = null, Type? fieldType = null, bool skipArrayCheck = false)
+        => AssertTypeReadCore(dataSource.OpenConnectionAsync(), disposeConnection: true, sqlLiteral, dataTypeName,
+            expected, isValueTypeDefaultFieldType, comparer, fieldType, skipArrayCheck);
+
+    public Task<T> AssertTypeRead<T>(NpgsqlConnection connection, string sqlLiteral, string dataTypeName, T expected,
+        bool isValueTypeDefaultFieldType = true, Func<T, T, bool>? comparer = null, Type? fieldType = null, bool skipArrayCheck = false)
+        => AssertTypeReadCore(new(connection), disposeConnection: false, sqlLiteral, dataTypeName,
+            expected, isValueTypeDefaultFieldType, comparer, fieldType, skipArrayCheck);
+
+    static async Task<T> AssertTypeReadCore<T>(
+        ValueTask<NpgsqlConnection> connectionTask,
+        bool disposeConnection,
+        string sqlLiteral,
+        string dataTypeName,
+        T expected,
+        bool isValueTypeDefaultFieldType,
+        Func<T, T, bool>? comparer,
+        Type? fieldType,
+        bool skipArrayCheck)
     {
-        await AssertTypeUnsupportedRead<T>(sqlLiteral, pgTypeName, dataSource);
-        await AssertTypeUnsupportedWrite(value, pgTypeName, dataSource);
+        var connection = await connectionTask;
+        await using var _ = disposeConnection ? connection : null;
+
+        var result = await AssertTypeReadCore(connection, sqlLiteral, dataTypeName, expected, isValueTypeDefaultFieldType, comparer,
+            fieldType);
+
+        // Check the corresponding array type as well
+        if (!skipArrayCheck && !dataTypeName.EndsWith("[]", StringComparison.Ordinal))
+        {
+            await AssertTypeReadCore(
+                connection,
+                ArrayLiteral(sqlLiteral),
+                dataTypeName + "[]",
+                new[] { expected, expected },
+                isValueTypeDefaultFieldType,
+                comparer is null ? null : (array1, array2) => comparer(array1[0], array2[0]) && comparer(array1[1], array2[1]),
+                fieldType?.MakeArrayType());
+        }
+        return result;
     }
 
-    public async Task<InvalidCastException> AssertTypeUnsupportedRead(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    static async Task<T> AssertTypeReadCore<T>(
+        NpgsqlConnection connection,
+        string sqlLiteral,
+        string dataTypeName,
+        T expected,
+        bool isValueTypeDefaultFieldType,
+        Func<T, T, bool>? comparer,
+        Type? fieldType)
+    {
+        if (sqlLiteral.Contains('\''))
+            sqlLiteral = sqlLiteral.Replace("'", "''");
+
+        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", connection);
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await reader.ReadAsync();
+
+        var truncatedSqlLiteral = sqlLiteral.Length > 40 ? sqlLiteral[..40] + "..." : sqlLiteral;
+
+        var readerTypeName = reader.GetDataTypeName(0);
+        var dotIndex = readerTypeName.IndexOf('.');
+        if (dotIndex > -1 && readerTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
+            readerTypeName = readerTypeName.Substring(dotIndex + 1);
+
+        // For composite type with dots, postgres works only with quoted name - scheme."My.type.name"
+        // but npgsql converts it to name without quotes
+        var pgTypeNameWithoutQuotes = readerTypeName.Replace("\"", string.Empty);
+        Assert.That(readerTypeName, Is.EqualTo(pgTypeNameWithoutQuotes),
+            $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
+
+        // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality.
+        var isArray = readerTypeName.EndsWith("[]");
+        Assert.That(reader.GetFieldType(0),
+            (isValueTypeDefaultFieldType || isArray ? new ConstraintExpression() : Is.Not)
+                .EqualTo(isArray ? typeof(Array) : fieldType ?? typeof(T)),
+            $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
+
+        var actual = reader.GetFieldValue<T>(0);
+
+        Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
+            $"Got wrong result from GetFieldValue value when reading '{truncatedSqlLiteral}'");
+
+        return actual;
+    }
+
+    public async Task AssertTypeUnsupported<T>(T value, string sqlLiteral, string dataTypeName, NpgsqlDataSource? dataSource = null)
+    {
+        await AssertTypeUnsupportedRead<T>(sqlLiteral, dataTypeName, dataSource);
+        await AssertTypeUnsupportedWrite(value, dataTypeName, dataSource);
+    }
+
+    public async Task<InvalidCastException> AssertTypeUnsupportedRead(string sqlLiteral, string dataTypeName, NpgsqlDataSource? dataSource = null)
     {
         dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
         // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
         await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
-        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
+        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
         return Assert.Throws<InvalidCastException>(() => reader.GetValue(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName,
+    public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string dataTypeName,
         NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
-        => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, pgTypeName, dataSource);
+        => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, dataTypeName, dataSource);
 
-    public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName,
+    public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string dataTypeName,
         NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
         where TException : Exception
     {
-        var result = await AssertTypeUnsupportedReadCore<T, TException>(sqlLiteral, pgTypeName, dataSource);
+        var result = await AssertTypeUnsupportedReadCore<T, TException>(sqlLiteral, dataTypeName, dataSource);
 
         // Check the corresponding array type as well
-        if (!skipArrayCheck && !pgTypeName.EndsWith("[]", StringComparison.Ordinal))
+        if (!skipArrayCheck && !dataTypeName.EndsWith("[]", StringComparison.Ordinal))
         {
-            await AssertTypeUnsupportedReadCore<T[], TException>(ArrayLiteral(sqlLiteral), pgTypeName + "[]", dataSource);
+            await AssertTypeUnsupportedReadCore<T[], TException>(ArrayLiteral(sqlLiteral), dataTypeName + "[]", dataSource);
         }
 
         return result;
     }
 
-    async Task<TException> AssertTypeUnsupportedReadCore<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    async Task<TException> AssertTypeUnsupportedReadCore<T, TException>(string sqlLiteral, string dataTypeName, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
         dataSource ??= DataSource;
@@ -409,33 +538,33 @@ public abstract class TestBase
         await using var conn = await dataSource.OpenConnectionAsync();
         // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
         await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
-        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
+        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
         return Assert.Throws<TException>(() => reader.GetFieldValue<T>(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null,
+    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? dataTypeName = null, NpgsqlDataSource? dataSource = null,
         bool skipArrayCheck = false)
-        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName, dataSource, skipArrayCheck: false);
+        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, dataTypeName, dataSource, skipArrayCheck: false);
 
-    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null,
+    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? dataTypeName = null,
         NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
         where TException : Exception
     {
-        var result = await AssertTypeUnsupportedWriteCore<T, TException>(value, pgTypeName, dataSource);
+        var result = await AssertTypeUnsupportedWriteCore<T, TException>(value, dataTypeName, dataSource);
 
         // Check the corresponding array type as well
-        if (!skipArrayCheck && !pgTypeName?.EndsWith("[]", StringComparison.Ordinal) == true)
+        if (!skipArrayCheck && !dataTypeName?.EndsWith("[]", StringComparison.Ordinal) == true)
         {
-            await AssertTypeUnsupportedWriteCore<T[], TException>([value, value], pgTypeName + "[]", dataSource);
+            await AssertTypeUnsupportedWriteCore<T[], TException>([value, value], dataTypeName + "[]", dataSource);
         }
 
         return result;
     }
 
-    async Task<TException> AssertTypeUnsupportedWriteCore<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
+    async Task<TException> AssertTypeUnsupportedWriteCore<T, TException>(T value, string? dataTypeName = null, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
         dataSource ??= DataSource;
@@ -448,8 +577,8 @@ public abstract class TestBase
             Parameters = { new() { Value = value } }
         };
 
-        if (pgTypeName is not null)
-            cmd.Parameters[0].DataTypeName = pgTypeName;
+        if (dataTypeName is not null)
+            cmd.Parameters[0].DataTypeName = dataTypeName;
 
         return Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync())!;
     }
