@@ -4,7 +4,7 @@
     <DependencyInjectionAbstractionsPackageVersion>10.0.1</DependencyInjectionAbstractionsPackageVersion>
     
     <!-- For tests only -->
-    <DependencyInjectionPackageVersion>10.0.1</DependencyInjectionPackageVersion>
+    <DependencyInjectionPackageVersion>10.0.2</DependencyInjectionPackageVersion>
     <LoggingPackageVersion>10.0.1</LoggingPackageVersion>
   </PropertyGroup>
 
