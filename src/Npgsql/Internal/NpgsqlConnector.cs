@@ -2018,7 +2018,7 @@ public sealed partial class NpgsqlConnector
             }
             else
             {
-                Debug.Assert(caCertificates is null or { Count: > 0 });
+                Debug.Assert(caCertificates is null or { Count: 0 });
                 if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
                     certs.ImportFromPemFile(certRootPath);
 
