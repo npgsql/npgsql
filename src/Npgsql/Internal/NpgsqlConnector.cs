@@ -1146,6 +1146,7 @@ public sealed partial class NpgsqlConnector
             var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
             RemoteCertificateValidationCallback? certificateValidationCallback;
+            X509ChainPolicy? certificateChainPolicy = null;
             X509Certificate2Collection? caCerts;
             string? certRootPath = null;
 
@@ -1154,20 +1155,26 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }
-            else if (((caCerts = DataSource.TransportSecurityHandler.RootCertificatesCallback?.Invoke()) is not null && caCerts.Count > 0) ||
-                     (certRootPath = Settings.RootCertificate ??
-                                     PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
-            {
-                certificateValidationCallback = SslRootValidation(sslMode == SslMode.VerifyFull, certRootPath, caCerts);
-            }
-            else if (sslMode == SslMode.VerifyCA)
-            {
-                certificateValidationCallback = SslVerifyCAValidation;
-            }
             else
             {
-                Debug.Assert(sslMode == SslMode.VerifyFull);
-                certificateValidationCallback = SslVerifyFullValidation;
+                if (sslMode == SslMode.VerifyCA)
+                {
+                    certificateValidationCallback = SslVerifyCAValidation;
+                }
+                else
+                {
+                    Debug.Assert(sslMode == SslMode.VerifyFull);
+                    certificateValidationCallback = SslVerifyFullValidation;
+                }
+
+                if (((caCerts = DataSource.TransportSecurityHandler.RootCertificatesCallback?.Invoke()) is not null && caCerts.Count > 0) ||
+                    (certRootPath = Settings.RootCertificate ??
+                                    PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
+                {
+                    // Do not use system certificates in addition to custom root certificates
+                    // This is the exact same behavior as libpq
+                    certificateChainPolicy = GetCustomCertificateChainPolicy(certRootPath, caCerts);
+                }
             }
 
             SslStreamCertificateContext? clientCertificateContext = null;
@@ -1193,6 +1200,7 @@ public sealed partial class NpgsqlConnector
             var sslStreamOptions = new SslClientAuthenticationOptions
             {
                 TargetHost = host,
+                CertificateChainPolicy = certificateChainPolicy,
                 ClientCertificateContext = clientCertificateContext,
                 EnabledSslProtocols = SslProtocols.None,
                 CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck,
@@ -1996,28 +2004,19 @@ public sealed partial class NpgsqlConnector
         (sender, certificate, chain, sslPolicyErrors)
             => true;
 
-    static RemoteCertificateValidationCallback SslRootValidation(bool verifyFull, string? certRootPath, X509Certificate2Collection? caCertificates)
-        => (_, certificate, chain, sslPolicyErrors) =>
-        {
-            if (certificate is null || chain is null)
-                return false;
+    private static X509ChainPolicy GetCustomCertificateChainPolicy(string? certRootPath, X509Certificate2Collection? caCertificates)
+    {
+        var certs = GetCustomRootCertificates(certRootPath, caCertificates);
 
-            // Even if there was no error while validating, we have to check one more time with the provided certificate
-            // As this is the exact same behavior as libpq
+        var certificateChainPolicy = new X509ChainPolicy();
 
-            // That's VerifyFull check and we have name mismatch - no reason to check further
-            if (verifyFull && sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
-                return false;
+        certificateChainPolicy.CustomTrustStore.AddRange(certs);
+        certificateChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
 
-            var certs = GetCustomRootCertificates(certRootPath, caCertificates);
+        certificateChainPolicy.ExtraStore.AddRange(certs);
 
-            chain.ChainPolicy.CustomTrustStore.AddRange(certs);
-            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-
-            chain.ChainPolicy.ExtraStore.AddRange(certs);
-
-            return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
-        };
+        return certificateChainPolicy;
+    }
 
     private static X509Certificate2Collection GetCustomRootCertificates(string? certRootPath, X509Certificate2Collection? caCertificates)
     {
