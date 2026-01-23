@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -2018,6 +2019,8 @@ public sealed partial class NpgsqlConnector
         return certificateChainPolicy;
     }
 
+    private static readonly ConcurrentDictionary<string, X509Certificate2Collection> CustomRootCertificateCache = new();
+
     private static X509Certificate2Collection GetCustomRootCertificates(string? certRootPath, X509Certificate2Collection? caCertificates)
     {
         if (certRootPath is null)
@@ -2028,20 +2031,24 @@ public sealed partial class NpgsqlConnector
         else
         {
             Debug.Assert(caCertificates is null or { Count: 0 });
-
-            var certs = new X509Certificate2Collection();
-
-            if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
-                certs.ImportFromPemFile(certRootPath);
-
-            if (certs.Count == 0)
-            {
-                // This is not a PEM certificate, probably PFX
-                certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
-            }
-
-            return certs;
+            return CustomRootCertificateCache.GetOrAdd(certRootPath, LoadRootCertificatesFromFile);
         }
+    }
+
+    private static X509Certificate2Collection LoadRootCertificatesFromFile(string certRootPath)
+    {
+        var certs = new X509Certificate2Collection();
+
+        if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
+            certs.ImportFromPemFile(certRootPath);
+
+        if (certs.Count == 0)
+        {
+            // This is not a PEM certificate, probably PFX
+            certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
+        }
+
+        return certs;
     }
 
     #endregion SSL
