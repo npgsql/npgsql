@@ -2009,25 +2009,7 @@ public sealed partial class NpgsqlConnector
             if (verifyFull && sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
                 return false;
 
-            var certs = new X509Certificate2Collection();
-
-            if (certRootPath is null)
-            {
-                Debug.Assert(caCertificates is { Count: > 0 });
-                certs.AddRange(caCertificates);
-            }
-            else
-            {
-                Debug.Assert(caCertificates is null or { Count: 0 });
-                if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
-                    certs.ImportFromPemFile(certRootPath);
-
-                if (certs.Count == 0)
-                {
-                    // This is not a PEM certificate, probably PFX
-                    certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
-                }
-            }
+            var certs = GetCustomRootCertificates(certRootPath, caCertificates);
 
             chain.ChainPolicy.CustomTrustStore.AddRange(certs);
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
@@ -2036,6 +2018,32 @@ public sealed partial class NpgsqlConnector
 
             return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
         };
+
+    private static X509Certificate2Collection GetCustomRootCertificates(string? certRootPath, X509Certificate2Collection? caCertificates)
+    {
+        if (certRootPath is null)
+        {
+            Debug.Assert(caCertificates is { Count: > 0 });
+            return caCertificates;
+        }
+        else
+        {
+            Debug.Assert(caCertificates is null or { Count: 0 });
+
+            var certs = new X509Certificate2Collection();
+
+            if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
+                certs.ImportFromPemFile(certRootPath);
+
+            if (certs.Count == 0)
+            {
+                // This is not a PEM certificate, probably PFX
+                certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
+            }
+
+            return certs;
+        }
+    }
 
     #endregion SSL
 
