@@ -676,7 +676,22 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            var data = authentication.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
+            byte[]? data;
+            NegotiateAuthenticationStatusCode statusCode;
+
+            try
+            {
+                data = authentication.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out statusCode)!;
+            }
+            catch (TypeInitializationException)
+            {
+                // On UNIX .NET throws TypeInitializationException if it's unable to load the native library
+                if (isRequired)
+                    throw new NpgsqlException("Unable to load native library to negotiate GSS encryption");
+
+                return GssEncryptionResult.GetCredentialFailure;
+            }
+
             if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
             {
                 // Unable to retrieve credentials
