@@ -2019,7 +2019,7 @@ public sealed partial class NpgsqlConnector
         return certificateChainPolicy;
     }
 
-    private static readonly ConcurrentDictionary<string, X509Certificate2Collection> CustomRootCertificateCache = new();
+    private static readonly ConcurrentDictionary<(string, DateTime?), X509Certificate2Collection> CustomRootCertificateCache = new();
 
     private static X509Certificate2Collection GetCustomRootCertificates(string? certRootPath, X509Certificate2Collection? caCertificates)
     {
@@ -2031,7 +2031,15 @@ public sealed partial class NpgsqlConnector
         else
         {
             Debug.Assert(caCertificates is null or { Count: 0 });
-            return CustomRootCertificateCache.GetOrAdd(certRootPath, LoadRootCertificatesFromFile);
+
+            // Add the file timestamp to the cache key, in case the certificate file is modified while
+            // the application is running.
+            // If this happens, a useless old entry will remain in the cache, but we don't really
+            // expect the file to change in the first place.
+            var certRootTimeStamp = TryGetFileTimeStamp(certRootPath);
+
+            return CustomRootCertificateCache.GetOrAdd((certRootPath, certRootTimeStamp), certRoot =>
+                LoadRootCertificatesFromFile(certRoot.Item1));
         }
     }
 
@@ -2049,6 +2057,20 @@ public sealed partial class NpgsqlConnector
         }
 
         return certs;
+    }
+
+    private static DateTime? TryGetFileTimeStamp(string path)
+    {
+        try
+        {
+            return File.GetLastWriteTimeUtc(path);
+        }
+        catch
+        {
+            // Ignore errors at this point. If the file is loaded afterwards, the code that
+            // does that will hopefully throw a more meaningful exception.
+            return null;
+        }
     }
 
     #endregion SSL
