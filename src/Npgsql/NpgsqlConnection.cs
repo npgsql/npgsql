@@ -844,14 +844,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
             if (EnlistedTransaction != null)
             {
-                // A System.Transactions transaction is still in progress
-
-                connector.Connection = null;
-
-                // Close the connection and disconnect it from the resource manager but leave the
+                // A System.Transactions transaction is still in progress.
+                // Close the connection and disconnect it from the resource manager and reset the connector, but leave the
                 // connector in an enlisted pending list in the data source. If another connection is opened within
                 // the same transaction scope, we will reuse this connector to avoid escalating to a distributed
-                // transaction
+                // transaction.
+                connector.ResetWithinEnlistedTransaction();
+                connector.Connection = null;
                 _dataSource?.AddPendingEnlistedConnector(connector, EnlistedTransaction);
 
                 EnlistedTransaction = null;
