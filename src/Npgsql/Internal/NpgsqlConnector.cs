@@ -608,6 +608,10 @@ public sealed partial class NpgsqlConnector
                 using var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
                 await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             // We handle any exception here because on Windows while receiving a response from Postgres
             // We might hit connection reset, in which case the actual error will be lost
             // And we only read some IO error
@@ -730,7 +734,7 @@ public sealed partial class NpgsqlConnector
 
             var lengthBuffer = new byte[4];
 
-            await WriteGssEncryptMessage(async, data, lengthBuffer).ConfigureAwait(false);
+            await WriteGssEncryptMessage(async, data, lengthBuffer, cancellationToken).ConfigureAwait(false);
 
             while (true)
             {
@@ -765,7 +769,7 @@ public sealed partial class NpgsqlConnector
                     break;
                 }
 
-                await WriteGssEncryptMessage(async, data, lengthBuffer).ConfigureAwait(false);
+                await WriteGssEncryptMessage(async, data, lengthBuffer, cancellationToken).ConfigureAwait(false);
             }
 
             _stream = new GSSStream(_stream, authentication);
@@ -777,7 +781,7 @@ public sealed partial class NpgsqlConnector
             ConnectionLogger.LogTrace("GSS encryption successful");
             return GssEncryptionResult.Success;
 
-            async ValueTask WriteGssEncryptMessage(bool async, byte[] data, byte[] lengthBuffer)
+            async ValueTask WriteGssEncryptMessage(bool async, byte[] data, byte[] lengthBuffer, CancellationToken cancellationToken)
             {
                 BinaryPrimitives.WriteInt32BigEndian(lengthBuffer, data.Length);
 
@@ -795,7 +799,7 @@ public sealed partial class NpgsqlConnector
                 }
             }
         }
-        catch (Exception e)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
             throw new NpgsqlException("Exception while performing GSS encryption", e);
         }
@@ -1242,11 +1246,15 @@ public sealed partial class NpgsqlConnector
                     sslStream.AuthenticateAsClient(sslStreamOptions);
 
                 _stream = sslStream;
+                sslStream = null;
             }
-            catch (Exception e)
+            catch (Exception e) when (e is not OperationCanceledException)
             {
-                sslStream.Dispose();
                 throw new NpgsqlException("Exception while performing SSL handshake", e);
+            }
+            finally
+            {
+                sslStream?.Dispose();
             }
 
             ReadBuffer.Underlying = _stream;
@@ -1355,26 +1363,24 @@ public sealed partial class NpgsqlConnector
         else
         {
             IPAddress[] ipAddresses = [];
+            using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
+            combinedCts?.CancelAfter(timeout.CheckAndGetTimeLeft());
+            var combinedToken = combinedCts?.Token ?? cancellationToken;
             try
             {
-                using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
-                combinedCts?.CancelAfter(timeout.CheckAndGetTimeLeft());
-                var combinedToken = combinedCts?.Token ?? cancellationToken;
-                try
-                {
-                    ipAddresses = await Dns.GetHostAddressesAsync(Host,  combinedToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    Debug.Assert(timeout.HasExpired);
-                    ThrowHelper.ThrowNpgsqlExceptionWithInnerTimeoutException("The operation has timed out");
-                }
+                ipAddresses = await Dns.GetHostAddressesAsync(Host,  combinedToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Debug.Assert(timeout.HasExpired);
+                ThrowHelper.ThrowNpgsqlExceptionWithInnerTimeoutException("The operation has timed out");
             }
             catch (SocketException ex)
             {
                 throw new NpgsqlException(ex.Message, ex);
             }
+
             endpoints = IPAddressesToEndpoints(ipAddresses, Port);
         }
 
