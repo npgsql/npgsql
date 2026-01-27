@@ -1649,7 +1649,7 @@ FROM
         // Just to make sure we have enough space
         await server.FlushAsync();
         await server
-            .WriteDataRow(Encoding.ASCII.GetBytes("abc"))
+            .WriteDataRow("abc"u8.ToArray())
             .WriteCommandComplete()
             .WriteReadyForQuery()
             .WriteParameterStatus("SomeKey", "SomeValue")
@@ -1670,7 +1670,7 @@ FROM
             .WriteParseComplete()
             .WriteBindComplete()
             .WriteRowDescription(new FieldDescription(TextOid))
-            .WriteDataRow(Encoding.ASCII.GetBytes("abc"))
+            .WriteDataRow("abc"u8.ToArray())
             .WriteCommandComplete()
             .WriteReadyForQuery()
             .FlushAsync();
