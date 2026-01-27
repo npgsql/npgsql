@@ -33,7 +33,7 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(DependencyInjectionPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(LoggingPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(LoggingPackageVersion)" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+	  <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.1.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
@@ -41,6 +41,8 @@
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
     <PackageVersion Include="OpenTelemetry" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.15.0" />
+    <PackageVersion Include="Testcontainers" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
