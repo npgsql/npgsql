@@ -39,18 +39,18 @@ sealed class NullableConverter<T>(PgConverter<T> effectiveConverter)
         => effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
 }
 
-sealed class NullableConverterResolver<T>(PgResolverTypeInfo effectiveTypeInfo)
-    : PgComposingConverterResolver<T?>(effectiveTypeInfo.PgTypeId, effectiveTypeInfo)
+sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
+    : PgComposingTypeInfoProvider<T?>(effectiveTypeInfo.PgTypeId, effectiveTypeInfo)
     where T : struct
 {
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T?> CreateConverter(PgConverterResolution effectiveResolution)
-        => new NullableConverter<T>(effectiveResolution.GetConverter<T>());
+    protected override PgConverter<T?> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
+        => new NullableConverter<T>((PgConverter<T>)effectiveConcreteTypeInfo.Converter);
 
-    protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectivePgTypeId)
         => value is null
-            ? EffectiveTypeInfo.GetDefaultResolution(expectedEffectivePgTypeId)
-            : EffectiveTypeInfo.GetResolution(value.GetValueOrDefault(), expectedEffectivePgTypeId);
+            ? EffectiveTypeInfo.GetDefaultConcreteTypeInfo(expectedEffectivePgTypeId)
+            : EffectiveTypeInfo.GetConcreteTypeInfo(value.GetValueOrDefault(), expectedEffectivePgTypeId);
 }
