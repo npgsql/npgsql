@@ -582,7 +582,7 @@ public sealed partial class NpgsqlConnector
         {
             if (activity is not null)
                 NpgsqlActivitySource.SetException(activity, e);
-            Break(e);
+            Break(e, markHostAsOffline: true);
             throw;
         }
 
@@ -2429,14 +2429,16 @@ public sealed partial class NpgsqlConnector
     /// Note that fatal errors during the Open phase do *not* pass through here.
     /// </summary>
     /// <param name="reason">The exception that caused the break.</param>
+    /// <param name="markHostAsOffline">Whether we treat host as down, even if we're still connecting to PostgreSQL instance.</param>
     /// <returns>The exception given in <paramref name="reason"/> for chaining calls.</returns>
-    internal Exception Break(Exception reason)
+    internal Exception Break(Exception reason, bool markHostAsOffline = false)
     {
         Debug.Assert(!IsClosed);
 
         Monitor.Enter(SyncObj);
 
-        if (State == ConnectorState.Broken)
+        var state = State;
+        if (state == ConnectorState.Broken)
         {
             // We're already broken.
             // Exit SingleUseLock to unblock other threads (like cancellation).
@@ -2471,7 +2473,9 @@ public sealed partial class NpgsqlConnector
                 // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
                 // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
                 // but does not include e.g. authentication failure or timeouts with disabled cancellation.
+                // We also do not treat host as down if we're still connecting, as we might retry without GSS/TLS
                 if (reason is NpgsqlException { IsTransient: true } ne &&
+                    (state != ConnectorState.Connecting || markHostAsOffline) &&
                     (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
                     reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
                 {
