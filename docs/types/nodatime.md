@@ -14,7 +14,7 @@ Beyond NodaTime's general advantages, some specific advantages NodaTime for Post
 
 ## Setup
 
-To avoid forcing a dependency on the NetTopologySuite library for users not using spatial, NodaTime support is delivered as a separate plugin. To use the plugin, simply add a dependency on [Npgsql.NodaTime](https://www.nuget.org/packages/Npgsql.NodaTime) and set it up in one of the following ways:
+To avoid forcing a dependency on the NodaTime library for users not using it, NodaTime support is delivered as a separate plugin. To use the plugin, simply add a dependency on [Npgsql.NodaTime](https://www.nuget.org/packages/Npgsql.NodaTime) and set it up in one of the following ways:
 
 ### [NpgsqlDataSource](#tab/datasource)
 
