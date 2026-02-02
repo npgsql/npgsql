@@ -172,7 +172,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
         get => _preparedStatement is { State: PreparedState.Unprepared }
             ? _preparedStatement = null
             : _preparedStatement;
-        set => _preparedStatement = value;
+        private set => _preparedStatement = value;
     }
 
     PreparedStatement? _preparedStatement;
@@ -274,7 +274,11 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
         OID = msg.OID;
     }
 
-    internal void ResetPreparation() => ConnectorPreparedOn = null;
+    internal void ResetPreparation()
+    {
+        ConnectorPreparedOn = null;
+        PreparedStatement = null;
+    }
 
     internal void PopulateOutputParameters(NpgsqlDataReader reader, ILogger logger)
     {
