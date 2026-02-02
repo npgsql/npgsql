@@ -582,7 +582,7 @@ public sealed partial class NpgsqlConnector
         {
             if (activity is not null)
                 NpgsqlActivitySource.SetException(activity, e);
-            Break(e, markHostAsOffline: true);
+            Break(e, markHostAsOfflineOnConnecting: true);
             throw;
         }
 
@@ -2429,9 +2429,9 @@ public sealed partial class NpgsqlConnector
     /// Note that fatal errors during the Open phase do *not* pass through here.
     /// </summary>
     /// <param name="reason">The exception that caused the break.</param>
-    /// <param name="markHostAsOffline">Whether we treat host as down, even if we're still connecting to PostgreSQL instance.</param>
+    /// <param name="markHostAsOfflineOnConnecting">Whether we treat host as down, even if we're still connecting to PostgreSQL instance.</param>
     /// <returns>The exception given in <paramref name="reason"/> for chaining calls.</returns>
-    internal Exception Break(Exception reason, bool markHostAsOffline = false)
+    internal Exception Break(Exception reason, bool markHostAsOfflineOnConnecting = false)
     {
         Debug.Assert(!IsClosed);
 
@@ -2475,7 +2475,7 @@ public sealed partial class NpgsqlConnector
                 // but does not include e.g. authentication failure or timeouts with disabled cancellation.
                 // We also do not treat host as down if we're still connecting, as we might retry without GSS/TLS
                 if (reason is NpgsqlException { IsTransient: true } ne &&
-                    (state != ConnectorState.Connecting || markHostAsOffline) &&
+                    (state != ConnectorState.Connecting || markHostAsOfflineOnConnecting) &&
                     (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
                     reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
                 {
