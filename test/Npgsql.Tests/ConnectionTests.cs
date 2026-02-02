@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
+using Npgsql.Tests.Support;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -1591,6 +1592,34 @@ CREATE TABLE record ()");
         foreach (var sameThreadTask in sameThreadTasks)
         {
             Assert.That(await sameThreadTask, "Synchronous open completed on different thread");
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6427")]
+    public async Task Gss_encryption_retry_does_not_clear_pool()
+    {
+        if (IsMultiplexing)
+            return;
+
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            GssEncryptionMode = GssEncryptionMode.Prefer
+        };
+        // Break connection on gss encryption request to force the client to create a new connection and retry again
+        // This emulates the behavior of older versions of PostgreSQL or its forks, like Supabase
+        await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString, breakOnGssEncryptionRequest: true);
+        await using var dataSource = CreateDataSource(postmaster.ConnectionString);
+
+        int processID;
+        await using (var conn = await dataSource.OpenConnectionAsync())
+        {
+            processID = conn.ProcessID;
+        }
+
+        // The second time we get a connection from the pool we should ge the exact same connection
+        await using (var conn = await dataSource.OpenConnectionAsync())
+        {
+            Assert.That(conn.ProcessID, Is.EqualTo(processID));
         }
     }
 
