@@ -640,7 +640,7 @@ public sealed class TypeInfoMappingCollection
                         (PgResolverTypeInfo)nullableInnerTypeInfo);
 
                 return new PgResolverTypeInfo(innerTypeInfo.Options, resolver,
-                    innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName))) { SupportsWriting = false };
+                    innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
             }
         }
 
