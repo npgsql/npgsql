@@ -36,12 +36,11 @@ public abstract class TestBase
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
         ExpectedDbType? dbType = null,
-        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
         => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, dataTypeName, dataTypeInference,
-            dbType, fieldType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
+            dbType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
         NpgsqlDataSource dataSource,
@@ -50,12 +49,11 @@ public abstract class TestBase
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
         ExpectedDbType? dbType = null,
-        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
         => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral, dataTypeName, dataTypeInference,
-            dbType, fieldType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
+            dbType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
         NpgsqlConnection connection,
@@ -64,12 +62,11 @@ public abstract class TestBase
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
         ExpectedDbType? dbType = null,
-        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
         => AssertTypeCore(new(connection), disposeConnection: false, () => value, sqlLiteral, dataTypeName, dataTypeInference,
-            dbType, fieldType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
+            dbType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
         Func<T> valueFactory,
@@ -77,12 +74,11 @@ public abstract class TestBase
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
         ExpectedDbType? dbType = null,
-        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
         => AssertTypeCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, dataTypeName, dataTypeInference,
-            dbType, fieldType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
+            dbType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
         NpgsqlDataSource dataSource,
@@ -91,12 +87,11 @@ public abstract class TestBase
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
         ExpectedDbType? dbType = null,
-        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
         => AssertTypeCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral, dataTypeName, dataTypeInference,
-            dbType, fieldType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
+            dbType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
 
     public Task<T> AssertType<T>(
         NpgsqlConnection connection,
@@ -105,12 +100,11 @@ public abstract class TestBase
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
         ExpectedDbType? dbType = null,
-        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
         => AssertTypeCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral, dataTypeName, dataTypeInference,
-            dbType, fieldType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
+            dbType, comparer, valueTypeEqualsFieldType, skipArrayCheck);
 
     static async Task<T> AssertTypeCore<T>(
         ValueTask<NpgsqlConnection> connectionTask,
@@ -120,7 +114,6 @@ public abstract class TestBase
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
         ExpectedDbType? dbType = null,
-        Type? fieldType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -131,7 +124,7 @@ public abstract class TestBase
         await AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral,
             dataTypeName, dataTypeInference, dbType, skipArrayCheck);
         return await AssertTypeReadCore(new(connection), disposeConnection: false, sqlLiteral, dataTypeName, valueFactory(),
-            valueTypeEqualsFieldType: valueTypeEqualsFieldType, comparer, fieldType, skipArrayCheck);
+            valueTypeEqualsFieldType, comparer, skipArrayCheck);
     }
 
     public Task AssertTypeWrite<T>(
@@ -401,19 +394,19 @@ public abstract class TestBase
     }
 
     public Task<T> AssertTypeRead<T>(string sqlLiteral, string dataTypeName, T expected,
-        bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, Type? fieldType = null, bool skipArrayCheck = false)
+        bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, bool skipArrayCheck = false)
         => AssertTypeReadCore(OpenConnectionAsync(), disposeConnection: true, sqlLiteral, dataTypeName,
-            expected, valueTypeEqualsFieldType, comparer, fieldType, skipArrayCheck);
+            expected, valueTypeEqualsFieldType, comparer, skipArrayCheck);
 
     public Task<T> AssertTypeRead<T>(NpgsqlDataSource dataSource, string sqlLiteral, string dataTypeName, T expected,
-        bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, Type? fieldType = null, bool skipArrayCheck = false)
+        bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, bool skipArrayCheck = false)
         => AssertTypeReadCore(dataSource.OpenConnectionAsync(), disposeConnection: true, sqlLiteral, dataTypeName,
-            expected, valueTypeEqualsFieldType, comparer, fieldType, skipArrayCheck);
+            expected, valueTypeEqualsFieldType, comparer, skipArrayCheck);
 
     public Task<T> AssertTypeRead<T>(NpgsqlConnection connection, string sqlLiteral, string dataTypeName, T expected,
-        bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, Type? fieldType = null, bool skipArrayCheck = false)
+        bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, bool skipArrayCheck = false)
         => AssertTypeReadCore(new(connection), disposeConnection: false, sqlLiteral, dataTypeName,
-            expected, valueTypeEqualsFieldType, comparer, fieldType, skipArrayCheck);
+            expected, valueTypeEqualsFieldType, comparer, skipArrayCheck);
 
     static async Task<T> AssertTypeReadCore<T>(
         ValueTask<NpgsqlConnection> connectionTask,
@@ -423,14 +416,12 @@ public abstract class TestBase
         T expected,
         bool valueTypeEqualsFieldType,
         Func<T, T, bool>? comparer,
-        Type? fieldType,
         bool skipArrayCheck)
     {
         var connection = await connectionTask;
         await using var _ = disposeConnection ? connection : null;
 
-        var result = await AssertTypeReadCore(connection, sqlLiteral, dataTypeName, expected, valueTypeEqualsFieldType, comparer,
-            fieldType);
+        var result = await AssertTypeReadCore(connection, sqlLiteral, dataTypeName, expected, valueTypeEqualsFieldType, comparer);
 
         // Check the corresponding array type as well
         if (!skipArrayCheck && !dataTypeName.EndsWith("[]", StringComparison.Ordinal))
@@ -441,8 +432,7 @@ public abstract class TestBase
                 dataTypeName + "[]",
                 new[] { expected, expected },
                 valueTypeEqualsFieldType,
-                comparer is null ? null : (array1, array2) => comparer(array1[0], array2[0]) && comparer(array1[1], array2[1]),
-                fieldType?.MakeArrayType());
+                comparer is null ? null : (array1, array2) => comparer(array1[0], array2[0]) && comparer(array1[1], array2[1]));
         }
         return result;
     }
@@ -453,8 +443,7 @@ public abstract class TestBase
         string dataTypeName,
         T expected,
         bool valueTypeEqualsFieldType,
-        Func<T, T, bool>? comparer,
-        Type? fieldType)
+        Func<T, T, bool>? comparer)
     {
         if (sqlLiteral.Contains('\''))
             sqlLiteral = sqlLiteral.Replace("'", "''");
@@ -480,7 +469,7 @@ public abstract class TestBase
         var isArray = readerTypeName.EndsWith("[]");
         Assert.That(reader.GetFieldType(0),
             (valueTypeEqualsFieldType || isArray ? new ConstraintExpression() : Is.Not)
-                .EqualTo(isArray ? typeof(Array) : fieldType ?? typeof(T)),
+                .EqualTo(isArray ? typeof(Array) : typeof(T)),
             $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
 
         var actual = reader.GetFieldValue<T>(0);
