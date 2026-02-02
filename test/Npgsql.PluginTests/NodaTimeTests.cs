@@ -429,7 +429,8 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
                     new LocalDateTime(1998, 4, 13, 15, 26, 38).InUtc().ToInstant()),
             },
             """{"[\"1998-04-12 15:26:38+02\",\"1998-04-12 17:26:38+02\"]","[\"1998-04-13 15:26:38+02\",\"1998-04-13 17:26:38+02\"]"}""",
-            "tstzrange[]", dataTypeInference: false);
+            "tstzrange[]", dataTypeInference: false,
+            valueTypeEqualsFieldType: false);
     }
 
     #endregion Timestamp with time zone
@@ -494,6 +495,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
              new [] { new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
              """{"[2002-03-04,2002-03-06)"}""",
              "daterange[]", dataTypeInference: false,
+             valueTypeEqualsFieldType: false,
              skipArrayCheck: true);
 
          await using var conn = await OpenConnectionAsync();
@@ -553,12 +555,14 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false),
             "[2002-03-04,2002-03-06)",
             "daterange",
-            valueTypeEqualsFieldType: false, skipArrayCheck: true);
+            valueTypeEqualsFieldType: false,
+            skipArrayCheck: true);
 
         await AssertType(
             new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
             """{"[2002-03-04,2002-03-06)"}""",
             "daterange[]", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
 
         await using var conn = await OpenConnectionAsync();
@@ -600,7 +604,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
                 new NpgsqlRange<LocalDate>(new(2002, 3, 8), true, new(2002, 3, 11), false)
             },
             """{"[2002-03-04,2002-03-06)","[2002-03-08,2002-03-11)"}""",
-            "daterange[]", dataTypeInference: false);
+            "daterange[]", dataTypeInference: false, valueTypeEqualsFieldType: false);
     }
 
     #endregion Date

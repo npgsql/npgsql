@@ -449,7 +449,7 @@ public abstract class TestBase
             sqlLiteral = sqlLiteral.Replace("'", "''");
 
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", connection);
-        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
         var truncatedSqlLiteral = sqlLiteral.Length > 40 ? sqlLiteral[..40] + "..." : sqlLiteral;
@@ -472,10 +472,23 @@ public abstract class TestBase
                 .EqualTo(isArray ? typeof(Array) : typeof(T)),
             $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
 
-        var actual = reader.GetFieldValue<T>(0);
+        T actual;
+        if (valueTypeEqualsFieldType)
+        {
+            actual = (T)reader.GetValue(0);
+            Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
+                $"Got wrong result from GetValue() value when reading '{truncatedSqlLiteral}'");
+
+            actual = (T)reader.GetFieldValue<object>(0);
+            Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
+                $"Got wrong result from GetFieldValue<object>() value when reading '{truncatedSqlLiteral}'");
+
+            return actual;
+        }
+
+        actual = reader.GetFieldValue<T>(0);
 
         Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
-            $"Got wrong result from GetFieldValue value when reading '{truncatedSqlLiteral}'");
             $"Got wrong result from GetFieldValue<T>() value when reading '{truncatedSqlLiteral}'");
 
         return actual;
