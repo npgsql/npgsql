@@ -406,7 +406,12 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         }
     }
 
-    internal void ResetPreparation() => _connectorPreparedOn = null;
+    internal void ResetPreparation()
+    {
+        _connectorPreparedOn = null;
+        foreach (var s in InternalBatchCommands)
+            s.ResetPreparation();
+    }
 
     #endregion State management
 
@@ -873,7 +878,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (!pStatement.IsExplicit)
                         connector.PreparedStatementManager.AutoPrepared[pStatement.AutoPreparedSlotIndex] = null;
 
-                    batchCommand.PreparedStatement = null;
+                    batchCommand.ResetPreparation();
                 }
             }
 
@@ -1441,8 +1446,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 if (batchCommand.ConnectorPreparedOn != connector)
                                 {
-                                    foreach (var s in InternalBatchCommands)
-                                        s.ResetPreparation();
                                     ResetPreparation();
                                     goto case false;
                                 }
@@ -1455,8 +1458,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             if (_connectorPreparedOn != connector)
                             {
                                 // The command was prepared, but since then the connector has changed. Detach all prepared statements.
-                                foreach (var s in InternalBatchCommands)
-                                    s.PreparedStatement = null;
                                 ResetPreparation();
                                 goto case false;
                             }

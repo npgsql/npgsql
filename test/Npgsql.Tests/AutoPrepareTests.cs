@@ -620,6 +620,33 @@ LANGUAGE 'plpgsql';
         Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6432")]
+    public async Task Reuse_batch_with_different_connectors()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
+        await using var batch = new NpgsqlBatch();
+        batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT 1"));
+        await using (var connection = await dataSource.OpenConnectionAsync())
+        {
+            batch.Connection = connection;
+
+            for (var i = 0; i < 2; i++)
+                await batch.ExecuteNonQueryAsync();
+        }
+
+        dataSource.Clear();
+
+        await using (var connection = await dataSource.OpenConnectionAsync())
+        {
+            batch.Connection = connection;
+            await batch.ExecuteNonQueryAsync();
+        }
+    }
+
     void DumpPreparedStatements(NpgsqlConnection conn)
     {
         using var cmd = new NpgsqlCommand("SELECT name,statement FROM pg_prepared_statements", conn);

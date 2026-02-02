@@ -559,8 +559,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 {
                     preparedStatement.State = PreparedState.Invalidated;
                     Command.ResetPreparation();
-                    foreach (var s in Command.InternalBatchCommands)
-                        s.ResetPreparation();
                 }
             }
 
