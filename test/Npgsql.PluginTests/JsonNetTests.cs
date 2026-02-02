@@ -26,7 +26,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName, dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_string()
@@ -44,7 +44,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, valueTypeEqualsFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_byte_array()
@@ -53,7 +53,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
+            dbType: DbType.Binary, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Roundtrip_JObject()
@@ -62,7 +62,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new JObject { ["Bar"] = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName, dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Roundtrip_JArray()
@@ -71,7 +71,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new JArray(new[] { 1, 2, 3 }),
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             dataTypeName, dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Deserialize_failure()
@@ -102,7 +102,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName,
-            dataTypeInference: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -120,7 +120,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new[] { 1, 2, 3 },
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false, skipArrayCheck: true); // there is no value only mapping for int[][]
+            valueTypeEqualsFieldType: false, skipArrayCheck: true); // there is no value only mapping for int[][]
     }
 
     class DateWrapper
@@ -147,7 +147,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new DateWrapper { Date = new DateTime(2018, 04, 20) },
             IsJsonb ? "{\"Date\": \"The 20th of April, 2018\"}" : "{\"Date\":\"The 20th of April, 2018\"}",
             dataTypeName,
-            dataTypeInference: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, valueTypeEqualsFieldType: false);
     }
 
     [Test]

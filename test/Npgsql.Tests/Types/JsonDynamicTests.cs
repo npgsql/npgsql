@@ -27,7 +27,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
             dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task As_poco_long()
@@ -48,7 +48,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 : $$"""{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"{{bigString}}"}""",
             PostgresType,
             dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -180,7 +180,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
         await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: false);
-        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isValueTypeDefaultFieldType: false);
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -211,7 +211,7 @@ public class JsonDynamicTests : MultiplexingTestBase
         await AssertTypeWrite<WeatherForecast>(dataSource, value, sql, PostgresType,
             dataTypeInference: false);
 
-        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isValueTypeDefaultFieldType: false);
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
         await AssertTypeRead(dataSource, sql, PostgresType,
             new DerivedWeatherForecast
             {
@@ -219,8 +219,8 @@ public class JsonDynamicTests : MultiplexingTestBase
                 Summary = "Partly cloudy",
                 TemperatureC = 10
             },
-            isValueTypeDefaultFieldType: false);
-        await AssertTypeRead(dataSource, sql, PostgresType, value, isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
+        await AssertTypeRead(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -249,7 +249,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 : """{"TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
         await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: false);
-        await AssertTypeRead(dataSource, sql, PostgresType, value, isValueTypeDefaultFieldType: false);
+        await AssertTypeRead(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -286,8 +286,8 @@ public class JsonDynamicTests : MultiplexingTestBase
                 Summary = "Partly cloudy",
                 TemperatureC = 10
             },
-            isValueTypeDefaultFieldType: false);
-        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
+        await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -326,7 +326,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                     Summary = "Partly cloudy",
                     TemperatureC = 10
                 },
-                isValueTypeDefaultFieldType: false);
+                valueTypeEqualsFieldType: false);
 
         // Reading as DerivedWeatherForecast should not cause us to get an instance of ExtendedDerivedWeatherForecast (as it doesn't define JsonDerivedType)
         await AssertTypeRead(dataSource, sql, PostgresType,
@@ -336,12 +336,12 @@ public class JsonDynamicTests : MultiplexingTestBase
                 Summary = "Partly cloudy",
                 TemperatureC = 10
             },
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
         // We won't get the original value back for jsonb as we can't support polymorphism without also enforcing AllowOutOfOrderMetadataProperties is true.
         // If we output $type, jsonb won't have that at the start and STJ will throw due to it appearing later in the object. So it's disabled entirely.
         if (!IsJsonb)
-            await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isValueTypeDefaultFieldType: false);
+            await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -379,7 +379,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                     Summary = "Partly cloudy",
                     TemperatureC = 10
                 },
-                isValueTypeDefaultFieldType: false);
+                valueTypeEqualsFieldType: false);
 
         // Reading as DerivedWeatherForecast should not cause us to get an instance of ExtendedDerivedWeatherForecast (as it doesn't define JsonDerivedType)
         await AssertTypeRead(dataSource, sql, PostgresType,
@@ -389,12 +389,12 @@ public class JsonDynamicTests : MultiplexingTestBase
                 Summary = "Partly cloudy",
                 TemperatureC = 10
             },
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
         // We won't get the original value back for jsonb as we can't support polymorphism without also enforcing AllowOutOfOrderMetadataProperties is true.
         // If we output $type, jsonb won't have that at the start and STJ will throw due to it appearing later in the object. So it's disabled entirely.
         if (!IsJsonb)
-            await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, isValueTypeDefaultFieldType: false);
+            await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
     // ReSharper disable UnusedAutoPropertyAccessor.Local

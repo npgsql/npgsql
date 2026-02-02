@@ -48,7 +48,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
     [Test]
     public Task BitVector32()
         => AssertType(
-            new BitVector32(4), "00000000000000000000000000000100", "bit varying", isValueTypeDefaultFieldType: false);
+            new BitVector32(4), "00000000000000000000000000000100", "bit varying", valueTypeEqualsFieldType: false);
 
     [Test]
     public Task BitVector32_too_long()
@@ -121,7 +121,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
     public Task As_string()
         => AssertType("010101", "010101",
             "bit varying", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Write_as_string_validation()

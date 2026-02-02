@@ -19,7 +19,7 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789).InZoneLeniently(DateTimeZoneProviders.Tzdb[TimeZone]),
             "1998-04-12 13:26:38.789+02",
             "timestamp with time zone", dataTypeInference: false,
-            dbType: new(DbType.DateTimeOffset, DbType.Object), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTimeOffset, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamp_as_Instant()
@@ -35,7 +35,7 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
             new LocalDateTime(1998, 4, 12, 13, 26, 38, 789),
             "1998-04-12 13:26:38.789",
             "timestamp without time zone", dataTypeInference: false,
-            dbType: new(DbType.DateTime, DbType.Object), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamptz_as_Instant()

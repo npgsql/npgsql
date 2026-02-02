@@ -40,19 +40,19 @@ public class ByteaTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         => AssertType(
             new Memory<byte>([1, 2, 3]), "\\x010203", "bytea", dbType: DbType.Binary,
             comparer: (left, right) => left.Span.SequenceEqual(right.Span),
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public Task AsReadOnlyMemory()
         => AssertType(
             new ReadOnlyMemory<byte>([1, 2, 3]), "\\x010203", "bytea", dbType: DbType.Binary,
             comparer: (left, right) => left.Span.SequenceEqual(right.Span),
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public Task AsArraySegment()
         => AssertType(new ArraySegment<byte>([1, 2, 3]), "\\x010203",
-            "bytea", dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
+            "bytea", dbType: DbType.Binary, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Write_as_MemoryStream()

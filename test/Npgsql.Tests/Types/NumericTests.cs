@@ -117,17 +117,17 @@ public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: new(DbType.VarNumeric, DbType.Decimal, DbType.Decimal));
 
         await AssertType((short)8, "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Decimal, DbType.Int16), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Int16), valueTypeEqualsFieldType: false);
         await AssertType(8,        "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Decimal, DbType.Int32), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Int32), valueTypeEqualsFieldType: false);
         await AssertType(8L,        "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Decimal, DbType.Int64), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Int64), valueTypeEqualsFieldType: false);
         await AssertType((byte)8,  "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Decimal, DbType.Int16), isValueTypeDefaultFieldType: false, skipArrayCheck: true);
+            dbType: new(DbType.Decimal, DbType.Int16), valueTypeEqualsFieldType: false, skipArrayCheck: true);
         await AssertType(8F,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Decimal, DbType.Single), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Single), valueTypeEqualsFieldType: false);
         await AssertType(8D,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Decimal, DbType.Double), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Decimal, DbType.Double), valueTypeEqualsFieldType: false);
     }
 
     [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]

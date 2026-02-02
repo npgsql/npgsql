@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Properties;
 using NpgsqlTypes;
@@ -87,17 +86,17 @@ public class MultirangeTests : TestBase
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_array<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string pgTypeName, DataTypeInferenceKind isDataTypeInferredFromValue, bool isValueTypeDefaultFieldType, TRange _)
+        T multirangeAsArray, string sqlLiteral, string pgTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
         => AssertType(multirangeAsArray, sqlLiteral, pgTypeName,
-            dataTypeInference: isDataTypeInferredFromValue, isValueTypeDefaultFieldType: isValueTypeDefaultFieldType);
+            dataTypeInference: datatypeInferenceKind, valueTypeEqualsFieldType: valueTypeEqualsFieldType);
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_list<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string pgTypeName, DataTypeInferenceKind isDataTypeInferredFromValue, bool isValueTypeDefaultFieldType, TRange _)
+        T multirangeAsArray, string sqlLiteral, string pgTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
         where T : IList<TRange>
         => AssertType(
             new List<TRange>(multirangeAsArray), sqlLiteral, pgTypeName,
-            dataTypeInference: isDataTypeInferredFromValue, isValueTypeDefaultFieldType: false);
+            dataTypeInference: datatypeInferenceKind, valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Unmapped_multirange_with_mapped_subtype()

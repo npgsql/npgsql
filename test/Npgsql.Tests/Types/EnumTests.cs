@@ -153,8 +153,8 @@ CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
 CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
         await connection.ReloadTypesAsync();
 
-        await AssertType(connection, Mood.Happy, "happy", type1, dataTypeInference: false, isValueTypeDefaultFieldType: false);
-        await AssertType(connection, AnotherEnum.Value2, "value2", type2, dataTypeInference: false, isValueTypeDefaultFieldType: false);
+        await AssertType(connection, Mood.Happy, "happy", type1, dataTypeInference: false, valueTypeEqualsFieldType: false);
+        await AssertType(connection, AnotherEnum.Value2, "value2", type2, dataTypeInference: false, valueTypeEqualsFieldType: false);
     }
 
     [Test]

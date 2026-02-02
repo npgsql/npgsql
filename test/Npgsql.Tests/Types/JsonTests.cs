@@ -52,13 +52,13 @@ public class JsonTests : MultiplexingTestBase
     public async Task As_char_array()
         => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""",
             PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task As_bytes()
         => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""",
             PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
+            dbType: DbType.Binary, valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Write_as_ReadOnlyMemory_of_byte()
@@ -86,7 +86,7 @@ public class JsonTests : MultiplexingTestBase
             PostgresType,
             dataTypeInference: DataTypeInferenceKind.WellKnown,
             comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString(),
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5540")]
     public async Task As_JsonDocument_with_null_root()
@@ -96,7 +96,7 @@ public class JsonTests : MultiplexingTestBase
             PostgresType,
             dataTypeInference: DataTypeInferenceKind.WellKnown,
             comparer: (x, y) => x.RootElement.ValueKind == y.RootElement.ValueKind,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -107,7 +107,7 @@ public class JsonTests : MultiplexingTestBase
             PostgresType,
             dataTypeInference: DataTypeInferenceKind.WellKnown,
             comparer: (x, y) => x.ValueKind == y.ValueKind,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -128,7 +128,7 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}",
             @"{""p"": 1}",
             PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: true);
+            dbType: DbType.String, valueTypeEqualsFieldType: true);
 
     [Test]
     public Task Roundtrip_char_array()
@@ -136,7 +136,7 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
             PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Roundtrip_byte_array()
@@ -144,7 +144,7 @@ public class JsonTests : MultiplexingTestBase
             @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
             PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Binary, isValueTypeDefaultFieldType: false);
+            dbType: DbType.Binary, valueTypeEqualsFieldType: false);
 
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]
@@ -180,7 +180,7 @@ public class JsonTests : MultiplexingTestBase
             PostgresType,
             // By default we map JsonObject to jsonb
             dataTypeInference: IsJsonb ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]
@@ -191,7 +191,7 @@ public class JsonTests : MultiplexingTestBase
             PostgresType,
             // By default we map JsonArray to jsonb
             dataTypeInference: IsJsonb ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
     [Test]

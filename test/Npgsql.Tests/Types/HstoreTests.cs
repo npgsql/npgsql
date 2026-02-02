@@ -36,7 +36,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             immutableDictionary,
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            dataTypeInference: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -50,7 +50,7 @@ public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBa
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            dataTypeInference: false, isValueTypeDefaultFieldType: false);
+            dataTypeInference: false, valueTypeEqualsFieldType: false);
 
     [OneTimeSetUp]
     public async Task SetUp()

@@ -31,7 +31,7 @@ public class LegacyDateTimeTests : TestBase
     public async Task Timestamptz_negative_infinity()
     {
         var dto = await AssertType(DateTimeOffset.MinValue, "-infinity", "timestamp with time zone",
-            dbType: DbType.DateTimeOffset, isValueTypeDefaultFieldType: false);
+            dbType: DbType.DateTimeOffset, valueTypeEqualsFieldType: false);
         Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
     }
 
@@ -40,7 +40,7 @@ public class LegacyDateTimeTests : TestBase
     {
         var dto = await AssertType(
             DateTimeOffset.MaxValue, "infinity", "timestamp with time zone", dbType: DbType.DateTimeOffset,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
         Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
     }
 

@@ -21,7 +21,7 @@ public class DateTimeTests : TestBase
     public Task Date_as_DateTime()
         => AssertType(new DateTime(2020, 10, 1), "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Date, DbType.DateTime2), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.DateTime2), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Date_as_DateTime_with_date_and_time_before_2000()
@@ -34,7 +34,7 @@ public class DateTimeTests : TestBase
     public Task Date_as_int()
         => AssertType(7579, "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Date, DbType.Int32), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.Int32), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Daterange_as_NpgsqlRange_of_DateOnly()
@@ -54,7 +54,7 @@ public class DateTimeTests : TestBase
             },
             """{"[2002-03-04,2002-03-06)","[2002-03-08,2002-03-09)"}""",
             "daterange[]", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Daterange_as_NpgsqlRange_of_DateTime()
@@ -62,7 +62,7 @@ public class DateTimeTests : TestBase
             new NpgsqlRange<DateTime>(new(2002, 3, 4), true, new(2002, 3, 6), false),
             "[2002-03-04,2002-03-06)",
             "daterange", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Datemultirange_as_array_of_NpgsqlRange_of_DateOnly()
@@ -94,7 +94,7 @@ public class DateTimeTests : TestBase
             },
             "{[2002-03-04,2002-03-06),[2002-03-08,2002-03-11)}",
             "datemultirange", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
     }
 
     #endregion
@@ -111,7 +111,7 @@ public class DateTimeTests : TestBase
     public Task Time_as_TimeSpan()
         => AssertType(new TimeSpan(0, 10, 45, 34, 500), "10:45:34.5",
             "time without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Time, DbType.Object), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Time, DbType.Object), valueTypeEqualsFieldType: false);
 
     #endregion
 
@@ -158,7 +158,7 @@ public class DateTimeTests : TestBase
 
         await AssertType(
             new List<DateTime> { dateTime, dateTime }, $$"""{"{{sqlLiteral}}","{{sqlLiteral}}"}""", "timestamp without time zone[]",
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -169,7 +169,7 @@ public class DateTimeTests : TestBase
     public Task Timestamp_as_long()
         => AssertType(-54297202000000, "1998-04-12 13:26:38",
             "timestamp without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.DateTime2, DbType.Int64), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime2, DbType.Int64), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamp_cannot_use_as_DateTimeOffset()
@@ -249,7 +249,7 @@ public class DateTimeTests : TestBase
 
         await AssertType(
             new List<DateTime> { dateTime, dateTime }, $$"""{"{{sqlLiteral}}","{{sqlLiteral}}"}""", "timestamp with time zone[]",
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     }
 
@@ -279,7 +279,7 @@ public class DateTimeTests : TestBase
             "1998-04-12 15:26:38+02",
             "timestamp with time zone",
             dbType: DbType.DateTime,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
         Assert.That(dateTimeOffset.Offset, Is.EqualTo(TimeSpan.Zero));
     }
@@ -300,7 +300,7 @@ public class DateTimeTests : TestBase
     public Task Timestamptz_as_long()
         => AssertType(-54297202000000, "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.DateTime, DbType.Int64), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Int64), valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Timestamptz_array_as_DateTimeOffset_array()
@@ -313,7 +313,7 @@ public class DateTimeTests : TestBase
             },
             """{"1998-04-12 15:26:38+02","1999-04-12 15:26:38+02"}""",
             "timestamp with time zone[]",
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
         Assert.That(dateTimeOffsets[0].Offset, Is.EqualTo(TimeSpan.Zero));
         Assert.That(dateTimeOffsets[1].Offset, Is.EqualTo(TimeSpan.Zero));
@@ -472,7 +472,7 @@ public class DateTimeTests : TestBase
                 new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             },
             @"{""1998-04-12 15:26:38+02""}",
-            "timestamp with time zone[]", isDataTypeInferredFromValue: false); // we write DateTime?[], but will read DateTime[] from GetValue
+            "timestamp with time zone[]", valueTypeEqualsFieldType: false); // we write DateTime?[], but will read DateTime[] from GetValue
     }
 
     #endregion
@@ -506,7 +506,7 @@ public class DateTimeTests : TestBase
     public Task Interval_as_NpgsqlInterval()
         => AssertType(
             new NpgsqlInterval(2, 15, 7384005000),
-            "2 mons 15 days 02:03:04.005", "interval", isValueTypeDefaultFieldType: false);
+            "2 mons 15 days 02:03:04.005", "interval", valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Interval_with_months_cannot_read_as_TimeSpan()

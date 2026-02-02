@@ -24,7 +24,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     [Test]
     public Task Text_as_array_of_chars()
         => AssertType("foo".ToCharArray(), "foo", "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Text_as_ArraySegment_of_chars()
@@ -33,7 +33,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     [Test]
     public Task Text_as_array_of_bytes()
         => AssertType("foo"u8.ToArray(), "foo", "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            new(DbType.String, DbType.Binary), isValueTypeDefaultFieldType: false);
+            new(DbType.String, DbType.Binary), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Text_as_ReadOnlyMemory_of_bytes()
@@ -45,7 +45,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     public Task Char_as_char()
         => AssertType('f', "f",
             "character", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false, skipArrayCheck: true); // char[] maps to text
+            dbType: DbType.String, valueTypeEqualsFieldType: false, skipArrayCheck: true); // char[] maps to text
 
     [Test]
     public async Task Citext_as_string()

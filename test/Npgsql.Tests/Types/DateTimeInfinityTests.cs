@@ -77,13 +77,13 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
             "timestamp with time zone",
             dbType: DbType.DateTime,
             comparer: (expected, actual) => MaxValuePrecisionLenientComparer(expected.DateTime, actual.DateTime),
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test, TestCaseSource(nameof(DateDateTimeValues))]
     public Task Date_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(DisableDateTimeInfinityConversions ? dateTime.Date : dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Date, DbType.DateTime2), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.DateTime2), valueTypeEqualsFieldType: false);
 
     static readonly TestCaseData[] DateOnlyDateTimeValues =
     [

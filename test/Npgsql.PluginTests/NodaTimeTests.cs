@@ -39,7 +39,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified),
             "1998-04-12 13:26:38",
             "timestamp without time zone",
-            dbType: DbType.DateTime2, isValueTypeDefaultFieldType: false);
+            dbType: DbType.DateTime2, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamp_as_long()
@@ -47,7 +47,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             -54297202000000,
             "1998-04-12 13:26:38",
             "timestamp without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.DateTime2, DbType.Int64), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime2, DbType.Int64), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamp_cannot_use_as_Instant()
@@ -162,7 +162,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc(),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: false,
-            dbType: new(DbType.DateTime, DbType.Object), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamptz_as_OffsetDateTime()
@@ -170,7 +170,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new LocalDateTime(1998, 4, 12, 13, 26, 38).WithOffset(Offset.Zero),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: false,
-            dbType: new(DbType.DateTime, DbType.Object), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamptz_as_utc_DateTime()
@@ -178,7 +178,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime, isValueTypeDefaultFieldType: false);
+            dbType: DbType.DateTime, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamptz_as_DateTimeOffset()
@@ -186,7 +186,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.Zero),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.DateTime, isValueTypeDefaultFieldType: false);
+            dbType: DbType.DateTime, valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamptz_as_long()
@@ -194,7 +194,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             -54297202000000,
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.DateTime, DbType.Int64), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.DateTime, DbType.Int64), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Timestamptz_cannot_use_as_LocalDateTime()
@@ -277,7 +277,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
                 new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()),
             """["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02"]""",
             "tstzrange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -288,7 +288,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
                 new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc()),
             """["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02"]""",
             "tstzrange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -299,7 +299,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
                 new LocalDateTime(1998, 4, 12, 15, 26, 38).WithOffset(Offset.Zero)),
             """["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02"]""",
             "tstzrange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
 
     [Test]
@@ -340,7 +340,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             },
             """{["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02"],["1998-04-13 15:26:38+02","1998-04-13 17:26:38+02"]}""",
             "tstzmultirange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -361,7 +361,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             },
             """{["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02"],["1998-04-13 15:26:38+02","1998-04-13 17:26:38+02"]}""",
             "tstzmultirange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -382,7 +382,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             },
             """{["1998-04-12 15:26:38+02","1998-04-12 17:26:38+02"],["1998-04-13 15:26:38+02","1998-04-13 17:26:38+02"]}""",
             "tstzmultirange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -446,13 +446,13 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     public Task Date_as_DateTime()
         => AssertType(new DateTime(2020, 10, 1), "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Date, DbType.DateTime2), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.DateTime2), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Date_as_int()
         => AssertType(7579, "2020-10-01",
             "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Date, DbType.Int32), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Date, DbType.Int32), valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Daterange_as_DateInterval()
@@ -487,7 +487,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false),
             "[2002-03-04,2002-03-06)",
             "daterange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true); // NpgsqlRange<T>[] is mapped to multirange by default, not array; test separately
 
          await AssertType(
@@ -504,7 +504,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
              new [] { new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
              """{[2002-03-04,2002-03-06)}""",
              "datemultirange", dataTypeInference: false,
-             isValueTypeDefaultFieldType: false,
+             valueTypeEqualsFieldType: false,
              skipArrayCheck: true);
     }
 
@@ -539,12 +539,12 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             },
             "{[2002-03-04,2002-03-06),[2002-03-08,2002-03-11)}",
             "datemultirange", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
     }
 
     [Test]
     public Task Date_as_DateOnly()
-        => AssertType(new DateOnly(2020, 10, 1), "2020-10-01", "date", dbType: DbType.Date, isValueTypeDefaultFieldType: false);
+        => AssertType(new DateOnly(2020, 10, 1), "2020-10-01", "date", dbType: DbType.Date, valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Daterange_as_NpgsqlRange_of_DateOnly()
@@ -553,7 +553,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false),
             "[2002-03-04,2002-03-06)",
             "daterange",
-            isValueTypeDefaultFieldType: false, skipArrayCheck: true);
+            valueTypeEqualsFieldType: false, skipArrayCheck: true);
 
         await AssertType(
             new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
@@ -569,7 +569,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
             """{[2002-03-04,2002-03-06)}""",
             "datemultirange", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            isValueTypeDefaultFieldType: false,
+            valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
     }
 
@@ -619,7 +619,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new TimeSpan(0, 10, 45, 34, 500),
             "10:45:34.5",
             "time without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: new(DbType.Time, DbType.Object), isValueTypeDefaultFieldType: false);
+            dbType: new(DbType.Time, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Time_as_TimeOnly()
@@ -627,7 +627,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             new TimeOnly(10, 45, 34, 500),
             "10:45:34.5",
             "time without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Time, isValueTypeDefaultFieldType: false);
+            dbType: DbType.Time, valueTypeEqualsFieldType: false);
 
     #endregion Time
 
@@ -647,7 +647,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         await AssertTypeRead(
             "13:03:45.51+02",
             "time with time zone",
-            new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)), isValueTypeDefaultFieldType: false);
+            new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)), valueTypeEqualsFieldType: false);
 
         await AssertTypeWrite(
             new DateTimeOffset(1, 1, 1, 13, 3, 45, 510, TimeSpan.FromHours(2)),
@@ -686,7 +686,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
             Duration.FromNanoseconds(1000),
             "5 days 00:04:03.002001",
             "interval", dataTypeInference: false,
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Interval_as_Duration_with_months_fails()

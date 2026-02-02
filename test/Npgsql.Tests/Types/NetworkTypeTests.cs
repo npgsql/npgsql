@@ -65,7 +65,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             new NpgsqlCidr(IPAddress.Parse("192.168.1.0"), netmask: 24),
             "192.168.1.0/24",
             "cidr",
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 #pragma warning restore CS0618
 
     [Test]
@@ -74,7 +74,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             new NpgsqlInet(IPAddress.Parse("192.168.1.1"), 24),
             "192.168.1.1/24",
             "inet",
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Inet_v6_as_NpgsqlInet()
@@ -82,7 +82,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 24),
             "2001:1db8:85a3:1142:1000:8a2e:1370:7334/24",
             "inet",
-            isValueTypeDefaultFieldType: false);
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Macaddr()

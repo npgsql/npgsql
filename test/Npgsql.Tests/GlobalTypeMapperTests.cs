@@ -36,7 +36,7 @@ public class GlobalTypeMapperTests : TestBase
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
             type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, valueTypeEqualsFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
@@ -70,7 +70,7 @@ public class GlobalTypeMapperTests : TestBase
             await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
             await AssertType(dataSource1, "happy", "happy",
                 type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-                dbType: DbType.String, isValueTypeDefaultFieldType: false);
+                dbType: DbType.String, valueTypeEqualsFieldType: false);
 
             // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
@@ -107,7 +107,7 @@ public class GlobalTypeMapperTests : TestBase
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
             type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, isValueTypeDefaultFieldType: false);
+            dbType: DbType.String, valueTypeEqualsFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
