@@ -151,7 +151,11 @@ SELECT onedim, twodim FROM (VALUES
     [TestCase(ArrayNullabilityMode.PerInstance)]
     public async Task Value_type_array_nullabilities_converter_resolver(ArrayNullabilityMode mode)
     {
-        await using var dataSource = CreateDataSource(csb => csb.ArrayNullabilityMode = mode);
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.ArrayNullabilityMode = mode;
+            csb.Timezone = "Europe/Berlin";
+        });
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
 """

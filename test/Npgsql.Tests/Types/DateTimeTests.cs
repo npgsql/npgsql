@@ -455,9 +455,10 @@ public class DateTimeTests : TestBase
     [Test]
     public async Task Array_of_nullable_timestamptz()
     {
-        await using var datasource = CreateDataSource(builder =>
+        await using var datasource = CreateDataSource(csb =>
         {
-            builder.ArrayNullabilityMode = ArrayNullabilityMode.PerInstance;
+            csb.ArrayNullabilityMode = ArrayNullabilityMode.PerInstance;
+            csb.Timezone = "Europe/Berlin";
         });
         await AssertType(datasource,
             new DateTime?[]
