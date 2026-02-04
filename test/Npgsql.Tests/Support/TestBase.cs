@@ -223,8 +223,22 @@ public abstract class TestBase
 
     public enum DataTypeInferenceKind
     {
+        /// <summary>
+        /// The exact PostgreSQL data type can be inferred from the CLR type alone.
+        /// The CLR type has a mapping to a specific PostgreSQL data type.
+        /// </summary>
         Exact,
+
+        /// <summary>
+        /// The CLR type maps to a well-known PostgreSQL type (it has a case in NpgsqlDbType) but does not map to the value type.
+        /// This is used for negative matching without requiring the exact well-known type to be specified.
+        /// </summary>
         WellKnown,
+
+        /// <summary>
+        /// The PostgreSQL data type cannot be inferred from the CLR type.
+        /// Requires explicit type specification via NpgsqlDbType, DataTypeName, or DbType.
+        /// </summary>
         Unknown,
     }
 
@@ -237,24 +251,14 @@ public abstract class TestBase
             => new(kind);
     }
 
-    public readonly struct ExpectedDbType
+    public readonly struct ExpectedDbType(DbType dbType, DbType dataTypeNameDbType, DbType valueInferredDbType)
     {
-        public DbType DbType { get; }
-        public DbType DataTypeNameDbType { get; }
-        public DbType ValueInferredDbType { get; }
-
-        public ExpectedDbType(DbType dbType, DbType dataTypeNameDbType, DbType valueInferredDbType)
-        {
-            DbType = dbType;
-            DataTypeNameDbType = dataTypeNameDbType;
-            ValueInferredDbType = valueInferredDbType;
-        }
+        public DbType DbType { get; } = dbType;
+        public DbType DataTypeNameDbType { get; } = dataTypeNameDbType;
+        public DbType ValueInferredDbType { get; } = valueInferredDbType;
 
         public ExpectedDbType(DbType dataTypeNameDbType, DbType valueInferredDbType)
-        {
-            DataTypeNameDbType = dataTypeNameDbType;
-            DbType = ValueInferredDbType = valueInferredDbType;
-        }
+            : this(valueInferredDbType, dataTypeNameDbType, valueInferredDbType) {}
 
         ExpectedDbType(DbType dbType) : this(dbType, dbType, dbType) {}
 
@@ -354,7 +358,7 @@ public abstract class TestBase
             {
                 switch (dataTypeInference.Kind)
                 {
-                    // Only respect WellKnown if the type is actually well known.
+                    // Only respect WellKnown if the type is actually well known, otherwise use the existing values so we'll error properly.
                     case DataTypeInferenceKind.WellKnown when p.NpgsqlDbType is not NpgsqlDbType.Unknown:
                         expectedDataTypeName = p.DataTypeName;
                         expectedNpgsqlDbType = p.NpgsqlDbType;
