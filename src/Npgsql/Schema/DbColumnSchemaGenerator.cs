@@ -31,66 +31,69 @@ sealed class DbColumnSchemaGenerator
     #region Columns queries
 
     static string GenerateColumnsQuery(Version pgVersion, string columnFieldFilter) =>
-        $@"SELECT
-     typ.oid AS typoid, nspname, relname, attname, attrelid, attnum, attnotnull,
-     {(pgVersion.IsGreaterOrEqual(10) ? "attidentity != ''" : "FALSE")} AS isidentity,
-     CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
-     CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
-     CASE WHEN ((cls.relkind = ANY (ARRAY['r'::""char"", 'p'::""char""]))
-               OR ((cls.relkind = ANY (ARRAY['v'::""char"", 'f'::""char""]))
-               AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false)))
-  	           {(pgVersion.IsGreaterOrEqual(10) ? "AND attr.attidentity NOT IN ('a')" : "")} THEN 'true'::boolean
-               ELSE 'false'::boolean
-               END AS is_updatable,
-     EXISTS (
-       SELECT * FROM pg_index
-       WHERE pg_index.indrelid = cls.oid AND
-             pg_index.indisprimary AND
-             attnum = ANY (indkey)
-     ) AS isprimarykey,
-     EXISTS (
-       SELECT * FROM pg_index
-       WHERE pg_index.indrelid = cls.oid AND
-             pg_index.indisunique AND
-             pg_index.{(pgVersion.IsGreaterOrEqual(11) ? "indnkeyatts" : "indnatts")} = 1 AND
-             attnum = pg_index.indkey[0]
-     ) AS isunique
+        $"""
+SELECT
+    typ.oid AS typoid, nspname, relname, attname, attrelid, attnum, attnotnull,
+    {(pgVersion.IsGreaterOrEqual(10) ? "attidentity != ''" : "FALSE")} AS isidentity,
+    CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
+    CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
+    ((cls.relkind = ANY (ARRAY['r'::"char", 'p'::"char"]))
+        OR ((cls.relkind = ANY (ARRAY['v'::"char", 'f'::"char"]))
+        AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false)))
+        {(pgVersion.IsGreaterOrEqual(10) ? "AND attr.attidentity NOT IN ('a')" : "")}
+        AS is_updatable,
+    EXISTS (
+        SELECT * FROM pg_index
+        WHERE pg_index.indrelid = cls.oid AND
+            pg_index.indisprimary AND
+            attnum = ANY (indkey)
+    ) AS isprimarykey,
+    EXISTS (
+        SELECT * FROM pg_index
+        WHERE pg_index.indrelid = cls.oid AND
+            pg_index.indisunique AND
+            pg_index.{(pgVersion.IsGreaterOrEqual(11) ? "indnkeyatts" : "indnatts")} = 1 AND
+            attnum = pg_index.indkey[0]
+    ) AS isunique
 FROM pg_attribute AS attr
 JOIN pg_type AS typ ON attr.atttypid = typ.oid
 JOIN pg_class AS cls ON cls.oid = attr.attrelid
 JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
 WHERE
-     atttypid <> 0 AND
-     relkind IN ('r', 'v', 'm') AND
-     NOT attisdropped AND
-     nspname NOT IN ('pg_catalog', 'information_schema') AND
-     attnum > 0 AND
-     ({columnFieldFilter})
-ORDER BY attnum";
+    atttypid <> 0 AND
+    relkind IN ('r', 'v', 'm') AND
+    NOT attisdropped AND
+    nspname NOT IN ('pg_catalog', 'information_schema') AND
+    attnum > 0 AND
+    ({columnFieldFilter})
+ORDER BY attnum
+""";
 
     /// <summary>
     /// Stripped-down version of <see cref="GenerateColumnsQuery"/>, mainly to support Amazon Redshift.
     /// </summary>
     static string GenerateOldColumnsQuery(string columnFieldFilter) =>
-        $@"SELECT
-     typ.oid AS typoid, nspname, relname, attname, attrelid, attnum, attnotnull,
-     CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
-     CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
-     TRUE AS is_updatable,  /* Supported only since PG 8.2 */
-     FALSE AS isprimarykey, /* Can't do ANY() on pg_index.indkey which is int2vector */
-     FALSE AS isunique      /* Can't do ANY() on pg_index.indkey which is int2vector */
+        $"""
+SELECT
+    typ.oid AS typoid, nspname, relname, attname, attrelid, attnum, attnotnull,
+    CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
+    CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
+    TRUE AS is_updatable,  /* Supported only since PG 8.2 */
+    FALSE AS isprimarykey, /* Can't do ANY() on pg_index.indkey which is int2vector */
+    FALSE AS isunique      /* Can't do ANY() on pg_index.indkey which is int2vector */
 FROM pg_attribute AS attr
 JOIN pg_type AS typ ON attr.atttypid = typ.oid
 JOIN pg_class AS cls ON cls.oid = attr.attrelid
 JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
 WHERE
-     atttypid <> 0 AND
-     relkind IN ('r', 'v', 'm') AND
-     NOT attisdropped AND
-     nspname NOT IN ('pg_catalog', 'information_schema') AND
-     attnum > 0 AND
-     ({columnFieldFilter})
-ORDER BY attnum";
+    atttypid <> 0 AND
+    relkind IN ('r', 'v', 'm') AND
+    NOT attisdropped AND
+    nspname NOT IN ('pg_catalog', 'information_schema') AND
+    attnum > 0 AND
+    ({columnFieldFilter})
+ORDER BY attnum
+""";
 
     #endregion Column queries
 
