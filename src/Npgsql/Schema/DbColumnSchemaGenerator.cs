@@ -39,7 +39,7 @@ sealed class DbColumnSchemaGenerator
      CASE WHEN ((cls.relkind = ANY (ARRAY['r'::""char"", 'p'::""char""]))
                OR ((cls.relkind = ANY (ARRAY['v'::""char"", 'f'::""char""]))
                AND pg_column_is_updatable((cls.oid)::regclass, attr.attnum, false)))
-  	           AND attr.attidentity NOT IN ('a') THEN 'true'::boolean
+  	           {(pgVersion.IsGreaterOrEqual(10) ? "AND attr.attidentity NOT IN ('a')" : "")} THEN 'true'::boolean
                ELSE 'false'::boolean
                END AS is_updatable,
      EXISTS (
