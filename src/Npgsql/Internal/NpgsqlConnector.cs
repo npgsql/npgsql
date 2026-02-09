@@ -2644,8 +2644,14 @@ public sealed partial class NpgsqlConnector
         _certificates = null;
     }
 
+    [MemberNotNull(nameof(_resetWithoutDeallocateMessage))]
     void GenerateResetMessage()
     {
+        // Generate a reset message that resets connection state without using DISCARD ALL.
+        // This is used in two scenarios:
+        // 1. When closing a pooled connection that has prepared statements (DISCARD ALL would deallocate them)
+        // 2. When closing a connection within an enlisted System.Transactions transaction (DISCARD ALL cannot
+        //    run inside a transaction block, but its component commands can)
         var sb = new StringBuilder("SET SESSION AUTHORIZATION DEFAULT;RESET ALL;");
         _resetWithoutDeallocateResponseCount = 2;
         if (DatabaseInfo.SupportsCloseAll)
@@ -2751,6 +2757,35 @@ public sealed partial class NpgsqlConnector
             // TransactionScope completed - the connector is still enlisted, but has no connection.
             Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
+    }
+
+    /// <summary>
+    /// Called when a pooled connection with an enlisted System.Transactions transaction is closed.
+    /// Since we're inside a transaction block, we cannot send DISCARD ALL;
+    /// we prepend a reset message that only includes commands that can safely run within a transaction.
+    /// </summary>
+    internal void ResetWithinEnlistedTransaction()
+    {
+        // We start user action in case a keeplive happens concurrently, or a concurrent user command (bug)
+        using var _ = StartUserAction(attemptPgCancellation: false);
+
+        // Our buffer may contain unsent prepended messages, so clear it out.
+        WriteBuffer.Clear();
+        PendingPrependedResponses = 0;
+
+        ResetReadBuffer();
+
+        if (_sendResetOnClose)
+        {
+            if (_resetWithoutDeallocateMessage is null)
+            {
+                GenerateResetMessage();
+            }
+
+            PrependInternalMessage(_resetWithoutDeallocateMessage, _resetWithoutDeallocateResponseCount);
+        }
+
+        DataReader.UnbindIfNecessary();
     }
 
     /// <summary>
