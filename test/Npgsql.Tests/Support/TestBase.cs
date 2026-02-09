@@ -35,7 +35,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -48,7 +48,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -61,7 +61,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -73,7 +73,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -86,7 +86,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -99,7 +99,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -113,7 +113,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         Func<T, T, bool>? comparer = null,
         bool valueTypeEqualsFieldType = true,
         bool skipArrayCheck = false)
@@ -132,7 +132,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         bool skipArrayCheck = false)
         => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral,
             dataTypeName, dataTypeInference, dbType, skipArrayCheck);
@@ -143,7 +143,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         bool skipArrayCheck = false)
         => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, () => value, sqlLiteral,
             dataTypeName, dataTypeInference, dbType, skipArrayCheck);
@@ -154,7 +154,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         bool skipArrayCheck = false)
         => AssertTypeWriteCore(new(connection), disposeConnection: false, () => value, sqlLiteral, dataTypeName, dataTypeInference,
             dbType, skipArrayCheck);
@@ -164,7 +164,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         bool skipArrayCheck = false)
         => AssertTypeWriteCore(OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral,
             dataTypeName, dataTypeInference, dbType, skipArrayCheck);
@@ -175,7 +175,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         bool skipArrayCheck = false)
         => AssertTypeWriteCore(dataSource.OpenConnectionAsync(), disposeConnection: true, valueFactory, sqlLiteral,
             dataTypeName, dataTypeInference, dbType, skipArrayCheck);
@@ -186,7 +186,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference = null,
-        ExpectedDbType? dbType = null,
+        ExpectedDbTypes? dbType = null,
         bool skipArrayCheck = false)
         => AssertTypeWriteCore(new(connection), disposeConnection: false, valueFactory, sqlLiteral,
             dataTypeName, dataTypeInference, dbType, skipArrayCheck);
@@ -198,7 +198,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference? dataTypeInference,
-        ExpectedDbType? dbType,
+        ExpectedDbTypes? dbType,
         bool skipArrayCheck)
     {
         var connection = await connectionTask;
@@ -217,7 +217,7 @@ public abstract class TestBase
                 () => new[] { valueFactory(), valueFactory() },
                 ArrayLiteral(sqlLiteral),
                 dataTypeName + "[]", dataTypeInference ?? true,
-                expectedDbType: null);
+                expectedDbTypes: null);
         }
     }
 
@@ -251,18 +251,18 @@ public abstract class TestBase
             => new(kind);
     }
 
-    public readonly struct ExpectedDbType(DbType dbType, DbType dataTypeNameDbType, DbType valueInferredDbType)
+    public readonly struct ExpectedDbTypes(DbType dbType, DbType dataTypeNameDbType, DbType valueInferredDbType)
     {
         public DbType DbType { get; } = dbType;
         public DbType DataTypeNameDbType { get; } = dataTypeNameDbType;
         public DbType ValueInferredDbType { get; } = valueInferredDbType;
 
-        public ExpectedDbType(DbType dataTypeNameDbType, DbType valueInferredDbType)
+        public ExpectedDbTypes(DbType dataTypeNameDbType, DbType valueInferredDbType)
             : this(valueInferredDbType, dataTypeNameDbType, valueInferredDbType) {}
 
-        ExpectedDbType(DbType dbType) : this(dbType, dbType, dbType) {}
+        ExpectedDbTypes(DbType dbType) : this(dbType, dbType, dbType) {}
 
-        public static implicit operator ExpectedDbType(DbType dbType) => new(dbType);
+        public static implicit operator ExpectedDbTypes(DbType dbType) => new(dbType);
     }
 
     static async Task AssertTypeWriteCore<T>(
@@ -271,7 +271,7 @@ public abstract class TestBase
         string sqlLiteral,
         string dataTypeName,
         DataTypeInference dataTypeInference,
-        ExpectedDbType? expectedDbType)
+        ExpectedDbTypes? expectedDbTypes)
     {
         var npgsqlDbType = DataTypeName.FromDisplayName(dataTypeName).ToNpgsqlDbType();
 
@@ -314,7 +314,7 @@ public abstract class TestBase
         }
 
         // With DbType
-        if (expectedDbType?.DbType is { } dbType)
+        if (expectedDbTypes?.DbType is { } dbType)
         {
             p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType };
             errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
@@ -381,11 +381,11 @@ public abstract class TestBase
             DbType? dbType;
             var actualDbType = p.DbType;
             if (dbTypeApplied)
-                dbType = expectedDbType?.DbType;
+                dbType = expectedDbTypes?.DbType;
             else if (valueSolelyApplied)
-                dbType = expectedDbType?.ValueInferredDbType ?? DbType.Object;
+                dbType = expectedDbTypes?.ValueInferredDbType ?? DbType.Object;
             else if (dataTypeInference.Kind is DataTypeInferenceKind.Exact || actualDbType != DbType.Object)
-                dbType = expectedDbType?.DataTypeNameDbType ?? DbType.Object;
+                dbType = expectedDbTypes?.DataTypeNameDbType ?? DbType.Object;
             // If data type is not inferrable from the value and the actual db type is object we'll skip the DbType check.
             // This allows callers to pass DbType through implicit conversion instead of requiring new ExpectedDbType(DbType.Object, #DbType#)
             else
