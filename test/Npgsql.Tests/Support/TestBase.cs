@@ -301,7 +301,7 @@ public abstract class TestBase
         // With data type name
         p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacetsAndQuotes };
         errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacetsAndQuotes}";
-        CheckInference();
+        CheckParameter();
         cmd.Parameters.Add(p);
 
         // With NpgsqlDbType
@@ -309,7 +309,7 @@ public abstract class TestBase
         {
             p = new NpgsqlParameter { Value = valueFactory(), NpgsqlDbType = npgsqlDbType.Value };
             errorIdentifier[++errorIdentifierIndex] = $"NpgsqlDbType={npgsqlDbType}";
-            CheckInference();
+            CheckParameter();
             cmd.Parameters.Add(p);
         }
 
@@ -318,7 +318,7 @@ public abstract class TestBase
         {
             p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType };
             errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
-            CheckInference(dbTypeApplied: true);
+            CheckParameter(dbTypeApplied: true);
             if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
                 cmd.Parameters.Add(p);
         }
@@ -326,14 +326,14 @@ public abstract class TestBase
         // With (non-generic) value only
         p = new NpgsqlParameter { Value = valueFactory() };
         errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
-        CheckInference(valueSolelyApplied: true);
+        CheckParameter(valueSolelyApplied: true);
         if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
 
         // With (generic) value only
         p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
         errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
-        CheckInference(valueSolelyApplied: true);
+        CheckParameter(valueSolelyApplied: true);
         if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
 
@@ -350,7 +350,7 @@ public abstract class TestBase
             Assert.That(reader[i+1], Is.EqualTo(sqlLiteral), $"Got wrong SQL literal when writing with {error}");
         }
 
-        void CheckInference(bool dbTypeApplied = false, bool valueSolelyApplied = false)
+        void CheckParameter(bool dbTypeApplied = false, bool valueSolelyApplied = false)
         {
             var expectedDataTypeName = pgTypeNameWithoutFacetsAndQuotes;
             var expectedNpgsqlDbType = npgsqlDbType ?? NpgsqlDbType.Unknown;
