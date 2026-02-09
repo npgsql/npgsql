@@ -48,7 +48,6 @@ public abstract class NpgsqlDataSource : DbDataSource
         public IDbTypeResolver? DbTypeResolver { get; } = dbTypeResolver;
     }
 
-
     internal TransportSecurityHandler TransportSecurityHandler { get; }
 
     internal Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; }

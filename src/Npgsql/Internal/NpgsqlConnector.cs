@@ -2736,23 +2736,29 @@ public sealed partial class NpgsqlConnector
 
     /// <summary>
     /// Called when a pooled connection with an enlisted System.Transactions transaction is closed.
-    /// Since we're inside a transaction block, we cannot send DISCARD ALL, DISCARD TEMP or DISCARD SEQUENCES;
+    /// Since we're inside a transaction block, we cannot send DISCARD ALL;
     /// we prepend a reset message that only includes commands that can safely run within a transaction.
     /// </summary>
     internal void ResetWithinEnlistedTransaction()
     {
+        // We start user action in case a keeplive happens concurrently, or a concurrent user command (bug)
+        using var _ = StartUserAction(attemptPgCancellation: false);
+
         // Our buffer may contain unsent prepended messages, so clear it out.
         WriteBuffer.Clear();
         PendingPrependedResponses = 0;
 
         ResetReadBuffer();
 
-        if (_resetWithoutDeallocateMessage is null)
+        if (_sendResetOnClose)
         {
-            GenerateResetMessage();
-        }
+            if (_resetWithoutDeallocateMessage is null)
+            {
+                GenerateResetMessage();
+            }
 
-        PrependInternalMessage(_resetWithoutDeallocateMessage, _resetWithoutDeallocateResponseCount);
+            PrependInternalMessage(_resetWithoutDeallocateMessage, _resetWithoutDeallocateResponseCount);
+        }
 
         DataReader.UnbindIfNecessary();
     }

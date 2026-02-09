@@ -5,7 +5,6 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
