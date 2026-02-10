@@ -472,7 +472,13 @@ public class DateTimeTests : TestBase
 
     [Test]
     public async Task Array_of_nullable_timestamptz()
-        => await AssertType(
+    {
+        await using var datasource = CreateDataSource(csb =>
+        {
+            csb.ArrayNullabilityMode = ArrayNullabilityMode.PerInstance;
+            csb.Timezone = "Europe/Berlin";
+        });
+        await AssertType(datasource,
             new DateTime?[]
             {
                 new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
@@ -480,8 +486,18 @@ public class DateTimeTests : TestBase
             },
             @"{""1998-04-12 15:26:38+02"",NULL}",
             "timestamp with time zone[]",
+            NpgsqlDbType.TimestampTz | NpgsqlDbType.Array);
+
+        await AssertType(datasource,
+            new DateTime?[]
+            {
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+            },
+            @"{""1998-04-12 15:26:38+02""}",
+            "timestamp with time zone[]",
             NpgsqlDbType.TimestampTz | NpgsqlDbType.Array,
-            isDefault: false);
+            isDefaultForReading: false); // we write DateTime?[], but will read DateTime[] from GetValue
+    }
 
     #endregion
 
