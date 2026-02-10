@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -407,7 +408,7 @@ public abstract class TestBase
                         : (dataTypeNameWithoutFacetsAndQuotes, npgsqlDbType ?? NpgsqlDbType.Unknown),
                 DataTypeInferenceKind.None =>
                     (null, NpgsqlDbType.Unknown),
-                _ => throw new ArgumentOutOfRangeException(nameof(dataTypeInference.Kind), dataTypeInference.Kind, "Unknown case")
+                _ => throw new UnreachableException($"Unknown case {dataTypeInference.Kind}")
             };
     }
 
