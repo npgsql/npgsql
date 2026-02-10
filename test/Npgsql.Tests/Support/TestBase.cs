@@ -251,18 +251,16 @@ public abstract class TestBase
             => new(kind);
     }
 
-    public readonly struct ExpectedDbTypes(DbType dbType, DbType dataTypeNameDbType, DbType valueInferredDbType)
+    public readonly struct ExpectedDbTypes(DbType dbType, DbType dataTypeMappedDbType, DbType valueInferredDbType)
     {
         public DbType DbType { get; } = dbType;
-        public DbType DataTypeNameDbType { get; } = dataTypeNameDbType;
+        public DbType DataTypeMappedDbType { get; } = dataTypeMappedDbType;
         public DbType ValueInferredDbType { get; } = valueInferredDbType;
 
-        public ExpectedDbTypes(DbType dataTypeNameDbType, DbType valueInferredDbType)
-            : this(valueInferredDbType, dataTypeNameDbType, valueInferredDbType) {}
+        public ExpectedDbTypes(DbType dataTypeMappedDbType, DbType valueInferredDbType)
+            : this(valueInferredDbType, dataTypeMappedDbType, valueInferredDbType) {}
 
-        ExpectedDbTypes(DbType dbType) : this(dbType, dbType, dbType) {}
-
-        public static implicit operator ExpectedDbTypes(DbType dbType) => new(dbType);
+        public static implicit operator ExpectedDbTypes(DbType dbType) => new(dbType, dbType, dbType);
     }
 
     static async Task AssertTypeWriteCore<T>(
@@ -277,20 +275,22 @@ public abstract class TestBase
 
         // Strip any facet information (length/precision/scale)
         var parenIndex = dataTypeName.IndexOf('(');
-        var pgTypeNameWithoutFacets = parenIndex > -1
+        var dataTypeNameWithoutFacets = parenIndex > -1
             ? dataTypeName[..parenIndex] + dataTypeName[(dataTypeName.IndexOf(')') + 1)..]
             : dataTypeName;
 
         // For composite type with dots in name, Postgresql returns name with quotes - scheme."My.type.name"
         // but for npgsql mapping we should use names without quotes - scheme.My.type.name
-        var pgTypeNameWithoutFacetsAndQuotes = pgTypeNameWithoutFacets.Replace("\"", string.Empty);
+        var dataTypeNameWithoutFacetsAndQuotes = dataTypeNameWithoutFacets.Replace("\"", string.Empty);
 
         // We test the following scenarios (between 2 and 5 in total):
-        // 1. With NpgsqlDbType explicitly set
-        // 2. With DataTypeName explicitly set
-        // 3. With DbType explicitly set (if one was provided)
-        // 4. With only the value set (if it's the default)
-        // 5. With only the value set, using generic NpgsqlParameter<T> (if it's the default)
+        // 1. With value and DataTypeName set
+        // 2. With value and NpgsqlDbType set (when available)
+        // 3. With value and DbType explicitly set
+        // 4. With only the value set
+        // 5. With only the value set, using generic NpgsqlParameter<T>
+
+        // We only actually attempt to write to the database with a set DataTypeName, NpgsqlDbType, or when data type inference is exact.
 
         var errorIdentifierIndex = -1;
         var errorIdentifier = new Dictionary<int, string>();
@@ -299,41 +299,40 @@ public abstract class TestBase
         NpgsqlParameter p;
 
         // With data type name
-        p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacetsAndQuotes };
-        errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacetsAndQuotes}";
-        CheckParameter();
+        p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = dataTypeNameWithoutFacetsAndQuotes };
+        errorIdentifier[++errorIdentifierIndex] = $"Value and DataTypeName={dataTypeNameWithoutFacetsAndQuotes}";
+        DataTypeAsserts();
         cmd.Parameters.Add(p);
 
         // With NpgsqlDbType
         if (npgsqlDbType is not null)
         {
             p = new NpgsqlParameter { Value = valueFactory(), NpgsqlDbType = npgsqlDbType.Value };
-            errorIdentifier[++errorIdentifierIndex] = $"NpgsqlDbType={npgsqlDbType}";
-            CheckParameter();
+            errorIdentifier[++errorIdentifierIndex] = $"Value and NpgsqlDbType={npgsqlDbType}";
+            DataTypeAsserts();
             cmd.Parameters.Add(p);
         }
 
-        // With DbType
-        if (expectedDbTypes?.DbType is { } dbType)
-        {
-            p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType };
-            errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
-            CheckParameter(dbTypeApplied: true);
-            if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
-                cmd.Parameters.Add(p);
-        }
+        // With DbType, if none was supplied we verify it's DbType.Object.
+        p = new NpgsqlParameter { Value = valueFactory() };
+        errorIdentifier[++errorIdentifierIndex] = $"Value and DbType={expectedDbTypes?.DbType}";
+        if (expectedDbTypes?.DbType is { } expectedDbType)
+            p.DbType = expectedDbType;
+        DbTypeAsserts();
+        if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
+            cmd.Parameters.Add(p);
 
         // With (non-generic) value only
         p = new NpgsqlParameter { Value = valueFactory() };
-        errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
-        CheckParameter(valueSolelyApplied: true);
+        errorIdentifier[++errorIdentifierIndex] = $"Value (type {p.Value!.GetType().Name}, non-generic)";
+        ValueAsserts();
         if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
 
         // With (generic) value only
         p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
-        errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
-        CheckParameter(valueSolelyApplied: true);
+        errorIdentifier[++errorIdentifierIndex] = $"Value (type {p.Value!.GetType().Name}, generic)";
+        ValueAsserts();
         if (dataTypeInference.Kind is DataTypeInferenceKind.Exact)
             cmd.Parameters.Add(p);
 
@@ -346,55 +345,67 @@ public abstract class TestBase
         for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
         {
             var error = errorIdentifier[i / 2];
-            Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {error}");
+            Assert.That(reader[i], Is.EqualTo(dataTypeNameWithoutFacets), $"Got wrong data type name when writing with {error}");
             Assert.That(reader[i+1], Is.EqualTo(sqlLiteral), $"Got wrong SQL literal when writing with {error}");
         }
 
-        void CheckParameter(bool dbTypeApplied = false, bool valueSolelyApplied = false)
+        void DataTypeAsserts()
         {
-            var expectedDataTypeName = pgTypeNameWithoutFacetsAndQuotes;
+            var expectedDataTypeName = dataTypeNameWithoutFacetsAndQuotes;
             var expectedNpgsqlDbType = npgsqlDbType ?? NpgsqlDbType.Unknown;
-            if (valueSolelyApplied)
-            {
-                switch (dataTypeInference.Kind)
-                {
-                    // Only respect WellKnown if the type is actually well known, otherwise use the existing values so we'll error properly.
-                    case DataTypeInferenceKind.WellKnown when p.NpgsqlDbType is not NpgsqlDbType.Unknown:
-                        expectedDataTypeName = p.DataTypeName;
-                        expectedNpgsqlDbType = p.NpgsqlDbType;
-                        break;
-                    case DataTypeInferenceKind.Unknown:
-                        expectedDataTypeName = null;
-                        expectedNpgsqlDbType = NpgsqlDbType.Unknown;
-                        break;
-                }
-            }
 
-            if (!dbTypeApplied || dataTypeInference.Kind is DataTypeInferenceKind.Exact)
-            {
-                Assert.That(p.DataTypeName, Is.EqualTo(expectedDataTypeName),
-                    () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
-                Assert.That(p.NpgsqlDbType, Is.EqualTo(expectedNpgsqlDbType),
-                    () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
-            }
+            var expectedDbType = expectedDbTypes?.DataTypeMappedDbType ?? DbType.Object;
 
-            DbType? dbType;
-            var actualDbType = p.DbType;
-            if (dbTypeApplied)
-                dbType = expectedDbTypes?.DbType;
-            else if (valueSolelyApplied)
-                dbType = expectedDbTypes?.ValueInferredDbType ?? DbType.Object;
-            else if (dataTypeInference.Kind is DataTypeInferenceKind.Exact || actualDbType != DbType.Object)
-                dbType = expectedDbTypes?.DataTypeNameDbType ?? DbType.Object;
-            // If data type is not inferrable from the value and the actual db type is object we'll skip the DbType check.
-            // This allows callers to pass DbType through implicit conversion instead of requiring new ExpectedDbType(DbType.Object, #DbType#)
-            else
-                dbType = null;
-
-            if (dbType is not null)
-                Assert.That(actualDbType, Is.EqualTo(dbType),
-                    () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+            AssertParameterProperties(expectedDataTypeName, expectedNpgsqlDbType, expectedDbType);
         }
+
+        void DbTypeAsserts()
+        {
+            // If DbType was set it overrules any value based data type inference.
+            // As DbType.Object never has any mapping either we check for null/Unknown when DbType.Object was set.
+            var (expectedDataTypeName, expectedNpgsqlDbType) =
+                expectedDbTypes is { DbType: DbType.Object }
+                    ? (null, NpgsqlDbType.Unknown)
+                    : GetInferredDataType();
+
+            var expectedDbType = expectedDbTypes?.DbType ?? DbType.Object;
+
+            AssertParameterProperties(expectedDataTypeName, expectedNpgsqlDbType, expectedDbType);
+        }
+
+        void ValueAsserts()
+        {
+            var (expectedDataTypeName, expectedNpgsqlDbType) = GetInferredDataType();
+
+            var expectedDbType = expectedDbTypes?.ValueInferredDbType ?? DbType.Object;
+
+            AssertParameterProperties(expectedDataTypeName, expectedNpgsqlDbType, expectedDbType);
+        }
+
+        void AssertParameterProperties(string? expectedDataTypeName, NpgsqlDbType expectedNpgsqlDbType, DbType expectedDbType)
+        {
+            Assert.That(p.DataTypeName, Is.EqualTo(expectedDataTypeName),
+                $"Got wrong DataTypeName when checking with {errorIdentifier[errorIdentifierIndex]}");
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(expectedNpgsqlDbType),
+                $"Got wrong NpgsqlDbType when checking with {errorIdentifier[errorIdentifierIndex]}");
+            Assert.That(p.DbType, Is.EqualTo(expectedDbType),
+                $"Got wrong DbType when checking with {errorIdentifier[errorIdentifierIndex]}");
+        }
+
+        (string? ExpectedDataTypeName, NpgsqlDbType ExpectedNpgsqlDbType) GetInferredDataType()
+            => dataTypeInference.Kind switch
+            {
+                DataTypeInferenceKind.Exact =>
+                    (dataTypeNameWithoutFacetsAndQuotes, npgsqlDbType ?? NpgsqlDbType.Unknown),
+                DataTypeInferenceKind.WellKnown =>
+                    // Only respect WellKnown if the type is actually well known, otherwise use the exact values so we'll error properly.
+                    p.NpgsqlDbType is not NpgsqlDbType.Unknown
+                        ? (p.DataTypeName, p.NpgsqlDbType)
+                        : (dataTypeNameWithoutFacetsAndQuotes, npgsqlDbType ?? NpgsqlDbType.Unknown),
+                DataTypeInferenceKind.Unknown =>
+                    (null, NpgsqlDbType.Unknown),
+                _ => throw new ArgumentOutOfRangeException(nameof(dataTypeInference.Kind), dataTypeInference.Kind, "Unknown case")
+            };
     }
 
     public Task<T> AssertTypeRead<T>(string sqlLiteral, string dataTypeName, T expected,
