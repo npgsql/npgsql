@@ -36,7 +36,7 @@ public class GlobalTypeMapperTests : TestBase
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
             type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, valueTypeEqualsFieldType: false);
+            dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
@@ -70,7 +70,7 @@ public class GlobalTypeMapperTests : TestBase
             await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
             await AssertType(dataSource1, "happy", "happy",
                 type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-                dbType: DbType.String, valueTypeEqualsFieldType: false);
+                dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
             // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
@@ -107,14 +107,14 @@ public class GlobalTypeMapperTests : TestBase
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
             type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, valueTypeEqualsFieldType: false);
+            dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
         Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: false));
         await AssertType(dataSource2, "happy", "happy",
             type, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String);
+            dbType: new(DbType.Object, DbType.String));
     }
 
     [Test]

@@ -189,7 +189,7 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
 
         await AssertType(connection, "happy", "happy", type,
                 dataTypeInference: DataTypeInferenceKind.WellKnown,
-                dbType: DbType.String);
+                dbType: new(DbType.Object, DbType.String));
     }
 
     enum NameTranslationEnum

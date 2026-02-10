@@ -35,7 +35,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}",
             @"{""p"": 1}",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String);
+            dbType: new(DbType.Object, DbType.String));
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_char_array()
@@ -44,7 +44,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.String, valueTypeEqualsFieldType: false);
+            dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_byte_array()
@@ -53,7 +53,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
             dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown,
-            dbType: DbType.Binary, valueTypeEqualsFieldType: false);
+            dbType: new(DbType.Object, DbType.Binary), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Roundtrip_JObject()
