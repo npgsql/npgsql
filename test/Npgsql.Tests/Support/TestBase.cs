@@ -224,29 +224,32 @@ public abstract class TestBase
     public enum DataTypeInferenceKind
     {
         /// <summary>
-        /// The exact PostgreSQL data type can be inferred from the CLR type alone.
-        /// The CLR type has a mapping to a specific PostgreSQL data type.
+        /// The PostgreSQL data type can be inferred from the CLR value and exactly matches some data type identifier.
         /// </summary>
         Exact,
 
         /// <summary>
-        /// The CLR type maps to a well-known PostgreSQL type (it has a case in NpgsqlDbType) but does not map to the value type.
-        /// This is used for negative matching without requiring the exact well-known type to be specified.
+        /// The PostgreSQL data type can be inferred from the CLR value, but does not exactly match some data type identifier.
+        /// WellKnown enforces the data type must be *some* PostgreSQL type that is well-known (it has a case in NpgsqlDbType).
         /// </summary>
+        /// <remarks>
+        /// WellKnown enables None to do negative matching (checking whether the data type identifier is actually absent).
+        /// Without requiring another data type identifier to be passed (which would describe which well-known data type is expected).
+        /// </remarks>
         WellKnown,
 
         /// <summary>
-        /// The PostgreSQL data type cannot be inferred from the CLR type.
+        /// The PostgreSQL data type cannot be inferred from the CLR value.
         /// Requires explicit type specification via NpgsqlDbType, DataTypeName, or DbType.
         /// </summary>
-        Unknown,
+        None,
     }
 
     public readonly struct DataTypeInference(DataTypeInferenceKind kind)
     {
         public DataTypeInferenceKind Kind { get; } = kind;
         public static implicit operator DataTypeInference(bool isDataTypeInferredFromValue)
-            => new(isDataTypeInferredFromValue ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.Unknown);
+            => new(isDataTypeInferredFromValue ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.None);
         public static implicit operator DataTypeInference(DataTypeInferenceKind kind)
             => new(kind);
     }
@@ -402,7 +405,7 @@ public abstract class TestBase
                     p.NpgsqlDbType is not NpgsqlDbType.Unknown
                         ? (p.DataTypeName, p.NpgsqlDbType)
                         : (dataTypeNameWithoutFacetsAndQuotes, npgsqlDbType ?? NpgsqlDbType.Unknown),
-                DataTypeInferenceKind.Unknown =>
+                DataTypeInferenceKind.None =>
                     (null, NpgsqlDbType.Unknown),
                 _ => throw new ArgumentOutOfRangeException(nameof(dataTypeInference.Kind), dataTypeInference.Kind, "Unknown case")
             };
