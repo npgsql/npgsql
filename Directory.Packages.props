@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <LoggingAbstractionsPackageVersion>10.0.2</LoggingAbstractionsPackageVersion>
-    <DependencyInjectionAbstractionsPackageVersion>10.0.2</DependencyInjectionAbstractionsPackageVersion>
+    <DependencyInjectionAbstractionsPackageVersion>10.0.3</DependencyInjectionAbstractionsPackageVersion>
     
     <!-- For tests only -->
     <DependencyInjectionPackageVersion>10.0.2</DependencyInjectionPackageVersion>
