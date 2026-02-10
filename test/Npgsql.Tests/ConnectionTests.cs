@@ -1146,6 +1146,26 @@ LANGUAGE 'plpgsql'");
     }
 
     [Test]
+    public async Task CloneWith_and_data_source_with_username([Values] bool async)
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
+        // Set the username via the data source property later to make sure that's picked up by CloneWith
+        var username = dataSourceBuilder.ConnectionStringBuilder.Username!;
+        dataSourceBuilder.ConnectionStringBuilder.Username = null;
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using var connection = dataSource.CreateConnection();
+        dataSource.Username = username;
+
+        // Test that the up-to-date username gets copied to the clone, as if we opened the original connection instead of cloning it
+        using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString) { Username = null }, out var tempConnectionString);
+        await using var clonedConnection = async
+            ? await connection.CloneWithAsync(tempConnectionString)
+            : connection.CloneWith(tempConnectionString);
+        await clonedConnection.OpenAsync();
+    }
+
+    [Test]
     public async Task CloneWith_and_data_source_with_auth_callbacks([Values] bool async)
     {
         var (userCertificateValidationCallbackCalled, clientCertificatesCallbackCalled) = (false, false);

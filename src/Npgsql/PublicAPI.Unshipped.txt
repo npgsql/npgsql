@@ -4,6 +4,9 @@ Npgsql.GssEncryptionMode
 Npgsql.GssEncryptionMode.Disable = 0 -> Npgsql.GssEncryptionMode
 Npgsql.GssEncryptionMode.Prefer = 1 -> Npgsql.GssEncryptionMode
 Npgsql.GssEncryptionMode.Require = 2 -> Npgsql.GssEncryptionMode
+Npgsql.NpgsqlDataSource.Username.set -> void
+Npgsql.NpgsqlDataSourceBuilder.UseCredentialsProvider(System.Func<Npgsql.NpgsqlConnectionStringBuilder!, (string! Username, string! Password)>? credentialsProvider, System.Func<Npgsql.NpgsqlConnectionStringBuilder!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<(string! Username, string! Password)>>? credentialsProviderAsync) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlSlimDataSourceBuilder.UseCredentialsProvider(System.Func<Npgsql.NpgsqlConnectionStringBuilder!, (string! Username, string! Password)>? credentialsProvider, System.Func<Npgsql.NpgsqlConnectionStringBuilder!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<(string! Username, string! Password)>>? credentialsProviderAsync) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddDbTypeResolverFactory(Npgsql.Internal.DbTypeResolverFactory! factory) -> void
 Npgsql.NpgsqlConnection.BeginTextExport(string! copyToCommand) -> Npgsql.NpgsqlCopyTextReader!
 Npgsql.NpgsqlConnection.BeginTextExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlCopyTextReader!>!
