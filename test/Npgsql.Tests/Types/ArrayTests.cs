@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
@@ -141,7 +142,110 @@ SELECT onedim, twodim FROM (VALUES
             Assert.That(value, Is.EqualTo(new int?[,]{{5, null},{6, 7}}));
             break;
         default:
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            throw new UnreachableException($"Unknown case {mode}");
+        }
+    }
+
+    [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
+    [TestCase(ArrayNullabilityMode.Always)]
+    [TestCase(ArrayNullabilityMode.Never)]
+    [TestCase(ArrayNullabilityMode.PerInstance)]
+    public async Task Value_type_array_nullabilities_converter_resolver(ArrayNullabilityMode mode)
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.ArrayNullabilityMode = mode;
+            csb.Timezone = "Europe/Berlin";
+        });
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+"""
+SELECT onedim, twodim FROM (VALUES
+('{"1998-04-12 15:26:38+02"}'::timestamptz[],'{{"1998-04-12 15:26:38+02"},{"1998-04-13 15:26:38+02"}}'::timestamptz[][]),
+('{"1998-04-14 15:26:38+02", NULL}'::timestamptz[],'{{"1998-04-14 15:26:38+02", NULL},{"1998-04-15 15:26:38+02", "1998-04-16 15:26:38+02"}}'::timestamptz[][])) AS x(onedim,twodim)
+""", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        switch (mode)
+        {
+        case ArrayNullabilityMode.Never:
+            reader.Read();
+            var value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[])));
+            Assert.That(value, Is.EqualTo(new []{new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)}));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[,])));
+            Assert.That(value, Is.EqualTo(new [,]
+            {
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(() => reader.GetValue(1), Throws.Exception.TypeOf<InvalidCastException>());
+            break;
+        case ArrayNullabilityMode.Always:
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[])));
+            Assert.That(value, Is.EqualTo(new DateTime?[]{new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)}));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[,])));
+            Assert.That(value, Is.EqualTo(new DateTime?[,]
+            {
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[])));
+            Assert.That(value, Is.EqualTo(new DateTime?[]{ new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null }));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[,])));
+            Assert.That(value, Is.EqualTo(new DateTime?[,]
+            {
+                { new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null },
+                { new DateTime(1998, 4, 15, 13, 26, 38, DateTimeKind.Utc), new DateTime(1998, 4, 16, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            break;
+        case ArrayNullabilityMode.PerInstance:
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[])));
+            Assert.That(value, Is.EqualTo(new []{new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)}));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[,])));
+            Assert.That(value, Is.EqualTo(new [,]
+            {
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[])));
+            Assert.That(value, Is.EqualTo(new DateTime?[]{ new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null }));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[,])));
+            Assert.That(value, Is.EqualTo(new DateTime?[,]
+            {
+                { new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null },
+                { new DateTime(1998, 4, 15, 13, 26, 38, DateTimeKind.Utc), new DateTime(1998, 4, 16, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            break;
+        default:
+            throw new UnreachableException($"Unknown case {mode}");
         }
     }
 
