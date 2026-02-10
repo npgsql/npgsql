@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
@@ -141,7 +142,7 @@ SELECT onedim, twodim FROM (VALUES
             Assert.That(value, Is.EqualTo(new int?[,]{{5, null},{6, 7}}));
             break;
         default:
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            throw new UnreachableException($"Unknown case {mode}");
         }
     }
 
@@ -176,10 +177,10 @@ SELECT onedim, twodim FROM (VALUES
             value = reader.GetValue(1);
             Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
             Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[,])));
-            Assert.That(value, Is.EqualTo(new DateTime?[,]
+            Assert.That(value, Is.EqualTo(new [,]
             {
-                {new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)},
-                {new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc)}
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
             }));
             reader.Read();
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
@@ -198,8 +199,8 @@ SELECT onedim, twodim FROM (VALUES
             Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[,])));
             Assert.That(value, Is.EqualTo(new DateTime?[,]
             {
-                {new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)},
-                {new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc)}
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
             }));
             reader.Read();
             value = reader.GetValue(0);
@@ -226,8 +227,8 @@ SELECT onedim, twodim FROM (VALUES
             Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[,])));
             Assert.That(value, Is.EqualTo(new [,]
             {
-                {new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)},
-                {new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc)}
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
             }));
             reader.Read();
             value = reader.GetValue(0);
@@ -244,7 +245,7 @@ SELECT onedim, twodim FROM (VALUES
             }));
             break;
         default:
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            throw new UnreachableException($"Unknown case {mode}");
         }
     }
 
