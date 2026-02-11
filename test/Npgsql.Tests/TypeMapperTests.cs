@@ -179,6 +179,42 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
         }
     }
 
+    [Test]
+    public async Task Duplicate_typename_in_non_default_schema()
+    {
+        const string testEnumValue = "bar";
+
+        string searchPathSchemaName, typeName, otherSchemaName;
+        await using (var setupConn = await OpenConnectionAsync())
+        {
+            searchPathSchemaName = await CreateTempSchema(setupConn);
+            typeName = await GetTempTypeName(setupConn);
+            otherSchemaName = await CreateTempSchema(setupConn);
+
+            await setupConn.ExecuteNonQueryAsync($"""
+                DROP TYPE IF EXISTS {otherSchemaName}.{typeName}; CREATE TYPE {otherSchemaName}.{typeName} AS ENUM ('foo','{testEnumValue}');
+                DROP TYPE IF EXISTS {searchPathSchemaName}.{typeName}; CREATE TYPE {searchPathSchemaName}.{typeName} AS ENUM ('foo','{testEnumValue}');
+            """);
+        }
+
+        await using var conn = await CreateDataSource($"{DefaultConnectionString};SearchPath={searchPathSchemaName},pg_catalog").OpenConnectionAsync();
+
+        var tableName = await CreateTempTable(conn, $"foobar {searchPathSchemaName}.{typeName} NOT NULL"); // table created in searchPathSchemaName
+
+        try
+        {
+            const string paramName = "@expecetd";
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"INSERT INTO {tableName} VALUES ({paramName})";
+            cmd.Parameters.Add(new NpgsqlParameter<string>() { ParameterName = paramName, DataTypeName = typeName, TypedValue = testEnumValue });
+            Assert.That(await cmd.ExecuteNonQueryAsync(), Is.EqualTo(1));
+        }
+        finally
+        {
+            await conn.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {searchPathSchemaName}.{typeName} CASCADE; DROP TYPE IF EXISTS {otherSchemaName}.{typeName} CASCADE");
+        }
+    }
+
     #region Support
 
     class CitextToStringTypeHandlerResolverFactory : PgTypeInfoResolverFactory

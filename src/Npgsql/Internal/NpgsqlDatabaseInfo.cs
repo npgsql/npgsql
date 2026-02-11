@@ -23,6 +23,9 @@ public abstract class NpgsqlDatabaseInfo
         new PostgresDatabaseInfoFactory()
     ];
 
+    private readonly string[] _searchPath = ["public", "pg_catalog"];
+
+
     #endregion Fields
 
     #region General database info
@@ -161,23 +164,18 @@ public abstract class NpgsqlDatabaseInfo
     /// <summary>
     /// Initializes the instance of <see cref="NpgsqlDatabaseInfo"/>.
     /// </summary>
-    protected NpgsqlDatabaseInfo(string host, int port, string databaseName, Version version, string serverVersion)
+    protected NpgsqlDatabaseInfo(string host, int port, string databaseName, Version version, string serverVersion, string[]? searchPath = null)
     {
         Host = host;
         Port = port;
         Name = databaseName;
         Version = version;
         ServerVersion = serverVersion;
+        if (searchPath is not null) _searchPath = searchPath;
     }
 
-    private protected NpgsqlDatabaseInfo(string host, int port, string databaseName, string serverVersion)
-    {
-        Host = host;
-        Port = port;
-        Name = databaseName;
-        ServerVersion = serverVersion;
-        Version = ParseServerVersion(serverVersion);
-    }
+    private protected NpgsqlDatabaseInfo(string host, int port, string databaseName, string serverVersion, string[]? searchPath = null)
+       : this(host, port, databaseName, ParseServerVersion(serverVersion), serverVersion, searchPath) { }
 
     internal PostgresType GetPostgresType(Oid oid) => GetPostgresType(oid.Value);
 
@@ -212,17 +210,12 @@ public abstract class NpgsqlDatabaseInfo
 
             // If the name was found but the value is null, that means that there are
             // two db types with the same name (different schemas).
-            // Try to fall back to pg_catalog, otherwise fail.
-            if (ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
-                return true;
+            // Try to fall back to search path, otherwise fail.
+            foreach (var path in _searchPath)
+                if (ByFullName.TryGetValue($"{path}.{pgName}", out pgType))
+                    return true;
 
-            var ambiguousTypes = new List<string>();
-            foreach (var key in ByFullName.Keys)
-                if (key.EndsWith($".{pgName}", StringComparison.Ordinal))
-                    ambiguousTypes.Add(key);
-
-            throw new ArgumentException($"More than one PostgreSQL type was found with the name {pgName}, " +
-                                        $"please specify a full name including schema: {string.Join(", ", ambiguousTypes)}");
+            throw new ArgumentException($"No PostgreSQL type was found with the name {pgName} in the search path");
         }
 
         return false;
