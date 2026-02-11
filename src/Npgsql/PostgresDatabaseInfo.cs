@@ -79,7 +79,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     public virtual bool HasTypeCategory => Version.IsGreaterOrEqual(8, 4);
 
     internal PostgresDatabaseInfo(NpgsqlConnector conn)
-        : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
+        : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"], conn.Settings.SearchPath?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries ))
         => _connectionLogger = conn.LoggingConfiguration.ConnectionLogger;
 
     private protected PostgresDatabaseInfo(string host, int port, string databaseName, string serverVersion)
