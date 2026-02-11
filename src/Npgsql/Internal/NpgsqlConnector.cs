@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -1165,6 +1166,7 @@ public sealed partial class NpgsqlConnector
             var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
             RemoteCertificateValidationCallback? certificateValidationCallback;
+            X509ChainPolicy? certificateChainPolicy = null;
             X509Certificate2Collection? caCerts;
             string? certRootPath = null;
 
@@ -1173,20 +1175,26 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }
-            else if (((caCerts = DataSource.TransportSecurityHandler.RootCertificatesCallback?.Invoke()) is not null && caCerts.Count > 0) ||
-                     (certRootPath = Settings.RootCertificate ??
-                                     PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
-            {
-                certificateValidationCallback = SslRootValidation(sslMode == SslMode.VerifyFull, certRootPath, caCerts);
-            }
-            else if (sslMode == SslMode.VerifyCA)
-            {
-                certificateValidationCallback = SslVerifyCAValidation;
-            }
             else
             {
-                Debug.Assert(sslMode == SslMode.VerifyFull);
-                certificateValidationCallback = SslVerifyFullValidation;
+                if (sslMode == SslMode.VerifyCA)
+                {
+                    certificateValidationCallback = SslVerifyCAValidation;
+                }
+                else
+                {
+                    Debug.Assert(sslMode == SslMode.VerifyFull);
+                    certificateValidationCallback = SslVerifyFullValidation;
+                }
+
+                if (((caCerts = DataSource.TransportSecurityHandler.RootCertificatesCallback?.Invoke()) is not null && caCerts.Count > 0) ||
+                    (certRootPath = Settings.RootCertificate ??
+                                    PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
+                {
+                    // Do not use system certificates in addition to custom root certificates
+                    // This is the exact same behavior as libpq
+                    certificateChainPolicy = GetCustomCertificateChainPolicy(certRootPath, caCerts);
+                }
             }
 
             SslStreamCertificateContext? clientCertificateContext = null;
@@ -1212,6 +1220,7 @@ public sealed partial class NpgsqlConnector
             var sslStreamOptions = new SslClientAuthenticationOptions
             {
                 TargetHost = host,
+                CertificateChainPolicy = certificateChainPolicy,
                 ClientCertificateContext = clientCertificateContext,
                 EnabledSslProtocols = SslProtocols.None,
                 CertificateRevocationCheckMode = checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck,
@@ -2017,46 +2026,73 @@ public sealed partial class NpgsqlConnector
         (sender, certificate, chain, sslPolicyErrors)
             => true;
 
-    static RemoteCertificateValidationCallback SslRootValidation(bool verifyFull, string? certRootPath, X509Certificate2Collection? caCertificates)
-        => (_, certificate, chain, sslPolicyErrors) =>
+    private static X509ChainPolicy GetCustomCertificateChainPolicy(string? certRootPath, X509Certificate2Collection? caCertificates)
+    {
+        var certs = GetCustomRootCertificates(certRootPath, caCertificates);
+
+        var certificateChainPolicy = new X509ChainPolicy();
+
+        certificateChainPolicy.CustomTrustStore.AddRange(certs);
+        certificateChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+
+        certificateChainPolicy.ExtraStore.AddRange(certs);
+
+        return certificateChainPolicy;
+    }
+
+    private static readonly ConcurrentDictionary<(string, DateTime?), X509Certificate2Collection> CustomRootCertificateCache = new();
+
+    private static X509Certificate2Collection GetCustomRootCertificates(string? certRootPath, X509Certificate2Collection? caCertificates)
+    {
+        if (certRootPath is null)
         {
-            if (certificate is null || chain is null)
-                return false;
+            Debug.Assert(caCertificates is { Count: > 0 });
+            return caCertificates;
+        }
+        else
+        {
+            Debug.Assert(caCertificates is null or { Count: 0 });
 
-            // Even if there was no error while validating, we have to check one more time with the provided certificate
-            // As this is the exact same behavior as libpq
+            // Add the file timestamp to the cache key, in case the certificate file is modified while
+            // the application is running.
+            // If this happens, a useless old entry will remain in the cache, but we don't really
+            // expect the file to change in the first place.
+            var certRootTimeStamp = TryGetFileTimeStamp(certRootPath);
 
-            // That's VerifyFull check and we have name mismatch - no reason to check further
-            if (verifyFull && sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
-                return false;
+            return CustomRootCertificateCache.GetOrAdd((certRootPath, certRootTimeStamp), certRoot =>
+                LoadRootCertificatesFromFile(certRoot.Item1));
+        }
+    }
 
-            var certs = new X509Certificate2Collection();
+    private static X509Certificate2Collection LoadRootCertificatesFromFile(string certRootPath)
+    {
+        var certs = new X509Certificate2Collection();
 
-            if (certRootPath is null)
-            {
-                Debug.Assert(caCertificates is { Count: > 0 });
-                certs.AddRange(caCertificates);
-            }
-            else
-            {
-                Debug.Assert(caCertificates is null or { Count: > 0 });
-                if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
-                    certs.ImportFromPemFile(certRootPath);
+        if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
+            certs.ImportFromPemFile(certRootPath);
 
-                if (certs.Count == 0)
-                {
-                    // This is not a PEM certificate, probably PFX
-                    certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
-                }
-            }
+        if (certs.Count == 0)
+        {
+            // This is not a PEM certificate, probably PFX
+            certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
+        }
 
-            chain.ChainPolicy.CustomTrustStore.AddRange(certs);
-            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        return certs;
+    }
 
-            chain.ChainPolicy.ExtraStore.AddRange(certs);
-
-            return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
-        };
+    private static DateTime? TryGetFileTimeStamp(string path)
+    {
+        try
+        {
+            return File.GetLastWriteTimeUtc(path);
+        }
+        catch
+        {
+            // Ignore errors at this point. If the file is loaded afterwards, the code that
+            // does that will hopefully throw a more meaningful exception.
+            return null;
+        }
+    }
 
     #endregion SSL
 
