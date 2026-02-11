@@ -473,19 +473,19 @@ public abstract class TestBase
 
         var truncatedSqlLiteral = sqlLiteral.Length > 40 ? sqlLiteral[..40] + "..." : sqlLiteral;
 
-        var readerTypeName = reader.GetDataTypeName(0);
-        var dotIndex = readerTypeName.IndexOf('.');
-        if (dotIndex > -1 && readerTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
-            readerTypeName = readerTypeName.Substring(dotIndex + 1);
+        var actualDataTypeName = reader.GetDataTypeName(0);
+        var dotIndex = actualDataTypeName.IndexOf('.');
+        if (dotIndex > -1 && actualDataTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
+            actualDataTypeName = actualDataTypeName.Substring(dotIndex + 1);
 
         // For composite type with dots, postgres works only with quoted name - scheme."My.type.name"
         // but npgsql converts it to name without quotes
-        var pgTypeNameWithoutQuotes = readerTypeName.Replace("\"", string.Empty);
-        Assert.That(readerTypeName, Is.EqualTo(pgTypeNameWithoutQuotes),
+        var dataTypeNameWithoutQuotes = dataTypeName.Replace("\"", string.Empty);
+        Assert.That(actualDataTypeName, Is.EqualTo(dataTypeNameWithoutQuotes),
             $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
 
         // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality.
-        var isArray = readerTypeName.EndsWith("[]", StringComparison.Ordinal);
+        var isArray = actualDataTypeName.EndsWith("[]", StringComparison.Ordinal);
         Assert.That(reader.GetFieldType(0),
             (valueTypeEqualsFieldType || isArray ? new ConstraintExpression() : Is.Not)
                 .EqualTo(isArray ? typeof(Array) : typeof(T)),
