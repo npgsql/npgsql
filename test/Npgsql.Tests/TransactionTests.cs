@@ -12,14 +12,11 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class TransactionTests : TestBase
 {
     [Test, Description("Basic insert within a committed transaction")]
     public async Task Commit([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
 
@@ -37,18 +34,12 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
         }
 
-        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
-        // Because disposed NpgsqlTransaction might be reused by another thread
-        if (!IsMultiplexing)
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Basic insert within a committed transaction")]
     public async Task CommitAsync([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
 
@@ -66,18 +57,12 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
         }
 
-        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
-        // Because disposed NpgsqlTransaction might be reused by another thread
-        if (!IsMultiplexing)
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Basic insert within a rolled back transaction")]
     public async Task Rollback([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
 
@@ -95,18 +80,12 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
         }
 
-        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
-        // Because disposed NpgsqlTransaction might be reused by another thread
-        if (!IsMultiplexing)
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Basic insert within a rolled back transaction")]
     public async Task RollbackAsync([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
 
@@ -124,10 +103,7 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
         }
 
-        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
-        // Because disposed NpgsqlTransaction might be reused by another thread
-        if (!IsMultiplexing)
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Dispose a transaction in progress, should roll back")]
@@ -249,20 +225,11 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
         tx.Rollback();
     }
 
-    [Test, Description("Makes sure that transactions started in SQL work, except in multiplexing")]
+    [Test, Description("Makes sure that transactions started in SQL work")]
     public async Task Via_sql()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: not implemented");
-
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
-
-        if (IsMultiplexing)
-        {
-            Assert.That(async () => await conn.ExecuteNonQueryAsync("BEGIN"), Throws.Exception.TypeOf<NotSupportedException>());
-            return;
-        }
 
         await conn.ExecuteNonQueryAsync("BEGIN");
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')");
@@ -356,9 +323,6 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/555")]
     public async Task Transaction_on_recycled_connection()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
-
         // Use application name to make sure we have our very own private connection pool
         await using var conn = new NpgsqlConnection(ConnectionString + $";Application Name={GetUniqueIdentifier(nameof(Transaction_on_recycled_connection))}");
         conn.Open();
@@ -507,12 +471,10 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
     public async Task Transaction_not_supported()
     {
         // TODO: rewrite to DataSource
-        if (IsMultiplexing)
-            Assert.Ignore("Need to rethink/redo dummy transaction mode");
 
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            ApplicationName = nameof(Transaction_not_supported) + IsMultiplexing
+            ApplicationName = nameof(Transaction_not_supported)
         }.ToString();
 
         NpgsqlDatabaseInfo.RegisterFactory(new NoTransactionDatabaseInfoFactory());
@@ -560,19 +522,6 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
     // More at #3254
     public async Task Bug3248_Dispose_transaction_Rollback()
     {
-        if (!IsMultiplexing)
-            return;
-
-        using var conn = await OpenConnectionAsync();
-        await using (var tx = await conn.BeginTransactionAsync())
-        {
-            Assert.That(conn.Connector, Is.Not.Null);
-            Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM \"unknown_table\"", tx: tx),
-                Throws.Exception.TypeOf<PostgresException>());
-            Assert.That(conn.Connector, Is.Not.Null);
-        }
-
-        Assert.That(conn.Connector, Is.Null);
     }
 
     [Test]
@@ -580,18 +529,6 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
     // More at #3254
     public async Task Bug3248_Dispose_connection_Rollback()
     {
-        if (!IsMultiplexing)
-            return;
-
-        var conn = await OpenConnectionAsync();
-        var tx = conn.BeginTransaction();
-        Assert.That(conn.Connector, Is.Not.Null);
-        Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM \"unknown_table\"", tx: tx),
-            Throws.Exception.TypeOf<PostgresException>());
-        Assert.That(conn.Connector, Is.Not.Null);
-
-        await conn.DisposeAsync();
-        Assert.That(conn.Connector, Is.Null);
     }
 
     [Test]
@@ -696,9 +633,6 @@ public class TransactionTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3686")]
     public async Task Bug3686()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();

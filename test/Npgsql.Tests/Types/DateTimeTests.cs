@@ -8,7 +8,6 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-// Since this test suite manipulates TimeZone, it is incompatible with multiplexing
 public class DateTimeTests : TestBase
 {
     #region Date

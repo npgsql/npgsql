@@ -13,7 +13,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.PluginTests;
 
-public class NodaTimeTests : MultiplexingTestBase, IDisposable
+public class NodaTimeTests : TestBase, IDisposable
 {
     #region Timestamp without time zone
 
@@ -766,8 +766,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
 
     protected override NpgsqlDataSource DataSource { get; }
 
-    public NodaTimeTests(MultiplexingMode multiplexingMode)
-        : base(multiplexingMode)
+    public NodaTimeTests()
     {
         var builder = CreateDataSourceBuilder();
         builder.UseNodaTime();

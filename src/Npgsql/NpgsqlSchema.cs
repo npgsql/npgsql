@@ -758,8 +758,6 @@ FROM pg_constraint c
 
     static DataTable GetDataTypes(NpgsqlConnection conn)
     {
-        using var _ = conn.StartTemporaryBindingScope(out var connector);
-
         var table = new DataTable("DataTypes");
 
         table.Columns.Add("TypeName", typeof(string));
@@ -789,10 +787,11 @@ FROM pg_constraint c
         // Npgsql-specific
         table.Columns.Add("OID", typeof(uint));
 
-
         // TODO: Support type name restriction
         try
         {
+            var connector = conn.Connector!;
+
             var serializerOptions = connector.SerializerOptions;
             PgSerializerOptions.IntrospectionCaller = true;
 

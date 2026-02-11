@@ -37,7 +37,6 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         for (var i = 0; i < hosts.Length; i++)
         {
             var poolSettings = settings.Clone();
-            Debug.Assert(!poolSettings.Multiplexing);
             var host = hosts[i].AsSpan().Trim();
             if (NpgsqlConnectionStringBuilder.TrySplitHostPort(host, out var newHost, out var newPort))
             {

@@ -17,7 +17,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class CopyTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class CopyTests : TestBase
 {
     #region Issue 2257
 
@@ -227,8 +227,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_format_raw_binary_copy()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using (var conn = await OpenConnectionAsync())
         {
             var table = await CreateTempTable(conn, "blob BYTEA");
@@ -512,8 +510,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_format_binary_import()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<ArgumentException>(() => conn.BeginBinaryImport($"COPY {table} (blob) FROM STDIN"));
@@ -533,8 +529,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5457")]
     public async Task MixedOperations()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
 
         using var reader = conn.BeginBinaryExport("""
@@ -558,8 +552,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test]
     public async Task ReadMoreColumnsThanExist()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
 
         using var reader = conn.BeginBinaryExport("""
@@ -585,8 +577,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test]
     public async Task ReadZeroSizedColumns()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
 
         using var reader = conn.BeginBinaryExport("""
@@ -617,8 +607,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test]
     public async Task ReadConverterResolverType()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
 
         using (var reader = conn.BeginBinaryExport("""
@@ -653,8 +641,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test]
     public async Task StreamingRead()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
 
         var str = new string('a', PgReader.MaxPreparedTextReaderSize + 1);
@@ -668,8 +654,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_format_binary_export()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<ArgumentException>(() => conn.BeginBinaryExport($"COPY {table} (blob) TO STDOUT"));
@@ -679,9 +663,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     [Test, NonParallelizable, IssueLink("https://github.com/npgsql/npgsql/issues/661")]
     public async Task Unexpected_exception_binary_import()
     {
-        if (IsMultiplexing)
-            return;
-
         // Use a private data source since we terminate the connection below (affects database state)
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -1122,8 +1103,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_table_definition_text_import()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
         Assert.Throws<PostgresException>(() => conn.BeginTextImport("COPY table_is_not_exist (blob) FROM STDIN"));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
@@ -1133,8 +1112,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_format_text_import()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<Exception>(() => conn.BeginTextImport($"COPY {table} (blob) FROM STDIN BINARY"));
@@ -1144,8 +1121,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_table_definition_text_export()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
         Assert.Throws<PostgresException>(() => conn.BeginTextExport("COPY table_is_not_exist (blob) TO STDOUT"));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
@@ -1155,8 +1130,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
     public async Task Wrong_format_text_export()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<Exception>(() => conn.BeginTextExport($"COPY {table} (blob) TO STDOUT BINARY"));
@@ -1290,7 +1263,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(2));
     }
 
-    [Test, Description("Tests nested binding scopes in multiplexing")]
+    [Test]
     public async Task Within_transaction()
     {
         using var conn = await OpenConnectionAsync();
@@ -1333,8 +1306,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4199")]
     public async Task Copy_from_is_not_supported_in_regular_command_execution()
     {
-        // Run in a separate pool to protect other queries in multiplexing
-        // because we're going to break the connection on CopyInResponse
+        // Run in a separate pool because we're going to break the connection on CopyInResponse
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "foo INT");
@@ -1345,8 +1317,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4974")]
     public async Task Copy_to_is_not_supported_in_regular_command_execution()
     {
-        // Run in a separate pool to protect other queries in multiplexing
-        // because we're going to break the connection on CopyInResponse
+        // Run in a separate pool because we're going to break the connection on CopyInResponse
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "foo INT");

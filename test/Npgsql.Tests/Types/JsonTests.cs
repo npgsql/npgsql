@@ -8,11 +8,9 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-[TestFixture(MultiplexingMode.NonMultiplexing, "json")]
-[TestFixture(MultiplexingMode.NonMultiplexing, "jsonb")]
-[TestFixture(MultiplexingMode.Multiplexing, "json")]
-[TestFixture(MultiplexingMode.Multiplexing, "jsonb")]
-public class JsonTests : MultiplexingTestBase
+[TestFixture("json")]
+[TestFixture("jsonb")]
+public class JsonTests : TestBase
 {
     [Test]
     public async Task As_string()
@@ -215,8 +213,7 @@ public class JsonTests : MultiplexingTestBase
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public JsonTests(MultiplexingMode multiplexingMode, string dataTypeName)
-        : base(multiplexingMode)
+    public JsonTests(string dataTypeName)
     {
         if (dataTypeName == "jsonb")
             using (var conn = OpenConnection())

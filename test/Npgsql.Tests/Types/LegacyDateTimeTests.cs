@@ -2,13 +2,11 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using Npgsql.Internal.ResolverFactories;
-using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
 
 namespace Npgsql.Tests.Types;
 
-// Since this test suite manipulates TimeZone, it is incompatible with multiplexing
 [NonParallelizable]
 public class LegacyDateTimeTests : TestBase
 {

@@ -12,7 +12,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-class RangeTests : MultiplexingTestBase
+class RangeTests : TestBase
 {
     static readonly TestCaseData[] RangeTestCases =
     [
@@ -172,7 +172,6 @@ class RangeTests : MultiplexingTestBase
 
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
-        await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
@@ -198,7 +197,6 @@ class RangeTests : MultiplexingTestBase
         await using var connection = await DataSource.OpenConnectionAsync();
         var rangeType = await GetTempTypeName(connection);
         await connection.ExecuteNonQueryAsync($"CREATE TYPE {rangeType} AS RANGE(subtype=text)");
-        await Task.Yield(); // TODO: fix multiplexing deadlock bug
         await connection.ReloadTypesAsync();
 
         var errorMessage = string.Format(
@@ -460,7 +458,7 @@ class RangeTests : MultiplexingTestBase
 
     protected override NpgsqlDataSource DataSource { get; }
 
-    public RangeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode)
+    public RangeTests()
         => DataSource = CreateDataSource(builder =>
         {
             builder.ConnectionStringBuilder.Timezone = "Europe/Berlin";

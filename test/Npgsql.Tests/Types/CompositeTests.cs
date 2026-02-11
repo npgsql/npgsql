@@ -10,7 +10,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-public class CompositeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class CompositeTests : TestBase
 {
     [Test]
     public async Task Basic()
@@ -451,8 +451,6 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         else
         {
             Assert.ThrowsAsync<NotSupportedException>(DoAssertion);
-            // Start a transaction specifically for multiplexing (to bind a connector to the connection)
-            await using var tx = await connection.BeginTransactionAsync();
             Assert.That(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)), Is.Null);
             Assert.That(connection.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains(table)), Is.Null);
 
@@ -547,8 +545,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
     [Test]
     public async Task PostgresType()
     {
-        // With multiplexing we can't guarantee that after ReloadTypesAsync we'll execute the query on a connection which has the new types
-        // Set max pool size to 1 enforce this
+        // Set max pool size to 1 to ensure we execute queries on the connection which has the new types
         await using var dataSource = CreateDataSource(connectionStringBuilderAction: csb => csb.MaxPoolSize = 1);
         await using var connection = await dataSource.OpenConnectionAsync();
         var type1 = await GetTempTypeName(connection);

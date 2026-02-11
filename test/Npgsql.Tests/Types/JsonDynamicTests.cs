@@ -7,11 +7,9 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-[TestFixture(MultiplexingMode.NonMultiplexing, "json")]
-[TestFixture(MultiplexingMode.NonMultiplexing, "jsonb")]
-[TestFixture(MultiplexingMode.Multiplexing, "json")]
-[TestFixture(MultiplexingMode.Multiplexing, "jsonb")]
-public class JsonDynamicTests : MultiplexingTestBase
+[TestFixture("json")]
+[TestFixture("jsonb")]
+public class JsonDynamicTests : TestBase
 {
     [Test]
     public async Task As_poco()
@@ -417,8 +415,7 @@ public class JsonDynamicTests : MultiplexingTestBase
 
     #endregion Polymorphic
 
-    public JsonDynamicTests(MultiplexingMode multiplexingMode, string dataTypeName)
-        : base(multiplexingMode)
+    public JsonDynamicTests(string dataTypeName)
     {
         DataSource = CreateDataSource(b => b.EnableDynamicJson());
 

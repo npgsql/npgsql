@@ -7,7 +7,7 @@ using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Types;
 
-public class RecordTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class RecordTests : TestBase
 {
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/724")]

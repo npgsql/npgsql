@@ -259,7 +259,7 @@ public abstract class TestBase
     {
         var npgsqlDbType = DataTypeName.FromDisplayName(pgTypeName).ToNpgsqlDbType();
 
-        // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
+        // TODO: Interferes with connection-specific mapping (used e.g. in NodaTime)
         // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
         // connection.TypeMapper.Reset();
 
@@ -373,8 +373,6 @@ public abstract class TestBase
         dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
-        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
-        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -407,8 +405,6 @@ public abstract class TestBase
         dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
-        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
-        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -441,8 +437,6 @@ public abstract class TestBase
         dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
-        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
-        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand("SELECT $1", conn)
         {
             Parameters = { new() { Value = value } }
@@ -631,7 +625,6 @@ public abstract class TestBase
                     var builder = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString)
                     {
                         Pooling = false,
-                        Multiplexing = false,
                         Database = "postgres"
                     };
 

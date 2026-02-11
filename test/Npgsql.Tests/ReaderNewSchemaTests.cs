@@ -670,8 +670,6 @@ CREATE TABLE {table2} (foo INTEGER)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1553")]
     public async Task Domain_type()
     {
-        // if (IsMultiplexing)
-        //     Assert.Ignore("Multiplexing: ReloadTypes");
         using var conn = await OpenConnectionAsync();
         await IgnoreOnRedshift(conn, "Domain types not support on Redshift");
 

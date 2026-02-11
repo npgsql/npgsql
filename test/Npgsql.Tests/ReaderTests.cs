@@ -20,11 +20,9 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-[TestFixture(MultiplexingMode.NonMultiplexing, CommandBehavior.Default)]
-[TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.Default)]
-[TestFixture(MultiplexingMode.NonMultiplexing, CommandBehavior.SequentialAccess)]
-[TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.SequentialAccess)]
-public class ReaderTests : MultiplexingTestBase
+[TestFixture(CommandBehavior.Default)]
+[TestFixture(CommandBehavior.SequentialAccess)]
+public class ReaderTests : TestBase
 {
     static uint Int4Oid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4).Value;
     static uint ByteaOid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Bytea).Value;
@@ -312,9 +310,6 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     [Test]
     public async Task GetPostgresType()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: Fails");
-
         using var conn = await OpenConnectionAsync();
         PostgresType intType;
         using (var cmd = new NpgsqlCommand(@"SELECT 1::INTEGER AS some_column", conn))
@@ -386,7 +381,6 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         await using var conn = await dataSource.OpenConnectionAsync();
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('one')");
-        await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
         await using var cmd = new NpgsqlCommand($"SELECT 'one'::{typeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync(Behavior);
@@ -401,7 +395,6 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         await using var conn = await dataSource.OpenConnectionAsync();
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {typeName} AS VARCHAR(10)");
-        await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
         await using var cmd = new NpgsqlCommand($"SELECT 'one'::{typeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync(Behavior);
@@ -535,7 +528,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     [Test]
     public async Task Reader_dispose_state_does_not_leak()
     {
-        if (IsMultiplexing || Behavior != CommandBehavior.Default)
+        if (Behavior != CommandBehavior.Default)
             return;
 
         var startReaderClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -582,9 +575,6 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/400")]
     public async Task Exception_thrown_from_ExecuteReaderAsync([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         var function = await GetTempFunctionName(conn);
 
@@ -603,9 +593,6 @@ LANGUAGE 'plpgsql';
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1032")]
     public async Task Exception_thrown_from_NextResult([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         var function = await GetTempFunctionName(conn);
 
@@ -767,8 +754,7 @@ LANGUAGE 'plpgsql'");
     {
         await using var conn = await OpenConnectionAsync();
         // We might get the connection, on which the second command was already prepared, so prepare wouldn't start the UserAction
-        if (!IsMultiplexing)
-            conn.UnprepareAll();
+        conn.UnprepareAll();
         using var cmd1 = new NpgsqlCommand("SELECT 1", conn);
         await using var reader1 = await cmd1.ExecuteReaderAsync(Behavior);
         Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
@@ -776,16 +762,12 @@ LANGUAGE 'plpgsql'");
 
         using var cmd2 = new NpgsqlCommand("SELECT 2", conn);
         Assert.That(() => cmd2.ExecuteReader(Behavior), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
-        if (!IsMultiplexing)
-            Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+        Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
     }
 
     [Test]
     public async Task Cleans_up_ok_with_dispose_calls([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         using var command = new NpgsqlCommand("SELECT 1", conn);
         using var dr = await command.ExecuteReaderAsync(Behavior);
@@ -828,9 +810,6 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/1898")]
     public async Task HasRows([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
 
@@ -1105,10 +1084,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2913")]
     public async Task Bug2913_reading_previous_query_messages()
     {
-        // No point in testing for multiplexing, as every query may use another connection
-        if (IsMultiplexing)
-            return;
-
         var firstMrs = new ManualResetEventSlim(false);
         var secondMrs = new ManualResetEventSlim(false);
 
@@ -1323,13 +1298,7 @@ LANGUAGE plpgsql VOLATILE";
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
-        await using var tx = IsMultiplexing ? await conn.BeginTransactionAsync() : null;
         var pgMock = await postmasterMock.WaitForServerConnection();
-
-        if (IsMultiplexing)
-            pgMock
-                .WriteEmptyQueryResponse()
-                .WriteReadyForQuery(TransactionStatus.InTransactionBlock);
 
         // Write responses for the query, but break the connection before sending CommandComplete/ReadyForQuery
         await pgMock
@@ -1820,9 +1789,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test]
     public async Task Reader_is_reused()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: Fails");
-
         using var conn = await OpenConnectionAsync();
         NpgsqlDataReader reader1;
 
@@ -1885,9 +1851,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5450")]
     public async Task EndRead_StreamActive([Values]bool async)
     {
-        if (IsMultiplexing)
-            return;
-
         const int columnLength = 1;
 
         await using var conn = await OpenConnectionAsync();
@@ -1950,9 +1913,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Cancels ReadAsync via the NpgsqlCommand.Cancel, with successful PG cancellation")]
     public async Task ReadAsync_cancel_command_soft()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -1999,9 +1959,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Cancels ReadAsync via the cancellation token, with successful PG cancellation")]
     public async Task ReadAsync_cancel_soft()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -2050,9 +2007,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Cancels NextResultAsync via the cancellation token, with successful PG cancellation")]
     public async Task NextResult_cancel_soft()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -2102,9 +2056,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Cancels ReadAsync via the cancellation token, with unsuccessful PG cancellation (socket break)")]
     public async Task ReadAsync_cancel_hard([Values(true, false)] bool passCancelledToken)
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -2146,9 +2097,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Cancels NextResultAsync via the cancellation token, with unsuccessful PG cancellation (socket break)")]
     public async Task NextResultAsync_cancel_hard([Values(true, false)] bool passCancelledToken)
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -2191,9 +2139,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Cancels sequential ReadAsGetFieldValueAsync")]
     public async Task GetFieldValueAsync_sequential_cancel([Values(true, false)] bool passCancelledToken)
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         if (!IsSequential)
             return;
 
@@ -2229,9 +2174,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Cancels sequential ReadAsGetFieldValueAsync")]
     public async Task IsDBNullAsync_sequential_cancel([Values(true, false)] bool passCancelledToken)
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         if (!IsSequential)
             return;
 
@@ -2264,24 +2206,6 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
-    [Test, Description("Cancellation does not work with the multiplexing")]
-    public async Task Cancel_multiplexing_disabled()
-    {
-        if (!IsMultiplexing)
-            return;
-
-        await using var dataSource = CreateDataSource();
-        await using var conn = await dataSource.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT generate_series(1, 100); SELECT generate_series(1, 100)", conn);
-        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
-        var cancelledToken = new CancellationToken(canceled: true);
-        Assert.That(await reader.ReadAsync());
-        while (await reader.ReadAsync(cancelledToken)) { }
-        Assert.That(await reader.NextResultAsync(cancelledToken));
-        while (await reader.ReadAsync(cancelledToken)) { }
-        Assert.That(conn.Connector!.UserCancellationRequested, Is.False);
-    }
-
     #endregion Cancellation
 
     #region Timeout
@@ -2289,9 +2213,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Timeouts sequential ReadAsGetFieldValueAsync")]
     public async Task GetFieldValueAsync_sequential_timeout()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         if (!IsSequential)
             return;
 
@@ -2329,9 +2250,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Timeouts sequential IsDBNullAsync")]
     public async Task IsDBNullAsync_sequential_timeout()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         if (!IsSequential)
             return;
 
@@ -2369,9 +2287,6 @@ LANGUAGE plpgsql VOLATILE";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3446")]
     public async Task Bug3446()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -2443,7 +2358,7 @@ LANGUAGE plpgsql VOLATILE";
     readonly CommandBehavior Behavior;
     // ReSharper restore InconsistentNaming
 
-    public ReaderTests(MultiplexingMode multiplexingMode, CommandBehavior behavior) : base(multiplexingMode)
+    public ReaderTests(CommandBehavior behavior)
     {
         Behavior = behavior;
         IsSequential = (Behavior & CommandBehavior.SequentialAccess) != 0;
