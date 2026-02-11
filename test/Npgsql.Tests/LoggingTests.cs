@@ -8,7 +8,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class LoggingTests : TestBase
 {
     [Test]
     public async Task Command_ExecuteScalar_single_statement_without_parameters()
@@ -26,9 +26,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed").And.Contains("SELECT 1"));
         AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT 1");
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -51,9 +49,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             .And.Contains("Parameters: [8, NULL]"));
         AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2");
         AssertLoggingStateContains(executingCommandEvent, "Parameters", new object[] { 8, "NULL" });
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -80,9 +76,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             .And.Contains("Parameters: [1024, [1, 2, 3], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...], [1, NULL], NULL, NULL]"));
         AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2, $3, $4, $5, $6");
         AssertLoggingStateContains(executingCommandEvent, "Parameters", new object[] { 1024, "[1, 2, 3]", "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...]", "[1, NULL]", "NULL", "NULL" });
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -105,9 +99,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
             .And.Contains("Parameters: [8, NULL]"));
         AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2");
         AssertLoggingStateContains(executingCommandEvent, "Parameters", new object[] { 8, "NULL" });
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -151,9 +143,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(batchCommands[1].CommandText, Is.EqualTo("SELECT 2"));
         Assert.That(batchCommands[1].Parameters, Is.Empty);
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -179,9 +169,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(batchCommands[1].CommandText, Is.EqualTo("SELECT $1"));
         Assert.That(batchCommands[1].Parameters.First(), Is.EqualTo(9));
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -205,9 +193,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(batchCommands[0], Is.EqualTo("SELECT $1"));
         Assert.That(batchCommands[1], Is.EqualTo("SELECT $1"));
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -230,9 +216,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed").And.Contains("SELECT 1"));
         AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT 1");
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
     [Test]
@@ -259,9 +243,7 @@ public class LoggingTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[(SELECT $1, [8]), (SELECT $1, 9, [9])]"));
         AssertLoggingStateDoesNotContain(executingCommandEvent, "CommandText");
         AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
-
-        if (!IsMultiplexing)
-            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
 
         var batchCommands = (IList<(string CommandText, IEnumerable<object> Parameters)>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
         Assert.That(batchCommands.Count, Is.EqualTo(2));

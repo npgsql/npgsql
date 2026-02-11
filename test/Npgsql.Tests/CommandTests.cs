@@ -15,7 +15,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class CommandTests : TestBase
 {
     static uint Int4Oid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Int4).Value;
     static uint TextOid => PostgresMinimalDatabaseInfo.DefaultTypeCatalog.GetOid(DataTypeNames.Text).Value;
@@ -41,7 +41,7 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
-            if (prepare && !IsMultiplexing)
+            if (prepare)
                 await cmd.PrepareAsync();
             await using var reader = await cmd.ExecuteReaderAsync();
             var numResultSets = queries.Count(q => q);
@@ -57,9 +57,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test]
     public async Task Multiple_statements_with_parameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT @p1; SELECT @p2";
@@ -83,9 +80,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test]
     public async Task SingleRow_legacy_batching([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
         if (prepare == PrepareOrNot.Prepared)
@@ -169,9 +163,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [IssueLink("https://github.com/npgsql/npgsql/issues/327")]
     public async Task Timeout()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, Timeout
-
         await using var dataSource = CreateDataSource(csb => csb.CommandTimeout = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = CreateSleepCommand(conn, 10);
@@ -186,9 +177,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
     public async Task Timeout_async_soft()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, Timeout
-
         await using var dataSource = CreateDataSource(csb => csb.CommandTimeout = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = CreateSleepCommand(conn, 10);
@@ -203,9 +191,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
     public async Task Timeout_async_hard()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, Timeout
-
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
         await using var postmasterMock = PgPostmasterMock.Start(builder.ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
@@ -266,9 +251,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test]
     public async Task Prepare_timeout_hard([Values] SyncOrAsync async)
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, Timeout
-
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
         await using var postmasterMock = PgPostmasterMock.Start(builder.ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
@@ -301,9 +283,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test, Description("Basic cancellation scenario")]
     public async Task Cancel()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         await using var cmd = CreateSleepCommand(conn, 5);
 
@@ -321,9 +300,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test]
     public async Task Cancel_async_immediately()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var conn = await OpenConnectionAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT 1";
@@ -340,9 +316,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test, Description("Cancels an async query with the cancellation token, with successful PG cancellation")]
     public async Task Cancel_async_soft()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var conn = await OpenConnectionAsync();
         await using var cmd = CreateSleepCommand(conn);
         using var cancellationSource = new CancellationTokenSource();
@@ -362,9 +335,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [IssueLink("https://github.com/npgsql/npgsql/issues/5191")]
     public async Task Cancel_async_soft_with_prepended_query()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -403,9 +373,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]
     public async Task Cancel_async_hard()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -431,9 +398,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Ignore("https://github.com/npgsql/npgsql/issues/4668")]
     public async Task Bug3466([Values(false, true)] bool isBroken)
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, cancellation
-
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             Pooling = false
@@ -589,9 +553,6 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     [Test]
     public async Task SingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT 1, 2 UNION SELECT 3, 4", conn);
         if (prepare == PrepareOrNot.Prepared)
@@ -684,17 +645,9 @@ public class CommandTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
 
-        if (IsMultiplexing)
-        {
-            Assert.That(async () => await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off"),
-                Throws.Exception.TypeOf<NotSupportedException>());
-        }
-        else
-        {
-            await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off");
-            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
-            await conn.ExecuteNonQueryAsync("set standard_conforming_strings=on");
-        }
+        await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off");
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        await conn.ExecuteNonQueryAsync("set standard_conforming_strings=on");
     }
 
     [Test]
@@ -846,9 +799,6 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Bug1010788_UpdateRowSource()
     {
-        if (IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id SERIAL PRIMARY KEY, name TEXT");
 
@@ -891,9 +841,6 @@ $$ LANGUAGE plpgsql;";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/395")]
     public async Task Use_across_connection_change([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn1 = await OpenConnectionAsync();
         using var conn2 = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT 1", conn1);
@@ -910,9 +857,6 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Use_after_reload_types_invalidates_cached_infos()
     {
-        if (IsMultiplexing)
-            return;
-
         using var conn1 = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT 1", conn1);
         cmd.Prepare();
@@ -934,7 +878,7 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Parameter_overflow_message_length_throws()
     {
-        // Create a separate dataSource because of Multiplexing (otherwise we can break unrelated queries)
+        // Create a separate data source to avoid breaking unrelated queries
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @a, @b, @c, @d, @e, @f, @g, @h", conn);
@@ -1000,7 +944,7 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Array_overflow_message_length_throws()
     {
-        // Create a separate dataSource because of Multiplexing (otherwise we can break unrelated queries)
+        // Create a separate data source to avoid breaking unrelated queries
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
 
@@ -1133,9 +1077,6 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task ExecuteNonQuery_Throws_PostgresException([Values] bool async)
     {
-        if (!async && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
 
         var table1 = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)");
@@ -1152,9 +1093,6 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task ExecuteScalar_Throws_PostgresException([Values] bool async)
     {
-        if (!async && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
 
         var table1 = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)");
@@ -1171,9 +1109,6 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task ExecuteReader_Throws_PostgresException([Values] bool async)
     {
-        if (!async && IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
 
         var table1 = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)");
@@ -1241,9 +1176,6 @@ $$ LANGUAGE plpgsql;";
     [IssueLink("https://github.com/npgsql/npgsql/issues/2795")]
     public async Task Many_parameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "some_column INT");
         using var cmd = new NpgsqlCommand { Connection = conn };
@@ -1271,9 +1203,6 @@ $$ LANGUAGE plpgsql;";
     [IssueLink("https://github.com/npgsql/npgsql/issues/2703")]
     public async Task Too_many_parameters_throws([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand { Connection = conn };
         var sb = new StringBuilder("SOME RANDOM SQL ");
@@ -1358,9 +1287,6 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public void Batched_small_then_big_statements_do_not_deadlock_in_sync_io()
     {
-        if (IsMultiplexing)
-            return; // Multiplexing, sync I/O
-
         // This makes sure we switch to async writing for batches, starting from the 2nd statement at the latest.
         // Otherwise, a small first first statement followed by a huge big one could cause us to deadlock, as we're stuck
         // synchronously sending the 2nd statement while PG is stuck sending the results of the 1st.
@@ -1399,9 +1325,6 @@ $$ LANGUAGE plpgsql;";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3509"), Ignore("Flaky")]
     public async Task Bug3509()
     {
-        if (IsMultiplexing)
-            return;
-
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             KeepAlive = 1,
@@ -1448,9 +1371,6 @@ $$ LANGUAGE plpgsql;";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4330")]
     public async Task Prepare_with_positional_placeholders_after_named()
     {
-        if (IsMultiplexing)
-            return; // Explicit preparation
-
         await using var conn = await OpenConnectionAsync();
 
         await using var command = new NpgsqlCommand("SELECT @p", conn);
@@ -1468,9 +1388,6 @@ $$ LANGUAGE plpgsql;";
     [Description("Most of 08* errors are coming whenever there was an error while connecting to a remote server from a cluster, so the connection to the cluster is still OK")]
     public async Task Postgres_connection_errors_not_break_connection()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -1494,9 +1411,6 @@ $$ LANGUAGE plpgsql;";
     [Description("Concurrent write and read failure can lead to deadlocks while cleaning up the connector.")]
     public async Task Concurrent_read_write_failure_deadlock()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var conn = await dataSource.OpenConnectionAsync();
@@ -1518,9 +1432,6 @@ $$ LANGUAGE plpgsql;";
     [Explicit("Flaky due to #5033")]
     public async Task Not_cancel_prepended_query([Values] bool failPrependedQuery)
     {
-        if (IsMultiplexing)
-            return;
-
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         var csb = new NpgsqlConnectionStringBuilder(postmasterMock.ConnectionString)
         {
@@ -1591,9 +1502,6 @@ $$ LANGUAGE plpgsql;";
     [Test]
     public async Task Cancel_while_reading_from_long_running_query()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
 
         await using var cmd = conn.CreateCommand();
@@ -1628,9 +1536,6 @@ FROM
     [Description("Make sure we do not lose unread messages after resetting oversize buffer")]
     public async Task Oversize_buffer_lost_messages()
     {
-        if (IsMultiplexing)
-            return;
-
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             NoResetOnClose = true

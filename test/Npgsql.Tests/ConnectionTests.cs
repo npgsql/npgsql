@@ -22,7 +22,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class ConnectionTests : TestBase
 {
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
     public async Task Basic_lifecycle()
@@ -72,9 +72,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
     public async Task Broken_lifecycle([Values] bool openFromClose)
     {
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource();
         await using var conn = dataSource.CreateConnection();
 
@@ -133,9 +130,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Test]
     public async Task Break_while_open()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
 
@@ -191,9 +185,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Test]
     public void Invalid_Username()
     {
-        if (IsMultiplexing)
-            Assert.Ignore();
-
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             Username = "unknown", Pooling = false
@@ -226,9 +217,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
     public async Task Fail_connect_then_succeed([Values] bool pooling)
     {
-        if (IsMultiplexing && !pooling) // Multiplexing doesn't work without pooling
-            return;
-
         var dbName = GetUniqueIdentifier(nameof(Fail_connect_then_succeed));
         await using var conn1 = await OpenConnectionAsync();
         await conn1.ExecuteNonQueryAsync($"DROP DATABASE IF EXISTS \"{dbName}\"");
@@ -581,10 +569,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
         conn.ConnectionString = csb.ConnectionString;
         Assert.That(conn.DataSource, Is.EqualTo($"tcp://{csb.Host}:{csb.Port}"));
 
-        // Multiplexing isn't supported with multiple hosts
-        if (IsMultiplexing)
-            return;
-
         csb.Host = "127.0.0.1, 127.0.0.2";
         conn.ConnectionString = csb.ConnectionString;
         Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
@@ -739,9 +723,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Parallelizable(ParallelScope.None)]
     public async Task Set_Schemas_And_Load_Relevant_Types(string testSchema, string otherSchema, bool enabled)
     {
-        if (IsMultiplexing)
-            return;
-
         await using var conn1 = await OpenConnectionAsync();
         try
         {
@@ -824,9 +805,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [TestCase(true, TestName = nameof(Break_connector_in_pool) + "_with_keep_alive")]
     public async Task Break_connector_in_pool(bool keepAlive)
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, hanging");
-
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 1;
         if (keepAlive)
@@ -863,9 +841,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [IssueLink("https://github.com/npgsql/npgsql/issues/4603")]
     public async Task Reload_types_keepalive_concurrent()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing doesn't support keepalive");
-
         await using var dataSource = CreateDataSource(csb => csb.KeepAlive = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
 
@@ -915,9 +890,6 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Test, Description("Tests closing a connector while a reader is open")]
     public async Task Close_during_read([Values(PooledOrNot.Pooled, PooledOrNot.Unpooled)] PooledOrNot pooled)
     {
-        if (IsMultiplexing && pooled == PooledOrNot.Unpooled)
-            return; // Multiplexing requires pooling
-
         await using var dataSource = CreateDataSource(csb => csb.Pooling = pooled == PooledOrNot.Pooled);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -1037,8 +1009,6 @@ LANGUAGE 'plpgsql'");
     [Test, Description("Makes sure that concurrent use of the connection throws an exception")]
     public async Task Concurrent_use_throws()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
         using (var cmd = new NpgsqlCommand("SELECT 1", conn))
         using (await cmd.ExecuteReaderAsync())
@@ -1061,9 +1031,6 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
     public void PersistSecurityInfo_is_true([Values(true, false)] bool pooling)
     {
-        if (IsMultiplexing && !pooling)
-            return;
-
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             PersistSecurityInfo = true,
@@ -1080,9 +1047,6 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
     public void No_password_without_PersistSecurityInfo([Values(true, false)] bool pooling)
     {
-        if (IsMultiplexing && !pooling)
-            return;
-
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             Pooling = pooling
@@ -1212,8 +1176,6 @@ LANGUAGE 'plpgsql'");
     [Test]
     public async Task DatabaseInfo_is_shared()
     {
-        if (IsMultiplexing)
-            return;
         // Create a temp pool to make sure the second connection will be new and not idle
         await using var dataSource = CreateDataSource();
         await using var conn1 = await dataSource.OpenConnectionAsync();
@@ -1262,9 +1224,6 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
     public async Task Rollback_on_close()
     {
-        if (IsMultiplexing)
-            Assert.Ignore();
-
         // Npgsql 3.0.0 to 3.0.4 prepended a rollback for the next time the connector is used, as an optimization.
         // This caused some issues (#927) and was removed.
 
@@ -1290,10 +1249,6 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
     public async Task Exception_during_close()
     {
-        // Pooling must be on to use multiplexing
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await dataSource.OpenConnectionAsync();
         var connectorId = conn.ProcessID;
@@ -1341,9 +1296,6 @@ LANGUAGE 'plpgsql'");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
     public async Task Table_named_record()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
-
         using var conn = await OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync(@"
 
@@ -1422,9 +1374,6 @@ CREATE TABLE record ()");
     [Test]
     public async Task Oversize_buffer()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
@@ -1480,9 +1429,6 @@ CREATE TABLE record ()");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3511")]
     public async Task Keepalive_with_failed_transaction()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource(csb => csb.KeepAlive = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
@@ -1502,9 +1448,6 @@ CREATE TABLE record ()");
     [Test]
     public async Task Change_parameter()
     {
-        if (IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         var defaultApplicationName = conn.PostgresParameters["application_name"];
         await conn.ExecuteNonQueryAsync("SET application_name = 'some_test_value'");
@@ -1547,7 +1490,7 @@ CREATE TABLE record ()");
         await conn.CloseAsync();
         await conn.OpenAsync();
         Assert.That(await conn.ExecuteScalarAsync("SHOW application_name"), Is.EqualTo(
-            noResetOnClose || IsMultiplexing
+            noResetOnClose
                 ? "modified"
                 : originalApplicationName));
     }
@@ -1556,9 +1499,6 @@ CREATE TABLE record ()");
     [Description("Test whether the internal NpgsqlConnection.Open method stays on the same thread with async=false")]
     public async Task Sync_open_blocked_same_thread()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource(csb =>
         {
             csb.MaxPoolSize = 1;
@@ -1598,9 +1538,6 @@ CREATE TABLE record ()");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6427")]
     public async Task Gss_encryption_retry_does_not_clear_pool()
     {
-        if (IsMultiplexing)
-            return;
-
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             GssEncryptionMode = GssEncryptionMode.Prefer
@@ -1628,9 +1565,6 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_sync()
     {
-        if (IsMultiplexing) // Sync I/O
-            return;
-
         await using var adminConn = await OpenConnectionAsync();
         var table = await CreateTempTable(adminConn, "ID INTEGER");
 
@@ -1655,11 +1589,6 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_async()
     {
-        // With multiplexing the connector might become idle at undetermined point after the query is executed.
-        // Which is why we ignore it.
-        if (IsMultiplexing)
-            return;
-
         await using var adminConn = await OpenConnectionAsync();
         var table = await CreateTempTable(adminConn, "ID INTEGER");
 
@@ -1684,9 +1613,6 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_sync_with_break()
     {
-        if (IsMultiplexing) // Sync I/O
-            return;
-
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.UsePhysicalConnectionInitializer(
             conn =>
@@ -1727,9 +1653,7 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_async_throws_on_second_open()
     {
-        // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync (if there was no completed bootstrap beforehand)
-        // or on NpgsqlCommand.ExecuteReaderAsync.
-        // We've already tested the first case in PhysicalConnectionInitializer_async_throws above, testing the second one below.
+        // We've already tested a simpler case in PhysicalConnectionInitializer_async_throws above, testing a second one below.
         var count = 0;
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.UsePhysicalConnectionInitializer(
@@ -1745,18 +1669,10 @@ CREATE TABLE record ()");
         await using var conn1 = dataSource.CreateConnection();
         Assert.DoesNotThrowAsync(async () => await conn1.OpenAsync());
 
-        // We start a transaction specifically for multiplexing (to bind a connector to the connection)
         await using var tx = await conn1.BeginTransactionAsync();
 
         await using var conn2 = dataSource.CreateConnection();
-        Exception exception;
-        if (IsMultiplexing)
-        {
-            await conn2.OpenAsync();
-            exception = Assert.ThrowsAsync<Exception>(async () => await conn2.BeginTransactionAsync())!;
-        }
-        else
-            exception = Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync())!;
+        var exception = Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync())!;
         Assert.That(exception.Message, Is.EqualTo("INTENTIONAL FAILURE"));
     }
 
@@ -1922,9 +1838,6 @@ CREATE TABLE record ()");
     [IssueLink("https://github.com/npgsql/npgsql/issues/4425")]
     public async Task Breaking_connection_while_loading_database_info()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var dataSource = CreateDataSource();
 
         await using var firstConn = dataSource.CreateConnection();
@@ -2011,12 +1924,9 @@ CREATE TABLE record ()");
         AssertLoggingStateContains(closedConnectionEvent, "Port", port);
         AssertLoggingStateContains(closedConnectionEvent, "Database", database);
 
-        if (!IsMultiplexing)
-        {
-            AssertLoggingStateContains(openedConnectionEvent, "ConnectorId", processId);
-            AssertLoggingStateContains(closingConnectionEvent, "ConnectorId", processId);
-            AssertLoggingStateContains(closedConnectionEvent, "ConnectorId", processId);
-        }
+        AssertLoggingStateContains(openedConnectionEvent, "ConnectorId", processId);
+        AssertLoggingStateContains(closingConnectionEvent, "ConnectorId", processId);
+        AssertLoggingStateContains(closedConnectionEvent, "ConnectorId", processId);
 
         var ids = new[]
         {
@@ -2033,9 +1943,6 @@ CREATE TABLE record ()");
     [Test]
     public async Task Log_Open_Close_physical()
     {
-        if (IsMultiplexing)
-            return;
-
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
         await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, csb.ToString());
         await using var conn = dataSource.CreateConnection();

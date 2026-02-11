@@ -21,7 +21,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/arrays.html
 /// </remarks>
-public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class ArrayTests : TestBase
 {
     static readonly TestCaseData[] ArrayTestCases =
     [
@@ -421,9 +421,6 @@ SELECT onedim, twodim FROM (VALUES
     [Test, Description("Roundtrips one-dimensional and two-dimensional arrays of a PostgreSQL domain.")]
     public async Task Array_of_domain()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
-
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "11.0", "Arrays of domains were introduced in PostgreSQL 11");
         await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);");
@@ -453,9 +450,6 @@ SELECT onedim, twodim FROM (VALUES
     [Test, Description("Roundtrips a PostgreSQL domain over a one-dimensional and a two-dimensional array.")]
     public async Task Domain_of_array()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
-
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "11.0", "Domains over arrays were introduced in PostgreSQL 11");
         await conn.ExecuteNonQueryAsync(

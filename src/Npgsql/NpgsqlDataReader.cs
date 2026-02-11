@@ -43,8 +43,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     CommandBehavior _behavior;
 
     /// <summary>
-    /// In multiplexing, this is <see langword="null" /> as the sending is managed in the write multiplexing loop,
-    /// and does not need to be awaited by the reader.
+    /// The task for writing this command's messages. Awaited on reader cleanup.
     /// </summary>
     Task? _sendTask;
 
@@ -1014,8 +1013,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         catch (Exception ex)
         {
             // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
-            // to Disposed in Close above; in multiplexing, we also unbind the connector (with its reader), and at that point it can be used
-            // by other consumers. Therefore, we only set the state fo Disposed if the exception *wasn't* a PostgresException.
+            // to Disposed in Close above. Therefore, we only set the state to Disposed if the exception *wasn't* a PostgresException.
             if (!(ex is PostgresException ||
                   ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
                   AllPostgresExceptions(aggregateException.InnerExceptions)))
@@ -1043,8 +1041,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         catch (Exception ex)
         {
             // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
-            // to Disposed in Close above; in multiplexing, we also unbind the connector (with its reader), and at that point it can be used
-            // by other consumers. Therefore, we only set the state to Disposed if the exception *wasn't* a PostgresException.
+            // to Disposed in Close above. Therefore, we only set the state to Disposed if the exception *wasn't* a PostgresException.
             if (!(ex is PostgresException ||
                   ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
                   AllPostgresExceptions(aggregateException.InnerExceptions)))
@@ -1142,7 +1139,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         LogMessages.ReaderCleanup(_commandLogger, Connector.Id);
 
-        // If multiplexing isn't on, _sendTask contains the task for the writing of this command.
+        // _sendTask contains the task for the writing of this command.
         // Make sure that this task, which may have executed asynchronously and in parallel with the reading,
         // has completed, throwing any exceptions it generated. If we don't do this, there's the possibility of a race condition where the
         // user executes a new command after reader.Dispose() returns, but some additional write stuff is still finishing up from the last
@@ -1189,27 +1186,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         Connector.DataSource.MetricsReporter.ReportCommandStop(_startTimestamp);
         Connector.EndUserAction();
 
-        // The reader shouldn't be unbound, if we're disposing - so the state is set prematurely
         if (isDisposing)
             State = ReaderState.Disposed;
 
-        if (_connection?.ConnectorBindingScope == ConnectorBindingScope.Reader)
-        {
-            UnbindIfNecessary();
-
-            // TODO: Refactor... Use proper scope
-            _connection.Connector = null;
-            Connector.Connection = null;
-            _connection.ConnectorBindingScope = ConnectorBindingScope.None;
-
-            // If the reader is being closed as part of the connection closing, we don't apply
-            // the reader's CommandBehavior.CloseConnection
-            if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
-                _connection.Close();
-
-            Connector.ReaderCompleted.SetResult(null);
-        }
-        else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+        if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
         {
             Debug.Assert(_connection is not null);
             _connection.Close();

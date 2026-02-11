@@ -106,7 +106,6 @@ public class MultirangeTests : TestBase
 
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
-        await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
@@ -133,7 +132,6 @@ public class MultirangeTests : TestBase
         var rangeType = await GetTempTypeName(connection);
         var multirangeTypeName = rangeType + "_multirange";
         await connection.ExecuteNonQueryAsync($"CREATE TYPE {rangeType} AS RANGE(subtype=text)");
-        await Task.Yield(); // TODO: fix multiplexing deadlock bug
         await connection.ReloadTypesAsync();
 
         var errorMessage = string.Format(
