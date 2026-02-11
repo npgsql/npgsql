@@ -112,8 +112,8 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     [Test, Description("Tests some types which are aliased to strings")]
     [TestCase("character varying")]
     [TestCase("name")]
-    public Task Aliased_postgres_types(string pgTypeName)
-        => AssertType("foo", "foo", pgTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown, dbType: DbType.String);
+    public Task Aliased_postgres_types(string dataTypeName)
+        => AssertType("foo", "foo", dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown, dbType: DbType.String);
 
     [Test]
     [TestCase(DbType.AnsiString)]

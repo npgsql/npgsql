@@ -54,8 +54,8 @@ class RangeTests : MultiplexingTestBase
 
     // See more test cases in DateTimeTests
     [Test, TestCaseSource(nameof(RangeTestCases))]
-    public Task Range<T>(T range, string sqlLiteral, string pgTypeName)
-        => AssertType(range, sqlLiteral, pgTypeName,
+    public Task Range<T>(T range, string sqlLiteral, string dataTypeName)
+        => AssertType(range, sqlLiteral, dataTypeName,
             // NpgsqlRange<T>[] is mapped to multirange by default, not array, so the built-in AssertType testing for arrays fails
             // (see below)
             skipArrayCheck: true);
@@ -63,8 +63,8 @@ class RangeTests : MultiplexingTestBase
     // This re-executes the same scenario as above, but with isDefaultForWriting: false and without skipArrayCheck: true.
     // This tests coverage of range arrays (as opposed to multiranges).
     [Test, TestCaseSource(nameof(RangeTestCases))]
-    public Task Range_array<T>(T range, string sqlLiteral, string pgTypeName)
-        => AssertType(range, sqlLiteral, pgTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown);
+    public Task Range_array<T>(T range, string sqlLiteral, string dataTypeName)
+        => AssertType(range, sqlLiteral, dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown);
 
     [Test]
     public void Equality_finite()

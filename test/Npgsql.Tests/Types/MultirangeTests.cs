@@ -86,16 +86,16 @@ public class MultirangeTests : TestBase
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_array<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string pgTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
-        => AssertType(multirangeAsArray, sqlLiteral, pgTypeName,
+        T multirangeAsArray, string sqlLiteral, string dataTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
+        => AssertType(multirangeAsArray, sqlLiteral, dataTypeName,
             dataTypeInference: datatypeInferenceKind, valueTypeEqualsFieldType: valueTypeEqualsFieldType);
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_list<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string pgTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
+        T multirangeAsArray, string sqlLiteral, string dataTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
         where T : IList<TRange>
         => AssertType(
-            new List<TRange>(multirangeAsArray), sqlLiteral, pgTypeName,
+            new List<TRange>(multirangeAsArray), sqlLiteral, dataTypeName,
             dataTypeInference: datatypeInferenceKind, valueTypeEqualsFieldType: false);
 
     [Test]

@@ -62,17 +62,17 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [TestCase("oid", TestName="OID")]
     [TestCase("xid", TestName="XID")]
     [TestCase("cid", TestName="CID")]
-    public Task UInt32(string pgTypeName)
-        => AssertType(8u, "8", pgTypeName, dataTypeInference: false);
+    public Task UInt32(string dataTypeName)
+        => AssertType(8u, "8", dataTypeName, dataTypeInference: false);
 
     [Test]
     [TestCase("xid8", TestName="XID8")]
-    public async Task UInt64(string pgTypeName)
+    public async Task UInt64(string dataTypeName)
     {
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "13.0", "The xid8 type was introduced in PostgreSQL 13");
 
-        await AssertType(8ul, "8", pgTypeName, dataTypeInference: false);
+        await AssertType(8ul, "8", dataTypeName, dataTypeInference: false);
     }
 
     [Test]
@@ -121,13 +121,13 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [TestCase(short.MaxValue + 1, "smallint")]
     [TestCase(int.MaxValue + 1L, "integer")]
     [TestCase(long.MaxValue + 1D, "bigint")]
-    public Task Write_overflow<T>(T value, string pgTypeName)
-        => AssertTypeUnsupportedWrite<T, OverflowException>(value, pgTypeName);
+    public Task Write_overflow<T>(T value, string dataTypeName)
+        => AssertTypeUnsupportedWrite<T, OverflowException>(value, dataTypeName);
 
     [Test]
     [TestCase((short)0, short.MaxValue + 1D, "int")]
     [TestCase(0, int.MaxValue + 1D, "bigint")]
     [TestCase(0L, long.MaxValue + 1D, "decimal")]
-    public Task Read_overflow<T>(T _, double value, string pgTypeName)
-        => AssertTypeUnsupportedRead<T, OverflowException>(value.ToString(CultureInfo.InvariantCulture), pgTypeName);
+    public Task Read_overflow<T>(T _, double value, string dataTypeName)
+        => AssertTypeUnsupportedRead<T, OverflowException>(value.ToString(CultureInfo.InvariantCulture), dataTypeName);
 }

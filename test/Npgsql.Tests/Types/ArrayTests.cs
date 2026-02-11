@@ -36,8 +36,8 @@ public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     ];
 
     [Test, TestCaseSource(nameof(ArrayTestCases))]
-    public Task Arrays<T>(T array, string sqlLiteral, string pgTypeName)
-        => AssertType(array, sqlLiteral, pgTypeName);
+    public Task Arrays<T>(T array, string sqlLiteral, string dataTypeName)
+        => AssertType(array, sqlLiteral, dataTypeName);
 
     [Test]
     public async Task NullableInts()
