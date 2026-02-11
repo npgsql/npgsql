@@ -485,7 +485,7 @@ public abstract class TestBase
             $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
 
         // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality.
-        var isArray = readerTypeName.EndsWith("[]");
+        var isArray = readerTypeName.EndsWith("[]", StringComparison.Ordinal);
         Assert.That(reader.GetFieldType(0),
             (valueTypeEqualsFieldType || isArray ? new ConstraintExpression() : Is.Not)
                 .EqualTo(isArray ? typeof(Array) : typeof(T)),
@@ -513,29 +513,15 @@ public abstract class TestBase
         return actual;
     }
 
-    public async Task AssertTypeUnsupported<T>(T value, string sqlLiteral, string dataTypeName, NpgsqlDataSource? dataSource = null)
+    public async Task AssertTypeUnsupported<T>(T value, string sqlLiteral, string dataTypeName, NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
     {
-        await AssertTypeUnsupportedRead<T>(sqlLiteral, dataTypeName, dataSource);
-        await AssertTypeUnsupportedWrite(value, dataTypeName, dataSource);
-    }
-
-    public async Task<InvalidCastException> AssertTypeUnsupportedRead(string sqlLiteral, string dataTypeName, NpgsqlDataSource? dataSource = null)
-    {
-        dataSource ??= DataSource;
-
-        await using var conn = await dataSource.OpenConnectionAsync();
-        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
-        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
-        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", conn);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
-
-        return Assert.Throws<InvalidCastException>(() => reader.GetValue(0))!;
+        await AssertTypeUnsupportedRead<T>(sqlLiteral, dataTypeName, dataSource, skipArrayCheck);
+        await AssertTypeUnsupportedWrite(value, dataTypeName, dataSource, skipArrayCheck);
     }
 
     public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string dataTypeName,
         NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
-        => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, dataTypeName, dataSource);
+        => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, dataTypeName, dataSource, skipArrayCheck);
 
     public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string dataTypeName,
         NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
@@ -562,14 +548,17 @@ public abstract class TestBase
         await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
+        await reader.ReadAsync();;
 
-        return Assert.Throws<TException>(() => reader.GetFieldValue<T>(0))!;
+        return Assert.Throws<TException>(() =>
+        {
+            _ = typeof(T) == typeof(object) ? reader.GetValue(0) : reader.GetFieldValue<T>(0);
+        })!;
     }
 
     public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? dataTypeName = null, NpgsqlDataSource? dataSource = null,
         bool skipArrayCheck = false)
-        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, dataTypeName, dataSource, skipArrayCheck: false);
+        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, dataTypeName, dataSource, skipArrayCheck);
 
     public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? dataTypeName = null,
         NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)

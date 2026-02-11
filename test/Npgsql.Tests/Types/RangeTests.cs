@@ -210,7 +210,7 @@ class RangeTests : MultiplexingTestBase
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
-        exception = await AssertTypeUnsupportedRead("""["bar","foo"]""", rangeType);
+        exception = await AssertTypeUnsupportedRead<object>("""["bar","foo"]""", rangeType);
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 

@@ -151,7 +151,7 @@ public class MultirangeTests : TestBase
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
-        exception = await AssertTypeUnsupportedRead("""{["bar","foo"],["moo","zoo"]}""",
+        exception = await AssertTypeUnsupportedRead<object>("""{["bar","foo"],["moo","zoo"]}""",
             multirangeTypeName);
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
