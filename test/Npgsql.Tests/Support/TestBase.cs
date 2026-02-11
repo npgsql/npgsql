@@ -548,7 +548,7 @@ public abstract class TestBase
         await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();;
+        await reader.ReadAsync();
 
         return Assert.Throws<TException>(() =>
         {
