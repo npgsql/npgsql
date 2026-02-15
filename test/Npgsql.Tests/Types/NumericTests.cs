@@ -114,7 +114,7 @@ public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
     public async Task Numeric()
     {
         await AssertType(5.5m, "5.5", "numeric", dbType: DbType.Decimal);
-        await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: new(DbType.VarNumeric, DbType.Decimal, DbType.Decimal));
+        await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: new(DbType.Decimal, DbType.Decimal, DbType.VarNumeric));
 
         await AssertType((short)8, "8", "numeric", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Decimal, DbType.Int16), valueTypeEqualsFieldType: false);

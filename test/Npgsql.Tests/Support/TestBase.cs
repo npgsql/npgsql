@@ -255,14 +255,17 @@ public abstract class TestBase
         }
     }
 
-    public readonly struct DbTypes(DbType dbType, DbType dataTypeMappedDbType, DbType valueInferredDbType)
+    public readonly struct DbTypes(DbType dataTypeMappedDbType, DbType valueInferredDbType, DbType dbTypeToSet)
     {
-        public DbType DbType { get; } = dbType;
         public DbType DataTypeMappedDbType { get; } = dataTypeMappedDbType;
         public DbType ValueInferredDbType { get; } = valueInferredDbType;
 
+        // The DbType to explicitly set on the parameter. Usually same as ValueInferredDbType,
+        // It differs when testing DbType aliases (e.g. VarNumeric → DbType.Decimal) as we want to test those also work correctly.
+        public DbType DbTypeToSet { get; } = dbTypeToSet;
+
         public DbTypes(DbType dataTypeMappedDbType, DbType valueInferredDbType)
-            : this(valueInferredDbType, dataTypeMappedDbType, valueInferredDbType) {}
+            : this(dataTypeMappedDbType, valueInferredDbType, valueInferredDbType) {}
 
         public static implicit operator DbTypes(DbType dbType) => new(dbType, dbType, dbType);
     }
@@ -319,8 +322,8 @@ public abstract class TestBase
 
         // With DbType, if none was supplied we verify it's DbType.Object.
         p = new NpgsqlParameter { Value = valueFactory() };
-        errorIdentifier[++errorIdentifierIndex] = $"Value and DbType={expectedDbTypes?.DbType}";
-        if (expectedDbTypes?.DbType is { } expectedDbType)
+        errorIdentifier[++errorIdentifierIndex] = $"Value and DbType={expectedDbTypes?.DbTypeToSet}";
+        if (expectedDbTypes?.DbTypeToSet is { } expectedDbType)
             p.DbType = expectedDbType;
         DbTypeAsserts();
         if (dataTypeInference.Expected is DataTypeInference.ExpectedInference.Match)
@@ -368,11 +371,11 @@ public abstract class TestBase
             // If DbType was set it overrules any value based data type inference.
             // As DbType.Object never has any mapping either we check for null/Unknown when DbType.Object was set.
             var (expectedDataTypeName, expectedNpgsqlDbType) =
-                expectedDbTypes is { DbType: DbType.Object }
+                expectedDbTypes is { DbTypeToSet: DbType.Object }
                     ? (null, NpgsqlDbType.Unknown)
                     : GetInferredDataType();
 
-            var expectedDbType = expectedDbTypes?.DbType ?? DbType.Object;
+            var expectedDbType = expectedDbTypes?.DbTypeToSet ?? DbType.Object;
 
             AssertParameterProperties(expectedDataTypeName, expectedNpgsqlDbType, expectedDbType);
         }

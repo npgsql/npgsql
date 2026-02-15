@@ -290,7 +290,7 @@ public class DateTimeTests : TestBase
             new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.Zero),
             "1998-04-12 15:26:38+02",
             "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
-            dbType: new(DbType.DateTimeOffset, DbType.DateTime, DbType.DateTime));
+            dbType: new(DbType.DateTime, DbType.DateTime, DbType.DateTimeOffset));
 
     [Test]
     public Task Timestamptz_cannot_write_non_utc_DateTimeOffset()
