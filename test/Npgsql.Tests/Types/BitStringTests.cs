@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Data;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -30,7 +31,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
         await AssertType(bitArray, sqlLiteral, "bit varying");
 
         if (len > 0)
-            await AssertType(bitArray, sqlLiteral, $"bit({len})", isDefaultForWriting: false);
+            await AssertType(bitArray, sqlLiteral, $"bit({len})", dataTypeInference: DataTypeInference.Mismatch);
     }
 
     [Test]
@@ -47,7 +48,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
     [Test]
     public Task BitVector32()
         => AssertType(
-            new BitVector32(4), "00000000000000000000000000000100", "bit varying", isDefaultForReading: false);
+            new BitVector32(4), "00000000000000000000000000000100", "bit varying", valueTypeEqualsFieldType: false);
 
     [Test]
     public Task BitVector32_too_long()
@@ -55,7 +56,7 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
 
     [Test]
     public Task Bool()
-        => AssertType(true, "1", "bit(1)", isDefault: false);
+        => AssertType(true, "1", "bit(1)", dataTypeInference: DataTypeInference.Mismatch, dbType: new(DbType.Object, DbType.Boolean));
 
     [Test]
     public async Task Bitstring_with_multiple_bits_as_bool_throws()
@@ -118,7 +119,9 @@ public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTes
 
     [Test]
     public Task As_string()
-        => AssertType("010101", "010101", "bit varying", isDefault: false);
+        => AssertType("010101", "010101",
+            "bit varying", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Write_as_string_validation()
