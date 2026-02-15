@@ -20,7 +20,7 @@ public class MultirangeTests : TestBase
                     new(3, true, false, 7, false, false),
                     new(9, true, false, 0, false, true)
                 },
-                "{[3,7),[9,)}", "int4multirange", DataTypeInferenceKind.Exact, true, default(NpgsqlRange<int>))
+                "{[3,7),[9,)}", "int4multirange", DataTypeInference.Match, true, default(NpgsqlRange<int>))
             .SetName("Int"),
 
         // int8multirange
@@ -30,7 +30,7 @@ public class MultirangeTests : TestBase
                     new(3, true, false, 7, false, false),
                     new(9, true, false, 0, false, true)
                 },
-                "{[3,7),[9,)}", "int8multirange", DataTypeInferenceKind.Exact, true, default(NpgsqlRange<long>))
+                "{[3,7),[9,)}", "int8multirange", DataTypeInference.Match, true, default(NpgsqlRange<long>))
             .SetName("Long"),
 
         // nummultirange
@@ -41,7 +41,7 @@ public class MultirangeTests : TestBase
                     new(3, true, false, 7, true, false),
                     new(9, false, false, 0, false, true)
                 },
-                "{[3,7],(9,)}", "nummultirange", DataTypeInferenceKind.Exact, true, default(NpgsqlRange<decimal>))
+                "{[3,7],(9,)}", "nummultirange", DataTypeInference.Match, true, default(NpgsqlRange<decimal>))
             .SetName("Decimal"),
 
         // daterange
@@ -51,7 +51,7 @@ public class MultirangeTests : TestBase
                     new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
                     new(new(2020, 1, 10), true, false, default, false, true)
                 },
-                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", DataTypeInferenceKind.Exact, true, default(NpgsqlRange<DateOnly>))
+                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", DataTypeInference.Match, true, default(NpgsqlRange<DateOnly>))
             .SetName("DateTime DateMultirange"),
 
         // tsmultirange
@@ -61,7 +61,7 @@ public class MultirangeTests : TestBase
                     new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
                     new(new(2020, 1, 10), true, false, default, false, true)
                 },
-                """{["2020-01-01 00:00:00","2020-01-05 00:00:00"),["2020-01-10 00:00:00",)}""", "tsmultirange", DataTypeInferenceKind.Exact, true, default(NpgsqlRange<DateTime>))
+                """{["2020-01-01 00:00:00","2020-01-05 00:00:00"),["2020-01-10 00:00:00",)}""", "tsmultirange", DataTypeInference.Match, true, default(NpgsqlRange<DateTime>))
             .SetName("DateTime TimestampMultirange"),
 
         // tstzmultirange
@@ -71,7 +71,7 @@ public class MultirangeTests : TestBase
                     new(new(2020, 1, 1, 0, 0, 0, kind: DateTimeKind.Utc), true, false, new(2020, 1, 5, 0, 0, 0, kind: DateTimeKind.Utc), false, false),
                     new(new(2020, 1, 10, 0, 0, 0, kind: DateTimeKind.Utc), true, false, default, false, true)
                 },
-                """{["2020-01-01 01:00:00+01","2020-01-05 01:00:00+01"),["2020-01-10 01:00:00+01",)}""", "tstzmultirange", DataTypeInferenceKind.Exact, true, default(NpgsqlRange<DateTime>))
+                """{["2020-01-01 01:00:00+01","2020-01-05 01:00:00+01"),["2020-01-10 01:00:00+01",)}""", "tstzmultirange", DataTypeInference.Match, true, default(NpgsqlRange<DateTime>))
             .SetName("DateTime TimestampTzMultirange"),
 
         new TestCaseData(
@@ -80,23 +80,23 @@ public class MultirangeTests : TestBase
                     new(new(2020, 1, 1), true, false, new(2020, 1, 5), false, false),
                     new(new(2020, 1, 10), true, false, default, false, true)
                 },
-                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", DataTypeInferenceKind.WellKnown, true, default(NpgsqlRange<DateOnly>))
+                "{[2020-01-01,2020-01-05),[2020-01-10,)}", "datemultirange", DataTypeInference.Mismatch, true, default(NpgsqlRange<DateOnly>))
             .SetName("DateOnly")
     ];
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_array<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string dataTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
+        T multirangeAsArray, string sqlLiteral, string dataTypeName, DataTypeInference datatypeDataTypeInference, bool valueTypeEqualsFieldType, TRange _)
         => AssertType(multirangeAsArray, sqlLiteral, dataTypeName,
-            dataTypeInference: datatypeInferenceKind, valueTypeEqualsFieldType: valueTypeEqualsFieldType);
+            dataTypeInference: datatypeDataTypeInference, valueTypeEqualsFieldType: valueTypeEqualsFieldType);
 
     [Test, TestCaseSource(nameof(MultirangeTestCases))]
     public Task Multirange_as_list<T, TRange>(
-        T multirangeAsArray, string sqlLiteral, string dataTypeName, DataTypeInferenceKind datatypeInferenceKind, bool valueTypeEqualsFieldType, TRange _)
+        T multirangeAsArray, string sqlLiteral, string dataTypeName, DataTypeInference datatypeDataTypeInference, bool valueTypeEqualsFieldType, TRange _)
         where T : IList<TRange>
         => AssertType(
             new List<TRange>(multirangeAsArray), sqlLiteral, dataTypeName,
-            dataTypeInference: datatypeInferenceKind, valueTypeEqualsFieldType: false);
+            dataTypeInference: datatypeDataTypeInference, valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Unmapped_multirange_with_mapped_subtype()

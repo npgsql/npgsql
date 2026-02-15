@@ -23,7 +23,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
 
     [Test]
     public Task Text_as_array_of_chars()
-        => AssertType("foo".ToCharArray(), "foo", "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        => AssertType("foo".ToCharArray(), "foo", "text", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.String, valueTypeEqualsFieldType: false);
 
     [Test]
@@ -32,19 +32,19 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
 
     [Test]
     public Task Text_as_array_of_bytes()
-        => AssertType("foo"u8.ToArray(), "foo", "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        => AssertType("foo"u8.ToArray(), "foo", "text", dataTypeInference: DataTypeInference.Mismatch,
             new(DbType.String, DbType.Binary), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Text_as_ReadOnlyMemory_of_bytes()
         => AssertTypeWrite(new ReadOnlyMemory<byte>("foo"u8.ToArray()), "foo",
-            "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "text", dataTypeInference: DataTypeInference.Mismatch,
             new(DbType.String, DbType.Binary));
 
     [Test]
     public Task Char_as_char()
         => AssertType('f', "f",
-            "character", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "character", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.String, valueTypeEqualsFieldType: false, skipArrayCheck: true); // char[] maps to text
 
     [Test]
@@ -54,14 +54,14 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         await EnsureExtensionAsync(conn, "citext");
 
         await AssertType("foo", "foo",
-            "citext", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "citext", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.String);
     }
 
     [Test]
     public Task Text_as_MemoryStream()
         => AssertTypeWrite(() => new MemoryStream("foo"u8.ToArray()), "foo",
-            "text", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "text", dataTypeInference: DataTypeInference.Mismatch,
             new(DbType.String, DbType.Binary));
 
     [Test]
@@ -113,7 +113,7 @@ public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
     [TestCase("character varying")]
     [TestCase("name")]
     public Task Aliased_postgres_types(string dataTypeName)
-        => AssertType("foo", "foo", dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown, dbType: DbType.String);
+        => AssertType("foo", "foo", dataTypeName, dataTypeInference: DataTypeInference.Mismatch, dbType: DbType.String);
 
     [Test]
     [TestCase(DbType.AnsiString)]

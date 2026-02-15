@@ -191,7 +191,7 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
     [Test]
     public Task Int2Vector()
         => AssertType(new short[] { 4, 5, 6 }, "4 5 6",
-            "int2vector", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "int2vector", dataTypeInference: DataTypeInference.Mismatch,
             // int2vector mappings require a data type name, so passing a value of type short[][] will result in no mapping.
             skipArrayCheck: true);
 

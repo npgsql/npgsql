@@ -18,7 +18,7 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public async Task As_string()
         => await AssertType("""{"K": "V"}""", """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));
 
     [Test]
@@ -33,7 +33,7 @@ public class JsonTests : MultiplexingTestBase
             .ToString();
 
         await AssertType(value, value,
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));
     }
 
@@ -51,31 +51,31 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public async Task As_char_array()
         => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task As_bytes()
         => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.Binary), valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Write_as_ReadOnlyMemory_of_byte()
         => await AssertTypeWrite(new ReadOnlyMemory<byte>("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.Binary));
 
     [Test]
     public async Task Write_as_ArraySegment_of_char()
         => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));
 
     [Test]
     public Task As_MemoryStream()
         => AssertTypeWrite(() => new MemoryStream("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.Binary));
 
     [Test]
@@ -84,7 +84,7 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("""{"K": "V"}"""),
             IsJsonb ? """{"K": "V"}""" : """{"K":"V"}""",
             PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dataTypeInference: DataTypeInference.Mismatch,
             comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString(),
             valueTypeEqualsFieldType: false);
 
@@ -94,7 +94,7 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("null"),
             "null",
             PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dataTypeInference: DataTypeInference.Mismatch,
             comparer: (x, y) => x.RootElement.ValueKind == y.RootElement.ValueKind,
             valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
@@ -105,7 +105,7 @@ public class JsonTests : MultiplexingTestBase
             JsonDocument.Parse("null").RootElement,
             "null",
             PostgresType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown,
+            dataTypeInference: DataTypeInference.Mismatch,
             comparer: (x, y) => x.ValueKind == y.ValueKind,
             valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
@@ -127,7 +127,7 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             @"{""p"": 1}",
             @"{""p"": 1}",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: true);
 
     [Test]
@@ -135,7 +135,7 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
     [Test]
@@ -143,7 +143,7 @@ public class JsonTests : MultiplexingTestBase
         => AssertType(
             @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
-            PostgresType, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            PostgresType, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.Binary), valueTypeEqualsFieldType: false);
 
     [Test]
@@ -179,7 +179,7 @@ public class JsonTests : MultiplexingTestBase
             IsJsonb ? """{"Bar": 8}""" : """{"Bar":8}""",
             PostgresType,
             // By default we map JsonObject to jsonb
-            dataTypeInference: IsJsonb ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.WellKnown,
+            dataTypeInference: IsJsonb ? DataTypeInference.Match : DataTypeInference.Mismatch,
             valueTypeEqualsFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 
@@ -190,7 +190,7 @@ public class JsonTests : MultiplexingTestBase
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             PostgresType,
             // By default we map JsonArray to jsonb
-            dataTypeInference: IsJsonb ? DataTypeInferenceKind.Exact : DataTypeInferenceKind.WellKnown,
+            dataTypeInference: IsJsonb ? DataTypeInference.Match : DataTypeInference.Mismatch,
             valueTypeEqualsFieldType: false,
             comparer: (x, y) => x.ToString() == y.ToString());
 

@@ -95,6 +95,6 @@ CREATE TYPE {compositeType} AS (value {domainType});");
             new NpgsqlRange<int>(1, 2),
             "[1,2]",
             rangeType,
-            dataTypeInference: DataTypeInferenceKind.WellKnown);
+            dataTypeInference: DataTypeInference.Mismatch);
     }
 }

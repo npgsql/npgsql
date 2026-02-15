@@ -96,7 +96,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
 
         await AssertType(PhysicalAddress.Parse("08-00-2B-01-02-03-04-05"), "08:00:2b:01:02:03:04:05",
-            "macaddr8", dataTypeInference: DataTypeInferenceKind.WellKnown);
+            "macaddr8", dataTypeInference: DataTypeInference.Mismatch);
     }
 
     [Test]
@@ -107,7 +107,7 @@ class NetworkTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
             Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
 
         await AssertTypeWrite(PhysicalAddress.Parse("08-00-2B-01-02-03"), "08:00:2b:ff:fe:01:02:03",
-            "macaddr8", dataTypeInference: DataTypeInferenceKind.WellKnown);
+            "macaddr8", dataTypeInference: DataTypeInference.Mismatch);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]

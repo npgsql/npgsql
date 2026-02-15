@@ -2,7 +2,6 @@
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
-using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Properties;
 using Npgsql.Util;
@@ -64,7 +63,7 @@ class RangeTests : MultiplexingTestBase
     // This tests coverage of range arrays (as opposed to multiranges).
     [Test, TestCaseSource(nameof(RangeTestCases))]
     public Task Range_array<T>(T range, string sqlLiteral, string dataTypeName)
-        => AssertType(range, sqlLiteral, dataTypeName, dataTypeInference: DataTypeInferenceKind.WellKnown);
+        => AssertType(range, sqlLiteral, dataTypeName, dataTypeInference: DataTypeInference.Mismatch);
 
     [Test]
     public void Equality_finite()
@@ -244,7 +243,7 @@ class RangeTests : MultiplexingTestBase
             },
             """{"[3,4)","[5,6)"}""",
             "int4range[]",
-            dataTypeInference: supportsMultirange ? DataTypeInferenceKind.WellKnown : DataTypeInferenceKind.Exact);
+            dataTypeInference: supportsMultirange ? DataTypeInference.Mismatch : DataTypeInference.Match);
     }
 
     [Test]

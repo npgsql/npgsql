@@ -116,17 +116,17 @@ public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestB
         await AssertType(5.5m, "5.5", "numeric", dbType: DbType.Decimal);
         await AssertTypeWrite(5.5m, "5.5", "numeric", dbType: new(DbType.VarNumeric, DbType.Decimal, DbType.Decimal));
 
-        await AssertType((short)8, "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((short)8, "8", "numeric", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Decimal, DbType.Int16), valueTypeEqualsFieldType: false);
-        await AssertType(8,        "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8,        "8", "numeric", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Decimal, DbType.Int32), valueTypeEqualsFieldType: false);
-        await AssertType(8L,        "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8L,        "8", "numeric", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Decimal, DbType.Int64), valueTypeEqualsFieldType: false);
-        await AssertType((byte)8,  "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((byte)8,  "8", "numeric", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Decimal, DbType.Int16), valueTypeEqualsFieldType: false, skipArrayCheck: true);
-        await AssertType(8F,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8F,       "8", "numeric", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Decimal, DbType.Single), valueTypeEqualsFieldType: false);
-        await AssertType(8D,       "8", "numeric", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8D,       "8", "numeric", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Decimal, DbType.Double), valueTypeEqualsFieldType: false);
     }
 

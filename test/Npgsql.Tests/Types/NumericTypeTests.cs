@@ -20,20 +20,20 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     {
         await AssertType((short)8, "8", "smallint", dbType: DbType.Int16);
         // Clr byte/sbyte maps to 'int2' as there is no byte type in PostgreSQL, byte[] maps to bytea however.
-        await AssertType((byte)8, "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((byte)8, "8", "smallint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.Int16, valueTypeEqualsFieldType: false, skipArrayCheck: true);
-        await AssertType((sbyte)8, "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((sbyte)8, "8", "smallint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.Int16, valueTypeEqualsFieldType: false);
 
-        await AssertType(8,       "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8,       "8", "smallint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int16, DbType.Int32), valueTypeEqualsFieldType: false);
-        await AssertType(8L,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8L,      "8", "smallint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int16, DbType.Int64), valueTypeEqualsFieldType: false);
-        await AssertType(8F,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8F,      "8", "smallint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int16, DbType.Single), valueTypeEqualsFieldType: false);
-        await AssertType(8D,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8D,      "8", "smallint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int16, DbType.Double), valueTypeEqualsFieldType: false);
-        await AssertType(8M,      "8", "smallint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8M,      "8", "smallint", dataTypeInference: DataTypeInference.Mismatch,
                 dbType: new(DbType.Int16, DbType.Decimal), valueTypeEqualsFieldType: false);
     }
 
@@ -42,19 +42,19 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     {
         await AssertType(8, "8", "integer", dbType: DbType.Int32);
 
-        await AssertType((short)8, "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((short)8, "8", "integer", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int32, DbType.Int16), valueTypeEqualsFieldType: false);
-        await AssertType(8L,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8L,       "8", "integer", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int32, DbType.Int64), valueTypeEqualsFieldType: false);
-        await AssertType((byte)8,  "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((byte)8,  "8", "integer", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int32, DbType.Int16), valueTypeEqualsFieldType: false, skipArrayCheck: true); // byte[] maps to bytea
-        await AssertType((sbyte)8, "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((sbyte)8, "8", "integer", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int32, DbType.Int16), valueTypeEqualsFieldType: false);
-        await AssertType(8F,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8F,       "8", "integer", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int32, DbType.Single), valueTypeEqualsFieldType: false);
-        await AssertType(8D,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8D,       "8", "integer", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int32, DbType.Double), valueTypeEqualsFieldType: false);
-        await AssertType(8M,       "8", "integer", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8M,       "8", "integer", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int32, DbType.Decimal), valueTypeEqualsFieldType: false);
     }
 
@@ -80,19 +80,19 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     {
         await AssertType(8L, "8", "bigint", dbType: DbType.Int64);
 
-        await AssertType((short)8, "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((short)8, "8", "bigint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int64, DbType.Int16), valueTypeEqualsFieldType: false);
-        await AssertType(8,        "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8,        "8", "bigint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int64, DbType.Int32), valueTypeEqualsFieldType: false);
-        await AssertType((byte)8,  "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((byte)8,  "8", "bigint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int64, DbType.Int16), valueTypeEqualsFieldType: false, skipArrayCheck: true); // byte[] maps to bytea
-        await AssertType((sbyte)8, "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType((sbyte)8, "8", "bigint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int64, DbType.Int16), valueTypeEqualsFieldType: false);
-        await AssertType(8F,       "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8F,       "8", "bigint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int64, DbType.Single), valueTypeEqualsFieldType: false);
-        await AssertType(8D,       "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8D,       "8", "bigint", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Int64, DbType.Double), valueTypeEqualsFieldType: false);
-        await AssertType(8M,       "8", "bigint", dataTypeInference: DataTypeInferenceKind.WellKnown,
+        await AssertType(8M,       "8", "bigint", dataTypeInference: DataTypeInference.Mismatch,
                 dbType: new(DbType.Int64, DbType.Decimal), valueTypeEqualsFieldType: false);
     }
 

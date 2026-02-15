@@ -35,7 +35,7 @@ public class GlobalTypeMapperTests : TestBase
         // Global mapping changes have no effect on already-built data sources
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
-            type, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            type, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
         // But they do affect new data sources
@@ -69,7 +69,7 @@ public class GlobalTypeMapperTests : TestBase
             // Global mapping changes have no effect on already-built data sources
             await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
             await AssertType(dataSource1, "happy", "happy",
-                type, dataTypeInference: DataTypeInferenceKind.WellKnown,
+                type, dataTypeInference: DataTypeInference.Mismatch,
                 dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
             // But they do affect new data sources
@@ -106,14 +106,14 @@ public class GlobalTypeMapperTests : TestBase
         // Global mapping changes have no effect on already-built data sources
         await AssertType(dataSource1, Mood.Happy, "happy", type, dataTypeInference: false);
         await AssertType(dataSource1, "happy", "happy",
-            type, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            type, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
         Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: false));
         await AssertType(dataSource2, "happy", "happy",
-            type, dataTypeInference: DataTypeInferenceKind.WellKnown,
+            type, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));
     }
 

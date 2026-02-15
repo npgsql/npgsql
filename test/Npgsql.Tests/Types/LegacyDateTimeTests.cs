@@ -50,7 +50,7 @@ public class LegacyDateTimeTests : TestBase
     public Task Timestamptz_write_utc_DateTime_does_not_convert(DateTimeKind kind)
         => AssertTypeWrite(
             new DateTime(1998, 4, 12, 13, 26, 38, 789, kind), "1998-04-12 15:26:38.789+02",
-            "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.DateTimeOffset, DbType.DateTime));
 
     [Test]
@@ -62,7 +62,7 @@ public class LegacyDateTimeTests : TestBase
 
         return AssertType(
             dateTime, "1998-04-12 15:26:38.789+02",
-            "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.DateTimeOffset, DbType.DateTime));
     }
 

@@ -188,7 +188,7 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
         await connection.ReloadTypesAsync();
 
         await AssertType(connection, "happy", "happy", type,
-                dataTypeInference: DataTypeInferenceKind.WellKnown,
+                dataTypeInference: DataTypeInference.Mismatch,
                 dbType: new(DbType.Object, DbType.String));
     }
 

@@ -11,19 +11,19 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     [Test]
     public Task LQuery()
         => AssertType("Top.Science.*", "Top.Science.*",
-            "lquery", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "lquery", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));
 
     [Test]
     public Task LTree()
         => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy",
-            "ltree", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "ltree", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));
 
     [Test]
     public Task LTxtQuery()
         => AssertType("Science & Astronomy", "Science & Astronomy",
-            "ltxtquery", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "ltxtquery", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));
 
     [Test]
@@ -52,7 +52,7 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         await using var dataSource = dataSourceBuilder.Build();
 
         await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy",
-            "ltree", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "ltree", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String),
             skipArrayCheck: !withArrays);
     }

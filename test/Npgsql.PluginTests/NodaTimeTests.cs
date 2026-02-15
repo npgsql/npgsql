@@ -46,7 +46,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(
             -54297202000000,
             "1998-04-12 13:26:38",
-            "timestamp without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "timestamp without time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.DateTime2, DbType.Int64), valueTypeEqualsFieldType: false);
 
     [Test]
@@ -177,7 +177,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             "1998-04-12 15:26:38+02",
-            "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.DateTime, valueTypeEqualsFieldType: false);
 
     [Test]
@@ -185,7 +185,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(
             new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.Zero),
             "1998-04-12 15:26:38+02",
-            "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.DateTime, valueTypeEqualsFieldType: false);
 
     [Test]
@@ -193,7 +193,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(
             -54297202000000,
             "1998-04-12 15:26:38+02",
-            "timestamp with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.DateTime, DbType.Int64), valueTypeEqualsFieldType: false);
 
     [Test]
@@ -446,13 +446,13 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
     [Test]
     public Task Date_as_DateTime()
         => AssertType(new DateTime(2020, 10, 1), "2020-10-01",
-            "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "date", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Date, DbType.DateTime2), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Date_as_int()
         => AssertType(7579, "2020-10-01",
-            "date", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "date", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Date, DbType.Int32), valueTypeEqualsFieldType: false);
 
     [Test]
@@ -561,7 +561,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         await AssertType(
             new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
             """{"[2002-03-04,2002-03-06)"}""",
-            "daterange[]", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "daterange[]", dataTypeInference: DataTypeInference.Mismatch,
             valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
 
@@ -572,7 +572,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         await AssertType(
             new [] { new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false) },
             """{[2002-03-04,2002-03-06)}""",
-            "datemultirange", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "datemultirange", dataTypeInference: DataTypeInference.Mismatch,
             valueTypeEqualsFieldType: false,
             skipArrayCheck: true);
     }
@@ -622,7 +622,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(
             new TimeSpan(0, 10, 45, 34, 500),
             "10:45:34.5",
-            "time without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "time without time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Time, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
@@ -630,7 +630,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         => AssertType(
             new TimeOnly(10, 45, 34, 500),
             "10:45:34.5",
-            "time without time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "time without time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: DbType.Time, valueTypeEqualsFieldType: false);
 
     #endregion Time
@@ -656,7 +656,7 @@ public class NodaTimeTests : MultiplexingTestBase, IDisposable
         await AssertTypeWrite(
             new DateTimeOffset(1, 1, 1, 13, 3, 45, 510, TimeSpan.FromHours(2)),
             "13:03:45.51+02",
-            "time with time zone", dataTypeInference: DataTypeInferenceKind.WellKnown,
+            "time with time zone", dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.DateTime));
     }
 
