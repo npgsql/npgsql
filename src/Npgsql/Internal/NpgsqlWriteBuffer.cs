@@ -20,8 +20,8 @@ sealed class NpgsqlWriteBuffer : IDisposable
 {
     #region Fields and Properties
 
-    internal static readonly UTF8Encoding UTF8Encoding = new(false, true);
-    internal static readonly UTF8Encoding RelaxedUTF8Encoding = new(false, false);
+    internal static readonly UTF8EncodingNoBom UTF8Encoding = new(true);
+    internal static readonly UTF8EncodingNoBom RelaxedUTF8Encoding = new(false);
 
     internal readonly NpgsqlConnector Connector;
 
