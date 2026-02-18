@@ -18,6 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  dotnet_sdk_version: '11.0.100-preview.2.26159.112'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
@@ -34,26 +35,25 @@ jobs:
         os: [ubuntu-24.04]
         pg_major: [18, 17, 16, 15, 14]
         config: [Release]
-        test_tfm: [net10.0]
+        test_tfm: [net11.0]
         include:
           - os: ubuntu-24.04
             pg_major: 18
             config: Debug
-            test_tfm: net10.0
+            test_tfm: net11.0
           - os: macos-15
             pg_major: 16
             config: Release
-            test_tfm: net10.0
+            test_tfm: net11.0
           - os: windows-2022
             pg_major: 18
             config: Release
+            test_tfm: net11.0
+          # Minimal support TFM build
+          - os: ubuntu-24.04
+            pg_major: 18
+            config: Release
             test_tfm: net10.0
-
-           # Minimal support TFM build
-#          - os: ubuntu-24.04
-#            pg_major: 18
-#            config: Release
-#            test_tfm: net8.0
 
            # PG prerelease build
 #          - os: ubuntu-24.04
@@ -86,6 +86,9 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v5.2.0
+        with:
+          dotnet-version: |
+            ${{ env.dotnet_sdk_version }}
 
       - name: Build
         run: dotnet build -c ${{ matrix.config }}
@@ -355,6 +358,9 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v5.2.0
+        with:
+          dotnet-version: |
+            ${{ env.dotnet_sdk_version }}
 
       - name: Pack
         run: dotnet pack --configuration Release --property:PackageOutputPath="$PWD/nupkgs" --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
@@ -387,6 +393,9 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v5.2.0
+        with:
+          dotnet-version: |
+            ${{ env.dotnet_sdk_version }}
 
       - name: Pack
         run: dotnet pack --configuration Release --property:PackageOutputPath="$PWD/nupkgs" -p:ContinuousIntegrationBuild=true      
