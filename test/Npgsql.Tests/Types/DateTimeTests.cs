@@ -469,6 +469,18 @@ public class DateTimeTests : TestBase
             @"{""1998-04-12 15:26:38+02"",NULL}",
             "timestamp with time zone[]");
 
+        // Make sure delayed converter resolution works when null precedes a non-null value.
+        // We expect the resolution of null values to not lock in the default type timestamp.
+        // This would cause the subsequent non-null value to fail to convert, as it requires timestamptz.
+        await AssertType(datasource,
+            new DateTime?[]
+            {
+                null,
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)
+            },
+            @"{NULL,""1998-04-12 15:26:38+02""}",
+            "timestamp with time zone[]");
+
         await AssertType(datasource,
             new DateTime?[]
             {
