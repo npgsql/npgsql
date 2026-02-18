@@ -619,45 +619,40 @@ sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeI
     protected override PgConverterResolution? GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
     {
         PgConverterResolution? resolution = null;
-        if (values is null)
+        switch (values)
         {
-            resolution = EffectiveTypeInfo.GetDefaultResolution(expectedEffectivePgTypeId);
-        }
-        else
-        {
-            switch (values)
-            {
-                case TElement[] array:
-                    foreach (var value in array)
-                    {
-                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
-                    }
-                    break;
-                case List<TElement> list:
-                    foreach (var value in list)
-                    {
-                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
-                    }
-                    break;
-                case IList<TElement> list:
-                    foreach (var value in list)
-                    {
-                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
-                    }
-                    break;
-                case Array array:
-                    foreach (var value in array)
-                    {
-                        var result = EffectiveTypeInfo.GetResolutionAsObject(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
-                        resolution ??= result;
-                    }
-                    break;
-                default:
-                    throw new NotSupportedException();
-            }
+            case TElement[] array:
+                foreach (var value in array)
+                {
+                    var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                    resolution ??= result;
+                }
+                break;
+            case List<TElement> list:
+                foreach (var value in list)
+                {
+                    var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                    resolution ??= result;
+                }
+                break;
+            case IList<TElement> list:
+                foreach (var value in list)
+                {
+                    var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                    resolution ??= result;
+                }
+                break;
+            case Array array:
+                foreach (var value in array)
+                {
+                    var result = EffectiveTypeInfo.GetResolutionAsObject(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                    resolution ??= result;
+                }
+                break;
+            case null:
+                break;
+            default:
+                throw new NotSupportedException();
         }
 
         return resolution;
