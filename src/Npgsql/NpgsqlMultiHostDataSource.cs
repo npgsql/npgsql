@@ -126,6 +126,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         => state switch
         {
             DatabaseState.Offline => false,
+            DatabaseState.UnknownAfterError => false, // We will check compatibility only if we don't find preferred
             DatabaseState.Unknown => true, // We will check compatibility again after refreshing the database state
 
             DatabaseState.PrimaryReadWrite when preferredType is
@@ -149,21 +150,49 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             _ => preferredType == TargetSessionAttributes.Any
         };
 
-    static bool IsOnline(DatabaseState state, TargetSessionAttributes preferredType)
-    {
-        Debug.Assert(preferredType is TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby);
-        return state != DatabaseState.Offline;
-    }
+    static bool IsUnpreferred(DatabaseState state, TargetSessionAttributes preferredType)
+        => state switch
+        {
+            DatabaseState.Offline => false,
+            DatabaseState.UnknownAfterError => true,
+            DatabaseState.Unknown => true, // We will check compatibility again after refreshing the database state
+
+            DatabaseState.PrimaryReadWrite when preferredType is
+                    TargetSessionAttributes.Primary or
+                    TargetSessionAttributes.PreferPrimary or
+                    TargetSessionAttributes.ReadWrite or
+                    TargetSessionAttributes.PreferStandby
+                => true,
+
+            DatabaseState.PrimaryReadOnly when preferredType is
+                    TargetSessionAttributes.Primary or
+                    TargetSessionAttributes.PreferPrimary or
+                    TargetSessionAttributes.ReadOnly or
+                    TargetSessionAttributes.PreferStandby
+                => true,
+
+            DatabaseState.Standby when preferredType is
+                    TargetSessionAttributes.Standby or
+                    TargetSessionAttributes.PreferStandby or
+                    TargetSessionAttributes.ReadOnly or
+                    TargetSessionAttributes.PreferPrimary
+                => true,
+
+            _ => preferredType == TargetSessionAttributes.Any
+        };
 
     async ValueTask<NpgsqlConnector?> TryGetIdleOrNew(
         NpgsqlConnection conn,
         TimeSpan timeoutPerHost,
         bool async,
-        TargetSessionAttributes preferredType, Func<DatabaseState, TargetSessionAttributes, bool> stateValidator,
+        TargetSessionAttributes preferredType,
+        bool preferred,
         int poolIndex,
         IList<Exception> exceptions,
         CancellationToken cancellationToken)
     {
+        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator = preferred ? IsPreferred : IsUnpreferred;
+
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
         {
@@ -182,7 +211,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             {
                 if (pool.TryGetIdleConnector(out connector))
                 {
-                    if (databaseState == DatabaseState.Unknown)
+                    if (databaseState == DatabaseState.Unknown || !preferred && databaseState == DatabaseState.UnknownAfterError)
                     {
                         databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                         Debug.Assert(databaseState != DatabaseState.Unknown);
@@ -200,11 +229,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                     connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                     if (connector is not null)
                     {
-                        if (databaseState == DatabaseState.Unknown)
+                        if (databaseState == DatabaseState.Unknown || !preferred && databaseState == DatabaseState.UnknownAfterError)
                         {
                             // While opening a new connector we might have refreshed the database state, check again
                             databaseState = pool.GetDatabaseState();
-                            if (databaseState == DatabaseState.Unknown)
+                            if (databaseState == DatabaseState.Unknown || !preferred && databaseState == DatabaseState.UnknownAfterError)
                                 databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
                             Debug.Assert(databaseState != DatabaseState.Unknown);
                             if (!stateValidator(databaseState, preferredType))
@@ -240,11 +269,13 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         TimeSpan timeoutPerHost,
         bool async,
         TargetSessionAttributes preferredType,
-        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator,
+        bool preferred,
         int poolIndex,
         IList<Exception> exceptions,
         CancellationToken cancellationToken)
     {
+        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator = preferred ? IsPreferred : IsUnpreferred;
+
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
         {
@@ -262,11 +293,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             try
             {
                 connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
-                if (databaseState == DatabaseState.Unknown)
+                if (databaseState == DatabaseState.Unknown || !preferred && databaseState == DatabaseState.UnknownAfterError)
                 {
                     // Get might have opened a new physical connection and refreshed the database state, check again
                     databaseState = pool.GetDatabaseState();
-                    if (databaseState == DatabaseState.Unknown)
+                    if (databaseState == DatabaseState.Unknown || !preferred && databaseState == DatabaseState.UnknownAfterError)
                         databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken).ConfigureAwait(false);
 
                     Debug.Assert(databaseState != DatabaseState.Unknown);
@@ -304,16 +335,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
         var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
         var preferredType = GetTargetSessionAttributes(conn);
-        var checkUnpreferred = preferredType is TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby;
 
-        var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
-                        (checkUnpreferred ?
-                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken).ConfigureAwait(false)
-                            : null) ??
-                        await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
-                        (checkUnpreferred ?
-                            await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken).ConfigureAwait(false)
-                            : null);
+        var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, preferred: true, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
+                        await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, preferred: false, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
+                        await TryGet(conn, timeoutPerHost, async, preferredType, preferred: true, poolIndex, exceptions, cancellationToken).ConfigureAwait(false) ??
+                        await TryGet(conn, timeoutPerHost, async, preferredType, preferred: false, poolIndex, exceptions, cancellationToken).ConfigureAwait(false);
 
         return connector ?? throw NoSuitableHostsException(exceptions);
     }
@@ -427,7 +453,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
             // Can't get valid preferred connector. Try to get an unpreferred connector, if supported.
             if ((preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby)
-                && TryGetValidConnector(list, preferredType, IsOnline, out connector))
+                && TryGetValidConnector(list, preferredType, IsUnpreferred, out connector))
             {
                 return true;
             }
@@ -443,7 +469,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             {
                 connector = list[i];
                 var lastKnownState = connector.DataSource.GetDatabaseState(ignoreExpiration: true);
-                Debug.Assert(lastKnownState != DatabaseState.Unknown);
+                Debug.Assert(lastKnownState != DatabaseState.Unknown && lastKnownState != DatabaseState.UnknownAfterError);
                 if (validationFunc(lastKnownState, preferredType))
                 {
                     list.RemoveAt(i);
