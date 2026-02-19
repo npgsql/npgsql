@@ -28,7 +28,7 @@
     <PackageVersion Include="Scriban.Signed" Version="6.5.3" />
     
     <!-- Tests -->
-    <PackageVersion Include="NUnit" Version="4.4.0" />
+    <PackageVersion Include="NUnit" Version="4.5.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.11.2" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(DependencyInjectionPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(LoggingPackageVersion)" />
