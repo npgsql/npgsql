@@ -64,12 +64,22 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
-        // TODO we can make a nice thread-static cache for this.
-        using var builder = new CompositeBuilder<T>(_composite);
-
         var count = reader.ReadInt32();
         if (count != _composite.Fields.Count)
             throw new InvalidOperationException("Cannot read composite type with mismatched number of fields.");
+
+        // Fast path: when there are no constructor parameters, bypass CompositeBuilder entirely
+        // and set fields directly on the instance to avoid per-read builder allocations.
+        if (_composite.ConstructorParameters == 0)
+            return await ReadDirect(async, reader, cancellationToken).ConfigureAwait(false);
+
+        return await ReadWithBuilder(async, reader, cancellationToken).ConfigureAwait(false);
+    }
+
+    async ValueTask<T> ReadDirect(bool async, PgReader reader, CancellationToken cancellationToken)
+    {
+        var instance = _composite.Constructor([]);
+        var boxedInstance = (object)instance!;
 
         foreach (var field in _composite.Fields)
         {
@@ -79,13 +89,46 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var oid = reader.ReadUInt32();
             var length = reader.ReadInt32();
 
-            // We're only requiring the PgTypeIds to be oids if this converter is actually used during execution.
-            // As a result we can still introspect in the global mapper and create all the info with portable ids.
-            if(oid != field.PgTypeId.Oid)
-                // We could remove this requirement by storing a dictionary of CompositeInfos keyed by backend.
-                throw new InvalidCastException(
-                    $"Cannot read oid {oid} into composite field {field.Name} with oid {field.PgTypeId}. " +
-                    $"This could be caused by a DDL change after this DataSource loaded its types, or a difference between column order of table composites between backends, make sure these line up identically.");
+            ValidateOid(oid, field);
+
+            if (length is -1)
+                field.SetDbNull(boxedInstance);
+            else
+            {
+                var converter = field.GetReadInfo(out var readRequirement);
+                var scope = await reader.BeginNestedRead(async, length, readRequirement, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await field.ReadAndSet(async, converter, boxedInstance, reader, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    if (async)
+                        await scope.DisposeAsync().ConfigureAwait(false);
+                    else
+                        scope.Dispose();
+                }
+            }
+        }
+
+        // For value types, fields were set on the boxed copy, so we must unbox to get the modified value.
+        return (T)boxedInstance;
+    }
+
+    async ValueTask<T> ReadWithBuilder(bool async, PgReader reader, CancellationToken cancellationToken)
+    {
+        // TODO we can make a nice thread-static cache for this.
+        using var builder = new CompositeBuilder<T>(_composite);
+
+        foreach (var field in _composite.Fields)
+        {
+            if (reader.ShouldBuffer(sizeof(uint) + sizeof(int)))
+                await reader.Buffer(async, sizeof(uint) + sizeof(int), cancellationToken).ConfigureAwait(false);
+
+            var oid = reader.ReadUInt32();
+            var length = reader.ReadInt32();
+
+            ValidateOid(oid, field);
 
             if (length is -1)
                 field.ReadDbNull(builder);
@@ -108,6 +151,17 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         }
 
         return builder.Complete();
+    }
+
+    static void ValidateOid(uint oid, CompositeFieldInfo field)
+    {
+        // We're only requiring the PgTypeIds to be oids if this converter is actually used during execution.
+        // As a result we can still introspect in the global mapper and create all the info with portable ids.
+        if (oid != field.PgTypeId.Oid)
+            // We could remove this requirement by storing a dictionary of CompositeInfos keyed by backend.
+            throw new InvalidCastException(
+                $"Cannot read oid {oid} into composite field {field.Name} with oid {field.PgTypeId}. " +
+                $"This could be caused by a DDL change after this DataSource loaded its types, or a difference between column order of table composites between backends, make sure these line up identically.");
     }
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
