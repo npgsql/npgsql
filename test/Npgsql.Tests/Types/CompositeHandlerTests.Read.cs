@@ -118,6 +118,15 @@ public partial class CompositeHandlerTests
             Assert.That(() => execute(), Throws.Exception.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>()));
 
     [Test]
+    public Task Read_type_with_nullable_property_set_to_null() =>
+        Read(new TypeWithNullableProperty { IntValue = TheAnswer }, (execute, expected) =>
+        {
+            var actual = execute();
+            Assert.That(actual.IntValue, Is.EqualTo(expected.IntValue));
+            Assert.That(actual.StringValue, Is.Null);
+        });
+
+    [Test]
     public Task Read_type_with_one_parameter() =>
         Read(new TypeWithOneParameter(1), (execute, expected) => Assert.That(execute().Value1, Is.EqualTo(expected.Value1)));
 

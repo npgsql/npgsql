@@ -220,6 +220,15 @@ public partial class CompositeHandlerTests : TestBase
         public string? StringValue { get; } = stringValue;
     }
 
+    public class TypeWithNullableProperty : IComposite
+    {
+        public int IntValue { get; set; }
+        public string? StringValue { get; set; }
+
+        public string GetAttributes() => "int_value integer, string_value text";
+        public string GetValues() => $"{IntValue}, NULL";
+    }
+
     public class TypeWithNineParameters(
         int value1,
         int value2,
