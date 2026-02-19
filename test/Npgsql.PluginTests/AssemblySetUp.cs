@@ -1,62 +1,76 @@
-using System;
-using System.Data.Common;
-using System.IO;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using AdoNet.Specification.Tests;
 using DotNet.Testcontainers.Configurations;
+using Npgsql;
+using Npgsql.Tests;
+using NUnit.Framework;
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Testcontainers.PostgreSql;
-using Xunit;
 
-namespace Npgsql.Specification.Tests;
-
-public class NpgsqlDbFactoryFixture : IDbFactoryFixture, IAsyncLifetime
+[SetUpFixture]
+public class AssemblySetUp
 {
-    public DbProviderFactory Factory => NpgsqlFactory.Instance;
-
-    const string DefaultConnectionString =
-        "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
-
-    static readonly Lazy<Task> _initializeTask = new(() => InitializeCoreAsync());
-    public string ConnectionString =>
-        Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
     static PostgreSqlContainer? _container;
 
-    public NpgsqlDbFactoryFixture() => EnsureInitialized();
-
-    public Task InitializeAsync() => _initializeTask.Value;
-
-    public Task DisposeAsync() => Task.CompletedTask;
-
-    static void EnsureInitialized() => _initializeTask.Value.GetAwaiter().GetResult();
-
-    static async Task InitializeCoreAsync()
+    [OneTimeSetUp]
+    public async Task Setup()
     {
-        var connString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
-        await using var conn = new NpgsqlConnection(connString);
+        var connString = TestUtil.ConnectionString;
+        using var conn = new NpgsqlConnection(connString);
         try
         {
-            await conn.OpenAsync();
+            conn.Open();
         }
-        catch (NpgsqlException e) when (e.InnerException is SocketException)
+        catch (NpgsqlException e) when (e.IsTransient)
         {
-            _container ??= SetupContainer();
+            _container ??= SetupContainerAsync();
             await _container.StartAsync();
 
             var containerConnString = _container.GetConnectionString();
             Environment.SetEnvironmentVariable("NPGSQL_TEST_DB", containerConnString);
-
             await using var containerConn = new NpgsqlConnection(containerConnString);
             await containerConn.OpenAsync();
-            await containerConn.CloseAsync();
+            return;
         }
-        finally
+        catch (PostgresException e)
         {
-            await conn.CloseAsync();
+            if (e.SqlState == PostgresErrorCodes.InvalidPassword && connString == TestUtil.DefaultConnectionString)
+                throw new Exception("Please create a user npgsql_tests as follows: CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER");
+
+            if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
+            {
+                var builder = new NpgsqlConnectionStringBuilder(connString)
+                {
+                    Pooling = false,
+                    Multiplexing = false,
+                    Database = "postgres"
+                };
+
+                using var adminConn = new NpgsqlConnection(builder.ConnectionString);
+                adminConn.Open();
+                adminConn.ExecuteNonQuery("CREATE DATABASE " + conn.Database);
+                adminConn.Close();
+                Thread.Sleep(1000);
+
+                conn.Open();
+                return;
+            }
+
+            throw;
         }
     }
 
-    static PostgreSqlContainer SetupContainer()
+    [OneTimeTearDown]
+    public async Task Teardown()
+    {
+        if (_container != null)
+        {
+            await _container.DisposeAsync();
+        }
+    }
+
+    static PostgreSqlContainer SetupContainerAsync()
     {
         var repoRoot = GetRepoRoot();
         var initScriptPath = Path.Combine(repoRoot, "test", "containers", "postgres", "init-db.sh");
