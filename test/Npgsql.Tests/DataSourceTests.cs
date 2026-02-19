@@ -410,6 +410,33 @@ public class DataSourceTests : TestBase
     }
 
     [Test]
+    public async Task ReloadTypes_multi_host([Values] bool async)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+        await using var dataSource = dataSourceBuilder.BuildMultiHost();
+
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        if (async)
+            await dataSource.ReloadTypesAsync();
+        else
+            dataSource.ReloadTypes();
+
+        Assert.ThrowsAsync<InvalidCastException>(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+
+        // Close connection and reopen to make sure it picks up the new type and mapping from the data source
+        await connection.CloseAsync();
+        await connection.OpenAsync();
+
+        Assert.DoesNotThrowAsync(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+    }
+
+    [Test]
     public async Task ReloadTypes_across_data_sources([Values] bool async)
     {
         await using var adminConnection = await OpenConnectionAsync();
