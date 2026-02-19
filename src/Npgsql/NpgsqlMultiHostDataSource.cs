@@ -162,7 +162,8 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         TargetSessionAttributes preferredType, Func<DatabaseState, TargetSessionAttributes, bool> stateValidator,
         int poolIndex,
         IList<Exception> exceptions,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool ignoreExpiration = false)
     {
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
@@ -172,7 +173,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             if (poolIndex == pools.Length)
                 poolIndex = 0;
 
-            var databaseState = pool.GetDatabaseState();
+            var databaseState = pool.GetDatabaseState(ignoreExpiration);
             if (!stateValidator(databaseState, preferredType))
                 continue;
 
@@ -243,7 +244,8 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         Func<DatabaseState, TargetSessionAttributes, bool> stateValidator,
         int poolIndex,
         IList<Exception> exceptions,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool ignoreExpiration = false)
     {
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
@@ -253,7 +255,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             if (poolIndex == pools.Length)
                 poolIndex = 0;
 
-            var databaseState = pool.GetDatabaseState();
+            var databaseState = pool.GetDatabaseState(ignoreExpiration);
             if (!stateValidator(databaseState, preferredType))
                 continue;
 
@@ -314,6 +316,19 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                         (checkUnpreferred ?
                             await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken).ConfigureAwait(false)
                             : null);
+
+        //Not suitable host found, try a round verifying database state
+        if (connector == null && exceptions.Count == 0)
+        {
+             var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken, true).ConfigureAwait(false) ??
+                        (checkUnpreferred ?
+                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken, true).ConfigureAwait(false)
+                            : null) ??
+                        await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken, true).ConfigureAwait(false) ??
+                        (checkUnpreferred ?
+                            await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken, true).ConfigureAwait(false)
+                            : null);
+        }
 
         return connector ?? throw NoSuitableHostsException(exceptions);
     }
