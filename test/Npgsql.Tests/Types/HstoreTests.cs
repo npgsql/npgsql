@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class HstoreTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class HstoreTests : TestBase
 {
     [Test]
     public Task Hstore()

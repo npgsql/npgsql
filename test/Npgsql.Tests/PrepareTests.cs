@@ -726,17 +726,6 @@ public class PrepareTests: TestBase
     }
 
     [Test]
-    public void Multiplexing_not_supported()
-    {
-        using var dataSource = CreateDataSource(csb => csb.Multiplexing = true);
-        using var conn = dataSource.OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT 1", conn);
-
-        Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<NotSupportedException>());
-        Assert.That(() => conn.UnprepareAll(), Throws.Exception.TypeOf<NotSupportedException>());
-    }
-
-    [Test]
     public async Task Explicitly_prepared_statement_invalidation([Values] bool prepareAfterError, [Values] bool unprepareAfterError)
     {
         await using var dataSource = CreateDataSource(csb =>

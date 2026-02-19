@@ -3,12 +3,11 @@ using System.Data;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class NumericTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class NumericTests : TestBase
 {
     static readonly object[] ReadWriteCases =
     [

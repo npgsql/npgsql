@@ -10,11 +10,9 @@ using static Npgsql.Tests.TestUtil;
 namespace Npgsql.Tests;
 
 [NonParallelizable]
-[TestFixture(MultiplexingMode.NonMultiplexing, true)]
-[TestFixture(MultiplexingMode.NonMultiplexing, false)]
-[TestFixture(MultiplexingMode.Multiplexing, true)]
-// Sync I/O not supported with multiplexing
-public class TracingTests(MultiplexingMode multiplexingMode, bool async) : MultiplexingTestBase(multiplexingMode)
+[TestFixture(true)]
+[TestFixture(false)]
+public class TracingTests(bool async) : TestBase
 {
     #region Physical open
 
@@ -28,47 +26,24 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
             : dataSource.OpenConnection();
 
         Assert.That(activities, Has.Count.EqualTo(1));
-        ValidateActivity(activities[0], connection, IsMultiplexing);
 
-        if (!IsMultiplexing)
-            return;
+        var activity = activities[0];
+        Assert.That(activity.DisplayName, Is.EqualTo("CONNECT " + connection.Settings.Database));
+        Assert.That(activity.OperationName, Is.EqualTo("CONNECT " + connection.Settings.Database));
+        Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Unset));
 
-        activities.Clear();
+        Assert.That(activity.Events.Count(), Is.EqualTo(0));
 
-        // For multiplexing, we clear the pool to force next query to open another physical connection
-        dataSource.Clear();
+        var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(tags, Has.Count.EqualTo(connection.Settings.Port == 5432 ? 5 : 6));
 
-        await connection.ExecuteScalarAsync("SELECT 1");
+        Assert.That(tags["db.system.name"], Is.EqualTo("postgresql"));
+        Assert.That(tags["db.namespace"], Is.EqualTo(connection.Settings.Database));
 
-        Assert.That(activities, Has.Count.EqualTo(2));
-        ValidateActivity(activities[0], connection, IsMultiplexing);
+        Assert.That(tags, Does.Not.ContainKey("db.query.text"));
 
-        // For multiplexing, query's activity can be considered as a parent for physical open's activity
-        Assert.That(activities[0].Parent, Is.SameAs(activities[1]));
-
-        static void ValidateActivity(Activity activity, NpgsqlConnection conn, bool isMultiplexing)
-        {
-            Assert.That(activity.DisplayName, Is.EqualTo("CONNECT " + conn.Settings.Database));
-            Assert.That(activity.OperationName, Is.EqualTo("CONNECT " + conn.Settings.Database));
-            Assert.That(activity.Status, Is.EqualTo(ActivityStatusCode.Unset));
-
-            Assert.That(activity.Events.Count(), Is.EqualTo(0));
-
-            var tags = activity.TagObjects.ToDictionary(t => t.Key, t => t.Value);
-            Assert.That(tags, Has.Count.EqualTo(conn.Settings.Port == 5432 ? 5 : 6));
-
-            Assert.That(tags["db.system.name"], Is.EqualTo("postgresql"));
-            Assert.That(tags["db.namespace"], Is.EqualTo(conn.Settings.Database));
-
-            Assert.That(tags, Does.Not.ContainKey("db.query.text"));
-
-            Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(conn.ConnectionString));
-
-            if (isMultiplexing)
-                Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
-            else
-                Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(conn.ProcessID));
-        }
+        Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(connection.ConnectionString));
+        Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
     }
 
     [Test]
@@ -149,11 +124,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
         Assert.That(tags["db.namespace"], Is.EqualTo(connection.Settings.Database));
 
         Assert.That(tags["db.npgsql.data_source"], Is.EqualTo("TestTracingDataSource"));
-
-        if (IsMultiplexing)
-            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
-        else
-            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
+        Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
     }
 
     [Test]
@@ -190,22 +161,12 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
         Assert.That(activityTags["error.type"], Is.EqualTo(PostgresErrorCodes.UndefinedTable));
 
         Assert.That(activityTags["db.npgsql.data_source"], Is.EqualTo(connection.ConnectionString));
-
-        if (IsMultiplexing)
-            Assert.That(activityTags, Does.ContainKey("db.npgsql.connection_id"));
-        else
-            Assert.That(activityTags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
+        Assert.That(activityTags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
     }
 
     [Test]
     public async Task CommandExecute_explicit_prepare([Values] bool batch)
     {
-        if (IsMultiplexing)
-        {
-            Assert.Ignore("Explicit prepare is not supported with multiplexing");
-            return;
-        }
-
         await using var dataSource = CreateDataSource(o => o.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false)));
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -333,10 +294,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
         Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(connection.ConnectionString));
         Assert.That(tags["db.npgsql.rows"], Is.EqualTo(1));
 
-        if (IsMultiplexing)
-            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
-        else
-            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
+        Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
     }
 
     [Test]
@@ -451,10 +409,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
         Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(connection.ConnectionString));
         Assert.That(tags["db.npgsql.rows"], Is.EqualTo(1));
 
-        if (IsMultiplexing)
-            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
-        else
-            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
+        Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
     }
 
     [Test]
@@ -558,10 +513,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
 
         Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(connection.ConnectionString));
 
-        if (IsMultiplexing)
-            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
-        else
-            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
+        Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
 
         Assert.That(tags, Does.Not.ContainKey("db.npgsql.rows"));
     }
@@ -695,10 +647,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
 
         Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(connection.ConnectionString));
 
-        if (IsMultiplexing)
-            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
-        else
-            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
+        Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
 
         Assert.That(tags, Does.Not.ContainKey("db.npgsql.rows"));
     }
@@ -743,10 +692,7 @@ public class TracingTests(MultiplexingMode multiplexingMode, bool async) : Multi
 
         Assert.That(tags["db.npgsql.data_source"], Is.EqualTo(connection.ConnectionString));
 
-        if (IsMultiplexing)
-            Assert.That(tags, Does.ContainKey("db.npgsql.connection_id"));
-        else
-            Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
+        Assert.That(tags["db.npgsql.connection_id"], Is.EqualTo(connection.ProcessID));
 
         Assert.That(tags, Does.Not.ContainKey("db.npgsql.rows"));
     }

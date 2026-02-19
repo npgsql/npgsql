@@ -10,7 +10,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-geometric.html
 /// </remarks>
-class GeometricTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+class GeometricTypeTests : TestBase
 {
     [Test]
     public Task Point()

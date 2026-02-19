@@ -13,7 +13,6 @@ using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Properties;
@@ -470,11 +469,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         var conn = CheckAndGetConnection();
         Debug.Assert(conn is not null);
+        var connector = conn.Connector!;
 
         if (string.IsNullOrEmpty(CommandText))
             throw new InvalidOperationException("CommandText property has not been initialized");
-
-        using var _ = conn.StartTemporaryBindingScope(out var connector);
 
         foreach (var s in InternalBatchCommands)
             if (s.PreparedStatement?.IsExplicit == true)
@@ -678,8 +676,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         var connection = CheckAndGetConnection();
         Debug.Assert(connection is not null);
-        if (connection.Settings.Multiplexing)
-            throw new NotSupportedException("Explicit preparation not supported with multiplexing");
         var connector = connection.Connector!;
         var logger = connector.CommandLogger;
 
@@ -844,8 +840,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         var connection = CheckAndGetConnection();
         Debug.Assert(connection is not null);
-        if (connection.Settings.Multiplexing)
-            throw new NotSupportedException("Explicit preparation not supported with multiplexing");
 
         var forall = true;
         foreach (var statement in InternalBatchCommands)
@@ -890,7 +884,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     #region Query analysis
 
-    internal void ProcessRawQuery(SqlQueryParser? parser, bool standardConformingStrings, NpgsqlBatchCommand? batchCommand)
+    internal void ProcessRawQuery(SqlQueryParser parser, bool standardConformingStrings, NpgsqlBatchCommand? batchCommand)
     {
         var (commandText, commandType, parameters) = batchCommand is null
             ? (CommandText, CommandType, _parameters)
@@ -943,9 +937,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             case PlaceholderType.Named:
                 if (!EnableSqlRewriting)
                     ThrowHelper.ThrowNotSupportedException($"Named parameters are not supported when Npgsql.{nameof(EnableSqlRewriting)} is disabled");
-
-                // The parser is cached on NpgsqlConnector - unless we're in multiplexing mode.
-                parser ??= new SqlQueryParser();
 
                 if (batchCommand is null)
                 {
@@ -1072,7 +1063,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var syncCaller = !async;
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
-                // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
+                // The following is only for deadlock avoidance when doing sync I/O
                 if (syncCaller && ShouldSchedule(ref async, i))
                     await new TaskSchedulerAwaitable(ConstrainedConcurrencyScheduler);
 
@@ -1391,16 +1382,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
         => ExecuteReader(async: true, behavior, cancellationToken).AsTask();
 
-    // TODO: Maybe pool these?
-    internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
-        = new();
-
     internal virtual async ValueTask<NpgsqlDataReader> ExecuteReader(bool async, CommandBehavior behavior, CancellationToken cancellationToken)
     {
         var conn = CheckAndGetConnection();
         _behavior = behavior;
 
-        NpgsqlConnector? connector;
+        NpgsqlConnector connector;
         if (_connector is not null)
         {
             Debug.Assert(conn is null);
@@ -1411,229 +1398,162 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         else
         {
             Debug.Assert(conn is not null);
-            conn.TryGetBoundConnector(out connector);
+            connector = conn.Connector!;
         }
 
         try
         {
-            if (connector is not null)
+            var logger = connector.CommandLogger;
+            var reloadableState = connector.ReloadableState;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            // We cannot pass a token here, as we'll cancel a non-send query
+            // Also, we don't pass the cancellation token to StartUserAction, since that would make it scope to the entire action (command execution)
+            // whereas it should only be scoped to the Execute method.
+            connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
+
+            Task? sendTask;
+
+            var validateParameterValues = !behavior.HasFlag(CommandBehavior.SchemaOnly);
+            long startTimestamp;
+
+            try
             {
-                var logger = connector.CommandLogger;
-                var reloadableState = connector.ReloadableState;
+                var fullyPrepared = false;
 
-                cancellationToken.ThrowIfCancellationRequested();
-                // We cannot pass a token here, as we'll cancel a non-send query
-                // Also, we don't pass the cancellation token to StartUserAction, since that would make it scope to the entire action (command execution)
-                // whereas it should only be scoped to the Execute method.
-                connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
-
-                Task? sendTask;
-
-                var validateParameterValues = !behavior.HasFlag(CommandBehavior.SchemaOnly);
-                long startTimestamp;
-
-                try
+                switch (IsExplicitlyPrepared)
                 {
-                    var fullyPrepared = false;
-
-                    switch (IsExplicitlyPrepared)
+                case true:
+                    Debug.Assert(_connectorPreparedOn != null);
+                    if (WrappingBatch is not null)
                     {
-                    case true:
-                        Debug.Assert(_connectorPreparedOn != null);
-                        if (WrappingBatch is not null)
+                        foreach (var batchCommand in InternalBatchCommands)
                         {
-                            foreach (var batchCommand in InternalBatchCommands)
+                            if (batchCommand.ConnectorPreparedOn != connector)
                             {
-                                if (batchCommand.ConnectorPreparedOn != connector)
-                                {
-                                    ResetPreparation();
-                                    goto case false;
-                                }
-
-                                batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
-                            }
-                        }
-                        else
-                        {
-                            if (_connectorPreparedOn != connector)
-                            {
-                                // The command was prepared, but since then the connector has changed. Detach all prepared statements.
                                 ResetPreparation();
                                 goto case false;
                             }
-                            _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
+
+                            batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
                         }
-
-                        NpgsqlEventSource.Log.CommandStartPrepared();
-                        connector.DataSource.MetricsReporter.CommandStartPrepared();
-                        fullyPrepared = true;
-                        break;
-
-                    case false:
-                        var numPrepared = 0;
-
-                        if (WrappingBatch is not null)
+                    }
+                    else
+                    {
+                        if (_connectorPreparedOn != connector)
                         {
+                            // The command was prepared, but since then the connector has changed. Detach all prepared statements.
+                            ResetPreparation();
+                            goto case false;
+                        }
+                        _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
+                    }
+
+                    NpgsqlEventSource.Log.CommandStartPrepared();
+                    connector.DataSource.MetricsReporter.CommandStartPrepared();
+                    fullyPrepared = true;
+                    break;
+
+                case false:
+                    var numPrepared = 0;
+
+                    if (WrappingBatch is not null)
+                    {
+                        for (var i = 0; i < InternalBatchCommands.Count; i++)
+                        {
+                            var batchCommand = InternalBatchCommands[i];
+
+                            batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
+                            ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
+
+                            if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
+                            {
+                                batchCommand.ConnectorPreparedOn = connector;
+                                numPrepared++;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
+                        ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
+
+                        if (connector.Settings.MaxAutoPrepare > 0)
                             for (var i = 0; i < InternalBatchCommands.Count; i++)
-                            {
-                                var batchCommand = InternalBatchCommands[i];
-
-                                batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
-                                ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
-
-                                if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
-                                {
-                                    batchCommand.ConnectorPreparedOn = connector;
+                                if (InternalBatchCommands[i].TryAutoPrepare(connector))
                                     numPrepared++;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
-                            ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
-
-                            if (connector.Settings.MaxAutoPrepare > 0)
-                                for (var i = 0; i < InternalBatchCommands.Count; i++)
-                                    if (InternalBatchCommands[i].TryAutoPrepare(connector))
-                                        numPrepared++;
-                        }
-
-                        if (numPrepared > 0)
-                        {
-                            _connectorPreparedOn = connector;
-                            if (numPrepared == InternalBatchCommands.Count)
-                            {
-                                NpgsqlEventSource.Log.CommandStartPrepared();
-                                connector.DataSource.MetricsReporter.CommandStartPrepared();
-                                fullyPrepared = true;
-                            }
-                        }
-
-                        break;
                     }
 
-                    // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-                    // We do it before changing the state because we only allow sending cancellation request if State == InProgress
-                    connector.ResetCancellation();
-
-                    State = CommandState.InProgress;
-
-                    if (logger.IsEnabled(LogLevel.Information))
+                    if (numPrepared > 0)
                     {
-                        connector.QueryLogStopWatch.Restart();
-
-                        if (logger.IsEnabled(LogLevel.Debug))
-                            LogExecutingCompleted(connector, executing: true);
+                        _connectorPreparedOn = connector;
+                        if (numPrepared == InternalBatchCommands.Count)
+                        {
+                            NpgsqlEventSource.Log.CommandStartPrepared();
+                            connector.DataSource.MetricsReporter.CommandStartPrepared();
+                            fullyPrepared = true;
+                        }
                     }
 
-                    NpgsqlEventSource.Log.CommandStart(CommandText);
-                    startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
-                    TraceCommandStart(connector.DataSource.Configuration.TracingOptions, fullyPrepared);
-                    TraceCommandEnrich(connector);
-
-                    // We do not wait for the entire send to complete before proceeding to reading -
-                    // the sending continues in parallel with the user's reading. Waiting for the
-                    // entire send to complete would trigger a deadlock for multi-statement commands,
-                    // where PostgreSQL sends large results for the first statement, while we're sending large
-                    // parameter data for the second. See #641.
-                    // Instead, all sends for non-first statements are performed asynchronously (even if the user requested sync),
-                    // in a special synchronization context to prevents a dependency on the thread pool (which would also trigger
-                    // deadlocks).
-                    sendTask = Write(connector, async, flush: true, CancellationToken.None);
-
-                    // The following is a hack. It raises an exception if one was thrown in the first phases
-                    // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
-                    // still happen later and aren't properly handled. See #1323.
-                    if (sendTask.IsFaulted)
-                        sendTask.GetAwaiter().GetResult();
-                }
-                catch
-                {
-                    connector.EndUserAction();
-                    throw;
+                    break;
                 }
 
-                // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
-                var reader = connector.DataReader;
-                reader.Init(this, behavior, InternalBatchCommands, startTimestamp, sendTask);
-                connector.CurrentReader = reader;
-                if (async)
-                    await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
-                else
-                    reader.NextResult();
-
-                TraceReceivedFirstResponse(connector.DataSource.Configuration.TracingOptions);
-
-                return reader;
-            }
-            else
-            {
-                Debug.Assert(conn is not null);
-                Debug.Assert(conn.Settings.Multiplexing);
-
-                // The connection isn't bound to a connector - it's multiplexing time.
-                var dataSource = (MultiplexingDataSource)conn.NpgsqlDataSource;
-                var reloadableState = dataSource.CurrentReloadableState;
-
-                if (!async)
-                {
-                    // The waiting on the ExecutionCompletion ManualResetValueTaskSource is necessarily
-                    // asynchronous, so allowing sync would mean sync-over-async.
-                    ThrowHelper.ThrowNotSupportedException("Synchronous command execution is not supported when multiplexing is on");
-                }
-
-                if (WrappingBatch is not null)
-                {
-                    foreach (var batchCommand in InternalBatchCommands)
-                    {
-                        batchCommand._parameters?.ProcessParameters(reloadableState, validateValues: true, batchCommand.CommandType);
-                        ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
-                    }
-                }
-                else
-                {
-                    _parameters?.ProcessParameters(reloadableState, validateValues: true, CommandType);
-                    ProcessRawQuery(null, standardConformingStrings: true, batchCommand: null);
-                }
+                // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+                // We do it before changing the state because we only allow sending cancellation request if State == InProgress
+                connector.ResetCancellation();
 
                 State = CommandState.InProgress;
 
-                // In multiplexing, we don't yet know whether the command will execute as prepared or not; that will be determined later.
-                TraceCommandStart(conn.NpgsqlDataSource.Configuration.TracingOptions, prepared: null);
-
-                // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
-                // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
-                // the first read). But waiting on writing would allow us to do sync writing and async reading.
-                ExecutionCompletion.Reset();
-                try
+                if (logger.IsEnabled(LogLevel.Information))
                 {
-                    await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken).ConfigureAwait(false);
+                    connector.QueryLogStopWatch.Restart();
+
+                    if (logger.IsEnabled(LogLevel.Debug))
+                        LogExecutingCompleted(connector, executing: true);
                 }
-                catch (ChannelClosedException ex)
-                {
-                    Debug.Assert(ex.InnerException is not null);
-                    throw ex.InnerException;
-                }
-                connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version).ConfigureAwait(false);
-                // TODO: Overload of StartBindingScope?
-                conn.Connector = connector;
-                connector.Connection = conn;
-                conn.ConnectorBindingScope = ConnectorBindingScope.Reader;
 
-                var reader = connector.DataReader;
-                reader.Init(this, behavior, InternalBatchCommands);
-                connector.CurrentReader = reader;
-                await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
+                NpgsqlEventSource.Log.CommandStart(CommandText);
+                startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
+                TraceCommandStart(connector.DataSource.Configuration.TracingOptions, fullyPrepared);
+                TraceCommandEnrich(connector);
 
-                TraceReceivedFirstResponse(connector.DataSource.Configuration.TracingOptions);
+                // We do not wait for the entire send to complete before proceeding to reading -
+                // the sending continues in parallel with the user's reading. Waiting for the
+                // entire send to complete would trigger a deadlock for multi-statement commands,
+                // where PostgreSQL sends large results for the first statement, while we're sending large
+                // parameter data for the second. See #641.
+                // Instead, all sends for non-first statements are performed asynchronously (even if the user requested sync),
+                // in a special synchronization context to prevents a dependency on the thread pool (which would also trigger
+                // deadlocks).
+                sendTask = Write(connector, async, flush: true, CancellationToken.None);
 
-                return reader;
+                // The following is a hack. It raises an exception if one was thrown in the first phases
+                // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
+                // still happen later and aren't properly handled. See #1323.
+                if (sendTask.IsFaulted)
+                    sendTask.GetAwaiter().GetResult();
             }
+            catch
+            {
+                connector.EndUserAction();
+                throw;
+            }
+
+            var reader = connector.DataReader;
+            reader.Init(this, behavior, InternalBatchCommands, startTimestamp, sendTask);
+            connector.CurrentReader = reader;
+            if (async)
+                await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
+            else
+                reader.NextResult();
+
+            TraceReceivedFirstResponse(connector.DataSource.Configuration.TracingOptions);
+
+            return reader;
         }
         catch (Exception e)
         {
-            var reader = connector?.CurrentReader;
+            var reader = connector.CurrentReader;
             if (e is not NpgsqlOperationInProgressException && reader is not null)
                 await reader.Cleanup(async).ConfigureAwait(false);
 

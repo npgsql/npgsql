@@ -26,7 +26,6 @@ public class AssemblySetUp
                 var builder = new NpgsqlConnectionStringBuilder(connString)
                 {
                     Pooling = false,
-                    Multiplexing = false,
                     Database = "postgres"
                 };
 

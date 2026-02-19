@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class CubeTests : MultiplexingTestBase
+public class CubeTests : TestBase
 {
     static readonly TestCaseData[] CubeValues =
     {
@@ -268,6 +268,4 @@ public class CubeTests : MultiplexingTestBase
         TestUtil.MinimumPgVersion(conn, "13.0");
         await TestUtil.EnsureExtensionAsync(conn, "cube");
     }
-
-    public CubeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) { }
 }

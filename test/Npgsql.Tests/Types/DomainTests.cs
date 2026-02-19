@@ -6,14 +6,11 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-public class DomainTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class DomainTests : TestBase
 {
     [Test, Description("Resolves a domain type handler via the different pathways")]
     public async Task Domain_resolution()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
-
         await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await dataSource.OpenConnectionAsync();
         var type = await GetTempTypeName(conn);

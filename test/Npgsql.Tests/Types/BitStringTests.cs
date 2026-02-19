@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-bit.html
 /// </remarks>
-public class BitStringTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class BitStringTests : TestBase
 {
     [Test]
     [TestCase("10110110", TestName = "BitArray")]

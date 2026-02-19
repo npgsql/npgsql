@@ -80,8 +80,8 @@ class PoolingDataSource : NpgsqlDataSource
             throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");
 
         // We enforce Max Pool Size, so no need to to create a bounded channel (which is less efficient)
-        // On the consuming side, we have the multiplexing write loop but also non-multiplexing Rents
-        // On the producing side, we have connections being released back into the pool (both multiplexing and not)
+        // On the consuming side, we have Rents
+        // On the producing side, we have connections being released back into the pool
         var idleChannel = Channel.CreateUnbounded<NpgsqlConnector?>();
         _idleConnectorReader = idleChannel.Reader;
         IdleConnectorWriter = idleChannel.Writer;
@@ -244,10 +244,6 @@ class PoolingDataSource : NpgsqlDataSource
 
         Debug.Assert(connector.State == ConnectorState.Ready,
             $"Got idle connector but {nameof(connector.State)} is {connector.State}");
-        Debug.Assert(connector.CommandsInFlightCount == 0,
-            $"Got idle connector but {nameof(connector.CommandsInFlightCount)} is {connector.CommandsInFlightCount}");
-        Debug.Assert(connector.MultiplexAsyncWritingLock == 0,
-            $"Got idle connector but {nameof(connector.MultiplexAsyncWritingLock)} is 1");
 
         return true;
     }
@@ -310,8 +306,6 @@ class PoolingDataSource : NpgsqlDataSource
     internal sealed override void Return(NpgsqlConnector connector)
     {
         Debug.Assert(!connector.InTransaction);
-        Debug.Assert(connector.MultiplexAsyncWritingLock == 0 || connector.IsBroken || connector.IsClosed,
-            $"About to return multiplexing connector to the pool, but {nameof(connector.MultiplexAsyncWritingLock)} is {connector.MultiplexAsyncWritingLock}");
 
         // If Clear/ClearAll has been been called since this connector was first opened,
         // throw it away. The same if it's broken (in which case CloseConnector is only

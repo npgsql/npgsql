@@ -181,9 +181,6 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
     [Test]
     public async Task SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        // if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-        //     return;
-
         using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
 

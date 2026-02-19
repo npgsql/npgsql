@@ -11,7 +11,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-public class AuthenticationTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class AuthenticationTests : TestBase
 {
     [Test]
     [NonParallelizable] // Sets environment variable
@@ -419,8 +419,6 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
             conn.Open();
             Assert.That(getPasswordDelegateWasCalled, "ProvidePasswordCallback delegate not used");
 
-            // Do this again, since with multiplexing the very first connection attempt is done via
-            // the non-multiplexing path, to surface any exceptions.
             NpgsqlConnection.ClearPool(conn);
             conn.Close();
             getPasswordDelegateWasCalled = false;
@@ -445,8 +443,6 @@ public class AuthenticationTests(MultiplexingMode multiplexingMode) : Multiplexi
         {
             conn.Open();
 
-            // Do this again, since with multiplexing the very first connection attempt is done via
-            // the non-multiplexing path, to surface any exceptions.
             NpgsqlConnection.ClearPool(conn);
             conn.Close();
             conn.Open();

@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class InternalTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class InternalTypeTests : TestBase
 {
     [Test]
     public async Task Read_internal_char()
