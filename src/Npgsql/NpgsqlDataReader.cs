@@ -71,7 +71,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     int _columnsStartPos;
 
     /// <summary>
-    /// The index of the column that we're on, i.e. that has already been parsed, is
+    /// The index of the column that we're on, i.e. that has already been parsed,
     /// is memory and can be retrieved. Initialized to -1, which means we're on the column
     /// count (which comes before the first column).
     /// </summary>
@@ -1205,14 +1205,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // If the reader is being closed as part of the connection closing, we don't apply
             // the reader's CommandBehavior.CloseConnection
             if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
-                _connection.Close();
+                await _connection.Close(async).ConfigureAwait(false);
 
             Connector.ReaderCompleted.SetResult(null);
         }
         else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
         {
             Debug.Assert(_connection is not null);
-            _connection.Close();
+            await _connection.Close(async).ConfigureAwait(false);
         }
 
         if (ReaderClosed != null)
@@ -1341,7 +1341,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Gets the value of the specified column as a TimeSpan,
     /// </summary>
     /// <remarks>
-    /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
+    /// PostgreSQL's interval type has a resolution of 1 microsecond and ranges from
     /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
     /// and ranges from roughly -29247 to 29247 years.
     /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
@@ -1355,7 +1355,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     /// <summary>
     /// Returns a nested data reader for the requested column.
-    /// The column type must be a record or a to Npgsql known composite type, or an array thereof.
+    /// The column type must be a record or a Npgsql known composite type, or an array thereof.
     /// Currently only supported in non-sequential mode.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
@@ -2121,7 +2121,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     /// <summary>
     /// Checks that we have a RowDescription, but not necessary an actual resultset
-    /// (for operations which work in SchemaOnly mode.
+    /// (for operations which work in SchemaOnly mode).
     /// </summary>
     FieldDescription GetField(int ordinal)
     {
