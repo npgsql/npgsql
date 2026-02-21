@@ -497,10 +497,10 @@ public abstract class TestBase
             $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
 
         // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality.
-        var isArray = actualDataTypeName.EndsWith("[]", StringComparison.Ordinal);
+        var isArrayTest = actualDataTypeName.EndsWith("[]", StringComparison.Ordinal) && typeof(T).IsArray;
         Assert.That(reader.GetFieldType(0),
-            (valueTypeEqualsFieldType || isArray ? new ConstraintExpression() : Is.Not)
-                .EqualTo(isArray ? typeof(Array) : typeof(T)),
+            (valueTypeEqualsFieldType || isArrayTest ? new ConstraintExpression() : Is.Not)
+                .EqualTo(isArrayTest ? typeof(Array) : typeof(T)),
             $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
 
         T actual;
