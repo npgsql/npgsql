@@ -424,27 +424,27 @@ public abstract class TestBase
             };
     }
 
-    public Task<T> AssertTypeRead<T>(string sqlLiteral, string dataTypeName, T expected,
+    public Task<T> AssertTypeRead<T>(string sqlLiteral, string dataTypeName, T value,
         bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, bool skipArrayCheck = false)
         => AssertTypeReadCore(OpenConnectionAsync(), disposeConnection: true, sqlLiteral, dataTypeName,
-            expected, valueTypeEqualsFieldType, comparer, skipArrayCheck);
+            value, valueTypeEqualsFieldType, comparer, skipArrayCheck);
 
-    public Task<T> AssertTypeRead<T>(NpgsqlDataSource dataSource, string sqlLiteral, string dataTypeName, T expected,
+    public Task<T> AssertTypeRead<T>(NpgsqlDataSource dataSource, string sqlLiteral, string dataTypeName, T value,
         bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, bool skipArrayCheck = false)
         => AssertTypeReadCore(dataSource.OpenConnectionAsync(), disposeConnection: true, sqlLiteral, dataTypeName,
-            expected, valueTypeEqualsFieldType, comparer, skipArrayCheck);
+            value, valueTypeEqualsFieldType, comparer, skipArrayCheck);
 
-    public Task<T> AssertTypeRead<T>(NpgsqlConnection connection, string sqlLiteral, string dataTypeName, T expected,
+    public Task<T> AssertTypeRead<T>(NpgsqlConnection connection, string sqlLiteral, string dataTypeName, T value,
         bool valueTypeEqualsFieldType = true, Func<T, T, bool>? comparer = null, bool skipArrayCheck = false)
         => AssertTypeReadCore(new(connection), disposeConnection: false, sqlLiteral, dataTypeName,
-            expected, valueTypeEqualsFieldType, comparer, skipArrayCheck);
+            value, valueTypeEqualsFieldType, comparer, skipArrayCheck);
 
     static async Task<T> AssertTypeReadCore<T>(
         ValueTask<NpgsqlConnection> connectionTask,
         bool disposeConnection,
         string sqlLiteral,
         string dataTypeName,
-        T expected,
+        T value,
         bool valueTypeEqualsFieldType,
         Func<T, T, bool>? comparer,
         bool skipArrayCheck)
@@ -452,7 +452,7 @@ public abstract class TestBase
         var connection = await connectionTask;
         await using var _ = disposeConnection ? connection : null;
 
-        var result = await AssertTypeReadCore(connection, sqlLiteral, dataTypeName, expected, valueTypeEqualsFieldType, comparer);
+        var result = await AssertTypeReadCore(connection, sqlLiteral, dataTypeName, value, valueTypeEqualsFieldType, comparer);
 
         // Check the corresponding array type as well
         if (!skipArrayCheck && !dataTypeName.EndsWith("[]", StringComparison.Ordinal))
@@ -461,9 +461,9 @@ public abstract class TestBase
                 connection,
                 ArrayLiteral(sqlLiteral),
                 dataTypeName + "[]",
-                new[] { expected, expected },
+                new[] { value, value },
                 valueTypeEqualsFieldType,
-                comparer is null ? null : (array1, array2) => comparer(array1[0], array2[0]) && comparer(array1[1], array2[1]));
+                comparer is null ? null : (array1, array2) => array1.SequenceEqual(array2, CreateEqualityComparer(comparer!)));
         }
         return result;
     }
@@ -472,7 +472,7 @@ public abstract class TestBase
         NpgsqlConnection connection,
         string sqlLiteral,
         string dataTypeName,
-        T expected,
+        T value,
         bool valueTypeEqualsFieldType,
         Func<T, T, bool>? comparer)
     {
@@ -507,11 +507,11 @@ public abstract class TestBase
         if (valueTypeEqualsFieldType)
         {
             actual = (T)reader.GetValue(0);
-            Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
+            Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
                 $"Got wrong result from GetValue() value when reading '{truncatedSqlLiteral}'");
 
             actual = (T)reader.GetFieldValue<object>(0);
-            Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
+            Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer)),
                 $"Got wrong result from GetFieldValue<object>() value when reading '{truncatedSqlLiteral}'");
 
             return actual;
@@ -519,11 +519,21 @@ public abstract class TestBase
 
         actual = reader.GetFieldValue<T>(0);
 
-        Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
+        Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
             $"Got wrong result from GetFieldValue<T>() value when reading '{truncatedSqlLiteral}'");
 
         return actual;
     }
+
+    static EqualityComparer<T> CreateEqualityComparer<T>(Func<T, T, bool> comparer)
+        => EqualityComparer<T>.Create((x, y) =>
+        {
+            if (x is null && y is null)
+                return true;
+            if (x is null || y is null)
+                return false;
+            return comparer(x, y);
+        });
 
     public async Task AssertTypeUnsupported<T>(T value, string sqlLiteral, string dataTypeName, NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
     {
@@ -604,16 +614,6 @@ public abstract class TestBase
             cmd.Parameters[0].DataTypeName = dataTypeName;
 
         return Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync())!;
-    }
-
-    class SimpleComparer<T>(Func<T, T, bool> comparerDelegate) : IEqualityComparer<T>
-    {
-        public bool Equals(T? x, T? y)
-            => x is null
-                ? y is null
-                : y is not null && comparerDelegate(x, y);
-
-        public int GetHashCode(T obj) => throw new NotSupportedException();
     }
 
     // For array quoting rules, see array_out in https://github.com/postgres/postgres/blob/master/src/backend/utils/adt/arrayfuncs.c
