@@ -60,29 +60,30 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
     [Test, TestCaseSource(nameof(TimestampDateTimeValues))]
     public Task Timestamp_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "timestamp without time zone", DbType.DateTime2,
-            comparer: MaxValuePrecisionLenientComparer,
-            isDefault: true);
+            "timestamp without time zone",
+            dbType: DbType.DateTime2,
+            comparer: MaxValuePrecisionLenientComparer);
 
     [Test, TestCaseSource(nameof(TimestampTzDateTimeValues))]
     public Task TimestampTz_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
-        => AssertType(new(dateTime.Ticks, DateTimeKind.Utc), DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "timestamp with time zone", DbType.DateTime, DbType.DateTime,
-            comparer: MaxValuePrecisionLenientComparer,
-            isDefault: true);
+        => AssertType(new DateTime(dateTime.Ticks, DateTimeKind.Utc), DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
+            "timestamp with time zone",
+            dbType: DbType.DateTime,
+            comparer: MaxValuePrecisionLenientComparer);
 
     [Test, TestCaseSource(nameof(TimestampTzDateTimeOffsetValues))]
     public Task TimestampTz_DateTimeOffset(DateTimeOffset dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "timestamp with time zone", DbType.DateTime, DbType.DateTime,
+            "timestamp with time zone",
+            dbType: DbType.DateTime,
             comparer: (expected, actual) => MaxValuePrecisionLenientComparer(expected.DateTime, actual.DateTime),
-            isDefault: false);
+            valueTypeEqualsFieldType: false);
 
     [Test, TestCaseSource(nameof(DateDateTimeValues))]
     public Task Date_DateTime(DateTime dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
         => AssertType(DisableDateTimeInfinityConversions ? dateTime.Date : dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
-            "date", DbType.Date,
-            isDefault: false);
+            "date", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Date, DbType.DateTime2), valueTypeEqualsFieldType: false);
 
     static readonly TestCaseData[] DateOnlyDateTimeValues =
     [
@@ -96,9 +97,9 @@ public sealed class DateTimeInfinityTests : TestBase, IDisposable
 
     [Test, TestCaseSource(nameof(DateOnlyDateTimeValues))]
     public Task Date_DateOnly(DateOnly dateTime, string sqlLiteral, string infinityConvertedSqlLiteral)
-        => AssertType(dateTime,
-            DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral, "date", DbType.Date,
-            isDefault: false);
+        => AssertType(dateTime, DisableDateTimeInfinityConversions ? sqlLiteral : infinityConvertedSqlLiteral,
+            "date",
+            dbType: DbType.Date);
 
     NpgsqlDataSource? _dataSource;
     protected override NpgsqlDataSource DataSource => _dataSource ??= CreateDataSource(csb => csb.Timezone = "UTC");

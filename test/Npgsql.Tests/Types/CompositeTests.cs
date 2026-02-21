@@ -30,7 +30,7 @@ public class CompositeTests(MultiplexingMode multiplexingMode) : MultiplexingTes
             new SomeComposite { SomeText = "foo", X = 8 },
             "(8,foo)",
             type,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -52,7 +52,7 @@ public class CompositeTests(MultiplexingMode multiplexingMode) : MultiplexingTes
             new SomeComposite { SomeText = "foo", X = 8 },
             "(8,foo)",
             type,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -73,7 +73,7 @@ public class CompositeTests(MultiplexingMode multiplexingMode) : MultiplexingTes
             new SomeComposite { SomeText = "foo", X = 8 },
             "(8,foo)",
             type,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     class CustomTranslator : INpgsqlNameTranslator
@@ -106,7 +106,7 @@ public class CompositeTests(MultiplexingMode multiplexingMode) : MultiplexingTes
                 new SomeComposite { SomeText = "foo", X = 8 },
                 "(8,foo)",
                 type,
-                isDataTypeInferredFromValue: false);
+                dataTypeInference: DataTypeInference.Nothing);
         }
         finally
         {
@@ -139,7 +139,7 @@ CREATE TYPE {containerType} AS (a int, containee {containeeType});");
             new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
             @"(8,""(9,foo)"")",
             containerType,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
@@ -160,7 +160,7 @@ CREATE TYPE {containerType} AS (a int, containee {containeeType});");
             new SomeComposite { SomeText = "foo", X = 8 },
             "(8,foo)",
             $"{schema}.some_composite",
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4365")]
@@ -190,16 +190,14 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
             @"(8,""(9,foo)"")",
             $"{secondSchemaName}.container",
-            isDataTypeInferredFromValue: false,
-            isDefaultForWriting: false);
+            dataTypeInference: DataTypeInference.Nothing);
 
         await AssertType(
             connection,
             new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
             @"(8,""(9,foo)"")",
             $"{firstSchemaName}.container",
-            isDataTypeInferredFromValue: false,
-            isDefaultForWriting: true);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5972")]
@@ -221,7 +219,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             new SomeComposite { SomeText = "foobar", X = 10 },
             "(10,foobar)",
             $"{schema}.\"{typename}\"",
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -242,7 +240,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             new SomeCompositeStruct { SomeText = "foo", X = 8 },
             "(8,foo)",
             type,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -263,7 +261,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             new SomeComposite[] { new() { SomeText = "foo", X = 8 }, new() { SomeText = "bar", X = 9 }},
             @"{""(8,foo)"",""(9,bar)""}",
             type + "[]",
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
@@ -285,7 +283,7 @@ CREATE TYPE {type} AS (simple int, two_words int, some_database_name int)");
             new NameTranslationComposite { Simple = 2, TwoWords = 3, SomeClrName = 4 },
             "(2,3,4)",
             type,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/856")]
@@ -309,7 +307,7 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
             new Address { PostalCode = "12345", Street = "Main St." },
             @"(""Main St."",12345)",
             compositeType,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -331,7 +329,7 @@ CREATE TYPE {compositeType} AS (ints int4[])");
             new SomeCompositeWithArray { Ints = [1, 2, 3, 4] },
             @"(""{1,2,3,4}"")",
             compositeType,
-            isDataTypeInferredFromValue: false,
+            dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.Ints!.SequenceEqual(expected.Ints!));
     }
 
@@ -357,7 +355,7 @@ CREATE TYPE {compositeType} AS (enum_value {enumType});");
             new SomeCompositeWithEnum { EnumValue = SomeCompositeWithEnum.TestEnum.Value2 },
             @"(value2)",
             compositeType,
-            isDataTypeInferredFromValue: false,
+            dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.EnumValue == expected.EnumValue);
     }
 
@@ -380,7 +378,7 @@ CREATE TYPE {compositeType} AS (address inet)");
             new SomeCompositeWithIPAddress { Address = IPAddress.Loopback },
             @"(127.0.0.1)",
             compositeType,
-            isDataTypeInferredFromValue: false,
+            dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.Address!.Equals(expected.Address));
     }
 
@@ -406,7 +404,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
             },
             """("{""1970-01-01 00:00:00"",""1970-01-02 00:00:00""}")""",
             compositeType,
-            isDataTypeInferredFromValue: false,
+            dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.DateTimes!.SequenceEqual(expected.DateTimes!));
     }
 
@@ -430,7 +428,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
             new SomeCompositeWithConverterResolverType { DateTimes = [DateTime.UnixEpoch] }, // UTC DateTime
             """("{""1970-01-01 01:00:00"",""1970-01-02 01:00:00""}")""",
             compositeType,
-            isDataTypeInferredFromValue: false,
+            dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.DateTimes!.SequenceEqual(expected.DateTimes!)));
     }
 
@@ -460,11 +458,9 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
 
         Task DoAssertion()
             => AssertType(
-            connection,
-            new SomeComposite { SomeText = "foo", X = 8 },
-            "(8,foo)",
-            table,
-            isDataTypeInferredFromValue: false);
+                dataSource,
+                new SomeComposite { SomeText = "foo", X = 8 }, "(8,foo)",
+                table, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1267")]
@@ -478,14 +474,11 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         dataSourceBuilder.ConfigureTypeLoading(b => b.EnableTableCompositesLoading());
         dataSourceBuilder.MapComposite<SomeComposite>(table);
         await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
 
         await AssertType(
-            connection,
-            new SomeComposite { SomeText = "foo", X = 8 },
-            "(8,foo)",
-            table,
-            isDataTypeInferredFromValue: false);
+            dataSource,
+            new SomeComposite { SomeText = "foo", X = 8 }, "(8,foo)",
+            table, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
@@ -499,21 +492,16 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<ClassWithNullableProperty>(type);
         await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
 
         await AssertType(
-            connection,
-            new ClassWithNullableProperty { Foo = 8 },
-            "(8)",
-            type,
-            isDataTypeInferredFromValue: false);
+            dataSource,
+            new ClassWithNullableProperty { Foo = 8 }, "(8)",
+            type, dataTypeInference: DataTypeInference.Nothing);
 
         await AssertType(
-            connection,
-            new ClassWithNullableProperty { Foo = null },
-            "()",
-            type,
-            isDataTypeInferredFromValue: false);
+            dataSource,
+            new ClassWithNullableProperty { Foo = null }, "()",
+            type, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
@@ -527,21 +515,16 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<StructWithNullableProperty>(type);
         await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
 
         await AssertType(
-            connection,
-            new StructWithNullableProperty { Foo = 8 },
-            "(8)",
-            type,
-            isDataTypeInferredFromValue: false);
+            dataSource,
+            new StructWithNullableProperty { Foo = 8 }, "(8)",
+            type, dataTypeInference: DataTypeInference.Nothing);
 
         await AssertType(
-            connection,
-            new StructWithNullableProperty { Foo = null },
-            "()",
-            type,
-            isDataTypeInferredFromValue: false);
+            dataSource,
+            new StructWithNullableProperty { Foo = null }, "()",
+            type, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -592,14 +575,12 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<DuplicateOneLongOneBool>(type);
         await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
 
         var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await AssertType(
-            connection,
+            dataSource,
             new DuplicateOneLongOneBool(true, 1),
             "(1,t)",
-            type,
-            isDataTypeInferredFromValue: false));
+            type, dataTypeInference: DataTypeInference.Nothing));
         Assert.That(ex!.InnerException, Is.TypeOf<AmbiguousMatchException>());
     }
 
@@ -614,10 +595,9 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<MissingSetterOneLongOneBool>(type);
         await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
 
         var ex = Assert.ThrowsAsync<InvalidOperationException>(async () => await AssertTypeRead(
-            connection,
+            dataSource,
             "(1,t)",
             type,
             new MissingSetterOneLongOneBool(true, 1)));
@@ -635,14 +615,11 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<OneLongOneBool>(type);
         await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
 
         await AssertType(
-            connection,
-            new OneLongOneBool(1) { BooleanValue = true },
-            "(1,t)",
-            type,
-            isDataTypeInferredFromValue: false);
+            dataSource,
+            new OneLongOneBool(1) { BooleanValue = true }, "(1,t)",
+            type, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -658,7 +635,6 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         dataSourceBuilder.MapComposite<SomeComposite>(type);
         dataSourceBuilder.EnableUnmappedTypes();
         await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
 
         var composite1 = new SomeComposite
         {
@@ -673,12 +649,10 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         };
 
         await AssertType(
-            connection,
+            dataSource,
             new NpgsqlRange<SomeComposite>(composite1, composite2),
             "[\"(8,foo)\",\"(42,bar)\"]",
-            rangeType,
-            isDataTypeInferredFromValue: false,
-            isDefaultForWriting: false);
+            rangeType, dataTypeInference: DataTypeInference.Nothing);
     }
 
     #region Test Types

@@ -36,8 +36,8 @@ public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     ];
 
     [Test, TestCaseSource(nameof(ArrayTestCases))]
-    public Task Arrays<T>(T array, string sqlLiteral, string pgTypeName)
-        => AssertType(array, sqlLiteral, pgTypeName);
+    public Task Arrays<T>(T array, string sqlLiteral, string dataTypeName)
+        => AssertType(array, sqlLiteral, dataTypeName);
 
     [Test]
     public async Task NullableInts()
@@ -257,7 +257,7 @@ SELECT onedim, twodim FROM (VALUES
     [Test]
     public async Task Generic_List()
         => await AssertType(
-            new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", isDefaultForReading: false);
+            new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Write_IList_implementation()
@@ -267,7 +267,7 @@ SELECT onedim, twodim FROM (VALUES
     [Test]
     public void Read_IList_implementation_throws()
         => Assert.ThrowsAsync<InvalidCastException>(() =>
-            AssertTypeRead("{1,2,3}", "integer[]", ImmutableArray.Create(1, 2, 3), isDefault: false));
+            AssertTypeRead("{1,2,3}", "integer[]", ImmutableArray.Create(1, 2, 3), valueTypeEqualsFieldType: false));
 
     [Test]
     public async Task Generic_IList()

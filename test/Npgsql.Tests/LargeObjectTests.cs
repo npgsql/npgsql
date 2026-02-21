@@ -17,7 +17,7 @@ public class LargeObjectTests : TestBase
         var oid = manager.Create();
         using (var stream = manager.OpenReadWrite(oid))
         {
-            var buf = Encoding.UTF8.GetBytes("Hello");
+            var buf = "Hello"u8.ToArray();
             stream.Write(buf, 0, buf.Length);
             stream.Seek(0, System.IO.SeekOrigin.Begin);
             var buf2 = new byte[buf.Length];

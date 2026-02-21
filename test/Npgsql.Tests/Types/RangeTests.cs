@@ -2,7 +2,6 @@
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
-using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Properties;
 using Npgsql.Util;
@@ -54,8 +53,8 @@ class RangeTests : MultiplexingTestBase
 
     // See more test cases in DateTimeTests
     [Test, TestCaseSource(nameof(RangeTestCases))]
-    public Task Range<T>(T range, string sqlLiteral, string pgTypeName)
-        => AssertType(range, sqlLiteral, pgTypeName,
+    public Task Range<T>(T range, string sqlLiteral, string dataTypeName)
+        => AssertType(range, sqlLiteral, dataTypeName,
             // NpgsqlRange<T>[] is mapped to multirange by default, not array, so the built-in AssertType testing for arrays fails
             // (see below)
             skipArrayCheck: true);
@@ -63,8 +62,8 @@ class RangeTests : MultiplexingTestBase
     // This re-executes the same scenario as above, but with isDefaultForWriting: false and without skipArrayCheck: true.
     // This tests coverage of range arrays (as opposed to multiranges).
     [Test, TestCaseSource(nameof(RangeTestCases))]
-    public Task Range_array<T>(T range, string sqlLiteral, string pgTypeName)
-        => AssertType(range, sqlLiteral, pgTypeName, isDefaultForWriting: false);
+    public Task Range_array<T>(T range, string sqlLiteral, string dataTypeName)
+        => AssertType(range, sqlLiteral, dataTypeName, dataTypeInference: DataTypeInference.Mismatch);
 
     [Test]
     public void Equality_finite()
@@ -210,7 +209,7 @@ class RangeTests : MultiplexingTestBase
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
-        exception = await AssertTypeUnsupportedRead("""["bar","foo"]""", rangeType);
+        exception = await AssertTypeUnsupportedRead<object>("""["bar","foo"]""", rangeType);
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
@@ -244,8 +243,7 @@ class RangeTests : MultiplexingTestBase
             },
             """{"[3,4)","[5,6)"}""",
             "int4range[]",
-            isDefaultForWriting: !supportsMultirange,
-            isDataTypeInferredFromValue: false);
+            dataTypeInference: supportsMultirange ? DataTypeInference.Mismatch : DataTypeInference.Match);
     }
 
     [Test]
