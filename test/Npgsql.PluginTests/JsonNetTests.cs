@@ -24,7 +24,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            dataTypeName, dataTypeInference: false,
+            dataTypeName, dataTypeInference: DataTypeInference.Nothing,
             valueTypeEqualsFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
@@ -60,7 +60,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new JObject { ["Bar"] = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            dataTypeName, dataTypeInference: false,
+            dataTypeName, dataTypeInference: DataTypeInference.Nothing,
             valueTypeEqualsFieldType: false);
 
     [Test]
@@ -69,7 +69,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             JsonDataSource,
             new JArray(new[] { 1, 2, 3 }),
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
-            dataTypeName, dataTypeInference: false,
+            dataTypeName, dataTypeInference: DataTypeInference.Nothing,
             valueTypeEqualsFieldType: false);
 
     [Test]
@@ -101,7 +101,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             dataTypeName,
-            dataTypeInference: false, valueTypeEqualsFieldType: false);
+            dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -146,7 +146,7 @@ public class JsonNetTests(string dataTypeName) : TestBase
             new DateWrapper { Date = new DateTime(2018, 04, 20) },
             IsJsonb ? "{\"Date\": \"The 20th of April, 2018\"}" : "{\"Date\":\"The 20th of April, 2018\"}",
             dataTypeName,
-            dataTypeInference: false, valueTypeEqualsFieldType: false);
+            dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
     }
 
     [Test]

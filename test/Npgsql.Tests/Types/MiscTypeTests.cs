@@ -173,19 +173,19 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
     public async Task ObjectArray()
     {
         await AssertTypeWrite(new object?[] { (short)4, null, (long)5, 6 }, "{4,NULL,5,6}",
-            "integer[]", dataTypeInference: false);
+            "integer[]", dataTypeInference: DataTypeInference.Nothing);
         await AssertTypeWrite(new object?[] { "text", null, DBNull.Value, "chars".ToCharArray(), 'c' }, "{text,NULL,NULL,chars,c}",
-            "text[]", dataTypeInference: false);
+            "text[]", dataTypeInference: DataTypeInference.Nothing);
 
         await using var dataSource = CreateDataSource(b => b.ConnectionStringBuilder.Timezone = "Europe/Berlin");
         await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) },
             "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}",
-            "timestamp with time zone[]", dataTypeInference: false);
+            "timestamp with time zone[]", dataTypeInference: DataTypeInference.Nothing);
         Assert.ThrowsAsync<ArgumentException>(() => AssertTypeWrite(dataSource, new object?[]
             {
                 DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
             }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
-            dataTypeInference: false));
+            dataTypeInference: DataTypeInference.Nothing));
     }
 
     [Test]
@@ -198,7 +198,7 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
     [Test]
     public Task Oidvector()
         => AssertType(new uint[] { 4, 5, 6 }, "4 5 6",
-            "oidvector", dataTypeInference: false);
+            "oidvector", dataTypeInference: DataTypeInference.Nothing);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1138")]
     public async Task Void()

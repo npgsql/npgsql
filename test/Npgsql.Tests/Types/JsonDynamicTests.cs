@@ -26,7 +26,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
                 : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
-            dataTypeInference: false,
+            dataTypeInference: DataTypeInference.Nothing,
             valueTypeEqualsFieldType: false);
 
     [Test]
@@ -47,7 +47,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? $$"""{"Date": "2019-09-01T00:00:00", "Summary": "{{bigString}}", "TemperatureC": 10}"""
                 : $$"""{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"{{bigString}}"}""",
             PostgresType,
-            dataTypeInference: false,
+            dataTypeInference: DataTypeInference.Nothing,
             valueTypeEqualsFieldType: false);
     }
 
@@ -124,7 +124,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"date": "2019-09-01T00:00:00", "summary": "Partly cloudy", "temperatureC": 10}"""
                 : """{"date":"2019-09-01T00:00:00","temperatureC":10,"summary":"Partly cloudy"}""",
             PostgresType,
-            dataTypeInference: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, Ignore("TODO We should not change the default type for json/jsonb, it makes little sense.")]
@@ -149,7 +149,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
                 : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
-            dataTypeInference: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     #region Polymorphic
@@ -179,7 +179,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: false);
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: DataTypeInference.Nothing);
         await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
@@ -209,7 +209,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
         await AssertTypeWrite<WeatherForecast>(dataSource, value, sql, PostgresType,
-            dataTypeInference: false);
+            dataTypeInference: DataTypeInference.Nothing);
 
         await AssertTypeRead<WeatherForecast>(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
         await AssertTypeRead(dataSource, sql, PostgresType,
@@ -248,7 +248,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: false);
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: DataTypeInference.Nothing);
         await AssertTypeRead(dataSource, sql, PostgresType, value, valueTypeEqualsFieldType: false);
     }
 
@@ -276,7 +276,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "$type": "extended", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: false);
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: DataTypeInference.Nothing);
 
         // Reading as DerivedWeatherForecast should not cause us to get an instance of ExtendedDerivedWeatherForecast (as it doesn't define JsonDerivedType)
         await AssertTypeRead(dataSource, sql, PostgresType,
@@ -315,7 +315,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: false);
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: DataTypeInference.Nothing);
 
         // As we have disabled polymorphism for jsonb when AllowOutOfOrderMetadataProperties = false we should be able to read it as equalt to a WeatherForecast instance.
         if (IsJsonb)
@@ -368,7 +368,7 @@ public class JsonDynamicTests : MultiplexingTestBase
                 ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10, "TemperatureF": 49}"""
                 : """{"$type":"extended","TemperatureF":49,"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""";
 
-        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: false);
+        await AssertTypeWrite(dataSource, value, sql, PostgresType, dataTypeInference: DataTypeInference.Nothing);
 
         // As we have disabled polymorphism for jsonb when AllowOutOfOrderMetadataProperties = false we should be able to read it as equalt to a WeatherForecast instance.
         if (IsJsonb)

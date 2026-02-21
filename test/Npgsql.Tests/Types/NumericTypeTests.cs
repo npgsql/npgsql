@@ -63,7 +63,7 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
     [TestCase("xid", TestName="XID")]
     [TestCase("cid", TestName="CID")]
     public Task UInt32(string dataTypeName)
-        => AssertType(8u, "8", dataTypeName, dataTypeInference: false);
+        => AssertType(8u, "8", dataTypeName, dataTypeInference: DataTypeInference.Nothing);
 
     [Test]
     [TestCase("xid8", TestName="XID8")]
@@ -72,7 +72,7 @@ public class NumericTypeTests(MultiplexingMode multiplexingMode) : MultiplexingT
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "13.0", "The xid8 type was introduced in PostgreSQL 13");
 
-        await AssertType(8ul, "8", dataTypeName, dataTypeInference: false);
+        await AssertType(8ul, "8", dataTypeName, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]

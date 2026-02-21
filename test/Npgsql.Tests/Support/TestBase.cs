@@ -207,7 +207,7 @@ public abstract class TestBase
 
         await AssertTypeWriteCore(
             connection, valueFactory, sqlLiteral,
-            dataTypeName, dataTypeInference ?? true,
+            dataTypeName, dataTypeInference ?? DataTypeInference.Match,
             dbType);
 
         // Check the corresponding array type as well
@@ -217,18 +217,17 @@ public abstract class TestBase
                 connection,
                 () => new[] { valueFactory(), valueFactory() },
                 ArrayLiteral(sqlLiteral),
-                dataTypeName + "[]", dataTypeInference ?? true,
+                dataTypeName + "[]", dataTypeInference ?? DataTypeInference.Match,
                 expectedDbTypes: null);
         }
     }
 
-    // This is not an enum due to the implicit conversion from bool.
-    public readonly struct DataTypeInference
+    public enum DataTypeInference
     {
         /// <summary>
         /// Data type is inferred from the CLR value and matches the data type under test.
         /// </summary>
-        public static DataTypeInference Match => new(ExpectedInference.Match);
+        Match,
 
         /// <summary>
         /// Data type is inferred from the CLR value but differs from the data type under test.
@@ -236,7 +235,7 @@ public abstract class TestBase
         /// <remarks>
         /// Used when we get some inferred data type (e.g. CLR strings are inferred to be 'text') but this does not match the data type (e.g. 'json') under test.
         /// </remarks>
-        public static DataTypeInference Mismatch => new(ExpectedInference.Mismatch);
+        Mismatch,
 
         /// <summary>
         /// Data type can not be inferred from the CLR value.
@@ -246,21 +245,7 @@ public abstract class TestBase
         /// or where we specifically don't want to infer a data type because there's no good option
         /// (e.g. uint can be mapped to 'oid/xid/cid', but we don't want any of these as a default/inferred data type)
         /// </remarks>
-        public static DataTypeInference Nothing => new(ExpectedInference.Nothing);
-
-        public ExpectedInference Expected { get; }
-
-        DataTypeInference(ExpectedInference expected) => Expected = expected;
-
-        public static implicit operator DataTypeInference(bool isInferredFromValue)
-            => new(isInferredFromValue ? ExpectedInference.Match : ExpectedInference.Nothing);
-
-        public enum ExpectedInference
-        {
-            Match,
-            Mismatch,
-            Nothing
-        }
+        Nothing,
     }
 
     public readonly struct DbTypes(DbType dataTypeMappedDbType, DbType valueInferredDbType, DbType dbTypeToSet)
@@ -334,21 +319,21 @@ public abstract class TestBase
         if (expectedDbTypes?.DbTypeToSet is { } expectedDbType)
             p.DbType = expectedDbType;
         DbTypeAsserts();
-        if (dataTypeInference.Expected is DataTypeInference.ExpectedInference.Match)
+        if (dataTypeInference is DataTypeInference.Match)
             cmd.Parameters.Add(p);
 
         // With (non-generic) value only
         p = new NpgsqlParameter { Value = valueFactory() };
         errorIdentifier[++errorIdentifierIndex] = $"Value (type {p.Value!.GetType().Name}, non-generic)";
         ValueAsserts();
-        if (dataTypeInference.Expected is DataTypeInference.ExpectedInference.Match)
+        if (dataTypeInference is DataTypeInference.Match)
             cmd.Parameters.Add(p);
 
         // With (generic) value only
         p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
         errorIdentifier[++errorIdentifierIndex] = $"Value (type {p.Value!.GetType().Name}, generic)";
         ValueAsserts();
-        if (dataTypeInference.Expected is DataTypeInference.ExpectedInference.Match)
+        if (dataTypeInference is DataTypeInference.Match)
             cmd.Parameters.Add(p);
 
         cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
@@ -408,19 +393,19 @@ public abstract class TestBase
         }
 
         (string? ExpectedDataTypeName, NpgsqlDbType ExpectedNpgsqlDbType) GetInferredDataType()
-            => dataTypeInference.Expected switch
+            => dataTypeInference switch
             {
-                DataTypeInference.ExpectedInference.Match =>
+                DataTypeInference.Match =>
                     (dataTypeNameWithoutFacetsAndQuotes, npgsqlDbType ?? NpgsqlDbType.Unknown),
-                DataTypeInference.ExpectedInference.Mismatch =>
+                DataTypeInference.Mismatch =>
                     // Only respect Mismatch if the type is well known (for now that means it has an NpgsqlDbType).
                     // Otherwise use the exact values so we'll error with the right details.
                     p.NpgsqlDbType is not NpgsqlDbType.Unknown
                         ? (p.DataTypeName, p.NpgsqlDbType)
                         : (dataTypeNameWithoutFacetsAndQuotes, npgsqlDbType ?? NpgsqlDbType.Unknown),
-                DataTypeInference.ExpectedInference.Nothing =>
+                DataTypeInference.Nothing =>
                     (null, NpgsqlDbType.Unknown),
-                _ => throw new UnreachableException($"Unknown case {dataTypeInference.Expected}")
+                _ => throw new UnreachableException($"Unknown case {dataTypeInference}")
             };
     }
 
