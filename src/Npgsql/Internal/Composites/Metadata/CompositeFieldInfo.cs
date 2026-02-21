@@ -28,9 +28,8 @@ abstract class CompositeFieldInfo
         if (typeInfo.PgTypeId is null)
             throw new ArgumentException("Type info cannot have an undecided PgTypeId.", nameof(typeInfo));
 
-        if (!typeInfo.IsProviderInfo)
+        if (typeInfo is PgConcreteTypeInfo concreteTypeInfo)
         {
-            var concreteTypeInfo = typeInfo.AsConcreteTypeInfo();
             if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary) is not { } bufferRequirements)
             {
                 ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
@@ -131,9 +130,8 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         if (typeInfo.Type != typeof(T))
             throw new InvalidOperationException($"PgTypeInfo type '{typeInfo.Type.FullName}' must be equal to field type '{typeof(T)}'.");
 
-        if (!typeInfo.IsProviderInfo)
+        if (typeInfo is PgConcreteTypeInfo concreteTypeInfo)
         {
-            var concreteTypeInfo = typeInfo.AsConcreteTypeInfo();
             var typeToConvert = concreteTypeInfo.Converter.TypeToConvert;
             _asObject = typeToConvert != typeof(T);
             if (!typeToConvert.IsAssignableFrom(typeof(T)))
