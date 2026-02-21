@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -29,7 +28,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
             if (typeof(T) == typeof(object) && ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
-                ResetBindingInfo();
+                DisposeBindingState();
             _typedValue = value;
         }
     }
@@ -84,49 +83,24 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     private protected override void SetOutputValueCore(NpgsqlDataReader reader, int ordinal)
         => TypedValue = reader.GetFieldValue<T>(ordinal);
 
-    private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
+    private protected override PgConcreteTypeInfo GetConcreteTypeInfo(PgTypeInfo typeInfo)
     {
         if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing)
-            return base.ResolveConverter(typeInfo);
+            return base.GetConcreteTypeInfo(typeInfo);
 
-        _asObject = false;
-        return typeInfo.GetResolution(TypedValue);
+        return typeInfo.GetConcreteTypeInfo(TypedValue);
     }
 
-    // We ignore allowNullReference, it's just there to control the base implementation.
-    private protected override void BindCore(DataFormat? formatPreference, bool allowNullReference = false)
+    private protected override PgValueBindingContext BindGenericValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
+        => typeInfo.BindValue(TypedValue, formatPreference);
+
+    private protected override ValueTask WriteGenericValue(bool async, PgConcreteTypeInfo typeInfo, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (_asObject)
-        {
-            // If we're object typed we should not support null.
-            base.BindCore(formatPreference, typeof(T) != typeof(object));
-            return;
-        }
-
-        var value = TypedValue;
-        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
-        {
-            WriteSize = size;
-            _bufferRequirement = info.BufferRequirement;
-        }
-        else
-        {
-            WriteSize = -1;
-            _bufferRequirement = default;
-        }
-
-        Format = dataFormat;
-    }
-
-    private protected override ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
-    {
-        if (_asObject)
-            return base.WriteValue(async, writer, cancellationToken);
-
+        Debug.Assert(TypedValue is not null);
         if (async)
-            return Converter!.UnsafeDowncast<T>().WriteAsync(writer, TypedValue!, cancellationToken);
+            return typeInfo.ConverterWriteAsync(writer, TypedValue!, cancellationToken);
 
-        Converter!.UnsafeDowncast<T>().Write(writer, TypedValue!);
+        typeInfo.ConverterWrite(writer, TypedValue!);
         return new();
     }
 

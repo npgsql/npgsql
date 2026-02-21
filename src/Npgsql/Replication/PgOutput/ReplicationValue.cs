@@ -118,13 +118,8 @@ public class ReplicationValue
         using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
         var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        await reader.StartReadAsync(info.ConverterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
-        var result = info.AsObject
-            ? (T)await info.ConverterInfo.Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await info.ConverterInfo.Converter.UnsafeDowncast<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
-        await reader.EndReadAsync().ConfigureAwait(false);
-        return result;
+        reader.Init(Length);
+        return await info.TypeInfo.ReadFieldValueAsync<T>(PgReader, _fieldDescription.DataFormat, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -154,7 +149,7 @@ public class ReplicationValue
         }
 
         var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
+        reader.Init(Length);
         return reader.GetStream(canSeek: false);
     }
 
@@ -179,11 +174,8 @@ public class ReplicationValue
         }
 
         var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        reader.StartRead(info.ConverterInfo.BufferRequirement);
-        var result = (TextReader)info.ConverterInfo.Converter.ReadAsObject(reader);
-        reader.EndRead();
-        return result;
+        reader.Init(Length);
+        return info.TypeInfo.ReadFieldValue<TextReader>(PgReader, _fieldDescription.DataFormat);
     }
 
     internal async Task Consume(CancellationToken cancellationToken)
@@ -193,7 +185,7 @@ public class ReplicationValue
 
         var reader = PgReader;
         if (!reader.Initialized)
-            reader.Init(Length, _fieldDescription.DataFormat);
+            reader.Init(Length);
         await reader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         await reader.CommitAsync().ConfigureAwait(false);
 

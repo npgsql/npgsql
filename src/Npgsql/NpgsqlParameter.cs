@@ -35,7 +35,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected string _name = string.Empty;
     object? _value;
     private protected bool _useSubStream;
-    private protected SubReadStream? _subStream;
+    private protected Stream? _subStream;
     private protected string _sourceColumn;
 
     internal string TrimmedName { get; private protected set; } = PositionalName;
@@ -43,15 +43,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     IDbTypeResolver? _dbTypeResolver;
     private protected PgTypeInfo? TypeInfo { get; private set; }
+    private protected PgConcreteTypeInfo? ConcreteTypeInfo { get; private set; }
 
-    internal PgTypeId PgTypeId { get; private set; }
-    private protected PgConverter? Converter { get; private set; }
+    internal PgTypeId PgTypeId => ConcreteTypeInfo?.PgTypeId ?? default;
 
-    internal DataFormat Format { get; private protected set; }
-    private protected Size? WriteSize { get; set; }
-    private protected object? _writeState;
-    private protected Size _bufferRequirement;
-    private protected bool _asObject;
+    internal DataFormat Format => _bindingContext?.DataFormat ?? DataFormat.Binary;
+    private protected PgValueBindingContext? _bindingContext;
 
     #endregion
 
@@ -283,7 +280,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
-                ResetBindingInfo();
+                DisposeBindingState();
             _value = value;
         }
     }
@@ -483,7 +480,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (value < -1)
                 ThrowHelper.ThrowArgumentException($"Invalid parameter Size value '{value}'. The value must be greater than or equal to 0.");
 
-            ResetBindingInfo();
+            DisposeBindingState();
             _size = value;
         }
     }
@@ -570,21 +567,19 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         return valueType != typeof(DBNull) && currentType != valueType;
     }
 
-    internal void GetResolutionInfo(out PgTypeInfo? typeInfo, out PgConverter? converter, out PgTypeId pgTypeId)
+    internal void GetResolutionInfo(out PgTypeInfo? typeInfo, out PgConcreteTypeInfo? concreteTypeInfo)
     {
         typeInfo = TypeInfo;
-        converter = Converter;
-        pgTypeId = PgTypeId;
+        concreteTypeInfo = ConcreteTypeInfo;
     }
 
-    internal void SetResolutionInfo(PgTypeInfo typeInfo, PgConverter converter, PgTypeId pgTypeId)
+    internal void SetResolutionInfo(PgTypeInfo typeInfo, PgConcreteTypeInfo concreteTypeInfo)
     {
-        if (WriteSize is not null)
-            ResetBindingInfo();
+        if (_bindingContext is not null)
+            DisposeBindingState();
 
         TypeInfo = typeInfo;
-        Converter = converter;
-        PgTypeId = pgTypeId;
+        ConcreteTypeInfo = concreteTypeInfo;
     }
 
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
@@ -660,14 +655,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
-        // We never reuse resolutions for resolvers across executions as a mutable value itself may influence the result.
+        // We never reuse concrete type infos from providers across executions as a mutable value itself may influence the result.
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
-        if (!previouslyResolved || typeInfo!.IsResolverInfo)
+        if (!previouslyResolved || typeInfo is not PgConcreteTypeInfo)
         {
-            ResetBindingInfo();
-            var resolution = ResolveConverter(typeInfo!);
-            Converter = resolution.Converter;
-            PgTypeId = resolution.PgTypeId;
+            DisposeBindingState();
+            ConcreteTypeInfo = GetConcreteTypeInfo(typeInfo!);
         }
 
         void ThrowNoTypeInfo()
@@ -685,42 +678,78 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     // Pull from Value so we also support object typed generic params.
-    private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
-    {
-        _asObject = true;
-        return typeInfo.GetObjectResolution(Value);
-    }
+    private protected virtual PgConcreteTypeInfo GetConcreteTypeInfo(PgTypeInfo typeInfo)
+        => typeInfo.GetObjectConcreteTypeInfo(Value);
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
     internal void Bind(out DataFormat format, out Size size, DataFormat? requiredFormat = null)
     {
-        if (TypeInfo is null)
+        if (TypeInfo is null || ConcreteTypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
-        if (WriteSize is null)
+        if (_bindingContext is null)
         {
             if (_size > 0)
-                HandleSizeTruncation();
+                HandleSizeTruncation(ConcreteTypeInfo);
 
-            BindCore(requiredFormat);
+            if (_useSubStream)
+            {
+                _bindingContext = BindSubStream();
+            }
+            else if (typeof(object) == StaticValueType || ConcreteTypeInfo.IsBoxing)
+            {
+                // Pull from Value so we also support object typed generic params.
+                var value = Value;
+                if (value is null)
+                    ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
+
+                _bindingContext = ConcreteTypeInfo.BindObjectValue(value, requiredFormat);
+            }
+            else
+            {
+                _bindingContext = BindGenericValue(ConcreteTypeInfo, requiredFormat);
+            }
         }
 
         format = Format;
-        size = WriteSize!.Value;
+        size = _bindingContext.GetValueOrDefault().Size ?? -1;
         if (requiredFormat is not null && format != requiredFormat)
             ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        PgValueBindingContext BindSubStream()
+        {
+            // Pull from Value so we also support object typed generic params.
+            var stream = (Stream?)Value;
+            Debug.Assert(stream is not null, "_useSubStream should only be true if we had a value during HandleSizeTruncation");
+            int subSize;
+            if (stream.CanSeek)
+            {
+                subSize = Math.Min(_size, checked((int)(stream.Length - stream.Position)));
+                _subStream = new SubReadStream(stream, _size);
+            }
+            else
+            {
+                // TODO maybe we can move this IO.
+                var buffer = new byte[_size];
+                var read = stream.ReadAtLeast(buffer, _size, throwOnEndOfStream: false);
+                subSize = Math.Min(_size, read);
+                _subStream = new MemoryStream(buffer, 0, subSize);
+            }
+            return new(DataFormat.Binary, 0, subSize, null);
+        }
 
         // Handle Size truncate behavior for a predetermined set of types and pg types.
         // Doesn't matter if we 'box' Value, all supported types are reference types.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void HandleSizeTruncation()
+        void HandleSizeTruncation(PgConcreteTypeInfo typeInfo)
         {
-            var type = Converter!.TypeToConvert;
+            var type = typeInfo.Converter.TypeToConvert;
             if ((type != typeof(string) && type != typeof(char[]) && type != typeof(byte[]) && type != typeof(Stream)) || Value is not { } value)
                 return;
 
-            var dataTypeName = TypeInfo!.Options.GetDataTypeName(PgTypeId);
+            var dataTypeName = typeInfo.Options.GetDataTypeName(PgTypeId);
             if (dataTypeName == DataTypeNames.Text || dataTypeName == DataTypeNames.Varchar || dataTypeName == DataTypeNames.Bpchar)
             {
                 if (value is string s && s.Length > _size)
@@ -742,84 +771,78 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 }
                 else if (value is Stream)
                 {
-                    _asObject = true;
                     _useSubStream = true;
                 }
             }
         }
     }
 
-    private protected virtual void BindCore(DataFormat? formatPreference, bool allowNullReference = false)
-    {
-        // Pull from Value so we also support object typed generic params.
-        var value = Value;
-        if (value is null && !allowNullReference)
-            ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
-
-        if (_useSubStream && value is not null)
-            value = _subStream = new SubReadStream((Stream)value, _size);
-
-        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
-        {
-            WriteSize = size;
-            _bufferRequirement = info.BufferRequirement;
-        }
-        else
-        {
-            WriteSize = -1;
-            _bufferRequirement = default;
-        }
-
-        Format = dataFormat;
-    }
+    private protected virtual PgValueBindingContext BindGenericValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
+        => throw new NotSupportedException();
 
     internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (WriteSize is not { } writeSize)
+        if (_bindingContext is not { } bindingContext)
         {
             ThrowHelper.ThrowInvalidOperationException("Missing type info or binding info.");
             return;
         }
+        Debug.Assert(ConcreteTypeInfo is not null);
 
         try
         {
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
-            writer.WriteInt32(writeSize.Value);
-            if (writeSize.Value is -1)
-            {
-                writer.Commit(sizeof(int));
-                return;
-            }
+            var size = bindingContext.Size?.Value ?? -1;
+            writer.WriteInt32(size);
+            writer.CommitAndResetTotal(sizeof(int));
 
-            var current = new ValueMetadata
+            if (!bindingContext.IsDbNullBinding)
             {
-                Format = Format,
-                BufferRequirement = _bufferRequirement,
-                Size = writeSize,
-                WriteState = _writeState
-            };
-            await writer.BeginWrite(async, current, cancellationToken).ConfigureAwait(false);
-            await WriteValue(async, writer, cancellationToken).ConfigureAwait(false);
-            writer.Commit(writeSize.Value + sizeof(int));
+                if (_useSubStream)
+                {
+                    Debug.Assert(_subStream is not null);
+                    if (async)
+                        await _subStream.CopyToAsync(writer.GetStream(), cancellationToken).ConfigureAwait(false);
+                    else
+                        _subStream.CopyTo(writer.GetStream());
+                    writer.CommitAndResetTotal(size);
+                }
+                else
+                {
+                    await writer.StartWrite(async, bindingContext, cancellationToken).ConfigureAwait(false);
+                    var typeInfo = ConcreteTypeInfo;
+                    if (typeof(object) == StaticValueType || typeInfo.IsBoxing)
+                    {
+                        // Pull from Value so we also support object typed generic params.
+                        var value = Value;
+                        Debug.Assert(value is not null);
+                        if (async)
+                        {
+                            await typeInfo.Converter.WriteAsObjectAsync(writer, value, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            typeInfo.Converter.WriteAsObject(writer, value);
+                        }
+                    }
+                    else
+                    {
+                        await WriteGenericValue(async, typeInfo, writer, cancellationToken).ConfigureAwait(false);
+                    }
+                    writer.EndWrite(size);
+                }
+            }
         }
         finally
         {
-            ResetBindingInfo();
+            DisposeBindingState();
         }
     }
 
-    private protected virtual ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
-    {
-        // Pull from Value so we also support base calls from generic parameters.
-        var value = (_useSubStream ? _subStream : Value)!;
-        if (async)
-            return Converter!.WriteAsObjectAsync(writer, value, cancellationToken);
-
-        Converter!.WriteAsObject(writer, value);
-        return new();
-    }
+    private protected virtual ValueTask WriteGenericValue(bool async, PgConcreteTypeInfo typeInfo, PgWriter writer, CancellationToken cancellationToken)
+        => throw new NotSupportedException();
 
     /// <inheritdoc />
     public override void ResetDbType()
@@ -833,34 +856,54 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected void ResetTypeInfo()
     {
         TypeInfo = null;
-        _asObject = false;
-        Converter = null;
-        PgTypeId = default;
-        ResetBindingInfo();
+        ConcreteTypeInfo = null;
+        DisposeBindingState();
     }
 
-    private protected void ResetBindingInfo()
+    private protected void DisposeBindingState()
     {
-        if (WriteSize is null)
+        try
         {
-            Debug.Assert(_writeState == default && _useSubStream == default && Format == default && _bufferRequirement == default);
-            return;
-        }
+            if (_bindingContext is not { } bindingContext)
+            {
+                Debug.Assert(!_useSubStream && _subStream is null);
+                return;
+            }
 
-        if (_writeState is not null)
-        {
-            TypeInfo?.DisposeWriteState(_writeState);
-            _writeState = null;
+            // Dispose write state first as it may hold a reference to _subStream.
+            Debug.Assert(ConcreteTypeInfo is not null);
+            Exception? disposalException = null;
+            if (bindingContext.WriteState is { } writeState)
+            {
+                try
+                {
+                    ConcreteTypeInfo.DisposeWriteState(writeState);
+                }
+                catch (Exception ex)
+                {
+                    disposalException = ex;
+                }
+            }
+
+            if (_useSubStream)
+            {
+                Debug.Assert(_subStream is not null);
+                try
+                {
+                    _subStream.Dispose();
+                }
+                catch (Exception ex) when (disposalException is not null)
+                {
+                    throw new AggregateException(disposalException, ex);
+                }
+            }
         }
-        if (_useSubStream)
+        finally
         {
             _useSubStream = false;
-            _subStream?.Dispose();
             _subStream = null;
+            _bindingContext = null;
         }
-        WriteSize = null;
-        Format = default;
-        _bufferRequirement = default;
     }
 
     internal bool IsInputDirection => Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Input;

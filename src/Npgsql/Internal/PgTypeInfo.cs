@@ -1,18 +1,16 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public class PgTypeInfo
+public abstract class PgTypeInfo
 {
-    readonly bool _canBinaryConvert;
-    readonly BufferRequirements _binaryBufferRequirements;
-
-    readonly bool _canTextConvert;
-    readonly BufferRequirements _textBufferRequirements;
-
     PgTypeInfo(PgSerializerOptions options, Type type, Type? unboxedType)
     {
         if (unboxedType is not null && !type.IsAssignableFrom(unboxedType))
@@ -25,32 +23,13 @@ public class PgTypeInfo
         SupportsWriting = true;
     }
 
-    public PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
-        : this(options, converter.TypeToConvert, unboxedType)
-    {
-        Converter = converter;
-        PgTypeId = options.GetCanonicalTypeId(pgTypeId);
-        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
-        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
-    }
-
-    private protected PgTypeInfo(PgSerializerOptions options, Type type, PgConverterResolution? resolution, Type? unboxedType = null)
+    private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? unboxedType = null)
         : this(options, type, unboxedType)
-    {
-        if (resolution is { } res)
-        {
-            // Resolutions should always be in canonical form already.
-            if (options.PortableTypeIds && res.PgTypeId.IsOid || !options.PortableTypeIds && res.PgTypeId.IsDataTypeName)
-                throw new ArgumentException("Given type id is not in canonical form. Make sure ConverterResolver implementations close over canonical ids, e.g. by calling options.GetCanonicalTypeId(pgTypeId) on the constructor arguments.", nameof(PgTypeId));
+        => PgTypeId = pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null;
 
-            PgTypeId = res.PgTypeId;
-            Converter = res.Converter;
-            _canBinaryConvert = res.Converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
-            _canTextConvert = res.Converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
-        }
-    }
-
-    bool HasCachedInfo(PgConverter converter) => ReferenceEquals(Converter, converter);
+    private protected PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
+        : this(options, converter.TypeToConvert, pgTypeId, unboxedType)
+        => Converter = converter;
 
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
@@ -59,19 +38,264 @@ public class PgTypeInfo
     public bool SupportsWriting { get; init; }
     public DataFormat? PreferredFormat { get; init; }
 
-    // Doubles as the storage for the converter coming from a default resolution (used to confirm whether we can use cached info).
-    PgConverter? Converter { get; }
-    [MemberNotNullWhen(false, nameof(Converter))]
-    [MemberNotNullWhen(false, nameof(PgTypeId))]
-    internal bool IsResolverInfo => GetType() == typeof(PgResolverTypeInfo);
-
-    // TODO pull validate from options + internal exempt for perf?
-    internal bool ValidateResolution => true;
+    // Doubles as the storage for the converter coming from a default provider result (used to confirm whether we can use cached info).
+    protected PgConverter? Converter { get; }
 
     // Used for internal converters to save on binary bloat.
     internal bool IsBoxing { get; }
 
     public PgTypeId? PgTypeId { get; }
+
+    public PgConcreteTypeInfo GetConcreteTypeInfo(Field field)
+    {
+        if (this is not PgProviderTypeInfo providerTypeInfo)
+            return (PgConcreteTypeInfo)this;
+
+        return providerTypeInfo.GetConcreteTypeInfo(field) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(field.PgTypeId);
+    }
+
+    public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value)
+    {
+        if (this is not PgProviderTypeInfo providerTypeInfo)
+            return (PgConcreteTypeInfo)this;
+
+        return providerTypeInfo.GetConcreteTypeInfo(value, PgTypeId) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(PgTypeId);
+    }
+
+    // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
+    public PgConcreteTypeInfo GetObjectConcreteTypeInfo(object? value)
+    {
+        switch (this)
+        {
+        case PgConcreteTypeInfo v:
+            return v;
+        case PgProviderTypeInfo providerTypeInfo:
+            PgConcreteTypeInfo? concreteTypeInfo = null;
+            if (value is not DBNull)
+                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(value, PgTypeId);
+            return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(PgTypeId);
+        default:
+            return ThrowNotSupported();
+        }
+
+        static PgConcreteTypeInfo ThrowNotSupported()
+            => throw new NotSupportedException("Should not happen, please file a bug.");
+    }
+
+    // We assume a boxing type info does not support reading as the converter won't be able to produce the derived type statically.
+    // Cases like Array converters unboxing to int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
+    internal static bool GetDefaultSupportsReading(Type type, Type? reportedType)
+        => reportedType is null || ComputeUnboxedType(type, reportedType) is not { } unboxedType || unboxedType == type;
+
+    protected static Type? ComputeUnboxedType(Type converterType, Type reportedType)
+    {
+        // The hierarchy that should hold for things to work correctly is object < converterType < matchedType.
+        Debug.Assert(converterType.IsAssignableFrom(reportedType) || reportedType == typeof(object));
+
+        // A special case for object matches, where we return a more specific type than was reported.
+        // This is to report e.g. Array converters as Array when their reported type was object.
+        if (reportedType == typeof(object))
+        {
+            return converterType != typeof(object) ? converterType : null;
+        }
+
+        // This is to report e.g. Array converters as int[,,,] when their reported type was such.
+        return reportedType != converterType ? reportedType : null;
+    }
+}
+
+public sealed class PgProviderTypeInfo : PgTypeInfo
+{
+    readonly PgConcreteTypeInfoProvider _typeInfoProvider;
+    readonly PgConcreteTypeInfo? _defaultConcrete;
+
+    // TODO pull validate from options + internal exempt for perf?
+    internal bool ValidateProviderResults => true;
+
+    public PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId)
+        : this(options, typeInfoProvider, pgTypeId, reportedType: null)
+    {}
+
+    // We always mark providers with type object as boxing, as they may freely return converters for any type (see PgConcreteTypeInfoProvider.Validate).
+    internal PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? reportedType)
+        : base(options, typeInfoProvider.TypeToConvert, pgTypeId,
+            (reportedType is null ? null : ComputeUnboxedType(typeInfoProvider.TypeToConvert, reportedType))
+            ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
+    {
+        _typeInfoProvider = typeInfoProvider;
+        // Always validate the default provider result, the info will be re-used so there is no real downside.
+        _defaultConcrete = typeInfoProvider.GetDefaultInternal(
+            validate: true, options.PortableTypeIds, pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null);
+    }
+
+    public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(T? value, PgTypeId? expectedPgTypeId)
+    {
+        if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
+
+        return _typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
+            ? providerT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
+            : ThrowNotSupportedType(typeof(T));
+
+        PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
+            => throw new NotSupportedException(IsBoxing
+                ? $"TypeInfo only supports boxing conversions, call {nameof(GetAsObjectConcreteTypeInfo)} or {nameof(GetObjectConcreteTypeInfo)} instead."
+                : $"TypeInfo is not of type {type}");
+    }
+
+    public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(object? value, PgTypeId? expectedPgTypeId)
+    {
+        if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
+
+        return _typeInfoProvider.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+    }
+
+    public new PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)
+    {
+        if (PgTypeId is { } decidedId && field.PgTypeId != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(field));
+
+        return _typeInfoProvider.GetInternal(this, field);
+    }
+
+    public PgConcreteTypeInfo GetDefaultConcreteTypeInfo(PgTypeId? pgTypeId)
+    {
+        if (pgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(pgTypeId));
+
+        return _typeInfoProvider.GetDefaultInternal(ValidateProviderResults, Options.PortableTypeIds, pgTypeId ?? PgTypeId);
+    }
+
+    public PgConcreteTypeInfoProvider GetTypeInfoProvider() => _typeInfoProvider;
+
+    static void ThrowUnexpectedPgTypeId(string parameterName)
+        => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
+}
+
+public sealed class PgConcreteTypeInfo : PgTypeInfo
+{
+    readonly bool _canBinaryConvert;
+    readonly BufferRequirements _binaryBufferRequirements;
+
+    readonly bool _canTextConvert;
+    readonly BufferRequirements _textBufferRequirements;
+
+    public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
+        : this(options, converter, pgTypeId, reportedType: null)
+    {}
+
+    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? reportedType)
+        : base(options, converter, pgTypeId, reportedType is null ? null : ComputeUnboxedType(converter.TypeToConvert, reportedType))
+    {
+        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
+        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
+    }
+
+    public new PgConverter Converter => base.Converter!;
+    public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
+
+    bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        switch (format)
+        {
+        case DataFormat.Binary:
+            bufferRequirements = _binaryBufferRequirements;
+            return _canBinaryConvert;
+        case DataFormat.Text:
+            bufferRequirements = _textBufferRequirements;
+            return _canTextConvert;
+        }
+
+        return converter.CanConvert(format, out bufferRequirements);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    bool ShouldReadAsObject<T>()
+        // If we have an exact type match we can use e.g. a converter for ints in a strongly typed fashion.
+        // If it's not a value type it doesn't matter so we can skip the check there.
+        => typeof(T) == typeof(object) || (IsBoxing && (typeof(T).IsValueType || typeof(T) != Converter.TypeToConvert));
+
+    internal T ConverterRead<T>(PgReader reader)
+    {
+        if (ShouldReadAsObject<T>())
+            return (T)Converter.ReadAsObject(reader);
+
+        // Justification: avoid perf cost of casting to a known base class type per field read.
+        Debug.Assert(Converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(Converter).Read(reader);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ValueTask<T> ConverterReadAsync<T>(PgReader reader, CancellationToken cancellationToken)
+    {
+        var converter = Converter;
+        if (ShouldReadAsObject<T>())
+        {
+            var task = converter.ReadAsObjectAsync(reader, cancellationToken);
+            return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
+        }
+
+        // Justification: avoid perf cost of casting to a known base class type per field read.
+        Debug.Assert(converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(converter).ReadAsync(reader, cancellationToken);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        async ValueTask<T> ReadAndUnboxAsync(ValueTask<object> task)
+            => (T)await task.ConfigureAwait(false);
+    }
+
+    // TODO move asObject checks from NpgsqlParameter to here.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void ConverterWrite<T>(PgWriter writer, [DisallowNull]T value)
+    {
+        // Justification: avoid perf cost of casting to a known base class type per parameter write.
+        Debug.Assert(Converter is PgConverter<T>);
+        Unsafe.As<PgConverter<T>>(Converter).Write(writer, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ValueTask ConverterWriteAsync<T>(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
+    {
+        // Justification: avoid perf cost of casting to a known base class type per parameter write.
+        Debug.Assert(Converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(Converter).WriteAsync(writer, value, cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)
+    {
+        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
+        reader.StartRead(dataFormat, bufferRequirement);
+        var result = ConverterRead<T>(reader);
+        reader.EndRead();
+        return result;
+    }
+
+    internal async ValueTask<T> ReadFieldValueAsync<T>(PgReader reader, DataFormat dataFormat, CancellationToken cancellationToken)
+    {
+        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
+        await reader.StartReadAsync(dataFormat, bufferRequirement, cancellationToken).ConfigureAwait(false);
+        T result;
+        if (ShouldReadAsObject<T>())
+        {
+            result = (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            // Justification: avoid perf cost of casting to a known base class type per field read.
+            Debug.Assert(Converter is PgConverter<T>);
+            result = await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+        }
+        await reader.EndReadAsync().ConfigureAwait(false);
+        return result;
+    }
+
+    public BufferRequirements? GetBufferRequirements(DataFormat format)
+    {
+        var success = CanConvert(Converter, format, out var bufferRequirements);
+        return success ? bufferRequirements : null;
+    }
 
     // Having it here so we can easily extend any behavior.
     internal void DisposeWriteState(object writeState)
@@ -80,145 +304,63 @@ public class PgTypeInfo
             disposable.Dispose();
     }
 
-    public PgConverterResolution GetResolution<T>(T? value)
-    {
-        if (this is not PgResolverTypeInfo resolverInfo)
-            return new(Converter!, PgTypeId.GetValueOrDefault());
-
-        var resolution = resolverInfo.GetResolution(value, null);
-        return resolution ?? resolverInfo.GetDefaultResolution(null);
-    }
-
-    // Note: this api is not called GetResolutionAsObject as the semantics are extended, DBNull is a NULL value for all object values.
-    public PgConverterResolution GetObjectResolution(object? value)
-    {
-        switch (this)
-        {
-        case { IsResolverInfo: false }:
-            return new(Converter, PgTypeId.GetValueOrDefault());
-        case PgResolverTypeInfo resolverInfo:
-            PgConverterResolution? resolution = null;
-            if (value is not DBNull)
-                resolution = resolverInfo.GetResolutionAsObject(value, null);
-            return resolution ?? resolverInfo.GetDefaultResolution(null);
-        default:
-            return ThrowNotSupported();
-        }
-
-        static PgConverterResolution ThrowNotSupported()
-            => throw new NotSupportedException("Should not happen, please file a bug.");
-    }
-
-    /// Throws if the instance is a PgResolverTypeInfo.
-    internal PgConverterResolution GetResolution()
-    {
-        if (IsResolverInfo)
-            ThrowHelper.ThrowInvalidOperationException("Instance is a PgResolverTypeInfo.");
-        return new(Converter, PgTypeId.GetValueOrDefault());
-    }
-
-    bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        if (HasCachedInfo(converter))
-        {
-            switch (format)
-            {
-            case DataFormat.Binary:
-                bufferRequirements = _binaryBufferRequirements;
-                return _canBinaryConvert;
-            case DataFormat.Text:
-                bufferRequirements = _textBufferRequirements;
-                return _canTextConvert;
-            }
-        }
-
-        return converter.CanConvert(format, out bufferRequirements);
-    }
-
-    public BufferRequirements? GetBufferRequirements(PgConverter converter, DataFormat format)
-    {
-        var success = CanConvert(converter, format, out var bufferRequirements);
-        return success ? bufferRequirements : null;
-    }
-
     // TryBind for reading.
-    internal bool TryBind(Field field, DataFormat format, out PgConverterInfo info)
+    internal bool TryBindField(DataFormat format, out PgFieldBindingContext context)
     {
-        switch (this)
+        if (!CanConvert(Converter, format, out var bufferRequirements))
         {
-        case { IsResolverInfo: false }:
-            if (!CanConvert(Converter, format, out var bufferRequirements))
-            {
-                info = default;
-                return false;
-            }
-            info = new(this, Converter, bufferRequirements.Read);
-            return true;
-        case PgResolverTypeInfo resolverInfo:
-            var resolution = resolverInfo.GetResolution(field);
-            if (!CanConvert(resolution.Converter, format, out bufferRequirements))
-            {
-                info = default;
-                return false;
-            }
-            info = new(this, resolution.Converter, bufferRequirements.Read);
-            return true;
-        default:
-            throw new NotSupportedException("Should not happen, please file a bug.");
+            context = default;
+            return false;
         }
+        context = new(format, bufferRequirements.Read);
+        return true;
     }
 
     // Bind for reading.
-    internal PgConverterInfo Bind(Field field, DataFormat format)
+    internal PgFieldBindingContext BindField(DataFormat format)
     {
-        if (!TryBind(field, format, out var info))
-            ThrowHelper.ThrowInvalidOperationException($"Resolved converter does not support {format} format.");
+        if (!TryBindField(format, out var info))
+            ThrowHelper.ThrowInvalidOperationException($"Converter does not support {format} format.");
 
         return info;
     }
 
     // Bind for writing.
     /// When result is null, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? Bind<T>(PgConverter<T> converter, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgValueBindingContext BindValue<T>(T? value, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
-        writeState = null;
-        if (converter.GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
-        {
-            size = default;
-            return null;
-        }
+        object? writeState = null;
+        if (((PgConverter<T>)Converter).GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+            return new(format, bufferRequirements.Write, null, null);
 
-        size = sizeOrDbNull;
-        return new(this, converter, bufferRequirements.Write);
+        return new(format, bufferRequirements.Write, size, writeState);
     }
 
     // Bind for writing.
     // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
     /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? BindObject(PgConverter converter, object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgValueBindingContext BindObjectValue(object? value, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        writeState = null;
-        if (value is DBNull && Type != typeof(DBNull) || converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
+        object? writeState = null;
+        if (value is DBNull && Type != typeof(DBNull) || Converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } size)
         {
-            size = default;
-            return null;
+            return new(format, bufferRequirements.Write, null, null);
         }
 
-        size = sizeOrDbNull;
-        return new(this, converter, bufferRequirements.Write);
+        return new(format, bufferRequirements.Write, size, writeState);
     }
 
     DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
@@ -242,88 +384,35 @@ public class PgTypeInfo
             return default;
         }
     }
-
-    // We assume a boxing type info does not support reading as the converter won't be able to produce the derived type statically.
-    // Cases like Array converters unboxing to int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
-    internal static bool GetDefaultSupportsReading(Type type, Type? unboxedType)
-        => unboxedType is null || unboxedType == type;
 }
 
-public sealed class PgResolverTypeInfo(
-    PgSerializerOptions options,
-    PgConverterResolver converterResolver,
-    PgTypeId? pgTypeId,
-    Type? unboxedType = null)
-    : PgTypeInfo(options,
-        converterResolver.TypeToConvert,
-        pgTypeId is { } typeId ? ResolveDefaultId(options, converterResolver, typeId) : null,
-        unboxedType ?? (converterResolver.TypeToConvert == typeof(object) ? typeof(object) : null))
+readonly struct PgFieldBindingContext
 {
-    // We always mark resolvers with type object as boxing, as they may freely return converters for any type (see PgConverterResolver.Validate).
-
-    // We'll always validate the default resolution, the info will be re-used so there is no real downside.
-    static PgConverterResolution ResolveDefaultId(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId typeId)
-        => converterResolver.GetDefaultInternal(validate: true, options.PortableTypeIds, options.GetCanonicalTypeId(typeId));
-
-    public PgConverterResolution? GetResolution<T>(T? value, PgTypeId? expectedPgTypeId)
+    internal PgFieldBindingContext(DataFormat dataFormat, Size bufferRequirement)
     {
-        return converterResolver is PgConverterResolver<T> resolverT
-            ? resolverT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
-            : ThrowNotSupportedType(typeof(T));
-
-        PgConverterResolution ThrowNotSupportedType(Type? type)
-            => throw new NotSupportedException(IsBoxing
-                ? "TypeInfo only supports boxing conversions, call GetResolutionAsObject instead."
-                : $"TypeInfo is not of type {type}");
-    }
-
-    public PgConverterResolution? GetResolutionAsObject(object? value, PgTypeId? expectedPgTypeId)
-        => converterResolver.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
-
-    public PgConverterResolution GetResolution(Field field)
-        => converterResolver.GetInternal(this, field);
-
-    public PgConverterResolution GetDefaultResolution(PgTypeId? expectedPgTypeId)
-        => converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, expectedPgTypeId ?? PgTypeId);
-
-    public PgConverterResolver GetConverterResolver() => converterResolver;
-}
-
-public readonly struct PgConverterResolution(PgConverter converter, PgTypeId pgTypeId)
-{
-    public PgConverter Converter { get; } = converter;
-    public PgTypeId PgTypeId { get; } = pgTypeId;
-
-    public PgConverter<T> GetConverter<T>() => (PgConverter<T>)Converter;
-}
-
-readonly struct PgConverterInfo
-{
-    readonly PgTypeInfo _typeInfo;
-
-    public PgConverterInfo(PgTypeInfo pgTypeInfo, PgConverter converter, Size bufferRequirement)
-    {
-        _typeInfo = pgTypeInfo;
-        Converter = converter;
+        DataFormat = dataFormat;
         BufferRequirement = bufferRequirement;
-
-        // Object typed resolvers can return any type of converter, so we check the type of the converter instead.
-        // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
-        if (pgTypeInfo.IsResolverInfo && pgTypeInfo.Type == typeof(object))
-            TypeToConvert = Converter.TypeToConvert;
-        else
-            TypeToConvert = pgTypeInfo.Type;
     }
 
-    public bool IsDefault => _typeInfo is null;
-
-    public Type TypeToConvert { get; }
-
-    public PgTypeInfo TypeInfo => _typeInfo;
-
-    public PgConverter Converter { get; }
+    public DataFormat DataFormat { get; }
     public Size BufferRequirement { get; }
+}
 
-    /// Whether Converter.TypeToConvert matches PgTypeInfo.Type, if it doesn't object apis should be used.
-    public bool IsBoxingConverter => _typeInfo.IsBoxing;
+readonly struct PgValueBindingContext
+{
+    public DataFormat DataFormat { get; }
+    public Size BufferRequirement { get; }
+    public Size? Size { get; }
+    public object? WriteState { get; }
+
+    internal PgValueBindingContext(DataFormat dataFormat, Size bufferRequirement, Size? size, object? writeState)
+    {
+        DataFormat = dataFormat;
+        BufferRequirement = bufferRequirement;
+        Size = size;
+        WriteState = writeState;
+    }
+
+    [MemberNotNullWhen(false, nameof(Size))]
+    public bool IsDbNullBinding => Size is null;
 }

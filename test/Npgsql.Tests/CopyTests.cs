@@ -615,7 +615,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    public async Task ReadConverterResolverType()
+    public async Task ReadTypeInfoProviderType()
     {
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing: fails");

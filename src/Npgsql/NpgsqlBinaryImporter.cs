@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 using InfiniteTimeout = System.Threading.Timeout;
 using static Npgsql.Util.Statics;
@@ -278,14 +277,13 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             // We only retrieve previous values if anything actually changed.
             // For object typed parameters we must do so whenever setting NpgsqlParameter.Value would reset the type info.
             PgTypeInfo? previousTypeInfo = null;
-            PgConverter? previousConverter = null;
-            PgTypeId previousTypeId = default;
+            PgConcreteTypeInfo? previousConcreteTypeInfo = null;
             if (!newParam && (
                     (typeof(T) == typeof(object) && param.ShouldResetObjectTypeInfo(value))
                     || param._npgsqlDbType != npgsqlDbType
                     || param._dataTypeName != dataTypeName))
             {
-                param.GetResolutionInfo(out previousTypeInfo, out previousConverter, out previousTypeId);
+                param.GetResolutionInfo(out previousTypeInfo, out previousConcreteTypeInfo);
                 if (!newParam)
                 {
                     param.ResetDbType();
@@ -300,14 +298,14 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             param.TypedValue = value;
             param.ResolveTypeInfo(_connector.SerializerOptions, _connector.DbTypeResolver);
 
-            if (previousTypeInfo is not null && previousConverter is not null && param.PgTypeId != previousTypeId)
+            if (previousTypeInfo is not null && previousConcreteTypeInfo is not null && param.PgTypeId != previousConcreteTypeInfo.PgTypeId)
             {
                 var currentPgTypeId = param.PgTypeId;
                 // We should only rollback values when the stored instance was used. We'll throw before writing the new instance back anyway.
                 // Also always rolling back could set PgTypeInfos that were resolved for a type that doesn't match the T of the NpgsqlParameter.
                 if (!newParam)
-                    param.SetResolutionInfo(previousTypeInfo, previousConverter, previousTypeId);
-                throw new InvalidOperationException($"Write for column {_column} resolves to a different PostgreSQL type: {currentPgTypeId} than the first row resolved to ({previousTypeId}). " +
+                    param.SetResolutionInfo(previousTypeInfo, previousConcreteTypeInfo);
+                throw new InvalidOperationException($"Write for column {_column} resolves to a different PostgreSQL type: {currentPgTypeId} than the first row resolved to ({previousConcreteTypeInfo.PgTypeId}). " +
                                                     $"Please make sure to use clr types that resolve to the same PostgreSQL type across rows. " +
                                                     $"Alternatively pass the same NpgsqlDbType or DataTypeName to ensure the PostgreSQL type ends up to be identical." );
             }

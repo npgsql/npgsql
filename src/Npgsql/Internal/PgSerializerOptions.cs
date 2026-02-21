@@ -27,10 +27,10 @@ public sealed class PgSerializerOptions
         _resolverChain = resolverChain ?? new();
         _timeZoneProvider = timeZoneProvider;
         DatabaseInfo = databaseInfo;
-        UnspecifiedDBNullTypeInfo = new(this, new Converters.Internal.VoidConverter(), DataTypeName.Unspecified, unboxedType: typeof(DBNull));
+        UnspecifiedDBNullTypeInfo = new(this, new Converters.Internal.VoidConverter(), DataTypeName.Unspecified, reportedType: typeof(DBNull));
     }
 
-    internal PgTypeInfo UnspecifiedDBNullTypeInfo { get; }
+    internal PgConcreteTypeInfo UnspecifiedDBNullTypeInfo { get; }
 
     PostgresType? _textPgType;
     internal PgTypeId TextPgTypeId => ToCanonicalTypeId(_textPgType ??= DatabaseInfo.GetPostgresType(DataTypeNames.Text));

@@ -5,12 +5,15 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConverter
 {
+    private protected static readonly bool BufferedConverterChecks = Statics.EnableAssertions;
+
     internal DbNullPredicate DbNullPredicateKind { get; }
     public bool IsDbNullable => DbNullPredicateKind is not DbNullPredicate.None;
 
@@ -177,13 +180,6 @@ static class PgConverterExtensions
         }
 
         return size;
-    }
-
-    internal static PgConverter<T> UnsafeDowncast<T>(this PgConverter converter)
-    {
-        // Justification: avoid perf cost of casting to a known base class type per read/write, see callers.
-        Debug.Assert(converter is PgConverter<T>);
-        return Unsafe.As<PgConverter<T>>(converter);
     }
 }
 
