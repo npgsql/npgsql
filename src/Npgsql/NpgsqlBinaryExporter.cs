@@ -361,7 +361,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         // Binary export has no type info so we only do caller-directed interpretation of data.
         return info.Bind(new Field("?",
-            info.PgTypeId ?? ((PgResolverTypeInfo)info).GetDefaultResolution(null).PgTypeId, -1), DataFormat.Binary);
+            info.PgTypeId ?? ((PgProviderTypeInfo)info).GetDefaultConcreteTypeInfo(null).PgTypeId, -1), DataFormat.Binary);
 
         PgTypeId GetRepresentationalOrDefault(string dataTypeName)
         {
