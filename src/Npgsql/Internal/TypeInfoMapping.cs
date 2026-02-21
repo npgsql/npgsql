@@ -306,7 +306,7 @@ public sealed class TypeInfoMappingCollection
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(typeof(T), mapping, static (_, info) => info.AsConcreteTypeInfo().Converter, copyPreferredFormat: true))
+                CreateComposedFactory(typeof(T), mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -415,15 +415,15 @@ public sealed class TypeInfoMappingCollection
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.AsConcreteTypeInfo().Converter), GetDefaultConfigure(isDefault));
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).Converter), GetDefaultConfigure(isDefault));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.AsConcreteTypeInfo().Converter), GetDefaultConfigure(matchRequirement));
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).Converter), GetDefaultConfigure(matchRequirement));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.AsConcreteTypeInfo().Converter), configure);
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).Converter), configure);
 
     // Lives outside to prevent capture of T.
     void AddStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
@@ -433,7 +433,7 @@ public sealed class TypeInfoMappingCollection
         mapping = configure?.Invoke(mapping) ?? mapping;
         if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(type, mapping, static (_, info) => info.AsConcreteTypeInfo().Converter, copyPreferredFormat: true))
+                CreateComposedFactory(type, mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -522,8 +522,8 @@ public sealed class TypeInfoMappingCollection
         {
             var converter =
                 new PolymorphicArrayConverter<Array>(
-                    (PgConverter<Array>)innerInfo.AsConcreteTypeInfo().Converter,
-                    (PgConverter<Array>)nullableInnerInfo.AsConcreteTypeInfo().Converter);
+                    (PgConverter<Array>)((PgConcreteTypeInfo)innerInfo).Converter,
+                    (PgConverter<Array>)((PgConcreteTypeInfo)nullableInnerInfo).Converter);
 
             return new PgConcreteTypeInfo(innerInfo.Options, converter,
                 innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
@@ -708,7 +708,7 @@ public sealed class TypeInfoMappingCollection
     static ArrayBasedArrayConverter<Array, TElement> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.AsConcreteTypeInfo(), mapping.Type);
+            return new ArrayBasedArrayConverter<Array, TElement>((PgConcreteTypeInfo)elemInfo, mapping.Type);
 
         ThrowBoxingNotSupported(provider: false);
         return default;
@@ -717,7 +717,7 @@ public sealed class TypeInfoMappingCollection
     static ListBasedArrayConverter<IList<TElement>, TElement> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ListBasedArrayConverter<IList<TElement>, TElement>(elemInfo.AsConcreteTypeInfo());
+            return new ListBasedArrayConverter<IList<TElement>, TElement>((PgConcreteTypeInfo)elemInfo);
 
         ThrowBoxingNotSupported(provider: false);
         return default;
