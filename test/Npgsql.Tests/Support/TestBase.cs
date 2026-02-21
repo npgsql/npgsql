@@ -226,18 +226,26 @@ public abstract class TestBase
     public readonly struct DataTypeInference
     {
         /// <summary>
-        /// Data type is inferred from the CLR value and matches the values under test.
+        /// Data type is inferred from the CLR value and matches the data type under test.
         /// </summary>
         public static DataTypeInference Match => new(ExpectedInference.Match);
 
         /// <summary>
-        /// Data type is inferred from the CLR value but differs from the values under test.
+        /// Data type is inferred from the CLR value but differs from the data type under test.
         /// </summary>
+        /// <remarks>
+        /// Used when we get some inferred data type (e.g. CLR strings are inferred to be 'text') but this does not match the data type (e.g. 'json') under test.
+        /// </remarks>
         public static DataTypeInference Mismatch => new(ExpectedInference.Mismatch);
 
         /// <summary>
         /// Data type can not be inferred from the CLR value.
         /// </summary>
+        /// <remarks>
+        /// This is for CLR types that are statically unknown to Npgsql (plugin types: NodaTime/NTS, composite types, enums...),
+        /// or where we specifically don't want to infer a data type because there's no good option
+        /// (e.g. uint can be mapped to 'oid/xid/cid', but we don't want any of these as a default/inferred data type)
+        /// </remarks>
         public static DataTypeInference Nothing => new(ExpectedInference.Nothing);
 
         public ExpectedInference Expected { get; }
