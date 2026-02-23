@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
@@ -26,7 +27,7 @@ public class EnumTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         dataSourceBuilder.MapEnum<Mood>(type);
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false);
+        await AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -43,7 +44,7 @@ public class EnumTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         await using var dataSource = dataSourceBuilder.Build();
 
         Assert.That(isUnmapSuccessful);
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false));
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
     }
 
     [Test]
@@ -56,7 +57,7 @@ public class EnumTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapEnum(typeof(Mood), type);
         await using var dataSource = dataSourceBuilder.Build();
-        await AssertType(dataSource, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false);
+        await AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -73,7 +74,7 @@ public class EnumTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase
         await using var dataSource = dataSourceBuilder.Build();
 
         Assert.That(isUnmapSuccessful);
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, isDataTypeInferredFromValue: false));
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
     }
 
     [Test]
@@ -91,7 +92,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         dataSourceBuilder.MapEnum<TestEnum>(type2);
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new[] { Mood.Ok, Mood.Sad }, "{ok,sad}", type1 + "[]", isDataTypeInferredFromValue: false);
+        await AssertType(dataSource, new[] { Mood.Ok, Mood.Sad }, "{ok,sad}", type1 + "[]", dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -105,7 +106,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         dataSourceBuilder.MapEnum<Mood>(type);
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new[] { Mood.Ok, Mood.Happy }, "{ok,happy}", type + "[]", isDataTypeInferredFromValue: false);
+        await AssertType(dataSource, new[] { Mood.Ok, Mood.Happy }, "{ok,happy}", type + "[]", dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
@@ -119,9 +120,9 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         dataSourceBuilder.MapEnum<NameTranslationEnum>(enumName1);
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, NameTranslationEnum.Simple, "simple", enumName1, isDataTypeInferredFromValue: false);
-        await AssertType(dataSource, NameTranslationEnum.TwoWords, "two_words", enumName1, isDataTypeInferredFromValue: false);
-        await AssertType(dataSource, NameTranslationEnum.SomeClrName, "some_database_name", enumName1, isDataTypeInferredFromValue: false);
+        await AssertType(dataSource, NameTranslationEnum.Simple, "simple", enumName1, dataTypeInference: DataTypeInference.Nothing);
+        await AssertType(dataSource, NameTranslationEnum.TwoWords, "two_words", enumName1, dataTypeInference: DataTypeInference.Nothing);
+        await AssertType(dataSource, NameTranslationEnum.SomeClrName, "some_database_name", enumName1, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
@@ -135,9 +136,9 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         dataSourceBuilder.MapEnum<NameTranslationEnum>(type, nameTranslator: new NpgsqlNullNameTranslator());
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, NameTranslationEnum.Simple, "Simple", type, isDataTypeInferredFromValue: false);
-        await AssertType(dataSource, NameTranslationEnum.TwoWords, "TwoWords", type, isDataTypeInferredFromValue: false);
-        await AssertType(dataSource, NameTranslationEnum.SomeClrName, "some_database_name", type, isDataTypeInferredFromValue: false);
+        await AssertType(dataSource, NameTranslationEnum.Simple, "Simple", type, dataTypeInference: DataTypeInference.Nothing);
+        await AssertType(dataSource, NameTranslationEnum.TwoWords, "TwoWords", type, dataTypeInference: DataTypeInference.Nothing);
+        await AssertType(dataSource, NameTranslationEnum.SomeClrName, "some_database_name", type, dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]
@@ -152,8 +153,8 @@ CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
 CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
         await connection.ReloadTypesAsync();
 
-        await AssertType(connection, Mood.Happy, "happy", type1, isDataTypeInferredFromValue: false, isDefault: false);
-        await AssertType(connection, AnotherEnum.Value2, "value2", type2, isDataTypeInferredFromValue: false, isDefault: false);
+        await AssertType(connection, Mood.Happy, "happy", type1, dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
+        await AssertType(connection, AnotherEnum.Value2, "value2", type2, dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -186,7 +187,9 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
         await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
         await connection.ReloadTypesAsync();
 
-        await AssertType(connection, "happy", "happy", type, isDataTypeInferredFromValue: false, isDefaultForWriting: false);
+        await AssertType(connection, "happy", "happy", type,
+                dataTypeInference: DataTypeInference.Mismatch,
+                dbType: new(DbType.Object, DbType.String));
     }
 
     enum NameTranslationEnum
@@ -212,8 +215,8 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
         dataSourceBuilder.MapEnum<Enum2>($"{schema2}.my_enum");
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, Enum1.One, "one", $"{schema1}.my_enum", isDataTypeInferredFromValue: false);
-        await AssertType(dataSource, Enum2.Alpha, "alpha", $"{schema2}.my_enum", isDataTypeInferredFromValue: false);
+        await AssertType(dataSource, Enum1.One, "one", $"{schema1}.my_enum", dataTypeInference: DataTypeInference.Nothing);
+        await AssertType(dataSource, Enum2.Alpha, "alpha", $"{schema2}.my_enum", dataTypeInference: DataTypeInference.Nothing);
     }
 
     enum Enum1 { One }
