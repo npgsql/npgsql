@@ -26,18 +26,17 @@ abstract class CompositeFieldInfo
         PgTypeId = nominalPgTypeId;
 
         if (typeInfo.PgTypeId is null)
-            ThrowHelper.ThrowArgumentException("PgTypeInfo must have a PgTypeId.");
+            throw new ArgumentException("Type info cannot have an undecided PgTypeId.", nameof(typeInfo));
 
-        if (!typeInfo.IsResolverInfo)
+        if (typeInfo is PgConcreteTypeInfo concreteTypeInfo)
         {
-            var resolution = typeInfo.GetResolution();
-            if (typeInfo.GetBufferRequirements(resolution.Converter, DataFormat.Binary) is not { } bufferRequirements)
+            if (concreteTypeInfo.GetBufferRequirements(DataFormat.Binary) is not { } bufferRequirements)
             {
                 ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
                 return;
             }
             _binaryBufferRequirements = bufferRequirements;
-            Converter = resolution.Converter;
+            Converter = concreteTypeInfo.Converter;
         }
     }
 
@@ -49,21 +48,23 @@ abstract class CompositeFieldInfo
             return Converter;
         }
 
-        if (!PgTypeInfo.TryBind(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1), DataFormat.Binary, out var converterInfo))
+        var concreteTypeInfo = PgTypeInfo.GetConcreteTypeInfo(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
+        if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var bindingContext))
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
 
-        readRequirement = converterInfo.BufferRequirement;
-        return converterInfo.Converter;
+        readRequirement = bindingContext.BufferRequirement;
+        return concreteTypeInfo.Converter;
     }
 
     public PgConverter GetWriteInfo(object instance, out Size writeRequirement)
     {
-        if (Converter is null)
-            return BindValue(instance, out writeRequirement);
+        if (Converter is not null)
+        {
+            writeRequirement = _binaryBufferRequirements.Write;
+            return Converter;
+        }
 
-        writeRequirement = _binaryBufferRequirements.Write;
-        return Converter;
-
+        return BindValue(instance, out writeRequirement);
     }
 
     protected ValueTask ReadAsObject(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken)
@@ -131,10 +132,9 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         if (typeInfo.Type != typeof(T))
             throw new InvalidOperationException($"PgTypeInfo type '{typeInfo.Type.FullName}' must be equal to field type '{typeof(T)}'.");
 
-        if (!typeInfo.IsResolverInfo)
+        if (typeInfo is PgConcreteTypeInfo concreteTypeInfo)
         {
-            var resolution = typeInfo.GetResolution();
-            var typeToConvert = resolution.Converter.TypeToConvert;
+            var typeToConvert = concreteTypeInfo.Converter.TypeToConvert;
             _asObject = typeToConvert != typeof(T);
             if (!typeToConvert.IsAssignableFrom(typeof(T)))
                 throw new InvalidOperationException($"Converter type '{typeToConvert.FullName}' must be assignable from field type '{typeof(T)}'.");
@@ -191,8 +191,10 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     protected override PgConverter BindValue(object instance, out Size writeRequirement)
     {
         var value = _getter(instance);
-        var resolution = PgTypeInfo.IsBoxing ? PgTypeInfo.GetObjectResolution(value) : PgTypeInfo.GetResolution(value);
-        if (PgTypeInfo.GetBufferRequirements(resolution.Converter, DataFormat.Binary) is not { } bufferRequirements)
+        var concreteTypeInfo = PgTypeInfo.IsBoxing
+            ? PgTypeInfo.GetObjectConcreteTypeInfo(value)
+            : PgTypeInfo.GetConcreteTypeInfo(value);
+        if (concreteTypeInfo.GetBufferRequirements(DataFormat.Binary) is not { } bufferRequirements)
         {
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
             writeRequirement = default;
@@ -200,7 +202,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         }
 
         writeRequirement = bufferRequirements.Write;
-        return resolution.Converter;
+        return concreteTypeInfo.Converter;
     }
 
     protected override void AddValue(CompositeBuilder builder, object value) => builder.AddValue((T)value);

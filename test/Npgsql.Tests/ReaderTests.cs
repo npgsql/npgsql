@@ -1894,11 +1894,11 @@ LANGUAGE plpgsql VOLATILE";
         var buffer = conn.Connector!.ReadBuffer;
         buffer.FilledBytes += columnLength;
         var reader = buffer.PgReader;
-        reader.Init(columnLength, DataFormat.Binary, resumable: false);
+        reader.Init(columnLength, resumable: false);
         if (async)
-            await reader.StartReadAsync(Size.Unknown, CancellationToken.None);
+            await reader.StartReadAsync(DataFormat.Binary, Size.Unknown, CancellationToken.None);
         else
-            reader.StartRead(Size.Unknown);
+            reader.StartRead(DataFormat.Binary, Size.Unknown);
 
         await using (var _ = reader.GetStream())
         {
@@ -2464,7 +2464,7 @@ sealed class ExplodingTypeHandlerResolverFactory(bool safe) : PgTypeInfoResolver
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
             if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                return new(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
+                return new PgConcreteTypeInfo(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
 
             return null;
         }

@@ -32,8 +32,8 @@ sealed class NetworkTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // inet
             // There are certain IPAddress values like Loopback or Any that return a *private* derived type (see https://github.com/dotnet/runtime/issues/27870).
             mappings.AddType<IPAddress>(DataTypeNames.Inet,
-                static (options, mapping, _) => new PgTypeInfo(options, new IPAddressConverter(), new DataTypeName(mapping.DataTypeName),
-                    unboxedType: mapping.Type != typeof(IPAddress) ? mapping.Type : null),
+                static (options, mapping, _) => new PgConcreteTypeInfo(options, new IPAddressConverter(), new DataTypeName(mapping.DataTypeName),
+                    reportedType: mapping.Type),
                 mapping => mapping with
                 {
                     MatchRequirement = MatchRequirement.Single,
