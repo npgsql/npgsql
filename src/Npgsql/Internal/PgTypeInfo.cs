@@ -319,6 +319,8 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     {
         var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
         await reader.StartReadAsync(dataFormat, bufferRequirement, cancellationToken).ConfigureAwait(false);
+
+        // Copy of ConverterReadAsync to keep everything in one async frame.
         T result;
         if (ShouldReadAsObject<T>())
         {
@@ -330,6 +332,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             Debug.Assert(Converter is PgConverter<T>);
             result = await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
         }
+
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
     }
