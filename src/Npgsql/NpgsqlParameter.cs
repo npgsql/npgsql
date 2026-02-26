@@ -661,14 +661,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             Debug.Assert(typeInfo is not null);
             DisposeBindingState();
-            if (staticValueType == typeof(object) || typeInfo.IsBoxing)
+            if (staticValueType == typeof(object))
             {
                 // Pull from Value (not _value) so we also support object typed generic params.
                 ConcreteTypeInfo = typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState);
             }
             else
             {
-                ConcreteTypeInfo = GetConcreteTypeInfoForTypedValue(typeInfo);
+                ConcreteTypeInfo = !typeInfo.IsStronglyTyped
+                    ? typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState)
+                    : GetConcreteTypeInfoForTypedValue(typeInfo);
             }
         }
 
@@ -723,7 +725,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else
             {
-                _bindingContext = ConcreteTypeInfo.IsBoxing
+                _bindingContext = !ConcreteTypeInfo.IsStronglyTyped
                     ? ConcreteTypeInfo.BindObjectValue(Value, _writeState, requiredFormat)
                     : BindTypedValue(ConcreteTypeInfo, requiredFormat);
             }
@@ -827,7 +829,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 {
                     await writer.StartWrite(async, bindingContext, cancellationToken).ConfigureAwait(false);
                     var typeInfo = ConcreteTypeInfo;
-                    if (typeof(object) == StaticValueType || typeInfo.IsBoxing)
+                    if (StaticValueType == typeof(object) || !typeInfo.IsStronglyTyped)
                     {
                         // Pull from Value so we also support object typed generic params.
                         var value = Value;

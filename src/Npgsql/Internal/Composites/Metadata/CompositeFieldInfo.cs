@@ -235,7 +235,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     protected override PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState)
     {
         var value = _getter(instance);
-        var concreteTypeInfo = PgTypeInfo.IsBoxing
+        var concreteTypeInfo = !PgTypeInfo.IsStronglyTyped
             ? PgTypeInfo.GetObjectConcreteTypeInfo(value, out writeState)
             : PgTypeInfo.GetConcreteTypeInfo(value, out writeState);
         if (concreteTypeInfo.GetBufferRequirements(DataFormat.Binary) is not { } bufferRequirements)

@@ -5,30 +5,30 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
+using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgTypeInfo
 {
-    PgTypeInfo(PgSerializerOptions options, Type type, Type? unboxedType)
+    PgTypeInfo(PgSerializerOptions options, Type type, Type? requestedType)
     {
-        if (unboxedType is not null && !type.IsAssignableFrom(unboxedType))
-            throw new ArgumentException("A value of unboxed type is not assignable to converter type", nameof(unboxedType));
-
         Options = options;
-        IsBoxing = unboxedType is not null;
-        Type = unboxedType ?? type;
-        SupportsReading = GetDefaultSupportsReading(type, unboxedType);
+
+        IsStronglyTyped = requestedType is null || requestedType == type;
+        Type = requestedType is null ? type : GetReportedType(type, requestedType) ?? type;
+
+        SupportsReading = GetDefaultSupportsReading(type, requestedType);
         SupportsWriting = true;
     }
 
-    private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? unboxedType = null)
-        : this(options, type, unboxedType)
+    private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? requestedType = null)
+        : this(options, type, requestedType)
         => PgTypeId = pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null;
 
-    private protected PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
-        : this(options, converter.TypeToConvert, pgTypeId, unboxedType)
+    private protected PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType = null)
+        : this(options, converter.TypeToConvert, pgTypeId, requestedType)
         => Converter = converter;
 
     public Type Type { get; }
@@ -41,8 +41,11 @@ public abstract class PgTypeInfo
     // Doubles as the storage for the converter coming from a default provider result (used to confirm whether we can use cached info).
     protected PgConverter? Converter { get; }
 
-    // Used for internal converters to save on binary bloat.
-    internal bool IsBoxing { get; }
+    // Whether a reported type was given during construction of this instance that is different from the converter type.
+    // This means the converter cannot be used in a strongly typed fashion and will need to use the object apis for reading and writing.
+    // This is generally used to provide one, or fewer, converter(s) to deal with some base type, e.g. Arrays or Streams.
+    // In turn this impacts the number of types (or more commonly, generic instantiations) that need to be compiled for AOT as well.
+    internal bool IsStronglyTyped { get; }
 
     public PgTypeId? PgTypeId { get; }
 
@@ -86,25 +89,17 @@ public abstract class PgTypeInfo
             => throw new NotSupportedException("Should not happen, please file a bug.");
     }
 
-    // We assume a boxing type info does not support reading as the converter won't be able to produce the derived type statically.
-    // Cases like Array converters unboxing to int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
+    // We assume a weakly typed info does not support reading as the converter won't be able to produce the derived type statically.
+    // Cases like Array converters reading int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
-        => requestedType is null || ComputeUnboxedType(type, requestedType) is not { } unboxedType || unboxedType == type;
+        => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
 
-    protected static Type? ComputeUnboxedType(Type converterType, Type requestedType)
+    static Type? GetReportedType(Type converterType, Type requestedType)
     {
-        // The hierarchy that should hold for things to work correctly is object < converterType < requestedType.
-        Debug.Assert(converterType.IsAssignableFrom(requestedType) || requestedType == typeof(object));
+        if (!requestedType.IsInSubtypeRelationshipWith(converterType))
+            throw new ArgumentException($"The requested type {requestedType} is not in a subtype relationship with the converter's type {converterType}.", nameof(requestedType));
 
-        // A special case for object matches, where we return a more specific type than was requested.
-        // This is to report e.g. Array converters as Array when their requested type was object.
-        if (requestedType == typeof(object))
-        {
-            return converterType != typeof(object) ? converterType : null;
-        }
-
-        // This is to report e.g. Array converters as int[,,,] when their requested type was such.
-        return requestedType != converterType ? requestedType : null;
+        return requestedType != converterType && requestedType.IsAssignableTo(converterType) ? requestedType : null;
     }
 }
 
@@ -117,11 +112,8 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         : this(options, typeInfoProvider, pgTypeId, requestedType: null)
     {}
 
-    // We always mark providers with type object as boxing, as they may freely return converters for any type (see PgConcreteTypeInfoProvider.Validate).
     internal PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? requestedType)
-        : base(options, typeInfoProvider.TypeToConvert, pgTypeId,
-            (requestedType is null ? null : ComputeUnboxedType(typeInfoProvider.TypeToConvert, requestedType))
-            ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
+        : base(options, typeInfoProvider.TypeToConvert, pgTypeId, requestedType)
     {
         _typeInfoProvider = typeInfoProvider;
 
@@ -180,9 +172,9 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
 
         PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
-            => throw new NotSupportedException(IsBoxing
-                ? $"TypeInfo only supports boxing conversions, call {nameof(GetAsObjectConcreteTypeInfo)} or {nameof(GetObjectConcreteTypeInfo)} instead."
-                : $"TypeInfo is not of type {type}");
+            => throw new NotSupportedException(type == Type
+                ? $"PgProviderTypeInfo is weakly compatible with type {type}, call {nameof(GetAsObjectConcreteTypeInfo)} instead."
+                : $"PgProviderTypeInfo is incompatible with type {type}");
     }
 
     public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(ProviderValueContext context, object? value, out object? writeState)
@@ -235,7 +227,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     {}
 
     internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
-        : base(options, converter, pgTypeId, requestedType is null ? null : ComputeUnboxedType(converter.TypeToConvert, requestedType))
+        : base(options, converter, pgTypeId, requestedType)
     {
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
@@ -263,7 +255,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     // If it's not a value type it doesn't matter so we can skip the check there.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     bool ShouldReadAsObject<T>()
-        => typeof(T) == typeof(object) || (IsBoxing && (!typeof(T).IsValueType || typeof(T) != Converter.TypeToConvert));
+        => typeof(T) == typeof(object) || (!IsStronglyTyped && (!typeof(T).IsValueType || typeof(T) != Converter.TypeToConvert));
 
     internal T ConverterRead<T>(PgReader reader)
     {

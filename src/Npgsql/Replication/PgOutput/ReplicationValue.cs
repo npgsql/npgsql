@@ -151,13 +151,8 @@ public class ReplicationValue
         }
 
         var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        reader.StartRead(info.BindingContext.BufferRequirement);
-        var result = info.TypeInfo.ShouldReadAsObject<T>()
-            ? (T)info.TypeInfo.Converter.ReadAsObject(reader)
-            : info.TypeInfo.Converter.UnsafeDowncast<T>().Read(reader);
-        reader.EndRead();
-        return result;
+        reader.Init(Length);
+        return info.TypeInfo.ReadFieldValue<T>(PgReader, _fieldDescription.DataFormat);
     }
 
     async ValueTask<T> GetAsyncCore<T>(CancellationToken cancellationToken)
