@@ -681,43 +681,39 @@ public sealed class TypeInfoMappingCollection
 
     static ArrayConverter<Array> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return ArrayConverter<Array>.CreateArrayBased<TElement>((PgConcreteTypeInfo)elemInfo, mapping.Type);
+        if (!elemInfo.HasExactType)
+            ThrowRequiresExactType(provider: false);
 
-        ThrowBoxingNotSupported(provider: false);
-        return default;
+        return ArrayConverter<Array>.CreateArrayBased<TElement>((PgConcreteTypeInfo)elemInfo, mapping.Type);
     }
 
     static ArrayConverter<IList<TElement>> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return ArrayConverter<IList<TElement>>.CreateListBased<TElement>((PgConcreteTypeInfo)elemInfo);
+        if (!elemInfo.HasExactType)
+            ThrowRequiresExactType(provider: false);
 
-        ThrowBoxingNotSupported(provider: false);
-        return default;
+        return ArrayConverter<IList<TElement>>.CreateListBased<TElement>((PgConcreteTypeInfo)elemInfo);
     }
 
     static ArrayTypeInfoProvider<Array, TElement> CreateArrayBasedTypeInfoProvider<TElement>(TypeInfoMapping mapping, PgProviderTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return new ArrayTypeInfoProvider<Array, TElement>(elemInfo, mapping.Type);
+        if (!elemInfo.HasExactType)
+            ThrowRequiresExactType(provider: true);
 
-        ThrowBoxingNotSupported(provider: true);
-        return default;
+        return new ArrayTypeInfoProvider<Array, TElement>(elemInfo, mapping.Type);
     }
 
     static ArrayTypeInfoProvider<IList<TElement>, TElement> CreateListBasedTypeInfoProvider<TElement>(TypeInfoMapping mapping, PgProviderTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return new ArrayTypeInfoProvider<IList<TElement>, TElement>(elemInfo, mapping.Type);
+        if (!elemInfo.HasExactType)
+            ThrowRequiresExactType(provider: true);
 
-        ThrowBoxingNotSupported(provider: true);
-        return default;
+        return new ArrayTypeInfoProvider<IList<TElement>, TElement>(elemInfo, mapping.Type);
     }
 
     [DoesNotReturn]
-    static void ThrowBoxingNotSupported(bool provider)
-        => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(provider ? " type info provider" : "")} instead.");
+    static void ThrowRequiresExactType(bool provider)
+        => throw new InvalidOperationException($"An exact-type info is required here; manually construct a mapping over a casting converter{(provider ? " type info provider" : "")} instead.");
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]

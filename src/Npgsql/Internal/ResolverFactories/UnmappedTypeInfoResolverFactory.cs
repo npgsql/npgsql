@@ -85,7 +85,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
-            subInfo = subInfo.ToNonBoxing();
+            subInfo = subInfo.ToExactTypeInfo();
 
             var converterType = typeof(NpgsqlRange<>).MakeGenericType(subInfo.Type);
 
@@ -144,7 +144,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
-            subInfo = subInfo.ToNonBoxing();
+            subInfo = subInfo.ToExactTypeInfo();
 
             var converterType = subInfo.Type.MakeArrayType();
 

@@ -6,7 +6,9 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-/// A converter to map strongly typed apis onto boxed converter results to produce a strongly typed converter over T.
+/// A converter that adapts a boxed converter's results to an exact-type converter over T, wrapping the read/write
+/// paths through object to present a typed surface for a converter whose TypeToConvert is only a base of T.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class CastingConverter<T> : PgConverter<T>
 {
     readonly PgConverter _effectiveConverter;
@@ -72,10 +74,10 @@ sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderType
 
 static class CastingTypeInfoExtensions
 {
-    [RequiresDynamicCode("Changing boxing type infos to their non-boxing counterpart can require creating new generic types or methods, which requires creating code at runtime. This may not be AOT  when AOT compiling")]
-    internal static PgTypeInfo ToNonBoxing(this PgTypeInfo typeInfo)
+    [RequiresDynamicCode("Producing an exact-type info from one without an exact type can require creating new generic types or methods at runtime, which may not work when AOT compiling.")]
+    internal static PgTypeInfo ToExactTypeInfo(this PgTypeInfo typeInfo)
     {
-        if (!typeInfo.IsBoxing)
+        if (typeInfo.HasExactType)
             return typeInfo;
 
         var type = typeInfo.Type;

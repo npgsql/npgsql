@@ -5,7 +5,7 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-// Many ways to achieve strongly typed composition on top of a polymorphic element type.
+// Many ways to achieve exact-type composition on top of a polymorphic element type.
 // Including pushing construction through a GVM visitor pattern on the element handler,
 // manual reimplementation of the element logic in the array provider, and other ways.
 // This one however is by far the most lightweight on both the implementation duplication and code bloat axes.

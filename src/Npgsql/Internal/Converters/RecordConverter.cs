@@ -39,7 +39,7 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
             var pgTypeId = options.ToCanonicalTypeId(postgresType);
 
             // TODO resolve based on types expected by _factory (pass in a Type[] during construcion)
-            // Only allow object polymorphism for object[] records, valuetuple records are always strongly typed.
+            // Only allow object polymorphism for object[] records; valuetuple records always have exact types.
             var typeInfo = (IsObjectArrayRecord ? options.GetTypeInfo(typeof(object), pgTypeId) : options.GetDefaultTypeInfo(pgTypeId))
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
