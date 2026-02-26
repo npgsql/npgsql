@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
+using Npgsql.Util;
 
 namespace Npgsql.Internal.Converters;
 
@@ -15,8 +16,11 @@ public sealed class CastingConverter<T> : PgConverter<T>
 
     public CastingConverter(PgConverter effectiveConverter) : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
     {
-        if (typeof(T) != typeof(object) && !typeof(T).IsAssignableTo(effectiveConverter.TypeToConvert))
-            throw new ArgumentException($"Values from the given converter cannot be assigned to {typeof(T)}", nameof(effectiveConverter));
+        if (!typeof(T).IsInSubtypeRelationshipWith(effectiveConverter.TypeToConvert))
+            throw new ArgumentException(
+                $"Values for the effective converter's type {effectiveConverter.TypeToConvert} cannot be cast to the type {typeof(T)} for this converter.",
+                nameof(effectiveConverter));
+
         _effectiveConverter = effectiveConverter;
     }
 
