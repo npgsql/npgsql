@@ -68,7 +68,14 @@ public abstract class PgTypeInfo
             return (PgConcreteTypeInfo)this;
         }
 
-        return providerTypeInfo.GetConcreteTypeInfo(default, value, out writeState) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+        // Make sure we handle the weakly typed provider case.
+        // This will never cause boxing as weakly typed infos only happen for subtype relationships, i.e. reference types.
+        // We make sure to fall through to ProvideConcreteTypeInfo which has a better error if T is not at all related to this info.
+        var concreteTypeInfo = PgProviderTypeInfo.GetProvider(providerTypeInfo) is not PgConcreteTypeInfoProvider<T> && providerTypeInfo.Type == typeof(T)
+            ? providerTypeInfo.GetAsObjectConcreteTypeInfo(default, (object?)value, out writeState)
+            : providerTypeInfo.GetConcreteTypeInfo(default, value, out writeState);
+
+        return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
     }
 
     // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
