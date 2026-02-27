@@ -1647,7 +1647,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
             {
                 Debug.Assert(_connector is null && conn is not null);
-                conn.Close();
+                await conn.Close(async).ConfigureAwait(false);
             }
 
             throw;
