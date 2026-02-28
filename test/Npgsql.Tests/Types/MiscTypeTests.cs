@@ -9,7 +9,7 @@ namespace Npgsql.Tests.Types;
 /// <summary>
 /// Tests on PostgreSQL types which don't fit elsewhere
 /// </summary>
-class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+class MiscTypeTests : TestBase
 {
     [Test]
     public async Task Boolean()
@@ -103,9 +103,6 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
     [Test, Description("Mixes and matches an unknown type with a known type")]
     public async Task UnknownResultTypeList()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT TRUE, 8", conn);
         cmd.UnknownResultTypeList = [true, false];

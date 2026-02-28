@@ -31,9 +31,6 @@ sealed class NpgsqlEventSource : EventSource
 
     PollingCounter? _poolsCounter;
 
-    PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
-    PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
-
     long _bytesWritten;
     long _bytesRead;
 
@@ -41,10 +38,6 @@ sealed class NpgsqlEventSource : EventSource
     long _totalPreparedCommands;
     long _currentCommands;
     long _failedCommands;
-
-    long _multiplexingBatchesSent;
-    long _multiplexingCommandsSent;
-    long _multiplexingTicksWritten;
 
     internal NpgsqlEventSource() : base(EventSourceName) {}
 
@@ -99,38 +92,7 @@ sealed class NpgsqlEventSource : EventSource
     internal bool TryTrackDataSource(string name, NpgsqlDataSource dataSource, [NotNullWhen(true)]out IDisposable? untrack)
         => DataSourceEvents.TryTrack(name, dataSource, out untrack);
 
-    internal void MultiplexingBatchSent(int numCommands, long elapsedTicks)
-    {
-        // TODO: CAS loop instead of 3 separate interlocked operations?
-        if (IsEnabled())
-        {
-            Interlocked.Increment(ref _multiplexingBatchesSent);
-            Interlocked.Add(ref _multiplexingCommandsSent, numCommands);
-            Interlocked.Add(ref _multiplexingTicksWritten, elapsedTicks);
-        }
-    }
-
     double GetDataSourceCount() => DataSourceEvents.GetDataSourceCount();
-
-    double GetMultiplexingAverageCommandsPerBatch()
-    {
-        var batchesSent = Interlocked.Read(ref _multiplexingBatchesSent);
-        if (batchesSent == 0)
-            return -1;
-
-        var commandsSent = (double)Interlocked.Read(ref _multiplexingCommandsSent);
-        return commandsSent / batchesSent;
-    }
-
-    double GetMultiplexingAverageWriteTimePerBatch()
-    {
-        var batchesSent = Interlocked.Read(ref _multiplexingBatchesSent);
-        if (batchesSent == 0)
-            return -1;
-
-        var ticksWritten = (double)Interlocked.Read(ref _multiplexingTicksWritten);
-        return ticksWritten / batchesSent / 1000;
-    }
 
     protected override void OnEventCommand(EventCommandEventArgs command)
     {
@@ -187,17 +149,6 @@ sealed class NpgsqlEventSource : EventSource
             _poolsCounter = new PollingCounter("connection-pools", this, GetDataSourceCount)
             {
                 DisplayName = "Connection Pools"
-            };
-
-            _multiplexingAverageCommandsPerBatchCounter = new PollingCounter("multiplexing-average-commands-per-batch", this, GetMultiplexingAverageCommandsPerBatch)
-            {
-                DisplayName = "Average commands per multiplexing batch"
-            };
-
-            _multiplexingAverageWriteTimePerBatchCounter = new PollingCounter("multiplexing-average-write-time-per-batch", this, GetMultiplexingAverageWriteTimePerBatch)
-            {
-                DisplayName = "Average write time per multiplexing batch",
-                DisplayUnits = "us"
             };
 
             DataSourceEvents.EnableAll();

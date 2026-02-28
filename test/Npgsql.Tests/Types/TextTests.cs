@@ -15,7 +15,7 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-character.html
 /// </remarks>
-public class TextTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class TextTests : TestBase
 {
     [Test]
     public Task Text_as_string()

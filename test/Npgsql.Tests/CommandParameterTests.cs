@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
-public class CommandParameterTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class CommandParameterTests : TestBase
 {
     [Test]
     [TestCase(CommandBehavior.Default)]
@@ -30,9 +30,6 @@ public class CommandParameterTests(MultiplexingMode multiplexingMode) : Multiple
     [Test]
     public async Task Send_NpgsqlDbType_Unknown([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
-        if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
-            return;
-
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT @p::TIMESTAMP", conn);
         cmd.CommandText = "SELECT @p::TIMESTAMP";

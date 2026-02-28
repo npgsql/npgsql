@@ -551,8 +551,7 @@ public abstract class TestBase
         dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
-        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
-        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
+        await using var tx = await conn.BeginTransactionAsync();
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -588,8 +587,7 @@ public abstract class TestBase
         dataSource ??= DataSource;
 
         await using var conn = await dataSource.OpenConnectionAsync();
-        // Make sure we don't poison the connection with a fault, potentially terminating other perfectly passing tests as well.
-        await using var tx = dataSource.Settings.Multiplexing ? await conn.BeginTransactionAsync() : null;
+        await using var tx = await conn.BeginTransactionAsync();
         await using var cmd = new NpgsqlCommand("SELECT $1", conn)
         {
             Parameters = { new() { Value = value } }
@@ -768,7 +766,6 @@ public abstract class TestBase
                     var builder = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString)
                     {
                         Pooling = false,
-                        Multiplexing = false,
                         Database = "postgres"
                     };
 
