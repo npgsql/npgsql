@@ -518,20 +518,6 @@ public class TransactionTests : TestBase
     }
 
     [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
-    // More at #3254
-    public async Task Bug3248_Dispose_transaction_Rollback()
-    {
-    }
-
-    [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
-    // More at #3254
-    public async Task Bug3248_Dispose_connection_Rollback()
-    {
-    }
-
-    [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3306")]
     [TestCase(true)]
     [TestCase(false)]
