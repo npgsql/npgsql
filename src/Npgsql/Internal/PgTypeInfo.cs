@@ -28,8 +28,7 @@ public abstract class PgTypeInfo
         => PgTypeId = pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null;
 
     private protected PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType = null)
-        : this(options, converter.TypeToConvert, pgTypeId, requestedType)
-        => Converter = converter;
+        : this(options, converter.TypeToConvert, pgTypeId, requestedType) {}
 
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
@@ -37,9 +36,6 @@ public abstract class PgTypeInfo
     public bool SupportsReading { get; init; }
     public bool SupportsWriting { get; init; }
     public DataFormat? PreferredFormat { get; init; }
-
-    // Doubles as the storage for the converter coming from a default provider result (used to confirm whether we can use cached info).
-    protected PgConverter? Converter { get; }
 
     // True when the reported type matches the converter's type exactly (no reported type given at construction, or
     // the given reported type equals the converter type). When false, the reported type is a widening of the converter
@@ -232,6 +228,8 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     readonly bool _canTextConvert;
     readonly BufferRequirements _textBufferRequirements;
 
+    readonly Type _typeToConvert;
+
     public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
         : this(options, converter, pgTypeId, requestedType: null)
     {}
@@ -239,42 +237,36 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
         : base(options, converter, pgTypeId, requestedType)
     {
+        Converter = converter;
+        _typeToConvert = converter.TypeToConvert;
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
     }
 
-    public new PgConverter Converter => base.Converter!;
+    public PgConverter Converter { get; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
-    bool CanConvert(PgConverter converter, DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        switch (format)
-        {
-        case DataFormat.Binary:
-            bufferRequirements = _binaryBufferRequirements;
-            return _canBinaryConvert;
-        case DataFormat.Text:
-            bufferRequirements = _textBufferRequirements;
-            return _canTextConvert;
-        }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    bool ShouldReadAsObject<T>() => typeof(T) != _typeToConvert;
 
-        return converter.CanConvert(format, out bufferRequirements);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    PgConverter<T> GetConverter<T>()
+    {
+        if (ShouldReadAsObject<T>())
+            ThrowHelper.ThrowInvalidCastException("Invalid type for converter.");
+
+        // Justification: avoid perf cost of casting to a known base class type per field read.
+        Debug.Assert(Converter is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(Converter);
     }
 
-    // If we have an exact type match we can use e.g. a converter for ints in a strongly typed fashion.
-    // If it's not a value type it doesn't matter so we can skip the check there.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    bool ShouldReadAsObject<T>()
-        => typeof(T) == typeof(object) || (!HasExactType && (!typeof(T).IsValueType || typeof(T) != Converter.TypeToConvert));
-
     internal T ConverterRead<T>(PgReader reader)
     {
         if (ShouldReadAsObject<T>())
             return (T)Converter.ReadAsObject(reader);
 
-        // Justification: avoid perf cost of casting to a known base class type per field read.
-        Debug.Assert(Converter is PgConverter<T>);
-        return Unsafe.As<PgConverter<T>>(Converter).Read(reader);
+        return GetConverter<T>().Read(reader);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -287,31 +279,20 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
         }
 
-        // Justification: avoid perf cost of casting to a known base class type per field read.
-        Debug.Assert(converter is PgConverter<T>);
-        return Unsafe.As<PgConverter<T>>(converter).ReadAsync(reader, cancellationToken);
+        return GetConverter<T>().ReadAsync(reader, cancellationToken);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         async ValueTask<T> ReadAndUnboxAsync(ValueTask<object> task)
             => (T)await task.ConfigureAwait(false);
     }
 
-    // TODO move asObject checks from NpgsqlParameter to here.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void ConverterWrite<T>(PgWriter writer, [DisallowNull]T value)
-    {
-        // Justification: avoid perf cost of casting to a known base class type per parameter write.
-        Debug.Assert(Converter is PgConverter<T>);
-        Unsafe.As<PgConverter<T>>(Converter).Write(writer, value);
-    }
+        => GetConverter<T>().Write(writer, value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ValueTask ConverterWriteAsync<T>(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
-    {
-        // Justification: avoid perf cost of casting to a known base class type per parameter write.
-        Debug.Assert(Converter is PgConverter<T>);
-        return Unsafe.As<PgConverter<T>>(Converter).WriteAsync(writer, value, cancellationToken);
-    }
+        => GetConverter<T>().WriteAsync(writer, value, cancellationToken);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)
@@ -331,7 +312,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         // Copy of ConverterReadAsync to keep everything in one async frame.
         var result = ShouldReadAsObject<T>()
             ? (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            : await GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
@@ -339,7 +320,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
     public BufferRequirements? GetBufferRequirements(DataFormat format)
     {
-        var success = CanConvert(Converter, format, out var bufferRequirements);
+        var success = CanConvert(format, out var bufferRequirements);
         return success ? bufferRequirements : null;
     }
 
@@ -353,7 +334,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     // TryBind for reading.
     internal bool TryBindField(DataFormat format, out PgFieldBinding binding)
     {
-        if (!CanConvert(Converter, format, out var bufferRequirements))
+        if (!CanConvert(format, out var bufferRequirements))
         {
             binding = default;
             return false;
@@ -379,9 +360,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        var format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
 
-        if (((PgConverter<T>)Converter).GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+        if (GetConverter<T>().GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
             return new(format, bufferRequirements.Write, null, null);
 
         return new(format, bufferRequirements.Write, size, writeState);
@@ -396,7 +377,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        var format = ResolveFormat(Converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
         if (value is DBNull && Type != typeof(DBNull) || Converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } size)
@@ -407,20 +388,35 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
-    DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
+    bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        switch (format)
+        {
+        case DataFormat.Binary:
+            bufferRequirements = _binaryBufferRequirements;
+            return _canBinaryConvert;
+        case DataFormat.Text:
+            bufferRequirements = _textBufferRequirements;
+            return _canTextConvert;
+        }
+
+        return Converter.CanConvert(format, out bufferRequirements);
+    }
+
+    DataFormat ResolveFormat(out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
     {
         // First try to check for preferred support.
         switch (formatPreference)
         {
-        case DataFormat.Binary when CanConvert(converter, DataFormat.Binary, out bufferRequirements):
+        case DataFormat.Binary when CanConvert(DataFormat.Binary, out bufferRequirements):
             return DataFormat.Binary;
-        case DataFormat.Text when CanConvert(converter, DataFormat.Text, out bufferRequirements):
+        case DataFormat.Text when CanConvert(DataFormat.Text, out bufferRequirements):
             return DataFormat.Text;
         default:
             // The common case, no preference given (or no match) means we default to binary if supported.
-            if (CanConvert(converter, DataFormat.Binary, out bufferRequirements))
+            if (CanConvert(DataFormat.Binary, out bufferRequirements))
                 return DataFormat.Binary;
-            if (CanConvert(converter, DataFormat.Text, out bufferRequirements))
+            if (CanConvert(DataFormat.Text, out bufferRequirements))
                 return DataFormat.Text;
 
             ThrowHelper.ThrowInvalidOperationException("Converter doesn't support any data format.");
