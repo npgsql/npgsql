@@ -374,10 +374,10 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
     public override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
         => GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
 
-    public override PgConcreteTypeInfo? Get(TBase? value, PgTypeId? expectedPgTypeId)
+    public override PgConcreteTypeInfo? GetForValue(TBase? value, PgTypeId? expectedPgTypeId)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    public override PgConcreteTypeInfo? Get(Field field)
+    public override PgConcreteTypeInfo? GetForField(Field field)
     {
         var concreteTypeInfo = _effectiveTypeInfo.GetConcreteTypeInfo(field);
         var concreteNullableTypeInfo = _effectiveNullableTypeInfo.GetConcreteTypeInfo(field);

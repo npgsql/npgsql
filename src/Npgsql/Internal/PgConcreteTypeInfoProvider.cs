@@ -29,11 +29,11 @@ public abstract class PgConcreteTypeInfoProvider
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
     /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public virtual PgConcreteTypeInfo? Get(Field field) => null;
+    public virtual PgConcreteTypeInfo? GetForField(Field field) => null;
 
     internal abstract Type TypeToConvert { get; }
 
-    internal abstract PgConcreteTypeInfo? GetAsObjectInternal(PgProviderTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
+    internal abstract PgConcreteTypeInfo? GetForValueAsObject(object? value, PgTypeId? expectedPgTypeId);
 
     internal PgConcreteTypeInfo GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId? pgTypeId)
     {
@@ -43,11 +43,19 @@ public abstract class PgConcreteTypeInfoProvider
         return concreteTypeInfo;
     }
 
-    internal PgConcreteTypeInfo? GetInternal(PgProviderTypeInfo typeInfo, Field field)
+    internal PgConcreteTypeInfo? GetForFieldInternal(PgProviderTypeInfo typeInfo, Field field)
     {
-        var concreteTypeInfo = Get(field);
+        var concreteTypeInfo = GetForField(field);
         if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
-            Validate(nameof(Get), concreteTypeInfo, TypeToConvert, field.PgTypeId, typeInfo.Options.PortableTypeIds);
+            Validate(nameof(GetForField), concreteTypeInfo, TypeToConvert, field.PgTypeId, typeInfo.Options.PortableTypeIds);
+        return concreteTypeInfo;
+    }
+
+    internal PgConcreteTypeInfo? GetForValueAsObjectInternal(PgProviderTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
+    {
+        var concreteTypeInfo = GetForValueAsObject( value, expectedPgTypeId);
+        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
+            Validate(nameof(GetForValueAsObject), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
         return concreteTypeInfo;
     }
 
@@ -85,23 +93,20 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once used.
     /// Array or other collection providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    public abstract PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId);
+    public abstract PgConcreteTypeInfo? GetForValue(T? value, PgTypeId? expectedPgTypeId);
 
     internal sealed override Type TypeToConvert => typeof(T);
 
-    internal PgConcreteTypeInfo? GetInternal(PgProviderTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
-    {
-        var concreteTypeInfo = Get(value, expectedPgTypeId);
-        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
-            Validate(nameof(Get), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
-        return concreteTypeInfo;
-    }
+    // Object null semantics as follows, if T is a struct (so excluding nullable) report null, don't throw on the cast.
+    // This means a null value for a struct T will have us return null, letting callers fall back to GetDefault instead (if necessary).
+    internal sealed override PgConcreteTypeInfo? GetForValueAsObject(object? value, PgTypeId? expectedPgTypeId)
+        => default(T) is null || value is not null ? GetForValue(value is null ? default : (T)value, expectedPgTypeId) : null;
 
-    internal sealed override PgConcreteTypeInfo? GetAsObjectInternal(PgProviderTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
+    internal PgConcreteTypeInfo? GetForValueInternal(PgProviderTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
     {
-        var concreteTypeInfo = Get(value is null ? default : (T)value, expectedPgTypeId);
+        var concreteTypeInfo = GetForValue(value, expectedPgTypeId);
         if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
-            Validate(nameof(Get), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
+            Validate(nameof(GetForValue), concreteTypeInfo, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
         return concreteTypeInfo;
     }
 }

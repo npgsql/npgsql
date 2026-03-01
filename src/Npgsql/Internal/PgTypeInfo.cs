@@ -257,7 +257,7 @@ public sealed class PgProviderTypeInfo(
             ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
 
         return typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
-            ? providerT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
+            ? providerT.GetForValueInternal(this, value, expectedPgTypeId ?? PgTypeId)
             : ThrowNotSupportedType(typeof(T));
 
         PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
@@ -271,7 +271,7 @@ public sealed class PgProviderTypeInfo(
         if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
             ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
 
-        return typeInfoProvider.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+        return typeInfoProvider.GetForValueAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
     }
 
     public PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)
@@ -279,7 +279,7 @@ public sealed class PgProviderTypeInfo(
         if (PgTypeId is { } decidedId && field.PgTypeId != decidedId)
             ThrowUnexpectedPgTypeId(nameof(field));
 
-        return typeInfoProvider.GetInternal(this, field);
+        return typeInfoProvider.GetForFieldInternal(this, field);
     }
 
     public PgConcreteTypeInfo GetDefaultConcreteTypeInfo(PgTypeId? pgTypeId)

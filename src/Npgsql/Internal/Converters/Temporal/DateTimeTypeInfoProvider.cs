@@ -65,7 +65,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return GetDefault(expectedPgTypeId ?? _timestamp);
     }
 
-    public override PgConcreteTypeInfo? Get(T? value, PgTypeId? expectedPgTypeId)
+    public override PgConcreteTypeInfo? GetForValue(T? value, PgTypeId? expectedPgTypeId)
         => _provider(this, value, expectedPgTypeId);
 }
 

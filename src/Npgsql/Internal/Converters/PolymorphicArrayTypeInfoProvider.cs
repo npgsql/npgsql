@@ -31,10 +31,10 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
     public override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
         => GetOrAdd(_elementTypeInfo.GetDefaultConcreteTypeInfo(_elementPgTypeId));
 
-    public override PgConcreteTypeInfo? Get(object? value, PgTypeId? expectedPgTypeId)
+    public override PgConcreteTypeInfo? GetForValue(object? value, PgTypeId? expectedPgTypeId)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    public override PgConcreteTypeInfo? Get(Field field)
+    public override PgConcreteTypeInfo? GetForField(Field field)
     {
         var elementConcreteTypeInfo = _elementTypeInfo.GetConcreteTypeInfo(field with { PgTypeId = _elementPgTypeId });
         return elementConcreteTypeInfo is not null ? GetOrAdd(elementConcreteTypeInfo) : null;
