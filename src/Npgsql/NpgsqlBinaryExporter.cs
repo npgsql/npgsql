@@ -344,8 +344,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                            ?? throw new NotSupportedException($"Reading is not supported for type '{type}'{(npgsqlDbType is null ? "" : $" and NpgsqlDbType '{npgsqlDbType}'")}");
 
             // Binary export has no type info so we only do caller-directed interpretation of data.
-            var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(
-                Field.CreateUnspecified(typeInfo.PgTypeId ?? ((PgProviderTypeInfo)typeInfo).GetDefaultConcreteTypeInfo(null).PgTypeId));
+            var concreteTypeInfo = typeInfo.MakeConcreteForField(
+                Field.CreateUnspecified(typeInfo.PgTypeId ?? ((PgProviderTypeInfo)typeInfo).GetDefault(null).PgTypeId));
             return new(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat.Binary));
 
             PgTypeId GetRepresentationalOrDefault(string dataTypeName)

@@ -71,7 +71,7 @@ sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderType
     }
 
     protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
-        => EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out writeState);
+        => EffectiveTypeInfo.GetForValueAsObject(effectiveContext, value, out writeState);
 }
 
 static class CastingTypeInfoExtensions

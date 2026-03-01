@@ -114,7 +114,7 @@ sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typ
         }
 
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(value.GetType(), context.ExpectedPgTypeId ?? typeId, options);
-        var concreteTypeInfo = typeInfo.GetObjectConcreteTypeInfo(value, out var effectiveState);
+        var concreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(value, out var effectiveState);
         writeState = effectiveState is not null
             ? new ObjectConverter.WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
             : concreteTypeInfo;

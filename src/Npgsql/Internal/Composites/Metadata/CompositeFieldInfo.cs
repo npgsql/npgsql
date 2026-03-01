@@ -43,7 +43,7 @@ abstract class CompositeFieldInfo
             // that's where provider-backed fields (DateTime kind, late-bound, etc.) surface deterministic
             // errors. The cached default is reused by GetDefaultWriteInfo on CompositeConverter's Path A,
             // where per-value resolution has already completed without producing state.
-            concrete = providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+            concrete = providerTypeInfo.GetDefault(null);
             IsProviderBacked = true;
         }
         else
@@ -69,7 +69,7 @@ abstract class CompositeFieldInfo
             return Converter;
         }
 
-        var concreteTypeInfo = PgTypeInfo.GetConcreteTypeInfo(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
+        var concreteTypeInfo = PgTypeInfo.MakeConcreteForField(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
         if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var bindingContext))
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
 
@@ -235,7 +235,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     protected override PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState)
     {
         var value = _getter(instance);
-        var concreteTypeInfo = PgTypeInfo.GetConcreteTypeInfo(value, out writeState);
+        var concreteTypeInfo = PgTypeInfo.MakeConcreteForValue(value, out writeState);
         if (concreteTypeInfo.GetBufferRequirements(DataFormat.Binary) is not { } bufferRequirements)
         {
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");

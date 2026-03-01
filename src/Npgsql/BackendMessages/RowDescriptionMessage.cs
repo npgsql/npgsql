@@ -350,7 +350,7 @@ public sealed class FieldDescription
             {
                 // Try to resolve some 'pg_catalog.text' type info for the expected clr type.
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgTypeId, _serializerOptions);
-                var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(Field);
+                var concreteTypeInfo = typeInfo.MakeConcreteForField(Field);
 
                 // We start binding to DataFormat.Binary as it's the broadest supported format.
                 // The format however is irrelevant as 'pg_catalog.text' data is identical across either.
@@ -365,7 +365,7 @@ public sealed class FieldDescription
             case DataFormat.Binary or DataFormat.Text:
             {
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), _serializerOptions.ToCanonicalTypeId(PostgresType), _serializerOptions);
-                var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(Field);
+                var concreteTypeInfo = typeInfo.MakeConcreteForField(Field);
 
                 // If we don't support the DataFormat we'll just throw.
                 bindingContext = concreteTypeInfo.BindField(DataFormat);

@@ -664,13 +664,13 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (staticValueType == typeof(object))
             {
                 // Pull from Value (not _value) so we also support object typed generic params.
-                ConcreteTypeInfo = typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState);
+                ConcreteTypeInfo = typeInfo.MakeConcreteForValueAsDbObject(Value, out _writeState);
             }
             else
             {
                 ConcreteTypeInfo = !typeInfo.IsStronglyTyped
-                    ? typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState)
-                    : GetConcreteTypeInfoForTypedValue(typeInfo);
+                    ? typeInfo.MakeConcreteForValueAsObject(Value, out _writeState)
+                    : MakeConcreteTypeInfoForTypedValue(typeInfo);
             }
         }
 
@@ -857,7 +857,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    private protected virtual PgConcreteTypeInfo GetConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
+    private protected virtual PgConcreteTypeInfo MakeConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
         => throw new NotSupportedException();
 
     private protected virtual PgValueBindingContext BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
