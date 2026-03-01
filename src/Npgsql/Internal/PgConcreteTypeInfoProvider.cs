@@ -64,49 +64,9 @@ public abstract class PgConcreteTypeInfoProvider
 
     private protected abstract PgConcreteTypeInfo? GetForValueAsObjectCore(ProviderValueContext context, object? value);
 
-    internal PgConcreteTypeInfo GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId? pgTypeId)
-    {
-        var concreteTypeInfo = GetDefaultCore(pgTypeId);
-        if (validate)
-            Validate(nameof(GetDefault), concreteTypeInfo, TypeToConvert, pgTypeId, expectPortableTypeIds);
-        return concreteTypeInfo;
-    }
-
-    internal PgConcreteTypeInfo? GetForFieldInternal(PgProviderTypeInfo typeInfo, Field field)
-    {
-        var concreteTypeInfo = GetForFieldCore(field);
-        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
-            Validate(nameof(GetForField), concreteTypeInfo, TypeToConvert, field.PgTypeId, typeInfo.Options.PortableTypeIds);
-        return concreteTypeInfo;
-    }
-
-    internal PgConcreteTypeInfo? GetForValueAsObjectInternal(PgProviderTypeInfo typeInfo, ProviderValueContext context, object? value)
-    {
-        var concreteTypeInfo = GetForValueAsObjectCore(context, value);
-        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
-            Validate(nameof(GetForValueAsObjectCore), concreteTypeInfo, TypeToConvert, context.ExpectedPgTypeId, typeInfo.Options.PortableTypeIds);
-        return concreteTypeInfo;
-    }
-
     private protected static void ThrowPgTypeIdMismatch(string methodName)
         => throw new InvalidOperationException(
             $"'{methodName}' incorrectly returned a different {nameof(PgTypeId)} in its concrete type info than the caller passed in.");
-
-    private protected static void Validate(string methodName, PgConcreteTypeInfo result, Type expectedTypeToConvert, PgTypeId? expectedPgTypeId, bool expectPortableTypeIds)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-
-        if (expectedTypeToConvert != typeof(object) && result.Converter.TypeToConvert != expectedTypeToConvert)
-            throw new InvalidOperationException($"'{methodName}' returned a {nameof(result.Converter)} of type {result.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
-
-        if (expectPortableTypeIds && result.PgTypeId.IsOid || !expectPortableTypeIds && result.PgTypeId.IsDataTypeName)
-            throw new InvalidOperationException($"{methodName}' returned a concrete type info with a {nameof(result.PgTypeId)} that was not in canonical form.");
-
-        if (expectedPgTypeId is not null && result.PgTypeId != expectedPgTypeId)
-            throw new InvalidOperationException(
-                $"'{methodName}' returned a different {nameof(result.PgTypeId)} than was passed in as expected." +
-                $" If such a mismatch occurs an exception should be thrown instead.");
-    }
 }
 
 public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
@@ -137,14 +97,6 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
     // This allows concrete info to be produced by falling back to GetDefault afterwards.
     private protected sealed override PgConcreteTypeInfo? GetForValueAsObjectCore(ProviderValueContext context, object? value)
         => default(T) is null || value is not null ? GetForValueCore(context, (T?)value) : null;
-
-    internal PgConcreteTypeInfo? GetForValueInternal(PgProviderTypeInfo typeInfo, ProviderValueContext context, T? value)
-    {
-        var concreteTypeInfo = GetForValueCore(context, value);
-        if (typeInfo.ValidateProviderResults && concreteTypeInfo is not null)
-            Validate(nameof(GetForValue), concreteTypeInfo, TypeToConvert, context.ExpectedPgTypeId, typeInfo.Options.PortableTypeIds);
-        return concreteTypeInfo;
-    }
 }
 
 public readonly struct ProviderValueContext
