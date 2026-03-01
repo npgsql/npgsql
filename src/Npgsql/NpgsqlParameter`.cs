@@ -78,8 +78,8 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    private protected override PgConcreteTypeInfo GetConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
-        => typeInfo.GetConcreteTypeInfo(TypedValue, out _writeState);
+    private protected override PgConcreteTypeInfo MakeConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
+        => typeInfo.MakeConcreteForValue(TypedValue, out _writeState);
 
     private protected override PgValueBinding BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
         => typeInfo.BindParameterValue(TypedValue, _writeState, formatPreference);

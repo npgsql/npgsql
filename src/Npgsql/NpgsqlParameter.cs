@@ -686,11 +686,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (staticValueType == typeof(object))
             {
                 // Pull from Value (not _value) so we also support object typed generic params.
-                ConcreteTypeInfo = typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState);
+                var value = Value;
+                ConcreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(value is DBNull ? null : value, out _writeState);
             }
             else
             {
-                ConcreteTypeInfo = GetConcreteTypeInfoForTypedValue(typeInfo);
+                ConcreteTypeInfo = MakeConcreteTypeInfoForTypedValue(typeInfo);
             }
 
             // If no Bind follows (SchemaOnly), release the provider-produced state immediately so
@@ -920,7 +921,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    private protected virtual PgConcreteTypeInfo GetConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
+    private protected virtual PgConcreteTypeInfo MakeConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
         => throw new NotSupportedException();
 
     private protected virtual PgValueBinding BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)

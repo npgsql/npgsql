@@ -29,7 +29,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
         PgTypeId? effectiveTypeId = pgTypeId is { } id ? GetEffectiveTypeId(id) : null;
-        var concreteTypeInfo = EffectiveTypeInfo.GetDefaultConcreteTypeInfo(effectiveTypeId);
+        var concreteTypeInfo = EffectiveTypeInfo.GetDefault(effectiveTypeId);
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
         return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
@@ -46,7 +46,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
     {
-        if (EffectiveTypeInfo.GetConcreteTypeInfo(field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId)}) is not { } concreteTypeInfo)
+        if (EffectiveTypeInfo.GetForField(field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId)}) is not { } concreteTypeInfo)
             return null;
 
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);

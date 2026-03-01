@@ -47,7 +47,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         {
             PostgresType = postgresType;
             BufferPos = bufferPos;
-            ObjectTypeInfo = objectTypeInfo.GetConcreteTypeInfo(Field.CreateUnspecified(objectTypeInfo.Options.ToCanonicalTypeId(postgresType)));
+            ObjectTypeInfo = objectTypeInfo.MakeConcreteForField(Field.CreateUnspecified(objectTypeInfo.Options.ToCanonicalTypeId(postgresType)));
             ObjectBinding = ObjectTypeInfo.BindField(format);
         }
 
@@ -496,7 +496,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
         var typeId = SerializerOptions.ToCanonicalTypeId(nestedColumn.PostgresType);
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type, typeId, SerializerOptions);
-        var concreteTypeInfo = typeInfo.GetConcreteTypeInfo(nestedColumn.Field);
+        var concreteTypeInfo = typeInfo.MakeConcreteForField(nestedColumn.Field);
         var columnInfo = new ReadConversionContext(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat));
         _columns[ordinal] = nestedColumn with { LastInfo = columnInfo };
         return columnInfo;

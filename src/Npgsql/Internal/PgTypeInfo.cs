@@ -48,21 +48,52 @@ public abstract class PgTypeInfo
 
     public PgTypeId? PgTypeId { get; }
 
-    public PgConcreteTypeInfo GetConcreteTypeInfo(Field field)
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given field.
+    /// </summary>
+    /// <param name="field">The field whose metadata drives the concrete type info selection.</param>
+    /// <returns>The <see cref="PgConcreteTypeInfo"/> to use for the field.</returns>
+    /// <remarks>
+    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
+    /// using the field's metadata (e.g. <see cref="Field.PgTypeId"/>) to select the appropriate concrete type info.
+    /// </remarks>
+    public PgConcreteTypeInfo MakeConcreteForField(Field field)
     {
         if (this is not PgProviderTypeInfo providerTypeInfo)
             return (PgConcreteTypeInfo)this;
 
         // Decided providers skip GetDefault's validation. The prior GetForField call already validated
         // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
-        return providerTypeInfo.GetConcreteTypeInfo(field)
-            ?? providerTypeInfo.GetDefaultConcreteTypeInfo(providerTypeInfo.PgTypeId is null ? field.PgTypeId : null);
+        return providerTypeInfo.GetForField(field)
+               ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? field.PgTypeId : null);
     }
 
-    public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value, out object? writeState)
-        => GetConcreteTypeInfo(default, value, out writeState);
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given value.
+    /// </summary>
+    /// <param name="value">The value whose content drive the concrete type info selection.</param>
+    /// <param name="writeState">Contains any write state that was produced.</param>
+    /// <typeparam name="T">The CLR type of the value.</typeparam>
+    /// <returns>The <see cref="PgConcreteTypeInfo"/> to use for the value.</returns>
+    /// <remarks>
+    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
+    /// using the value to select the appropriate concrete type info.
+    /// </remarks>
+    public PgConcreteTypeInfo MakeConcreteForValue<T>(T? value, out object? writeState)
+        => MakeConcreteForValue(default, value, out writeState);
 
-    public PgConcreteTypeInfo GetConcreteTypeInfo<T>(ProviderValueContext context, T? value, out object? writeState)
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given value, with an explicit provider context.
+    /// </summary>
+    /// <param name="context">The context used when this instance is a provider based info.</param>
+    /// <param name="value">The value whose content drives the concrete type info selection.</param>
+    /// <param name="writeState">Contains any write state that was produced.</param>
+    /// <typeparam name="T">The CLR type of the value.</typeparam>
+    /// <remarks>
+    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
+    /// using the value and the supplied context to select the appropriate concrete type info.
+    /// </remarks>
+    public PgConcreteTypeInfo MakeConcreteForValue<T>(ProviderValueContext context, T? value, out object? writeState)
     {
         if (this is not PgProviderTypeInfo providerTypeInfo)
         {
@@ -70,46 +101,55 @@ public abstract class PgTypeInfo
             return (PgConcreteTypeInfo)this;
         }
 
-        // Make sure we handle the weakly typed provider case.
-        // This will never cause boxing as weakly typed infos only happen for subtype relationships, i.e. reference types.
-        // We make sure to fall through to ProvideConcreteTypeInfo which has a better error if T is not at all related to this info.
+        // Make sure we handle the non-exact typed provider case.
+        // This will never cause boxing as non-exact typed infos only happen for subtype relationships, i.e. reference types.
+        // We make sure to fall through to GetForValue which has a better error if T is not at all related to this info.
         var concreteTypeInfo = PgProviderTypeInfo.GetProvider(providerTypeInfo) is not PgConcreteTypeInfoProvider<T> && providerTypeInfo.Type == typeof(T)
-            ? providerTypeInfo.GetAsObjectConcreteTypeInfo(context, (object?)value, out writeState)
-            : providerTypeInfo.GetConcreteTypeInfo(context, value, out writeState);
+            ? providerTypeInfo.GetForValueAsObject(context, (object?)value, out writeState)
+            : providerTypeInfo.GetForValue(context, value, out writeState);
 
         // Decided providers skip GetDefault's validation. The prior GetForValue call already validated
         // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
-        return concreteTypeInfo
-            ?? providerTypeInfo.GetDefaultConcreteTypeInfo(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
+        return concreteTypeInfo ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
     }
 
-    public PgConcreteTypeInfo GetObjectConcreteTypeInfo(object? value, out object? writeState)
-        => GetObjectConcreteTypeInfo(default, value, out writeState);
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given object value.
+    /// </summary>
+    /// <param name="value">The untyped value whose content drives the concrete type info selection.</param>
+    /// <param name="writeState">Contains any write state that was produced.</param>
+    /// <returns>The <see cref="PgConcreteTypeInfo"/> to use for the value.</returns>
+    /// <remarks>
+    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
+    /// using the value to select the appropriate concrete type info.
+    /// </remarks>
+    public PgConcreteTypeInfo MakeConcreteForValueAsObject(object? value, out object? writeState)
+        => MakeConcreteForValueAsObject(default, value, out writeState);
 
-    // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
-    public PgConcreteTypeInfo GetObjectConcreteTypeInfo(ProviderValueContext context, object? value, out object? writeState)
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given object value.
+    /// </summary>
+    /// <param name="context">The context used when this instance is a provider based info.</param>
+    /// <param name="value">The untyped value whose content drives the concrete type info selection.</param>
+    /// <param name="writeState">Contains any write state that was produced.</param>
+    /// <returns>The <see cref="PgConcreteTypeInfo"/> to use for the value.</returns>
+    /// <remarks>
+    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
+    /// using the value to select the appropriate concrete type info.
+    /// </remarks>
+    public PgConcreteTypeInfo MakeConcreteForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
     {
         writeState = null;
-        switch (this)
-        {
-        case PgConcreteTypeInfo v:
-            return v;
-        case PgProviderTypeInfo providerTypeInfo:
-            PgConcreteTypeInfo? concreteTypeInfo = null;
-            if (value is not DBNull)
-                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(context, value, out writeState);
-            // Decided providers skip GetDefault's validation. The prior GetForValueAsObject call already
-            // validated the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
-            return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
-        default:
-            return ThrowNotSupported();
-        }
+        if (this is not PgProviderTypeInfo providerTypeInfo)
+            return (PgConcreteTypeInfo)this;
 
-        static PgConcreteTypeInfo ThrowNotSupported()
-            => throw new NotSupportedException("Should not happen, please file a bug.");
+        // Decided providers skip GetDefault's validation. The prior GetForValueAsObject call already validated
+        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        return providerTypeInfo.GetForValueAsObject(context, value, out writeState)
+               ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
     }
 
-    // We assume an info without an exact type does not support reading as the converter won't be able to produce the derived type statically.
+    // We assume a weakly typed info does not support reading as the converter won't be able to produce the derived type statically.
     // Cases like Array converters reading int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
         => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
@@ -143,7 +183,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         _defaultConcrete = result;
     }
 
-    public PgConcreteTypeInfo GetDefaultConcreteTypeInfo(PgTypeId? pgTypeId)
+    public PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
     {
         if (pgTypeId is { } id && PgTypeId is { } decidedId)
         {
@@ -159,7 +199,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
-    public new PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)
+    public PgConcreteTypeInfo? GetForField(Field field)
     {
         if (PgTypeId is { } decidedId && field.PgTypeId != decidedId)
             ThrowUnexpectedPgTypeId(nameof(field));
@@ -170,7 +210,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
-    public new PgConcreteTypeInfo? GetConcreteTypeInfo<T>(ProviderValueContext context, T? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValue<T>(ProviderValueContext context, T? value, out object? writeState)
     {
         if (PgTypeId is { } pgTypeId)
         {
@@ -193,11 +233,11 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
             => throw new NotSupportedException(type == Type
-                ? $"PgProviderTypeInfo does not exactly match type {type}, call {nameof(GetAsObjectConcreteTypeInfo)} instead."
+                ? $"PgProviderTypeInfo does not exactly match type {type}, call {nameof(GetForValueAsObject)} instead."
                 : $"PgProviderTypeInfo is incompatible with type {type}");
     }
 
-    public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(ProviderValueContext context, object? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
     {
         if (PgTypeId is { } pgTypeId)
         {
