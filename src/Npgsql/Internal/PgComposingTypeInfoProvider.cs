@@ -25,7 +25,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo);
     protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectivePgTypeId);
 
-    public override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
+    protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
         PgTypeId? effectiveTypeId = pgTypeId is { } id ? GetEffectiveTypeId(id) : null;
         var concreteTypeInfo = EffectiveTypeInfo.GetDefaultConcreteTypeInfo(effectiveTypeId);
@@ -33,7 +33,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
 
-    public override PgConcreteTypeInfo? GetForValue(T? value, PgTypeId? expectedPgTypeId)
+    protected override PgConcreteTypeInfo? GetForValueCore(T? value, PgTypeId? expectedPgTypeId)
     {
         PgTypeId? effectiveTypeId = expectedPgTypeId is { } id ? GetEffectiveTypeId(id) : null;
         if (GetEffectiveTypeInfo(value, effectiveTypeId) is { } effectiveTypeInfo)
@@ -42,7 +42,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return null;
     }
 
-    public override PgConcreteTypeInfo? GetForField(Field field)
+    protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
     {
         if (EffectiveTypeInfo.GetConcreteTypeInfo(field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId)}) is not { } concreteTypeInfo)
             return null;

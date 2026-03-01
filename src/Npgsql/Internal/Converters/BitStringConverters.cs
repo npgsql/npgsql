@@ -232,13 +232,13 @@ sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, P
     PgConcreteTypeInfo? _boolConcreteTypeInfo;
     PgConcreteTypeInfo? _bitArrayConcreteTypeInfo;
 
-    public override PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
+    protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => GetConcreteInfo(field: null);
 
-    public override PgConcreteTypeInfo? GetForValue(object? value, PgTypeId? expectedPgTypeId)
+    protected override PgConcreteTypeInfo? GetForValueCore(object? value, PgTypeId? expectedPgTypeId)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    public override PgConcreteTypeInfo GetForField(Field field)
+    protected override PgConcreteTypeInfo GetForFieldCore(Field field)
         => GetConcreteInfo(field);
 
     PgConcreteTypeInfo GetConcreteInfo(Field? field)
