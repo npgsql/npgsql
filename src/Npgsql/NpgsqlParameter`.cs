@@ -79,10 +79,13 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     #endregion Constructors
 
     private protected override PgConcreteTypeInfo MakeConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
-        => typeInfo.MakeConcreteForValue(TypedValue, out _writeState);
+        => typeInfo.MakeConcreteForValue(
+            new() { NestedObjectDbNullHandling = ParameterDbNullHandling },
+            TypedValue,
+            out _writeState);
 
     private protected override PgValueBindingContext BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
-        => typeInfo.BindValue(TypedValue, _writeState, formatPreference);
+        => typeInfo.BindParameterValue(TypedValue, _writeState, ParameterDbNullHandling, formatPreference);
 
     private protected override ValueTask WriteTypedValue(bool async, PgConcreteTypeInfo typeInfo, PgWriter writer, CancellationToken cancellationToken)
     {

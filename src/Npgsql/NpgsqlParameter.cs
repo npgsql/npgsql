@@ -333,7 +333,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // Infer from value but don't cache
             // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
             if (GetValueType(StaticValueType) is { } valueType)
-                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, ValueAsObject)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
 
             return DbType.Object;
         }
@@ -373,7 +373,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // Infer from value but don't cache
             // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
             if (valueType is not null)
-                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, ValueAsObject)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
             return NpgsqlDbType.Unknown;
         }
@@ -421,7 +421,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // Infer from value but don't cache
             // We pass ValueType here for the generic derived type, where we should respect T and not the runtime type.
             if (valueType is not null)
-                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, Value)?.DisplayName;
+                return GlobalTypeMapper.Instance.FindDataTypeName(valueType, ValueAsObject)?.DisplayName;
 
             return null;
         }
@@ -429,6 +429,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             ResetTypeInfo();
             _dataTypeName = value;
+        }
+    }
+
+    // Value without DBNull to pass onto FindDataTypeName.
+    object? ValueAsObject
+    {
+        get
+        {
+            var value = Value;
+            return value is DBNull ? null : value;
         }
     }
 
@@ -518,6 +528,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     #endregion Other Properties
 
     #region Internals
+
+    /// The DBNull handling mode parameters apply at their own ADO.NET boundary.
+    /// Compositional converters inherit this from SizeContext / ProviderValueContext.
+    internal const NestedObjectDbNullHandling ParameterDbNullHandling = NestedObjectDbNullHandling.Extended;
 
     private protected virtual Type StaticValueType => typeof(object);
 
@@ -664,7 +678,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (staticValueType == typeof(object))
             {
                 // Pull from Value (not _value) so we also support object typed generic params.
-                ConcreteTypeInfo = typeInfo.MakeConcreteForValueAsDbObject(Value, out _writeState);
+                ConcreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(
+                    new() { NestedObjectDbNullHandling = ParameterDbNullHandling },
+                    Value is DBNull ? null : Value,
+                    out _writeState);
             }
             else
             {
@@ -721,13 +738,15 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 if (value is null)
                     ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
 
-                _bindingContext = ConcreteTypeInfo.BindObjectValue(value, _writeState, requiredFormat);
+                _bindingContext = ConcreteTypeInfo.IsNestedObjectDbNull(value, _writeState, ParameterDbNullHandling)
+                    ? new PgValueBinding(DataFormat.Binary, 0, null, _writeState)
+                    : ConcreteTypeInfo.BindParameterValueAsObject(value, _writeState, ParameterDbNullHandling, requiredFormat);
             }
             else
             {
                 _bindingContext = !ConcreteTypeInfo.IsStronglyTyped
-                    ? ConcreteTypeInfo.BindObjectValue(Value, _writeState, requiredFormat)
-                    : BindTypedValue(ConcreteTypeInfo, requiredFormat);
+                    ? ConcreteTypeInfo.BindParameterValueAsObject(Value, _writeState, formatPreference: requiredFormat)
+                    : BindTypedValue(ConcreteTypeInfo, formatPreference: requiredFormat);
             }
         }
 

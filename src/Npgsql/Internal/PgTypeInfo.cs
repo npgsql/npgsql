@@ -45,6 +45,15 @@ public abstract class PgTypeInfo
 
     public PgTypeId? PgTypeId { get; }
 
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given field.
+    /// </summary>
+    /// <param name="field">The field whose metadata drives the concrete type info selection.</param>
+    /// <returns>The <see cref="PgConcreteTypeInfo"/> to use for the field.</returns>
+    /// <remarks>
+    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
+    /// using the field's metadata (e.g. <see cref="Field.PgTypeId"/>) to select the appropriate concrete type info.
+    /// </remarks>
     public PgConcreteTypeInfo MakeConcreteForField(Field field)
     {
         if (this is not PgProviderTypeInfo providerTypeInfo)
@@ -65,6 +74,20 @@ public abstract class PgTypeInfo
     /// using the value to select the appropriate concrete type info.
     /// </remarks>
     public PgConcreteTypeInfo MakeConcreteForValue<T>(T? value, out object? writeState)
+        => MakeConcreteForValue(default, value, out writeState);
+
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given value, with an explicit provider context.
+    /// </summary>
+    /// <param name="context">The context used when this instance is a provider based info.</param>
+    /// <param name="value">The value whose content drives the concrete type info selection.</param>
+    /// <param name="writeState">Contains any write state that was produced.</param>
+    /// <typeparam name="T">The CLR type of the value.</typeparam>
+    /// <remarks>
+    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
+    /// using the value and the supplied context to select the appropriate concrete type info.
+    /// </remarks>
+    public PgConcreteTypeInfo MakeConcreteForValue<T>(ProviderValueContext context, T? value, out object? writeState)
     {
         if (this is not PgProviderTypeInfo providerTypeInfo)
         {
@@ -76,8 +99,8 @@ public abstract class PgTypeInfo
         // This will never cause boxing as weakly typed infos only happen for subtype relationships, i.e. reference types.
         // We make sure to fall through to GetForValue which has a better error if T is not at all related to this info.
         var concreteTypeInfo = PgProviderTypeInfo.GetProvider(providerTypeInfo) is not PgConcreteTypeInfoProvider<T> && providerTypeInfo.Type == typeof(T)
-            ? providerTypeInfo.GetForValueAsObject(default, (object?)value, out writeState)
-            : providerTypeInfo.GetForValue(default, value, out writeState);
+            ? providerTypeInfo.GetForValueAsObject(context, (object?)value, out writeState)
+            : providerTypeInfo.GetForValue(context, value, out writeState);
 
         return concreteTypeInfo ?? providerTypeInfo.GetDefault(null);
     }
@@ -93,7 +116,7 @@ public abstract class PgTypeInfo
     /// using the value to select the appropriate concrete type info.
     /// </remarks>
     public PgConcreteTypeInfo MakeConcreteForValueAsObject(object? value, out object? writeState)
-        => MakeConcreteForObjectValue(value, out writeState, handleDBNull: false);
+        => MakeConcreteForValueAsObject(default, value, out writeState);
 
     /// <summary>
     /// Makes a <see cref="PgConcreteTypeInfo"/> for the given object value.
@@ -115,34 +138,10 @@ public abstract class PgTypeInfo
         return providerTypeInfo.GetForValueAsObject(context, value, out writeState) ?? providerTypeInfo.GetDefault(null);
     }
 
-    /// <summary>
-    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given object value.
-    /// </summary>
-    /// <param name="value">The untyped value whose content drives the concrete type info selection.</param>
-    /// <param name="writeState">Contains any write state that was produced.</param>
-    /// <returns>The <see cref="PgConcreteTypeInfo"/> to use for the value.</returns>
-    /// <remarks>
-    /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
-    /// using the value to select the appropriate concrete type info.
-    /// </remarks>
-    public PgConcreteTypeInfo MakeConcreteForValueAsDbObject(object? value, out object? writeState)
-        => MakeConcreteForObjectValue(value, out writeState, handleDBNull: true);
-
     // We assume a weakly typed info does not support reading as the converter won't be able to produce the derived type statically.
     // Cases like Array converters reading int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
         => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
-
-    PgConcreteTypeInfo MakeConcreteForObjectValue(object? value, out object? writeState, bool handleDBNull)
-    {
-        writeState = null;
-        if (this is not PgProviderTypeInfo providerTypeInfo)
-            return (PgConcreteTypeInfo)this;
-
-        value = handleDBNull && value is DBNull ? null : value;
-        return providerTypeInfo.GetForValueAsObject(default, value, out writeState)
-               ?? providerTypeInfo.GetDefault(null);
-    }
 
     static Type? GetReportedType(Type converterType, Type requestedType)
     {
@@ -246,6 +245,37 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
+    public PgConcreteTypeInfo? GetForNestedObjectValue(ProviderValueContext context, object? value, out object? writeState)
+    {
+        if (PgTypeId is { } pgTypeId)
+        {
+            if (context.ExpectedPgTypeId is not { } expectedId)
+            {
+                context = context with { ExpectedPgTypeId = pgTypeId };
+            }
+            else if (pgTypeId != expectedId)
+                ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
+        }
+
+        writeState = null;
+        switch (context.NestedObjectDbNullHandling)
+        {
+        case NestedObjectDbNullHandling.ExtendedThrowOnNull:
+            if (value is null)
+                ThrowHelper.ThrowArgumentNullException(nameof(value), "Object-typed value cannot be null, a db null value must be used instead.");
+            goto case NestedObjectDbNullHandling.Extended;
+        case NestedObjectDbNullHandling.Extended:
+            if (value is DBNull)
+                return null;
+            goto case NestedObjectDbNullHandling.Default;
+        case NestedObjectDbNullHandling.Default:
+            return value is null ? null : _typeInfoProvider.GetForValueAsObject(context, value, ref writeState);
+        default:
+            ThrowHelper.ThrowUnreachableException();
+            return default;
+        }
+    }
+
     public static PgConcreteTypeInfoProvider GetProvider(PgProviderTypeInfo instance) => instance._typeInfoProvider;
 
     static void ThrowUnexpectedPgTypeId(string parameterName)
@@ -290,6 +320,82 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     public PgConverter Converter { get; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
+    public bool IsNestedObjectDbNull([NotNullWhen(false)] object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling)
+    {
+        switch (nestedObjectDbNullHandling)
+        {
+        case NestedObjectDbNullHandling.ExtendedThrowOnNull:
+            if (value is null)
+                ThrowHelper.ThrowArgumentNullException(nameof(value), "Object-typed value cannot be null, a db null value must be used instead.");
+            goto case NestedObjectDbNullHandling.Extended;
+        case NestedObjectDbNullHandling.Extended:
+            if (value is DBNull)
+                return true;
+            goto case NestedObjectDbNullHandling.Default;
+        case NestedObjectDbNullHandling.Default:
+            return value is null || Converter.IsDbNullAsObject(value, writeState);
+        default:
+            ThrowHelper.ThrowUnreachableException();
+            return default;
+        }
+    }
+
+    public Size GetSize<T>(SizeContext context, [DisallowNull] T value, ref object? writeState)
+    {
+        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+            return byteCount;
+
+        var size = GetConverter<T>().GetSize(context, value, ref writeState);
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            // Not valid yet.
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
+        return size;
+    }
+
+    public Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
+    {
+        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+            return byteCount;
+
+        var size = Converter.GetSizeAsObject(context, value, ref writeState);
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            // Not valid yet.
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
+        return size;
+    }
+
+    public Size? IsDbNullOrGetSize<T>(SizeContext context, T? value, ref object? writeState)
+        => GetConverter<T>().IsDbNull(value, writeState) ? null : GetSize(context, value, ref writeState);
+
+    public Size? IsDbNullOrGetSizeAsObject(SizeContext context, object? value, ref object? writeState)
+        => Converter.IsDbNullAsObject(value, writeState) ? null : GetSizeAsObject(context, value, ref writeState);
+
+    public Size? IsNestedObjectDbNullOrGetSize(SizeContext context, object? value, ref object? writeState)
+    {
+        if (IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling))
+            return null;
+
+        return GetSizeAsObject(context, value, ref writeState);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     bool ShouldReadAsObject<T>() => typeof(T) != _typeToConvert;
 
@@ -316,10 +422,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ValueTask<T> ConverterReadAsync<T>(PgReader reader, CancellationToken cancellationToken)
     {
-        var converter = Converter;
         if (ShouldReadAsObject<T>())
         {
-            var task = converter.ReadAsObjectAsync(reader, cancellationToken);
+            var task = Converter.ReadAsObjectAsync(reader, cancellationToken);
             return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
         }
 
@@ -402,39 +507,36 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return info;
     }
 
-    // Bind for writing.
-    /// When result is null, the value was interpreted to be a SQL NULL.
-    internal PgValueBindingContext BindValue<T>(T? value, object? writeState, DataFormat? formatPreference = null)
+    internal PgValueBindingContext BindParameterValue<T>(T? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
     {
+        if (!IsStronglyTyped)
+            return BindParameterValueAsObject(value, writeState, nestedObjectDbNullHandling, formatPreference);
+
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
+        if (GetConverter<T>().IsDbNull(value, writeState))
+            return new(DataFormat.Binary, Size.Zero, null, writeState);
+
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-
-        if (GetConverter<T>().GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
-            return new(format, bufferRequirements.Write, null, null);
-
+        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+        var size = GetSize(context, value, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
-    // Bind for writing.
-    // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
-    /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    internal PgValueBindingContext BindObjectValue(object? value, object? writeState, DataFormat? formatPreference = null)
+    internal PgValueBindingContext BindParameterValueAsObject(object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
 
+        if (Converter.IsDbNullAsObject(value, writeState))
+            return new(DataFormat.Binary, Size.Zero, null, writeState);
+
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-
-        // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        if (value is DBNull && Type != typeof(DBNull) || Converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } size)
-        {
-            return new(format, bufferRequirements.Write, null, null);
-        }
-
+        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+        var size = GetSizeAsObject(context, value, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }
 

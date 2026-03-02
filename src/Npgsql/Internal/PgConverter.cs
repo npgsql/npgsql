@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,7 +32,7 @@ public abstract class PgConverter
         => DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
-            DbNullPredicate.None => false,
+            DbNullPredicate.None => value is null && ThrowInvalidNullValue(),
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValueAsObject(value, writeState) || (value is null && ThrowInvalidNullValue()),
@@ -182,14 +181,14 @@ static class PgConverterExtensions
         return size;
     }
 
-    public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
+    public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
     {
         if (converter.IsDbNullAsObject(value, writeState))
             return null;
 
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
-        var size = converter.GetSizeAsObject(new(format, writeRequirement), value, ref writeState);
+        var size = converter.GetSizeAsObject(new(format, writeRequirement) { NestedObjectDbNullHandling = nestedObjectDbNullHandling }, value, ref writeState);
 
         switch (size.Kind)
         {
@@ -206,11 +205,39 @@ static class PgConverterExtensions
     }
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 [method: SetsRequiredMembers]
 public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
 {
     public required Size BufferRequirement { get; init; } = bufferRequirement;
     public DataFormat Format { get; } = format;
+
+    public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
+}
+
+/// <summary>
+/// Specifies how db null values should be handled for object values within transparent containers (e.g. arrays or ranges).
+/// </summary>
+/// <remarks>
+/// <para>
+/// Strongly-typed code paths always delegate all db null logic to the individual converter.
+/// Object-typed paths need this per conversion configuration to determine how the converter
+/// should pre-process db null values (like DBNull.Value) before delegating to the nested converter.
+/// </para>
+/// <para>
+/// When an object[] converter was resolved for some db parameter it expects its db null behavior to extend to the array elements.
+/// Resolving that same converter for an object[] composite field should generally not cause such additional db null behavior to apply.
+/// </para>
+/// </remarks>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public enum NestedObjectDbNullHandling
+{
+    /// <summary>Handle CLR null before delegating to the nested converter (or provider).</summary>
+    Default = 0,
+    /// <summary>Handle CLR null and additional db null values (e.g. DBNull.Value) before delegating to the nested converter (or provider).</summary>
+    Extended,
+    /// <summary>Same as <see cref="Extended"/>, but CLR null values will throw an exception.</summary>
+    ExtendedThrowOnNull
 }
 
 class MultiWriteState : IDisposable
