@@ -892,7 +892,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
         var connector = Connector;
         var readBuffer = connector.ReadBuffer;
         if (readBuffer != null)
-            readBuffer.Timeout = readTimeout > TimeSpan.Zero ? readTimeout : TimeSpan.Zero;
+            readBuffer.Timeout = readTimeout > TimeSpan.Zero ? readTimeout : Timeout.InfiniteTimeSpan;
 
         var writeBuffer = connector.WriteBuffer;
         if (writeBuffer != null)
