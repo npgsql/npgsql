@@ -82,7 +82,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // We have no generic RangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
-            if (subInfo is not { IsResolverInfo: false })
+            if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
             subInfo = subInfo.ToNonBoxing();
@@ -91,10 +91,10 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             return CreateCollection().AddMapping(matchedType ?? converterType, dataTypeName,
                 (options, mapping, _) =>
-                    new PgTypeInfo(
+                    new PgConcreteTypeInfo(
                         options,
                         (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type),
-                            subInfo.GetResolution().Converter)!,
+                            ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
                         unboxedType: matchedType is not null && matchedType != converterType ? converterType : null
                     ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
@@ -136,7 +136,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // We have no generic MultirangeConverterResolver so we would not know how to compose a range mapping for such infos.
             // See https://github.com/npgsql/npgsql/issues/5268
-            if (subInfo is not { IsResolverInfo: false })
+            if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
             subInfo = subInfo.ToNonBoxing();
@@ -145,10 +145,10 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             return CreateCollection().AddMapping(type ?? converterType, dataTypeName,
                 (options, mapping, _) =>
-                    new PgTypeInfo(
+                    new PgConcreteTypeInfo(
                         options,
                         (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(converterType, subInfo.Type),
-                            subInfo.GetResolution().Converter)!,
+                            ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
                         unboxedType: type is not null && type != converterType ? converterType : null
                     ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
