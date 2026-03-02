@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
-using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
@@ -299,6 +298,21 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
+    internal PgConcreteTypeInfo? GetForNestedObjectValue(ProviderValueContext context, object? value, out object? writeState)
+    {
+        if (PgTypeId is { } pgTypeId)
+        {
+            if (context.ExpectedPgTypeId is not { } expectedId)
+            {
+                context = context with { ExpectedPgTypeId = pgTypeId };
+            }
+            else if (pgTypeId != expectedId)
+                ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
+        }
+
+        return _typeInfoProvider.GetForNestedObjectValue(context, value, out writeState);
+    }
+
     public static PgConcreteTypeInfoProvider GetProvider(PgProviderTypeInfo instance) => instance._typeInfoProvider;
 
     static void ThrowUnexpectedPgTypeId(string parameterName)
@@ -433,41 +447,75 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return info;
     }
 
-    // Bind for writing.
-    /// When result is null, the value was interpreted to be a SQL NULL.
-    internal PgValueBinding BindParameterValue<T>(T? value, object? writeState, DataFormat? formatPreference = null)
+    internal PgValueBinding BindParameterValue<T>(T? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
     {
         if (typeof(T) != Converter.TypeToConvert)
-            return BindParameterObjectValue(value, writeState, formatPreference);
+            return BindParameterValueAsObject(value, writeState, nestedObjectDbNullHandling, formatPreference);
 
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
+        if (Unsafe.As<PgConverter<T>>(Converter).IsDbNull(value, writeState))
+            return new(DataFormat.Binary, Size.Zero, null, writeState);
 
-        Debug.Assert(Converter is PgConverter<T>);
-        if (Unsafe.As<PgConverter<T>>(Converter).IsDbNullOrGetSize(format, bufferRequirements.Write, value, ref writeState) is not { } size)
-            return new(format, bufferRequirements.Write, null, null);
+        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+
+        Size size;
+        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+        {
+            size = byteCount;
+        }
+        else
+        {
+            size = Unsafe.As<PgConverter<T>>(Converter).GetSize(context, value!, ref writeState);
+
+            switch (size.Kind)
+            {
+            case SizeKind.UpperBound:
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+                break;
+            case SizeKind.Unknown:
+                // Not valid yet.
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+                break;
+            }
+        }
 
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
-    // Bind for writing.
-    // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
-    /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    internal PgValueBinding BindParameterObjectValue(object? value, object? writeState, DataFormat? formatPreference = null)
+    internal PgValueBinding BindParameterValueAsObject(object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
+        if (Converter.IsDbNullAsObject(value, writeState))
+            return new(DataFormat.Binary, Size.Zero, null, writeState);
 
-        // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        if (value is DBNull && Type != typeof(DBNull) || Converter.IsDbNullOrGetSizeAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
+        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+
+        Size size;
+        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
         {
-            return new(format, bufferRequirements.Write, null, null);
+            size = byteCount;
+        }
+        else
+        {
+            size = Converter.GetSizeAsObject(context, value, ref writeState);
+
+            switch (size.Kind)
+            {
+            case SizeKind.UpperBound:
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+                break;
+            case SizeKind.Unknown:
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+                break;
+            }
         }
 
         return new(format, bufferRequirements.Write, size, writeState);

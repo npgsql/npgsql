@@ -92,7 +92,7 @@ public abstract class PgConverter
         => DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
-            DbNullPredicate.None => false,
+            DbNullPredicate.None => value is null && ThrowInvalidNullValue(),
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValueAsObject(value, writeState) || (value is null && ThrowInvalidNullValue()),
@@ -213,8 +213,30 @@ public abstract class PgConverter<T> : PgConverter
         => GetSize(context, (T)value, ref writeState);
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 static class PgConverterExtensions
 {
+    /// Checks whether <paramref name="value"/> is considered a database null under the given <paramref name="handling"/> policy.
+    public static bool IsNestedObjectDbNull(this PgConverter converter, object? value, object? writeState, NestedObjectDbNullHandling handling)
+    {
+        switch (handling)
+        {
+        case NestedObjectDbNullHandling.ExtendedThrowOnNull:
+            if (value is null)
+                ThrowHelper.ThrowArgumentNullException(nameof(value), "Object-typed value cannot be null, a db null value must be used instead.");
+            goto case NestedObjectDbNullHandling.Extended;
+        case NestedObjectDbNullHandling.Extended:
+            if (value is DBNull)
+                return true;
+            goto case NestedObjectDbNullHandling.Default;
+        case NestedObjectDbNullHandling.Default:
+            return value is null || converter.IsDbNullAsObject(value, writeState);
+        default:
+            ThrowHelper.ThrowUnreachableException();
+            return default;
+        }
+    }
+
     public static Size? IsDbNullOrGetSize<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {
         if (converter.IsDbNull(value, writeState))
@@ -238,14 +260,14 @@ static class PgConverterExtensions
         return size;
     }
 
-    public static Size? IsDbNullOrGetSizeAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
+    public static Size? IsDbNullOrGetSizeAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
     {
         if (converter.IsDbNullAsObject(value, writeState))
             return null;
 
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
-        var size = converter.GetSizeAsObject(new(format, writeRequirement), value, ref writeState);
+        var size = converter.GetSizeAsObject(new(format, writeRequirement) { NestedObjectDbNullHandling = nestedObjectDbNullHandling }, value, ref writeState);
 
         switch (size.Kind)
         {
@@ -262,11 +284,35 @@ static class PgConverterExtensions
     }
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 [method: SetsRequiredMembers]
 public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
 {
     public required Size BufferRequirement { get; init; } = bufferRequirement;
     public DataFormat Format { get; } = format;
+
+    public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
+}
+
+/// <summary>
+/// How null-shaped values are pre-filtered when a container's element or field slot is erased to <see cref="object"/>.
+/// CLR semantics are the floor (<see cref="Default"/>), extended modes layer database null sentinel recognition on top.
+/// Strongly-typed slots resolve nulls through the nested converter directly and don't consult this knob.
+/// </summary>
+/// <remarks>
+/// Parameter-shaped containers (e.g. an <c>object[]</c> parameter) use <see cref="Extended"/> because the
+/// parameter layer treats database null sentinels as a first-class null expression alongside CLR null.
+/// Typed composites generally use <see cref="Default"/>. These create a new serialization scope where database null sentinels are not recognized.
+/// </remarks>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public enum NestedObjectDbNullHandling
+{
+    /// <summary>CLR null becomes a database null. Database null sentinels are passed through to the nested converter.</summary>
+    Default = 0,
+    /// <summary>CLR null and database null sentinels both become a database null.</summary>
+    Extended,
+    /// <summary>CLR null throws. Database null sentinels become a database null.</summary>
+    ExtendedThrowOnNull
 }
 
 class MultiWriteState : IDisposable

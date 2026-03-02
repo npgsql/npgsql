@@ -35,14 +35,14 @@ readonly struct ArrayConverterCore(
     PgTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
-    bool IsDbNull(object values, IterationIndices arrayIndices, object? writeState)
+    bool IsDbNull(SizeContext context, object values, IterationIndices arrayIndices, object? writeState)
     {
         // This call will only skip GetSize if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
         // Fixed-size element converters cannot produce per-value write state, so IsDbNullOrGetSize must
         // leave writeState alone — any mutation is a contract violation in the element converter.
         Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
         var originalWriteState = writeState;
-        var isDbNull = elemOps.IsDbNullOrGetSize(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
+        var isDbNull = elemOps.IsDbNullOrGetSize(context, values, arrayIndices, ref writeState) is null;
         Debug.Assert(ReferenceEquals(writeState, originalWriteState), "Fixed-size element converter mutated writeState during a null probe.");
         return isDbNull;
     }
@@ -88,9 +88,10 @@ readonly struct ArrayConverterCore(
             var lastLength = metadata.LastDimension;
             if (ElemTypeDbNullable)
             {
+                var elemContext = new SizeContext(context.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
                 do
                 {
-                    if (IsDbNull(values, indices, elemData?[indices.IndicesSum].WriteState))
+                    if (IsDbNull(elemContext, values, indices, elemData?[indices.IndicesSum].WriteState))
                         nulls++;
                 }
                 while (indices.TryAdvance(lastLength, metadata.DimensionLengths));
@@ -129,7 +130,8 @@ readonly struct ArrayConverterCore(
         var result = providerState ?? new()
         {
             Metadata = metadata,
-            IterationIndices = indices
+            IterationIndices = indices,
+            NestedObjectDbNullHandling = context.NestedObjectDbNullHandling
         };
         if (elemData is not null)
         {
@@ -269,6 +271,7 @@ readonly struct ArrayConverterCore(
         var lastCount = metadata.LastDimension;
         var offset = state.Data.Offset;
         var fixedSizeElements = state.FixedSizeElements;
+        var elemContext = new SizeContext(writer.Current.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = state.NestedObjectDbNullHandling };
         do
         {
             if (writer.ShouldFlush(sizeof(int)))
@@ -276,7 +279,7 @@ readonly struct ArrayConverterCore(
 
             var elem = elemData?[offset + indices.IndicesSum] ?? default;
             var length = fixedSizeElements
-                ? ElemTypeDbNullable && IsDbNull(values, indices, elem.WriteState) ? -1 : binaryRequirements.Write.Value
+                ? ElemTypeDbNullable && IsDbNull(elemContext, values, indices, elem.WriteState) ? -1 : binaryRequirements.Write.Value
                 : elem.Size.Value;
 
             writer.WriteInt32(length);
@@ -345,6 +348,7 @@ sealed class ArrayConverterWriteState : MultiWriteState
 {
     public required PgArrayMetadata Metadata { get; init; }
     public required IterationIndices IterationIndices { get; init; }
+    public required NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
 
     /// When true, all non-null elements have a fixed binary size and Data is not populated with per-element sizes.
     public bool FixedSizeElements { get; set; }

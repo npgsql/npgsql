@@ -15,8 +15,11 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly ArrayConverterCore _arrayConverterCore;
 
+    protected PgConcreteTypeInfo ElementTypeInfo { get; }
+
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
+        ElementTypeInfo = elementTypeInfo;
         if (!elementTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
@@ -138,7 +141,12 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
 
         Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
-            => _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
+        {
+            var value = GetValue(collection, indices);
+            return typeof(TElement) == typeof(object)
+                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value!, ref writeState)
+                : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
+        }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
         {
@@ -208,7 +216,12 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         }
 
         Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
-            => _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
+        {
+            var value = GetValue(collection, indices.One);
+            return typeof(TElement) == typeof(object)
+                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value!, ref writeState)
+                : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
+        }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
         {
@@ -291,7 +304,9 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out _), null);
             foreach (var value in array)
             {
-                var result = GetEffectiveForValue(effectiveContext, value, out var state);
+                var result = typeof(TElement) == typeof(object)
+                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -322,7 +337,9 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(list.Count, null);
             foreach (var value in list)
             {
-                var result = GetEffectiveForValue(effectiveContext, value, out var state);
+                var result = typeof(TElement) == typeof(object)
+                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -353,7 +370,9 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(list.Count, null);
             foreach (var value in list)
             {
-                var result = GetEffectiveForValue(effectiveContext, value, out var state);
+                var result = typeof(TElement) == typeof(object)
+                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -384,7 +403,9 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out var dimensionLengths), dimensionLengths);
             foreach (var value in array)
             {
-                var result = GetEffectiveForValue(effectiveContext, value, out var state);
+                var result = typeof(TElement) == typeof(object)
+                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    : GetEffectiveForValueAsObject(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -423,6 +444,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             {
                 Metadata = metadata,
                 IterationIndices = metadata.CreateIndices(),
+                NestedObjectDbNullHandling = effectiveContext.NestedObjectDbNullHandling,
                 ArrayPool = elemDataArrayPool,
                 Data = new(elemData, 0, index),
                 AnyWriteState = true

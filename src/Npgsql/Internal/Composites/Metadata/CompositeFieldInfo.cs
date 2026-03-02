@@ -288,8 +288,10 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     public override Size? IsDbNullOrGetSize(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState)
     {
         var value = _getter(instance);
+        // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
+        // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
         return AsObject(converter)
-            ? converter.IsDbNullOrGetSizeAsObject(format, writeRequirement, value, ref writeState)
+            ? converter.IsDbNullOrGetSizeAsObject(format, writeRequirement, value, ref writeState, NestedObjectDbNullHandling.Default)
             : ((PgConverter<T>)converter).IsDbNullOrGetSize(format, writeRequirement, value, ref writeState);
     }
 
