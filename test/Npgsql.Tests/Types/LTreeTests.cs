@@ -1,23 +1,30 @@
-﻿using System.Threading.Tasks;
+﻿using System.Data;
+using System.Threading.Tasks;
 using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class LTreeTests : TestBase
 {
     [Test]
     public Task LQuery()
-        => AssertType("Top.Science.*", "Top.Science.*", "lquery", NpgsqlDbType.LQuery, isDefaultForWriting: false);
+        => AssertType("Top.Science.*", "Top.Science.*",
+            "lquery", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.String));
 
     [Test]
     public Task LTree()
-        => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false);
+        => AssertType("Top.Science.Astronomy", "Top.Science.Astronomy",
+            "ltree", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.String));
 
     [Test]
     public Task LTxtQuery()
-        => AssertType("Science & Astronomy", "Science & Astronomy", "ltxtquery", NpgsqlDbType.LTxtQuery, isDefaultForWriting: false);
+        => AssertType("Science & Astronomy", "Science & Astronomy",
+            "ltxtquery", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.String));
 
     [Test]
     public async Task LTree_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
@@ -36,24 +43,18 @@ public class LTreeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
     }
 
     [Test]
-    public async Task NpgsqlSlimSourceBuilder_EnableLTree()
+    public async Task NpgsqlSlimSourceBuilder_EnableLTree([Values] bool withArrays)
     {
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
         dataSourceBuilder.EnableLTree();
+        if (withArrays)
+            dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false, skipArrayCheck: true);
-    }
-
-    [Test]
-    public async Task NpgsqlSlimSourceBuilder_EnableArrays()
-    {
-        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        dataSourceBuilder.EnableLTree();
-        dataSourceBuilder.EnableArrays();
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false);
+        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy",
+            "ltree", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.String),
+            skipArrayCheck: !withArrays);
     }
 
     [OneTimeSetUp]

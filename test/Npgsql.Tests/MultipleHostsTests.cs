@@ -873,6 +873,8 @@ public class MultipleHostsTests : TestBase
             TargetSessionAttributes = targetSessionAttributes,
             ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
             MaxPoolSize = 10,
+            // Our mock PG server doesn't know how to handle the reset messages
+            NoResetOnClose = true,
         };
 
         using var _ = CreateTempPool(csb, out var connString);

@@ -1,31 +1,31 @@
 <Project>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <LoggingAbstractionsPackageVersion>10.0.1</LoggingAbstractionsPackageVersion>
-    <DependencyInjectionAbstractionsPackageVersion>10.0.1</DependencyInjectionAbstractionsPackageVersion>
+    <LoggingAbstractionsPackageVersion>10.0.3</LoggingAbstractionsPackageVersion>
+    <DependencyInjectionAbstractionsPackageVersion>10.0.3</DependencyInjectionAbstractionsPackageVersion>
     
     <!-- For tests only -->
-    <DependencyInjectionPackageVersion>10.0.1</DependencyInjectionPackageVersion>
-    <LoggingPackageVersion>10.0.1</LoggingPackageVersion>
+    <DependencyInjectionPackageVersion>10.0.3</DependencyInjectionPackageVersion>
+    <LoggingPackageVersion>10.0.3</LoggingPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(LoggingAbstractionsPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(DependencyInjectionAbstractionsPackageVersion)" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.14.0" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.15.0" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
     <PackageVersion Include="NetTopologySuite.IO.PostGIS" Version="2.1.0" />
-    <PackageVersion Include="NodaTime" Version="3.2.3" />
+    <PackageVersion Include="NodaTime" Version="3.3.1" />
     <PackageVersion Include="GeoJSON.Net" Version="1.4.1" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
 
     <!-- Build -->
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.103" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
-    <PackageVersion Include="Scriban.Signed" Version="6.5.2" />
+    <PackageVersion Include="Scriban.Signed" Version="6.5.3" />
     
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="4.4.0" />
@@ -33,18 +33,18 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(DependencyInjectionPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(LoggingPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(LoggingPackageVersion)" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
-    <PackageVersion Include="NUnit3TestAdapter" Version="6.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.1.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.1" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="OpenTelemetry" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.14.0" />
+    <PackageVersion Include="OpenTelemetry" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.15.0" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.3" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.15.2" />
 
     <!-- NativeAOT -->

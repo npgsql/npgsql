@@ -30,7 +30,7 @@ public static class NpgsqlEventId
     public const int CaughtUserExceptionInNoticeEventHandler       = 1901;
     public const int CaughtUserExceptionInNotificationEventHandler = 1902;
     public const int ExceptionWhenClosingPhysicalConnection        = 1903;
-    public const int ExceptionWhenOpeningConnectionForMultiplexing = 1904;
+    public const int ExceptionWhenOpeningConnectionForMultiplexing = 1904; // Multiplexing has been removed
 
     #endregion Connection
 
@@ -48,7 +48,7 @@ public static class NpgsqlEventId
 
     public const int DerivingParameters = 2500;
 
-    public const int ExceptionWhenWritingMultiplexedCommands = 2600;
+    public const int ExceptionWhenWritingMultiplexedCommands = 2600; // Multiplexing has been removed
 
     #endregion Command
 

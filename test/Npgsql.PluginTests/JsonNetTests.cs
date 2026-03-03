@@ -1,10 +1,9 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Npgsql.Tests;
-using NpgsqlTypes;
 using NUnit.Framework;
 using System;
-using System.Text;
+using System.Data;
 using System.Threading.Tasks;
 
 // ReSharper disable AccessToModifiedClosure
@@ -15,9 +14,9 @@ namespace Npgsql.PluginTests;
 /// <summary>
 /// Tests for the Npgsql.Json.NET mapping plugin
 /// </summary>
-[TestFixture(NpgsqlDbType.Jsonb)]
-[TestFixture(NpgsqlDbType.Json)]
-public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
+[TestFixture("jsonb")]
+[TestFixture("json")]
+public class JsonNetTests(string dataTypeName) : TestBase
 {
     [Test]
     public Task Roundtrip_object()
@@ -25,10 +24,8 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             JsonDataSource,
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            _pgTypeName,
-            npgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName, dataTypeInference: DataTypeInference.Nothing,
+            valueTypeEqualsFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_string()
@@ -36,10 +33,8 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             JsonDataSource,
             @"{""p"": 1}",
             @"{""p"": 1}",
-            _pgTypeName,
-            npgsqlDbType,
-            isDefaultForWriting: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName, dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.String));
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_char_array()
@@ -47,21 +42,17 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             JsonDataSource,
             @"{""p"": 1}".ToCharArray(),
             @"{""p"": 1}",
-            _pgTypeName,
-            npgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName, dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.String), valueTypeEqualsFieldType: false);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
     public Task Roundtrip_byte_array()
         => AssertType(
             JsonDataSource,
-            Encoding.ASCII.GetBytes(@"{""p"": 1}"),
+            @"{""p"": 1}"u8.ToArray(),
             @"{""p"": 1}",
-            _pgTypeName,
-            npgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName, dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.Object, DbType.Binary), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Roundtrip_JObject()
@@ -69,12 +60,8 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             JsonDataSource,
             new JObject { ["Bar"] = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            _pgTypeName,
-            npgsqlDbType,
-            // By default we map JObject to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName, dataTypeInference: DataTypeInference.Nothing,
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Roundtrip_JArray()
@@ -82,18 +69,14 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             JsonDataSource,
             new JArray(new[] { 1, 2, 3 }),
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
-            _pgTypeName,
-            npgsqlDbType,
-            // By default we map JArray to jsonb
-            isDefaultForWriting: IsJsonb,
-            isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName, dataTypeInference: DataTypeInference.Nothing,
+            valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Deserialize_failure()
     {
         await using var conn = await JsonDataSource.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($@"SELECT '[1, 2, 3]'::{_pgTypeName}", conn);
+        await using var cmd = new NpgsqlCommand($@"SELECT '[1, 2, 3]'::{dataTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
         // Attempt to deserialize JSON array into object
@@ -117,10 +100,8 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             dataSource,
             new Foo { Bar = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
-            _pgTypeName,
-            npgsqlDbType,
-            isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName,
+            dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -137,10 +118,8 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             dataSource,
             new[] { 1, 2, 3 },
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
-            _pgTypeName,
-            npgsqlDbType,
-            isDefaultForReading: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName, dataTypeInference: DataTypeInference.Mismatch,
+            valueTypeEqualsFieldType: false, skipArrayCheck: true); // there is no value only mapping for int[][]
     }
 
     class DateWrapper
@@ -166,10 +145,8 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
             dataSource,
             new DateWrapper { Date = new DateTime(2018, 04, 20) },
             IsJsonb ? "{\"Date\": \"The 20th of April, 2018\"}" : "{\"Date\":\"The 20th of April, 2018\"}",
-            _pgTypeName,
-            npgsqlDbType,
-            isDefault: false,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeName,
+            dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
     }
 
     [Test]
@@ -183,8 +160,8 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn);
 
-        cmd.Parameters.AddWithValue("p1", expected).NpgsqlDbType = npgsqlDbType;
-        cmd.Parameters.AddWithValue("p2", expected).NpgsqlDbType = npgsqlDbType;
+        cmd.Parameters.AddWithValue("p1", expected).DataTypeName = dataTypeName;
+        cmd.Parameters.AddWithValue("p2", expected).DataTypeName = dataTypeName;
 
         await using var reader = cmd.ExecuteReader();
     }
@@ -261,8 +238,6 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
         public override int GetHashCode() => Bar.GetHashCode();
     }
 
-    readonly string _pgTypeName = npgsqlDbType.ToString().ToLower();
-
     [OneTimeSetUp]
     public void SetUp()
     {
@@ -275,7 +250,7 @@ public class JsonNetTests(NpgsqlDbType npgsqlDbType) : TestBase
     public async Task Teardown()
         => await JsonDataSource.DisposeAsync();
 
-    bool IsJsonb => npgsqlDbType == NpgsqlDbType.Jsonb;
+    bool IsJsonb => dataTypeName == "jsonb";
 
     NpgsqlDataSource JsonDataSource = default!;
 }

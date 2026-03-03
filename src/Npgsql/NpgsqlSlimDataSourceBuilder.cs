@@ -798,11 +798,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             return new NpgsqlMultiHostDataSource(connectionStringBuilder, config);
         }
 
-        return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(connectionStringBuilder, config)
-            : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(connectionStringBuilder, config)
-                : new UnpooledDataSource(connectionStringBuilder, config);
+        return ConnectionStringBuilder.Pooling
+            ? new PoolingDataSource(connectionStringBuilder, config)
+            : new UnpooledDataSource(connectionStringBuilder, config);
     }
 
     /// <summary>
@@ -903,8 +901,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     void ValidateMultiHost()
     {
-        if (ConnectionStringBuilder.Multiplexing)
-            throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
         if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
             throw new NotSupportedException("Replication is not supported with multiple hosts");
     }

@@ -1,4 +1,8 @@
 ﻿#nullable enable
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.Multiplexing.get -> bool
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.Multiplexing.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingBufferThresholdBytes.get -> int
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingBufferThresholdBytes.set -> void
 abstract Npgsql.NpgsqlDataSource.Clear() -> void
 Npgsql.GssEncryptionMode
 Npgsql.GssEncryptionMode.Disable = 0 -> Npgsql.GssEncryptionMode

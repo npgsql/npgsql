@@ -258,6 +258,34 @@ public class SystemTransactionTests : TestBase
         AssertNumberOfRows(0, tableName);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3735")]
+    public void Reuse_connection_resets_temp_tables()
+    {
+        // When a connection is closed inside a TransactionScope and then reopened,
+        // temp tables should be discarded.
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
+        using (new TransactionScope())
+        using (var conn = dataSource.CreateConnection())
+        {
+            conn.Open();
+            var processId = conn.ProcessID;
+
+            // Create a temp table
+            conn.ExecuteNonQuery("CREATE TEMP TABLE temp_test (id INT)");
+
+            conn.Close();
+
+            // Reopen - should get the same physical connection but with reset state
+            conn.Open();
+            Assert.That(conn.ProcessID, Is.EqualTo(processId), "Should reuse the same physical connection");
+
+            // The temp table should have been discarded
+            Assert.That(() => conn.ExecuteScalar("SELECT COUNT(*) FROM temp_test"),
+                Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedTable));
+        }
+    }
+
     [Test, Ignore("Timeout doesn't seem to fire on .NET Core / Linux")]
     public void Timeout_triggers_rollback_while_busy()
     {

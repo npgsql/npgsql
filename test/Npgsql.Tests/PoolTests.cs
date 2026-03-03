@@ -468,29 +468,5 @@ class PoolTests : TestBase
             }));
     }
 
-    // When multiplexing, and the pool is totally saturated (at Max Pool Size and 0 idle connectors), we select
-    // the connector with the least commands in flight and execute on it. We must never select a connector with
-    // a pending transaction on it.
-    // TODO: Test not tested
-    [Test]
-    [Ignore("Multiplexing: fails")]
-    public async Task MultiplexedCommandDoesntGetExecutedOnTransactionedConnector()
-    {
-        await using var dataSource = CreateDataSource(csb =>
-        {
-            csb.MaxPoolSize = 1;
-            csb.Timeout = 1;
-        });
-
-        await using var connWithTx = await dataSource.OpenConnectionAsync();
-        await using var tx = await connWithTx.BeginTransactionAsync();
-        // connWithTx should now be bound with the only physical connector available.
-        // Any commands execute should timeout
-
-        await using var conn2 = await dataSource.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT 1", conn2);
-        Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteScalarAsync());
-    }
-
     #endregion
 }

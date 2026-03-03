@@ -239,8 +239,7 @@ public class NetTopologySuiteTests : TestBase
             new Geometry[] { point },
             '{' + GetSqlLiteral(point) + '}',
             "geometry[]",
-            NpgsqlDbType.Geometry | NpgsqlDbType.Array,
-            isNpgsqlDbTypeInferredFromClrType: false);
+            dataTypeInference: DataTypeInference.Nothing);
     }
 
     [Test]

@@ -127,6 +127,31 @@ public class MetricTests : TestBase
         Assert.That(tags["db.client.connection.pool.name"], Is.EqualTo(dataSource.Name));
     }
 
+    [Test]
+    public async Task Password_does_not_leak_via_datasource_name([Values] bool persistSecurityInfo)
+    {
+        var exportedItems = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter("Npgsql")
+            .AddInMemoryExporter(exportedItems)
+            .Build();
+
+        var dataSourceBuilder = base.CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.ApplicationName = "MetricsDataSource" + Interlocked.Increment(ref _dataSourceCounter);
+        dataSourceBuilder.ConnectionStringBuilder.PersistSecurityInfo = persistSecurityInfo;
+        // Do not set the data source name - this makes it default to the connection string, but without
+        // the password (even when Persist Security Info is true)
+        await using var dataSource = dataSourceBuilder.Build();
+
+        meterProvider.ForceFlush();
+
+        var metric = exportedItems.Single(m => m.Name == "db.client.connection.max");
+        var point = GetFilteredPoints(metric.GetMetricPoints(), dataSource.Name).First();
+        var tags = ToDictionary(point.Tags);
+        var connectionString = new NpgsqlConnectionStringBuilder((string)tags["db.client.connection.pool.name"]!);
+        Assert.That(connectionString.Password, Is.Null);
+    }
+
     static Dictionary<string, object?> ToDictionary(ReadOnlyTagCollection tags)
     {
         var dict = new Dictionary<string, object?>();

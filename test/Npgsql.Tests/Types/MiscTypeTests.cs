@@ -9,16 +9,16 @@ namespace Npgsql.Tests.Types;
 /// <summary>
 /// Tests on PostgreSQL types which don't fit elsewhere
 /// </summary>
-class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+class MiscTypeTests : TestBase
 {
     [Test]
     public async Task Boolean()
     {
-        await AssertType(true, "true", "boolean", NpgsqlDbType.Boolean, DbType.Boolean, skipArrayCheck: true);
-        await AssertType(false, "false", "boolean", NpgsqlDbType.Boolean, DbType.Boolean, skipArrayCheck: true);
+        await AssertType(true, "true", "boolean", dbType: DbType.Boolean, skipArrayCheck: true);
+        await AssertType(false, "false", "boolean", dbType: DbType.Boolean, skipArrayCheck: true);
 
         // The literal representations for bools inside array are different ({t,f} instead of true/false, so we check separately.
-        await AssertType(new[] { true, false }, "{t,f}", "boolean[]", NpgsqlDbType.Boolean | NpgsqlDbType.Array);
+        await AssertType(new[] { true, false }, "{t,f}", "boolean[]");
     }
 
     [Test]
@@ -26,7 +26,7 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
         => AssertType(
             new Guid("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"),
             "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-            "uuid", NpgsqlDbType.Uuid, DbType.Guid);
+            "uuid", dbType: DbType.Guid);
 
     [Test, Description("Makes sure that the PostgreSQL 'unknown' type (OID 705) is read properly")]
     public async Task Read_unknown()
@@ -103,9 +103,6 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
     [Test, Description("Mixes and matches an unknown type with a known type")]
     public async Task UnknownResultTypeList()
     {
-        if (IsMultiplexing)
-            return;
-
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT TRUE, 8", conn);
         cmd.UnknownResultTypeList = [true, false];
@@ -172,25 +169,33 @@ class MiscTypeTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(mu
     [Test]
     public async Task ObjectArray()
     {
-        await AssertTypeWrite(new object?[] { (short)4, null, (long)5, 6 }, "{4,NULL,5,6}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefault: false);
-        await AssertTypeWrite(new object?[] { "text", null, DBNull.Value, "chars".ToCharArray(), 'c' }, "{text,NULL,NULL,chars,c}", "text[]", NpgsqlDbType.Text | NpgsqlDbType.Array, isDefault: false);
+        await AssertTypeWrite(new object?[] { (short)4, null, (long)5, 6 }, "{4,NULL,5,6}",
+            "integer[]", dataTypeInference: DataTypeInference.Nothing);
+        await AssertTypeWrite(new object?[] { "text", null, DBNull.Value, "chars".ToCharArray(), 'c' }, "{text,NULL,NULL,chars,c}",
+            "text[]", dataTypeInference: DataTypeInference.Nothing);
 
         await using var dataSource = CreateDataSource(b => b.ConnectionStringBuilder.Timezone = "Europe/Berlin");
-        await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]", NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false);
+        await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) },
+            "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}",
+            "timestamp with time zone[]", dataTypeInference: DataTypeInference.Nothing);
         Assert.ThrowsAsync<ArgumentException>(() => AssertTypeWrite(dataSource, new object?[]
             {
                 DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
             }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
-            NpgsqlDbType.TimestampTz | NpgsqlDbType.Array, isDefault: false));
+            dataTypeInference: DataTypeInference.Nothing));
     }
 
     [Test]
     public Task Int2Vector()
-        => AssertType(new short[] { 4, 5, 6 }, "4 5 6", "int2vector", NpgsqlDbType.Int2Vector, isDefault: false);
+        => AssertType(new short[] { 4, 5, 6 }, "4 5 6",
+            "int2vector", dataTypeInference: DataTypeInference.Mismatch,
+            // int2vector mappings require a data type name, so passing a value of type short[][] will result in no mapping.
+            skipArrayCheck: true);
 
     [Test]
     public Task Oidvector()
-        => AssertType(new uint[] { 4, 5, 6 }, "4 5 6", "oidvector", NpgsqlDbType.Oidvector, isDefault: false);
+        => AssertType(new uint[] { 4, 5, 6 }, "4 5 6",
+            "oidvector", dataTypeInference: DataTypeInference.Nothing);
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1138")]
     public async Task Void()

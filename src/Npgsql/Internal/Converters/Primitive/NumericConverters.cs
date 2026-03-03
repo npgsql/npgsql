@@ -34,7 +34,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
     {
         // If we don't need a read and can read buffered we delegate to our sync read method which won't do IO in such a case.
         if (!reader.ShouldBuffer(reader.CurrentRemaining))
-            Read(reader);
+            return new(Read(reader));
 
         return AsyncCore(reader, cancellationToken);
 
@@ -166,7 +166,7 @@ static class NumericConverter
         var sign = reader.ReadInt16();
         var scale = reader.ReadInt16();
         var array = digits.Array!;
-        for (var i = digits.Offset; i < array.Length; i++)
+        for (var i = digits.Offset; i < digits.Offset + digits.Count; i++)
         {
             if (reader.ShouldBuffer(sizeof(short)))
                 await reader.BufferAsync(sizeof(short), cancellationToken).ConfigureAwait(false);

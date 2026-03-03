@@ -48,7 +48,6 @@ public abstract class NpgsqlDataSource : DbDataSource
         public IDbTypeResolver? DbTypeResolver { get; } = dbTypeResolver;
     }
 
-
     internal TransportSecurityHandler TransportSecurityHandler { get; }
 
     internal Action<SslClientAuthenticationOptions>? SslClientAuthenticationOptionsCallback { get; }
@@ -94,15 +93,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly INpgsqlNameTranslator _defaultNameTranslator;
     readonly IDisposable? _eventSourceEvents;
 
-    internal NpgsqlDataSource(
-        NpgsqlConnectionStringBuilder settings,
-        NpgsqlDataSourceConfiguration dataSourceConfig, bool reportMetrics)
+    internal NpgsqlDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig, bool reportMetrics)
     {
-        Settings = settings;
-        ConnectionString = settings.PersistSecurityInfo
-            ? settings.ToString()
-            : settings.ToStringWithoutPassword();
-
         Configuration = dataSourceConfig;
 
         (var name,
@@ -128,6 +120,21 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Debug.Assert(_passwordProvider is null || _passwordProviderAsync is not null);
 
+        Settings = settings;
+
+        if (settings.PersistSecurityInfo)
+        {
+            ConnectionString = settings.ToString();
+
+            // The data source name is reported in tracing/metrics, so avoid leaking the password through there.
+            Name = name ?? settings.ToStringWithoutPassword();
+        }
+        else
+        {
+            ConnectionString = settings.ToStringWithoutPassword();
+            Name = name ?? ConnectionString;
+        }
+
         _password = settings.Password;
 
         if (_periodicPasswordSuccessRefreshInterval != default)
@@ -143,8 +150,6 @@ public abstract class NpgsqlDataSource : DbDataSource
             // in GetPasswordAsync.
             _passwordRefreshTask = Task.Run(RefreshPassword);
         }
-
-        Name = name ?? ConnectionString;
 
         // TODO this needs a rework, but for now we just avoid tracking multi-host data sources directly.
         if (reportMetrics)

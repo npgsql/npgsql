@@ -27,12 +27,6 @@ static partial class LogMessages
     internal static partial void OpenedConnection(ILogger logger, string Host, int Port, string Database, string ConnectionString, int ConnectorId);
 
     [LoggerMessage(
-        EventId = NpgsqlEventId.OpenedConnection,
-        Level = LogLevel.Debug,
-        Message = "Opened multiplexing connection to {Host}:{Port}/{Database}")]
-    internal static partial void OpenedMultiplexingConnection(ILogger logger, string Host, int Port, string Database, string ConnectionString);
-
-    [LoggerMessage(
         EventId = NpgsqlEventId.ClosingConnection,
         Level = LogLevel.Trace,
         Message = "Closing connection to {Host}:{Port}/{Database}...")]
@@ -43,12 +37,6 @@ static partial class LogMessages
         Level = LogLevel.Debug,
         Message = "Closed connection to {Host}:{Port}/{Database}")]
     internal static partial void ClosedConnection(ILogger logger, string Host, int Port, string Database, string ConnectionString, int ConnectorId);
-
-    [LoggerMessage(
-        EventId = NpgsqlEventId.ClosedConnection,
-        Level = LogLevel.Debug,
-        Message = "Closed multiplexing connection to {Host}:{Port}/{Database}")]
-    internal static partial void ClosedMultiplexingConnection(ILogger logger, string Host, int Port, string Database, string ConnectionString);
 
     [LoggerMessage(
         EventId = NpgsqlEventId.OpeningPhysicalConnection,
@@ -133,12 +121,6 @@ static partial class LogMessages
         Level = LogLevel.Warning,
         Message = "Exception while closing connector")]
     internal static partial void ExceptionWhenClosingPhysicalConnection(ILogger logger, int ConnectorId, Exception exception);
-
-    [LoggerMessage(
-        EventId = NpgsqlEventId.ExceptionWhenOpeningConnectionForMultiplexing,
-        Level = LogLevel.Error,
-        Message = "Exception opening a connection for multiplexing")]
-    internal static partial void ExceptionWhenOpeningConnectionForMultiplexing(ILogger logger, Exception exception);
 
     [LoggerMessage(
         Level = LogLevel.Trace,
@@ -253,12 +235,6 @@ static partial class LogMessages
         Level = LogLevel.Debug,
         Message = "Deriving Parameters for query: {CommandText}")]
     internal static partial void DerivingParameters(ILogger logger, string CommandText, int ConnectorId);
-
-    [LoggerMessage(
-        EventId = NpgsqlEventId.ExceptionWhenWritingMultiplexedCommands,
-        Level = LogLevel.Error,
-        Message = "Exception while writing multiplexed commands")]
-    internal static partial void ExceptionWhenWritingMultiplexedCommands(ILogger logger, int ConnectorId, Exception exception);
 
     [LoggerMessage(
         Level = LogLevel.Trace,
