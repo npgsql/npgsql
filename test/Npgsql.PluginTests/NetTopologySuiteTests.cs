@@ -157,9 +157,9 @@ public class NetTopologySuiteTests : TestBase
         await using var conn = await OpenConnectionAsync(handleOrdinates: Ordinates.XY);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT ST_MakePoint(1, 2, 3)"; // Create a 3D point in SQL
-        
+
         var result = (Point)cmd.ExecuteScalar()!;
-        
+
         // The Z coordinate should be filtered out during reading based on handleOrdinates: XY
         Assert.That(result.CoordinateSequence.HasZ, Is.False,
             "Z coordinate was correctly filtered during read");
@@ -179,9 +179,9 @@ public class NetTopologySuiteTests : TestBase
         await using var cmd = conn.CreateCommand();
         cmd.Parameters.AddWithValue("p1", pointWithZ);
         cmd.CommandText = "SELECT ST_Z(@p1::geometry)";
-        
+
         var result = cmd.ExecuteScalar();
-        
+
         // Z coordinate should be filtered out and return NULL
         Assert.That(result, Is.EqualTo(DBNull.Value),
             "Z coordinate should be filtered during write when handleOrdinates: Ordinates.XY");
@@ -200,9 +200,9 @@ public class NetTopologySuiteTests : TestBase
         await using var cmd = conn.CreateCommand();
         cmd.Parameters.AddWithValue("p1", pointWithM);
         cmd.CommandText = "SELECT ST_M(@p1::geometry)";
-        
+
         var result = cmd.ExecuteScalar();
-        
+
         // M coordinate should be filtered out and return NULL
         Assert.That(result, Is.EqualTo(DBNull.Value),
             "M coordinate should be filtered during write when handleOrdinates: Ordinates.XY");
@@ -221,9 +221,9 @@ public class NetTopologySuiteTests : TestBase
         await using var cmd = conn.CreateCommand();
         cmd.Parameters.AddWithValue("p1", pointWithZM);
         cmd.CommandText = "SELECT ST_M(@p1::geometry)";
-        
+
         var result = cmd.ExecuteScalar();
-        
+
         // M coordinate should be filtered out and return NULL
         Assert.That(result, Is.EqualTo(DBNull.Value),
             "M coordinate should be filtered during write when handleOrdinates: Ordinates.XYZ");
