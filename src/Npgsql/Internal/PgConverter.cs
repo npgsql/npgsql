@@ -14,8 +14,8 @@ public abstract class PgConverter
     internal DbNullPredicate DbNullPredicateKind { get; }
     public bool IsDbNullable => DbNullPredicateKind is not DbNullPredicate.None;
 
-    private protected PgConverter(Type type, bool isNullDefaultValue, bool customDbNullPredicate = false)
-        => DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
+    private protected PgConverter(bool isNullDefaultValue, bool customDbNullPredicate = false)
+        => DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : isNullDefaultValue ? DbNullPredicate.Null : DbNullPredicate.None;
 
     /// <summary>
     /// Whether this converter can handle the given format and with which buffer requirements.
@@ -33,7 +33,6 @@ public abstract class PgConverter
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => value is null && ThrowInvalidNullValue(),
-            DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValueAsObject(value, writeState) || (value is null && ThrowInvalidNullValue()),
             _ => ThrowDbNullPredicateOutOfRange()
@@ -67,13 +66,6 @@ public abstract class PgConverter
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
     internal abstract ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken);
 
-    static DbNullPredicate InferDbNullPredicate(Type type, bool isNullDefaultValue)
-        => type == typeof(object) || type == typeof(DBNull)
-            ? DbNullPredicate.PolymorphicNull
-            : isNullDefaultValue
-                ? DbNullPredicate.Null
-                : DbNullPredicate.None;
-
     internal enum DbNullPredicate : byte
     {
         /// Never DbNull (struct types)
@@ -81,9 +73,7 @@ public abstract class PgConverter
         /// DbNull when *user code*
         Custom,
         /// DbNull when value is null
-        Null,
-        /// DbNull when value is null or DBNull
-        PolymorphicNull
+        Null
     }
 
     [DoesNotReturn]
@@ -100,7 +90,7 @@ public abstract class PgConverter
 public abstract class PgConverter<T> : PgConverter
 {
     private protected PgConverter(bool customDbNullPredicate)
-        : base(typeof(T), default(T) is null, customDbNullPredicate) { }
+        : base(default(T) is null, customDbNullPredicate) { }
 
 #pragma warning disable CS0618 // Obsolete - delegates to ref overload for binary compat with existing overrides
     protected virtual bool IsDbNullValue(T? value, object? writeState)
@@ -132,7 +122,6 @@ public abstract class PgConverter<T> : PgConverter
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
-            DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValue(value, writeState) || (value is null && ThrowInvalidNullValue()),
             _ => ThrowDbNullPredicateOutOfRange()
