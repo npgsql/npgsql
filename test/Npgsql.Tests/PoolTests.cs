@@ -201,8 +201,7 @@ class PoolTests : TestBase
         AssertPoolState(dataSource, open: Math.Max(1, minPoolSize), idle: Math.Max(0, minPoolSize - 1));
     }
 
-    [Test]
-    [Explicit("Timing-based")]
+    [Test, Ignore("Timing-based")]
     public async Task Prune_counts_max_lifetime_exceeded()
     {
         await using var dataSource = CreateDataSource(csb =>
