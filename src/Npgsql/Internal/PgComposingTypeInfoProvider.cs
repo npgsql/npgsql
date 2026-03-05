@@ -23,7 +23,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
     protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo);
-    protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectivePgTypeId);
+    protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
@@ -33,11 +33,12 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
 
-    protected override PgConcreteTypeInfo? GetForValueCore(T? value, PgTypeId? expectedPgTypeId)
+    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, T? value)
     {
-        PgTypeId? effectiveTypeId = expectedPgTypeId is { } id ? GetEffectiveTypeId(id) : null;
-        if (GetEffectiveTypeInfo(value, effectiveTypeId) is { } effectiveTypeInfo)
-            return GetOrAdd(effectiveTypeInfo, expectedPgTypeId ?? _pgTypeId ?? GetPgTypeId(effectiveTypeInfo.PgTypeId));
+        PgTypeId? effectiveTypeId = context.ExpectedPgTypeId is { } id ? GetEffectiveTypeId(id) : null;
+        var effectiveContext = context with { ExpectedPgTypeId = effectiveTypeId };
+        if (GetEffectiveTypeInfo(effectiveContext, value) is { } effectiveTypeInfo)
+            return GetOrAdd(effectiveTypeInfo, context.ExpectedPgTypeId ?? _pgTypeId ?? GetPgTypeId(effectiveTypeInfo.PgTypeId));
 
         return null;
     }

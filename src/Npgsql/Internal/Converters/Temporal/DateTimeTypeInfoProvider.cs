@@ -10,7 +10,7 @@ namespace Npgsql.Internal.Converters;
 sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 {
     readonly PgSerializerOptions _options;
-    readonly Func<DateTimeTypeInfoProvider<T>, T?, PgTypeId?, PgConcreteTypeInfo?> _provider;
+    readonly Func<DateTimeTypeInfoProvider<T>, ProviderValueContext, T?, PgConcreteTypeInfo?> _provider;
     readonly Func<PgTypeId, PgConverter> _factory;
     readonly PgTypeId _timestampTz;
     PgConcreteTypeInfo? _timestampTzConcreteTypeInfo;
@@ -18,7 +18,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     PgConcreteTypeInfo? _timestampConcreteTypeInfo;
     readonly bool _dateTimeInfinityConversions;
 
-    internal DateTimeTypeInfoProvider(PgSerializerOptions options, Func<DateTimeTypeInfoProvider<T>, T?, PgTypeId?, PgConcreteTypeInfo?> provider,
+    internal DateTimeTypeInfoProvider(PgSerializerOptions options, Func<DateTimeTypeInfoProvider<T>, ProviderValueContext, T?, PgConcreteTypeInfo?> provider,
         Func<PgTypeId, PgConverter> factory, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
     {
         _options = options;
@@ -39,24 +39,24 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         throw new ArgumentOutOfRangeException(nameof(pgTypeId), pgTypeId, "Unsupported PgTypeId.");
     }
 
-    protected override PgConcreteTypeInfo? GetForValueCore(T? value, PgTypeId? expectedPgTypeId)
-        => _provider(this, value, expectedPgTypeId);
+    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, T? value)
+        => _provider(this, context, value);
 
-    public PgConcreteTypeInfo? Get(DateTime value, PgTypeId? expectedPgTypeId, bool validateOnly = false)
+    public PgConcreteTypeInfo? Get(ProviderValueContext context, DateTime value, bool validateOnly = false)
     {
         if (value.Kind is DateTimeKind.Utc)
         {
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
-            return expectedPgTypeId == _timestamp
+            return context.ExpectedPgTypeId == _timestamp
                 ? throw new ArgumentException(
                     string.Format(NpgsqlStrings.TimestampNoDateTimeUtc,
                         _options.GetDataTypeName(_timestamp).DisplayName,
                         _options.GetDataTypeName(_timestampTz).DisplayName), nameof(value))
-                : validateOnly ? null : GetDefault(expectedPgTypeId ?? _timestampTz);
+                : validateOnly ? null : GetDefault(context.ExpectedPgTypeId ?? _timestampTz);
         }
 
         // For timestamptz types we'll accept unspecified MinValue/MaxValue as well.
-        if (expectedPgTypeId == _timestampTz
+        if (context.ExpectedPgTypeId == _timestampTz
             && !(_dateTimeInfinityConversions && (value == DateTime.MinValue || value == DateTime.MaxValue)))
         {
             throw new ArgumentException(
@@ -65,14 +65,14 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         }
 
         // We coalesce with expectedPgTypeId to throw on unknown type ids.
-        return GetDefault(expectedPgTypeId ?? _timestamp);
+        return GetDefault(context.ExpectedPgTypeId ?? _timestamp);
     }
 }
 
 sealed class DateTimeTypeInfoProvider
 {
     public static DateTimeTypeInfoProvider<DateTime> CreateProvider(PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(options, static (provider, value, expectedPgTypeId) => provider.Get(value, expectedPgTypeId), pgTypeId =>
+        => new(options, static (provider, context, value) => provider.Get(context, value), pgTypeId =>
         {
             if (pgTypeId == timestampTz)
                 return new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc);
@@ -84,16 +84,19 @@ sealed class DateTimeTypeInfoProvider
 
     public static DateTimeTypeInfoProvider<NpgsqlRange<DateTime>> CreateRangeProvider(
         PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(options, static (provider, value, expectedPgTypeId) =>
+        => new(options, static (provider, context, value) =>
         {
             // Resolve both sides to make sure we end up with consistent PgTypeIds.
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (!value.LowerBoundInfinite)
-                concreteTypeInfo = provider.Get(value.LowerBound, expectedPgTypeId);
+            {
+                concreteTypeInfo = provider.Get(context, value.LowerBound);
+                context = context with { ExpectedPgTypeId = concreteTypeInfo?.PgTypeId ?? context.ExpectedPgTypeId };
+            }
 
             if (!value.UpperBoundInfinite)
             {
-                var result = provider.Get(value.UpperBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
+                var result = provider.Get(context, value.UpperBound, validateOnly: concreteTypeInfo is not null);
                 concreteTypeInfo ??= result;
             }
 
@@ -115,7 +118,7 @@ sealed class DateTimeTypeInfoProvider
         if (typeof(TElement) != typeof(NpgsqlRange<DateTime>))
             ThrowHelper.ThrowNotSupportedException("Unsupported element type");
 
-        return new DateTimeTypeInfoProvider<T>(options, static (provider, value, expectedPgTypeId) =>
+        return new DateTimeTypeInfoProvider<T>(options, static (provider, context, value) =>
         {
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is null)
@@ -126,13 +129,21 @@ sealed class DateTimeTypeInfoProvider
                 PgConcreteTypeInfo? result;
                 if (!element.LowerBoundInfinite)
                 {
-                    result = provider.Get(element.LowerBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
-                    concreteTypeInfo ??= result;
+                    result = provider.Get(context, element.LowerBound, validateOnly: concreteTypeInfo is not null);
+                    if (concreteTypeInfo is null && result is not null)
+                    {
+                        concreteTypeInfo = result;
+                        context = context with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
                 }
                 if (!element.UpperBoundInfinite)
                 {
-                    result = provider.Get(element.UpperBound, concreteTypeInfo?.PgTypeId ?? expectedPgTypeId, validateOnly: concreteTypeInfo is not null);
-                    concreteTypeInfo ??= result;
+                    result = provider.Get(context, element.UpperBound, validateOnly: concreteTypeInfo is not null);
+                    if (concreteTypeInfo is null && result is not null)
+                    {
+                        concreteTypeInfo = result;
+                        context = context with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
                 }
             }
             return concreteTypeInfo;

@@ -80,7 +80,7 @@ public abstract class PgTypeInfo
         if (this is not PgProviderTypeInfo providerTypeInfo)
             return (PgConcreteTypeInfo)this;
 
-        return providerTypeInfo.GetConcreteTypeInfo(value, null) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+        return providerTypeInfo.GetConcreteTypeInfo(default, value) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
     }
 
     // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
@@ -93,7 +93,7 @@ public abstract class PgTypeInfo
         case PgProviderTypeInfo providerTypeInfo:
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is not DBNull)
-                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(value, null);
+                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(default, value);
             return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
         default:
             return ThrowNotSupported();
@@ -251,13 +251,20 @@ public sealed class PgProviderTypeInfo(
     static PgConcreteTypeInfo GetDefault(PgSerializerOptions options, PgConcreteTypeInfoProvider concreteTypeInfoProvider, PgTypeId typeId)
         => concreteTypeInfoProvider.GetDefaultInternal(validate: true, options.PortableTypeIds, options.GetCanonicalTypeId(typeId));
 
-    public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(T? value, PgTypeId? expectedPgTypeId)
+    public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(ProviderValueContext context, T? value)
     {
-        if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
-            ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
+        if (PgTypeId is { } pgTypeId)
+        {
+            if (context.ExpectedPgTypeId is not { } expectedId)
+            {
+                context = context with { ExpectedPgTypeId = pgTypeId };
+            }
+            else if (pgTypeId != expectedId)
+                ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
+        }
 
         return typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
-            ? providerT.GetForValueInternal(this, value, expectedPgTypeId ?? PgTypeId)
+            ? providerT.GetForValueInternal(this, context, value)
             : ThrowNotSupportedType(typeof(T));
 
         PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
@@ -266,12 +273,19 @@ public sealed class PgProviderTypeInfo(
                 : $"TypeInfo is not of type {type}");
     }
 
-    public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(object? value, PgTypeId? expectedPgTypeId)
+    public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(ProviderValueContext context, object? value)
     {
-        if (expectedPgTypeId is { } id && PgTypeId is { } decidedId && id != decidedId)
-            ThrowUnexpectedPgTypeId(nameof(expectedPgTypeId));
+        if (PgTypeId is { } pgTypeId)
+        {
+            if (context.ExpectedPgTypeId is not { } expectedId)
+            {
+                context = context with { ExpectedPgTypeId = pgTypeId };
+            }
+            else if (pgTypeId != expectedId)
+                ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
+        }
 
-        return typeInfoProvider.GetForValueAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+        return typeInfoProvider.GetForValueAsObjectInternal(this, context, value);
     }
 
     public PgConcreteTypeInfo? GetConcreteTypeInfo(Field field)

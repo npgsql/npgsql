@@ -270,7 +270,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(T? values, PgTypeId? expectedEffectivePgTypeId)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? values)
     {
         PgConcreteTypeInfo? concreteTypeInfo = null;
         switch (values)
@@ -278,29 +278,45 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             case TElement[] array:
                 foreach (var value in array)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
-                    concreteTypeInfo ??= result;
+                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value);
+                    if (concreteTypeInfo is null && result is not null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
                 }
                 break;
             case List<TElement> list:
                 foreach (var value in list)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
-                    concreteTypeInfo ??= result;
+                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value);
+                    if (concreteTypeInfo is null && result is not null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
                 }
                 break;
             case IList<TElement> list:
                 foreach (var value in list)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
-                    concreteTypeInfo ??= result;
+                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value);
+                    if (concreteTypeInfo is null && result is not null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
                 }
                 break;
             case Array array:
                 foreach (var value in array)
                 {
-                    var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(value, concreteTypeInfo?.PgTypeId ?? expectedEffectivePgTypeId);
-                    concreteTypeInfo ??= result;
+                    var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value);
+                    if (concreteTypeInfo is null && result is not null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
                 }
                 break;
             case null:
@@ -374,7 +390,7 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
 
-    protected override PgConcreteTypeInfo? GetForValueCore(TBase? value, PgTypeId? expectedPgTypeId)
+    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, TBase? value)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)

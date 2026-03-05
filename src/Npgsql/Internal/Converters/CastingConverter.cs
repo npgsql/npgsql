@@ -54,8 +54,8 @@ sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderType
     protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
         => new CastingConverter<T>(effectiveConcreteTypeInfo.Converter);
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(T? value, PgTypeId? expectedEffectiveTypeId)
-        => EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(value, expectedEffectiveTypeId);
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value)
+        => EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value);
 }
 
 static class CastingTypeInfoExtensions
