@@ -93,7 +93,6 @@ public abstract class PgConverter
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => value is null && ThrowInvalidNullValue(),
-            DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValueAsObject(value, writeState) || (value is null && ThrowInvalidNullValue()),
             _ => ThrowDbNullPredicateOutOfRange()
@@ -119,13 +118,6 @@ public abstract class PgConverter
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
     internal abstract ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken);
 
-    static DbNullPredicate InferDbNullPredicate(Type type, bool isNullDefaultValue)
-        => type == typeof(object) || type == typeof(DBNull)
-            ? DbNullPredicate.PolymorphicNull
-            : isNullDefaultValue
-                ? DbNullPredicate.Null
-                : DbNullPredicate.None;
-
     internal enum DbNullPredicate : byte
     {
         /// Never DbNull (struct types)
@@ -133,9 +125,7 @@ public abstract class PgConverter
         /// DbNull when *user code*
         Custom,
         /// DbNull when value is null
-        Null,
-        /// DbNull when value is null or DBNull
-        PolymorphicNull
+        Null
     }
 
     [DoesNotReturn]
@@ -185,7 +175,6 @@ public abstract class PgConverter<T> : PgConverter
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
-            DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
             DbNullPredicate.Custom => IsDbNullValue(value, writeState) || (value is null && ThrowInvalidNullValue()),
             _ => ThrowDbNullPredicateOutOfRange()
