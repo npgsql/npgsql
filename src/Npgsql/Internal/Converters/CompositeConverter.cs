@@ -121,8 +121,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         for (var i = 0; i < _composite.Fields.Count; i++)
         {
             var field = _composite.Fields[i];
-            var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement);
-            object? fieldState = null;
+            var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
             var fieldSize = field.GetSizeOrDbNull(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
             anyWriteState = anyWriteState || fieldState is not null;
             data[i] = new()
@@ -175,8 +174,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             ElementState elementState;
             if (data?[i] is not { } state)
             {
-                var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement);
-                object? fieldState = null;
+                var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
                 elementState = new()
                 {
                     Size = field.IsDbNull(converter, boxedInstance, ref fieldState) ? -1 : writeRequirement,

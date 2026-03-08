@@ -270,7 +270,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? values)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? values, ref object? writeState)
     {
         PgConcreteTypeInfo? concreteTypeInfo = null;
         switch (values)
@@ -278,7 +278,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             case TElement[] array:
                 foreach (var value in array)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value);
+                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
                     if (concreteTypeInfo is null && result is not null)
                     {
                         concreteTypeInfo = result;
@@ -289,7 +289,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             case List<TElement> list:
                 foreach (var value in list)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value);
+                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
                     if (concreteTypeInfo is null && result is not null)
                     {
                         concreteTypeInfo = result;
@@ -300,7 +300,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             case IList<TElement> list:
                 foreach (var value in list)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value);
+                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
                     if (concreteTypeInfo is null && result is not null)
                     {
                         concreteTypeInfo = result;
@@ -311,7 +311,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             case Array array:
                 foreach (var value in array)
                 {
-                    var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value);
+                    var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out var state);
                     if (concreteTypeInfo is null && result is not null)
                     {
                         concreteTypeInfo = result;
@@ -390,7 +390,7 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, TBase? value)
+    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, TBase? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)

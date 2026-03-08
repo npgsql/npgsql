@@ -75,17 +75,21 @@ public abstract class PgTypeInfo
             disposable.Dispose();
     }
 
-    public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value)
+    public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value, out object? writeState)
     {
         if (this is not PgProviderTypeInfo providerTypeInfo)
+        {
+            writeState = null;
             return (PgConcreteTypeInfo)this;
+        }
 
-        return providerTypeInfo.GetConcreteTypeInfo(default, value) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+        return providerTypeInfo.GetConcreteTypeInfo(default, value, out writeState) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
     }
 
     // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
-    public PgConcreteTypeInfo GetObjectConcreteTypeInfo(object? value)
+    public PgConcreteTypeInfo GetObjectConcreteTypeInfo(object? value, out object? writeState)
     {
+        writeState = null;
         switch (this)
         {
         case PgConcreteTypeInfo v:
@@ -93,7 +97,7 @@ public abstract class PgTypeInfo
         case PgProviderTypeInfo providerTypeInfo:
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is not DBNull)
-                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(default, value);
+                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(default, value, out writeState);
             return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
         default:
             return ThrowNotSupported();
@@ -165,7 +169,7 @@ public abstract class PgTypeInfo
 
     // Bind for writing.
     /// When result is null, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? Bind<T>(PgConverter<T> converter, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgConverterInfo? Bind<T>(PgConverter<T> converter, T? value, out Size size, ref object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
@@ -173,7 +177,6 @@ public abstract class PgTypeInfo
 
         format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
-        writeState = null;
         if (converter.GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
         {
             size = default;
@@ -187,7 +190,7 @@ public abstract class PgTypeInfo
     // Bind for writing.
     // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
     /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    internal PgConverterInfo? BindObject(PgConverter converter, object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    internal PgConverterInfo? BindObject(PgConverter converter, object? value, ref Size size, ref object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
@@ -196,7 +199,6 @@ public abstract class PgTypeInfo
         format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        writeState = null;
         if (value is DBNull && Type != typeof(DBNull) || converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } sizeOrDbNull)
         {
             size = default;
@@ -277,7 +279,7 @@ public sealed class PgProviderTypeInfo(
         return result;
     }
 
-    public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(ProviderValueContext context, T? value)
+    public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(ProviderValueContext context, T? value, out object? writeState)
     {
         if (PgTypeId is { } pgTypeId)
         {
@@ -289,8 +291,9 @@ public sealed class PgProviderTypeInfo(
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
+        writeState = null;
         var result = _typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
-            ? providerT.GetForValue(context, value)
+            ? providerT.GetForValue(context, value, ref writeState)
             : ThrowNotSupportedType(typeof(T));
 
         if (result is not null)
@@ -303,7 +306,7 @@ public sealed class PgProviderTypeInfo(
                 : $"TypeInfo is not of type {type}");
     }
 
-    public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(ProviderValueContext context, object? value)
+    public PgConcreteTypeInfo? GetAsObjectConcreteTypeInfo(ProviderValueContext context, object? value, out object? writeState)
     {
         if (PgTypeId is { } pgTypeId)
         {
@@ -315,7 +318,8 @@ public sealed class PgProviderTypeInfo(
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        var result = _typeInfoProvider.GetForValueAsObject(context, value);
+        writeState = null;
+        var result = _typeInfoProvider.GetForValueAsObject(context, value, ref writeState);
         if (result is not null)
             ValidateResult(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result);
         return result;

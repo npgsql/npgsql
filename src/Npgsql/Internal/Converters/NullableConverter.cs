@@ -49,8 +49,8 @@ sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
     protected override PgConverter<T?> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
         => new NullableConverter<T>((PgConverter<T>)effectiveConcreteTypeInfo.Converter);
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
         => value is not null
-            ? EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value.GetValueOrDefault())
+            ? EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value.GetValueOrDefault(), out writeState)
             : null;
 }

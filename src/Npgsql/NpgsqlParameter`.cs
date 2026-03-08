@@ -90,7 +90,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
             return base.GetConcreteTypeInfo(typeInfo);
 
         _asObject = false;
-        return typeInfo.GetConcreteTypeInfo(TypedValue);
+        return typeInfo.GetConcreteTypeInfo(TypedValue, out _writeState);
     }
 
     // We ignore allowNullReference, it's just there to control the base implementation.
@@ -104,7 +104,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         }
 
         var value = TypedValue;
-        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
+        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, ref _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;

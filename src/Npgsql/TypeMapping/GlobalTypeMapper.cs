@@ -102,9 +102,15 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         {
             var typeInfo = TypeMappingOptions.GetTypeInfoInternal(type, null);
             if (typeInfo is PgProviderTypeInfo providerInfo)
-                dataTypeName = providerInfo.GetObjectConcreteTypeInfo(value).PgTypeId.DataTypeName;
+            {
+                dataTypeName = providerInfo.GetObjectConcreteTypeInfo(value, out var state).PgTypeId.DataTypeName;
+                if (state is not null)
+                    providerInfo.DisposeWriteState(state);
+            }
             else
+            {
                 dataTypeName = ((PgConcreteTypeInfo?)typeInfo)?.PgTypeId.DataTypeName;
+            }
         }
         catch
         {

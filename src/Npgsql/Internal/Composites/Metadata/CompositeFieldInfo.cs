@@ -55,11 +55,12 @@ abstract class CompositeFieldInfo
         return converterInfo.Converter;
     }
 
-    public PgConverter GetWriteInfo(object instance, out Size writeRequirement)
+    public PgConverter GetWriteInfo(object instance, out Size writeRequirement, out object? writeState)
     {
         if (Converter is null)
-            return BindValue(instance, out writeRequirement);
+            return BindValue(instance, out writeRequirement, out writeState);
 
+        writeState = null;
         writeRequirement = _binaryBufferRequirements.Write;
         return Converter;
 
@@ -102,7 +103,7 @@ abstract class CompositeFieldInfo
 
     public abstract Type Type { get; }
 
-    protected abstract PgConverter BindValue(object instance, out Size writeRequirement);
+    protected abstract PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState);
     protected abstract void AddValue(CompositeBuilder builder, object value);
 
     public abstract StrongBox CreateBox();
@@ -186,12 +187,12 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         builder.AddValue((T?)default);
     }
 
-    protected override PgConverter BindValue(object instance, out Size writeRequirement)
+    protected override PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState)
     {
         var value = _getter(instance);
         var concreteTypeInfo = PgTypeInfo.IsBoxing
-            ? PgTypeInfo.GetObjectConcreteTypeInfo(value)
-            : PgTypeInfo.GetConcreteTypeInfo(value);
+            ? PgTypeInfo.GetObjectConcreteTypeInfo(value, out writeState)
+            : PgTypeInfo.GetConcreteTypeInfo(value, out writeState);
         if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary) is not { } bufferRequirements)
         {
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");

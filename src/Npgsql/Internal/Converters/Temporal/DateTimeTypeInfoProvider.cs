@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
 using NpgsqlTypes;
@@ -7,10 +8,13 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
+delegate PgConcreteTypeInfo? DateTimeTypeInfoProviderDelegate<T>(
+    DateTimeTypeInfoProvider<T> provider, ProviderValueContext context, T? value, ref object? writeState);
+
 sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 {
     readonly PgSerializerOptions _options;
-    readonly Func<DateTimeTypeInfoProvider<T>, ProviderValueContext, T?, PgConcreteTypeInfo?> _provider;
+    readonly DateTimeTypeInfoProviderDelegate<T> _provider;
     readonly Func<PgTypeId, PgConverter> _factory;
     readonly PgTypeId _timestampTz;
     PgConcreteTypeInfo? _timestampTzConcreteTypeInfo;
@@ -18,7 +22,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     PgConcreteTypeInfo? _timestampConcreteTypeInfo;
     readonly bool _dateTimeInfinityConversions;
 
-    internal DateTimeTypeInfoProvider(PgSerializerOptions options, Func<DateTimeTypeInfoProvider<T>, ProviderValueContext, T?, PgConcreteTypeInfo?> provider,
+    internal DateTimeTypeInfoProvider(PgSerializerOptions options, DateTimeTypeInfoProviderDelegate<T> provider,
         Func<PgTypeId, PgConverter> factory, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
     {
         _options = options;
@@ -39,11 +43,12 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         throw new ArgumentOutOfRangeException(nameof(pgTypeId), pgTypeId, "Unsupported PgTypeId.");
     }
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, T? value)
-        => _provider(this, context, value);
+    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, T? value, ref object? writeState)
+        => _provider(this, context, value, ref writeState);
 
     public PgConcreteTypeInfo? Get(ProviderValueContext context, DateTime value, bool validateOnly = false)
     {
+        Debug.Assert(!validateOnly || context.ExpectedPgTypeId is not null);
         if (value.Kind is DateTimeKind.Utc)
         {
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
@@ -65,14 +70,14 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         }
 
         // We coalesce with expectedPgTypeId to throw on unknown type ids.
-        return GetDefault(context.ExpectedPgTypeId ?? _timestamp);
+        return validateOnly ? null : GetDefault(context.ExpectedPgTypeId ?? _timestamp);
     }
 }
 
 sealed class DateTimeTypeInfoProvider
 {
     public static DateTimeTypeInfoProvider<DateTime> CreateProvider(PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(options, static (provider, context, value) => provider.Get(context, value), pgTypeId =>
+        => new(options, static (provider, context, value, ref writeState) => provider.Get(context, value), pgTypeId =>
         {
             if (pgTypeId == timestampTz)
                 return new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc);
@@ -84,7 +89,7 @@ sealed class DateTimeTypeInfoProvider
 
     public static DateTimeTypeInfoProvider<NpgsqlRange<DateTime>> CreateRangeProvider(
         PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(options, static (provider, context, value) =>
+        => new(options, static (provider, context, value, ref writeState) =>
         {
             // Resolve both sides to make sure we end up with consistent PgTypeIds.
             PgConcreteTypeInfo? concreteTypeInfo = null;
@@ -118,7 +123,7 @@ sealed class DateTimeTypeInfoProvider
         if (typeof(TElement) != typeof(NpgsqlRange<DateTime>))
             ThrowHelper.ThrowNotSupportedException("Unsupported element type");
 
-        return new DateTimeTypeInfoProvider<T>(options, static (provider, context, value) =>
+        return new DateTimeTypeInfoProvider<T>(options, static (provider, context, value, ref writeState) =>
         {
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is null)

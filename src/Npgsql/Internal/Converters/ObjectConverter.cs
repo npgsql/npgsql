@@ -16,7 +16,7 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
         var typeInfo = GetTypeInfo(value.GetType());
 
         object? effectiveState = null;
-        var converter = typeInfo.GetObjectConcreteTypeInfo(value).Converter;
+        var converter = typeInfo.GetObjectConcreteTypeInfo(value, out writeState).Converter;
         if (converter.IsDbNullAsObject(value, ref effectiveState))
             return true;
 

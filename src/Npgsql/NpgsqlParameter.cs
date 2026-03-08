@@ -688,7 +688,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected virtual PgConcreteTypeInfo GetConcreteTypeInfo(PgTypeInfo typeInfo)
     {
         _asObject = true;
-        return typeInfo.GetObjectConcreteTypeInfo(Value);
+        return typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState);
     }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
@@ -759,7 +759,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_useSubStream && value is not null)
             value = _subStream = new SubReadStream((Stream)value, _size);
 
-        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
+        Size size = default;
+        if (TypeInfo!.BindObject(Converter!, value, ref size, ref _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;
