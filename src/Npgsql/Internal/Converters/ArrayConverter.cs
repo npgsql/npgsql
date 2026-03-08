@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,8 +13,10 @@ namespace Npgsql.Internal.Converters;
 
 struct Indices
 {
-    // Public field to be able to return it by ref in GetItem.
-    public int One;
+    int _one;
+
+    [UnscopedRef]
+    public ref int One => ref _one;
     public int[]? Many { get; private init; }
     public int Count { get; private init; }
 
@@ -24,27 +27,28 @@ struct Indices
             1 => new() { Count = dimensions },
             _ => new() { Count = dimensions, Many = new int[dimensions] }
         };
-}
 
-static class IndicesExtensions
-{
-    // Workaround for lack of ref returns on struct fields.
-    public static ref int GetItem(this ref Indices indices, int index)
+    public ref int this[int index]
     {
-        switch (indices.Count)
+        [UnscopedRef]
+        get
         {
+            switch (Count)
+            {
             case 0:
                 ThrowHelper.ThrowIndexOutOfRangeException("Cannot index into a 0-dimensional array.");
                 return ref Unsafe.NullRef<int>();
             case 1:
                 Debug.Assert(index is 0);
-                Debug.Assert(indices.Many is null);
-                return ref indices.One;
+                Debug.Assert(Many is null);
+                return ref One;
             default:
-                return ref indices.Many![index];
+                return ref Many![index];
+            }
         }
     }
 }
+
 
 interface IElementOperations
 {
@@ -82,7 +86,7 @@ readonly struct PgArrayConverter(
         var context = new SizeContext(format, bufferRequirements.Write);
         anyElementState = false;
         var lastLength = lengths?[^1] ?? count;
-        ref var lastIndex = ref indices.GetItem(indices.Count - 1);
+        ref var lastIndex = ref indices[^1];
         var i = 0;
         do
         {
@@ -103,7 +107,7 @@ readonly struct PgArrayConverter(
     {
         var nulls = 0;
         var lastLength = lengths?[^1] ?? count;
-        ref var lastIndex = ref indices.GetItem(indices.Count - 1);
+        ref var lastIndex = ref indices[^1];
         if (ElemTypeDbNullable)
             do
             {
@@ -237,7 +241,7 @@ readonly struct PgArrayConverter(
                 await elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
-        while (++indices.GetItem(indices.Count - 1) < lastDimLength || (dimLengths is not null && CarryIndices(dimLengths, indices)));
+        while (++indices[^1] < lastDimLength || (dimLengths is not null && CarryIndices(dimLengths, indices)));
 
         return collection;
     }
@@ -250,11 +254,11 @@ readonly struct PgArrayConverter(
         // Find the first dimension from the end that isn't at or past its length, increment it and bring all previous dimensions to zero.
         for (var dim = indices.Count - 1; dim >= 0; dim--)
         {
-            if (indices.GetItem(dim) >= lengths[dim] - 1)
+            if (indices[dim] >= lengths[dim] - 1)
                 continue;
 
             indices.Many.AsSpan().Slice(dim + 1).Clear();
-            indices.GetItem(dim)++;
+            indices[dim]++;
             return true;
         }
 
@@ -314,7 +318,7 @@ readonly struct PgArrayConverter(
             }
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
-        while (++indices.GetItem(indices.Count - 1) < lastLength || (state.Lengths is not null && CarryIndices(state.Lengths, indices)));
+        while (++indices[^1] < lastLength || (state.Lengths is not null && CarryIndices(state.Lengths, indices)));
     }
 
     // Using a function pointer here is safe against assembly unloading as the instance reference that the static pointer method lives on is passed along.
