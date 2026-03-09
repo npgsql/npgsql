@@ -12,7 +12,7 @@ struct IterationIndices
 
     public long IndicesSum => _indicesSum;
 
-    public int Count { get; private init; }
+    public int Rank { get; private init; }
     public int One => (int)_indicesSum;
     public int[]? Many { get; private init; }
     public int Last => Many is null ? (int)_indicesSum : Many[^1];
@@ -38,10 +38,10 @@ struct IterationIndices
     bool IncrementOrCarry(ReadOnlySpan<int> counts)
     {
         Debug.Assert(counts.Length > 1);
-        Debug.Assert(Count > 1);
+        Debug.Assert(Rank > 1);
 
         // Find the first dimension from the end that isn't at or past its length, increment it and bring all previous dimensions to zero.
-        for (var dim = Count - 1; dim >= 0; dim--)
+        for (var dim = Rank - 1; dim >= 0; dim--)
         {
             if (this[dim] >= counts[dim] - 1)
                 continue;
@@ -61,7 +61,7 @@ struct IterationIndices
         [UnscopedRef]
         get
         {
-            switch (Count)
+            switch (Rank)
             {
             case 0:
                 ThrowHelper.ThrowIndexOutOfRangeException("Cannot index into a 0-dimensional array.");
@@ -95,11 +95,11 @@ struct IterationIndices
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(dimensions), "Cannot create a 0-dimensional array.");
             return default;
         case 1:
-            return new() { Count = dimensions };
+            return new() { Rank = dimensions };
         default:
             return new()
             {
-                Count = dimensions,
+                Rank = dimensions,
                 Many = new int[dimensions],
             };
         }

@@ -59,7 +59,7 @@ readonly struct PgArrayConverter(
             totalSize = totalSize.Combine(size ?? 0);
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
-        while (++lastIndex < lastLength || (indices.Count > 1 && CarryIndices(lengths!, indices)));
+        while (++lastIndex < lastLength || (indices.Rank > 1 && CarryIndices(lengths!, indices)));
 
         return totalSize;
     }
@@ -76,7 +76,7 @@ readonly struct PgArrayConverter(
                     nulls++;
             }
             // We can immediately continue if we didn't reach the end of the last dimension.
-            while (++lastIndex < lastLength || (indices.Count > 1 && CarryIndices(lengths!, indices)));
+            while (++lastIndex < lastLength || (indices.Rank > 1 && CarryIndices(lengths!, indices)));
 
         return (count - nulls) * elemSize.Value;
     }
@@ -210,10 +210,10 @@ readonly struct PgArrayConverter(
     static bool CarryIndices(int[] lengths, IterationIndices indices)
     {
         Debug.Assert(lengths.Length > 1);
-        Debug.Assert(indices.Count > 1);
+        Debug.Assert(indices.Rank > 1);
 
         // Find the first dimension from the end that isn't at or past its length, increment it and bring all previous dimensions to zero.
-        for (var dim = indices.Count - 1; dim >= 0; dim--)
+        for (var dim = indices.Rank - 1; dim >= 0; dim--)
         {
             if (indices[dim] >= lengths[dim] - 1)
                 continue;
@@ -395,8 +395,8 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static TElement? GetValue(object collection, IterationIndices indices)
     {
-        Debug.Assert(indices.Count > 0);
-        switch (indices.Count)
+        Debug.Assert(indices.Rank > 0);
+        switch (indices.Rank)
         {
         case 1:
             // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
@@ -412,8 +412,8 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static void SetValue(object collection, IterationIndices indices, TElement? value)
     {
-        Debug.Assert(indices.Count > 0);
-        switch (indices.Count)
+        Debug.Assert(indices.Rank > 0);
+        switch (indices.Rank)
         {
             case 1:
                 // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
@@ -523,7 +523,7 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
 
     ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
     {
-        Debug.Assert(indices.Count is 1);
+        Debug.Assert(indices.Rank is 1);
         if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
             return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
 
@@ -533,7 +533,7 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
 
      unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, IterationIndices indices, CancellationToken cancellationToken)
      {
-         Debug.Assert(indices.Count is 1);
+         Debug.Assert(indices.Rank is 1);
          if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
              return PgArrayConverter.AwaitTask(task, new(this, &SetResult), collection, indices);
 
@@ -551,7 +551,7 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
 
     ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, IterationIndices indices, CancellationToken cancellationToken)
     {
-        Debug.Assert(indices.Count is 1);
+        Debug.Assert(indices.Rank is 1);
         if (async)
             return _elemConverter.WriteAsync(writer, GetValue(collection, indices.One)!, cancellationToken);
 
