@@ -19,7 +19,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
-        _arrayConverterCore = new((IElementOperations)this, elemResolution.Converter.IsDbNullable, expectedDimensions,
+        PgTypeInfo elementTypeInfo = null!; // TODO until https://github.com/npgsql/npgsql/pull/6316
+        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo, elemResolution.Converter.IsDbNullable, expectedDimensions,
             bufferRequirements, elemResolution.PgTypeId, pgLowerBound);
     }
 
