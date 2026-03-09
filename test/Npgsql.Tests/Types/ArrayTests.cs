@@ -498,7 +498,7 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         await using var cmd = new NpgsqlCommand("select ARRAY[[], []]::integer[]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
-        Assert.DoesNotThrow(() => reader.GetFieldValue<int[,]>(0));
+        Assert.That(reader.GetFieldValue<int[,]>(0).Length, Is.Zero);
     }
 
     [Test]
