@@ -65,7 +65,7 @@ public class ArrayTests : TestBase
         cmd.Parameters.AddWithValue("p", new int[1, 1, 1, 1, 1, 1, 1, 1, 1]); // 9 dimensions
         Assert.That(
             () => cmd.ExecuteScalarAsync(),
-            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'values')"));
+            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'dimensionLengths')"));
     }
 
     [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
@@ -311,7 +311,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
             Throws.Exception.TypeOf<InvalidCastException>()
-                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverterCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
 
@@ -330,7 +330,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
             Throws.Exception.TypeOf<InvalidCastException>()
-                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverterCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
     [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
