@@ -3,60 +3,21 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
+using Npgsql.Util;
 
 namespace Npgsql.Internal.Converters;
-
-struct Indices
-{
-    int _one;
-
-    [UnscopedRef]
-    public ref int One => ref _one;
-    public int[]? Many { get; private init; }
-    public int Count { get; private init; }
-
-    public static Indices Create(int dimensions)
-        => dimensions switch
-        {
-            0 => new() { Count = dimensions, One = -1 },
-            1 => new() { Count = dimensions },
-            _ => new() { Count = dimensions, Many = new int[dimensions] }
-        };
-
-    public ref int this[int index]
-    {
-        [UnscopedRef]
-        get
-        {
-            switch (Count)
-            {
-            case 0:
-                ThrowHelper.ThrowIndexOutOfRangeException("Cannot index into a 0-dimensional array.");
-                return ref Unsafe.NullRef<int>();
-            case 1:
-                Debug.Assert(index is 0);
-                Debug.Assert(Many is null);
-                return ref One;
-            default:
-                return ref Many![index];
-            }
-        }
-    }
-}
-
 
 interface IElementOperations
 {
     object CreateCollection(ReadOnlySpan<int> lengths);
     int GetCollectionCount(object collection, out int[]? lengths);
-    Size? GetSizeOrDbNull(SizeContext context, object collection, Indices indices, ref object? writeState);
-    ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection,  Indices indices, CancellationToken cancellationToken = default);
-    ValueTask Write(bool async, PgWriter writer, object collection,  Indices indices, CancellationToken cancellationToken = default);
+    Size? GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState);
+    ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
+    ValueTask Write(bool async, PgWriter writer, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
 }
 
 readonly struct PgArrayConverter(
@@ -73,13 +34,13 @@ readonly struct PgArrayConverter(
 
     public bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
-    bool IsDbNull(object values, Indices indices)
+    bool IsDbNull(object values, IterationIndices indices)
     {
         object? state = null;
         return elemOps.GetSizeOrDbNull(new(DataFormat.Binary, bufferRequirements.Write), values, indices, ref state) is null;
     }
 
-    Size GetElemsSize(object values, (Size, object?)[] elemStates, out bool anyElementState, DataFormat format, int count, Indices indices, int[]? lengths = null)
+    Size GetElemsSize(object values, (Size, object?)[] elemStates, out bool anyElementState, DataFormat format, int count, IterationIndices indices, int[]? lengths = null)
     {
         Debug.Assert(elemStates.Length >= count);
         var totalSize = Size.Zero;
@@ -103,7 +64,7 @@ readonly struct PgArrayConverter(
         return totalSize;
     }
 
-    Size GetFixedElemsSize(Size elemSize, object values, int count, Indices indices, int[]? lengths = null)
+    Size GetFixedElemsSize(Size elemSize, object values, int count, IterationIndices indices, int[]? lengths = null)
     {
         var nulls = 0;
         var lastLength = lengths?[^1] ?? count;
@@ -139,11 +100,11 @@ readonly struct PgArrayConverter(
             return formatSize;
 
         Size elemsSize;
-        var indices = Indices.Create(dimensions);
+        var indices = IterationIndices.Create(dimensions);
         if (bufferRequirements.Write is { Kind: SizeKind.Exact } req)
         {
             elemsSize = GetFixedElemsSize(req, values, count, indices, lengths);
-            writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths, ArrayPool = null, Data = default, AnyWriteState = false };
+            writeState = new WriteState { Count = count, IterationIndices = indices, Lengths = lengths, ArrayPool = null, Data = default, AnyWriteState = false };
         }
         else
         {
@@ -151,7 +112,7 @@ readonly struct PgArrayConverter(
             var data = ArrayPool<(Size, object?)>.Shared.Rent(count);
             elemsSize = GetElemsSize(values, data, out var elemStateDisposable, context.Format, count, indices, lengths);
             writeState = new WriteState
-                { Count = count, Indices = indices, Lengths = lengths,
+                { Count = count, IterationIndices = indices, Lengths = lengths,
                     ArrayPool = arrayPool,  Data = new(data, 0, count), AnyWriteState = elemStateDisposable };
         }
 
@@ -161,7 +122,7 @@ readonly struct PgArrayConverter(
     sealed class WriteState : MultiWriteState
     {
         public required int Count { get; init; }
-        public required Indices Indices { get; init; }
+        public required IterationIndices IterationIndices { get; init; }
         public required int[]? Lengths { get; init; }
     }
 
@@ -213,7 +174,7 @@ readonly struct PgArrayConverter(
             return collection;
 
         _ = elemOps.GetCollectionCount(collection, out var dimLengths);
-        var indices = Indices.Create(dimensions);
+        var indices = IterationIndices.Create(dimensions);
 
         do
         {
@@ -246,7 +207,7 @@ readonly struct PgArrayConverter(
         return collection;
     }
 
-    static bool CarryIndices(int[] lengths, Indices indices)
+    static bool CarryIndices(int[] lengths, IterationIndices indices)
     {
         Debug.Assert(lengths.Length > 1);
         Debug.Assert(indices.Count > 1);
@@ -294,7 +255,7 @@ readonly struct PgArrayConverter(
         var elemTypeDbNullable = ElemTypeDbNullable;
         var elemData = state.Data.Array;
 
-        var indices = state.Indices;
+        var indices = state.IterationIndices;
         if (indices.Many is not null)
             Array.Clear(indices.Many, 0 , indices.Many.Length);
         var lastLength = state.Lengths?[^1] ?? state.Count;
@@ -327,7 +288,7 @@ readonly struct PgArrayConverter(
     // 1. Add a virtual method and make AwaitTask call into it (bloating the vtable of all derived types).
     // 2. Using a delegate, meaning we add a static field + an alloc per T + metadata, slightly slower dispatch perf so overall strictly worse as well.
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-    public static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, Indices indices)
+    public static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, IterationIndices indices)
     {
         await task.ConfigureAwait(false);
         continuation.Invoke(task, collection, indices);
@@ -339,17 +300,17 @@ readonly struct PgArrayConverter(
     public readonly unsafe struct Continuation
     {
         public object Handle { get; }
-        readonly delegate*<Task, object, Indices, void> _continuation;
+        readonly delegate*<Task, object, IterationIndices, void> _continuation;
 
         /// <param name="handle">A reference to the type that houses the static method <see ref="continuation"/> points to.</param>
         /// <param name="continuation">The continuation</param>
-        public Continuation(object handle, delegate*<Task, object, Indices, void> continuation)
+        public Continuation(object handle, delegate*<Task, object, IterationIndices, void> continuation)
         {
             Handle = handle;
             _continuation = continuation;
         }
 
-        public void Invoke(Task task, object collection, Indices indices) => _continuation(task, collection, indices);
+        public void Invoke(Task task, object collection, IterationIndices indices) => _continuation(task, collection, indices);
     }
 }
 
@@ -432,7 +393,7 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
     readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static TElement? GetValue(object collection, Indices indices)
+    static TElement? GetValue(object collection, IterationIndices indices)
     {
         Debug.Assert(indices.Count > 0);
         switch (indices.Count)
@@ -449,7 +410,7 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static void SetValue(object collection, Indices indices, TElement? value)
+    static void SetValue(object collection, IterationIndices indices, TElement? value)
     {
         Debug.Assert(indices.Count > 0);
         switch (indices.Count)
@@ -486,10 +447,10 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
     int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
         => GetLengths((Array)collection, out lengths);
 
-    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, Indices indices, ref object? writeState)
+    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
         => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
 
-    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, Indices indices, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
     {
         if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
             return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
@@ -498,7 +459,7 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
         return new();
     }
 
-    unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, Indices indices, CancellationToken cancellationToken)
+    unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, IterationIndices indices, CancellationToken cancellationToken)
     {
         if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
             return PgArrayConverter.AwaitTask(task, new(this, &SetResult), collection, indices);
@@ -506,7 +467,7 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
         SetValue(collection, indices, result);
         return new();
 
-        static void SetResult(Task task, object collection, Indices indices)
+        static void SetResult(Task task, object collection, IterationIndices indices)
         {
             // Justification: exact type Unsafe.As used to reduce generic duplication cost.
             Debug.Assert(task is Task<TElement>);
@@ -515,7 +476,7 @@ sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemRes
         }
     }
 
-    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, Indices indices, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, IterationIndices indices, CancellationToken cancellationToken)
     {
         if (async)
             return _elemConverter.WriteAsync(writer, GetValue(collection, indices)!, cancellationToken);
@@ -557,10 +518,10 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
         return ((IList<TElement?>)collection).Count;
     }
 
-    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, Indices indices, ref object? writeState)
+    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
         => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
 
-    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, Indices indices, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
     {
         Debug.Assert(indices.Count is 1);
         if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
@@ -570,7 +531,7 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
         return new();
     }
 
-     unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, Indices indices, CancellationToken cancellationToken)
+     unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, IterationIndices indices, CancellationToken cancellationToken)
      {
          Debug.Assert(indices.Count is 1);
          if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
@@ -579,7 +540,7 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
          SetValue(collection, indices.One, result);
          return new();
 
-         static void SetResult(Task task, object collection, Indices indices)
+         static void SetResult(Task task, object collection, IterationIndices indices)
          {
              // Justification: exact type Unsafe.As used to reduce generic duplication cost.
              Debug.Assert(task is Task<TElement>);
@@ -588,7 +549,7 @@ sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemReso
          }
      }
 
-    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, Indices indices, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, IterationIndices indices, CancellationToken cancellationToken)
     {
         Debug.Assert(indices.Count is 1);
         if (async)
