@@ -125,21 +125,26 @@ readonly struct ArrayConverterCore(
 
         int[]? dimensionLengths = null;
         var lastDimension = 0;
-        scoped ReadOnlySpan<int> dimensionLengthsSpan;
+        scoped Span<int> dimensionLengthsSpan;
         switch (dimensions)
         {
         case 0:
             // At 0, if we have expected dimensions create the collection as such, works around https://github.com/npgsql/npgsql/issues/1271.
-            dimensionLengthsSpan = expectedDimensions switch
+            switch (expectedDimensions)
             {
-                null or <= 1 => ReadOnlySpan<int>.Empty,
-                { } value => stackalloc int[value]
-            };
+            case null or <= 1:
+                dimensionLengthsSpan = Span<int>.Empty;
+                break;
+            case { } value:
+            dimensionLengthsSpan = stackalloc int[value];
+                dimensionLengthsSpan.Clear();
+                break;
+            }
             break;
         case 1:
             lastDimension = reader.ReadInt32();
             _ = reader.ReadInt32(); // Lower bound
-            dimensionLengthsSpan = lastDimension is 0 ? ReadOnlySpan<int>.Empty : new(in lastDimension);
+            dimensionLengthsSpan = lastDimension is 0 ? Span<int>.Empty : new(ref lastDimension);
             break;
         default:
             dimensionLengths = new int[dimensions];
