@@ -605,7 +605,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    public async Task ReadConverterResolverType()
+    public async Task ReadTypeInfoProviderType()
     {
         using var conn = await OpenConnectionAsync();
 

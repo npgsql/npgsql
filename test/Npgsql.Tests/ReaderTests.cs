@@ -2379,7 +2379,7 @@ sealed class ExplodingTypeHandlerResolverFactory(bool safe) : PgTypeInfoResolver
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
             if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                return new(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
+                return new PgConcreteTypeInfo(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
 
             return null;
         }
