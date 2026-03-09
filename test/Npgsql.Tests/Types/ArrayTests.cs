@@ -491,6 +491,16 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         Assert.That(reader.GetFieldValue<List<int>>(1), Is.Not.SameAs(reader.GetFieldValue<List<int>>(0)));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1271")]
+    public async Task Generics_read_empty_multidim_array()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("select ARRAY[[], []]::integer[]", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+        Assert.DoesNotThrow(() => reader.GetFieldValue<int[,]>(0));
+    }
+
     [Test]
     public async Task Arrays_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
     {
