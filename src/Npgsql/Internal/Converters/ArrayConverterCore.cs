@@ -303,57 +303,57 @@ readonly struct ArrayConverterCore(
 
         public void Invoke(Task task, object collection, IterationIndices indices) => _continuation(task, collection, indices);
     }
+}
 
-    sealed class WriteState : MultiWriteState
+sealed class ArrayConverterWriteState : MultiWriteState
+{
+    public required PgArrayMetadata Metadata { get; init; }
+    public required IterationIndices IterationIndices { get; init; }
+}
+
+readonly struct PgArrayMetadata
+{
+    const int MaxDimensions = 8;
+
+    readonly int _totalElements;
+    readonly int[]? _dimensionLengths;
+
+    PgArrayMetadata(int totalElements, int[]? dimensionLengths)
     {
-        public required PgArrayMetadata Metadata { get; init; }
-        public required IterationIndices IterationIndices { get; init; }
+        _totalElements = totalElements;
+        _dimensionLengths = dimensionLengths;
     }
 
-    readonly struct PgArrayMetadata
+    public int TotalElements => _totalElements;
+    public int LastDimension => _dimensionLengths is null ? _totalElements : _dimensionLengths[^1];
+    [UnscopedRef]
+    public ReadOnlySpan<int> DimensionLengths
+        => _dimensionLengths is null ? new ReadOnlySpan<int>(in _totalElements) : _dimensionLengths.AsSpan();
+    public int Dimensions => _dimensionLengths?.Length ?? (_totalElements is 0 ? 0 : 1);
+
+    public int BinaryPreambleByteCount => GetBinaryPreambleByteCount(TotalElements, Dimensions);
+
+    public IterationIndices CreateIndices() => IterationIndices.Create(Dimensions);
+
+    static int GetBinaryPreambleByteCount(int totalElements, int dimensions)
+        => sizeof(int) + // Dimensions
+           sizeof(int) + // Flags
+           sizeof(uint) + // Element OID
+           (totalElements is 0 ? 0 : dimensions * (sizeof(int) + sizeof(int))); // Dimensions * (array length and lower bound)
+
+    public static PgArrayMetadata Create(long totalElements, int[]? dimensionLengths)
     {
-        const int MaxDimensions = 8;
+        if (totalElements > int.MaxValue)
+            ThrowHelper.ThrowArgumentException("Postgres arrays cannot have more than int.MaxValue elements.", nameof(totalElements));
 
-        readonly int _totalElements;
-        readonly int[]? _dimensionLengths;
+        if (dimensionLengths?.Length is < 0 or > MaxDimensions)
+            ThrowHelper.ThrowArgumentException($"Postgres arrays can have at most {MaxDimensions} dimensions.", nameof(dimensionLengths));
 
-        PgArrayMetadata(int totalElements, int[]? dimensionLengths)
-        {
-            _totalElements = totalElements;
-            _dimensionLengths = dimensionLengths;
-        }
+        return new((int)totalElements, dimensionLengths);
+    }
 
-        public int TotalElements => _totalElements;
-        public int LastDimension => _dimensionLengths is null ? _totalElements : _dimensionLengths[^1];
-        [UnscopedRef]
-        public ReadOnlySpan<int> DimensionLengths
-            => _dimensionLengths is null ? new ReadOnlySpan<int>(in _totalElements) : _dimensionLengths.AsSpan();
-        public int Dimensions => _dimensionLengths?.Length ?? (_totalElements is 0 ? 0 : 1);
-
-        public int BinaryPreambleByteCount => GetBinaryPreambleByteCount(TotalElements, Dimensions);
-
-        public IterationIndices CreateIndices() => IterationIndices.Create(Dimensions);
-
-        static int GetBinaryPreambleByteCount(int totalElements, int dimensions)
-            => sizeof(int) + // Dimensions
-               sizeof(int) + // Flags
-               sizeof(uint) + // Element OID
-               (totalElements is 0 ? 0 : dimensions * (sizeof(int) + sizeof(int))); // Dimensions * (array length and lower bound)
-
-        public static PgArrayMetadata Create(long totalElements, int[]? dimensionLengths)
-        {
-            if (totalElements > int.MaxValue)
-                ThrowHelper.ThrowArgumentException("Postgres arrays cannot have more than int.MaxValue elements.", nameof(totalElements));
-
-            if (dimensionLengths?.Length is < 0 or > MaxDimensions)
-                ThrowHelper.ThrowArgumentException($"Postgres arrays can have at most {MaxDimensions} dimensions.", nameof(dimensionLengths));
-
-            return new((int)totalElements, dimensionLengths);
-        }
-
-        public enum Flags
-        {
-            ContainsNulls = 1
-        }
+    public enum Flags
+    {
+        ContainsNulls = 1
     }
 }
