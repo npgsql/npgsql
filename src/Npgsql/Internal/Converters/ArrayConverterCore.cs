@@ -45,10 +45,14 @@ readonly struct ArrayConverterCore(
     public Size GetSize(SizeContext context, object values, ref object? writeState)
     {
         Debug.Assert(context.Format is DataFormat.Binary);
-        if (writeState is not null)
-            ThrowHelper.ThrowArgumentException("Unexpected write state, expected null.", nameof(writeState));
 
-        var metadata = PgArrayMetadata.Create(elemOps.GetCollectionCount(values, out var lengths), lengths);
+        // Try to extract state from the provider phase (if anything).
+        var providerState = writeState as ArrayConverterWriteState;
+
+        if (providerState is not null && providerState.IterationIndices.Last is not 0)
+            ThrowHelper.ThrowArgumentException("Write state not clean.", nameof(writeState));
+
+        var metadata = providerState?.Metadata ?? PgArrayMetadata.Create(elemOps.GetCollectionCount(values, out var lengths), lengths);
         if (metadata.TotalElements is 0)
         {
             Debug.Assert(writeState is null);
@@ -56,23 +60,28 @@ readonly struct ArrayConverterCore(
         }
 
         var size = Size.Create(metadata.BinaryPreambleByteCount + sizeof(int) * metadata.TotalElements);
-        var indices = metadata.CreateIndices();
-        var anyWriteState = false;
-        ArrayPool<(Size, object?)>? arrayPool = null;
-        (Size Size, object? WriteState)[]? elemData = null;
+        var indices = providerState?.IterationIndices ?? metadata.CreateIndices();
+        var anyWriteState = providerState?.AnyWriteState ?? false;
+        var arrayPool = providerState?.ArrayPool;
+        var elemData = providerState?.Data.Array;
+        var fixedSizeElements = false;
         if (binaryRequirements.Write is { Kind: SizeKind.Exact, Value: var elemByteCount })
         {
+            fixedSizeElements = true;
             var nulls = 0;
             var lastLength = metadata.LastDimension;
             if (ElemTypeDbNullable)
             {
                 do
                 {
-                    object? elemState = null;
+                    object? localState = null;
+                    ref var elemState = ref elemData is null ? ref localState: ref elemData[indices.IndicesSum].WriteState;
                     if (IsDbNull(values, indices, ref elemState))
                         nulls++;
-                    if (elemState is not null)
-                        ElementTypeInfo.DisposeWriteState(elemState);
+
+                    // If the state was produced locally we must dispose it immediately, otherwise we'll let the outer state disposal handle it.
+                    if (localState is not null)
+                        ElementTypeInfo.DisposeWriteState(localState);
                 }
                 while (indices.TryAdvance(lastLength, metadata.DimensionLengths));
             }
@@ -81,8 +90,11 @@ readonly struct ArrayConverterCore(
         }
         else
         {
-            arrayPool = ArrayPool<(Size, object?)>.Shared;
-            elemData = arrayPool.Rent(metadata.TotalElements);
+            if (elemData is null)
+            {
+                arrayPool = ArrayPool<(Size, object?)>.Shared;
+                elemData = arrayPool.Rent(metadata.TotalElements);
+            }
             var lastCount = metadata.LastDimension;
             do
             {
@@ -96,14 +108,16 @@ readonly struct ArrayConverterCore(
             while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
         }
 
-        writeState = new ArrayConverterWriteState
+        var result = providerState ?? new()
         {
             Metadata = metadata,
-            IterationIndices = indices,
-            ArrayPool = arrayPool,
-            Data = elemData!,
-            AnyWriteState = anyWriteState
+            IterationIndices = indices
         };
+        result.ArrayPool = arrayPool;
+        result.Data = elemData!;
+        result.AnyWriteState = anyWriteState;
+        result.FixedSizeElements = fixedSizeElements;
+        writeState = result;
         return size;
     }
 
@@ -233,14 +247,15 @@ readonly struct ArrayConverterCore(
         indices.Reset();
         var lastCount = metadata.LastDimension;
         var offset = state.Data.Offset;
+        var fixedSizeElements = state.FixedSizeElements;
         do
         {
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
-            var elem = elemData?[offset + indices.IndicesSum];
+            var elem = !fixedSizeElements ? elemData?[offset + indices.IndicesSum] : null;
             object? fixedSizeWriteState = null;
-            var length = elemData is null
+            var length = fixedSizeElements
                 ? ElemTypeDbNullable && IsDbNull(values, indices, ref fixedSizeWriteState) ? -1 : binaryRequirements.Write.Value
                 : elem.GetValueOrDefault().Size.Value;
 
@@ -313,6 +328,9 @@ sealed class ArrayConverterWriteState : MultiWriteState
 {
     public required PgArrayMetadata Metadata { get; init; }
     public required IterationIndices IterationIndices { get; init; }
+
+    /// When true, all non-null elements have a fixed binary size and Data is not populated with per-element sizes.
+    public bool FixedSizeElements { get; set; }
 }
 
 readonly struct PgArrayMetadata

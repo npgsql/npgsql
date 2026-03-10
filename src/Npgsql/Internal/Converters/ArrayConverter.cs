@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -273,56 +274,133 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
     protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? values, ref object? writeState)
     {
         PgConcreteTypeInfo? concreteTypeInfo = null;
+        PgArrayMetadata metadata;
+        ArrayPool<(Size, object?)>? elemDataArrayPool = null;
+        (Size, object? WriteState)[]? elemData = null;
+        var index = 0;
+
         switch (values)
         {
-            case TElement[] array:
-                foreach (var value in array)
+        case TElement[] array:
+            metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out _), null);
+            foreach (var value in array)
+            {
+                var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
+                if (state is not null)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
-                    if (concreteTypeInfo is null && result is not null)
+                    if (elemData is null)
                     {
-                        concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
                     }
+
+                    elemData[index].WriteState = state;
                 }
-                break;
-            case List<TElement> list:
-                foreach (var value in list)
+
+                if (concreteTypeInfo is null && result is not null)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
-                    if (concreteTypeInfo is null && result is not null)
-                    {
-                        concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
-                    }
+                    concreteTypeInfo = result;
+                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
                 }
-                break;
-            case IList<TElement> list:
-                foreach (var value in list)
+
+                index++;
+            }
+
+            break;
+        case List<TElement> list:
+            metadata = PgArrayMetadata.Create(list.Count, null);
+            foreach (var value in list)
+            {
+                var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
+                if (state is not null)
                 {
-                    var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
-                    if (concreteTypeInfo is null && result is not null)
+                    if (elemData is null)
                     {
-                        concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
                     }
+
+                    elemData[index].WriteState = state;
                 }
-                break;
-            case Array array:
-                foreach (var value in array)
+
+                if (concreteTypeInfo is null && result is not null)
                 {
-                    var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out var state);
-                    if (concreteTypeInfo is null && result is not null)
-                    {
-                        concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
-                    }
+                    concreteTypeInfo = result;
+                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
                 }
-                break;
-            case null:
-                break;
-            default:
-                throw new NotSupportedException();
+
+                index++;
+            }
+
+            break;
+        case IList<TElement> list:
+            metadata = PgArrayMetadata.Create(list.Count, null);
+            foreach (var value in list)
+            {
+                var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
+                if (state is not null)
+                {
+                    if (elemData is null)
+                    {
+                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
+                    }
+
+                    elemData[index].WriteState = state;
+                }
+
+                if (concreteTypeInfo is null && result is not null)
+                {
+                    concreteTypeInfo = result;
+                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                }
+
+                index++;
+            }
+
+            break;
+        case Array array:
+            metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out var dimensionLengths), dimensionLengths);
+            foreach (var value in array)
+            {
+                var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out var state);
+                if (state is not null)
+                {
+                    if (elemData is null)
+                    {
+                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
+                    }
+
+                    elemData[index].WriteState = state;
+                }
+
+                if (concreteTypeInfo is null && result is not null)
+                {
+                    concreteTypeInfo = result;
+                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                }
+
+                index++;
+            }
+
+            break;
+        case null:
+            return null;
+        default:
+            throw new NotSupportedException();
+        }
+
+        if (elemData is not null)
+        {
+            writeState = new ArrayConverterWriteState
+            {
+                Metadata = metadata,
+                IterationIndices = metadata.CreateIndices(),
+                ArrayPool = elemDataArrayPool,
+                Data = new(elemData, 0, index),
+                AnyWriteState = true
+            };
         }
 
         return concreteTypeInfo;

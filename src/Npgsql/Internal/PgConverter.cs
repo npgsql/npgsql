@@ -190,9 +190,9 @@ public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
 
 class MultiWriteState : IDisposable
 {
-    public required ArrayPool<(Size Size, object? WriteState)>? ArrayPool { get; init; }
-    public required ArraySegment<(Size Size, object? WriteState)> Data { get; init; }
-    public required bool AnyWriteState { get; init; }
+    public ArrayPool<(Size Size, object? WriteState)>? ArrayPool { get; set; }
+    public ArraySegment<(Size Size, object? WriteState)> Data { get; set; }
+    public bool AnyWriteState { get; set; }
 
     public void Dispose()
     {

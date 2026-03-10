@@ -1,27 +1,29 @@
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
-sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : PgStreamingConverter<object>(customDbNullPredicate: true)
+sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredicate: true)
 {
     protected override bool IsDbNullValue(object? value, ref object? writeState)
     {
-        if (value is null or DBNull)
-            return true;
-
-        var typeInfo = GetTypeInfo(value.GetType());
+        var concreteTypeInfo = writeState switch
+        {
+            PgConcreteTypeInfo info => info,
+            WriteState ws => ws.ConcreteTypeInfo,
+            _ => throw new InvalidOperationException("writeState cannot be null, ObjectTypeInfoProvider is expected to pre-populate it with concrete type info.")
+        };
 
         object? effectiveState = null;
-        var converter = typeInfo.GetObjectConcreteTypeInfo(value, out writeState).Converter;
-        if (converter.IsDbNullAsObject(value, ref effectiveState))
-            return true;
+        var isDbNull = concreteTypeInfo.Converter.IsDbNullAsObject(value, ref effectiveState);
+        if (writeState is WriteState s && !ReferenceEquals(s.EffectiveState, effectiveState))
+            s.EffectiveState = effectiveState;
+        else if (writeState is not null)
+            writeState = new WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };
 
-        writeState = effectiveState is not null ? new WriteState { TypeInfo = typeInfo, EffectiveState = effectiveState } : typeInfo;
-        return false;
+        return isDbNull;
     }
 
     public override object Read(PgReader reader) => throw new NotSupportedException();
@@ -29,19 +31,13 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
 
     public override Size GetSize(SizeContext context, object value, ref object? writeState)
     {
-        var (typeInfo, effectiveState) = writeState switch
+        var (concreteTypeInfo, effectiveState) = writeState switch
         {
-            PgTypeInfo info => (info, null),
-            WriteState state => (state.TypeInfo, state.EffectiveState),
+            PgConcreteTypeInfo info => (info, (object?)null),
+            WriteState state => (state.ConcreteTypeInfo, state.EffectiveState),
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        // We can call GetDefaultConcreteTypeInfo here as validation has already happened in IsDbNullValue.
-        // And we know it was called due to the writeState being filled.
-        Debug.Assert(typeInfo.PgTypeId is not null);
-        var concreteTypeInfo = typeInfo is PgProviderTypeInfo providerTypeInfo
-            ? providerTypeInfo.GetDefaultConcreteTypeInfo(null)
-            : (PgConcreteTypeInfo)typeInfo;
         if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, context.Format) is not { } bufferRequirements)
         {
             ThrowHelper.ThrowNotSupportedException($"Resolved converter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
@@ -55,10 +51,10 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
         var result = concreteTypeInfo.Converter.GetSizeAsObject(context, value, ref effectiveState);
         if (effectiveState is not null)
         {
-            if (writeState is WriteState state && !ReferenceEquals(state.EffectiveState, effectiveState))
-                state.EffectiveState = effectiveState;
+            if (writeState is WriteState s && !ReferenceEquals(s.EffectiveState, effectiveState))
+                s.EffectiveState = effectiveState;
             else
-                writeState = new WriteState { TypeInfo = typeInfo, EffectiveState = effectiveState };
+                writeState = new WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };
         }
 
         return result;
@@ -72,31 +68,47 @@ sealed class ObjectConverter(PgSerializerOptions options, PgTypeId pgTypeId) : P
 
     async ValueTask Write(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
     {
-        var (typeInfo, effectiveState) = writer.Current.WriteState switch
+        var (concreteTypeInfo, effectiveState) = writer.Current.WriteState switch
         {
-            PgTypeInfo info => (info, null),
-            WriteState state => (state.TypeInfo, state.EffectiveState),
+            PgConcreteTypeInfo info => (info, (object?)null),
+            WriteState state => (state.ConcreteTypeInfo, state.EffectiveState),
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        // We can call GetDefaultConcreteTypeInfo here as validation has already happened in IsDbNullValue.
-        // And we know it was called due to the writeState being filled.
-        Debug.Assert(typeInfo.PgTypeId is not null);
-        var concreteTypeInfo = typeInfo is PgProviderTypeInfo providerTypeInfo
-            ? providerTypeInfo.GetDefaultConcreteTypeInfo(null)
-            : (PgConcreteTypeInfo)typeInfo;
         var writeRequirement = concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary)!.Value.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
 
-    PgTypeInfo GetTypeInfo(Type type)
-        => options.GetTypeInfoInternal(type, pgTypeId)
-           ?? throw new NotSupportedException($"Writing values of '{type.FullName}' having DataTypeName '{options.DatabaseInfo.GetPostgresType(pgTypeId).DisplayName}' is not supported.");
-
     sealed class WriteState
     {
-        public required PgTypeInfo TypeInfo { get; init; }
-        public required object EffectiveState { get; set; }
+        public required PgConcreteTypeInfo ConcreteTypeInfo { get; init; }
+        public required object? EffectiveState { get; set; }
+    }
+}
+
+// TODO the goal is to allow this provider to return the underlying converter type info, but we're not there yet.
+// At that point we don't need the ObjectConverter any longer.
+sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typeId) : PgConcreteTypeInfoProvider<object>
+{
+    PgConcreteTypeInfo? _defaultConcreteTypeInfo;
+
+    protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
+        => pgTypeId is { } expectedId && expectedId != typeId
+            ? new(options, new ObjectConverter(), expectedId)
+            : _defaultConcreteTypeInfo ??= new(options, new ObjectConverter(), typeId);
+
+    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
+    {
+        if (value is null or DBNull)
+        {
+            writeState = options.UnspecifiedDBNullTypeInfo;
+            return GetDefaultCore(context.ExpectedPgTypeId);
+        }
+
+        var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(value.GetType(), context.ExpectedPgTypeId ?? typeId, options);
+        writeState = typeInfo.GetObjectConcreteTypeInfo(value, out _);
+
+        return GetDefault(context.ExpectedPgTypeId);
     }
 }

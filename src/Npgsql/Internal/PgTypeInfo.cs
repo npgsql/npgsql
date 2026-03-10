@@ -237,7 +237,6 @@ public abstract class PgTypeInfo
         => unboxedType is null || unboxedType == type;
 }
 
-// We always mark providers with type object as boxing, as they may freely return converters for any type (see PgConcreteTypeInfoProvider.Validate).
 public sealed class PgProviderTypeInfo(
     PgSerializerOptions options,
     PgConcreteTypeInfoProvider typeInfoProvider,
@@ -246,7 +245,7 @@ public sealed class PgProviderTypeInfo(
     : PgTypeInfo(options,
         typeInfoProvider.TypeToConvert,
         pgTypeId is { } typeId ? GetDefault(options, typeInfoProvider, typeId) : null,
-        unboxedType ?? (typeInfoProvider.TypeToConvert == typeof(object) ? typeof(object) : null))
+        unboxedType)
 {
     readonly PgConcreteTypeInfoProvider _typeInfoProvider = typeInfoProvider;
 
