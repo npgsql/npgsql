@@ -188,7 +188,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (buffer is null)
             return columnLen;
 
-        using var _ = PgReader.BeginNestedRead(columnLen, Size.Zero);
+        using var _ = PgReader.BeginNestedRead(columnLen, Size.Unknown);
 
         // Move to offset
         PgReader.Seek((int)dataOffset);
