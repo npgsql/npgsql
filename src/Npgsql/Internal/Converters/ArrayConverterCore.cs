@@ -36,7 +36,11 @@ readonly struct ArrayConverterCore(
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
     bool IsDbNull(object values, IterationIndices arrayIndices, ref object? writeState)
-        => elemOps.GetSizeOrDbNull(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
+    {
+        // This call will only skip GetSize if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
+        Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
+        return elemOps.GetSizeOrDbNull(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
+    }
 
     public Size GetSize(SizeContext context, object values, ref object? writeState)
     {
@@ -55,7 +59,7 @@ readonly struct ArrayConverterCore(
         var indices = metadata.CreateIndices();
         var anyWriteState = false;
         ArrayPool<(Size, object?)>? arrayPool = null;
-        (Size, object?)[]? elemData = null;
+        (Size Size, object? WriteState)[]? elemData = null;
         if (binaryRequirements.Write is { Kind: SizeKind.Exact, Value: var elemByteCount })
         {
             var nulls = 0;
@@ -70,7 +74,7 @@ readonly struct ArrayConverterCore(
                     if (elemState is not null)
                         ElementTypeInfo.DisposeWriteState(elemState);
                 }
-                while (indices.TryAdvance(lastLength, lengths));
+                while (indices.TryAdvance(lastLength, metadata.DimensionLengths));
             }
 
             size = size.Combine((metadata.TotalElements - nulls) * elemByteCount);
@@ -82,17 +86,17 @@ readonly struct ArrayConverterCore(
             var lastCount = metadata.LastDimension;
             do
             {
-                object? elemState = null;
+                ref var elemState = ref elemData[indices.IndicesSum].WriteState;
                 var elemSize = elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
                 anyWriteState = anyWriteState || elemState is not null;
-                elemData[indices.IndicesSum] = (elemSize ?? -1, elemState);
+                elemData[indices.IndicesSum].Size = elemSize ?? -1;
                 size = size.Combine(elemSize ?? 0);
             }
             // We can immediately continue if we didn't reach the end of the last dimension.
             while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
         }
 
-        writeState = new WriteState
+        writeState = new ArrayConverterWriteState
         {
             Metadata = metadata,
             IterationIndices = indices,
@@ -136,7 +140,7 @@ readonly struct ArrayConverterCore(
                 dimensionLengthsSpan = Span<int>.Empty;
                 break;
             case { } value:
-            dimensionLengthsSpan = stackalloc int[value];
+                dimensionLengthsSpan = stackalloc int[value];
                 dimensionLengthsSpan.Clear();
                 break;
             }
@@ -203,9 +207,9 @@ readonly struct ArrayConverterCore(
         Debug.Assert(writer.Current.Format is DataFormat.Binary);
         var (metadata, state) = writer.Current.WriteState switch
         {
-            WriteState writeState => (writeState.Metadata, writeState),
+            ArrayConverterWriteState writeState => (writeState.Metadata, writeState),
             null => (PgArrayMetadata.Create(0, null), null),
-            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.")
+            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(ArrayConverterWriteState).FullName}.")
         };
 
         if (writer.ShouldFlush(metadata.BinaryPreambleByteCount))
@@ -254,19 +258,19 @@ readonly struct ArrayConverterCore(
         while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
     }
 
-    public static int GetArrayLengths(Array array, out int[]? lengths)
+    public static int GetArrayLengths(Array array, out int[]? dimensionLengths)
     {
         var dimensions = array.Rank;
 
         if (dimensions is 1)
         {
-            lengths = null;
+            dimensionLengths = null;
             return array.Length;
         }
 
-        lengths = new int[dimensions];
-        for (var i = 0; i < lengths.Length; i++)
-            lengths[i] = array.GetLength(i);
+        dimensionLengths = new int[dimensions];
+        for (var i = 0; i < dimensionLengths.Length; i++)
+            dimensionLengths[i] = array.GetLength(i);
 
         // If we have a multidim array it may throw an overflow exception for large arrays (LongLength exists for these cases)
         // however anything over int.MaxValue wouldn't fit in a parameter anyway so easier to throw here than deal with a long.
