@@ -2396,7 +2396,10 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
         => throw new NotSupportedException();
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => CanConvertBufferedDefault(format, out bufferRequirements);
+    {
+        bufferRequirements = BufferRequirements.Value;
+        return format is DataFormat.Binary;
+    }
 
     protected override void WriteCore(PgWriter writer, int value)
         => throw new NotSupportedException();

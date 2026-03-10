@@ -87,12 +87,6 @@ public abstract class PgConverter
 
     private protected bool ThrowDbNullPredicateOutOfRange()
         => throw new UnreachableException($"Unknown case {DbNullPredicateKind.ToString()}");
-
-    protected bool CanConvertBufferedDefault(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Value;
-        return format is DataFormat.Binary;
-    }
 }
 
 public abstract class PgConverter<T> : PgConverter
