@@ -450,19 +450,21 @@ public class PgReader
     {
         Debug.Assert(FieldSize >= 0);
         _fieldBufferRequirement = bufferRequirement;
-        if (ShouldBuffer(bufferRequirement))
-            BufferNoInlined(bufferRequirement);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        if (ShouldBuffer(byteCount))
+            BufferNoInlined(byteCount);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void BufferNoInlined(Size bufferRequirement)
-            => Buffer(bufferRequirement);
+        void BufferNoInlined(int byteCount)
+            => Buffer(byteCount);
     }
 
     internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
         _fieldBufferRequirement = bufferRequirement;
-        return ShouldBuffer(bufferRequirement) ? BufferAsync(bufferRequirement, cancellationToken) : new();
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        return ShouldBuffer(byteCount) ? BufferAsync(byteCount, cancellationToken) : new();
     }
 
     internal void EndRead()
@@ -501,7 +503,8 @@ public class PgReader
 
     internal async ValueTask<NestedReadScope> BeginNestedRead(bool async, int size, Size bufferRequirement, CancellationToken cancellationToken = default)
     {
-        if (size > CurrentRemaining)
+        var currentRemaining = CurrentRemaining;
+        if (size > currentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(size), "Cannot begin a read for a larger size than the current remaining size.");
 
         if (size < 0)
@@ -514,7 +517,9 @@ public class PgReader
         _currentBufferRequirement = bufferRequirement;
         _currentStartPos = FieldOffset;
 
-        await Buffer(async, bufferRequirement, cancellationToken).ConfigureAwait(false);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, size);
+        if (ShouldBuffer(byteCount))
+            await Buffer(async, byteCount, cancellationToken).ConfigureAwait(false);
         return new NestedReadScope(async, this, previousSize, previousStartPos, previousBufferRequirement);
     }
 
@@ -732,16 +737,10 @@ public class PgReader
         return array;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    int GetBufferRequirementByteCount(Size bufferRequirement)
-        => bufferRequirement is { Kind: SizeKind.UpperBound }
-            ? Math.Min(CurrentRemaining, bufferRequirement.Value)
-            : bufferRequirement.GetValueOrDefault();
+    // We check FieldAtStart to speed up simple value reads, as field level buffering was handled by reader.StartRead() already.
+    internal bool ShouldBufferCurrent()
+        => !FieldAtStart && ShouldBuffer(BufferRequirements.GetMinimumBufferByteCount(CurrentBufferRequirement, CurrentRemaining));
 
-    internal bool ShouldBufferCurrent() => ShouldBuffer(CurrentBufferRequirement);
-
-    public bool ShouldBuffer(Size bufferRequirement)
-        => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
     public bool ShouldBuffer(int byteCount)
     {
         return _buffer.ReadBytesLeft < byteCount && ShouldBufferSlow(byteCount);
@@ -760,16 +759,10 @@ public class PgReader
         }
     }
 
-    public void Buffer(Size bufferRequirement)
-        => Buffer(GetBufferRequirementByteCount(bufferRequirement));
     public void Buffer(int byteCount) => _buffer.Ensure(byteCount);
 
-    public ValueTask BufferAsync(Size bufferRequirement, CancellationToken cancellationToken)
-        => BufferAsync(GetBufferRequirementByteCount(bufferRequirement), cancellationToken);
     public ValueTask BufferAsync(int byteCount, CancellationToken cancellationToken) => _buffer.EnsureAsync(byteCount);
 
-    internal ValueTask Buffer(bool async, Size bufferRequirement, CancellationToken cancellationToken)
-        => Buffer(async, GetBufferRequirementByteCount(bufferRequirement), cancellationToken);
     internal ValueTask Buffer(bool async, int byteCount, CancellationToken cancellationToken)
     {
         if (async)

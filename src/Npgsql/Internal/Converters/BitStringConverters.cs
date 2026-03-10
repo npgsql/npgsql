@@ -97,9 +97,11 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 
 sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
 {
+    static int MaxSize => sizeof(int) + sizeof(int);
+
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int) + sizeof(int));
+        bufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(MaxSize), write: MaxSize);
         return format is DataFormat.Binary;
     }
 
