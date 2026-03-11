@@ -395,9 +395,9 @@ public sealed class PgWriter
     public Stream GetStream(bool allowMixedIO = false)
         => new PgWriterStream(this, allowMixedIO);
 
-    // We also check offset is 0 to speed up simple value writes, as field level buffering was handled by writer.StartWrite() already.
+    // We also check pos != offset to speed up simple value writes, as field level buffering was handled by writer.StartWrite() already.
     public bool ShouldFlushCurrent()
-        => !BufferingWrite && _offset is not 0 && ShouldFlush(BufferRequirements.GetMinimumBufferByteCount(Current.BufferRequirement, Current.Size.GetValueOrDefault()));
+        => !BufferingWrite && _pos != _offset && ShouldFlush(BufferRequirements.GetMinimumBufferByteCount(Current.BufferRequirement, Current.Size.GetValueOrDefault()));
 
     public bool ShouldFlush(int byteCount) => Remaining < byteCount && FlushMode is not FlushMode.None;
 
@@ -461,7 +461,6 @@ public sealed class PgWriter
 
         if (ShouldFlush(bufferRequirementByteCount))
             return Core(async, cancellationToken);
-
 
         return new(new NestedWriteScope());
 
