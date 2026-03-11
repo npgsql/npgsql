@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -7,367 +6,30 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
+using Npgsql.Util;
 
 namespace Npgsql.Internal.Converters;
 
-struct Indices
-{
-    // Public field to be able to return it by ref in GetItem.
-    public int One;
-    public int[]? Many { get; private init; }
-    public int Count { get; private init; }
-
-    public static Indices Create(int dimensions)
-        => dimensions switch
-        {
-            0 => new() { Count = dimensions, One = -1 },
-            1 => new() { Count = dimensions },
-            _ => new() { Count = dimensions, Many = new int[dimensions] }
-        };
-}
-
-static class IndicesExtensions
-{
-    // Workaround for lack of ref returns on struct fields.
-    public static ref int GetItem(this ref Indices indices, int index)
-    {
-        switch (indices.Count)
-        {
-            case 0:
-                ThrowHelper.ThrowIndexOutOfRangeException("Cannot index into a 0-dimensional array.");
-                return ref Unsafe.NullRef<int>();
-            case 1:
-                Debug.Assert(index is 0);
-                Debug.Assert(indices.Many is null);
-                return ref indices.One;
-            default:
-                return ref indices.Many![index];
-        }
-    }
-}
-
-interface IElementOperations
-{
-    object CreateCollection(ReadOnlySpan<int> lengths);
-    int GetCollectionCount(object collection, out int[]? lengths);
-    Size? GetSizeOrDbNull(SizeContext context, object collection, Indices indices, ref object? writeState);
-    ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection,  Indices indices, CancellationToken cancellationToken = default);
-    ValueTask Write(bool async, PgWriter writer, object collection,  Indices indices, CancellationToken cancellationToken = default);
-}
-
-readonly struct PgArrayConverter(
-    IElementOperations elemOps,
-    bool elemTypeDbNullable,
-    int? expectedDimensions,
-    BufferRequirements bufferRequirements,
-    PgTypeId elemTypeId,
-    int pgLowerBound = 1)
-{
-    public const string ReadNonNullableCollectionWithNullsExceptionMessage =
-        "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable collection type instead.";
-    public const int MaxDimensions = 8;
-
-    public bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
-
-    bool IsDbNull(object values, Indices indices)
-    {
-        object? state = null;
-        return elemOps.GetSizeOrDbNull(new(DataFormat.Binary, bufferRequirements.Write), values, indices, ref state) is null;
-    }
-
-    Size GetElemsSize(object values, (Size, object?)[] elemStates, out bool anyElementState, DataFormat format, int count, Indices indices, int[]? lengths = null)
-    {
-        Debug.Assert(elemStates.Length >= count);
-        var totalSize = Size.Zero;
-        var context = new SizeContext(format, bufferRequirements.Write);
-        anyElementState = false;
-        var lastLength = lengths?[^1] ?? count;
-        ref var lastIndex = ref indices.GetItem(indices.Count - 1);
-        var i = 0;
-        do
-        {
-            ref var elemItem = ref elemStates[i++];
-            var elemState = (object?)null;
-            var size = elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
-            anyElementState = anyElementState || elemState is not null;
-            elemItem = (size ?? -1, elemState);
-            totalSize = totalSize.Combine(size ?? 0);
-        }
-        // We can immediately continue if we didn't reach the end of the last dimension.
-        while (++lastIndex < lastLength || (indices.Count > 1 && CarryIndices(lengths!, indices)));
-
-        return totalSize;
-    }
-
-    Size GetFixedElemsSize(Size elemSize, object values, int count, Indices indices, int[]? lengths = null)
-    {
-        var nulls = 0;
-        var lastLength = lengths?[^1] ?? count;
-        ref var lastIndex = ref indices.GetItem(indices.Count - 1);
-        if (ElemTypeDbNullable)
-            do
-            {
-                if (IsDbNull(values, indices))
-                    nulls++;
-            }
-            // We can immediately continue if we didn't reach the end of the last dimension.
-            while (++lastIndex < lastLength || (indices.Count > 1 && CarryIndices(lengths!, indices)));
-
-        return (count - nulls) * elemSize.Value;
-    }
-
-    int GetFormatSize(int count, int dimensions)
-        => sizeof(int) + // Dimensions
-           sizeof(int) + // Flags
-           sizeof(int) + // Element OID
-           dimensions * (sizeof(int) + sizeof(int)) + // Dimensions * (array length and lower bound)
-           sizeof(int) * count; // Element length integers
-
-    public Size GetSize(SizeContext context, object values, ref object? writeState)
-    {
-        var count = elemOps.GetCollectionCount(values, out var lengths);
-        var dimensions = lengths?.Length ?? 1;
-        if (dimensions > MaxDimensions)
-            ThrowHelper.ThrowArgumentException($"Postgres arrays can have at most {MaxDimensions} dimensions.", nameof(values));
-
-        var formatSize = Size.Create(GetFormatSize(count, dimensions));
-        if (count is 0)
-            return formatSize;
-
-        Size elemsSize;
-        var indices = Indices.Create(dimensions);
-        if (bufferRequirements.Write is { Kind: SizeKind.Exact } req)
-        {
-            elemsSize = GetFixedElemsSize(req, values, count, indices, lengths);
-            writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths, ArrayPool = null, Data = default, AnyWriteState = false };
-        }
-        else
-        {
-            var arrayPool = ArrayPool<(Size, object?)>.Shared;
-            var data = ArrayPool<(Size, object?)>.Shared.Rent(count);
-            elemsSize = GetElemsSize(values, data, out var elemStateDisposable, context.Format, count, indices, lengths);
-            writeState = new WriteState
-                { Count = count, Indices = indices, Lengths = lengths,
-                    ArrayPool = arrayPool,  Data = new(data, 0, count), AnyWriteState = elemStateDisposable };
-        }
-
-        return formatSize.Combine(elemsSize);
-    }
-
-    sealed class WriteState : MultiWriteState
-    {
-        public required int Count { get; init; }
-        public required Indices Indices { get; init; }
-        public required int[]? Lengths { get; init; }
-    }
-
-    object ReadDimsAndCreateCollection(PgReader reader, int dimensions, out int lastDimLength)
-    {
-        Debug.Assert(!reader.ShouldBuffer((sizeof(int) + sizeof(int)) * dimensions));
-
-        Span<int> dimLengths = stackalloc int[MaxDimensions];
-        lastDimLength = 0;
-        for (var i = 0; i < dimensions; i++)
-        {
-            lastDimLength = reader.ReadInt32();
-            _ = reader.ReadInt32(); // Lower bound
-            dimLengths[i] = lastDimLength;
-        }
-
-        var collection = elemOps.CreateCollection(dimLengths.Slice(0, dimensions));
-        Debug.Assert(dimensions <= 1 || collection is Array a && a.Rank == dimensions);
-        return collection;
-    }
-
-    public async ValueTask<object> Read(bool async, PgReader reader, CancellationToken cancellationToken = default)
-    {
-        if (reader.ShouldBuffer(sizeof(int) + sizeof(int) + sizeof(uint)))
-            await reader.Buffer(async, sizeof(int) + sizeof(int) + sizeof(uint), cancellationToken).ConfigureAwait(false);
-
-        var dimensions = reader.ReadInt32();
-        if (dimensions > MaxDimensions)
-            ThrowHelper.ThrowInvalidOperationException($"Postgres arrays can have at most {MaxDimensions} dimensions.");
-
-        var containsNulls = reader.ReadInt32() is 1;
-        _ = reader.ReadUInt32(); // Element OID.
-
-        if (dimensions is not 0 && expectedDimensions is not null && dimensions != expectedDimensions)
-            ThrowHelper.ThrowInvalidCastException(
-                $"Cannot read an array value with {dimensions} dimension{(dimensions == 1 ? "" : "s")} into a "
-                + $"collection type with {expectedDimensions} dimension{(expectedDimensions == 1 ? "" : "s")}. "
-                + $"Call GetValue or a version of GetFieldValue<TElement[,,,]> with the commas being the expected amount of dimensions.");
-
-        if (containsNulls && !ElemTypeDbNullable)
-            ThrowHelper.ThrowInvalidCastException(ReadNonNullableCollectionWithNullsExceptionMessage);
-
-        // Make sure we can read length + lower bound N dimension times.
-        if (reader.ShouldBuffer((sizeof(int) + sizeof(int)) * dimensions))
-            await reader.Buffer(async, (sizeof(int) + sizeof(int)) * dimensions, cancellationToken).ConfigureAwait(false);
-
-        var collection = ReadDimsAndCreateCollection(reader, dimensions, out var lastDimLength);
-        if (dimensions is 0 || lastDimLength is 0)
-            return collection;
-
-        _ = elemOps.GetCollectionCount(collection, out var dimLengths);
-        var indices = Indices.Create(dimensions);
-
-        do
-        {
-            if (reader.ShouldBuffer(sizeof(int)))
-                await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
-
-            var length = reader.ReadInt32();
-            var isDbNull = length == -1;
-            if (!isDbNull)
-            {
-                var scope = await reader.BeginNestedRead(async, length, bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
-                try
-                {
-                    await elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    if (async)
-                        await scope.DisposeAsync().ConfigureAwait(false);
-                    else
-                        scope.Dispose();
-                }
-            }
-            else
-                await elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
-        }
-        // We can immediately continue if we didn't reach the end of the last dimension.
-        while (++indices.GetItem(indices.Count - 1) < lastDimLength || (dimLengths is not null && CarryIndices(dimLengths, indices)));
-
-        return collection;
-    }
-
-    static bool CarryIndices(int[] lengths, Indices indices)
-    {
-        Debug.Assert(lengths.Length > 1);
-        Debug.Assert(indices.Count > 1);
-
-        // Find the first dimension from the end that isn't at or past its length, increment it and bring all previous dimensions to zero.
-        for (var dim = indices.Count - 1; dim >= 0; dim--)
-        {
-            if (indices.GetItem(dim) >= lengths[dim] - 1)
-                continue;
-
-            indices.Many.AsSpan().Slice(dim + 1).Clear();
-            indices.GetItem(dim)++;
-            return true;
-        }
-
-        // We're done if we can't find any dimension that isn't at its length.
-        return false;
-    }
-
-    public async ValueTask Write(bool async, PgWriter writer, object values, CancellationToken cancellationToken)
-    {
-        var (count, dims, state) = writer.Current.WriteState switch
-        {
-            WriteState writeState => (writeState.Count, writeState.Lengths?.Length ?? 1 , writeState),
-            null => (0, values is Array a ? a.Rank : 1, null),
-            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.")
-        };
-
-        if (writer.ShouldFlush(GetFormatSize(count, dims)))
-            await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-
-        writer.WriteInt32(dims); // Dimensions
-        writer.WriteInt32(0); // Flags (not really used)
-        writer.WriteAsOid(elemTypeId);
-        for (var dim = 0; dim < dims; dim++)
-        {
-            writer.WriteInt32(state?.Lengths?[dim] ?? count);
-            writer.WriteInt32(pgLowerBound); // Lower bound
-        }
-
-        // We can stop here for empty collections.
-        if (state is null)
-            return;
-
-        var elemTypeDbNullable = ElemTypeDbNullable;
-        var elemData = state.Data.Array;
-
-        var indices = state.Indices;
-        if (indices.Many is not null)
-            Array.Clear(indices.Many, 0 , indices.Many.Length);
-        var lastLength = state.Lengths?[^1] ?? state.Count;
-        var i = state.Data.Offset;
-        do
-        {
-            if (writer.ShouldFlush(sizeof(int)))
-                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-
-            var elem = elemData?[i++];
-            var size = elem?.Size ?? (elemTypeDbNullable && IsDbNull(values, indices) ? -1 : bufferRequirements.Write);
-            if (size.Kind is SizeKind.Unknown)
-                throw new NotImplementedException();
-
-            var length = size.Value;
-            writer.WriteInt32(length);
-            if (length != -1)
-            {
-                using var _ = await writer.BeginNestedWrite(async, bufferRequirements.Write, length, elem?.WriteState, cancellationToken).ConfigureAwait(false);
-                await elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        // We can immediately continue if we didn't reach the end of the last dimension.
-        while (++indices.GetItem(indices.Count - 1) < lastLength || (state.Lengths is not null && CarryIndices(state.Lengths, indices)));
-    }
-
-    // Using a function pointer here is safe against assembly unloading as the instance reference that the static pointer method lives on is passed along.
-    // As such the instance cannot be collected by the gc which means the entire assembly is prevented from unloading until we're done.
-    // The alternatives are:
-    // 1. Add a virtual method and make AwaitTask call into it (bloating the vtable of all derived types).
-    // 2. Using a delegate, meaning we add a static field + an alloc per T + metadata, slightly slower dispatch perf so overall strictly worse as well.
-    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-    public static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, Indices indices)
-    {
-        await task.ConfigureAwait(false);
-        continuation.Invoke(task, collection, indices);
-        // Guarantee the type stays loaded until the function pointer call is done.
-        GC.KeepAlive(continuation.Handle);
-    }
-
-    // Split out into a struct as unsafe and async don't mix, while we do want a nicely typed function pointer signature to prevent mistakes.
-    public readonly unsafe struct Continuation
-    {
-        public object Handle { get; }
-        readonly delegate*<Task, object, Indices, void> _continuation;
-
-        /// <param name="handle">A reference to the type that houses the static method <see ref="continuation"/> points to.</param>
-        /// <param name="continuation">The continuation</param>
-        public Continuation(object handle, delegate*<Task, object, Indices, void> continuation)
-        {
-            Handle = handle;
-            _continuation = continuation;
-        }
-
-        public void Invoke(Task task, object collection, Indices indices) => _continuation(task, collection, indices);
-    }
-}
-
 abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 {
-    readonly PgArrayConverter _pgArrayConverter;
+    readonly ArrayConverterCore _arrayConverterCore;
 
-    private protected ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
+    ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
     {
         if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
-        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsDbNullable, expectedDimensions,
+        PgTypeInfo elementTypeInfo = null!; // TODO until https://github.com/npgsql/npgsql/pull/6316
+        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo, elemResolution.Converter.IsDbNullable, expectedDimensions,
             bufferRequirements, elemResolution.PgTypeId, pgLowerBound);
     }
 
-    public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
+    public override T Read(PgReader reader) => (T)_arrayConverterCore.Read(async: false, reader).Result;
 
     public override unsafe ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         // Cheap if we have all the data.
-        var task = _pgArrayConverter.Read(async: true, reader, cancellationToken);
+        var task = _arrayConverterCore.Read(async: true, reader, cancellationToken);
         if (task.IsCompletedSuccessfully)
             return new((T)task.Result);
 
@@ -392,213 +54,206 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     }
 
     public override Size GetSize(SizeContext context, T values, ref object? writeState)
-        => _pgArrayConverter.GetSize(context, values, ref writeState);
+        => _arrayConverterCore.GetSize(context, values, ref writeState);
 
     public override void Write(PgWriter writer, T values)
-        => _pgArrayConverter.Write(async: false, writer, values, CancellationToken.None).GetAwaiter().GetResult();
+        => _arrayConverterCore.Write(async: false, writer, values, CancellationToken.None).GetAwaiter().GetResult();
 
     public override ValueTask WriteAsync(PgWriter writer, T values, CancellationToken cancellationToken = default)
-        => _pgArrayConverter.Write(async: true, writer, values, cancellationToken);
+        => _arrayConverterCore.Write(async: true, writer, values, cancellationToken);
 
-    protected static int GetLengths(Array array, out int[]? lengths)
-    {
-        var dimensions = array.Rank;
+    public static ArrayConverter<T> CreateArrayBased<TElement>(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
+        => new ArrayBased<TElement>(elemResolution, effectiveType, pgLowerBound);
 
-        if (dimensions is 1)
-        {
-            lengths = null;
-            return array.Length;
-        }
+    public static ArrayConverter<T> CreateListBased<TElement>(PgConverterResolution elemResolution, int pgLowerBound = 1)
+        => new ListBased<TElement>(elemResolution, pgLowerBound);
 
-        lengths = new int[dimensions];
-        for (var i = 0; i < lengths.Length; i++)
-            lengths[i] = array.GetLength(i);
-
-        // If we have a multidim array it may throw an overflow exception for large arrays (LongLength exists for these cases)
-        // however anything over int.MaxValue wouldn't fit in a parameter anyway so easier to throw here than deal with a long.
-        return array.Length;
-    }
-}
-
-sealed class ArrayBasedArrayConverter<T, TElement>(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
-    : ArrayConverter<T>(expectedDimensions: effectiveType is null ? 1 : effectiveType.IsArray ? effectiveType.GetArrayRank() : null,
+    sealed class ArrayBased<TElement>(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
+        : ArrayConverter<T>(expectedDimensions: effectiveType is null ? 1 : effectiveType.IsArray ? effectiveType.GetArrayRank() : null,
         elemResolution, pgLowerBound), IElementOperations
-    where T : class
-{
-    readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static TElement? GetValue(object collection, Indices indices)
     {
-        Debug.Assert(indices.Count > 0);
-        switch (indices.Count)
-        {
-        case 1:
-            // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-            Debug.Assert(collection is TElement?[]);
-            return Unsafe.As<TElement?[]>(collection)[indices.One];
-        default:
-            // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-            Debug.Assert(collection is Array);
-            return (TElement?)Unsafe.As<Array>(collection).GetValue(indices.Many!);
-        }
-    }
+        readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static void SetValue(object collection, Indices indices, TElement? value)
-    {
-        Debug.Assert(indices.Count > 0);
-        switch (indices.Count)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static TElement? GetValue(object collection, IterationIndices indices)
         {
+            Debug.Assert(indices.Rank > 0);
+            switch (indices.Rank)
+            {
             case 1:
                 // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
                 Debug.Assert(collection is TElement?[]);
-                Unsafe.As<TElement?[]>(collection)[indices.One] = value;
-                break;
+                return Unsafe.As<TElement?[]>(collection)[indices.One];
+            case 2:
+                // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
+                Debug.Assert(collection is TElement?[,]);
+                return Unsafe.As<TElement?[,]>(collection)[indices.Many![0], indices.Many![1]];
             default:
                 // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
                 Debug.Assert(collection is Array);
-                Unsafe.As<Array>(collection).SetValue(value, indices.Many!);
-                break;
+                return (TElement?)Unsafe.As<Array>(collection).GetValue(indices.Many!);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static void SetValue(object collection, IterationIndices indices, TElement? value)
+        {
+            Debug.Assert(indices.Rank > 0);
+            switch (indices.Rank)
+            {
+                case 1:
+                    // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
+                    Debug.Assert(collection is TElement?[]);
+                    Unsafe.As<TElement?[]>(collection)[indices.One] = value;
+                    break;
+                case 2:
+                    // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
+                    Debug.Assert(collection is TElement?[,]);
+                    Unsafe.As<TElement?[,]>(collection)[indices.Many![0], indices.Many![1]] = value;
+                    break;
+                default:
+                    // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
+                    Debug.Assert(collection is Array);
+                    Unsafe.As<Array>(collection).SetValue(value, indices.Many!);
+                    break;
+            }
+        }
+
+        object IElementOperations.CreateCollection(ReadOnlySpan<int> lengths)
+            => lengths.Length switch
+            {
+                0 => Array.Empty<TElement?>(),
+                1 => new TElement?[lengths[0]],
+                2 => new TElement?[lengths[0], lengths[1]],
+                3 => new TElement?[lengths[0], lengths[1], lengths[2]],
+                4 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3]],
+                5 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4]],
+                6 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
+                7 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
+                8 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
+                _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
+            };
+
+        int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
+            => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
+
+        Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+            => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
+
+        ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
+        {
+            if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
+                return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
+
+            SetValue(collection, indices, isDbNull ? default : _elemConverter.Read(reader));
+            return new();
+        }
+
+        unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, IterationIndices indices, CancellationToken cancellationToken)
+        {
+            if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
+                return ArrayConverterCore.AwaitTask(task, new(this, &SetResult), collection, indices);
+
+            SetValue(collection, indices, result);
+            return new();
+
+            static void SetResult(Task task, object collection, IterationIndices indices)
+            {
+                // Justification: exact type Unsafe.As used to reduce generic duplication cost.
+                Debug.Assert(task is Task<TElement>);
+                // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
+                SetValue(collection, indices, new ValueTask<TElement>(task: Unsafe.As<Task<TElement>>(task)).Result);
+            }
+        }
+
+        ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, IterationIndices indices, CancellationToken cancellationToken)
+        {
+            if (async)
+                return _elemConverter.WriteAsync(writer, GetValue(collection, indices)!, cancellationToken);
+
+            _elemConverter.Write(writer, GetValue(collection, indices)!);
+            return new();
         }
     }
 
-    object IElementOperations.CreateCollection(ReadOnlySpan<int> lengths)
-        => lengths.Length switch
-        {
-            0 => Array.Empty<TElement?>(),
-            1 when lengths[0] == 0 => Array.Empty<TElement?>(),
-            1 => new TElement?[lengths[0]],
-            2 => new TElement?[lengths[0], lengths[1]],
-            3 => new TElement?[lengths[0], lengths[1], lengths[2]],
-            4 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3]],
-            5 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4]],
-            6 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
-            7 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
-            8 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
-            _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
-        };
-
-    int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
-        => GetLengths((Array)collection, out lengths);
-
-    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, Indices indices, ref object? writeState)
-        => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
-
-    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, Indices indices, CancellationToken cancellationToken)
+    sealed class ListBased<TElement>(PgConverterResolution elemResolution, int pgLowerBound = 1)
+        : ArrayConverter<T>(expectedDimensions: 1, elemResolution, pgLowerBound), IElementOperations
     {
-        if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
-            return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
+        readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
 
-        SetValue(collection, indices, isDbNull ? default : _elemConverter.Read(reader));
-        return new();
-    }
-
-    unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, Indices indices, CancellationToken cancellationToken)
-    {
-        if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
-            return PgArrayConverter.AwaitTask(task, new(this, &SetResult), collection, indices);
-
-        SetValue(collection, indices, result);
-        return new();
-
-        static void SetResult(Task task, object collection, Indices indices)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static TElement? GetValue(object collection, int index)
         {
-            // Justification: exact type Unsafe.As used to reduce generic duplication cost.
-            Debug.Assert(task is Task<TElement>);
-            // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
-            SetValue(collection, indices, new ValueTask<TElement>(task: Unsafe.As<Task<TElement>>(task)).Result);
+            // Justification: avoid the cast overhead for per element calls.
+            Debug.Assert(collection is IList<TElement?>);
+            return Unsafe.As<IList<TElement?>>(collection)[index];
         }
-    }
 
-    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, Indices indices, CancellationToken cancellationToken)
-    {
-        if (async)
-            return _elemConverter.WriteAsync(writer, GetValue(collection, indices)!, cancellationToken);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static void SetValue(object collection, int index, TElement? value)
+        {
+            // Justification: avoid the cast overhead for per element calls.
+            Debug.Assert(collection is IList<TElement?>);
+            var list = Unsafe.As<IList<TElement?>>(collection);
+            list.Insert(index, value);
+        }
 
-        _elemConverter.Write(writer, GetValue(collection, indices)!);
-        return new();
-    }
-}
+        object IElementOperations.CreateCollection(ReadOnlySpan<int> lengths)
+            => new List<TElement?>(lengths.Length is 0 ? 0 : lengths[0]);
 
-sealed class ListBasedArrayConverter<T, TElement>(PgConverterResolution elemResolution, int pgLowerBound = 1)
-    : ArrayConverter<T>(expectedDimensions: 1, elemResolution, pgLowerBound), IElementOperations
-    where T : class
-{
-    readonly PgConverter<TElement> _elemConverter = elemResolution.GetConverter<TElement>();
+        int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
+        {
+            lengths = null;
+            return ((IList<TElement?>)collection).Count;
+        }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static TElement? GetValue(object collection, int index)
-    {
-        // Justification: avoid the cast overhead for per element calls.
-        Debug.Assert(collection is IList<TElement?>);
-        return Unsafe.As<IList<TElement?>>(collection)[index];
-    }
+        Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+            => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static void SetValue(object collection, int index, TElement? value)
-    {
-        // Justification: avoid the cast overhead for per element calls.
-        Debug.Assert(collection is IList<TElement?>);
-        var list = Unsafe.As<IList<TElement?>>(collection);
-        list.Insert(index, value);
-    }
+        ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
+        {
+            Debug.Assert(indices.Rank is 1);
+            if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
+                return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
 
-    object IElementOperations.CreateCollection(ReadOnlySpan<int> lengths)
-        => new List<TElement?>(lengths.Length is 0 ? 0 : lengths[0]);
+            SetValue(collection, indices.One, isDbNull ? default : _elemConverter.Read(reader));
+            return new();
+        }
 
-    int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
-    {
-        lengths = null;
-        return ((IList<TElement?>)collection).Count;
-    }
-
-    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, Indices indices, ref object? writeState)
-        => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
-
-    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, Indices indices, CancellationToken cancellationToken)
-    {
-        Debug.Assert(indices.Count is 1);
-        if (!isDbNull && async && _elemConverter is PgStreamingConverter<TElement> streamingConverter)
-            return ReadAsync(streamingConverter, reader, collection, indices, cancellationToken);
-
-        SetValue(collection, indices.One, isDbNull ? default : _elemConverter.Read(reader));
-        return new();
-    }
-
-     unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, Indices indices, CancellationToken cancellationToken)
-     {
-         Debug.Assert(indices.Count is 1);
-         if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
-             return PgArrayConverter.AwaitTask(task, new(this, &SetResult), collection, indices);
-
-         SetValue(collection, indices.One, result);
-         return new();
-
-         static void SetResult(Task task, object collection, Indices indices)
+         unsafe ValueTask ReadAsync(PgStreamingConverter<TElement> converter, PgReader reader, object collection, IterationIndices indices, CancellationToken cancellationToken)
          {
-             // Justification: exact type Unsafe.As used to reduce generic duplication cost.
-             Debug.Assert(task is Task<TElement>);
-             // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
-             SetValue(collection, indices.One, new ValueTask<TElement>(task: Unsafe.As<Task<TElement>>(task)).Result);
+             Debug.Assert(indices.Rank is 1);
+             if (converter.ReadAsyncAsTask(reader, cancellationToken, out var result) is { } task)
+                 return ArrayConverterCore.AwaitTask(task, new(this, &SetResult), collection, indices);
+
+             SetValue(collection, indices.One, result);
+             return new();
+
+             static void SetResult(Task task, object collection, IterationIndices indices)
+             {
+                 // Justification: exact type Unsafe.As used to reduce generic duplication cost.
+                 Debug.Assert(task is Task<TElement>);
+                 // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
+                 SetValue(collection, indices.One, new ValueTask<TElement>(task: Unsafe.As<Task<TElement>>(task)).Result);
+             }
          }
-     }
 
-    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, Indices indices, CancellationToken cancellationToken)
-    {
-        Debug.Assert(indices.Count is 1);
-        if (async)
-            return _elemConverter.WriteAsync(writer, GetValue(collection, indices.One)!, cancellationToken);
+        ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, IterationIndices indices, CancellationToken cancellationToken)
+        {
+            Debug.Assert(indices.Rank is 1);
+            if (async)
+                return _elemConverter.WriteAsync(writer, GetValue(collection, indices.One)!, cancellationToken);
 
-        _elemConverter.Write(writer, GetValue(collection, indices.One)!);
-        return new();
+            _elemConverter.Write(writer, GetValue(collection, indices.One)!);
+            return new();
+        }
     }
 }
 
 sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeInfo, Type effectiveType)
     : PgComposingConverterResolver<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
         elementTypeInfo)
-    where T : class
+    where T : notnull
 {
     PgSerializerOptions Options => EffectiveTypeInfo.Options;
 
@@ -608,10 +263,10 @@ sealed class ArrayConverterResolver<T, TElement>(PgResolverTypeInfo elementTypeI
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
     {
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
-            return new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, effectiveType);
+            return ArrayConverter<T>.CreateArrayBased<TElement>(effectiveResolution, effectiveType);
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
-            return new ListBasedArrayConverter<T, TElement>(effectiveResolution);
+            return ArrayConverter<T>.CreateListBased<TElement>(effectiveResolution);
 
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }

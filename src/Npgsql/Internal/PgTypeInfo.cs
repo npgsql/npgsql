@@ -73,13 +73,6 @@ public class PgTypeInfo
 
     public PgTypeId? PgTypeId { get; }
 
-    // Having it here so we can easily extend any behavior.
-    internal void DisposeWriteState(object writeState)
-    {
-        if (writeState is IDisposable disposable)
-            disposable.Dispose();
-    }
-
     public PgConverterResolution GetResolution<T>(T? value)
     {
         if (this is not PgResolverTypeInfo resolverInfo)
@@ -287,6 +280,17 @@ public sealed class PgResolverTypeInfo(
         => converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, expectedPgTypeId ?? PgTypeId);
 
     public PgConverterResolver GetConverterResolver() => converterResolver;
+}
+
+// TODO until https://github.com/npgsql/npgsql/pull/6316
+static class PgTypeInfoExtensions
+{
+    // Having it here so we can easily extend any behavior.
+    public static void DisposeWriteState(this PgTypeInfo typeInfo, object writeState)
+    {
+        if (writeState is IDisposable disposable)
+            disposable.Dispose();
+    }
 }
 
 public readonly struct PgConverterResolution(PgConverter converter, PgTypeId pgTypeId)

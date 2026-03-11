@@ -65,7 +65,7 @@ public class ArrayTests : TestBase
         cmd.Parameters.AddWithValue("p", new int[1, 1, 1, 1, 1, 1, 1, 1, 1]); // 9 dimensions
         Assert.That(
             () => cmd.ExecuteScalarAsync(),
-            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'values')"));
+            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'dimensionLengths')"));
     }
 
     [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
@@ -311,7 +311,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
             Throws.Exception.TypeOf<InvalidCastException>()
-                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverterCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
 
@@ -330,7 +330,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
             Throws.Exception.TypeOf<InvalidCastException>()
-                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverterCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
     [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
@@ -489,6 +489,16 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         Assert.That(reader.GetFieldValue<int[]>(1), Is.SameAs(reader.GetFieldValue<int[]>(0)));
         // Unlike T[], List<T> is mutable so we should not return the same instance
         Assert.That(reader.GetFieldValue<List<int>>(1), Is.Not.SameAs(reader.GetFieldValue<List<int>>(0)));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1271")]
+    public async Task Generics_read_empty_multidim_array()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("select ARRAY[[], []]::integer[]", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+        Assert.That(reader.GetFieldValue<int[,]>(0).Length, Is.Zero);
     }
 
     [Test]
