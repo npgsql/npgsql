@@ -374,7 +374,7 @@ class RangeTests : TestBase
     public void Parse_malformed_range_throws(string input)
         => Assert.Throws<FormatException>(() => NpgsqlRange<int>.Parse(input));
 
-    [Test, Ignore("Fails only on build server, can't reproduce locally.")]
+    [Test]
     public void TypeConverter()
     {
         // Arrange
@@ -387,7 +387,7 @@ class RangeTests : TestBase
         var result = converter.ConvertFromString("empty");
 
         // Assert
-        Assert.That(result, Is.Empty);
+        Assert.That(result, Is.EqualTo(NpgsqlRange<int>.Empty));
     }
 
     #endregion
