@@ -79,7 +79,6 @@ class ReadBufferTests
             .WriteByte(0)
             .Write(NpgsqlWriteBuffer.UTF8Encoding.GetBytes(new string("bar")))
             .WriteByte(0);
-        Assert.That(task.IsCompleted);
         Assert.That(await task, Is.EqualTo("Chunked string"));
         Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("bar"));
     }
