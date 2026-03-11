@@ -54,7 +54,7 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
         case SizeKind.Exact:
             if (reqByteCount != valueSize)
                 ThrowHelper.ThrowArgumentOutOfRangeException(nameof(bufferRequirement),
-                    "Exact buffer requirement size is not equal to the value's size.");
+                    $"Exact buffer requirement size ({reqByteCount} bytes) does not match the value size ({valueSize} bytes).");
             return reqByteCount;
         case SizeKind.UpperBound:
             return Math.Min(valueSize, reqByteCount);
