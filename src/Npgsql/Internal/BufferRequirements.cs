@@ -53,13 +53,16 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
         {
         case SizeKind.Exact:
             if (reqByteCount != valueSize)
-                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(bufferRequirement),
-                    $"Exact buffer requirement size ({reqByteCount} bytes) does not match the value size ({valueSize} bytes).");
-            return reqByteCount;
+                ThrowExactMismatch(reqByteCount, valueSize);
+            goto default;
         case SizeKind.UpperBound:
             return Math.Min(valueSize, reqByteCount);
         default:
             return reqByteCount;
         }
+
+        static void ThrowExactMismatch(int expected, int actual)
+            => throw new ArgumentOutOfRangeException(nameof(bufferRequirement),
+                $"Exact buffer requirement size ({expected} bytes) does not match the value size ({actual} bytes).");
     }
 }
