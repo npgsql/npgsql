@@ -7,7 +7,6 @@ namespace Npgsql.Benchmarks;
 [MemoryDiagnoser]
 public class ResolveHandler
 {
-    NpgsqlDataSource? _dataSource;
     PgSerializerOptions _serializerOptions = null!;
 
     [Params(0, 1, 2)]
@@ -21,12 +20,11 @@ public class ResolveHandler
             dataSourceBuilder.UseNodaTime();
         if (NumPlugins > 1)
             dataSourceBuilder.UseNetTopologySuite();
-        _dataSource = dataSourceBuilder.Build();
-        _serializerOptions = _dataSource.CurrentReloadableState.SerializerOptions;
-    }
 
-    [GlobalCleanup]
-    public void Cleanup() => _dataSource?.Dispose();
+        // Alternatively we must build a data source and get it bootstrapped against a real database.
+        (_, var config) = dataSourceBuilder.PrepareConfiguration();
+        _serializerOptions = new PgSerializerOptions(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, config.ResolverChain);
+    }
 
     [Benchmark]
     public PgTypeInfo? ResolveDefault()

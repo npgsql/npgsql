@@ -601,6 +601,10 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlMultiHostDataSource BuildMultiHost()
         => _internalBuilder.BuildMultiHost();
 
+    // Used in testing.
+    internal (NpgsqlConnectionStringBuilder, NpgsqlDataSourceConfiguration) PrepareConfiguration()
+        => _internalBuilder.PrepareConfiguration();
+
     INpgsqlTypeMapper INpgsqlTypeMapper.ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
         => ConfigureJsonOptions(serializerOptions);
 

@@ -37,7 +37,7 @@ public abstract class TypeHandlerBenchmarks<T>
         public override void Write(byte[] buffer, int offset, int count) { }
     }
 
-    readonly PgConverter _converter;
+    readonly PgConverter<T> _converter;
     readonly PgReader _reader;
     readonly PgWriter _writer;
     readonly NpgsqlWriteBuffer _writeBuffer;
@@ -50,7 +50,7 @@ public abstract class TypeHandlerBenchmarks<T>
     protected TypeHandlerBenchmarks(PgConverter handler)
     {
         var stream = new EndlessStream();
-        _converter = handler ?? throw new ArgumentNullException(nameof(handler));
+        _converter = (PgConverter<T>)handler ?? throw new ArgumentNullException(nameof(handler));
         _readBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
         _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding);
         _reader = new PgReader(_readBuffer);
@@ -69,26 +69,36 @@ public abstract class TypeHandlerBenchmarks<T>
         get => _value;
         set
         {
+            if (_reader.Initialized)
+            {
+                // Prevent Commit from calling Skip, which would cause us to try and use the null connector.
+                _readBuffer.ReadPosition += _reader.CurrentRemaining;
+                _reader.Commit();
+            }
+
             _value = value;
             object state = null;
-            var size = _elementSize = _converter.GetSizeAsObject(new(DataFormat.Binary, _binaryRequirements.Write), value, ref state);
+            var size = _elementSize = _converter.GetSizeOrDbNullAsObject(DataFormat.Binary, _binaryRequirements.Write, value, ref state)!.Value;
             var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = size, WriteState = state };
+
             _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
             _converter.WriteAsObject(_writer, value);
-            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, size.Value);
-
             _writer.Commit(size.Value);
-            _readBuffer.FilledBytes = size.Value;
             _writeBuffer.WritePosition = 0;
+
+            _readBuffer.ReadPosition = 0;
+            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, size.Value);
+            _readBuffer.FilledBytes = size.Value;
+            _reader.Init(size.Value, DataFormat.Binary);
         }
     }
 
     [Benchmark]
     public T Read()
     {
-        _readBuffer.ReadPosition = sizeof(int);
+        _readBuffer.ReadPosition = 0;
         _reader.StartRead(_binaryRequirements.Read);
-        var value = ((PgConverter<T>)_converter).Read(_reader);
+        var value = _converter.Read(_reader);
         _reader.EndRead();
         return value;
     }
@@ -96,9 +106,9 @@ public abstract class TypeHandlerBenchmarks<T>
     [Benchmark]
     public void Write()
     {
-        _writeBuffer.WritePosition = 0;
+        _writer.RefreshBuffer();
         var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = _elementSize, WriteState = null };
         _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
-        ((PgConverter<T>)_converter).Write(_writer, _value);
+        _converter.Write(_writer, _value);
     }
 }
