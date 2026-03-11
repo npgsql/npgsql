@@ -387,7 +387,7 @@ class RangeTests : TestBase
         var result = converter.ConvertFromString("empty");
 
         // Assert
-        Assert.That(result, Is.Empty);
+        Assert.That(result, Is.EqualTo(NpgsqlRange<int>.Empty));
     }
 
     #endregion
