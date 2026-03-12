@@ -501,7 +501,8 @@ public class DateTimeTests : TestBase
                 new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)
             },
             @"{NULL,""1998-04-12 15:26:38+02""}",
-            "timestamp with time zone[]");
+            "timestamp with time zone[]",
+            NpgsqlDbType.TimestampTz | NpgsqlDbType.Array);
 
         await AssertType(datasource,
             new DateTime?[]
