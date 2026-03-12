@@ -54,7 +54,7 @@ sealed class NullableConverterResolver<T> : PgComposingConverterResolver<T?> whe
         => new NullableConverter<T>(effectiveResolution.GetConverter<T>());
 
     protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId)
-        => value is null
-            ? EffectiveTypeInfo.GetDefaultResolution(expectedEffectivePgTypeId)
-            : EffectiveTypeInfo.GetResolution(value.GetValueOrDefault(), expectedEffectivePgTypeId);
+        => value is { } inner
+            ? EffectiveTypeInfo.GetResolution(inner, expectedEffectivePgTypeId)
+            : null;
 }
