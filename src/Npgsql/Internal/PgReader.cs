@@ -198,19 +198,26 @@ public class PgReader
 
     internal Stream GetStream(bool canSeek, int? length = null) => GetColumnStream(canSeek, length);
 
-    NpgsqlReadBuffer.ColumnStream GetColumnStream(bool canSeek = false, int? length = null)
+    NpgsqlReadBuffer.ColumnStream GetColumnStream(bool canSeek, int? length = null, bool forGetChars = false)
     {
         if (length > CurrentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
 
-        _requiresCleanup = true;
         // This will cause any previously handed out StreamReaders etc to throw, as intended.
-        if (_userActiveStream is not null)
+        if (!forGetChars && StreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
-        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft, consumeOnDispose: false);
+        var stream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= _buffer.ReadBytesLeft, consumeOnDispose: false);
+
+        // GetChars isn't a user facing stream and handles its own tracking and cleanup.
+        if (!forGetChars)
+        {
+            _requiresCleanup = true;
+            _userActiveStream = stream;
+        }
+        return stream;
     }
 
     public TextReader GetTextReader(Encoding encoding)
@@ -219,24 +226,30 @@ public class PgReader
     public ValueTask<TextReader> GetTextReaderAsync(Encoding encoding, CancellationToken cancellationToken)
         => GetTextReader(async: true, encoding, cancellationToken);
 
-    async ValueTask<TextReader> GetTextReader(bool async, Encoding encoding, CancellationToken cancellationToken)
+    async ValueTask<TextReader> GetTextReader(bool async, Encoding encoding, CancellationToken cancellationToken, bool forGetChars = false)
     {
-        _requiresCleanup = true;
         if (CurrentRemaining > _buffer.ReadBytesLeft || CurrentRemaining > MaxPreparedTextReaderSize)
-            return new StreamReader(GetColumnStream(), encoding, detectEncodingFromByteOrderMarks: false);
+            return new StreamReader(GetColumnStream(false, forGetChars: forGetChars), encoding, detectEncodingFromByteOrderMarks: false);
 
-        if (_preparedTextReader is { IsDisposed: false })
+        if (!forGetChars && _preparedTextReader is { IsDisposed: false })
         {
             _preparedTextReader.Dispose();
             _preparedTextReader = null;
         }
 
-        _preparedTextReader ??= new PreparedTextReader();
-        _preparedTextReader.Init(
-            encoding.GetString(async
-                ? await ReadBytesAsync(CurrentRemaining, cancellationToken).ConfigureAwait(false)
-                : ReadBytes(CurrentRemaining)));
-        return _preparedTextReader;
+        _requiresCleanup = true;
+        var currentOffset = CurrentOffset;
+        var currentRemaining = CurrentSize - currentOffset;
+
+        // Always make a new reader for GetChars, see GetColumnStream.
+        var preparedTextReader = (forGetChars ? null : _preparedTextReader) ?? new();
+        preparedTextReader.Init(encoding.GetString(async
+            ? await ReadBytesAsync(currentRemaining, cancellationToken).ConfigureAwait(false)
+            : ReadBytes(currentRemaining)));
+        if (!forGetChars)
+            _preparedTextReader = preparedTextReader;
+
+        return preparedTextReader;
     }
 
     public ValueTask ReadBytesAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
@@ -365,18 +378,20 @@ public class PgReader
         _buffer.ReadPosition -= count;
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="async"></param>
-    /// <returns>The stream length, if any</returns>
-    async ValueTask DisposeUserActiveStream(bool async)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    ValueTask DisposeUserActiveStream(bool async)
     {
-        if (async)
-            await (_userActiveStream?.DisposeAsync() ?? new()).ConfigureAwait(false);
-        else
-            _userActiveStream?.Dispose();
-        _userActiveStream = null;
+        var stream = _userActiveStream;
+        if (stream is not null)
+        {
+            _userActiveStream = null;
+            if (async)
+                return stream.DisposeAsync();
+
+            stream.Dispose();
+        }
+
+        return new();
     }
 
     internal int CharsRead => _charsRead;
@@ -387,8 +402,9 @@ public class PgReader
         if (!CharsReadActive)
             ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
+        _requiresCleanup = true;
         charsRead = _charsRead;
-        reader = _charsReadReader ??= GetTextReader(encoding);
+        reader = _charsReadReader ??= GetTextReader(async: false, encoding, default, forGetChars: true).GetAwaiter().GetResult();
         charsOffset = _charsReadOffset ?? 0;
         buffer = _charsReadBuffer;
     }
@@ -604,6 +620,12 @@ public class PgReader
             _charsReadReader.Dispose();
             _charsReadReader = null;
             _charsRead = default;
+        }
+
+        if (_preparedTextReader is not null)
+        {
+            _preparedTextReader.Dispose();
+            _preparedTextReader = null;
         }
 
         _requiresCleanup = false;
