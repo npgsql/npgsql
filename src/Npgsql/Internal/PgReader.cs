@@ -46,9 +46,6 @@ public class PgReader
     ArraySegment<char>? _charsReadBuffer;
 
     bool _requiresCleanup;
-    // The field reading process of doing init/commit and startread/endread pairs is very perf sensitive.
-    // So this is used in Commit as a fast-path alternative to FieldRemaining to detect if the field was consumed succesfully.
-    bool _fieldConsumed;
 
     internal PgReader(NpgsqlReadBuffer buffer)
     {
@@ -448,7 +445,6 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("Already initialized");
 
         _fieldStartPos = _buffer.CumulativeReadPosition;
-        _fieldConsumed = false;
         _fieldSize = fieldSize;
         _fieldFormat = fieldFormat;
         _resumable = resumable;
@@ -477,35 +473,36 @@ public class PgReader
 
     internal void EndRead()
     {
-        if (_resumable || StreamActive)
+        if (_resumable || (_requiresCleanup && StreamActive))
             return;
-
-        // If it was upper bound we should consume.
-        if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
-        {
-            Consume(FieldRemaining);
-            return;
-        }
 
         if (FieldOffset != FieldSize)
-            ThrowNotConsumedExactly();
+        {
+            // If it was upper bound we should consume.
+            if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
+            {
+                Consume(FieldRemaining);
+                return;
+            }
 
-        _fieldConsumed = true;
+            ThrowNotConsumedExactly();
+        }
     }
 
     internal ValueTask EndReadAsync()
     {
-        if (_resumable || StreamActive)
+        if (_resumable || (_requiresCleanup && StreamActive))
             return new();
 
-        // If it was upper bound we should consume.
-        if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
-            return ConsumeAsync(FieldRemaining);
-
         if (FieldOffset != FieldSize)
-            ThrowNotConsumedExactly();
+        {
+            // If it was upper bound we should consume.
+            if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
+                return ConsumeAsync(FieldRemaining);
 
-        _fieldConsumed = true;
+            ThrowNotConsumedExactly();
+        }
+
         return new();
     }
 
@@ -650,7 +647,6 @@ public class PgReader
         if (NestedInitialized)
             ResetCurrent();
 
-        _fieldConsumed = false;
         _resumable = resumable;
         RewindCore(FieldOffset);
 
@@ -673,7 +669,7 @@ public class PgReader
 
         // We make sure to fuly consume any FieldRemaining in the event of an exception or a nested scope not being disposed.
         Debug.Assert(!NestedInitialized);
-        if (!_fieldConsumed && FieldRemaining > 0)
+        if (FieldRemaining > 0)
             Consume();
 
         _fieldStartPos = UninitializedSentinel;
@@ -683,7 +679,6 @@ public class PgReader
         // _fieldSize = default;
         // _fieldFormat = default;
         // _resumable = default;
-        // _fieldConsumed = default;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -701,7 +696,7 @@ public class PgReader
 
         // We make sure to fuly consume any FieldRemaining in the event of an exception or a nested scope not being disposed.
         Debug.Assert(!NestedInitialized);
-        if (!_fieldConsumed && FieldRemaining > 0)
+        if (FieldRemaining > 0)
             return CommitAsync();
 
         _fieldStartPos = UninitializedSentinel;
@@ -711,7 +706,6 @@ public class PgReader
         // _fieldSize = default;
         // _fieldFormat = default;
         // _resumable = default;
-        // _fieldConsumed = default;
 
         return new();
 
@@ -726,7 +720,6 @@ public class PgReader
             // _fieldSize = default;
             // _fieldFormat = default;
             // _resumable = default;
-            // _fieldConsumed = default;
         }
     }
 
