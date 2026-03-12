@@ -647,15 +647,11 @@ public class PgReader
         // When the field size is DbNullFieldSize (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
         if ((Resumable && resumable) || FieldIsDbNull)
         {
-            _resumable = resumable || FieldIsDbNull;
+            _resumable = true;
             return FieldSize;
         }
 
-        // From this point on we're not resuming, we're resetting any remaining state and rewinding our position.
-
-        // Shut down any streaming and pooling going on on the column.
-        if (_requiresCleanup)
-            Cleanup();
+        // From this point on we're not resuming, we're resetting any previous converter state and rewinding our position.
 
         if (NestedInitialized)
             ResetCurrent();
