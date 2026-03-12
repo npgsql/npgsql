@@ -16,6 +16,7 @@ using Npgsql.Tests.Support;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -746,7 +747,13 @@ LANGUAGE 'plpgsql'");
         using var command = new NpgsqlCommand("SELECT 1", conn);
         using var dr = await command.ExecuteReaderAsync(Behavior);
         dr.Read();
-        Assert.That(() => dr[5], Throws.Exception.TypeOf<IndexOutOfRangeException>());
+
+        Assert.That(() => dr[1], AssertExpectedException());
+        Assert.That(() => dr.GetValue(2), AssertExpectedException());
+        Assert.That(() => dr.GetFieldValue<object>(3), AssertExpectedException());
+
+        static IResolveConstraint AssertExpectedException()
+            => Throws.Exception.TypeOf<IndexOutOfRangeException>().With.Message.StartsWith("Ordinal is out of range");
     }
 
     [Test, Description("Performs some operations while a reader is still open and checks for exceptions")]
