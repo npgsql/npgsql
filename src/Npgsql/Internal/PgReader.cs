@@ -27,6 +27,7 @@ public class PgReader
     PreparedTextReader? _preparedTextReader;
 
     long _fieldStartPos;
+    long _fieldEndPos;
     Size _fieldBufferRequirement;
     DataFormat _fieldFormat;
     int _fieldSize;
@@ -95,17 +96,14 @@ public class PgReader
         _currentSize = size;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckBounds(int count)
     {
-        if (NpgsqlReadBuffer.BufferBoundsChecks)
-            Core(count);
+        if (_buffer.CumulativeReadPosition > _fieldEndPos - count)
+            Throw();
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        void Core(int count)
-        {
-            if (count > CurrentRemaining)
-                ThrowHelper.ThrowIndexOutOfRangeException("Attempt to read past the end of the current field size.");
-        }
+        static void Throw()
+            => ThrowHelper.ThrowIndexOutOfRangeException("Attempt to read past the end of the field.");
     }
 
     public byte ReadByte()
@@ -437,6 +435,7 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("Already initialized");
 
         _fieldStartPos = _buffer.CumulativeReadPosition;
+        _fieldEndPos = _fieldStartPos + fieldSize;
         _fieldSize = fieldSize;
         _fieldFormat = fieldFormat;
         _resumable = resumable;
@@ -466,7 +465,7 @@ public class PgReader
         if (_resumable || (_requiresCleanup && StreamActive))
             return;
 
-        if (FieldOffset != FieldSize)
+        if (_buffer.CumulativeReadPosition != _fieldEndPos)
         {
             // If it was upper bound we should consume.
             if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
@@ -484,7 +483,7 @@ public class PgReader
         if (_resumable || (_requiresCleanup && StreamActive))
             return new();
 
-        if (FieldOffset != FieldSize)
+        if (_buffer.CumulativeReadPosition != _fieldEndPos)
         {
             // If it was upper bound we should consume.
             if (_fieldBufferRequirement is { Kind: SizeKind.UpperBound })
@@ -664,6 +663,7 @@ public class PgReader
         Debug.Assert(!Initialized);
 
         // These will always be re-initialized by Init()
+        // _fieldEndPos = default;
         // _fieldSize = default;
         // _fieldFormat = default;
         // _resumable = default;
@@ -691,6 +691,7 @@ public class PgReader
         Debug.Assert(!Initialized);
 
         // These will always be re-initialized by Init()
+        // _fieldEndPos = default;
         // _fieldSize = default;
         // _fieldFormat = default;
         // _resumable = default;
@@ -705,6 +706,7 @@ public class PgReader
             Debug.Assert(!Initialized);
 
             // These will always be re-initialized by Init()
+            // _fieldEndPos = default;
             // _fieldSize = default;
             // _fieldFormat = default;
             // _resumable = default;
