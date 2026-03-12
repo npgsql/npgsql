@@ -23,12 +23,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
 
-#if DEBUG
-    internal static readonly bool BufferBoundsChecks = true;
-#else
-    internal static readonly bool BufferBoundsChecks = Statics.EnableAssertions;
-#endif
-
     public NpgsqlConnection Connection => Connector.Connection!;
     internal readonly NpgsqlConnector Connector;
     internal Stream Underlying { private get; set; }
@@ -565,22 +559,16 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckBounds(int count)
     {
-        if (BufferBoundsChecks)
-            Core(count);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        void Core(int count)
-        {
-            if (count > ReadBytesLeft)
-                ThrowHelper.ThrowInvalidOperationException("There is not enough data left in the buffer.");
-        }
+        if (count > ReadBytesLeft)
+            ThrowHelper.ThrowInvalidOperationException("There is not enough data left in the buffer.");
     }
 
     public string ReadString(int byteLen)
     {
-        Debug.Assert(byteLen <= ReadBytesLeft);
+        CheckBounds(byteLen);
         var result = TextEncoding.GetString(Buffer, ReadPosition, byteLen);
         ReadBytesLeft -= byteLen;
         return result;
@@ -588,7 +576,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     public void ReadBytes(Span<byte> output)
     {
-        Debug.Assert(output.Length <= ReadBytesLeft);
+        CheckBounds(output.Length);
         new Span<byte>(Buffer, ReadPosition, output.Length).CopyTo(output);
         ReadBytesLeft -= output.Length;
     }
@@ -598,7 +586,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     public ReadOnlyMemory<byte> ReadMemory(int len)
     {
-        Debug.Assert(len <= ReadBytesLeft);
+        CheckBounds(len);
         var memory = new ReadOnlyMemory<byte>(Buffer, ReadPosition, len);
         ReadBytesLeft -= len;
         return memory;
