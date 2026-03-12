@@ -52,10 +52,9 @@ public abstract class TypeHandlerBenchmarks<T>
         var stream = new EndlessStream();
         _converter = (PgConverter<T>)handler ?? throw new ArgumentNullException(nameof(handler));
         _readBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
-        _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding);
+        _writeBuffer = new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding) { MessageLengthValidation = false };
         _reader = new PgReader(_readBuffer);
-        _writer = new PgWriter(new NpgsqlBufferWriter(_writeBuffer));
-        _writer.Init(new PostgresMinimalDatabaseInfo());
+        _writer = _writeBuffer.GetWriter(new PostgresMinimalDatabaseInfo(), FlushMode.Blocking);
         _converter.CanConvert(DataFormat.Binary, out _binaryRequirements);
     }
 
@@ -88,11 +87,12 @@ public abstract class TypeHandlerBenchmarks<T>
             _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
             _converter.WriteAsObject(_writer, value);
             _writer.Commit(size.Value);
-            _writeBuffer.WritePosition = 0;
 
+            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
+            _writeBuffer.WritePosition = 0;
             _readBuffer.ReadPosition = 0;
-            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, size.Value);
-            _readBuffer.FilledBytes = size.Value;
+            _readBuffer.FilledBytes = _writeBuffer.WritePosition;
+
             _reader.Init(size.Value, DataFormat.Binary);
         }
     }
