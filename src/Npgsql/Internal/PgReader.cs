@@ -239,7 +239,7 @@ public class PgReader
         _preparedTextReader.Init(
             encoding.GetString(async
                 ? await ReadBytesAsync(CurrentRemaining, cancellationToken).ConfigureAwait(false)
-                : ReadBytes(CurrentRemaining)), GetColumnStream(0));
+                : ReadBytes(CurrentRemaining)));
         return _preparedTextReader;
     }
 

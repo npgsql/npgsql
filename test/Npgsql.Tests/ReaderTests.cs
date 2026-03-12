@@ -1721,9 +1721,10 @@ LANGUAGE plpgsql VOLATILE";
         textReader.Read(actual, 0, 2);
         Assert.That(actual[0], Is.EqualTo(expected[0]));
         Assert.That(actual[1], Is.EqualTo(expected[1]));
-        Assert.That(async () => await textReaderGetter(reader, 0),
-            Throws.Exception.TypeOf<InvalidOperationException>(),
-            "Sequential text reader twice on same column");
+        if (IsSequential)
+            Assert.That(async () => await textReaderGetter(reader, 0),
+                Throws.Exception.TypeOf<InvalidOperationException>(),
+                "Sequential text reader twice on same column");
         textReader.Read(actual, 2, 1);
         Assert.That(actual[2], Is.EqualTo(expected[2]));
         textReader.Dispose();
