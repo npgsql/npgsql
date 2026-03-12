@@ -51,8 +51,8 @@ public abstract class TypeHandlerBenchmarks<T>
     {
         var stream = new EndlessStream();
         _converter = (PgConverter<T>)handler ?? throw new ArgumentNullException(nameof(handler));
-        _readBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
-        _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.MinimumSize, NpgsqlWriteBuffer.UTF8Encoding);
+        _readBuffer = new NpgsqlReadBuffer(null, stream, null, NpgsqlReadBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding, NpgsqlWriteBuffer.RelaxedUTF8Encoding);
+        _writeBuffer =  new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding);
         _reader = new PgReader(_readBuffer);
         _writer = new PgWriter(new NpgsqlBufferWriter(_writeBuffer));
         _writer.Init(new PostgresMinimalDatabaseInfo());
@@ -69,6 +69,10 @@ public abstract class TypeHandlerBenchmarks<T>
         get => _value;
         set
         {
+            // Workaround for https://github.com/dotnet/BenchmarkDotNet/issues/3049
+            if (default(T) is null && value is null)
+                return;
+
             if (_reader.Initialized)
             {
                 // Prevent Commit from calling Skip, which would cause us to try and use the null connector.
