@@ -11,7 +11,7 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class PgSerializerOptions
 {
-    internal  static UTF8Encoding DefaultUtf8Encoding => NpgsqlWriteBuffer.UTF8Encoding;
+    internal static UTF8Encoding DefaultUtf8Encoding => NpgsqlWriteBuffer.UTF8Encoding;
 
     /// <summary>
     /// Used by GetSchema to be able to attempt to resolve all type catalog types without exceptions.
