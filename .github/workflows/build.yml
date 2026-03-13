@@ -66,11 +66,11 @@ jobs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
       is_prerelease: ${{ steps.analyze_tag.outputs.is_prerelease }}
 
-    # Installing PostGIS on Windows is complicated/unreliable, so we don't test on it.
+    # Installing PostGIS on Windows/macOS is complicated/unreliable, so we don't test on it.
     # The NPGSQL_TEST_POSTGIS environment variable ensures that if PostGIS isn't installed,
     # the PostGIS tests fail and therefore fail the build.
     env:
-      NPGSQL_TEST_POSTGIS: ${{ !startsWith(matrix.os, 'windows') }}
+      NPGSQL_TEST_POSTGIS: ${{ !startsWith(matrix.os, 'windows') && !startsWith(matrix.os, 'macos') }}
 
     steps:
       - name: Checkout
@@ -315,7 +315,6 @@ jobs:
             **/*_Sequence.xml
 
       - name: Test Plugins
-        if: "!startsWith(matrix.os, 'macos')"
         run: |
             if [ -z "${{ matrix.pg_prerelease }}" ]; then
                 dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
