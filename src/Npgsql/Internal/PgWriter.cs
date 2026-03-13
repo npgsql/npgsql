@@ -274,19 +274,56 @@ public sealed class PgWriter
 
     public void WriteChars(ReadOnlySpan<char> data, Encoding encoding)
     {
+        if (encoding.CodePage == Encoding.UTF8.CodePage)
+        {
+            var fallback = encoding.EncoderFallback;
+            // We can only emulate these well known fallbacks in the fast path.
+            if (fallback == EncoderFallback.ExceptionFallback || fallback == EncoderFallback.ReplacementFallback)
+            {
+                Utf8Core(data, replace: fallback == EncoderFallback.ReplacementFallback, scalarMaxByteCount: 4);
+                return;
+            }
+        }
+
         // If we have more chars than bytes remaining we can immediately go to the slow path.
         if (data.Length <= Remaining)
         {
             // If not, it's worth a shot to see if we can convert in one go.
-            var encodedLength = encoding.GetByteCount(data);
-            if (!ShouldFlush(encodedLength))
+            if (!ShouldFlush(encoding.GetMaxByteCount(data.Length)) || !ShouldFlush(encoding.GetByteCount(data)))
             {
                 var count = encoding.GetBytes(data, Span);
                 Advance(count);
                 return;
             }
         }
+
         Core(data, encoding);
+
+        void Utf8Core(ReadOnlySpan<char> data, bool replace, int scalarMaxByteCount)
+        {
+            while (true)
+            {
+                var status = Utf8.FromUtf16(data, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: replace, isFinalBlock: true);
+                Advance(bytesWritten);
+
+                switch (status)
+                {
+                case OperationStatus.DestinationTooSmall:
+                    Flush();
+                    Ensure(scalarMaxByteCount);
+                    data = data.Slice(charsRead);
+                    break;
+                case OperationStatus.InvalidData:
+                    ThrowEncoderFallbackException();
+                    break;
+                default:
+                    return;
+                }
+            }
+
+            static void ThrowEncoderFallbackException()
+                => throw new EncoderFallbackException("Unable to translate Unicode character to specified code page");
+        }
 
         void Core(ReadOnlySpan<char> data, Encoding encoding)
         {
@@ -306,41 +343,22 @@ public sealed class PgWriter
         }
     }
 
-    public void WriteUtf8Chars(ReadOnlySpan<char> data)
-    {
-        const int MinBufferSize = 6; // Encoding.UTF8.GetMaxByteCount(1);
-
-        do
-        {
-            var status = Utf8.FromUtf16(data, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: false, isFinalBlock: true);
-            Advance(bytesWritten);
-
-            switch (status)
-            {
-            case OperationStatus.DestinationTooSmall:
-                Flush();
-                Ensure(MinBufferSize);
-                data = data.Slice(charsRead);
-                break;
-            case OperationStatus.InvalidData:
-                ThrowHelper.ThrowEncoderFallbackException();
-                break;
-            default:
-                return;
-            }
-        }
-        while (true);
-    }
-
     public ValueTask WriteCharsAsync(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken = default)
     {
+        if (encoding.CodePage == Encoding.UTF8.CodePage)
+        {
+            var fallback = encoding.EncoderFallback;
+            // We can only emulate these well known fallbacks in the fast path.
+            if (fallback == EncoderFallback.ExceptionFallback || fallback == EncoderFallback.ReplacementFallback)
+                return Utf8Core(data, replace: fallback == EncoderFallback.ReplacementFallback, scalarMaxByteCount: 4, cancellationToken);
+        }
+
         var dataSpan = data.Span;
         // If we have more chars than bytes remaining we can immediately go to the slow path.
         if (data.Length <= Remaining)
         {
             // If not, it's worth a shot to see if we can convert in one go.
-            var encodedLength = encoding.GetByteCount(dataSpan);
-            if (!ShouldFlush(encodedLength))
+            if (!ShouldFlush(encoding.GetMaxByteCount(data.Length)) || !ShouldFlush(encoding.GetByteCount(dataSpan)))
             {
                 var count = encoding.GetBytes(dataSpan, Span);
                 Advance(count);
@@ -349,6 +367,33 @@ public sealed class PgWriter
         }
 
         return Core(data, encoding, cancellationToken);
+
+        async ValueTask Utf8Core(ReadOnlyMemory<char> data, bool replace, int scalarMaxByteCount, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                var status = Utf8.FromUtf16(data.Span, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: replace,
+                    isFinalBlock: true);
+                Advance(bytesWritten);
+
+                switch (status)
+                {
+                case OperationStatus.DestinationTooSmall:
+                    await FlushAsync(cancellationToken).ConfigureAwait(false);
+                    Ensure(scalarMaxByteCount);
+                    data = data.Slice(charsRead);
+                    break;
+                case OperationStatus.InvalidData:
+                    ThrowEncoderFallbackException();
+                    break;
+                default:
+                    return;
+                }
+            }
+
+            static void ThrowEncoderFallbackException()
+                => throw new EncoderFallbackException("Unable to translate Unicode character to specified code page");
+        }
 
         async ValueTask Core(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken)
         {
@@ -365,51 +410,6 @@ public sealed class PgWriter
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
             } while (!completed);
-        }
-    }
-
-    public ValueTask WriteUtf8CharsAsync(ReadOnlyMemory<char> data, CancellationToken cancellationToken = default)
-    {
-        // Worth a shot to see if we can convert into the existing buffer without creating the async state machine.
-        var status = Utf8.FromUtf16(data.Span, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: false, isFinalBlock: true);
-        Advance(bytesWritten);
-
-        switch (status)
-        {
-        case OperationStatus.DestinationTooSmall:
-            data = data.Slice(charsRead);
-            return Core(data, cancellationToken);
-        case OperationStatus.InvalidData:
-            ThrowHelper.ThrowEncoderFallbackException();
-            break;
-        }
-
-        return new();
-
-        async ValueTask Core(ReadOnlyMemory<char> data, CancellationToken cancellationToken)
-        {
-            const int MinBufferSize = 6; // Encoding.UTF8.GetMaxByteCount(1);
-
-            while (true)
-            {
-                await FlushAsync(cancellationToken).ConfigureAwait(false);
-                Ensure(MinBufferSize);
-
-                var status = Utf8.FromUtf16(data.Span, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: false, isFinalBlock: true);
-                Advance(bytesWritten);
-
-                switch (status)
-                {
-                case OperationStatus.DestinationTooSmall:
-                    data = data.Slice(charsRead);
-                    break;
-                case OperationStatus.InvalidData:
-                    ThrowHelper.ThrowEncoderFallbackException();
-                    break;
-                default:
-                    return;
-                }
-            }
         }
     }
 
