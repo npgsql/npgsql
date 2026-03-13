@@ -2,6 +2,9 @@
 using NUnit.Framework;
 using System;
 using System.Data;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
@@ -241,15 +244,28 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             }
         }
 
-        sealed class GuidTextConverter(System.Text.Encoding encoding) : StringBasedTextConverter<Guid>(encoding)
+        sealed class GuidTextConverter(Encoding encoding) : PgStreamingConverter<Guid>
         {
             public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
             {
                 bufferRequirements = BufferRequirements.None;
-                return format is DataFormat.Text;
+                return format is DataFormat.Binary or DataFormat.Text;
             }
-            protected override Guid ConvertFrom(string value) => Guid.Parse(value);
-            protected override ReadOnlyMemory<char> ConvertTo(Guid value) => value.ToString().AsMemory();
+
+            public override Guid Read(PgReader reader)
+                => Guid.Parse(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining)));
+
+            public override async ValueTask<Guid> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+                => Guid.Parse(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
+
+            public override Size GetSize(SizeContext context, Guid value, ref object? writeState)
+                => TextConverterHelpers.GetSize(ref context, value.ToString().AsMemory(), encoding);
+
+            public override void Write(PgWriter writer, Guid value)
+                => writer.WriteChars(value.ToString().AsSpan(), encoding);
+
+            public override ValueTask WriteAsync(PgWriter writer, Guid value, CancellationToken cancellationToken = default)
+                => writer.WriteCharsAsync(value.ToString().AsMemory(), encoding, cancellationToken);
         }
     }
 
