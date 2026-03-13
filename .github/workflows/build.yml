@@ -40,11 +40,11 @@ jobs:
             pg_major: 18
             config: Debug
             test_tfm: net10.0
-          - os: macos-15
+          - os: macos-26
             pg_major: 16
             config: Release
             test_tfm: net10.0
-          - os: windows-2022
+          - os: windows-2025
             pg_major: 18
             config: Release
             test_tfm: net10.0
