@@ -108,7 +108,7 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<char[]>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
 
@@ -121,7 +121,7 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
                     static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding),
                         preferredFormat: DataFormat.Text));
                 mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding),
+                    static (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding),
                         preferredFormat: DataFormat.Text));
                 mappings.AddStructType<ArraySegment<char>>(dataTypeName,
                     static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding),
@@ -133,7 +133,7 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<char[]>(DataTypeNames.Jsonb,
                 static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<char[]>(jsonbVersion, new CharArrayTextConverter(options.TextEncoding))));
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, new ReadOnlyMemoryTextConverter(options.TextEncoding))));
+                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding))));
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
                 static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, new CharArraySegmentTextConverter(options.TextEncoding))));
 

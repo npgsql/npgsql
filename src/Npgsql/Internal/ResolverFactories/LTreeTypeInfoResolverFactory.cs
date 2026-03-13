@@ -31,15 +31,15 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
         {
             mappings.AddType<string>("ltree",
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
+                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
                 MatchRequirement.DataTypeName);
             mappings.AddType<string>("lquery",
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
+                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
                 MatchRequirement.DataTypeName);
             mappings.AddType<string>("ltxtquery",
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, new StringTextConverter(options.TextEncoding))),
+                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
                 MatchRequirement.DataTypeName);
 
             return mappings;
