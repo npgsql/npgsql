@@ -9,15 +9,14 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-public class FullTextSearchTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class FullTextSearchTests : TestBase
 {
     [Test]
     public Task TsVector()
         => AssertType(
             NpgsqlTsVector.Parse("'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'"),
             "'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'",
-            "tsvector",
-            NpgsqlDbType.TsVector);
+            "tsvector");
 
     public static IEnumerable TsQueryTestCases() => new[]
     {
@@ -53,7 +52,7 @@ public class FullTextSearchTests(MultiplexingMode multiplexingMode) : Multiplexi
     [Test]
     [TestCaseSource(nameof(TsQueryTestCases))]
     public Task TsQuery(string sqlLiteral, NpgsqlTsQuery query)
-        => AssertType(query, sqlLiteral, "tsquery", NpgsqlDbType.TsQuery);
+        => AssertType(query, sqlLiteral, "tsquery");
 
     [Test]
     public async Task Full_text_search_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
@@ -70,7 +69,7 @@ public class FullTextSearchTests(MultiplexingMode multiplexingMode) : Multiplexi
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
-        exception = await AssertTypeUnsupportedWrite<NpgsqlTsQuery, InvalidCastException>(new NpgsqlTsQueryLexeme("a"), pgTypeName: null, dataSource);
+        exception = await AssertTypeUnsupportedWrite<NpgsqlTsQuery, InvalidCastException>(new NpgsqlTsQueryLexeme("a"), dataTypeName: null, dataSource);
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
@@ -78,7 +77,7 @@ public class FullTextSearchTests(MultiplexingMode multiplexingMode) : Multiplexi
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
 
-        exception = await AssertTypeUnsupportedWrite<NpgsqlTsVector, InvalidCastException>(NpgsqlTsVector.Parse("'1'"), pgTypeName: null, dataSource);
+        exception = await AssertTypeUnsupportedWrite<NpgsqlTsVector, InvalidCastException>(NpgsqlTsVector.Parse("'1'"), dataTypeName: null, dataSource);
         Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
         Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
     }
@@ -90,7 +89,7 @@ public class FullTextSearchTests(MultiplexingMode multiplexingMode) : Multiplexi
         dataSourceBuilder.EnableFullTextSearch();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType<NpgsqlTsQuery>(new NpgsqlTsQueryLexeme("a"), "'a'", "tsquery", NpgsqlDbType.TsQuery);
-        await AssertType(NpgsqlTsVector.Parse("'1'"), "'1'", "tsvector", NpgsqlDbType.TsVector);
+        await AssertType<NpgsqlTsQuery>(new NpgsqlTsQueryLexeme("a"), "'a'", "tsquery");
+        await AssertType(NpgsqlTsVector.Parse("'1'"), "'1'", "tsvector");
     }
 }

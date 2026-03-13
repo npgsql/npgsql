@@ -789,6 +789,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlDataSource Build()
     {
+        ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
         if (ConnectionStringBuilder.Host!.Contains(','))
@@ -798,11 +799,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             return new NpgsqlMultiHostDataSource(connectionStringBuilder, config);
         }
 
-        return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(connectionStringBuilder, config)
-            : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(connectionStringBuilder, config)
-                : new UnpooledDataSource(connectionStringBuilder, config);
+        return ConnectionStringBuilder.Pooling
+            ? new PoolingDataSource(connectionStringBuilder, config)
+            : new UnpooledDataSource(connectionStringBuilder, config);
     }
 
     /// <summary>
@@ -810,6 +809,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
     {
+        ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
         ValidateMultiHost();
@@ -817,9 +817,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         return new(connectionStringBuilder, config);
     }
 
-    (NpgsqlConnectionStringBuilder, NpgsqlDataSourceConfiguration) PrepareConfiguration()
+    // Used in testing.
+    internal (NpgsqlConnectionStringBuilder, NpgsqlDataSourceConfiguration) PrepareConfiguration()
     {
-        ConnectionStringBuilder.PostProcessAndValidate();
         var connectionStringBuilder = ConnectionStringBuilder.Clone();
 
         var sslClientAuthenticationOptionsCallback = _sslClientAuthenticationOptionsCallback;
@@ -857,7 +857,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         }
 
         if ((_passwordProvider is not null || _periodicPasswordProvider is not null) &&
-            (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
+            (connectionStringBuilder.Password is not null || connectionStringBuilder.Passfile is not null))
         {
             throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
         }
@@ -903,8 +903,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     void ValidateMultiHost()
     {
-        if (ConnectionStringBuilder.Multiplexing)
-            throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
         if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
             throw new NotSupportedException("Replication is not supported with multiple hosts");
     }

@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
-using System.Linq;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
@@ -21,23 +21,23 @@ namespace Npgsql.Tests.Types;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/arrays.html
 /// </remarks>
-public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBase(multiplexingMode)
+public class ArrayTests : TestBase
 {
     static readonly TestCaseData[] ArrayTestCases =
     [
-        new TestCaseData(new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+        new TestCaseData(new[] { 1, 2, 3 }, "{1,2,3}", "integer[]")
             .SetName("Integer_array"),
-        new TestCaseData(Array.Empty<int>(), "{}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+        new TestCaseData(Array.Empty<int>(), "{}", "integer[]")
             .SetName("Empty_array"),
-        new TestCaseData(new[,] { { 1, 2, 3 }, { 7, 8, 9 } }, "{{1,2,3},{7,8,9}}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array)
+        new TestCaseData(new[,] { { 1, 2, 3 }, { 7, 8, 9 } }, "{{1,2,3},{7,8,9}}", "integer[]")
             .SetName("Two_dimensional_array"),
-        new TestCaseData(new[] { [1, 2], new byte[] { 3, 4 } }, """{"\\x0102","\\x0304"}""", "bytea[]", NpgsqlDbType.Bytea | NpgsqlDbType.Array)
+        new TestCaseData(new[] { [1, 2], new byte[] { 3, 4 } }, """{"\\x0102","\\x0304"}""", "bytea[]")
             .SetName("Bytea_array")
     ];
 
     [Test, TestCaseSource(nameof(ArrayTestCases))]
-    public Task Arrays<T>(T array, string sqlLiteral, string pgTypeName, NpgsqlDbType? npgsqlDbType)
-        => AssertType(array, sqlLiteral, pgTypeName, npgsqlDbType);
+    public Task Arrays<T>(T array, string sqlLiteral, string dataTypeName)
+        => AssertType(array, sqlLiteral, dataTypeName);
 
     [Test]
     public async Task NullableInts()
@@ -49,7 +49,7 @@ public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionStringBuilder.ToString());
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new int?[] { 1, 2, null, 3 }, "{1,2,NULL,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+        await AssertType(dataSource, new int?[] { 1, 2, null, 3 }, "{1,2,NULL,3}", "integer[]");
     }
 
     [Test, Description("Checks that PG arrays containing nulls can't be read as CLR arrays of non-nullable value types (the default).")]
@@ -65,7 +65,7 @@ public class ArrayTests(MultiplexingMode multiplexingMode) : MultiplexingTestBas
         cmd.Parameters.AddWithValue("p", new int[1, 1, 1, 1, 1, 1, 1, 1, 1]); // 9 dimensions
         Assert.That(
             () => cmd.ExecuteScalarAsync(),
-            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'values')"));
+            Throws.Exception.TypeOf<ArgumentException>().With.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'dimensionLengths')"));
     }
 
     [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
@@ -142,29 +142,132 @@ SELECT onedim, twodim FROM (VALUES
             Assert.That(value, Is.EqualTo(new int?[,]{{5, null},{6, 7}}));
             break;
         default:
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            throw new UnreachableException($"Unknown case {mode}");
+        }
+    }
+
+    [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
+    [TestCase(ArrayNullabilityMode.Always)]
+    [TestCase(ArrayNullabilityMode.Never)]
+    [TestCase(ArrayNullabilityMode.PerInstance)]
+    public async Task Value_type_array_nullabilities_converter_resolver(ArrayNullabilityMode mode)
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.ArrayNullabilityMode = mode;
+            csb.Timezone = "Europe/Berlin";
+        });
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+"""
+SELECT onedim, twodim FROM (VALUES
+('{"1998-04-12 15:26:38+02"}'::timestamptz[],'{{"1998-04-12 15:26:38+02"},{"1998-04-13 15:26:38+02"}}'::timestamptz[][]),
+('{"1998-04-14 15:26:38+02", NULL}'::timestamptz[],'{{"1998-04-14 15:26:38+02", NULL},{"1998-04-15 15:26:38+02", "1998-04-16 15:26:38+02"}}'::timestamptz[][])) AS x(onedim,twodim)
+""", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        switch (mode)
+        {
+        case ArrayNullabilityMode.Never:
+            reader.Read();
+            var value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[])));
+            Assert.That(value, Is.EqualTo(new []{new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)}));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[,])));
+            Assert.That(value, Is.EqualTo(new [,]
+            {
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(() => reader.GetValue(1), Throws.Exception.TypeOf<InvalidCastException>());
+            break;
+        case ArrayNullabilityMode.Always:
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[])));
+            Assert.That(value, Is.EqualTo(new DateTime?[]{new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)}));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[,])));
+            Assert.That(value, Is.EqualTo(new DateTime?[,]
+            {
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[])));
+            Assert.That(value, Is.EqualTo(new DateTime?[]{ new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null }));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[,])));
+            Assert.That(value, Is.EqualTo(new DateTime?[,]
+            {
+                { new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null },
+                { new DateTime(1998, 4, 15, 13, 26, 38, DateTimeKind.Utc), new DateTime(1998, 4, 16, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            break;
+        case ArrayNullabilityMode.PerInstance:
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[])));
+            Assert.That(value, Is.EqualTo(new []{new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc)}));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime[,])));
+            Assert.That(value, Is.EqualTo(new [,]
+            {
+                { new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc) },
+                { new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            reader.Read();
+            value = reader.GetValue(0);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[])));
+            Assert.That(value, Is.EqualTo(new DateTime?[]{ new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null }));
+            value = reader.GetValue(1);
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(value.GetType(), Is.EqualTo(typeof(DateTime?[,])));
+            Assert.That(value, Is.EqualTo(new DateTime?[,]
+            {
+                { new DateTime(1998, 4, 14, 13, 26, 38, DateTimeKind.Utc), null },
+                { new DateTime(1998, 4, 15, 13, 26, 38, DateTimeKind.Utc), new DateTime(1998, 4, 16, 13, 26, 38, DateTimeKind.Utc) }
+            }));
+            break;
+        default:
+            throw new UnreachableException($"Unknown case {mode}");
         }
     }
 
     // Note that PG normalizes empty multidimensional arrays to single-dimensional, e.g. ARRAY[[], []]::integer[] returns {}.
     [Test]
     public async Task Write_empty_multidimensional_array()
-        => await AssertTypeWrite(new int[0, 0], "{}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+        => await AssertTypeWrite(new int[0, 0], "{}", "integer[]");
 
     [Test]
     public async Task Generic_List()
         => await AssertType(
-            new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array, isDefaultForReading: false);
+            new List<int> { 1, 2, 3 }, "{1,2,3}", "integer[]", valueTypeEqualsFieldType: false);
 
     [Test]
     public async Task Write_IList_implementation()
         => await AssertTypeWrite(
-            ImmutableArray.Create(1, 2, 3), "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+            ImmutableArray.Create(1, 2, 3), "{1,2,3}", "integer[]");
 
     [Test]
     public void Read_IList_implementation_throws()
         => Assert.ThrowsAsync<InvalidCastException>(() =>
-            AssertTypeRead("{1,2,3}", "integer[]", ImmutableArray.Create(1, 2, 3), isDefault: false));
+            AssertTypeRead("{1,2,3}", "integer[]", ImmutableArray.Create(1, 2, 3), valueTypeEqualsFieldType: false));
 
     [Test]
     public async Task Generic_IList()
@@ -208,7 +311,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
             Throws.Exception.TypeOf<InvalidCastException>()
-                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverterCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
 
@@ -227,7 +330,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
             Throws.Exception.TypeOf<InvalidCastException>()
-                .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverterCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
     [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
@@ -318,9 +421,6 @@ SELECT onedim, twodim FROM (VALUES
     [Test, Description("Roundtrips one-dimensional and two-dimensional arrays of a PostgreSQL domain.")]
     public async Task Array_of_domain()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
-
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "11.0", "Arrays of domains were introduced in PostgreSQL 11");
         await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);");
@@ -350,9 +450,6 @@ SELECT onedim, twodim FROM (VALUES
     [Test, Description("Roundtrips a PostgreSQL domain over a one-dimensional and a two-dimensional array.")]
     public async Task Domain_of_array()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
-
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "11.0", "Domains over arrays were introduced in PostgreSQL 11");
         await conn.ExecuteNonQueryAsync(
@@ -394,6 +491,16 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         Assert.That(reader.GetFieldValue<List<int>>(1), Is.Not.SameAs(reader.GetFieldValue<List<int>>(0)));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1271")]
+    public async Task Generics_read_empty_multidim_array()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("select ARRAY[[], []]::integer[]", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+        Assert.That(reader.GetFieldValue<int[,]>(0).Length, Is.Zero);
+    }
+
     [Test]
     public async Task Arrays_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
     {
@@ -411,6 +518,6 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         dataSourceBuilder.EnableArrays();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+        await AssertType(dataSource, new[] { 1, 2, 3 }, "{1,2,3}", "integer[]");
     }
 }

@@ -81,8 +81,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// </value>
     /// <remarks>
     /// Since replication connections are a special kind of connection,
-    /// <see cref="NpgsqlConnectionStringBuilder.Pooling"/>, <see cref="NpgsqlConnectionStringBuilder.Enlist"/>,
-    /// <see cref="NpgsqlConnectionStringBuilder.Multiplexing" /> and <see cref="NpgsqlConnectionStringBuilder.KeepAlive"/>
+    /// <see cref="NpgsqlConnectionStringBuilder.Pooling"/>, <see cref="NpgsqlConnectionStringBuilder.Enlist"/>
+    /// and <see cref="NpgsqlConnectionStringBuilder.KeepAlive"/>
     /// are always disabled no matter what you set them to in your connection string.
     /// </remarks>
     [AllowNull]
@@ -95,7 +95,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
             {
                 Pooling = false,
                 Enlist = false,
-                Multiplexing = false,
                 KeepAlive = 0,
                 ReplicationMode = ReplicationMode
             };
@@ -892,7 +891,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
         var connector = Connector;
         var readBuffer = connector.ReadBuffer;
         if (readBuffer != null)
-            readBuffer.Timeout = readTimeout > TimeSpan.Zero ? readTimeout : TimeSpan.Zero;
+            readBuffer.Timeout = readTimeout > TimeSpan.Zero ? readTimeout : Timeout.InfiniteTimeSpan;
 
         var writeBuffer = connector.WriteBuffer;
         if (writeBuffer != null)

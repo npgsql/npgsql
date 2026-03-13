@@ -1365,50 +1365,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     #endregion
 
-    #region Multiplexing
-
-    /// <summary>
-    /// Enables multiplexing, which allows more efficient use of connections.
-    /// </summary>
-    [Category("Multiplexing")]
-    [Description("Enables multiplexing, which allows more efficient use of connections.")]
-    [DisplayName("Multiplexing")]
-    [NpgsqlConnectionStringProperty]
-    [DefaultValue(false)]
-    public bool Multiplexing
-    {
-        get => _multiplexing;
-        set
-        {
-            _multiplexing = value;
-            SetValue(nameof(Multiplexing), value);
-        }
-    }
-    bool _multiplexing;
-
-    /// <summary>
-    /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
-    /// flushing to the network.
-    /// </summary>
-    [Category("Multiplexing")]
-    [Description("When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before " +
-                 "flushing to the network.")]
-    [DisplayName("Write Coalescing Buffer Threshold Bytes")]
-    [NpgsqlConnectionStringProperty]
-    [DefaultValue(1000)]
-    public int WriteCoalescingBufferThresholdBytes
-    {
-        get => _writeCoalescingBufferThresholdBytes;
-        set
-        {
-            _writeCoalescingBufferThresholdBytes = value;
-            SetValue(nameof(WriteCoalescingBufferThresholdBytes), value);
-        }
-    }
-    int _writeCoalescingBufferThresholdBytes;
-
-    #endregion
-
     #region Properties - Obsolete
 
     /// <summary>
@@ -1500,8 +1456,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     internal void PostProcessAndValidate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Host);
-        if (Multiplexing && !Pooling)
-            throw new ArgumentException("Pooling must be on to use multiplexing");
         if (SslNegotiation == SslNegotiation.Direct && SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
             throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
 

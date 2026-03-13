@@ -556,7 +556,6 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         {
             connector.EndUserAction();
             connector.CurrentCopyOperation = null;
-            connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
             _connector = null;
         }
 

@@ -2,13 +2,11 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using Npgsql.Internal.ResolverFactories;
-using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
 
 namespace Npgsql.Tests.Types;
 
-// Since this test suite manipulates TimeZone, it is incompatible with multiplexing
 [NonParallelizable]
 public class LegacyDateTimeTests : TestBase
 {
@@ -18,8 +16,7 @@ public class LegacyDateTimeTests : TestBase
             new DateTime(1998, 4, 12, 13, 26, 38, 789, kind),
             "1998-04-12 13:26:38.789",
             "timestamp without time zone",
-            NpgsqlDbType.Timestamp,
-            DbType.DateTime);
+            dbType: DbType.DateTime);
 
     [Test]
     public async Task Timestamp_read_as_Unspecified_DateTime()
@@ -32,8 +29,8 @@ public class LegacyDateTimeTests : TestBase
     [Test]
     public async Task Timestamptz_negative_infinity()
     {
-        var dto = await AssertType(DateTimeOffset.MinValue, "-infinity", "timestamp with time zone", NpgsqlDbType.TimestampTz,
-            DbType.DateTimeOffset, isDefaultForReading: false);
+        var dto = await AssertType(DateTimeOffset.MinValue, "-infinity", "timestamp with time zone",
+            dbType: DbType.DateTimeOffset, valueTypeEqualsFieldType: false);
         Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
     }
 
@@ -41,8 +38,8 @@ public class LegacyDateTimeTests : TestBase
     public async Task Timestamptz_infinity()
     {
         var dto = await AssertType(
-            DateTimeOffset.MaxValue, "infinity", "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset,
-            isDefaultForReading: false);
+            DateTimeOffset.MaxValue, "infinity", "timestamp with time zone", dbType: DbType.DateTimeOffset,
+            valueTypeEqualsFieldType: false);
         Assert.That(dto.Offset, Is.EqualTo(TimeSpan.Zero));
     }
 
@@ -51,12 +48,9 @@ public class LegacyDateTimeTests : TestBase
     [TestCase(DateTimeKind.Unspecified, TestName = "Timestamptz_write_unspecified_DateTime_does_not_convert")]
     public Task Timestamptz_write_utc_DateTime_does_not_convert(DateTimeKind kind)
         => AssertTypeWrite(
-            new DateTime(1998, 4, 12, 13, 26, 38, 789, kind),
-            "1998-04-12 15:26:38.789+02",
-            "timestamp with time zone",
-            NpgsqlDbType.TimestampTz,
-            DbType.DateTimeOffset,
-            isDefault: false);
+            new DateTime(1998, 4, 12, 13, 26, 38, 789, kind), "1998-04-12 15:26:38.789+02",
+            "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.DateTimeOffset, DbType.DateTime));
 
     [Test]
     public Task Timestamptz_local_DateTime_converts()
@@ -66,12 +60,9 @@ public class LegacyDateTimeTests : TestBase
         var dateTime = new DateTime(1998, 4, 12, 13, 26, 38, 789, DateTimeKind.Utc).ToLocalTime();
 
         return AssertType(
-            dateTime,
-            "1998-04-12 15:26:38.789+02",
-            "timestamp with time zone",
-            NpgsqlDbType.TimestampTz,
-            DbType.DateTimeOffset,
-            isDefaultForWriting: false);
+            dateTime, "1998-04-12 15:26:38.789+02",
+            "timestamp with time zone", dataTypeInference: DataTypeInference.Mismatch,
+            dbType: new(DbType.DateTimeOffset, DbType.DateTime));
     }
 
     NpgsqlDataSource _dataSource = null!;

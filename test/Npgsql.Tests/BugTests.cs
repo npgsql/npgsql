@@ -4,6 +4,7 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using System;
 using System.Data;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1333,51 +1334,6 @@ $$;");
     }
 
     [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/4099")]
-    public async Task Bug4099()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Multiplexing = true,
-            MaxPoolSize = 1
-        };
-        await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString);
-        await using var dataSource = CreateDataSource(postmaster.ConnectionString);
-        await using var firstConn = await dataSource.OpenConnectionAsync();
-        await using var secondConn = await dataSource.OpenConnectionAsync();
-
-        var firstQuery = firstConn.ExecuteScalarAsync("SELECT data");
-
-        var server = await postmaster.WaitForServerConnection();
-        await server.ExpectExtendedQuery();
-
-        var secondQuery = secondConn.ExecuteScalarAsync("SELECT other_data");
-        await server.ExpectExtendedQuery();
-
-        var data = new byte[10000];
-        await server
-            .WriteParseComplete()
-            .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(ByteaOid))
-            .WriteDataRowWithFlush(data);
-
-        var otherData = new byte[10];
-        await server
-            .WriteCommandComplete()
-            .WriteReadyForQuery()
-            .WriteParseComplete()
-            .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(ByteaOid))
-            .WriteDataRow(otherData)
-            .WriteCommandComplete()
-            .WriteReadyForQuery()
-            .FlushAsync();
-
-        Assert.That(data, Is.EquivalentTo((byte[])(await firstQuery)!));
-        Assert.That(otherData, Is.EquivalentTo((byte[])(await secondQuery)!));
-    }
-
-    [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/4123")]
     public async Task Bug4123()
     {
@@ -1390,5 +1346,31 @@ $$;");
 
         Assert.DoesNotThrowAsync(stream.FlushAsync);
         Assert.DoesNotThrow(stream.Flush);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6389")]
+    public async Task Composite_with_BigInteger([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} as (value numeric)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<Composite_with_BigInteger_Composite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"SELECT ROW(1234567890::numeric)::{type} FROM generate_series(1, 8000)";
+        await using var reader = await cmd.ExecuteReaderAsync(behavior);
+        while (await reader.ReadAsync())
+        {
+            Assert.DoesNotThrowAsync(async () => await reader.GetFieldValueAsync<Composite_with_BigInteger_Composite>(0));
+        }
+    }
+
+    class Composite_with_BigInteger_Composite
+    {
+        public BigInteger Value { get; set; }
     }
 }

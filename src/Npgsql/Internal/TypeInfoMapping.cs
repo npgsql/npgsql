@@ -640,7 +640,7 @@ public sealed class TypeInfoMappingCollection
                         (PgResolverTypeInfo)nullableInnerTypeInfo);
 
                 return new PgResolverTypeInfo(innerTypeInfo.Options, resolver,
-                    innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName))) { SupportsWriting = false };
+                    innerTypeInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
             }
         }
 
@@ -705,19 +705,19 @@ public sealed class TypeInfoMappingCollection
             ? DataTypeName.ValidatedName(dataTypeName).ToArrayName().Value
             : "_" + DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
 
-    static ArrayBasedArrayConverter<Array, TElement> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    static ArrayConverter<Array> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.GetResolution(), mapping.Type);
+            return ArrayConverter<Array>.CreateArrayBased<TElement>(elemInfo.GetResolution(), mapping.Type);
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
     }
 
-    static ListBasedArrayConverter<IList<TElement>, TElement> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    static ArrayConverter<IList<TElement>> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ListBasedArrayConverter<IList<TElement>, TElement>(elemInfo.GetResolution());
+            return ArrayConverter<IList<TElement>>.CreateListBased<TElement>(elemInfo.GetResolution());
 
         ThrowBoxingNotSupported(resolver: false);
         return default;

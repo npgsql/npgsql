@@ -6,7 +6,8 @@
     <IsPackable>false</IsPackable>
 
     <!-- Suppress warnings for [RequiresPreviewFeatures] (<EnablePreviewFeatures> doesn't seem to work across <ProjectReference>) -->
-    <NoWarn>$(NoWarn);CA2252</NoWarn>
+    <!-- Converter-related APIs are experimental -->
+    <NoWarn>$(NoWarn);CA2252;NPG9001</NoWarn>
 
     <EnableNUnitRunner>true</EnableNUnitRunner>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>

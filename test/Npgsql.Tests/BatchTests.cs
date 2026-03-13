@@ -8,11 +8,9 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-[TestFixture(MultiplexingMode.NonMultiplexing, CommandBehavior.Default)]
-[TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.Default)]
-[TestFixture(MultiplexingMode.NonMultiplexing, CommandBehavior.SequentialAccess)]
-[TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.SequentialAccess)]
-public class BatchTests : MultiplexingTestBase, IDisposable
+[TestFixture(CommandBehavior.Default)]
+[TestFixture(CommandBehavior.SequentialAccess)]
+public class BatchTests : TestBase, IDisposable
 {
     #region Parameters
 
@@ -825,7 +823,7 @@ LANGUAGE 'plpgsql'");
     NpgsqlDataSource? _dataSource;
     protected override NpgsqlDataSource DataSource => _dataSource ??= CreateDataSource(csb => csb.IncludeFailedBatchedCommand = true);
 
-    public BatchTests(MultiplexingMode multiplexingMode, CommandBehavior behavior) : base(multiplexingMode)
+    public BatchTests(CommandBehavior behavior)
     {
         Behavior = behavior;
         IsSequential = (Behavior & CommandBehavior.SequentialAccess) != 0;

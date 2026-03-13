@@ -232,13 +232,8 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    public async Task Connect_with_only_ssl_allowed_user([Values] bool multiplexing, [Values] bool keepAlive)
+    public async Task Connect_with_only_ssl_allowed_user([Values] bool keepAlive)
     {
-        if (multiplexing && keepAlive)
-        {
-            Assert.Ignore("Multiplexing doesn't support keepalive");
-        }
-
         try
         {
             await using var dataSource = CreateDataSource(csb =>
@@ -246,7 +241,6 @@ public class SecurityTests : TestBase
                 csb.SslMode = SslMode.Allow;
                 csb.Username = "npgsql_tests_ssl";
                 csb.Password = "npgsql_tests_ssl";
-                csb.Multiplexing = multiplexing;
                 csb.KeepAlive = keepAlive ? 10 : 0;
             });
             await using var conn = await dataSource.OpenConnectionAsync();
@@ -261,13 +255,8 @@ public class SecurityTests : TestBase
 
     [Test]
     [Platform(Exclude = "Win", Reason = "Postgresql doesn't close connection correctly on windows which might result in missing error message")]
-    public async Task Connect_with_only_non_ssl_allowed_user([Values] bool multiplexing, [Values] bool keepAlive)
+    public async Task Connect_with_only_non_ssl_allowed_user([Values] bool keepAlive)
     {
-        if (multiplexing && keepAlive)
-        {
-            Assert.Ignore("Multiplexing doesn't support keepalive");
-        }
-
         try
         {
             await using var dataSource = CreateDataSource(csb =>
@@ -275,7 +264,6 @@ public class SecurityTests : TestBase
                 csb.SslMode = SslMode.Prefer;
                 csb.Username = "npgsql_tests_nossl";
                 csb.Password = "npgsql_tests_nossl";
-                csb.Multiplexing = multiplexing;
                 csb.KeepAlive = keepAlive ? 10 : 0;
             });
             await using var conn = await dataSource.OpenConnectionAsync();

@@ -110,7 +110,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.0.1
+        uses: actions/setup-dotnet@v5.2.0
 
       - name: Write script
         run: echo "$AOT_Compat" > test-aot-compatibility.ps1
@@ -144,7 +144,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.0.1
+        uses: actions/setup-dotnet@v5.2.0
 
       - name: Start PostgreSQL
         run: |
@@ -173,21 +173,21 @@ jobs:
         run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f ${{ matrix.tfm }} -- "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload mstat
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: npgsql.mstat
           path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.mstat"
           retention-days: 3
 
       - name: Upload codedgen dgml
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: npgsql.codegen.dgml.xml
           path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.codegen.dgml.xml"
           retention-days: 3
 
       - name: Upload scan dgml
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: npgsql.scan.dgml.xml
           path: "test/Npgsql.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/Npgsql.NativeAotTests.scan.dgml.xml"

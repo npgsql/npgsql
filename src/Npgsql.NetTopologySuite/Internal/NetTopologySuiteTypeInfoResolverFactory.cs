@@ -20,10 +20,11 @@ sealed class NetTopologySuiteTypeInfoResolverFactory(
     class Resolver : IPgTypeInfoResolver
     {
         readonly PostGisReader _gisReader;
+        readonly PostGisWriter _gisWriter;
         protected readonly bool _geographyAsDefault;
 
         TypeInfoMappingCollection? _mappings;
-        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _gisReader, new(), _geographyAsDefault);
+        protected TypeInfoMappingCollection Mappings => _mappings ??= AddMappings(new(), _gisReader, _gisWriter, _geographyAsDefault);
 
         public Resolver(
             CoordinateSequenceFactory? coordinateSequenceFactory,
@@ -37,6 +38,10 @@ sealed class NetTopologySuiteTypeInfoResolverFactory(
 
             _geographyAsDefault = geographyAsDefault;
             _gisReader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
+            _gisWriter = new PostGisWriter
+            {
+                HandleOrdinates = handleOrdinates
+            };
         }
 
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)

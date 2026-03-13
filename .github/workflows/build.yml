@@ -40,11 +40,11 @@ jobs:
             pg_major: 18
             config: Debug
             test_tfm: net10.0
-          - os: macos-15
+          - os: macos-26
             pg_major: 16
             config: Release
             test_tfm: net10.0
-          - os: windows-2022
+          - os: windows-2025
             pg_major: 18
             config: Release
             test_tfm: net10.0
@@ -66,11 +66,11 @@ jobs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
       is_prerelease: ${{ steps.analyze_tag.outputs.is_prerelease }}
 
-    # Installing PostGIS on Windows is complicated/unreliable, so we don't test on it.
+    # Installing PostGIS on Windows/macOS is complicated/unreliable, so we don't test on it.
     # The NPGSQL_TEST_POSTGIS environment variable ensures that if PostGIS isn't installed,
     # the PostGIS tests fail and therefore fail the build.
     env:
-      NPGSQL_TEST_POSTGIS: ${{ !startsWith(matrix.os, 'windows') }}
+      NPGSQL_TEST_POSTGIS: ${{ !startsWith(matrix.os, 'windows') && !startsWith(matrix.os, 'macos') }}
 
     steps:
       - name: Checkout
@@ -85,7 +85,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.0.1
+        uses: actions/setup-dotnet@v5.2.0
 
       - name: Build
         run: dotnet build -c ${{ matrix.config }}
@@ -315,7 +315,7 @@ jobs:
         shell: bash
 
       - name: Upload Test Hang Dumps
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-hang-dumps
@@ -355,13 +355,13 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.0.1
+        uses: actions/setup-dotnet@v5.2.0
 
       - name: Pack
         run: dotnet pack --configuration Release --property:PackageOutputPath="$PWD/nupkgs" --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
 
       - name: Upload artifacts (nupkg)
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: Npgsql.CI
           path: nupkgs
@@ -387,13 +387,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.0.1
+        uses: actions/setup-dotnet@v5.2.0
 
       - name: Pack
         run: dotnet pack --configuration Release --property:PackageOutputPath="$PWD/nupkgs" -p:ContinuousIntegrationBuild=true      
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: Npgsql.Release
           path: nupkgs
