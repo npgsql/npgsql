@@ -280,7 +280,23 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 MatchRequirement.DataTypeName);
 
             // UInt internal types
-            foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
+            foreach (var dataTypeName in new[]
+                     {
+                         DataTypeNames.Oid,
+                         DataTypeNames.Xid,
+                         DataTypeNames.Cid,
+                         DataTypeNames.RegClass,
+                         DataTypeNames.RegCollation,
+                         DataTypeNames.RegConfig,
+                         DataTypeNames.RegDictionary,
+                         DataTypeNames.RegNamespace,
+                         DataTypeNames.RegOper,
+                         DataTypeNames.RegOperator,
+                         DataTypeNames.RegProc,
+                         DataTypeNames.RegProcedure,
+                         DataTypeNames.RegRole,
+                         DataTypeNames.RegType
+                     })
             {
                 mappings.AddStructType<uint>(dataTypeName,
                     static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()),
@@ -470,7 +486,23 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddArrayType<IDictionary<string, string?>>("hstore");
 
             // UInt internal types
-            foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, (string)DataTypeNames.RegConfig })
+            foreach (var dataTypeName in new[]
+                     {
+                         DataTypeNames.Oid,
+                         DataTypeNames.Xid,
+                         DataTypeNames.Cid,
+                         DataTypeNames.RegClass,
+                         DataTypeNames.RegCollation,
+                         DataTypeNames.RegConfig,
+                         DataTypeNames.RegDictionary,
+                         DataTypeNames.RegNamespace,
+                         DataTypeNames.RegOper,
+                         DataTypeNames.RegOperator,
+                         DataTypeNames.RegProc,
+                         DataTypeNames.RegProcedure,
+                         DataTypeNames.RegRole,
+                         DataTypeNames.RegType
+                     })
             {
                 mappings.AddStructArrayType<uint>(dataTypeName);
             }
