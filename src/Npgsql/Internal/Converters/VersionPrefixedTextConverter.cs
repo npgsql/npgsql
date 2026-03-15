@@ -73,10 +73,9 @@ static class VersionPrefixedTextConverter
                 throw new InvalidCastException($"Unknown wire format version: {actualVersion}");
         }
 
-        // No need for a nested read, all text converters will read CurrentRemaining bytes.
-        // We only need to buffer data if we're binary, otherwise the caller would have had to do so
-        // as we directly expose the underlying text converter requirements for the text data format.
-        await reader.Buffer(async, textConverterReadRequirement, cancellationToken).ConfigureAwait(false);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(textConverterReadRequirement, reader.CurrentRemaining);
+        if (reader.ShouldBuffer(byteCount))
+            await reader.Buffer(async, byteCount, cancellationToken).ConfigureAwait(false);
     }
 
     public static bool CanConvert(PgConverter textConverter, DataFormat format, out BufferRequirements textConverterRequirements, out BufferRequirements bufferRequirements)

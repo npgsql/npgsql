@@ -188,7 +188,9 @@ public sealed class PgWriter
     internal ValueTask BeginWrite(bool async, ValueMetadata current, CancellationToken cancellationToken)
     {
         _current = current;
-        if (ShouldFlush(current.BufferRequirement))
+
+        var bufferRequirementByteCount = BufferRequirements.GetMinimumBufferByteCount(current.BufferRequirement, current.Size.GetValueOrDefault());
+        if (ShouldFlush(bufferRequirementByteCount))
             return Flush(async, cancellationToken);
 
         return new();
@@ -384,6 +386,7 @@ public sealed class PgWriter
             }
         }
     }
+
     /// <summary>
     /// Gets a <see cref="Stream"/> that can be used to write to the underlying buffer.
     /// </summary>
@@ -392,10 +395,9 @@ public sealed class PgWriter
     public Stream GetStream(bool allowMixedIO = false)
         => new PgWriterStream(this, allowMixedIO);
 
-    public bool ShouldFlush(Size bufferRequirement)
-        => ShouldFlush(bufferRequirement is { Kind: SizeKind.UpperBound }
-            ? Math.Min(Current.Size.Value, bufferRequirement.Value)
-            : bufferRequirement.GetValueOrDefault());
+    // We also check pos != offset to speed up simple value writes, as field level buffering was handled by writer.StartWrite() already.
+    public bool ShouldFlushCurrent()
+        => !BufferingWrite && _pos != _offset && ShouldFlush(BufferRequirements.GetMinimumBufferByteCount(Current.BufferRequirement, Current.Size.GetValueOrDefault()));
 
     public bool ShouldFlush(int byteCount) => Remaining < byteCount && FlushMode is not FlushMode.None;
 
@@ -454,10 +456,10 @@ public sealed class PgWriter
     {
         Debug.Assert(bufferRequirement != -1);
 
-        // ShouldFlush depends on the current size for upper bound requirements, so we must set it beforehand.
+        var bufferRequirementByteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, byteCount);
         _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
 
-        if (ShouldFlush(bufferRequirement))
+        if (ShouldFlush(bufferRequirementByteCount))
             return Core(async, cancellationToken);
 
         return new(new NestedWriteScope());
