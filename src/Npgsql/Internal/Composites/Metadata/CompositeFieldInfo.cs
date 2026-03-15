@@ -113,6 +113,42 @@ abstract class CompositeFieldInfo
 
     public abstract void ReadDbNull(CompositeBuilder builder);
     public abstract ValueTask Read(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets the default value directly on the instance, bypassing the builder.
+    /// Used in the fast path when ConstructorParameters == 0.
+    /// </summary>
+    public abstract void SetDbNull(object instance);
+
+    /// <summary>
+    /// Reads a value from the reader and sets it directly on the instance, bypassing the builder.
+    /// Used in the fast path when ConstructorParameters == 0.
+    /// </summary>
+    public abstract ValueTask ReadAndSet(bool async, PgConverter converter, object instance, PgReader reader, CancellationToken cancellationToken = default);
+
+    protected abstract void SetValue(object instance, object value);
+
+    protected ValueTask ReadAndSetAsObject(bool async, PgConverter converter, object instance, PgReader reader, CancellationToken cancellationToken)
+    {
+        if (async)
+        {
+            var task = converter.ReadAsObjectAsync(reader, cancellationToken);
+            if (!task.IsCompletedSuccessfully)
+                return Core(instance, task);
+
+            SetValue(instance, task.Result);
+        }
+        else
+            SetValue(instance, converter.ReadAsObject(reader));
+        return new();
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+        async ValueTask Core(object instance, ValueTask<object> task)
+        {
+            SetValue(instance, await task.ConfigureAwait(false));
+        }
+    }
+
     public abstract bool IsDbNull(PgConverter converter, object instance, ref object? writeState);
     public abstract Size? GetSizeOrDbNull(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState);
     public abstract ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken);
@@ -186,6 +222,40 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
             throw new InvalidCastException($"Type {typeof(T).FullName} does not have null as a possible value.");
 
         builder.AddValue((T?)default);
+    }
+
+    public override void SetDbNull(object instance)
+    {
+        if (default(T) != null)
+            throw new InvalidCastException($"Type {typeof(T).FullName} does not have null as a possible value.");
+
+        Set(instance, default(T)!);
+    }
+
+    protected override void SetValue(object instance, object value) => Set(instance, (T)value);
+
+    public override ValueTask ReadAndSet(bool async, PgConverter converter, object instance, PgReader reader, CancellationToken cancellationToken = default)
+    {
+        if (AsObject(converter))
+            return ReadAndSetAsObject(async, converter, instance, reader, cancellationToken);
+
+        if (async)
+        {
+            var task = ((PgConverter<T>)converter).ReadAsync(reader, cancellationToken);
+            if (!task.IsCompletedSuccessfully)
+                return Core(instance, task);
+
+            Set(instance, task.Result);
+        }
+        else
+            Set(instance, ((PgConverter<T>)converter).Read(reader));
+        return new();
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+        async ValueTask Core(object instance, ValueTask<T> task)
+        {
+            Set(instance, await task.ConfigureAwait(false));
+        }
     }
 
     protected override PgConverter BindValue(object instance, out Size writeRequirement)
