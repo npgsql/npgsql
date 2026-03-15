@@ -339,14 +339,31 @@ public abstract class TestBase
         cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
             "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
 
-        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        await reader.ReadAsync();
-
-        for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
+        // Async execution: tests async write paths in converters
         {
-            var error = errorIdentifier[i / 2];
-            Assert.That(reader[i], Is.EqualTo(dataTypeNameWithoutFacets), $"Got wrong data type name when writing with {error}");
-            Assert.That(reader[i+1], Is.EqualTo(sqlLiteral), $"Got wrong SQL literal when writing with {error}");
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await reader.ReadAsync();
+            AssertWriteResults(reader);
+        }
+
+        // Sync execution: tests sync write paths in converters.
+        // Reset parameter values first so that one-shot values (e.g. streams) can be re-read from the start.
+        for (var i = 0; i < cmd.Parameters.Count; i++)
+            cmd.Parameters[i].Value = valueFactory();
+        {
+            using var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            reader.Read();
+            AssertWriteResults(reader);
+        }
+
+        void AssertWriteResults(NpgsqlDataReader reader)
+        {
+            for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
+            {
+                var error = errorIdentifier[i / 2];
+                Assert.That(reader[i], Is.EqualTo(dataTypeNameWithoutFacets), $"Got wrong data type name when writing with {error}");
+                Assert.That(reader[i + 1], Is.EqualTo(sqlLiteral), $"Got wrong SQL literal when writing with {error}");
+            }
         }
 
         void DataTypeAsserts()
@@ -465,6 +482,8 @@ public abstract class TestBase
             sqlLiteral = sqlLiteral.Replace("'", "''");
 
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", connection);
+
+        // Async execution: tests async and sync column reads within a single buffered query.
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
@@ -491,6 +510,15 @@ public abstract class TestBase
         T actual;
         if (valueTypeEqualsFieldType)
         {
+            // Set IsRowBuffered=false before the first read so _column is still -1, ensuring GetFieldValueAsync
+            // goes through the real async converter path (converter.ReadAsObjectAsync) rather than the sync shortcut.
+            reader.IsRowBuffered = false;
+            actual = (T)await reader.GetFieldValueAsync<object>(0);
+            Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer)),
+                $"Got wrong result from GetFieldValueAsync<object>() value when reading '{truncatedSqlLiteral}'");
+
+            // Restore IsRowBuffered so subsequent sync reads use the normal buffered code path.
+            reader.IsRowBuffered = true;
             actual = (T)reader.GetValue(0);
             Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
                 $"Got wrong result from GetValue() value when reading '{truncatedSqlLiteral}'");
@@ -502,8 +530,14 @@ public abstract class TestBase
             return actual;
         }
 
-        actual = reader.GetFieldValue<T>(0);
+        // See comment above about IsRowBuffered.
+        reader.IsRowBuffered = false;
+        actual = await reader.GetFieldValueAsync<T>(0);
+        Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
+            $"Got wrong result from GetFieldValueAsync<T>() value when reading '{truncatedSqlLiteral}'");
 
+        reader.IsRowBuffered = true;
+        actual = reader.GetFieldValue<T>(0);
         Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
             $"Got wrong result from GetFieldValue<T>() value when reading '{truncatedSqlLiteral}'");
 
