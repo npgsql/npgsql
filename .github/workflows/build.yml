@@ -108,16 +108,19 @@ jobs:
           sudo chmod 600 $PGDATA/{server.crt,server.key,ca.crt}
           sudo chown postgres $PGDATA/{server.crt,server.key,ca.crt}
           
+          # Create the npgsql_tests database
+          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests"
+
           # Create npgsql_tests user with md5 password 'npgsql_tests'
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
           
           sudo -u postgres psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'"
           sudo -u postgres psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'"
 
-          # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
-          #if [ -z "${{ matrix.pg_prerelease }}" ]; then
+          # Install PostGIS if required
+          if [[ $NPGSQL_TEST_POSTGIS == 'true' ]]; then
             sudo apt-get install -qq postgresql-${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
-          #fi
+          fi
           
           if [ ${{ matrix.pg_major }} -ge 14 ]; then
             sudo sed -i "s|unix_socket_directories = '/var/run/postgresql'|unix_socket_directories = '/var/run/postgresql, @/npgsql_unix'|" $PGDATA/postgresql.conf
@@ -192,6 +195,9 @@ jobs:
           sed -i "s|#max_prepared_transactions = 0|max_prepared_transactions = 100|" pgsql/PGDATA/postgresql.conf
           pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key -c ssl_ca_file=../ca.crt' start
 
+          # Create npgsql_tests database        
+          pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests"
+
           # Create npgsql_tests user with md5 password 'npgsql_tests'
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
           
@@ -255,6 +261,9 @@ jobs:
                 echo "PostgreSQL service not ready, wait 5 more sec, attempts left: $i"
                 sleep 5
             done
+            
+            # Create the npgsql_tests database
+            psql -c "CREATE DATABASE npgsql_tests" postgres
             
             # Create npgsql_tests user with md5 password 'npgsql_tests'
             psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'" postgres
