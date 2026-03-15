@@ -60,9 +60,27 @@ public class DataTypeNameTests
     [TestCase("name ", "public", ExpectedResult = "public.name")]
     [TestCase("_name", "public", ExpectedResult = "public._name")]
     [TestCase("name[]", "public", ExpectedResult = "public._name")]
-    [TestCase("timestamp with time zone", "public", ExpectedResult = "public.timestamptz")]
-    [TestCase("boolean(facet_name)", "public", ExpectedResult = "public.bool")]
+    [TestCase("timestamp with time zone", "public", ExpectedResult = "public.timestamp with time zone")]
+    [TestCase("timestamp with time zone", "pg_catalog", ExpectedResult = "pg_catalog.timestamptz")]
+    [TestCase("timestamp with time zone", null, ExpectedResult = "pg_catalog.timestamptz")]
+    [TestCase("boolean(facet_name)", "public", ExpectedResult = "public.boolean(facet_name)")]
+    [TestCase("boolean(facet_name)", "pg_catalog", ExpectedResult = "pg_catalog.bool")]
+    [TestCase("boolean(facet_name)", null, ExpectedResult = "pg_catalog.bool")]
     [TestCase(" public.name ", null, ExpectedResult = "public.name")]
+    [TestCase("decimal", "public", ExpectedResult = "public.decimal")]
+    [TestCase("numeric", "public", ExpectedResult = "public.numeric")]
     public string FromDisplayName(string name, string? schema)
-    => DataTypeName.FromDisplayName(name, schema).Value;
+        => DataTypeName.FromDisplayName(schema is null or "pg_catalog" ? name : schema + "." + name).Value;
+
+    [TestCase("pg_catalog.bool", ExpectedResult = "boolean")]
+    [TestCase("public.bool", ExpectedResult = "bool")]
+    [TestCase("pg_catalog.numeric", ExpectedResult = "numeric")]
+    [TestCase("pg_catalog._numeric", ExpectedResult = "numeric[]")]
+    [TestCase("pg_catalog.decimal", ExpectedResult = "numeric")]
+    [TestCase("public.numeric", ExpectedResult = "numeric")]
+    [TestCase("public._numeric", ExpectedResult = "numeric[]")]
+    [TestCase("public.decimal", ExpectedResult = "decimal")]
+    [TestCase("public._decimal", ExpectedResult = "decimal[]")]
+    public string UnqualifiedDisplayName(string fullyQuallifiedName)
+        => new DataTypeName(fullyQuallifiedName).UnqualifiedDisplayName;
 }
