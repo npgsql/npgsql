@@ -346,7 +346,10 @@ public abstract class TestBase
             AssertWriteResults(reader);
         }
 
-        // Sync execution: tests sync write paths in converters
+        // Sync execution: tests sync write paths in converters.
+        // Reset parameter values first so that one-shot values (e.g. streams) can be re-read from the start.
+        for (var i = 0; i < cmd.Parameters.Count; i++)
+            cmd.Parameters[i].Value = valueFactory();
         {
             using var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
             reader.Read();
@@ -478,97 +481,67 @@ public abstract class TestBase
         if (sqlLiteral.Contains('\''))
             sqlLiteral = sqlLiteral.Replace("'", "''");
 
-        var commandText = $"SELECT '{sqlLiteral}'::{dataTypeName}";
+        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{dataTypeName}", connection);
+
+        // Async execution: tests async and sync column reads within a single buffered query.
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
         var truncatedSqlLiteral = sqlLiteral.Length > 40 ? sqlLiteral[..40] + "..." : sqlLiteral;
+
+        var actualDataTypeName = reader.GetDataTypeName(0);
+        var dotIndex = actualDataTypeName.IndexOf('.');
+        if (dotIndex > -1 && actualDataTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
+            actualDataTypeName = actualDataTypeName.Substring(dotIndex + 1);
 
         // For composite type with dots, postgres works only with quoted name - scheme."My.type.name"
         // but npgsql converts it to name without quotes
         var dataTypeNameWithoutQuotes = dataTypeName.Replace("\"", string.Empty);
+        Assert.That(actualDataTypeName, Is.EqualTo(dataTypeNameWithoutQuotes),
+            $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
 
-        // Async execution, buffered mode: tests sync column reads (GetValue, GetFieldValue)
-        T result;
+        // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality.
+        var isArrayTest = actualDataTypeName.EndsWith("[]", StringComparison.Ordinal) && typeof(T).IsArray;
+        Assert.That(reader.GetFieldType(0),
+            (valueTypeEqualsFieldType || isArrayTest ? new ConstraintExpression() : Is.Not)
+                .EqualTo(isArrayTest ? typeof(Array) : typeof(T)),
+            $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
+
+        T actual;
+        if (valueTypeEqualsFieldType)
         {
-            await using var cmd = new NpgsqlCommand(commandText, connection);
-            await using var reader = await cmd.ExecuteReaderAsync();
-            await reader.ReadAsync();
+            // Set IsRowBuffered=false before the first read so _column is still -1, ensuring GetFieldValueAsync
+            // goes through the real async converter path (converter.ReadAsObjectAsync) rather than the sync shortcut.
+            reader.IsRowBuffered = false;
+            actual = (T)await reader.GetFieldValueAsync<object>(0);
+            Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer)),
+                $"Got wrong result from GetFieldValueAsync<object>() value when reading '{truncatedSqlLiteral}'");
 
-            var actualDataTypeName = reader.GetDataTypeName(0);
-            var dotIndex = actualDataTypeName.IndexOf('.');
-            if (dotIndex > -1 && actualDataTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
-                actualDataTypeName = actualDataTypeName.Substring(dotIndex + 1);
+            // Restore IsRowBuffered so subsequent sync reads use the normal buffered code path.
+            reader.IsRowBuffered = true;
+            actual = (T)reader.GetValue(0);
+            Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
+                $"Got wrong result from GetValue() value when reading '{truncatedSqlLiteral}'");
 
-            Assert.That(actualDataTypeName, Is.EqualTo(dataTypeNameWithoutQuotes),
-                $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
+            actual = (T)reader.GetFieldValue<object>(0);
+            Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer)),
+                $"Got wrong result from GetFieldValue<object>() value when reading '{truncatedSqlLiteral}'");
 
-            // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality.
-            var isArrayTest = actualDataTypeName.EndsWith("[]", StringComparison.Ordinal) && typeof(T).IsArray;
-            Assert.That(reader.GetFieldType(0),
-                (valueTypeEqualsFieldType || isArrayTest ? new ConstraintExpression() : Is.Not)
-                    .EqualTo(isArrayTest ? typeof(Array) : typeof(T)),
-                $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
-
-            if (valueTypeEqualsFieldType)
-            {
-                var actual = (T)reader.GetValue(0);
-                Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
-                    $"Got wrong result from GetValue() value when reading '{truncatedSqlLiteral}'");
-
-                actual = (T)reader.GetFieldValue<object>(0);
-                Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer)),
-                    $"Got wrong result from GetFieldValue<object>() value when reading '{truncatedSqlLiteral}'");
-
-                result = actual;
-            }
-            else
-            {
-                result = reader.GetFieldValue<T>(0);
-                Assert.That(result, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
-                    $"Got wrong result from GetFieldValue<T>() value when reading '{truncatedSqlLiteral}'");
-            }
+            return actual;
         }
 
-        // Async execution, sequential access: tests async column reads (GetFieldValueAsync).
-        // SequentialAccess ensures _isRowBuffered=false, so GetFieldValueAsync goes through the actual async converter path.
-        {
-            await using var cmd = new NpgsqlCommand(commandText, connection);
-            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-            await reader.ReadAsync();
+        // See comment above about IsRowBuffered.
+        reader.IsRowBuffered = false;
+        actual = await reader.GetFieldValueAsync<T>(0);
+        Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
+            $"Got wrong result from GetFieldValueAsync<T>() value when reading '{truncatedSqlLiteral}'");
 
-            if (valueTypeEqualsFieldType)
-            {
-                var actual = (T)await reader.GetFieldValueAsync<object>(0);
-                Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer)),
-                    $"Got wrong result from GetFieldValueAsync<object>() value when reading '{truncatedSqlLiteral}'");
-            }
-            else
-            {
-                var actual = await reader.GetFieldValueAsync<T>(0);
-                Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
-                    $"Got wrong result from GetFieldValueAsync<T>() value when reading '{truncatedSqlLiteral}'");
-            }
-        }
+        reader.IsRowBuffered = true;
+        actual = reader.GetFieldValue<T>(0);
+        Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
+            $"Got wrong result from GetFieldValue<T>() value when reading '{truncatedSqlLiteral}'");
 
-        // Sync execution: tests sync execution paths in converters (Read path)
-        {
-            using var cmd = new NpgsqlCommand(commandText, connection);
-            using var reader = cmd.ExecuteReader();
-            reader.Read();
-
-            if (valueTypeEqualsFieldType)
-            {
-                var actual = (T)reader.GetValue(0);
-                Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
-                    $"Got wrong result from sync GetValue() value when reading '{truncatedSqlLiteral}'");
-            }
-            else
-            {
-                var actual = reader.GetFieldValue<T>(0);
-                Assert.That(actual, comparer is null ? Is.EqualTo(value) : Is.EqualTo(value).Using<T>(CreateEqualityComparer(comparer!)),
-                    $"Got wrong result from sync GetFieldValue<T>() value when reading '{truncatedSqlLiteral}'");
-            }
-        }
-
-        return result;
+        return actual;
     }
 
     static EqualityComparer<T> CreateEqualityComparer<T>(Func<T, T, bool> comparer)

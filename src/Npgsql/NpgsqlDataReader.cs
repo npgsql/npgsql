@@ -90,6 +90,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     bool _isRowBuffered;
 
     /// <summary>
+    /// Gets or sets whether the current row is fully buffered in memory.
+    /// When <see langword="false"/>, async reads will go through the real async converter path rather than the sync shortcut.
+    /// </summary>
+    /// <remarks>Settable for testing purposes.</remarks>
+    internal bool IsRowBuffered
+    {
+        get => _isRowBuffered;
+        set => _isRowBuffered = value;
+    }
+
+    /// <summary>
     /// The RowDescription message for the current resultset being processed
     /// </summary>
     internal RowDescriptionMessage? RowDescription;
