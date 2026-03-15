@@ -1,11 +1,9 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using AdoNet.Specification.Tests;
 using Xunit;
 
 namespace Npgsql.Specification.Tests;
 
-[SuppressMessage("Usage", "xUnit1004:Test methods should not be skipped")]
 public sealed class NpgsqlConnectionTests(NpgsqlDbFactoryFixture fixture) : ConnectionTestBase<NpgsqlDbFactoryFixture>(fixture)
 {
     // Skipped tests mark places where Npgsql currently diverges from AdoNet.Specification.Tests expectations.
