@@ -81,6 +81,6 @@ public class DataTypeNameTests
     [TestCase("public._numeric", ExpectedResult = "numeric[]")]
     [TestCase("public.decimal", ExpectedResult = "decimal")]
     [TestCase("public._decimal", ExpectedResult = "decimal[]")]
-    public string UnqualifiedDisplayName(string fullyQuallifiedName)
-        => new DataTypeName(fullyQuallifiedName).UnqualifiedDisplayName;
+    public string UnqualifiedDisplayName(string fullyQualifiedName)
+        => new DataTypeName(fullyQualifiedName).UnqualifiedDisplayName;
 }
