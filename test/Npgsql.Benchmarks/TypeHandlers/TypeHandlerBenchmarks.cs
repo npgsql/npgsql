@@ -44,7 +44,8 @@ public abstract class TypeHandlerBenchmarks<T>
     readonly BufferRequirements _binaryRequirements;
 
     T? _value;
-    PgValueBindingContext _bindingContext;
+    PgValueBinding _valueBinding;
+    PgFieldBinding _fieldBinding;
 
     protected TypeHandlerBenchmarks(PgConverter<T> handler)
     {
@@ -81,13 +82,13 @@ public abstract class TypeHandlerBenchmarks<T>
             _value = value;
             object? writeState = null;
             var size = _converter.GetSizeOrDbNull(DataFormat.Binary, _binaryRequirements.Write, value, ref writeState);
-            _bindingContext = new PgValueBindingContext(DataFormat.Binary, _binaryRequirements.Write, size, writeState);
+            _valueBinding = new PgValueBinding(DataFormat.Binary, _binaryRequirements.Write, size, writeState);
 
-            if (!_bindingContext.IsDbNullBinding)
+            if (!_valueBinding.IsDbNullBinding)
             {
-                _writer.StartWrite(async: false, _bindingContext, CancellationToken.None).GetAwaiter().GetResult();
+                _writer.StartWrite(async: false, _valueBinding, CancellationToken.None).GetAwaiter().GetResult();
                 _converter.Write(_writer, value!);
-                _writer.EndWrite(_bindingContext.Size.Value);
+                _writer.EndWrite(_valueBinding.Size.Value);
             }
 
             Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
@@ -95,18 +96,19 @@ public abstract class TypeHandlerBenchmarks<T>
             _readBuffer.ReadPosition = 0;
             _writeBuffer.WritePosition = 0;
 
-            _reader.Init((size ?? -1).Value);
+            _reader.Init(_valueBinding.DataFormat, (size ?? -1).Value);
+            _fieldBinding = new PgFieldBinding(DataFormat.Binary, _binaryRequirements.Read);
         }
     }
 
     [Benchmark]
     public T Read()
     {
-        if (_bindingContext.IsDbNullBinding)
+        if (_valueBinding.IsDbNullBinding)
             return default!;
 
         _readBuffer.ReadPosition = 0;
-        _reader.StartRead(DataFormat.Binary, _binaryRequirements.Read);
+        _reader.StartRead(_fieldBinding);
         var value = _converter.Read(_reader);
         _reader.EndRead();
         return value;
@@ -115,12 +117,12 @@ public abstract class TypeHandlerBenchmarks<T>
     [Benchmark]
     public void Write()
     {
-        if (_bindingContext.IsDbNullBinding)
+        if (_valueBinding.IsDbNullBinding)
             return;
 
         _writer.RefreshBuffer();
-        _writer.StartWrite(async: false, _bindingContext, CancellationToken.None).GetAwaiter().GetResult();
+        _writer.StartWrite(async: false, _valueBinding, CancellationToken.None).GetAwaiter().GetResult();
         _converter.Write(_writer, Value!);
-        _writer.EndWrite(_bindingContext.Size.GetValueOrDefault());
+        _writer.EndWrite(_valueBinding.Size.GetValueOrDefault());
     }
 }

@@ -189,22 +189,22 @@ public sealed class PgWriter
             ThrowHelper.ThrowInvalidOperationException($"Bytes written ({totalBytesWritten}) and expected byte count ({expectedByteCount}) don't match.");
     }
 
-    internal ValueTask StartWrite(bool async, in PgValueBindingContext bindingContext, CancellationToken cancellationToken)
+    internal ValueTask StartWrite(bool async, in PgValueBinding binding, CancellationToken cancellationToken)
     {
-        if (bindingContext.IsDbNullBinding)
-            ThrowHelper.ThrowArgumentException("Binding context cannot be for a DbNull.", nameof(bindingContext));
+        if (binding.IsDbNullBinding)
+            ThrowHelper.ThrowArgumentException("Binding context cannot be for a DbNull.", nameof(binding));
 
         // TODO maybe we can share PgValueBindingContext in the writer.
         _current = new ValueMetadata
         {
-            Format = bindingContext.DataFormat,
-            BufferRequirement = bindingContext.BufferRequirement,
-            Size = bindingContext.Size.GetValueOrDefault(),
+            Format = binding.DataFormat,
+            BufferRequirement = binding.BufferRequirement,
+            Size = binding.Size.GetValueOrDefault(),
             // WriteState is generally null, checking for null and showing the null literal to the JIT allows us to skip the write barrier if so.
-            WriteState = bindingContext.WriteState is null ? null : bindingContext.WriteState
+            WriteState = binding.WriteState is null ? null : binding.WriteState
         };
 
-        return ShouldFlush(bindingContext.BufferRequirement.GetValueOrDefault()) ? Flush(async, cancellationToken) : new();
+        return ShouldFlush(binding.BufferRequirement.GetValueOrDefault()) ? Flush(async, cancellationToken) : new();
     }
 
     internal void EndWrite(Size expectedByteCount)

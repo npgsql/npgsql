@@ -39,16 +39,16 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     {
         public PostgresType PostgresType { get; }
         public int BufferPos { get; }
-        public ColumnInfo LastInfo { get; init; }
+        public ReadConversionContext LastInfo { get; init; }
         public PgConcreteTypeInfo ObjectTypeInfo { get; }
-        public PgFieldBindingContext ObjectBindingContext { get; }
+        public PgFieldBinding ObjectBinding { get; }
 
         public NestedColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectTypeInfo, DataFormat format)
         {
             PostgresType = postgresType;
             BufferPos = bufferPos;
             ObjectTypeInfo = objectTypeInfo.MakeConcreteForField(Field.CreateUnspecified(objectTypeInfo.Options.ToCanonicalTypeId(postgresType)));
-            ObjectBindingContext = ObjectTypeInfo.BindField(format);
+            ObjectBinding = ObjectTypeInfo.BindField(format);
         }
 
         public Field Field => Field.CreateUnspecified(ObjectTypeInfo.PgTypeId);
@@ -301,7 +301,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (columnLength == -1)
             return DBNull.Value;
 
-        using var _ = PgReader.BeginNestedRead(columnLength, column.ObjectBindingContext.BufferRequirement);
+        using var _ = PgReader.BeginNestedRead(columnLength, column.ObjectBinding.BufferRequirement);
         return column.ObjectTypeInfo.Converter.ReadAsObject(PgReader);
     }
 
@@ -345,7 +345,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             ThrowHelper.ThrowInvalidCastException_NoValue();
         }
 
-        using var _ = PgReader.BeginNestedRead(columnLength, info.BindingContext.BufferRequirement);
+        using var _ = PgReader.BeginNestedRead(columnLength, info.Binding.BufferRequirement);
         return info.TypeInfo.ConverterRead<T>(PgReader);
     }
 
@@ -485,19 +485,19 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         return PgReader.ReadInt32();
     }
 
-    ColumnInfo GetOrAddConverterInfo(Type type, NestedColumnInfo nestedColumn, int ordinal)
+    ReadConversionContext GetOrAddConverterInfo(Type type, NestedColumnInfo nestedColumn, int ordinal)
     {
         if (nestedColumn.LastInfo is { IsDefault: false } lastInfo && lastInfo.TypeInfo.Type == type)
             return lastInfo;
 
-        var objectInfo = (TypeInfo: nestedColumn.ObjectTypeInfo, BindingContext: nestedColumn.ObjectBindingContext);
+        var objectInfo = (TypeInfo: nestedColumn.ObjectTypeInfo, BindingContext: nestedColumn.ObjectBinding);
         if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
             return new(objectInfo.TypeInfo, objectInfo.BindingContext);
 
         var typeId = SerializerOptions.ToCanonicalTypeId(nestedColumn.PostgresType);
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type, typeId, SerializerOptions);
         var concreteTypeInfo = typeInfo.MakeConcreteForField(nestedColumn.Field);
-        var columnInfo = new ColumnInfo(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat));
+        var columnInfo = new ReadConversionContext(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat));
         _columns[ordinal] = nestedColumn with { LastInfo = columnInfo };
         return columnInfo;
     }

@@ -49,7 +49,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal DataFormat Format => _bindingContext?.DataFormat ?? DataFormat.Binary;
     private protected object? _writeState;
-    private protected PgValueBindingContext? _bindingContext;
+    private protected PgValueBinding? _bindingContext;
 
     #endregion
 
@@ -752,7 +752,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        PgValueBindingContext BindSubStream()
+        PgValueBinding BindSubStream()
         {
             // Pull from Value so we also support object typed generic params.
             var stream = (Stream?)Value;
@@ -875,7 +875,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected virtual PgConcreteTypeInfo MakeConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
         => throw new NotSupportedException();
 
-    private protected virtual PgValueBindingContext BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
+    private protected virtual PgValueBinding BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
         => throw new NotSupportedException();
 
     private protected virtual ValueTask WriteTypedValue(bool async, PgConcreteTypeInfo typeInfo, PgWriter writer, CancellationToken cancellationToken)

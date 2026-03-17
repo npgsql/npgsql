@@ -396,6 +396,8 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return GetSizeAsObject(context, value, ref writeState);
     }
 
+    public bool CanReadTo(Type type) => Type == type || (!IsStronglyTyped && Type.IsAssignableTo(type));
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     bool ShouldReadAsObject<T>() => typeof(T) != _typeToConvert;
 
@@ -412,12 +414,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ConverterRead<T>(PgReader reader)
-    {
-        if (ShouldReadAsObject<T>())
-            return (T)Converter.ReadAsObject(reader);
-
-        return GetConverter<T>().Read(reader);
-    }
+        => ShouldReadAsObject<T>()
+            ? (T)Converter.ReadAsObject(reader)
+            : GetConverter<T>().Read(reader);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ValueTask<T> ConverterReadAsync<T>(PgReader reader, CancellationToken cancellationToken)
@@ -453,19 +452,17 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             : GetConverter<T>().WriteAsync(writer, value, cancellationToken);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)
+    internal T ReadFieldValue<T>(PgReader reader, PgFieldBinding binding)
     {
-        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
-        reader.StartRead(dataFormat, bufferRequirement);
+        reader.StartRead(binding);
         var result = ConverterRead<T>(reader);
         reader.EndRead();
         return result;
     }
 
-    internal async ValueTask<T> ReadFieldValueAsync<T>(PgReader reader, DataFormat dataFormat, CancellationToken cancellationToken)
+    internal async ValueTask<T> ReadFieldValueAsync<T>(PgReader reader, PgFieldBinding binding, CancellationToken cancellationToken)
     {
-        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
-        await reader.StartReadAsync(dataFormat, bufferRequirement, cancellationToken).ConfigureAwait(false);
+        await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
         // Copy of ConverterReadAsync to keep everything in one async frame.
         T result;
@@ -496,7 +493,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 
     // TryBind for reading.
-    internal bool TryBindField(DataFormat format, out PgFieldBindingContext context)
+    internal bool TryBindField(DataFormat format, out PgFieldBinding context)
     {
         if (!CanConvert(format, out var bufferRequirements))
         {
@@ -508,7 +505,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 
     // Bind for reading.
-    internal PgFieldBindingContext BindField(DataFormat format)
+    internal PgFieldBinding BindField(DataFormat format)
     {
         if (!TryBindField(format, out var info))
             ThrowHelper.ThrowInvalidOperationException($"Converter does not support {format} format.");
@@ -516,7 +513,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return info;
     }
 
-    internal PgValueBindingContext BindParameterValue<T>(T? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
+    internal PgValueBinding BindParameterValue<T>(T? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
     {
         if (!IsStronglyTyped)
             return BindParameterValueAsObject(value, writeState, nestedObjectDbNullHandling, formatPreference);
@@ -534,7 +531,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
-    internal PgValueBindingContext BindParameterValueAsObject(object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
+    internal PgValueBinding BindParameterValueAsObject(object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
@@ -587,26 +584,27 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 }
 
-readonly struct PgFieldBindingContext
+readonly struct PgFieldBinding
 {
-    internal PgFieldBindingContext(DataFormat dataFormat, Size bufferRequirement)
+    internal PgFieldBinding(DataFormat dataFormat, Size bufferRequirement)
     {
         DataFormat = dataFormat;
         BufferRequirement = bufferRequirement;
     }
 
+    // DataFormat can differ from the actual field format if data will be reintrepreted for this binding (e.g. UnknownResultType)
     public DataFormat DataFormat { get; }
     public Size BufferRequirement { get; }
 }
 
-readonly struct PgValueBindingContext
+readonly struct PgValueBinding
 {
     public DataFormat DataFormat { get; }
     public Size BufferRequirement { get; }
     public Size? Size { get; }
     public object? WriteState { get; }
 
-    internal PgValueBindingContext(DataFormat dataFormat, Size bufferRequirement, Size? size, object? writeState)
+    internal PgValueBinding(DataFormat dataFormat, Size bufferRequirement, Size? size, object? writeState)
     {
         DataFormat = dataFormat;
         BufferRequirement = bufferRequirement;

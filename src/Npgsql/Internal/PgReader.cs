@@ -477,7 +477,7 @@ public class PgReader
         _charsReadBuffer = null;
     }
 
-    internal void Init(int fieldSize, bool resumable = false)
+    internal void Init(DataFormat fieldFormat, int fieldSize, bool resumable = false)
     {
         if (Initialized)
             ThrowHelper.ThrowInvalidOperationException("Already initialized");
@@ -486,14 +486,14 @@ public class PgReader
         _fieldEndPos = _fieldStartPos + fieldSize;
         _fieldSize = fieldSize;
         _resumable = resumable;
+        _fieldFormat = fieldFormat;
     }
 
-    internal void StartRead(DataFormat dataFormat, Size bufferRequirement)
+    internal void StartRead(PgFieldBinding binding)
     {
         Debug.Assert(FieldSize >= 0);
-        _fieldFormat = dataFormat;
-        _fieldBufferRequirement = bufferRequirement;
-        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(binding.BufferRequirement, FieldSize);
+        _fieldBufferRequirement = binding.BufferRequirement;
         if (ShouldBuffer(byteCount))
             BufferNoInlined(byteCount);
 
@@ -502,12 +502,11 @@ public class PgReader
             => Buffer(byteCount);
     }
 
-    internal ValueTask StartReadAsync(DataFormat dataFormat, Size bufferRequirement, CancellationToken cancellationToken)
+    internal ValueTask StartReadAsync(PgFieldBinding binding, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        _fieldFormat = dataFormat;
-        _fieldBufferRequirement = bufferRequirement;
-        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(binding.BufferRequirement, FieldSize);
+        _fieldBufferRequirement = binding.BufferRequirement;
         return ShouldBuffer(byteCount) ? BufferAsync(byteCount, cancellationToken) : new();
     }
 
@@ -669,6 +668,7 @@ public class PgReader
         _currentSize = UninitializedSentinel;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int Restart(bool resumable)
     {
         if (!Initialized)

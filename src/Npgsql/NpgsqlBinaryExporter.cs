@@ -38,7 +38,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// </summary>
     int NumColumns { get; set; }
 
-    ColumnInfo[] _columnInfoCache;
+    ReadConversionContext[] _conversionContextCache;
 
     readonly ILogger _copyLogger;
 
@@ -61,7 +61,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _connector = connector;
         _buf = connector.ReadBuffer;
         _column = BeforeRow;
-        _columnInfoCache = null!;
+        _conversionContextCache = null!;
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
@@ -101,7 +101,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
             _state = ExporterState.Ready;
             NumColumns = copyOutResponse.NumColumns;
-            _columnInfoCache = new ColumnInfo[NumColumns];
+            _conversionContextCache = new ReadConversionContext[NumColumns];
             _rowsExported = 0;
             _endOfMessagePos = _buf.CumulativeReadPosition;
             await ReadHeader(async).ConfigureAwait(false);
@@ -276,8 +276,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
-            var typeInfo = GetInfo(typeof(T), type);
-            return typeInfo.ReadFieldValue<T>(reader, DataFormat.Binary);
+            var typeInfo = GetConversionContext(typeof(T), type, out var bindingContext);
+            return typeInfo.ReadFieldValue<T>(reader, bindingContext);
         }
         finally
         {
@@ -303,8 +303,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (reader.FieldIsDbNull)
                 return DbNullOrThrow<T>();
 
-            var typeInfo = GetInfo(typeof(T), type);
-            return await typeInfo.ReadFieldValueAsync<T>(reader, DataFormat.Binary, cancellationToken).ConfigureAwait(false);
+            var typeInfo = GetConversionContext(typeof(T), type, out var bindingContext);
+            return await typeInfo.ReadFieldValueAsync<T>(reader, bindingContext, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -323,13 +323,14 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         throw new InvalidCastException("Column is null");
     }
 
-
-    PgConcreteTypeInfo GetInfo(Type type, NpgsqlDbType? npgsqlDbType)
+    PgConcreteTypeInfo GetConversionContext(Type type, NpgsqlDbType? npgsqlDbType, out PgFieldBinding binding)
     {
-        ref var cachedInfo = ref _columnInfoCache[_column];
-        return (cachedInfo.IsDefault ? cachedInfo = GetInfoSlow(type, npgsqlDbType) : cachedInfo).TypeInfo;
+        ref var contextRef = ref _conversionContextCache[_column];
+        var context = contextRef.IsDefault ? contextRef = GetInfoAndBind(type, npgsqlDbType) : contextRef;
+        binding = context.Binding;
+        return context.TypeInfo;
 
-        ColumnInfo GetInfoSlow(Type type, NpgsqlDbType? npgsqlDbType = null)
+        ReadConversionContext GetInfoAndBind(Type type, NpgsqlDbType? npgsqlDbType)
         {
             var options = _connector.SerializerOptions;
             PgTypeId? pgTypeId = null;
@@ -414,7 +415,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _column++;
         _buf.Ensure(sizeof(int));
         var columnLen = _buf.ReadInt32();
-        PgReader.Init(columnLen, resumableOp);
+        PgReader.Init(DataFormat.Binary, columnLen, resumableOp);
     }
 
     async ValueTask MoveNextColumnAsync(bool resumableOp)
@@ -426,7 +427,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _column++;
         await _buf.Ensure(sizeof(int), async: true).ConfigureAwait(false);
         var columnLen = _buf.ReadInt32();
-        PgReader.Init(columnLen, resumableOp);
+        PgReader.Init(DataFormat.Binary, columnLen, resumableOp);
     }
 
     void ThrowIfNotOnRow()
