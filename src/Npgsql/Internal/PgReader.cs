@@ -627,7 +627,7 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("Cannot restart a non-initialized reader.");
 
         // We resume if the reader was initialized as resumable and we're not explicitly restarting as non-resumable.
-        // When the field size is DbNullFieldSize (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
+        // When the field size is DbNullSentinel (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
         var fieldSize = FieldSize;
         if ((Resumable && resumable) || fieldSize is DbNullSentinel)
         {
