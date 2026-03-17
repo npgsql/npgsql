@@ -437,11 +437,20 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void ConverterWrite<T>(PgWriter writer, [DisallowNull]T value)
-        => GetConverter<T>().Write(writer, value);
+    {
+        if (!IsStronglyTyped)
+        {
+            Converter.WriteAsObject(writer, value);
+            return;
+        }
+        GetConverter<T>().Write(writer, value);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ValueTask ConverterWriteAsync<T>(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
-        => GetConverter<T>().WriteAsync(writer, value, cancellationToken);
+        => !IsStronglyTyped
+            ? Converter.WriteAsObjectAsync(writer, value, cancellationToken)
+            : GetConverter<T>().WriteAsync(writer, value, cancellationToken);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)

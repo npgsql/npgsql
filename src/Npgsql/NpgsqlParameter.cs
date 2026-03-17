@@ -685,9 +685,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else
             {
-                ConcreteTypeInfo = !typeInfo.IsStronglyTyped
-                    ? typeInfo.MakeConcreteForValueAsObject(Value, out _writeState)
-                    : MakeConcreteTypeInfoForTypedValue(typeInfo);
+                ConcreteTypeInfo = MakeConcreteTypeInfoForTypedValue(typeInfo);
             }
         }
 
@@ -744,9 +742,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else
             {
-                _bindingContext = !ConcreteTypeInfo.IsStronglyTyped
-                    ? ConcreteTypeInfo.BindParameterValueAsObject(Value, _writeState, formatPreference: requiredFormat)
-                    : BindTypedValue(ConcreteTypeInfo, formatPreference: requiredFormat);
+                _bindingContext = BindTypedValue(ConcreteTypeInfo, formatPreference: requiredFormat);
             }
         }
 
@@ -848,7 +844,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 {
                     await writer.StartWrite(async, bindingContext, cancellationToken).ConfigureAwait(false);
                     var typeInfo = ConcreteTypeInfo;
-                    if (StaticValueType == typeof(object) || !typeInfo.IsStronglyTyped)
+                    if (StaticValueType == typeof(object))
                     {
                         // Pull from Value so we also support object typed generic params.
                         var value = Value;
