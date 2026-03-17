@@ -1421,7 +1421,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         // Check whether any sequential seek is contractually sound (even though we might be able to satisfy rewinds we make sure we won't).
         var reader = PgReader;
-        if (_isSequential && reader.IsFieldConsumed((int)dataOffset))
+        if (_isSequential && reader.IsFieldPastOffset((int)dataOffset))
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
         // Move to offset

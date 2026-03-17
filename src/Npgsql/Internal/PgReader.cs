@@ -64,7 +64,7 @@ public class PgReader
     internal bool FieldIsDbNull => FieldSize is -1;
     internal bool FieldAtStart => FieldOffset is 0;
 
-    internal bool IsFieldConsumed(int offset) => FieldOffset > offset;
+    internal bool IsFieldPastOffset(int offset) => FieldOffset > offset;
 
     // TODO refactor out
     internal long GetFieldStartPos(NpgsqlNestedDataReader nestedDataReader) => _fieldStartPos;
