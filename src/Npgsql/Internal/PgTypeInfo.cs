@@ -249,20 +249,20 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     public PgConverter Converter { get; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
+    internal bool CanReadTo(Type type) => Type == type || (!HasExactType && Type.IsAssignableTo(type));
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)
+    internal T ReadFieldValue<T>(PgReader reader, PgFieldBinding binding)
     {
-        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
-        reader.StartRead(dataFormat, bufferRequirement);
+        reader.StartRead(binding);
         var result = Converter.Read<T>(reader);
         reader.EndRead();
         return result;
     }
 
-    internal async ValueTask<T> ReadFieldValueAsync<T>(PgReader reader, DataFormat dataFormat, CancellationToken cancellationToken)
+    internal async ValueTask<T> ReadFieldValueAsync<T>(PgReader reader, PgFieldBinding binding, CancellationToken cancellationToken)
     {
-        var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
-        await reader.StartReadAsync(dataFormat, bufferRequirement, cancellationToken).ConfigureAwait(false);
+        await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
         // Inline copy of Converter.ReadAsync<T> to keep everything in one async frame.
         var result = typeof(T) != TypeToConvert
@@ -387,6 +387,7 @@ readonly struct PgFieldBinding
         BufferRequirement = bufferRequirement;
     }
 
+    // DataFormat can differ from the actual field format if data will be reintrepreted for this binding (e.g. UnknownResultType)
     public DataFormat DataFormat { get; }
     public Size BufferRequirement { get; }
 }

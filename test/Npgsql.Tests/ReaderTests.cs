@@ -2102,11 +2102,11 @@ LANGUAGE plpgsql VOLATILE";
         var buffer = conn.Connector!.ReadBuffer;
         buffer.AddBytesToRead(columnLength);
         var reader = buffer.PgReader;
-        reader.Init(columnLength, resumable: false);
+        reader.Init(DataFormat.Binary, columnLength, resumable: false);
         if (async)
-            await reader.StartReadAsync(DataFormat.Binary, Size.Unknown, CancellationToken.None);
+            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown), CancellationToken.None);
         else
-            reader.StartRead(DataFormat.Binary, Size.Unknown);
+            reader.StartRead(new(DataFormat.Binary, Size.Unknown));
 
         await using (var _ = reader.GetStream())
         {

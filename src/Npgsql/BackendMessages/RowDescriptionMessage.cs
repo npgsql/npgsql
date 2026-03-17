@@ -11,12 +11,11 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.BackendMessages;
 
-readonly struct ColumnInfo(PgConcreteTypeInfo typeInfo, PgFieldBinding binding)
+readonly struct ReadConversionContext(PgConcreteTypeInfo typeInfo, PgFieldBinding binding)
 {
     public bool IsDefault => TypeInfo is null;
     public PgConcreteTypeInfo TypeInfo { get; } = typeInfo;
     public PgFieldBinding Binding { get; } = binding;
-    public DataFormat DataFormat => Binding.DataFormat;
 }
 
 /// <summary>
@@ -37,7 +36,7 @@ sealed class RowDescriptionMessage : IBackendMessage
     FieldDescription?[] _fields;
     readonly Dictionary<string, int> _nameIndex;
     Dictionary<string, int>? _insensitiveIndex;
-    ColumnInfo[]? _lastConverterInfoCache;
+    ReadConversionContext[]? _lastConverterInfoCache;
 
     internal RowDescriptionMessage(bool connectorOwned, int numFields = 10)
     {
@@ -136,14 +135,18 @@ sealed class RowDescriptionMessage : IBackendMessage
         }
     }
 
-    internal void SetColumnInfoCache(ReadOnlySpan<ColumnInfo> values)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal void GetConversionContext(int ordinal, Type type, ref ReadConversionContext result)
+        => this[ordinal].GetConversionContext(type, ref result);
+
+    internal void SetColumnInfoCache(ReadOnlySpan<ReadConversionContext> values)
     {
         if (_connectorOwned || _lastConverterInfoCache is not null)
             return;
         Interlocked.CompareExchange(ref _lastConverterInfoCache, values.ToArray(), null);
     }
 
-    internal void LoadColumnInfoCache(PgSerializerOptions options, ColumnInfo[] values)
+    internal void LoadColumnInfoCache(PgSerializerOptions options, ReadConversionContext[] values)
     {
         if (_lastConverterInfoCache is not { } cache)
             return;
@@ -233,7 +236,7 @@ public sealed class FieldDescription
         DataFormat = source.DataFormat;
         PostgresType = source.PostgresType;
         Field = source.Field;
-        _objectInfo = source._objectInfo;
+        _objectConversionContext = source._objectConversionContext;
     }
 
     internal void Populate(
@@ -251,7 +254,7 @@ public sealed class FieldDescription
         DataFormat = dataFormat;
         PostgresType = _serializerOptions.DatabaseInfo.FindPostgresType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
         Field = new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
-        _objectInfo = default;
+        _objectConversionContext = default;
     }
 
     /// <summary>
@@ -297,19 +300,18 @@ public sealed class FieldDescription
 
     internal PostgresType PostgresType { get; private set; }
 
-    internal Type FieldType => ObjectInfo.TypeInfo.Type;
+    internal Type FieldType => ObjectConversionContext.TypeInfo.Type;
 
-    ColumnInfo _objectInfo;
-    internal (PgConcreteTypeInfo TypeInfo, PgFieldBinding Binding) ObjectInfo
+    ReadConversionContext _objectConversionContext;
+    internal ReadConversionContext ObjectConversionContext
     {
         get
         {
-            if (!_objectInfo.IsDefault)
-                return (_objectInfo.TypeInfo, _objectInfo.Binding);
+            if (!_objectConversionContext.IsDefault)
+                return _objectConversionContext;
 
-            ref var info = ref _objectInfo;
-            GetInfoCore(null, ref _objectInfo);
-            return (info.TypeInfo, info.Binding);
+            GetInfoAndBind(null, ref _objectConversionContext);
+            return _objectConversionContext;
         }
     }
 
@@ -321,30 +323,30 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal void GetInfo(Type type, ref ColumnInfo lastColumnInfo) => GetInfoCore(type, ref lastColumnInfo);
-    void GetInfoCore(Type? type, ref ColumnInfo lastColumnInfo)
+    internal void GetConversionContext(Type type, ref ReadConversionContext result) => GetInfoAndBind(type, ref result);
+    void GetInfoAndBind(Type? type, ref ReadConversionContext result)
     {
-        Debug.Assert(lastColumnInfo.IsDefault || (
-            ReferenceEquals(_serializerOptions, lastColumnInfo.TypeInfo.Options) && (
-                IsUnknownResultType() && lastColumnInfo.TypeInfo.PgTypeId == _serializerOptions.TextPgTypeId ||
+        Debug.Assert(result.IsDefault || (
+            ReferenceEquals(_serializerOptions, result.TypeInfo.Options) && (
+                IsUnknownResultType() && result.TypeInfo.PgTypeId == _serializerOptions.TextPgTypeId ||
                 // Normal resolution
-                lastColumnInfo.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
+                result.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
 
-        if (lastColumnInfo is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type)
+        if (result is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type)
             return;
 
-        var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectInfo : (_objectInfo.TypeInfo, Binding: _objectInfo.Binding);
+        var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectConversionContext : _objectConversionContext;
         if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
         {
-            lastColumnInfo = new(objectInfo.TypeInfo, objectInfo.Binding);
+            result = objectInfo;
             return;
         }
 
-        GetInfoSlow(type, out lastColumnInfo);
+        Core(type, out result);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        void GetInfoSlow(Type? type, out ColumnInfo lastColumnInfo)
+        void Core(Type? type, out ReadConversionContext lastReadConversionContext)
         {
             PgFieldBinding binding;
             switch (DataFormat)
@@ -361,7 +363,7 @@ public sealed class FieldDescription
                 if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out binding))
                     binding = concreteTypeInfo.BindField(DataFormat.Text);
 
-                lastColumnInfo = new(concreteTypeInfo, binding);
+                lastReadConversionContext = new(concreteTypeInfo, binding);
 
                 break;
             }
@@ -372,19 +374,19 @@ public sealed class FieldDescription
 
                 // If we don't support the DataFormat we'll just throw.
                 binding = concreteTypeInfo.BindField(DataFormat);
-                lastColumnInfo = new(concreteTypeInfo, binding);
+                lastReadConversionContext = new(concreteTypeInfo, binding);
                 break;
             }
             default:
                 ThrowHelper.ThrowUnreachableException("Unknown data format {0}", DataFormat);
-                lastColumnInfo = default;
+                lastReadConversionContext = default;
                 break;
             }
 
             // We delay initializing ObjectOrDefaultInfo until after the first lookup (unless it is itself the first lookup).
             // When passed in an unsupported type it allows the error to be more specific, instead of just having object/null to deal with.
-            if (_objectInfo.TypeInfo is null && type is not null)
-                _ = ObjectInfo;
+            if (_objectConversionContext.TypeInfo is null && type is not null)
+                _ = ObjectConversionContext;
         }
 
         // DataFormat.Text today exclusively signals that we executed with an UnknownResultTypeList.

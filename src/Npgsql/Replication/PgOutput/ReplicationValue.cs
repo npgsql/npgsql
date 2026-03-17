@@ -26,7 +26,7 @@ public class ReplicationValue
     public TupleDataKind Kind { get; private set; }
 
     FieldDescription _fieldDescription = null!;
-    ColumnInfo _lastInfo;
+    ReadConversionContext _lastConversionContext;
     bool _isConsumed;
 
     PgReader PgReader => _readBuffer.PgReader;
@@ -38,7 +38,7 @@ public class ReplicationValue
         Kind = kind;
         Length = length;
         _fieldDescription = fieldDescription;
-        _lastInfo = default;
+        _lastConversionContext = default;
         _isConsumed = false;
     }
 
@@ -118,7 +118,7 @@ public class ReplicationValue
 
         var reader = PgReader;
         if (!reader.Initialized)
-            reader.Init(Length);
+            reader.Init(_fieldDescription.DataFormat, Length);
         await reader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         await reader.CommitAsync().ConfigureAwait(false);
 
@@ -129,8 +129,8 @@ public class ReplicationValue
     {
         ThrowIfInitialized();
 
-        _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
-        var info = _lastInfo;
+        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
+        var conversionContext = _lastConversionContext;
 
         switch (Kind)
         {
@@ -151,16 +151,16 @@ public class ReplicationValue
         }
 
         var reader = PgReader;
-        reader.Init(Length);
-        return info.TypeInfo.ReadFieldValue<T>(PgReader, _fieldDescription.DataFormat);
+        reader.Init(conversionContext.Binding.DataFormat, Length);
+        return conversionContext.TypeInfo.ReadFieldValue<T>(PgReader, conversionContext.Binding);
     }
 
     async ValueTask<T> GetAsyncCore<T>(CancellationToken cancellationToken)
     {
         ThrowIfInitialized();
 
-        _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
-        var info = _lastInfo;
+        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
+        var conversionContext = _lastConversionContext;
 
         switch (Kind)
         {
@@ -183,8 +183,8 @@ public class ReplicationValue
         using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
         var reader = PgReader;
-        reader.Init(Length);
-        return await info.TypeInfo.ReadFieldValueAsync<T>(PgReader, _fieldDescription.DataFormat, cancellationToken).ConfigureAwait(false);
+        reader.Init(conversionContext.Binding.DataFormat, Length);
+        return await conversionContext.TypeInfo.ReadFieldValueAsync<T>(PgReader, conversionContext.Binding, cancellationToken).ConfigureAwait(false);
     }
 
     void ThrowIfInitialized()
