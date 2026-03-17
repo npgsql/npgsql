@@ -307,7 +307,7 @@ public class ConnectionTests : TestBase
     [Test]
     public void Bad_hostname()
     {
-        using var dataSource = CreateDataSource(csb => csb.Host = "hostname.that.does.not.exist");
+        using var dataSource = CreateDataSource(csb => csb.Host = "hostname.invalid");
         using var conn = dataSource.CreateConnection();
 
         Assert.That(
@@ -323,7 +323,7 @@ public class ConnectionTests : TestBase
     [Test]
     public void Bad_hostname_async()
     {
-        using var dataSource = CreateDataSource(csb => csb.Host = "hostname.that.does.not.exist");
+        using var dataSource = CreateDataSource(csb => csb.Host = "hostname.invalid");
         using var conn = dataSource.CreateConnection();
 
         Assert.That(
