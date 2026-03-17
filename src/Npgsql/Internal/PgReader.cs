@@ -13,6 +13,7 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public class PgReader
 {
+    const int DbNullSentinel = -1;
     const int UninitializedSentinel = -1;
 
     // We don't want to add a ton of memory pressure for large strings.
@@ -61,7 +62,7 @@ public class PgReader
     int FieldSize => _fieldSize;
     int FieldRemaining => FieldSize - FieldOffset;
 
-    internal bool FieldIsDbNull => FieldSize is -1;
+    internal bool FieldIsDbNull => FieldSize is DbNullSentinel;
     internal bool FieldAtStart => FieldOffset is 0;
 
     internal bool IsFieldPastOffset(int offset) => FieldOffset > offset;
@@ -627,10 +628,11 @@ public class PgReader
 
         // We resume if the reader was initialized as resumable and we're not explicitly restarting as non-resumable.
         // When the field size is DbNullFieldSize (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
-        if ((Resumable && resumable) || FieldIsDbNull)
+        var fieldSize = FieldSize;
+        if ((Resumable && resumable) || fieldSize is DbNullSentinel)
         {
-            _resumable = resumable || FieldIsDbNull;
-            return FieldSize;
+            _resumable = true;
+            return fieldSize;
         }
 
         // From this point on we're not resuming, we're resetting any remaining state and rewinding our position.
@@ -647,7 +649,7 @@ public class PgReader
         RewindCore(FieldOffset);
 
         Debug.Assert(Initialized);
-        return FieldSize;
+        return fieldSize;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
