@@ -362,6 +362,11 @@ public class PgReader
         if (StreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
+        RewindCore(count);
+    }
+
+    void RewindCore(int count)
+    {
         _buffer.ReadPosition -= count;
     }
 
@@ -525,14 +530,13 @@ public class PgReader
         => BeginNestedRead(async: true, size, bufferRequirement, cancellationToken);
 
     /// Seek origin is the start of Current, e.g. Seek(0) rewinds to the start.
-    internal int Seek(int offset)
+    internal void Seek(int offset)
     {
-        if (CurrentOffset > offset)
-            Rewind(CurrentOffset - offset);
-        else if (CurrentOffset < offset)
-            Consume(offset - CurrentOffset);
-
-        return FieldRemaining;
+        var currentOffset = CurrentOffset;
+        if (currentOffset > offset)
+            Rewind(currentOffset - offset);
+        else if (currentOffset < offset)
+            Consume(offset - currentOffset);
     }
 
     public void Consume(int? count = null)
@@ -640,7 +644,7 @@ public class PgReader
 
         _fieldConsumed = false;
         _resumable = resumable;
-        Seek(0);
+        RewindCore(FieldOffset);
 
         Debug.Assert(Initialized);
         return FieldSize;
