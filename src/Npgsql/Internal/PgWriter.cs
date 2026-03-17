@@ -278,9 +278,9 @@ public sealed class PgWriter
         {
             var fallback = encoding.EncoderFallback;
             // We can only emulate these well known fallbacks in the fast path.
-            if (fallback == EncoderFallback.ExceptionFallback || fallback == EncoderFallback.ReplacementFallback)
+            if (EncoderFallback.ExceptionFallback.Equals(fallback) || EncoderFallback.ReplacementFallback.Equals(fallback))
             {
-                Utf8Core(data, replace: fallback == EncoderFallback.ReplacementFallback, scalarMaxByteCount: 4);
+                Utf8Core(data, replace: !EncoderFallback.ExceptionFallback.Equals(fallback), scalarMaxByteCount: 4);
                 return;
             }
         }
@@ -349,8 +349,8 @@ public sealed class PgWriter
         {
             var fallback = encoding.EncoderFallback;
             // We can only emulate these well known fallbacks in the fast path.
-            if (fallback == EncoderFallback.ExceptionFallback || fallback == EncoderFallback.ReplacementFallback)
-                return Utf8Core(data, replace: fallback == EncoderFallback.ReplacementFallback, scalarMaxByteCount: 4, cancellationToken);
+            if (EncoderFallback.ExceptionFallback.Equals(fallback) || EncoderFallback.ReplacementFallback.Equals(fallback))
+                return Utf8Core(data, replace: !EncoderFallback.ExceptionFallback.Equals(fallback), scalarMaxByteCount: 4, cancellationToken);
         }
 
         var dataSpan = data.Span;
