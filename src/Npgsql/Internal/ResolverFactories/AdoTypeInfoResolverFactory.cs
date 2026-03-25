@@ -43,7 +43,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (type != typeof(Stream))
                 return null;
 
-            return new PgTypeInfo(options, new StreamByteaConverter(supportsTextFormat: true), dataTypeName) { SupportsWriting = false };
+            return new PgTypeInfo(options, new StreamConverter(supportsTextFormat: true), dataTypeName) { SupportsWriting = false };
         }
 
         static PgTypeInfo? GetEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
@@ -97,7 +97,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Text,
-                static (options, mapping, _) => new PgTypeInfo(options, new StreamByteaConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                static (options, mapping, _) => new PgTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Text,
@@ -124,7 +124,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                     static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
                     MatchRequirement.DataTypeName);
                 mappings.AddType<Stream>(dataTypeName,
-                    static (options, mapping, _) => new PgTypeInfo(options, new StreamByteaConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                    static (options, mapping, _) => new PgTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                     mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
                 //Special mappings, these have no corresponding array mapping.
                 mappings.AddType<TextReader>(dataTypeName,
@@ -148,7 +148,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, new ReadOnlyMemoryByteaConverter())),
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => new PgTypeInfo(options, new VersionPrefixedTextConverter<Stream>(jsonbVersion, new StreamByteaConverter(supportsTextFormat: true)), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                static (options, mapping, _) => new PgTypeInfo(options, new VersionPrefixedTextConverter<Stream>(jsonbVersion, new StreamConverter(supportsTextFormat: true)), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Jsonb,
@@ -177,7 +177,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
             mappings.AddType<Stream>(DataTypeNames.Bytea,
                 // TODO handling bytea textually would require conversions to hex strings, so currently we don't support it.
-                static (options, mapping, _) => new PgTypeInfo(options, new StreamByteaConverter(supportsTextFormat: false), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
+                static (options, mapping, _) => new PgTypeInfo(options, new StreamConverter(supportsTextFormat: false), new DataTypeName(mapping.DataTypeName), unboxedType: mapping.Type != typeof(Stream) ? mapping.Type : null),
                 mapping => mapping with { TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
 
             // Varbit
