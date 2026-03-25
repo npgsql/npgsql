@@ -368,6 +368,8 @@ public class PgReader
 
     void RewindCore(int count)
     {
+        Debug.Assert(CurrentOffset >= count);
+        Debug.Assert(_buffer.ReadPosition >= count);
         _buffer.ReadPosition -= count;
     }
 
