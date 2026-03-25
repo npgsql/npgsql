@@ -96,7 +96,7 @@ public class PgReader
         if (Initialized)
             ThrowHelper.ThrowInvalidOperationException("Cannot reset an initialized reader.");
 
-        StreamCanSeek = true;
+        StreamCanSeek = false;
     }
 
     internal void RevertNestedReadScope(int size, int startPos, Size bufferRequirement)
