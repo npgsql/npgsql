@@ -13,6 +13,7 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public class PgReader
 {
+    const int DbNullSentinel = -1;
     const int UninitializedSentinel = -1;
 
     // We don't want to add a ton of memory pressure for large strings.
@@ -61,10 +62,10 @@ public class PgReader
     int FieldSize => _fieldSize;
     int FieldRemaining => FieldSize - FieldOffset;
 
-    internal bool FieldIsDbNull => FieldSize is -1;
+    internal bool FieldIsDbNull => FieldSize is DbNullSentinel;
     internal bool FieldAtStart => FieldOffset is 0;
 
-    internal bool IsFieldConsumed(int offset) => FieldOffset > offset;
+    internal bool IsFieldPastOffset(int offset) => FieldOffset > offset;
 
     // TODO refactor out
     internal long GetFieldStartPos(NpgsqlNestedDataReader nestedDataReader) => _fieldStartPos;
@@ -362,6 +363,13 @@ public class PgReader
         if (StreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
+        RewindCore(count);
+    }
+
+    void RewindCore(int count)
+    {
+        Debug.Assert(CurrentOffset >= count);
+        Debug.Assert(_buffer.ReadPosition >= count);
         _buffer.ReadPosition -= count;
     }
 
@@ -525,14 +533,13 @@ public class PgReader
         => BeginNestedRead(async: true, size, bufferRequirement, cancellationToken);
 
     /// Seek origin is the start of Current, e.g. Seek(0) rewinds to the start.
-    internal int Seek(int offset)
+    internal void Seek(int offset)
     {
-        if (CurrentOffset > offset)
-            Rewind(CurrentOffset - offset);
-        else if (CurrentOffset < offset)
-            Consume(offset - CurrentOffset);
-
-        return FieldRemaining;
+        var currentOffset = CurrentOffset;
+        if (currentOffset > offset)
+            Rewind(currentOffset - offset);
+        else if (currentOffset < offset)
+            Consume(offset - currentOffset);
     }
 
     public void Consume(int? count = null)
@@ -622,11 +629,12 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("Cannot restart a non-initialized reader.");
 
         // We resume if the reader was initialized as resumable and we're not explicitly restarting as non-resumable.
-        // When the field size is DbNullFieldSize (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
-        if ((Resumable && resumable) || FieldIsDbNull)
+        // When the field size is DbNullSentinel (i.e. -1) we're always restarting as resumable, to allow rereading null values endlessly.
+        var fieldSize = FieldSize;
+        if ((Resumable && resumable) || fieldSize is DbNullSentinel)
         {
-            _resumable = resumable || FieldIsDbNull;
-            return FieldSize;
+            _resumable = true;
+            return fieldSize;
         }
 
         // From this point on we're not resuming, we're resetting any remaining state and rewinding our position.
@@ -640,10 +648,10 @@ public class PgReader
 
         _fieldConsumed = false;
         _resumable = resumable;
-        Seek(0);
+        RewindCore(FieldOffset);
 
         Debug.Assert(Initialized);
-        return FieldSize;
+        return fieldSize;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
