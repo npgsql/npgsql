@@ -511,8 +511,7 @@ public class PgReader
 
     internal async ValueTask<NestedReadScope> BeginNestedRead(bool async, int size, Size bufferRequirement, CancellationToken cancellationToken = default)
     {
-        var currentRemaining = CurrentRemaining;
-        if (size > currentRemaining)
+        if (size > CurrentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(size), "Cannot begin a read for a larger size than the current remaining size.");
 
         if (size < 0)
