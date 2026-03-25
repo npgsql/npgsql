@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace Npgsql.Internal;
 
@@ -42,4 +43,26 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public override int GetHashCode() => HashCode.Combine(_read, _write);
     public static bool operator ==(BufferRequirements left, BufferRequirements right) => left.Equals(right);
     public static bool operator !=(BufferRequirements left, BufferRequirements right) => !left.Equals(right);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int GetMinimumBufferByteCount(Size bufferRequirement, int valueSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(valueSize);
+        var reqByteCount = bufferRequirement.GetValueOrDefault();
+        switch (bufferRequirement.Kind)
+        {
+        case SizeKind.Exact:
+            if (reqByteCount != valueSize)
+                ThrowExactMismatch(reqByteCount, valueSize);
+            goto default;
+        case SizeKind.UpperBound:
+            return Math.Min(valueSize, reqByteCount);
+        default:
+            return reqByteCount;
+        }
+
+        static void ThrowExactMismatch(int expected, int actual)
+            => throw new ArgumentOutOfRangeException(nameof(bufferRequirement),
+                $"Exact buffer requirement size ({expected} bytes) does not match the value size ({actual} bytes).");
+    }
 }
