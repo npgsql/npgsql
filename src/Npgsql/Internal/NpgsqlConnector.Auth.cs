@@ -330,8 +330,14 @@ partial class NpgsqlConnector
     internal async ValueTask AuthenticateGSS(bool async, CancellationToken cancellationToken)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
+        // See https://github.com/postgres/postgres/blob/a0dd0702e464f206b08c99a74cb58809c51aafa5/src/interfaces/libpq/fe-auth.c#L111-L123
+        // We do not support delegation (TokenImpersonationLevel.Delegation) for now
+        var clientOptions = new NegotiateAuthenticationClientOptions
+        {
+            TargetName = targetName,
+            RequireMutualAuthentication = true
+        };
 
-        var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
         NegotiateOptionsCallback?.Invoke(clientOptions);
 
         using var authContext = new NegotiateAuthentication(clientOptions);
