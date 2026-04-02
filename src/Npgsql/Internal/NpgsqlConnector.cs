@@ -445,13 +445,13 @@ public sealed partial class NpgsqlConnector
 
         try
         {
-            var username = await GetUsernameAsync(async, cancellationToken).ConfigureAwait(false);
+            var (username, password) = await GetCredentials(async, cancellationToken).ConfigureAwait(false);
 
             activity = NpgsqlActivitySource.PhysicalConnectionOpen(this);
 
             var gssEncMode = GetGssEncMode(Settings);
 
-            await OpenCore(this, username, Settings.SslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
+            await OpenCore(this, username, password, Settings.SslMode, gssEncMode, timeout, async, cancellationToken).ConfigureAwait(false);
 
             if (activity is not null)
                 NpgsqlActivitySource.Enrich(activity, this);
@@ -522,6 +522,7 @@ public sealed partial class NpgsqlConnector
         static async Task OpenCore(
             NpgsqlConnector conn,
             string username,
+            string? password,
             SslMode sslMode,
             GssEncryptionMode gssEncMode,
             NpgsqlTimeout timeout,
@@ -539,7 +540,7 @@ public sealed partial class NpgsqlConnector
                 await conn.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 using var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
-                await conn.Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
+                await conn.Authenticate(username, password, timeout, async, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -573,6 +574,7 @@ public sealed partial class NpgsqlConnector
                 await OpenCore(
                     conn,
                     username,
+                    password,
                     sslMode,
                     gssEncMode,
                     timeout,
@@ -822,50 +824,7 @@ public sealed partial class NpgsqlConnector
         }
 
         WriteStartup(startupParams);
-    }
-
-    ValueTask<string> GetUsernameAsync(bool async, CancellationToken cancellationToken)
-    {
-        var username = Settings.Username;
-        if (username?.Length > 0)
-        {
-            InferredUserName = username;
-            return new(username);
-        }
-
-        username = PostgresEnvironment.User;
-        if (username?.Length > 0)
-        {
-            InferredUserName = username;
-            return new(username);
-        }
-
-        return GetUsernameAsyncInternal();
-
-        async ValueTask<string> GetUsernameAsyncInternal()
-        {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                username = await DataSource.IntegratedSecurityHandler.GetUsername(async, Settings.IncludeRealm, ConnectionLogger,
-                    cancellationToken).ConfigureAwait(false);
-
-                if (username?.Length > 0)
-                {
-                    InferredUserName = username;
-                    return username;
-                }
-            }
-
-            username = Environment.UserName;
-            if (username?.Length > 0)
-            {
-                InferredUserName = username;
-                return username;
-            }
-
-            throw new NpgsqlException("No username could be found, please specify one explicitly");
-        }
-    }
+    }    
 
     async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
