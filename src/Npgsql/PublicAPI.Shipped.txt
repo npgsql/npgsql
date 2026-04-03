@@ -402,6 +402,7 @@ Npgsql.NpgsqlConnection.ProvidePasswordCallback.get -> Npgsql.ProvidePasswordCal
 Npgsql.NpgsqlConnection.ProvidePasswordCallback.set -> void
 Npgsql.NpgsqlConnection.ReloadTypes() -> void
 Npgsql.NpgsqlConnection.ReloadTypesAsync() -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlConnection.ReloadTypesAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlConnection.Timezone.get -> string!
 Npgsql.NpgsqlConnection.TypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlConnection.UnprepareAll() -> void

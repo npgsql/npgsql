@@ -98,7 +98,6 @@ override Npgsql.NpgsqlDataReader.GetColumnSchemaAsync(System.Threading.Cancellat
 override Npgsql.NpgsqlMultiHostDataSource.Clear() -> void
 Npgsql.NpgsqlDataSource.ReloadTypes() -> void
 Npgsql.NpgsqlDataSource.ReloadTypesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Npgsql.NpgsqlConnection.ReloadTypesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 *REMOVED*Npgsql.NpgsqlLargeObjectManager
 *REMOVED*Npgsql.NpgsqlLargeObjectManager.Create(uint preferredOid = 0) -> uint
 *REMOVED*Npgsql.NpgsqlLargeObjectManager.CreateAsync(uint preferredOid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<uint>!
@@ -121,7 +120,6 @@ Npgsql.NpgsqlConnection.ReloadTypesAsync(System.Threading.CancellationToken canc
 *REMOVED*Npgsql.NpgsqlLargeObjectStream.Has64BitSupport.get -> bool
 *REMOVED*Npgsql.NpgsqlLargeObjectStream.SeekAsync(long offset, System.IO.SeekOrigin origin, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 *REMOVED*Npgsql.NpgsqlLargeObjectStream.SetLength(long value, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
-*REMOVED*Npgsql.NpgsqlConnection.ReloadTypesAsync() -> System.Threading.Tasks.Task!
 *REMOVED*Npgsql.NpgsqlDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*Npgsql.NpgsqlDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*Npgsql.NpgsqlDataSourceBuilder.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
