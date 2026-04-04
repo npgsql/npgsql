@@ -55,6 +55,15 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         return c;
     }
 
+    private protected async Task<TConnection> OpenReplicationConnectionAsync(
+        NpgsqlDataSource dataSource,
+        CancellationToken cancellationToken = default)
+    {
+        var c = (TConnection)Activator.CreateInstance(typeof(TConnection), dataSource)!;
+        await c.Open(cancellationToken);
+        return c;
+    }
+
     private protected static async Task AssertReplicationCancellation<T>(IAsyncEnumerator<T> enumerator, bool streamingStarted = true)
     {
         try

@@ -17,4 +17,10 @@ public sealed class LogicalReplicationConnection : ReplicationConnection
     /// </summary>
     /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
     public LogicalReplicationConnection(string? connectionString) : base(connectionString) {}
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="LogicalReplicationConnection"/> with the given data source.
+    /// </summary>
+    /// <param name="dataSource">The data source to use for this connection.</param>
+    public LogicalReplicationConnection(NpgsqlDataSource dataSource) : base(dataSource) {}
 }

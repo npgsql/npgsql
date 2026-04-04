@@ -26,6 +26,15 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
         await using var rc = await OpenReplicationConnectionAsync();
     }
 
+    [Test, NonParallelizable]
+    public async Task Open_with_data_source()
+    {
+        await using var dataSource = NpgsqlDataSource.Create(ConnectionString);
+        await using var rc = await OpenReplicationConnectionAsync(dataSource);
+        var info = await rc.IdentifySystem();
+        Assert.That(info.Timeline, Is.GreaterThan(0));
+    }
+
     [Test]
     public void Open_with_cancelled_token()
         => Assert.That(async () =>
@@ -44,6 +53,14 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
         }, Throws.InstanceOf<ObjectDisposedException>()
             .With.Property(nameof(ObjectDisposedException.ObjectName))
             .EqualTo(typeof(TConnection).Name));
+
+    [Test]
+    public async Task ConnectionString_cannot_be_set_when_created_with_data_source()
+    {
+        await using var dataSource = NpgsqlDataSource.Create(ConnectionString);
+        await using var rc = (TConnection)Activator.CreateInstance(typeof(TConnection), dataSource)!;
+        Assert.Throws<InvalidOperationException>(() => rc.ConnectionString = "Host=localhost");
+    }
 
     #endregion Open
 
