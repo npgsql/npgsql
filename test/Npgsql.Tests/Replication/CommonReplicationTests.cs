@@ -55,10 +55,10 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
             .EqualTo(typeof(TConnection).Name));
 
     [Test]
-    public void ConnectionString_cannot_be_set_when_created_with_data_source()
+    public async Task ConnectionString_cannot_be_set_when_created_with_data_source()
     {
-        using var dataSource = NpgsqlDataSource.Create(ConnectionString);
-        var rc = (TConnection)Activator.CreateInstance(typeof(TConnection), dataSource)!;
+        await using var dataSource = NpgsqlDataSource.Create(ConnectionString);
+        await using var rc = (TConnection)Activator.CreateInstance(typeof(TConnection), dataSource)!;
         Assert.Throws<InvalidOperationException>(() => rc.ConnectionString = "Host=localhost");
     }
 
