@@ -245,6 +245,8 @@ Npgsql.NpgsqlConnectionStringBuilder.MaxPoolSize.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.MaxPoolSize.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.MinPoolSize.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.MinPoolSize.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.Multiplexing.get -> bool
+Npgsql.NpgsqlConnectionStringBuilder.Multiplexing.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.NoResetOnClose.get -> bool
 Npgsql.NpgsqlConnectionStringBuilder.NoResetOnClose.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.NpgsqlConnectionStringBuilder() -> void
@@ -306,6 +308,8 @@ Npgsql.NpgsqlConnectionStringBuilder.Username.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.Values.get -> System.Collections.Generic.ICollection<object?>!
 Npgsql.NpgsqlConnectionStringBuilder.WriteBufferSize.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.WriteBufferSize.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingBufferThresholdBytes.get -> int
+Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingBufferThresholdBytes.set -> void
 Npgsql.NpgsqlCopyTextReader
 Npgsql.NpgsqlCopyTextReader.Cancel() -> void
 Npgsql.NpgsqlCopyTextReader.CancelAsync() -> System.Threading.Tasks.Task!
@@ -402,6 +406,28 @@ Npgsql.NpgsqlException.NpgsqlException(string? message) -> void
 Npgsql.NpgsqlException.NpgsqlException(string? message, System.Exception? innerException) -> void
 Npgsql.NpgsqlFactory
 Npgsql.NpgsqlFactory.GetService(System.Type! serviceType) -> object?
+Npgsql.NpgsqlLargeObjectManager
+Npgsql.NpgsqlLargeObjectManager.Create(uint preferredOid = 0) -> uint
+Npgsql.NpgsqlLargeObjectManager.CreateAsync(uint preferredOid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<uint>!
+Npgsql.NpgsqlLargeObjectManager.ExportRemote(uint oid, string! path) -> void
+Npgsql.NpgsqlLargeObjectManager.ExportRemoteAsync(uint oid, string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlLargeObjectManager.Has64BitSupport.get -> bool
+Npgsql.NpgsqlLargeObjectManager.ImportRemote(string! path, uint oid = 0) -> void
+Npgsql.NpgsqlLargeObjectManager.ImportRemoteAsync(string! path, uint oid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlLargeObjectManager.MaxTransferBlockSize.get -> int
+Npgsql.NpgsqlLargeObjectManager.MaxTransferBlockSize.set -> void
+Npgsql.NpgsqlLargeObjectManager.NpgsqlLargeObjectManager(Npgsql.NpgsqlConnection! connection) -> void
+Npgsql.NpgsqlLargeObjectManager.OpenRead(uint oid) -> Npgsql.NpgsqlLargeObjectStream!
+Npgsql.NpgsqlLargeObjectManager.OpenReadAsync(uint oid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlLargeObjectStream!>!
+Npgsql.NpgsqlLargeObjectManager.OpenReadWrite(uint oid) -> Npgsql.NpgsqlLargeObjectStream!
+Npgsql.NpgsqlLargeObjectManager.OpenReadWriteAsync(uint oid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlLargeObjectStream!>!
+Npgsql.NpgsqlLargeObjectManager.Unlink(uint oid) -> void
+Npgsql.NpgsqlLargeObjectManager.UnlinkAsync(uint oid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlLargeObjectStream
+Npgsql.NpgsqlLargeObjectStream.GetLengthAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+Npgsql.NpgsqlLargeObjectStream.Has64BitSupport.get -> bool
+Npgsql.NpgsqlLargeObjectStream.SeekAsync(long offset, System.IO.SeekOrigin origin, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+Npgsql.NpgsqlLargeObjectStream.SetLength(long value, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlLoggingConfiguration
 Npgsql.NpgsqlMetricsOptions
 Npgsql.NpgsqlMetricsOptions.NpgsqlMetricsOptions() -> void
@@ -1738,6 +1764,21 @@ override Npgsql.NpgsqlFactory.CreateConnectionStringBuilder() -> System.Data.Com
 override Npgsql.NpgsqlFactory.CreateDataAdapter() -> System.Data.Common.DbDataAdapter!
 override Npgsql.NpgsqlFactory.CreateDataSource(string! connectionString) -> System.Data.Common.DbDataSource!
 override Npgsql.NpgsqlFactory.CreateParameter() -> System.Data.Common.DbParameter!
+override Npgsql.NpgsqlLargeObjectStream.CanRead.get -> bool
+override Npgsql.NpgsqlLargeObjectStream.CanSeek.get -> bool
+override Npgsql.NpgsqlLargeObjectStream.CanTimeout.get -> bool
+override Npgsql.NpgsqlLargeObjectStream.CanWrite.get -> bool
+override Npgsql.NpgsqlLargeObjectStream.Close() -> void
+override Npgsql.NpgsqlLargeObjectStream.Flush() -> void
+override Npgsql.NpgsqlLargeObjectStream.Length.get -> long
+override Npgsql.NpgsqlLargeObjectStream.Position.get -> long
+override Npgsql.NpgsqlLargeObjectStream.Position.set -> void
+override Npgsql.NpgsqlLargeObjectStream.Read(byte[]! buffer, int offset, int count) -> int
+override Npgsql.NpgsqlLargeObjectStream.ReadAsync(byte[]! buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+override Npgsql.NpgsqlLargeObjectStream.Seek(long offset, System.IO.SeekOrigin origin) -> long
+override Npgsql.NpgsqlLargeObjectStream.SetLength(long value) -> void
+override Npgsql.NpgsqlLargeObjectStream.Write(byte[]! buffer, int offset, int count) -> void
+override Npgsql.NpgsqlLargeObjectStream.WriteAsync(byte[]! buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 override Npgsql.NpgsqlMultiHostDataSource.Clear() -> void
 override Npgsql.NpgsqlNestedDataReader.Close() -> void
 override Npgsql.NpgsqlNestedDataReader.Depth.get -> int
