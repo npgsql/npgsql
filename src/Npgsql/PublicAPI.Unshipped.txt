@@ -72,10 +72,12 @@ Npgsql.NpgsqlTypeLoadingOptionsBuilder
 Npgsql.NpgsqlTypeLoadingOptionsBuilder.EnableTableCompositesLoading(bool enable = true) -> Npgsql.NpgsqlTypeLoadingOptionsBuilder!
 Npgsql.NpgsqlTypeLoadingOptionsBuilder.EnableTypeLoading(bool enable = true) -> Npgsql.NpgsqlTypeLoadingOptionsBuilder!
 Npgsql.NpgsqlTypeLoadingOptionsBuilder.SetTypeLoadingSchemas(params System.Collections.Generic.IEnumerable<string!>? schemas) -> Npgsql.NpgsqlTypeLoadingOptionsBuilder!
+Npgsql.Replication.LogicalReplicationConnection.LogicalReplicationConnection(Npgsql.NpgsqlDataSource! dataSource) -> void
 Npgsql.Replication.PgOutput.ReplicationValue.GetFieldName() -> string!
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage.AbortLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
 Npgsql.Replication.PgOutput.Messages.ParallelStreamAbortMessage.AbortTimestamp.get -> System.DateTime
+Npgsql.Replication.PhysicalReplicationConnection.PhysicalReplicationConnection(Npgsql.NpgsqlDataSource! dataSource) -> void
 Npgsql.Replication.PgOutput.PgOutputProtocolVersion
 Npgsql.Replication.PgOutput.PgOutputProtocolVersion.V1 = 1 -> Npgsql.Replication.PgOutput.PgOutputProtocolVersion
 Npgsql.Replication.PgOutput.PgOutputProtocolVersion.V2 = 2 -> Npgsql.Replication.PgOutput.PgOutputProtocolVersion

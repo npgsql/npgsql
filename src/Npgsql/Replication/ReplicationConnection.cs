@@ -29,6 +29,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
     static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new(13, 0);
     static readonly Version FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode = new(10, 0);
     readonly NpgsqlConnection _npgsqlConnection;
+    readonly NpgsqlDataSource? _internalDataSource;
     readonly SemaphoreSlim _feedbackSemaphore = new(1, 1);
     string? _userFacingConnectionString;
     TimeSpan? _commandTimeout;
@@ -68,6 +69,25 @@ public abstract class ReplicationConnection : IAsyncDisposable
     private protected ReplicationConnection(string? connectionString) : this()
         => ConnectionString = connectionString;
 
+    private protected ReplicationConnection(NpgsqlDataSource dataSource)
+    {
+        ArgumentNullException.ThrowIfNull(dataSource);
+
+        if (dataSource is NpgsqlMultiHostDataSource)
+            throw new NotSupportedException("Replication is not supported with multiple hosts");
+
+        var settings = dataSource.Settings.Clone();
+        settings.Pooling = false;
+        settings.Enlist = false;
+        settings.KeepAlive = 0;
+        settings.ReplicationMode = ReplicationMode;
+
+        _internalDataSource = new UnpooledDataSource(settings, dataSource.Configuration);
+        _npgsqlConnection = NpgsqlConnection.FromDataSource(_internalDataSource);
+        _userFacingConnectionString = dataSource.ConnectionString;
+        _requestFeedbackInterval = new TimeSpan(_walReceiverTimeout.Ticks / 2);
+    }
+
     #endregion
 
     #region Properties
@@ -90,6 +110,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
         get => _userFacingConnectionString ?? string.Empty;
         set
         {
+            if (_internalDataSource is not null)
+                throw new InvalidOperationException("The connection string property can not be changed when the replication connection was created with a data source.");
+
             _userFacingConnectionString = value;
             var cs = new NpgsqlConnectionStringBuilder(value)
             {
@@ -282,6 +305,18 @@ public abstract class ReplicationConnection : IAsyncDisposable
         catch
         {
             // Dispose
+        }
+
+        if (_internalDataSource is not null)
+        {
+            try
+            {
+                await _internalDataSource.DisposeAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // Dispose
+            }
         }
 
         _isDisposed = true;

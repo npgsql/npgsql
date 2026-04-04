@@ -28,6 +28,12 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     public PhysicalReplicationConnection(string? connectionString) : base(connectionString) {}
 
     /// <summary>
+    /// Initializes a new instance of <see cref="PhysicalReplicationConnection"/> with the given data source.
+    /// </summary>
+    /// <param name="dataSource">The data source to use for this connection.</param>
+    public PhysicalReplicationConnection(NpgsqlDataSource dataSource) : base(dataSource) {}
+
+    /// <summary>
     /// Creates a <see cref="PhysicalReplicationSlot"/> that wraps a PostgreSQL physical replication slot and
     /// can be used to start physical streaming replication
     /// </summary>
