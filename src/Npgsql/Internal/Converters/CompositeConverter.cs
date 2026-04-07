@@ -217,7 +217,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
             if (AnyWriteState)
             {
-                for (var i = Data.Offset; i < array.Length; i++)
+                for (var i = Data.Offset; i < Data.Offset + Data.Count; i++)
                     if (array[i].WriteState is IDisposable disposable)
                         disposable.Dispose();
 
