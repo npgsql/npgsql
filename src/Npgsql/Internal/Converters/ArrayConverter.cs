@@ -286,16 +286,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in array)
             {
                 var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
-                if (state is not null)
+                if (state is not null && elemData is null)
                 {
-                    if (elemData is null)
-                    {
-                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    }
-
-                    elemData[index].WriteState = state;
+                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
                 }
+
+                // Always assign when elemData is allocated to avoid stale pooled array entries.
+                if (elemData is not null)
+                    elemData[index].WriteState = state;
 
                 if (result is not null)
                 {
@@ -317,16 +316,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in list)
             {
                 var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
-                if (state is not null)
+                if (state is not null && elemData is null)
                 {
-                    if (elemData is null)
-                    {
-                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    }
-
-                    elemData[index].WriteState = state;
+                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
                 }
+
+                // Always assign when elemData is allocated to avoid stale pooled array entries.
+                if (elemData is not null)
+                    elemData[index].WriteState = state;
 
                 if (result is not null)
                 {
@@ -348,16 +346,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in list)
             {
                 var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
-                if (state is not null)
+                if (state is not null && elemData is null)
                 {
-                    if (elemData is null)
-                    {
-                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    }
-
-                    elemData[index].WriteState = state;
+                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
                 }
+
+                // Always assign when elemData is allocated to avoid stale pooled array entries.
+                if (elemData is not null)
+                    elemData[index].WriteState = state;
 
                 if (result is not null)
                 {
@@ -379,16 +376,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in array)
             {
                 var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out var state);
-                if (state is not null)
+                if (state is not null && elemData is null)
                 {
-                    if (elemData is null)
-                    {
-                        elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                        elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    }
-
-                    elemData[index].WriteState = state;
+                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
                 }
+
+                // Always assign when elemData is allocated to avoid stale pooled array entries.
+                if (elemData is not null)
+                    elemData[index].WriteState = state;
 
                 if (result is not null)
                 {
