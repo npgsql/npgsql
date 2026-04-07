@@ -35,7 +35,7 @@ readonly struct ArrayConverterCore(
     PgTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
-    bool IsDbNull(object values, IterationIndices arrayIndices, ref object? writeState)
+    bool IsDbNull(object values, IterationIndices arrayIndices, object? writeState)
     {
         // This call will only skip GetSize if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
         Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
@@ -74,14 +74,8 @@ readonly struct ArrayConverterCore(
             {
                 do
                 {
-                    object? localState = null;
-                    ref var elemState = ref elemData is null ? ref localState: ref elemData[indices.IndicesSum].WriteState;
-                    if (IsDbNull(values, indices, ref elemState))
+                    if (IsDbNull(values, indices, elemData?[indices.IndicesSum].WriteState))
                         nulls++;
-
-                    // If the state was produced locally we must dispose it immediately, otherwise we'll let the outer state disposal handle it.
-                    if (localState is not null)
-                        ElementTypeInfo.DisposeWriteState(localState);
                 }
                 while (indices.TryAdvance(lastLength, metadata.DimensionLengths));
             }
@@ -256,22 +250,18 @@ readonly struct ArrayConverterCore(
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
-            var elem = !fixedSizeElements ? elemData?[offset + indices.IndicesSum] : null;
-            object? fixedSizeWriteState = null;
+            var elem = elemData?[offset + indices.IndicesSum] ?? default;
             var length = fixedSizeElements
-                ? ElemTypeDbNullable && IsDbNull(values, indices, ref fixedSizeWriteState) ? -1 : binaryRequirements.Write.Value
-                : elem.GetValueOrDefault().Size.Value;
+                ? ElemTypeDbNullable && IsDbNull(values, indices, elem.WriteState) ? -1 : binaryRequirements.Write.Value
+                : elem.Size.Value;
 
             writer.WriteInt32(length);
             if (length is not -1)
             {
                 using var _ = await writer.BeginNestedWrite(async, binaryRequirements.Write,
-                    length, fixedSizeWriteState ?? elem?.WriteState, cancellationToken).ConfigureAwait(false);
+                    length, elem.WriteState, cancellationToken).ConfigureAwait(false);
                 await elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
             }
-
-            if (fixedSizeWriteState is not null)
-                ElementTypeInfo.DisposeWriteState(fixedSizeWriteState);
         }
         while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
     }
