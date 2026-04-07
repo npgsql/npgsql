@@ -198,7 +198,7 @@ sealed class SubReadStream : Stream
         throw new NotSupportedException();
     }
 
-    public override void Flush() { }
+    public override void Flush() => ThrowIfDisposed();
 
     protected override void Dispose(bool disposing)
     {
