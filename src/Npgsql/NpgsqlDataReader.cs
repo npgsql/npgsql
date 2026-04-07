@@ -1495,7 +1495,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         var reader = PgReader;
         dataOffset = buffer is null ? 0 : dataOffset;
-        if (_isSequential && reader.CharsRead > dataOffset)
+        if (_isSequential && reader.GetCharsRead > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
         reader.StartCharsRead(checked((int)dataOffset),
@@ -1872,6 +1872,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // * If it did get initialized as resumable we only allow rereading when either of the following is true:
         //  - The op is a resumable one again
         //  - The op isn't resumable but the field is still entirely unconsumed
+        // Note: this relies on resumable reads (e.g. GetChars) always advancing ReadPosition,
+        // even when data could be serviced from the buffer, so that FieldAtStart correctly
+        // reflects whether the column has been read.
         if (_isSequential && (column > ordinal || (column == ordinal && (!reader.Resumable || (!resumableOp && !reader.FieldAtStart)))))
             ThrowInvalidSequentialSeek(column, ordinal);
 
@@ -2052,10 +2055,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         if ((uint)ordinal >= (uint)ColumnCount)
             ThrowHelper.ThrowIndexOutOfRangeException("Ordinal is out of range, value must be between 0 and {0} (exclusive).", ColumnCount);
-
-        // This may have been a stream left open by GetChars or GetBytes, if so ignore.
-        if (PgReader is { Initialized: true, Resumable: false })
-            PgReader.ThrowIfStreamActive();
 
         ref var info = ref ColumnInfoCache![ordinal];
 

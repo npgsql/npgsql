@@ -1396,7 +1396,7 @@ LANGUAGE plpgsql VOLATILE";
     }
 
     [Test]
-    public async Task GetStream_second_time_throws([Values(true, false)] bool isAsync)
+    public async Task GetStream_second_time([Values(true, false)] bool isAsync)
     {
         var expected = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
         var streamGetter = BuildStreamGetter(isAsync);
@@ -1409,8 +1409,20 @@ LANGUAGE plpgsql VOLATILE";
 
         using var stream = await streamGetter(reader, 0);
 
-        Assert.That(async () => await streamGetter(reader, 0),
-            Throws.Exception.TypeOf<InvalidOperationException>());
+        if (IsSequential)
+        {
+            Assert.That(async () => await streamGetter(reader, 0),
+                Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+        else
+        {
+            // Non-sequential: getting a second stream disposes the first and returns a fresh one.
+            using var stream2 = await streamGetter(reader, 0);
+            Assert.That(() => stream.Read(new byte[1]), Throws.TypeOf<ObjectDisposedException>());
+            var buf = new byte[8];
+            Assert.That(stream2.Read(buf), Is.EqualTo(8));
+            Assert.That(buf, Is.EqualTo(expected));
+        }
     }
 
     [Test]
@@ -1721,9 +1733,16 @@ LANGUAGE plpgsql VOLATILE";
         textReader.Read(actual, 0, 2);
         Assert.That(actual[0], Is.EqualTo(expected[0]));
         Assert.That(actual[1], Is.EqualTo(expected[1]));
-        Assert.That(async () => await textReaderGetter(reader, 0),
-            Throws.Exception.TypeOf<InvalidOperationException>(),
-            "Sequential text reader twice on same column");
+        if (IsSequential)
+        {
+            Assert.That(async () => await textReaderGetter(reader, 0),
+                Throws.Exception.TypeOf<InvalidOperationException>(),
+                "Sequential text reader twice on same column");
+        }
+        else
+        {
+            Assert.That(reader.GetChars(0, 0, actual, 4, 1), Is.EqualTo(1));
+        }
         textReader.Read(actual, 2, 1);
         Assert.That(actual[2], Is.EqualTo(expected[2]));
         textReader.Dispose();
@@ -1851,6 +1870,225 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(() => reader.GetTextReaderAsync(0), Throws.Exception.TypeOf<InvalidOperationException>());
         else
             Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public async Task GetStream_is_isolated_from_GetChars()
+    {
+        if (IsSequential)
+            return;
+
+        const string str = "ABCDEFGHIJ";
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT '{str}'", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        // GetChars on the column, then get a stream — stream should start from the beginning.
+        var charBuf = new char[5];
+        Assert.That(reader.GetChars(0, 0, charBuf, 0, 5), Is.EqualTo(5));
+        Assert.That(new string(charBuf), Is.EqualTo("ABCDE"));
+
+        await using var stream = reader.GetStream(0);
+        Assert.That(stream.CanSeek, Is.True);
+        Assert.That(stream.Length, Is.EqualTo(Encoding.UTF8.GetByteCount(str)));
+        Assert.That(stream.Position, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task GetStream_survives_reread_of_same_column()
+    {
+        if (IsSequential)
+            return;
+
+        var expected = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT {EncodeByteaHex(expected)}::bytea", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        // Get stream, read partially.
+        var stream1 = reader.GetStream(0);
+        var buf = new byte[3];
+        Assert.That(stream1.Read(buf), Is.EqualTo(3));
+        Assert.That(buf, Is.EqualTo(new byte[] { 1, 2, 3 }));
+
+        // Getting a second stream on same column disposes the first.
+        var stream2 = reader.GetStream(0);
+        Assert.That(() => stream1.Read(new byte[1]), Throws.TypeOf<ObjectDisposedException>());
+
+        // Second stream should provide the full data.
+        var buf2 = new byte[8];
+        Assert.That(stream2.Read(buf2), Is.EqualTo(8));
+        Assert.That(buf2, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public async Task GetTextReader_and_GetChars_interleaved()
+    {
+        if (IsSequential)
+            return;
+
+        const string str = "ABCDEFGHIJKLMNOP";
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT '{str}'", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        // Get a TextReader, read some chars.
+        var textReader = reader.GetTextReader(0);
+        var buf = new char[4];
+        Assert.That(textReader.Read(buf, 0, 4), Is.EqualTo(4));
+        Assert.That(new string(buf), Is.EqualTo("ABCD"));
+
+        // Now use GetChars to read from the start — should not affect the TextReader.
+        var charsBuf = new char[6];
+        Assert.That(reader.GetChars(0, 0, charsBuf, 0, 6), Is.EqualTo(6));
+        Assert.That(new string(charsBuf), Is.EqualTo("ABCDEF"));
+
+        // TextReader should still be at its original position.
+        Assert.That(textReader.Read(buf, 0, 4), Is.EqualTo(4));
+        Assert.That(new string(buf), Is.EqualTo("EFGH"));
+    }
+
+    [Test]
+    public async Task GetStream_and_GetChars_on_same_column()
+    {
+        if (IsSequential)
+            return;
+
+        const string str = "ABCDEFGHIJ";
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT '{str}'", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        // Get a stream and read partially.
+        await using var stream = reader.GetStream(0);
+        var buf = new byte[4];
+        Assert.That(stream.Read(buf), Is.EqualTo(4));
+
+        // GetChars on the same column — stream should remain valid.
+        var charBuf = new char[5];
+        Assert.That(reader.GetChars(0, 0, charBuf, 0, 5), Is.EqualTo(5));
+        Assert.That(new string(charBuf), Is.EqualTo("ABCDE"));
+
+        // Stream should still be readable from where we left off.
+        Assert.That(stream.Read(buf), Is.EqualTo(4));
+
+        // GetChars at a different offset should also work.
+        Assert.That(reader.GetChars(0, 5, charBuf, 0, 5), Is.EqualTo(5));
+        Assert.That(new string(charBuf), Is.EqualTo("FGHIJ"));
+    }
+
+    [Test]
+    public async Task GetStream_seek_with_SubReadStream()
+    {
+        if (IsSequential)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT 'abcdefgh'::bytea", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        await using var stream = reader.GetStream(0);
+        Assert.That(stream.CanSeek, Is.True);
+
+        // Read, seek back, read again — isolated from ReadPosition.
+        var buf = new byte[4];
+        Assert.That(stream.Read(buf), Is.EqualTo(4));
+
+        stream.Position = 0;
+        var buf2 = new byte[4];
+        Assert.That(stream.Read(buf2), Is.EqualTo(4));
+        Assert.That(buf2, Is.EqualTo(buf));
+
+        // Seek to end, confirm empty.
+        stream.Seek(0, SeekOrigin.End);
+        Assert.That(stream.Read(buf), Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task GetChars_after_unconsumed_GetStream()
+    {
+        if (IsSequential)
+            return;
+
+        const string str = "ABCDEFGHIJ";
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT '{str}'", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        // Get a stream but don't read from it.
+        var stream = reader.GetStream(0);
+
+        // GetChars should work — SubReadStream is isolated.
+        var charBuf = new char[5];
+        Assert.That(reader.GetChars(0, 0, charBuf, 0, 5), Is.EqualTo(5));
+        Assert.That(new string(charBuf), Is.EqualTo("ABCDE"));
+
+        // Stream is still valid.
+        var buf = new byte[3];
+        Assert.That(stream.Read(buf), Is.EqualTo(3));
+    }
+
+    [Test]
+    public async Task Multiple_GetChars_calls_after_GetTextReader()
+    {
+        if (IsSequential)
+            return;
+
+        const string str = "ABCDEFGHIJ";
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT '{str}'", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        var textReader = reader.GetTextReader(0);
+        var buf = new char[2];
+        textReader.Read(buf, 0, 2);
+        Assert.That(new string(buf), Is.EqualTo("AB"));
+
+        // Multiple GetChars calls at different offsets should all work.
+        var charBuf = new char[3];
+        Assert.That(reader.GetChars(0, 0, charBuf, 0, 3), Is.EqualTo(3));
+        Assert.That(new string(charBuf), Is.EqualTo("ABC"));
+
+        Assert.That(reader.GetChars(0, 5, charBuf, 0, 3), Is.EqualTo(3));
+        Assert.That(new string(charBuf), Is.EqualTo("FGH"));
+
+        // TextReader should still work from where it was.
+        textReader.Read(buf, 0, 2);
+        Assert.That(new string(buf), Is.EqualTo("CD"));
+    }
+
+    [Test]
+    public async Task Sequential_GetChars_advances_field_position([Values] bool fitsInBuffer)
+    {
+        // Invariant: GetChars must always advance ReadPosition (even when data is fully buffered),
+        // so that FieldAtStart correctly reflects consumption. This ensures the sequential seek
+        // guard blocks non-resumable re-reads after GetChars has consumed data.
+        // This is important for behavioral consistency across columns. As an optimization
+        // that skips ReadPosition advancement (reading from a view over the buffer) would pass the sequential seek guard.
+        if (!IsSequential)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+        var bufferSize = conn.Settings.ReadBufferSize;
+        var str = new string('x', fitsInBuffer ? 10 : bufferSize * 2);
+
+        await using var cmd = new NpgsqlCommand($"SELECT '{str}'", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
+
+        // GetChars consumes part of the column.
+        var charBuf = new char[5];
+        Assert.That(reader.GetChars(0, 0, charBuf, 0, 5), Is.EqualTo(5));
+
+        // A non-resumable read on the same column should throw — field is no longer at start.
+        Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidOperationException>());
     }
 
     #endregion GetChars / GetTextReader
