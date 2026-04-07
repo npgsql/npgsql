@@ -7,7 +7,7 @@ namespace Npgsql.Internal;
 
 sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredicate: true)
 {
-    protected override bool IsDbNullValue(object? value, ref object? writeState)
+    protected override bool IsDbNullValue(object? value, object? writeState)
     {
         var (concreteTypeInfo, effectiveState) = writeState switch
         {
@@ -16,7 +16,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
             _ => throw new InvalidOperationException("writeState cannot be null, LateBoundTypeInfoProvider is expected to pre-populate it with concrete type info.")
         };
 
-        return concreteTypeInfo.Converter.IsDbNullAsObject(value, ref effectiveState);
+        return concreteTypeInfo.Converter.IsDbNullAsObject(value, effectiveState);
     }
 
     public override object Read(PgReader reader) => throw new NotSupportedException();

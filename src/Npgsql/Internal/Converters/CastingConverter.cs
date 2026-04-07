@@ -10,7 +10,7 @@ namespace Npgsql.Internal.Converters;
 sealed class CastingConverter<T>(PgConverter effectiveConverter)
     : PgConverter<T>(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
 {
-    protected override bool IsDbNullValue(T? value, ref object? writeState) => effectiveConverter.IsDbNullAsObject(value, ref writeState);
+    protected override bool IsDbNullValue(T? value, object? writeState) => effectiveConverter.IsDbNullAsObject(value, writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => effectiveConverter.CanConvert(format, out bufferRequirements);
