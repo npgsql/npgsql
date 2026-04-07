@@ -257,7 +257,7 @@ public class PgReader
         var currentOffset = CurrentOffset;
         var currentRemaining = CurrentSize - currentOffset;
 
-        // Always make a new reader for GetChars, see GetColumnStream.
+        // Always make a new reader for untracked usage, see GetStreamCore.
         var preparedTextReader = (untracked ? null : _preparedTextReader) ?? new();
         preparedTextReader.Init(encoding.GetString(async
             ? await ReadBytesAsync(currentRemaining, cancellationToken).ConfigureAwait(false)
