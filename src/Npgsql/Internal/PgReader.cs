@@ -25,7 +25,7 @@ public class PgReader
     bool _resumable;
 
     byte[]? _pooledArray;
-    NpgsqlReadBuffer.ColumnStream? _userActiveStream;
+    Stream? _userActiveStream;
     PreparedTextReader? _preparedTextReader;
 
     long _fieldStartPos;
@@ -202,19 +202,30 @@ public class PgReader
         return result;
     }
 
-    public Stream GetStream(int? length = null) => GetColumnStream(length);
-    NpgsqlReadBuffer.ColumnStream GetColumnStream(int? length = null, bool forGetChars = false)
+    public Stream GetStream(int? length = null) => GetStreamCore(length);
+    Stream GetStreamCore(int? length = null, bool forGetChars = false)
     {
         if (length > CurrentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
 
         // This will cause any previously handed out StreamReaders etc to throw, as intended.
-        if (!forGetChars && StreamActive)
+        if (!forGetChars && UserStreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         length ??= CurrentRemaining;
-        CheckBounds(length.GetValueOrDefault());
-        var stream = _buffer.CreateStream(length.GetValueOrDefault(), StreamCanSeek && length <= _buffer.ReadBytesLeft, consumeOnDispose: false);
+        var len = length.GetValueOrDefault();
+        CheckBounds(len);
+
+        Stream stream;
+        if (StreamCanSeek && len <= _buffer.ReadBytesLeft)
+        {
+            // All data is in the buffer — return an isolated view that doesn't touch ReadPosition.
+            stream = new SubReadStream(_buffer.Buffer, _buffer.ReadPosition, len);
+        }
+        else
+        {
+            stream = _buffer.CreateStream(len, canSeek: false, consumeOnDispose: false);
+        }
 
         // GetChars isn't a user facing stream and handles its own tracking and cleanup.
         if (!forGetChars)
@@ -234,7 +245,7 @@ public class PgReader
     async ValueTask<TextReader> GetTextReader(bool async, Encoding encoding, CancellationToken cancellationToken, bool forGetChars = false)
     {
         if (CurrentRemaining > _buffer.ReadBytesLeft || CurrentRemaining > MaxPreparedTextReaderSize)
-            return new StreamReader(GetColumnStream(forGetChars: forGetChars), encoding, detectEncodingFromByteOrderMarks: false);
+            return new StreamReader(GetStreamCore(forGetChars: forGetChars), encoding, detectEncodingFromByteOrderMarks: false);
 
         if (!forGetChars && _preparedTextReader is { IsDisposed: false })
         {
@@ -377,7 +388,7 @@ public class PgReader
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to rewind past the buffer start, some of this data is no longer part of the underlying buffer.");
 
         // Shut down any streaming going on on the column
-        if (StreamActive)
+        if (UserStreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         RewindCore(count);
@@ -501,7 +512,7 @@ public class PgReader
 
     internal void EndRead()
     {
-        if (_resumable || (_requiresCleanup && StreamActive))
+        if (_resumable || (_requiresCleanup && UserStreamActive))
             return;
 
         if (_buffer.CumulativeReadPosition != _fieldEndPos)
@@ -519,7 +530,7 @@ public class PgReader
 
     internal ValueTask EndReadAsync()
     {
-        if (_resumable || (_requiresCleanup && StreamActive))
+        if (_resumable || (_requiresCleanup && UserStreamActive))
             return new();
 
         if (_buffer.CumulativeReadPosition != _fieldEndPos)
@@ -582,7 +593,7 @@ public class PgReader
         if (count > currentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
 
-        if (StreamActive)
+        if (UserStreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         var origOffset = FieldOffset;
@@ -604,7 +615,7 @@ public class PgReader
         if (count > currentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(count), "Attempt to read past the end of the current field size.");
 
-        if (StreamActive)
+        if (UserStreamActive)
             await DisposeUserActiveStream(async: true).ConfigureAwait(false);
 
         var origOffset = FieldOffset;
@@ -616,17 +627,16 @@ public class PgReader
     }
 
     [MemberNotNullWhen(true, nameof(_userActiveStream))]
-    bool StreamActive => _userActiveStream is { IsDisposed: false };
-    internal void ThrowIfStreamActive()
+    bool UserStreamActive => _userActiveStream switch
     {
-        if (StreamActive)
-            ThrowHelper.ThrowInvalidOperationException("A stream is still open for this reader");
-    }
-
+        NpgsqlReadBuffer.ColumnStream { IsDisposed: false } => true,
+        SubReadStream { IsDisposed: false } => true,
+        _ => false
+    };
     [MethodImpl(MethodImplOptions.NoInlining)]
     void Cleanup()
     {
-        if (StreamActive)
+        if (UserStreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         if (_pooledArray is not null)
