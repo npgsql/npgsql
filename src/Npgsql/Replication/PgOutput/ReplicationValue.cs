@@ -90,9 +90,79 @@ public class ReplicationValue
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns></returns>
-    public async ValueTask<T> Get<T>(CancellationToken cancellationToken = default)
+    public ValueTask<T> Get<T>(CancellationToken cancellationToken = default) => GetAsyncCore<T>(cancellationToken);
+
+    /// <summary>
+    /// Gets the value of the specified column as an instance of <see cref="object"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+    /// </param>
+    /// <returns></returns>
+    public ValueTask<object> Get(CancellationToken cancellationToken = default) => GetAsyncCore<object>(cancellationToken);
+
+    /// <summary>
+    /// Retrieves data as a <see cref="Stream"/>.
+    /// </summary>
+    public Stream GetStream() => GetCore<Stream>();
+
+    /// <summary>
+    /// Retrieves data as a <see cref="TextReader"/>.
+    /// </summary>
+    public TextReader GetTextReader() => GetCore<TextReader>();
+
+    internal async Task Consume(CancellationToken cancellationToken)
     {
-        CheckActive();
+        if (_isConsumed)
+            return;
+
+        var reader = PgReader;
+        if (!reader.Initialized)
+            reader.Init(Length, _fieldDescription.DataFormat);
+        await reader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await reader.CommitAsync().ConfigureAwait(false);
+
+        _isConsumed = true;
+    }
+
+    T GetCore<T>()
+    {
+        ThrowIfInitialized();
+
+        _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
+        var info = _lastInfo;
+
+        switch (Kind)
+        {
+        case TupleDataKind.Null:
+            // When T is a Nullable<T> (and only in that case), we support returning null
+            if (default(T) is null && typeof(T).IsValueType)
+                return default!;
+
+            if (typeof(T) == typeof(object))
+                return (T)(object)DBNull.Value;
+
+            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
+            break;
+
+        case TupleDataKind.UnchangedToastedValue:
+            throw new InvalidCastException(
+                $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
+        }
+
+        var reader = PgReader;
+        reader.Init(Length, _fieldDescription.DataFormat);
+        reader.StartRead(info.ConverterInfo.BufferRequirement);
+        var result = info.AsObject
+            ? (T)info.ConverterInfo.Converter.ReadAsObject(reader)
+            : info.ConverterInfo.Converter.UnsafeDowncast<T>().Read(reader);
+        reader.EndRead();
+        return result;
+    }
+
+    async ValueTask<T> GetAsyncCore<T>(CancellationToken cancellationToken)
+    {
+        ThrowIfInitialized();
 
         _fieldDescription.GetInfo(typeof(T), ref _lastInfo);
         var info = _lastInfo;
@@ -127,80 +197,7 @@ public class ReplicationValue
         return result;
     }
 
-    /// <summary>
-    /// Gets the value of the specified column as an instance of <see cref="object"/>.
-    /// </summary>
-    /// <param name="cancellationToken">
-    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
-    /// </param>
-    /// <returns></returns>
-    public ValueTask<object> Get(CancellationToken cancellationToken = default) => Get<object>(cancellationToken);
-
-    /// <summary>
-    /// Retrieves data as a <see cref="Stream"/>.
-    /// </summary>
-    public Stream GetStream()
-    {
-        CheckActive();
-
-        switch (Kind)
-        {
-        case TupleDataKind.Null:
-            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
-            break;
-
-        case TupleDataKind.UnchangedToastedValue:
-            throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
-        }
-
-        var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        return reader.GetStream(canSeek: false);
-    }
-
-    /// <summary>
-    /// Retrieves data as a <see cref="TextReader"/>.
-    /// </summary>
-    public TextReader GetTextReader()
-    {
-        CheckActive();
-
-        ref var info = ref _lastInfo;
-        _fieldDescription.GetInfo(typeof(TextReader), ref info);
-
-        switch (Kind)
-        {
-        case TupleDataKind.Null:
-            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
-            break;
-
-        case TupleDataKind.UnchangedToastedValue:
-            throw new InvalidCastException($"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
-        }
-
-        var reader = PgReader;
-        reader.Init(Length, _fieldDescription.DataFormat);
-        reader.StartRead(info.ConverterInfo.BufferRequirement);
-        var result = (TextReader)info.ConverterInfo.Converter.ReadAsObject(reader);
-        reader.EndRead();
-        return result;
-    }
-
-    internal async Task Consume(CancellationToken cancellationToken)
-    {
-        if (_isConsumed)
-            return;
-
-        var reader = PgReader;
-        if (!reader.Initialized)
-            reader.Init(Length, _fieldDescription.DataFormat);
-        await reader.ConsumeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        await reader.CommitAsync().ConfigureAwait(false);
-
-        _isConsumed = true;
-    }
-
-    void CheckActive()
+    void ThrowIfInitialized()
     {
         if (PgReader.Initialized)
             throw new InvalidOperationException("Column has already been consumed");
