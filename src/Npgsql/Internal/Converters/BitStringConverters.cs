@@ -229,8 +229,8 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
 /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
 sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, PgTypeId bitString) : PgConcreteTypeInfoProvider<object>
 {
-    PgConcreteTypeInfo? _boolConcreteTypeInfo;
-    PgConcreteTypeInfo? _bitArrayConcreteTypeInfo;
+    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString);
+    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => GetConcreteInfo(field: null);
@@ -242,7 +242,5 @@ sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, P
         => GetConcreteInfo(field);
 
     PgConcreteTypeInfo GetConcreteInfo(Field? field)
-        => field?.TypeModifier is 1
-            ? _boolConcreteTypeInfo ??= new(options, new BoolBitStringConverter(), bitString)
-            : _bitArrayConcreteTypeInfo ??= new(options, new BitArrayBitStringConverter(), bitString);
+        => field?.TypeModifier is 1 ? _boolConcreteTypeInfo : _bitArrayConcreteTypeInfo;
 }

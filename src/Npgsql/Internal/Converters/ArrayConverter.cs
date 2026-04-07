@@ -297,10 +297,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     elemData[index].WriteState = state;
                 }
 
-                if (concreteTypeInfo is null && result is not null)
+                if (result is not null)
                 {
-                    concreteTypeInfo = result;
-                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    if (concreteTypeInfo is null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
+                    else if (result != concreteTypeInfo)
+                        ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
                 }
 
                 index++;
@@ -323,10 +328,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     elemData[index].WriteState = state;
                 }
 
-                if (concreteTypeInfo is null && result is not null)
+                if (result is not null)
                 {
-                    concreteTypeInfo = result;
-                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    if (concreteTypeInfo is null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
+                    else if (result != concreteTypeInfo)
+                        ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
                 }
 
                 index++;
@@ -349,10 +359,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     elemData[index].WriteState = state;
                 }
 
-                if (concreteTypeInfo is null && result is not null)
+                if (result is not null)
                 {
-                    concreteTypeInfo = result;
-                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    if (concreteTypeInfo is null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
+                    else if (result != concreteTypeInfo)
+                        ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
                 }
 
                 index++;
@@ -375,10 +390,15 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     elemData[index].WriteState = state;
                 }
 
-                if (concreteTypeInfo is null && result is not null)
+                if (result is not null)
                 {
-                    concreteTypeInfo = result;
-                    effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    if (concreteTypeInfo is null)
+                    {
+                        concreteTypeInfo = result;
+                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                    }
+                    else if (result != concreteTypeInfo)
+                        ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
                 }
 
                 index++;

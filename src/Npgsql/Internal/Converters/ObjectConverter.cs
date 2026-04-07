@@ -84,12 +84,12 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
 // At that point we don't need the ObjectConverter any longer.
 sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typeId) : PgConcreteTypeInfoProvider<object>
 {
-    PgConcreteTypeInfo? _defaultConcreteTypeInfo;
+    readonly PgConcreteTypeInfo _defaultConcreteTypeInfo = new(options, new ObjectConverter(), typeId);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => pgTypeId is { } expectedId && expectedId != typeId
             ? new(options, new ObjectConverter(), expectedId)
-            : _defaultConcreteTypeInfo ??= new(options, new ObjectConverter(), typeId);
+            : _defaultConcreteTypeInfo;
 
     protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
     {

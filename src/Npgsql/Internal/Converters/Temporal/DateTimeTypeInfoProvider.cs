@@ -17,9 +17,9 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     readonly DateTimeTypeInfoProviderDelegate<T> _provider;
     readonly Func<PgTypeId, PgConverter> _factory;
     readonly PgTypeId _timestampTz;
-    PgConcreteTypeInfo? _timestampTzConcreteTypeInfo;
+    readonly PgConcreteTypeInfo _timestampTzConcreteTypeInfo;
     readonly PgTypeId _timestamp;
-    PgConcreteTypeInfo? _timestampConcreteTypeInfo;
+    readonly PgConcreteTypeInfo _timestampConcreteTypeInfo;
     readonly bool _dateTimeInfinityConversions;
 
     internal DateTimeTypeInfoProvider(PgSerializerOptions options, DateTimeTypeInfoProviderDelegate<T> provider,
@@ -31,14 +31,16 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         _timestampTz = timestampTz;
         _timestamp = timestamp;
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
+        _timestampTzConcreteTypeInfo = new(options, factory(timestampTz), timestampTz);
+        _timestampConcreteTypeInfo = new(options, factory(timestamp), timestamp);
     }
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
         if (pgTypeId == _timestampTz)
-            return _timestampTzConcreteTypeInfo ??= new(_options, _factory(_timestampTz), _timestampTz);
+            return _timestampTzConcreteTypeInfo;
         if (pgTypeId is null || pgTypeId == _timestamp)
-            return _timestampConcreteTypeInfo ??= new(_options, _factory(_timestamp), _timestamp);
+            return _timestampConcreteTypeInfo;
 
         throw new ArgumentOutOfRangeException(nameof(pgTypeId), pgTypeId, "Unsupported PgTypeId.");
     }
