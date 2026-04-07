@@ -338,7 +338,7 @@ public sealed class PgProviderTypeInfo(
             throw new InvalidOperationException($"'{methodName}' returned a {nameof(result.Converter)} of type {result.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
 
         if (expectPortableTypeIds && result.PgTypeId.IsOid || !expectPortableTypeIds && result.PgTypeId.IsDataTypeName)
-            throw new InvalidOperationException($"{methodName}' returned a concrete type info with a {nameof(result.PgTypeId)} that was not in canonical form.");
+            throw new InvalidOperationException($"'{methodName}' returned a concrete type info with a {nameof(result.PgTypeId)} that was not in canonical form.");
     }
 }
 
