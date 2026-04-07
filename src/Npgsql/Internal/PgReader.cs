@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
@@ -39,8 +40,8 @@ public class PgReader
     int _currentSize;
 
     // GetChars Internal state
-    TextReader? _charsReadReader;
-    int _charsRead;
+    TextReader? _getCharsReader;
+    int _getCharsRead;
 
     // GetChars User state
     int? _charsReadOffset;
@@ -405,7 +406,7 @@ public class PgReader
         return new();
     }
 
-    internal int CharsRead => _charsRead;
+    internal int GetCharsRead => _getCharsRead;
     internal bool CharsReadActive => _charsReadOffset is not null;
 
     internal void GetCharsReadInfo(Encoding encoding, out int charsRead, out TextReader reader, out int charsOffset, out ArraySegment<char>? buffer)
@@ -414,8 +415,9 @@ public class PgReader
             ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
         _requiresCleanup = true;
-        charsRead = _charsRead;
-        reader = _charsReadReader ??= GetTextReader(async: false, encoding, default, forGetChars: true).GetAwaiter().GetResult();
+
+        charsRead = _getCharsRead;
+        reader = _getCharsReader ??= GetTextReader(async: false, encoding, default, forGetChars: true).GetAwaiter().GetResult();
         charsOffset = _charsReadOffset ?? 0;
         buffer = _charsReadBuffer;
     }
@@ -425,7 +427,7 @@ public class PgReader
         if (!CharsReadActive)
             ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
-        switch (_charsReadReader)
+        switch (_getCharsReader)
         {
             case PreparedTextReader reader:
                 reader.Restart();
@@ -435,10 +437,13 @@ public class PgReader
                 reader.DiscardBufferedData();
                 break;
         }
-        _charsRead = 0;
+        _getCharsRead = 0;
     }
 
-    internal void AdvanceCharsRead(int charsRead) => _charsRead += charsRead;
+    internal void AdvanceCharsRead(int charsRead)
+    {
+        _getCharsRead += charsRead;
+    }
 
     internal void StartCharsRead(int dataOffset, ArraySegment<char>? buffer)
     {
@@ -630,11 +635,11 @@ public class PgReader
             _pooledArray = null;
         }
 
-        if (_charsReadReader is not null)
+        if (_getCharsReader is not null)
         {
-            _charsReadReader.Dispose();
-            _charsReadReader = null;
-            _charsRead = default;
+            _getCharsReader.Dispose();
+            _getCharsReader = null;
+            _getCharsRead = default;
         }
 
         if (_preparedTextReader is not null)

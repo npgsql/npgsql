@@ -1495,7 +1495,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         var reader = PgReader;
         dataOffset = buffer is null ? 0 : dataOffset;
-        if (_isSequential && reader.CharsRead > dataOffset)
+        if (_isSequential && reader.GetCharsRead > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
         reader.StartCharsRead(checked((int)dataOffset),
