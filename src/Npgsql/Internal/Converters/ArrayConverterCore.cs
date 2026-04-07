@@ -113,9 +113,12 @@ readonly struct ArrayConverterCore(
             Metadata = metadata,
             IterationIndices = indices
         };
-        result.ArrayPool = arrayPool;
-        result.Data = elemData!;
-        result.AnyWriteState = anyWriteState;
+        if (elemData is not null)
+        {
+            result.ArrayPool = arrayPool;
+            result.Data = new(elemData, 0, metadata.TotalElements);
+            result.AnyWriteState = anyWriteState;
+        }
         result.FixedSizeElements = fixedSizeElements;
         writeState = result;
         return size;
