@@ -9,21 +9,14 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
 {
     protected override bool IsDbNullValue(object? value, ref object? writeState)
     {
-        var concreteTypeInfo = writeState switch
+        var (concreteTypeInfo, effectiveState) = writeState switch
         {
-            PgConcreteTypeInfo info => info,
-            WriteState ws => ws.ConcreteTypeInfo,
-            _ => throw new InvalidOperationException("writeState cannot be null, ObjectTypeInfoProvider is expected to pre-populate it with concrete type info.")
+            PgConcreteTypeInfo info => (info, (object?)null),
+            WriteState ws => (ws.ConcreteTypeInfo, ws.EffectiveState),
+            _ => throw new InvalidOperationException("writeState cannot be null, LateBoundTypeInfoProvider is expected to pre-populate it with concrete type info.")
         };
 
-        object? effectiveState = null;
-        var isDbNull = concreteTypeInfo.Converter.IsDbNullAsObject(value, ref effectiveState);
-        if (writeState is WriteState s && !ReferenceEquals(s.EffectiveState, effectiveState))
-            s.EffectiveState = effectiveState;
-        else if (writeState is not null)
-            writeState = new WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };
-
-        return isDbNull;
+        return concreteTypeInfo.Converter.IsDbNullAsObject(value, ref effectiveState);
     }
 
     public override object Read(PgReader reader) => throw new NotSupportedException();
@@ -80,7 +73,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
 
-    sealed class WriteState
+    internal sealed class WriteState
     {
         public required PgConcreteTypeInfo ConcreteTypeInfo { get; init; }
         public required object? EffectiveState { get; set; }
@@ -107,7 +100,10 @@ sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typ
         }
 
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(value.GetType(), context.ExpectedPgTypeId ?? typeId, options);
-        writeState = typeInfo.GetObjectConcreteTypeInfo(value, out _);
+        var concreteTypeInfo = typeInfo.GetObjectConcreteTypeInfo(value, out var effectiveState);
+        writeState = effectiveState is not null
+            ? new ObjectConverter.WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
+            : concreteTypeInfo;
 
         return GetDefault(context.ExpectedPgTypeId);
     }
