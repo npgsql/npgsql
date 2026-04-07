@@ -219,8 +219,9 @@ public class PgReader
         Stream stream;
         if (StreamCanSeek && len <= _buffer.ReadBytesLeft)
         {
-            // All data is in the buffer — return an isolated view that doesn't touch ReadPosition.
+            // All data is in the buffer — return an isolated view over the buffer.
             stream = new SubReadStream(_buffer.Buffer, _buffer.ReadPosition, len);
+            _buffer.ReadPosition += len;
         }
         else
         {
