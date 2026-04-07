@@ -203,13 +203,13 @@ public class PgReader
     }
 
     public Stream GetStream(int? length = null) => GetStreamCore(length);
-    Stream GetStreamCore(int? length = null, bool forGetChars = false)
+    Stream GetStreamCore(int? length = null, bool untracked = false)
     {
         if (length > CurrentRemaining)
             ThrowHelper.ThrowArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
 
         // This will cause any previously handed out StreamReaders etc to throw, as intended.
-        if (!forGetChars && UserStreamActive)
+        if (!untracked && UserStreamActive)
             DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
 
         length ??= CurrentRemaining;
@@ -227,8 +227,7 @@ public class PgReader
             stream = _buffer.CreateStream(len, canSeek: false, consumeOnDispose: false);
         }
 
-        // GetChars isn't a user facing stream and handles its own tracking and cleanup.
-        if (!forGetChars)
+        if (!untracked)
         {
             _requiresCleanup = true;
             _userActiveStream = stream;
@@ -242,12 +241,12 @@ public class PgReader
     public ValueTask<TextReader> GetTextReaderAsync(Encoding encoding, CancellationToken cancellationToken)
         => GetTextReader(async: true, encoding, cancellationToken);
 
-    async ValueTask<TextReader> GetTextReader(bool async, Encoding encoding, CancellationToken cancellationToken, bool forGetChars = false)
+    async ValueTask<TextReader> GetTextReader(bool async, Encoding encoding, CancellationToken cancellationToken, bool untracked = false)
     {
         if (CurrentRemaining > _buffer.ReadBytesLeft || CurrentRemaining > MaxPreparedTextReaderSize)
-            return new StreamReader(GetStreamCore(forGetChars: forGetChars), encoding, detectEncodingFromByteOrderMarks: false);
+            return new StreamReader(GetStreamCore(untracked: untracked), encoding, detectEncodingFromByteOrderMarks: false);
 
-        if (!forGetChars && _preparedTextReader is { IsDisposed: false })
+        if (!untracked && _preparedTextReader is { IsDisposed: false })
         {
             _preparedTextReader.Dispose();
             _preparedTextReader = null;
@@ -258,11 +257,11 @@ public class PgReader
         var currentRemaining = CurrentSize - currentOffset;
 
         // Always make a new reader for GetChars, see GetColumnStream.
-        var preparedTextReader = (forGetChars ? null : _preparedTextReader) ?? new();
+        var preparedTextReader = (untracked ? null : _preparedTextReader) ?? new();
         preparedTextReader.Init(encoding.GetString(async
             ? await ReadBytesAsync(currentRemaining, cancellationToken).ConfigureAwait(false)
             : ReadBytes(currentRemaining)));
-        if (!forGetChars)
+        if (!untracked)
             _preparedTextReader = preparedTextReader;
 
         return preparedTextReader;
@@ -428,7 +427,7 @@ public class PgReader
         _requiresCleanup = true;
 
         charsRead = _getCharsRead;
-        reader = _getCharsReader ??= GetTextReader(async: false, encoding, default, forGetChars: true).GetAwaiter().GetResult();
+        reader = _getCharsReader ??= GetTextReader(async: false, encoding, default, untracked: true).GetAwaiter().GetResult();
         charsOffset = _charsReadOffset ?? 0;
         buffer = _charsReadBuffer;
     }
