@@ -23,12 +23,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
 
-#if DEBUG
-    internal static readonly bool BufferBoundsChecks = true;
-#else
-    internal static readonly bool BufferBoundsChecks = Statics.EnableAssertions;
-#endif
-
     public NpgsqlConnection Connection => Connector.Connection!;
     internal readonly NpgsqlConnector Connector;
     internal Stream Underlying { private get; set; }
@@ -68,17 +62,22 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// </summary>
     internal Encoding RelaxedTextEncoding { get; }
 
-    internal int ReadPosition { get; set; }
-    internal int ReadBytesLeft => FilledBytes - ReadPosition;
+    internal int ReadBytesLeft { get; private set; }
+    internal int ReadPosition
+    {
+        get => FilledBytes - ReadBytesLeft;
+        set => ReadBytesLeft = FilledBytes - value;
+    }
     internal PgReader PgReader { get; }
 
-    long _flushedBytes; // this will always fit at least one message.
+    // Tracks the absolute position of the end of the buffered window.
+    // Invariant: _bufferEndPosition == CumulativeReadPosition + ReadBytesLeft.
+    long _bufferEndPosition; // this will always fit at least one message.
     internal long CumulativeReadPosition
-        // Cast to uint to remove the sign extension (ReadPosition is never negative)
-        => _flushedBytes + (uint)ReadPosition;
+        => _bufferEndPosition - ReadBytesLeft;
 
     internal readonly byte[] Buffer;
-    internal int FilledBytes;
+    internal int FilledBytes { get; private set; }
 
     internal ReadOnlySpan<byte> Span => Buffer.AsSpan(ReadPosition, ReadBytesLeft);
 
@@ -124,6 +123,16 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region I/O
 
+    // Used for testing.
+    internal void AddBytesToRead(int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(FilledBytes + count, Size, nameof(count));
+        FilledBytes += count;
+        ReadBytesLeft += count;
+        _bufferEndPosition = unchecked(_bufferEndPosition + count);
+    }
+
     public void Ensure(int count)
         => Ensure(count, async: false, readingNotifications: false).GetAwaiter().GetResult();
 
@@ -141,7 +150,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             try
             {
                 var read = Underlying.Read(buffer);
-                _flushedBytes = unchecked(_flushedBytes + read);
+                _bufferEndPosition = unchecked(_bufferEndPosition + read);
                 NpgsqlEventSource.Log.BytesRead(read);
                 return read;
             }
@@ -189,7 +198,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             try
             {
                 var read = await Underlying.ReadAsync(buffer, finalCt).ConfigureAwait(false);
-                _flushedBytes = unchecked(_flushedBytes + read);
+                _bufferEndPosition = unchecked(_bufferEndPosition + read);
                 Cts.Stop();
                 NpgsqlEventSource.Log.BytesRead(read);
                 return read;
@@ -268,7 +277,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             Debug.Assert(count > buffer.ReadBytesLeft);
             count -= buffer.ReadBytesLeft;
 
-            if (buffer.ReadPosition == buffer.FilledBytes)
+            if (buffer.ReadBytesLeft == 0)
             {
                 buffer.ResetPosition();
             }
@@ -276,8 +285,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             {
                 Array.Copy(buffer.Buffer, buffer.ReadPosition, buffer.Buffer, 0, buffer.ReadBytesLeft);
                 buffer.FilledBytes = buffer.ReadBytesLeft;
-                buffer._flushedBytes = unchecked(buffer._flushedBytes + buffer.ReadPosition);
-                buffer.ReadPosition = 0;
             }
 
             var finalCt = async && buffer.Timeout != InfiniteTimeSpan
@@ -298,6 +305,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                         throw new EndOfStreamException();
                     count -= read;
                     buffer.FilledBytes += read;
+                    buffer.ReadBytesLeft += read;
+                    buffer._bufferEndPosition = unchecked(buffer._bufferEndPosition + read);
                     totalRead += read;
 
                     // Most of the time, it should be fine to reset cancellation token source, so we can use it again
@@ -417,13 +426,13 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         }
 
         Debug.Assert(ReadBytesLeft >= len);
-        ReadPosition += len;
+        ReadBytesLeft -= len;
     }
 
     internal void Skip(int len)
     {
         Debug.Assert(ReadBytesLeft >= len);
-        ReadPosition += len;
+        ReadBytesLeft -= len;
     }
 
     /// <summary>
@@ -446,7 +455,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             await Ensure(len, async).ConfigureAwait(false);
         }
 
-        ReadPosition += len;
+        ReadBytesLeft -= len;
     }
 
     #endregion
@@ -458,7 +467,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     {
         CheckBounds(sizeof(byte));
         var result = Buffer[ReadPosition];
-        ReadPosition += sizeof(byte);
+        ReadBytesLeft -= sizeof(byte);
         return result;
     }
 
@@ -469,7 +478,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<short>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<short>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(short);
+        ReadBytesLeft -= sizeof(short);
         return result;
     }
 
@@ -480,7 +489,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ushort>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<ushort>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(ushort);
+        ReadBytesLeft -= sizeof(ushort);
         return result;
     }
 
@@ -491,7 +500,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(int);
+        ReadBytesLeft -= sizeof(int);
         return result;
     }
 
@@ -502,7 +511,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<uint>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<uint>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(uint);
+        ReadBytesLeft -= sizeof(uint);
         return result;
     }
 
@@ -513,7 +522,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(long);
+        ReadBytesLeft -= sizeof(long);
         return result;
     }
 
@@ -524,7 +533,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ulong>(ref Buffer[ReadPosition]))
             : Unsafe.ReadUnaligned<ulong>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(ulong);
+        ReadBytesLeft -= sizeof(ulong);
         return result;
     }
 
@@ -535,7 +544,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BitConverter.Int32BitsToSingle(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[ReadPosition])))
             : Unsafe.ReadUnaligned<float>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(float);
+        ReadBytesLeft -= sizeof(float);
         return result;
     }
 
@@ -546,36 +555,30 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var result = BitConverter.IsLittleEndian
             ? BitConverter.Int64BitsToDouble(BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<long>(ref Buffer[ReadPosition])))
             : Unsafe.ReadUnaligned<double>(ref Buffer[ReadPosition]);
-        ReadPosition += sizeof(double);
+        ReadBytesLeft -= sizeof(double);
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckBounds(int count)
     {
-        if (BufferBoundsChecks)
-            Core(count);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        void Core(int count)
-        {
-            if (count > ReadBytesLeft)
-                ThrowHelper.ThrowInvalidOperationException("There is not enough data left in the buffer.");
-        }
+        if (count > ReadBytesLeft)
+            ThrowHelper.ThrowInvalidOperationException("There is not enough data left in the buffer.");
     }
 
     public string ReadString(int byteLen)
     {
-        Debug.Assert(byteLen <= ReadBytesLeft);
+        CheckBounds(byteLen);
         var result = TextEncoding.GetString(Buffer, ReadPosition, byteLen);
-        ReadPosition += byteLen;
+        ReadBytesLeft -= byteLen;
         return result;
     }
 
     public void ReadBytes(Span<byte> output)
     {
-        Debug.Assert(output.Length <= ReadBytesLeft);
+        CheckBounds(output.Length);
         new Span<byte>(Buffer, ReadPosition, output.Length).CopyTo(output);
-        ReadPosition += output.Length;
+        ReadBytesLeft -= output.Length;
     }
 
     public void ReadBytes(byte[] output, int outputOffset, int len)
@@ -583,9 +586,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     public ReadOnlyMemory<byte> ReadMemory(int len)
     {
-        Debug.Assert(len <= ReadBytesLeft);
+        CheckBounds(len);
         var memory = new ReadOnlyMemory<byte>(Buffer, ReadPosition, len);
-        ReadPosition += len;
+        ReadBytesLeft -= len;
         return memory;
     }
 
@@ -599,7 +602,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         if (readFromBuffer > 0)
         {
             Buffer.AsSpan(ReadPosition, readFromBuffer).CopyTo(output);
-            ReadPosition += readFromBuffer;
+            ReadBytesLeft -= readFromBuffer;
             return readFromBuffer;
         }
 
@@ -616,7 +619,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         try
         {
             var read = Underlying.Read(output);
-            _flushedBytes = unchecked(_flushedBytes + read);
+            _bufferEndPosition = unchecked(_bufferEndPosition + read);
             NpgsqlEventSource.Log.BytesRead(read);
             return read;
         }
@@ -632,7 +635,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         if (readFromBuffer > 0)
         {
             Buffer.AsSpan(ReadPosition, readFromBuffer).CopyTo(output.Span);
-            ReadPosition += readFromBuffer;
+            ReadBytesLeft -= readFromBuffer;
             return new ValueTask<int>(readFromBuffer);
         }
 
@@ -653,7 +656,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             try
             {
                 var read = await buffer.Underlying.ReadAsync(output, cancellationToken).ConfigureAwait(false);
-                buffer._flushedBytes = unchecked(buffer._flushedBytes + read);
+                buffer._bufferEndPosition = unchecked(buffer._bufferEndPosition + read);
                 NpgsqlEventSource.Log.BytesRead(read);
                 return read;
             }
@@ -701,7 +704,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         if (index >= 0)
         {
             var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, index));
-            ReadPosition += index + 1;
+            ReadBytesLeft -= index + 1;
             return result;
         }
 
@@ -709,7 +712,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
         async ValueTask<string> ReadLong(Encoding encoding, bool async)
         {
-            var chunkSize = FilledBytes - ReadPosition;
+            var chunkSize = ReadBytesLeft;
             var tempBuf = ArrayPool<byte>.Shared.Rent(chunkSize + 1024);
 
             try
@@ -717,7 +720,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                 bool foundTerminator;
                 var byteLen = chunkSize;
                 Array.Copy(Buffer, ReadPosition, tempBuf, 0, chunkSize);
-                ReadPosition += chunkSize;
+                ReadBytesLeft -= chunkSize;
 
                 do
                 {
@@ -750,7 +753,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                     ReadPosition = i;
                 } while (!foundTerminator);
 
-                ReadPosition++;
+                ReadBytesLeft--;
                 return encoding.GetString(tempBuf, 0, byteLen);
             }
             finally
@@ -765,7 +768,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         var i = Span.IndexOf((byte)0);
         Debug.Assert(i >= 0);
         var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i);
-        ReadPosition += i + 1;
+        ReadBytesLeft -= i + 1;
         return result;
     }
 
@@ -791,18 +794,19 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     void ResetPosition()
     {
-        _flushedBytes = unchecked(_flushedBytes + FilledBytes);
-        ReadPosition = 0;
+        ReadBytesLeft = 0;
         FilledBytes = 0;
     }
 
-    internal void ResetFlushedBytes() => _flushedBytes = 0;
+    internal void RebaseBufferEndPosition() => _bufferEndPosition = ReadBytesLeft;
 
     internal void CopyTo(NpgsqlReadBuffer other)
     {
         Debug.Assert(other.Size - other.FilledBytes >= ReadBytesLeft);
         Array.Copy(Buffer, ReadPosition, other.Buffer, other.FilledBytes, ReadBytesLeft);
         other.FilledBytes += ReadBytesLeft;
+        other.ReadBytesLeft += ReadBytesLeft;
+        other._bufferEndPosition = unchecked(other._bufferEndPosition + ReadBytesLeft);
     }
 
     #endregion

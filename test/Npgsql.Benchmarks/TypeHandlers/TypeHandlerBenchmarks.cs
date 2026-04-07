@@ -89,7 +89,7 @@ public abstract class TypeHandlerBenchmarks<T>
             _writer.Commit(size.Value);
 
             Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
-            _readBuffer.FilledBytes = _writeBuffer.WritePosition;
+            _readBuffer.AddBytesToRead(_writeBuffer.WritePosition);
             _readBuffer.ReadPosition = 0;
             _writeBuffer.WritePosition = 0;
 

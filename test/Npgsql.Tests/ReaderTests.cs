@@ -1862,7 +1862,7 @@ LANGUAGE plpgsql VOLATILE";
 
         await using var conn = await OpenConnectionAsync();
         var buffer = conn.Connector!.ReadBuffer;
-        buffer.FilledBytes += columnLength;
+        buffer.AddBytesToRead(columnLength);
         var reader = buffer.PgReader;
         reader.Init(columnLength, DataFormat.Binary, resumable: false);
         if (async)
