@@ -128,6 +128,29 @@ public class MetricTests : TestBase
     }
 
     [Test]
+    public async Task Pool_name_defaults_to_application_name()
+    {
+        var exportedItems = new List<Metric>();
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter("Npgsql")
+            .AddInMemoryExporter(exportedItems)
+            .Build();
+
+        var applicationName = "MetricsDataSource" + Interlocked.Increment(ref _dataSourceCounter);
+        var dataSourceBuilder = base.CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.ApplicationName = applicationName;
+        // Do not set the data source name - this makes the pool name default to the Application Name
+        await using var dataSource = dataSourceBuilder.Build();
+
+        meterProvider.ForceFlush();
+
+        var metric = exportedItems.Single(m => m.Name == "db.client.connection.max");
+        var point = GetFilteredPoints(metric.GetMetricPoints(), dataSource.Name).First();
+        var tags = ToDictionary(point.Tags);
+        Assert.That(tags["db.client.connection.pool.name"], Is.EqualTo(applicationName));
+    }
+
+    [Test]
     public async Task Password_does_not_leak_via_datasource_name([Values] bool persistSecurityInfo)
     {
         var exportedItems = new List<Metric>();
@@ -137,10 +160,9 @@ public class MetricTests : TestBase
             .Build();
 
         var dataSourceBuilder = base.CreateDataSourceBuilder();
-        dataSourceBuilder.ConnectionStringBuilder.ApplicationName = "MetricsDataSource" + Interlocked.Increment(ref _dataSourceCounter);
         dataSourceBuilder.ConnectionStringBuilder.PersistSecurityInfo = persistSecurityInfo;
-        // Do not set the data source name - this makes it default to the connection string, but without
-        // the password (even when Persist Security Info is true)
+        // Do not set the data source name or the application name - this makes the pool name default to the
+        // connection string, but without the password (even when Persist Security Info is true)
         await using var dataSource = dataSourceBuilder.Build();
 
         meterProvider.ForceFlush();
