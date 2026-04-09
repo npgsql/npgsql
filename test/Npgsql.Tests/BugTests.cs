@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.Internal.Postgres;
+using Npgsql.Schema;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -1346,6 +1347,40 @@ $$;");
 
         Assert.DoesNotThrowAsync(stream.FlushAsync);
         Assert.DoesNotThrow(stream.Flush);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5491")]
+    public async Task ColumnSchemaGenerator_PartitionedTables()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await conn.ExecuteNonQueryAsync(
+            """
+            CREATE TABLE public."EventLog" (
+                "Id" integer NOT NULL,
+                "EventDate" timestamp without time zone NOT NULL,
+                "UserName" character varying(500)
+            ) PARTITION BY RANGE ("EventDate");
+
+            CREATE SEQUENCE public."EventLog_Id_seq"
+                START WITH 1
+                INCREMENT BY 1
+                NO MINVALUE
+                NO MAXVALUE
+                CACHE 1;
+
+            ALTER SEQUENCE public."EventLog_Id_seq" OWNED BY public."EventLog"."Id";
+            ALTER TABLE public."EventLog" ALTER COLUMN "Id" SET DEFAULT nextval('public."EventLog_Id_seq"'::regclass);
+            ALTER TABLE public."EventLog" ADD CONSTRAINT "PK_EventLog" PRIMARY KEY ("Id", "EventDate");
+            """);
+
+        var dataSet = new DataSet();
+        using var adapter = new NpgsqlDataAdapter("SELECT * FROM public.\"EventLog\"", conn);
+        adapter.FillSchema(dataSet, SchemaType.Source, "EventLog");
+        var columnIdMetadata = dataSet.Tables["EventLog"]?.Columns["Id"];
+
+        Assert.NotNull(columnIdMetadata);
+        Assert.AreEqual(false, columnIdMetadata.AllowDBNull);
+        Assert.AreEqual(true, columnIdMetadata.AutoIncrement);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6389")]
