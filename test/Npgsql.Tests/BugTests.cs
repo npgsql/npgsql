@@ -1371,7 +1371,7 @@ $$;");
         adapter.FillSchema(dataSet, SchemaType.Source, table);
 
         var columnIdMetadata = dataSet.Tables[table]?.Columns["Id"];
-        var columnUserNameMetadata = dataSet.Tables[table]?.Columns["Id"];
+        var columnUserNameMetadata = dataSet.Tables[table]?.Columns["UserName"];
 
         Assert.NotNull(columnIdMetadata);
         Assert.AreEqual(false, columnIdMetadata.AllowDBNull);
