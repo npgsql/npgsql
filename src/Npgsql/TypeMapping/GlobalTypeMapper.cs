@@ -175,7 +175,9 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeInfoResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, _jsonSerializerOptions));
+        // Use a re-entered lock to add the read of _jsonSerializerOptions to the total scope.
+        lock (_sync)
+            AddTypeInfoResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, _jsonSerializerOptions));
         return this;
     }
 
