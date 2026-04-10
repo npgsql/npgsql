@@ -583,6 +583,7 @@ public sealed partial class NpgsqlConnector
             if (activity is not null)
                 NpgsqlActivitySource.SetException(activity, e);
             Break(e, markHostAsOfflineOnConnecting: true);
+            FullCleanup();
             throw;
         }
 
@@ -2498,7 +2499,7 @@ public sealed partial class NpgsqlConnector
 
                 var connection = Connection;
 
-                FullCleanup();
+                Cleanup();
 
                 if (connection is not null)
                 {

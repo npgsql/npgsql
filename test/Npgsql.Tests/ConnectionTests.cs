@@ -1596,6 +1596,7 @@ CREATE TABLE record ()");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6427")]
+    [Platform(Include = "Win")] // Hangs on linux and mac when server closes the socket
     public async Task Gss_encryption_retry_does_not_clear_pool()
     {
         if (IsMultiplexing)
@@ -1603,23 +1604,47 @@ CREATE TABLE record ()");
 
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            GssEncryptionMode = GssEncryptionMode.Prefer
+            GssEncryptionMode = GssEncryptionMode.Prefer,
+            NoResetOnClose = false
         };
         // Break connection on gss encryption request to force the client to create a new connection and retry again
         // This emulates the behavior of older versions of PostgreSQL or its forks, like Supabase
         await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString, breakOnGssEncryptionRequest: true);
         await using var dataSource = CreateDataSource(postmaster.ConnectionString);
 
+        PgServerMock server;
+
         int processID;
         await using (var conn = await dataSource.OpenConnectionAsync())
         {
             processID = conn.ProcessID;
+
+            // The next connection request isn't valid because it was retried
+            await postmaster.SkipNextConnection();
+
+            var queryTask = conn.ExecuteNonQueryAsync("SELECT 1");
+
+            server = await postmaster.WaitForServerConnection();
+            await server.ExpectExtendedQuery();
+            await server.WriteScalarResponseAndFlush(1);
+            await queryTask;
         }
 
         // The second time we get a connection from the pool we should ge the exact same connection
         await using (var conn = await dataSource.OpenConnectionAsync())
         {
             Assert.That(conn.ProcessID, Is.EqualTo(processID));
+
+            var queryTask = conn.ExecuteNonQueryAsync("SELECT 1");
+
+            // We do not set NoResetOnClose=true on connection string to test query behavior after connection retry
+            await server.ExpectSimpleQuery("DISCARD ALL");
+            await server.ExpectExtendedQuery();
+            server
+                .WriteCommandComplete()
+                .WriteReadyForQuery();
+            await server.WriteScalarResponseAndFlush(1);
+            await queryTask;
         }
     }
 
