@@ -159,6 +159,7 @@ class PgPostmasterMock : IAsyncDisposable
             {
                 readBuffer.Dispose();
                 writeBuffer.Dispose();
+                stream.Close(TimeSpan.FromSeconds(1));
                 await stream.DisposeAsync();
                 return default;
             }

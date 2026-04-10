@@ -1536,7 +1536,6 @@ CREATE TABLE record ()");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6427")]
-    [Ignore("Hangs on linux?")]
     public async Task Gss_encryption_retry_does_not_clear_pool()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
