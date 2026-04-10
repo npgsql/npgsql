@@ -1371,14 +1371,20 @@ $$;");
         adapter.FillSchema(dataSet, SchemaType.Source, table);
 
         var columnIdMetadata = dataSet.Tables[table]?.Columns["Id"];
+        var columnEventDateMetadata = dataSet.Tables[table]?.Columns["EventDate"];
         var columnUserNameMetadata = dataSet.Tables[table]?.Columns["UserName"];
 
         Assert.NotNull(columnIdMetadata);
         Assert.AreEqual(false, columnIdMetadata.AllowDBNull);
         Assert.AreEqual(true, columnIdMetadata.AutoIncrement);
 
+        Assert.NotNull(columnEventDateMetadata);
+        Assert.AreEqual(false, columnEventDateMetadata.AllowDBNull);
+        Assert.AreEqual(false, columnEventDateMetadata.AutoIncrement);
+
         Assert.NotNull(columnUserNameMetadata);
         Assert.AreEqual(true, columnUserNameMetadata.AllowDBNull);
+        Assert.AreEqual(false, columnUserNameMetadata.AutoIncrement);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6389")]
