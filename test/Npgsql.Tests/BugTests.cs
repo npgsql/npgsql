@@ -1369,8 +1369,8 @@ $$;");
 
         var dataSet = new DataSet();
         using var adapter = new NpgsqlDataAdapter($"SELECT * FROM {table}", conn);
-        adapter.FillSchema(dataSet, SchemaType.Source, "EventLog");
-        var columnIdMetadata = dataSet.Tables["EventLog"]?.Columns["Id"];
+        adapter.FillSchema(dataSet, SchemaType.Source, table);
+        var columnIdMetadata = dataSet.Tables[table]?.Columns["Id"];
 
         Assert.NotNull(columnIdMetadata);
         Assert.AreEqual(false, columnIdMetadata.AllowDBNull);
