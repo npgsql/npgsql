@@ -237,6 +237,8 @@ class PgPostmasterMock : IAsyncDisposable
         return serverOrCancellationRequest.CancellationRequest;
     }
 
+    internal async ValueTask SkipNextConnection() => await _pendingRequestsReader.ReadAsync();
+
     public async ValueTask DisposeAsync()
     {
         var endpoint = _socket.LocalEndPoint as IPEndPoint;
