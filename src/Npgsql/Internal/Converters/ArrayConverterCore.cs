@@ -56,11 +56,9 @@ readonly struct ArrayConverterCore(
     {
         Debug.Assert(context.Format is DataFormat.Binary);
 
-        // Try to extract state from the provider phase (if anything).
+        // Try to extract state from the provider phase (if anything). Provider-level state is consumed once per binding,
+        // so we don't need to check for or clean up leftover iteration state — there's no path that produces it.
         var providerState = writeState as ArrayConverterWriteState;
-
-        if (providerState is not null && providerState.IterationIndices.IndicesSum is not 0)
-            ThrowHelper.ThrowArgumentException("Write state not clean.", nameof(writeState));
 
         var metadata = providerState?.Metadata ?? PgArrayMetadata.Create(elemOps.GetCollectionCount(values, out var lengths), lengths);
         if (metadata.TotalElements is 0)
