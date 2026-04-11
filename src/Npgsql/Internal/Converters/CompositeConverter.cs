@@ -152,15 +152,19 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        if (writer.Current.WriteState is not null and not WriteState)
-            throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
+        var writeState = writer.Current.WriteState switch
+        {
+            WriteState ws => ws,
+            null when _bufferRequirements.Write.Kind is SizeKind.Exact => null,
+            null => throw new InvalidOperationException("Composite Write requires per-field data from GetSize when any field is variable-size."),
+            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.")
+        };
 
         if (writer.ShouldFlush(sizeof(int)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
         writer.WriteInt32(_composite.Fields.Count);
 
-        var writeState = writer.Current.WriteState as WriteState;
         var boxedInstance = writeState?.BoxedInstance ?? value;
         var data = writeState?.Data.Array;
         for (var i = 0; i < _composite.Fields.Count; i++)
