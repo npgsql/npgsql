@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,18 +29,26 @@ public abstract class PgConverter
 
     internal abstract Type TypeToConvert { get; }
 
-    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, ref object? writeState)
+    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, object? writeState)
         => DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
-            DbNullPredicate.Custom => IsDbNullValueAsObject(value, ref writeState) || (value is null && ThrowInvalidNullValue()),
+            DbNullPredicate.Custom => IsDbNullValueAsObject(value, writeState) || (value is null && ThrowInvalidNullValue()),
             _ => ThrowDbNullPredicateOutOfRange()
         };
 
-    private protected abstract bool IsDbNullValueAsObject(object? value, ref object? writeState);
+    [Obsolete("Use the overload without ref.")]
+    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, ref object? writeState)
+        => IsDbNullAsObject(value, writeState);
+
+    private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
+
+    [Obsolete("Use the overload without ref.")]
+    private protected bool IsDbNullValueAsObject(object? value, ref object? writeState)
+        => IsDbNullValueAsObject(value, writeState);
 
     internal abstract Size GetSizeAsObject(SizeContext context, object value, ref object? writeState);
 
@@ -94,23 +103,46 @@ public abstract class PgConverter<T> : PgConverter
     private protected PgConverter(bool customDbNullPredicate)
         : base(typeof(T), default(T) is null, customDbNullPredicate) { }
 
+#pragma warning disable CS0618 // Obsolete - delegates to ref overload for binary compat with existing overrides
+    protected virtual bool IsDbNullValue(T? value, object? writeState)
+    {
+        // The obsolete ref overload is kept around for binary compatibility on the signature, but
+        // mutating writeState during a null probe is no longer a supported behaviour. Detect the
+        // mutation via a local captured before the forward and throw — a violating override is a
+        // bug in the derived converter, not something to defend against here.
+        var originalWriteState = writeState;
+        var isDbNull = IsDbNullValue(value, ref writeState);
+        if (!ReferenceEquals(writeState, originalWriteState))
+            ThrowHelper.ThrowInvalidOperationException(
+                $"{GetType().FullName} mutated writeState from its IsDbNullValue override. Override the overload without ref and produce write state only in GetSize.");
+        return isDbNull;
+    }
+#pragma warning restore CS0618
+
+    [Obsolete("Use the overload without ref.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     protected virtual bool IsDbNullValue(T? value, ref object? writeState) => throw new NotSupportedException();
 
     // Object null semantics as follows, if T is a struct (so excluding nullable) report false for null values, don't throw on the cast.
     // As a result this creates symmetry with IsDbNull when we're dealing with a struct T, as it cannot be passed null at all.
-    private protected override bool IsDbNullValueAsObject(object? value, ref object? writeState)
-        => (default(T) is null || value is not null) && IsDbNullValue((T?)value, ref writeState);
+    private protected override bool IsDbNullValueAsObject(object? value, object? writeState)
+        => (default(T) is null || value is not null) && IsDbNullValue((T?)value, writeState);
 
-    public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
+    public bool IsDbNull([NotNullWhen(false)] T? value, object? writeState)
         => DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
             DbNullPredicate.PolymorphicNull => value is null or DBNull,
             // We do the null check to keep the NotNullWhen(false) invariant.
-            DbNullPredicate.Custom => IsDbNullValue(value, ref writeState) || (value is null && ThrowInvalidNullValue()),
+            DbNullPredicate.Custom => IsDbNullValue(value, writeState) || (value is null && ThrowInvalidNullValue()),
             _ => ThrowDbNullPredicateOutOfRange()
         };
+
+    [Obsolete("Use the overload without ref.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
+        => IsDbNull(value, writeState);
 
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
@@ -129,7 +161,7 @@ static class PgConverterExtensions
 {
     public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {
-        if (converter.IsDbNull(value, ref writeState))
+        if (converter.IsDbNull(value, writeState))
             return null;
 
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
@@ -152,7 +184,7 @@ static class PgConverterExtensions
 
     public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
     {
-        if (converter.IsDbNullAsObject(value, ref writeState))
+        if (converter.IsDbNullAsObject(value, writeState))
             return null;
 
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
@@ -190,9 +222,9 @@ public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
 
 class MultiWriteState : IDisposable
 {
-    public required ArrayPool<(Size Size, object? WriteState)>? ArrayPool { get; init; }
-    public required ArraySegment<(Size Size, object? WriteState)> Data { get; init; }
-    public required bool AnyWriteState { get; init; }
+    public ArrayPool<(Size Size, object? WriteState)>? ArrayPool { get; set; }
+    public ArraySegment<(Size Size, object? WriteState)> Data { get; set; }
+    public bool AnyWriteState { get; set; }
 
     public void Dispose()
     {
@@ -201,7 +233,7 @@ class MultiWriteState : IDisposable
 
         if (AnyWriteState)
         {
-            for (var i = Data.Offset; i < array.Length; i++)
+            for (var i = Data.Offset; i < Data.Offset + Data.Count; i++)
                 if (array[i].WriteState is IDisposable disposable)
                     disposable.Dispose();
 

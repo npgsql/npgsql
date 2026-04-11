@@ -10,7 +10,7 @@ sealed class VersionPrefixedTextConverter<T>(byte versionPrefix, PgConverter<T> 
 {
     BufferRequirements _innerRequirements;
 
-    protected override bool IsDbNullValue(T? value, ref object? writeState) => textConverter.IsDbNull(value, ref writeState);
+    protected override bool IsDbNullValue(T? value, object? writeState) => textConverter.IsDbNull(value, writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => VersionPrefixedTextConverter.CanConvert(textConverter, format, out _innerRequirements, out bufferRequirements);

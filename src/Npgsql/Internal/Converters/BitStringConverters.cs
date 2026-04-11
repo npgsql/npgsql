@@ -225,15 +225,23 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
     }
 }
 
-/// Note that for BIT(1), this resolver will return a bool by default, to align with SqlClient
-/// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
-sealed class PolymorphicBitStringConverterResolver(PgTypeId bitString) : PolymorphicConverterResolver<object>(bitString)
+/// For BIT(1) columns specifically (read from a field with TypeModifier == 1), this provider returns a bool converter
+/// to align with SqlClient (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
+/// Otherwise we return a BitArray converter. Polymorphic writing through this provider is not supported.
+sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, PgTypeId bitString) : PgConcreteTypeInfoProvider<object>
 {
-    BoolBitStringConverter? _boolConverter;
-    BitArrayBitStringConverter? _bitArrayConverter;
+    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString);
+    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString);
 
-    protected override PgConverter Get(Field? field)
-        => field?.TypeModifier is 1
-            ? _boolConverter ??= new BoolBitStringConverter()
-            : _bitArrayConverter ??= new BitArrayBitStringConverter();
+    protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
+        => GetConcreteInfo(field: null);
+
+    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
+        => throw new NotSupportedException("Polymorphic writing is not supported.");
+
+    protected override PgConcreteTypeInfo GetForFieldCore(Field field)
+        => GetConcreteInfo(field);
+
+    PgConcreteTypeInfo GetConcreteInfo(Field? field)
+        => field?.TypeModifier is 1 ? _boolConcreteTypeInfo : _bitArrayConcreteTypeInfo;
 }
