@@ -26,7 +26,7 @@ abstract class CompositeFieldInfo
         PgTypeId = nominalPgTypeId;
 
         if (typeInfo.PgTypeId is null)
-            throw new ArgumentException("Type info cannot have an undecided PgTypeId.", nameof(typeInfo));
+            ThrowHelper.ThrowArgumentException("Type info cannot have an undecided PgTypeId.", nameof(typeInfo));
 
         if (typeInfo is PgConcreteTypeInfo concreteTypeInfo)
         {
@@ -129,14 +129,14 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         : base(name, typeInfo, nominalPgTypeId)
     {
         if (typeInfo.Type != typeof(T))
-            throw new InvalidOperationException($"PgTypeInfo type '{typeInfo.Type.FullName}' must be equal to field type '{typeof(T)}'.");
+            ThrowHelper.ThrowInvalidOperationException($"PgTypeInfo type '{typeInfo.Type.FullName}' must be equal to field type '{typeof(T)}'.");
 
         if (typeInfo is PgConcreteTypeInfo concreteTypeInfo)
         {
             var typeToConvert = concreteTypeInfo.Converter.TypeToConvert;
             _asObject = typeToConvert != typeof(T);
             if (!typeToConvert.IsAssignableFrom(typeof(T)))
-                throw new InvalidOperationException($"Converter type '{typeToConvert.FullName}' must be assignable from field type '{typeof(T)}'.");
+                ThrowHelper.ThrowInvalidOperationException($"Converter type '{typeToConvert.FullName}' must be assignable from field type '{typeof(T)}'.");
         }
 
         _getter = getter;
@@ -166,7 +166,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     public void Set(object instance, T value)
     {
         if (_setter is null)
-            throw new InvalidOperationException("Not a composite field for a clr field.");
+            ThrowHelper.ThrowInvalidOperationException("Not a composite field for a clr field.");
 
         _setter(instance, value);
     }
@@ -174,7 +174,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     public override void Set(object instance, StrongBox value)
     {
         if (_setter is null)
-            throw new InvalidOperationException("Not a composite field for a clr field.");
+            ThrowHelper.ThrowInvalidOperationException("Not a composite field for a clr field.");
 
         _setter(instance, ((Util.StrongBox<T>)value).TypedValue!);
     }
@@ -182,7 +182,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     public override void ReadDbNull(CompositeBuilder builder)
     {
         if (default(T) != null)
-            throw new InvalidCastException($"Type {typeof(T).FullName} does not have null as a possible value.");
+            ThrowHelper.ThrowInvalidCastException($"Type {typeof(T).FullName} does not have null as a possible value.");
 
         builder.AddValue((T?)default);
     }
