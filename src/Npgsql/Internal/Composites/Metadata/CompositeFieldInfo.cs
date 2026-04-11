@@ -47,6 +47,7 @@ abstract class CompositeFieldInfo
         }
         else
         {
+            ThrowHelper.ThrowInvalidOperationException($"Unsupported {nameof(PgTypeInfo)} '{typeInfo.GetType().FullName}' for composite field '{name}'.");
             return;
         }
 

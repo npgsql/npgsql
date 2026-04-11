@@ -103,8 +103,20 @@ public abstract class PgConverter<T> : PgConverter
     private protected PgConverter(bool customDbNullPredicate)
         : base(typeof(T), default(T) is null, customDbNullPredicate) { }
 
-#pragma warning disable CS0618 // Obsolete - delegates to ref overload for backwards compat with existing overrides
-    protected virtual bool IsDbNullValue(T? value, object? writeState) => IsDbNullValue(value, ref writeState);
+#pragma warning disable CS0618 // Obsolete - delegates to ref overload for binary compat with existing overrides
+    protected virtual bool IsDbNullValue(T? value, object? writeState)
+    {
+        // The obsolete ref overload is kept around for binary compatibility on the signature, but
+        // mutating writeState during a null probe is no longer a supported behaviour. Detect the
+        // mutation via a local captured before the forward and throw — a violating override is a
+        // bug in the derived converter, not something to defend against here.
+        var originalWriteState = writeState;
+        var isDbNull = IsDbNullValue(value, ref writeState);
+        if (!ReferenceEquals(writeState, originalWriteState))
+            ThrowHelper.ThrowInvalidOperationException(
+                $"{GetType().FullName} mutated writeState from its IsDbNullValue override. Override the overload without ref and produce write state only in GetSize.");
+        return isDbNull;
+    }
 #pragma warning restore CS0618
 
     [Obsolete("Use the overload without ref.")]

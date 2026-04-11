@@ -149,19 +149,17 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 var field = _composite.Fields[i];
                 var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
 
-                // No state to carry forward — Write's Path A will resolve this field via
-                // GetDefaultWriteInfo, which returns the same converter by virtue of providers being
-                // keyed on a decided PgTypeId (one default per id). No allocation needed for this slot.
-                if (fieldState is null)
+                // Skip populating the slot when the provider produced no state and the resolved converter is the same as the default.
+                // The common case — DateTime-kind and similar pure-validation providers — satisfies both and pays no slot allocation.
+                // A provider that happens to return a non-default concrete for a decided id still has its
+                // converter captured so Write uses it instead of demoting silently to the default.
+                if (fieldState is null && ReferenceEquals(converter, field.GetDefaultWriteInfo(out _)))
                     continue;
 
-                // First state-producing field: rent the array and clear the stale slots left behind
-                // by the previous pool user. Slots we skipped (and slots for later fields that also
-                // produce no state) stay default; Write detects default slots via Converter being
-                // null and takes Path A per-slot.
                 if (data is null)
                 {
                     data = ArrayPool<ElementState>.Shared.Rent(_composite.Fields.Count);
+                    // clear any stale slots left behind by the previous pool user.
                     Array.Clear(data, 0, _composite.Fields.Count);
                 }
 
@@ -232,14 +230,13 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
     {
         // Null state is legitimate in two cases:
         //   1. Exact-size composite — GetSize was skipped entirely. By construction of the combine pass
-        //      this means no provider field, no variable field, no nullable field, so Path A below can
-        //      resolve every field inline and compute sizes from the buffer requirements directly.
+        //      this means no provider field, no variable field, no nullable field.
         //   2. Clamped-by-provider composite — GetSize ran but every field's provider produced null
         //      state, so we skipped the WriteState allocation. All fields are individually fixed-size
-        //      (that's what _writeSizePrecomputed.Kind is Exact guarantees), so Path A works the same
+        //      (that's what _writeSizePrecomputed.Kind is Exact guarantees), so it works the same
         //      way and resolution is just re-done via cached provider dispatch.
-        // Variable-size composites must always arrive with a populated WriteState — Path A can't recover
-        // per-field value-dependent sizes.
+        // Variable-size composites must always arrive with a populated WriteState, we can't recover
+        // per-field value-dependent sizes otherwise.
         var writeState = writer.Current.WriteState switch
         {
             WriteState ws => ws,
@@ -265,10 +262,10 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var field = _composite.Fields[i];
             writer.WriteAsOid(field.PgTypeId);
 
-            // Path A (no cached slot) uses GetDefaultWriteInfo which is stateless by construction,
-            // so there is nothing to dispose on this path — per-value resolution, if it was needed,
-            // already ran at bind-time GetSize and would have populated the slot, routing us through
-            // Path B instead. A slot with a null Converter is a default(ElementState) left behind by
+            // No cached slot: uses GetDefaultWriteInfo which is stateless by construction,
+            // so there is nothing to dispose on this path. Per-value resolution, if it was needed,
+            // already ran at bind-time GetSize and would have populated the slot
+            // A slot with a null Converter is a default(ElementState) left behind by
             // GetSize's lazy-rent: fields walked before the first state-producing provider aren't
             // back-filled, and Write handles them per-slot the same way a fully-unallocated data
             // array is handled in the truly-exact case.
@@ -321,9 +318,6 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                     if (array[i].WriteState is IDisposable disposable)
                         disposable.Dispose();
 
-            // Always clear populated slots before returning — even without disposable state they hold
-            // Converter and BufferRequirement references that would otherwise linger in the pooled
-            // array between uses.
             Array.Clear(array, Data.Offset, Data.Count);
             ArrayPool?.Return(array);
         }

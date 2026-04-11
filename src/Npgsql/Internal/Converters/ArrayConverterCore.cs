@@ -38,8 +38,13 @@ readonly struct ArrayConverterCore(
     bool IsDbNull(object values, IterationIndices arrayIndices, object? writeState)
     {
         // This call will only skip GetSize if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
+        // Fixed-size element converters cannot produce per-value write state, so GetSizeOrDbNull must
+        // leave writeState alone — any mutation is a contract violation in the element converter.
         Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
-        return elemOps.GetSizeOrDbNull(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
+        var originalWriteState = writeState;
+        var isDbNull = elemOps.GetSizeOrDbNull(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
+        Debug.Assert(ReferenceEquals(writeState, originalWriteState), "Fixed-size element converter mutated writeState during a null probe.");
+        return isDbNull;
     }
 
     // Sizes a single element, accumulates into running size/anyWriteState, and returns the per-slot Size (-1 sentinel for NULL).
