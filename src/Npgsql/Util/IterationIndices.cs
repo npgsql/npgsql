@@ -28,6 +28,9 @@ struct IterationIndices
         if (lastIndex < lastCount - 1)
         {
             lastIndex++;
+            // For Rank > 1 _indicesSum is a linear element counter independent from Many[^1], so we need to advance it explicitly.
+            if (Many is not null)
+                _indicesSum++;
             return true;
         }
 
@@ -78,13 +81,9 @@ struct IterationIndices
 
     public void Reset()
     {
-        if (Many is null)
-        {
-            _indicesSum = 0;
-            return;
-        }
-
-        Array.Clear(Many);
+        _indicesSum = 0;
+        if (Many is not null)
+            Array.Clear(Many);
     }
 
     public static IterationIndices Create(int dimensions)
