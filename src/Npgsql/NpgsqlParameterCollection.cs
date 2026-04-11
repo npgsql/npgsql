@@ -760,11 +760,17 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 break;
             }
 
-            p.ResolveTypeInfo(reloadableState.SerializerOptions, reloadableState.DbTypeResolver);
-
-            if (validateValues)
+            try
             {
-                p.Bind(out _, out _);
+                p.ResolveTypeInfo(reloadableState.SerializerOptions, reloadableState.DbTypeResolver);
+                if (validateValues)
+                    p.Bind(out _, out _);
+            }
+            finally
+            {
+                // In SchemaOnly mode Bind is skipped, so dispose the write state that ResolveTypeInfo produced.
+                if (!validateValues)
+                    p.DisposeResolutionWriteState();
             }
         }
     }

@@ -691,6 +691,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         return typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState);
     }
 
+    /// Dispose write state produced during ResolveTypeInfo when Bind won't follow (e.g. SchemaOnly).
+    internal void DisposeResolutionWriteState()
+    {
+        if (_writeState is { } ws)
+        {
+            _writeState = null;
+            TypeInfo?.DisposeWriteState(ws);
+        }
+    }
+
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
     internal void Bind(out DataFormat format, out Size size, DataFormat? requiredFormat = null)
     {
