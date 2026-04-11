@@ -760,16 +760,23 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 break;
             }
 
+            // Resolution can produce a provider-level write state that normally gets consumed by Bind.
+            // If Bind is skipped (SchemaOnly) or either step throws, that state needs to be cleaned up
+            // here. wasBound tracks whether Bind completed successfully and took ownership; every other
+            // exit path (SchemaOnly, ResolveTypeInfo throws, Bind throws) disposes.
+            var wasBound = false;
             try
             {
                 p.ResolveTypeInfo(reloadableState.SerializerOptions, reloadableState.DbTypeResolver);
                 if (validateValues)
+                {
                     p.Bind(out _, out _);
+                    wasBound = true;
+                }
             }
             finally
             {
-                // In SchemaOnly mode Bind is skipped, so dispose the write state that ResolveTypeInfo produced.
-                if (!validateValues)
+                if (!wasBound)
                     p.DisposeResolutionWriteState();
             }
         }

@@ -74,10 +74,19 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
 
-    internal sealed class WriteState
+    internal sealed class WriteState : IDisposable
     {
         public required PgConcreteTypeInfo ConcreteTypeInfo { get; init; }
         public required object? EffectiveState { get; set; }
+
+        // EffectiveState may hold a pooled WriteState from the underlying concrete converter
+        // (composite, array, etc.). The outer DisposeWriteState on PgTypeInfo only sees this
+        // wrapper, so the wrapper is responsible for cascading disposal to the inner state.
+        public void Dispose()
+        {
+            if (EffectiveState is IDisposable disposable)
+                disposable.Dispose();
+        }
     }
 }
 
