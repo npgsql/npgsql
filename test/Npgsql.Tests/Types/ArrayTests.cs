@@ -155,7 +155,7 @@ SELECT onedim, twodim FROM (VALUES
     [TestCase(ArrayNullabilityMode.Always)]
     [TestCase(ArrayNullabilityMode.Never)]
     [TestCase(ArrayNullabilityMode.PerInstance)]
-    public async Task Value_type_array_nullabilities_converter_resolver(ArrayNullabilityMode mode)
+    public async Task Value_type_array_nullabilities_type_info_provider(ArrayNullabilityMode mode)
     {
         await using var dataSource = CreateDataSource(csb =>
         {

@@ -80,7 +80,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 matchedType is null ? null : matchedType == typeof(object) ? matchedType : matchedType.GetGenericArguments()[0],
                 options.ToCanonicalTypeId(rangeType.Subtype.GetRepresentationalType()));
 
-            // We have no generic RangeConverterResolver so we would not know how to compose a range mapping for such infos.
+            // We have no generic range-specific PgConcreteTypeInfoProvider so we would not know how to compose a range mapping for provider-backed sub-infos.
             // See https://github.com/npgsql/npgsql/issues/5268
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
@@ -134,7 +134,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             var subInfo = options.GetTypeInfoInternal(type is null ? null : elementType ?? typeof(object), options.ToCanonicalTypeId(multirangeType.Subrange));
 
-            // We have no generic MultirangeConverterResolver so we would not know how to compose a range mapping for such infos.
+            // We have no generic multirange-specific PgConcreteTypeInfoProvider so we would not know how to compose a multirange mapping for provider-backed sub-infos.
             // See https://github.com/npgsql/npgsql/issues/5268
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
