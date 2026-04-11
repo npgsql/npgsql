@@ -277,8 +277,8 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         PgArrayMetadata metadata;
         ArrayPool<(Size, object?)>? elemDataArrayPool = null;
         (Size, object? WriteState)[]? elemData = null;
-        var index = 0;
 
+        var index = 0;
         switch (values)
         {
         case TElement[] array:
@@ -290,6 +290,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
                     elemData = elemDataArrayPool.Rent(metadata.TotalElements);
+                    elemData.AsSpan(0, index).Clear();
                 }
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
@@ -320,6 +321,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
                     elemData = elemDataArrayPool.Rent(metadata.TotalElements);
+                    elemData.AsSpan(0, index).Clear();
                 }
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
@@ -350,6 +352,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
                     elemData = elemDataArrayPool.Rent(metadata.TotalElements);
+                    elemData.AsSpan(0, index).Clear();
                 }
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
@@ -380,6 +383,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
                     elemData = elemDataArrayPool.Rent(metadata.TotalElements);
+                    elemData.AsSpan(0, index).Clear();
                 }
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
