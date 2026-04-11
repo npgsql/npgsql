@@ -65,7 +65,10 @@ readonly struct ArrayConverterCore(
         var metadata = providerState?.Metadata ?? PgArrayMetadata.Create(elemOps.GetCollectionCount(values, out var lengths), lengths);
         if (metadata.TotalElements is 0)
         {
-            Debug.Assert(writeState is null);
+            // The provider phase doesn't construct write state when there are no elements to populate, so any state
+            // reaching this branch is stale from a prior binding and would otherwise leak through to Write as garbage.
+            if (writeState is not null)
+                ThrowHelper.ThrowArgumentException("Write state should be null for empty arrays.", nameof(writeState));
             return metadata.BinaryPreambleByteCount;
         }
 
