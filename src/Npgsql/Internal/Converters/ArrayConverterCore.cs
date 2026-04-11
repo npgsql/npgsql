@@ -42,6 +42,16 @@ readonly struct ArrayConverterCore(
         return elemOps.GetSizeOrDbNull(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
     }
 
+    // Sizes a single element, accumulates into running size/anyWriteState, and returns the per-slot Size (-1 sentinel for NULL).
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    Size SizeElement(SizeContext context, object values, IterationIndices indices, ref object? elemState, ref Size size, ref bool anyWriteState)
+    {
+        var elemSize = elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
+        anyWriteState = anyWriteState || elemState is not null;
+        size = size.Combine(elemSize ?? 0);
+        return elemSize ?? -1;
+    }
+
     public Size GetSize(SizeContext context, object values, ref object? writeState)
     {
         Debug.Assert(context.Format is DataFormat.Binary);
@@ -84,22 +94,30 @@ readonly struct ArrayConverterCore(
         }
         else
         {
+            var lastCount = metadata.LastDimension;
             if (elemData is null)
             {
                 arrayPool = ArrayPool<(Size, object?)>.Shared;
                 elemData = arrayPool.Rent(metadata.TotalElements);
+                // Own-rent: pool buffers may contain stale WriteState references, so start each state at null.
+                do
+                {
+                    object? elemState = null;
+                    var elemSize = SizeElement(context, values, indices, ref elemState, ref size, ref anyWriteState);
+                    elemData[indices.IndicesSum] = (elemSize, elemState);
+                }
+                while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
             }
-            var lastCount = metadata.LastDimension;
-            do
+            else
             {
-                ref var elemState = ref elemData[indices.IndicesSum].WriteState;
-                var elemSize = elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
-                anyWriteState = anyWriteState || elemState is not null;
-                elemData[indices.IndicesSum].Size = elemSize ?? -1;
-                size = size.Combine(elemSize ?? 0);
+                // Provider-supplied elemData already has valid per-element WriteState, observe and extend it through the ref.
+                do
+                {
+                    ref var elem = ref elemData[indices.IndicesSum];
+                    elem.Size = SizeElement(context, values, indices, ref elem.WriteState, ref size, ref anyWriteState);
+                }
+                while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
             }
-            // We can immediately continue if we didn't reach the end of the last dimension.
-            while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
         }
 
         var result = providerState ?? new()
