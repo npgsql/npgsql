@@ -31,6 +31,11 @@ public class ArrayTests : TestBase
             .SetName("Empty_array"),
         new TestCaseData(new[,] { { 1, 2, 3 }, { 7, 8, 9 } }, "{{1,2,3},{7,8,9}}", "integer[]")
             .SetName("Two_dimensional_array"),
+        new TestCaseData(
+                new[,] { { "a", "bb", "ccc" }, { "dddd", "eeeee", "ffffff" } },
+                """{{a,bb,ccc},{dddd,eeeee,ffffff}}""",
+                "text[]")
+            .SetName("Two_dimensional_variable_size_array"),
         new TestCaseData(new[] { [1, 2], new byte[] { 3, 4 } }, """{"\\x0102","\\x0304"}""", "bytea[]")
             .SetName("Bytea_array")
     ];
