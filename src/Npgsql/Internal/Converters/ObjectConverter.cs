@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
@@ -87,11 +88,15 @@ sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typ
     readonly PgConcreteTypeInfo _defaultConcreteTypeInfo = new(options, new ObjectConverter(), typeId);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
-        => pgTypeId is { } expectedId && expectedId != typeId
-            ? new(options, new ObjectConverter(), expectedId)
-            : _defaultConcreteTypeInfo;
+    {
+        // Late binding is only supported when we've decided on a type id, so the provider's nominal typeId is the only
+        // legitimate answer. Upstream PgProviderTypeInfo.GetDefaultConcreteTypeInfo already throws on a mismatched id.
+        // Meaning, pgTypeId is either null or equal to typeId, and either way we return the cached info.
+        Debug.Assert(pgTypeId is null || pgTypeId == typeId);
+        return _defaultConcreteTypeInfo;
+    }
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
+    protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
     {
         if (value is null or DBNull)
         {

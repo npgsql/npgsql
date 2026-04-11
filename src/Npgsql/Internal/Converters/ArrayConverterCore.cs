@@ -59,7 +59,7 @@ readonly struct ArrayConverterCore(
         // Try to extract state from the provider phase (if anything).
         var providerState = writeState as ArrayConverterWriteState;
 
-        if (providerState is not null && providerState.IterationIndices.Last is not 0)
+        if (providerState is not null && providerState.IterationIndices.IndicesSum is not 0)
             ThrowHelper.ThrowArgumentException("Write state not clean.", nameof(writeState));
 
         var metadata = providerState?.Metadata ?? PgArrayMetadata.Create(elemOps.GetCollectionCount(values, out var lengths), lengths);
