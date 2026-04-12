@@ -67,7 +67,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
 
     public override ValueTask WriteAsync(PgWriter writer, BigInteger value, CancellationToken cancellationToken = default)
     {
-        if (writer.ShouldFlush(writer.Current.Size))
+        if (writer.ShouldFlush(writer.Current.Size.Value))
             return AsyncCore(writer, value, cancellationToken);
 
         // If we don't need a flush and can write buffered we delegate to our sync write method which won't flush in such a case.

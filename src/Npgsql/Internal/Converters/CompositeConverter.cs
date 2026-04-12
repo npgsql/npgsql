@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Composites;
@@ -10,14 +11,21 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly CompositeInfo<T> _composite;
     readonly BufferRequirements _bufferRequirements;
+    // Precomputed write size from the constructor's combine pass, taken before the provider-field clamp
+    // and the upper-bound limit. When Exact, GetSize can return this directly without per-field sizing —
+    // the per-field loop still runs for bind-time resolution side-effects, but size is already known.
+    readonly Size _writeSizePrecomputed;
 
     public CompositeConverter(CompositeInfo<T> composite)
     {
         _composite = composite;
 
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
+        var anyProviderField = false;
         foreach (var field in _composite.Fields)
         {
+            anyProviderField = anyProviderField || field.IsProviderBacked;
+
             var readReq = field.BinaryReadRequirement;
             var writeReq = field.BinaryWriteRequirement;
 
@@ -33,6 +41,19 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             // If we fail to combine due to overflow return unknown.
             req = BufferRequirements.Create(readSuccess ? readReq : Size.Unknown, writeSuccess ? writeReq : Size.Unknown);
         }
+
+        // Capture the combined write size before clamping so GetSize can return it unchanged. This is the
+        // full requirement we know internally — externally we hide it behind an upper-bound to force GetSize
+        // to fire for provider-backed composites, but the number itself is still correct.
+        _writeSizePrecomputed = req.Write;
+
+        // When any field defers resolution to a provider, downgrade the externally-reported write size to
+        // an upper bound. This is the sole mechanism by which bind-time resolution is triggered: non-exact
+        // writes route through GetSize, where per-field GetWriteInfo calls dispatch into providers and
+        // surface deterministic value-level errors (e.g. DateTime kind mismatches) at bind instead of at
+        // first Write. Composites with only concrete fields stay exact and skip GetSize as before.
+        if (anyProviderField && req.Write.Kind is SizeKind.Exact)
+            req = BufferRequirements.Create(req.Read, Size.CreateUpperBound(req.Write.Value));
 
         // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
         req = BufferRequirements.Create(Limit(req.Read), Limit(req.Write));
@@ -112,33 +133,87 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
-        var arrayPool = ArrayPool<ElementState>.Shared;
-        var data = arrayPool.Rent(_composite.Fields.Count);
-
-        var totalSize = Size.Create(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
         var boxedInstance = (object)value;
+
+        // When the combine pass produced an exact size, every field is individually fixed-size and
+        // non-nullable — the only reason we're in GetSize at all is that some field defers resolution
+        // to a provider and we clamped externally to force this entry. Walk fields purely for bind-time
+        // resolution side effects; the size is the precomputed one from the constructor. Rent lazily
+        // so the common DateTime-kind-style case (providers that validate but produce no state) pays
+        // no ElementState array allocation.
+        if (_writeSizePrecomputed.Kind is SizeKind.Exact)
+        {
+            ElementState[]? data = null;
+            for (var i = 0; i < _composite.Fields.Count; i++)
+            {
+                var field = _composite.Fields[i];
+                var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
+
+                // Skip populating the slot when the provider produced no state and the resolved converter is the same as the default.
+                // The common case — DateTime-kind and similar pure-validation providers — satisfies both and pays no slot allocation.
+                // A provider that happens to return a non-default concrete for a decided id still has its
+                // converter captured so Write uses it instead of demoting silently to the default.
+                if (fieldState is null && ReferenceEquals(converter, field.GetDefaultWriteInfo(out _)))
+                    continue;
+
+                if (data is null)
+                {
+                    data = ArrayPool<ElementState>.Shared.Rent(_composite.Fields.Count);
+                    // clear any stale slots left behind by the previous pool user.
+                    Array.Clear(data, 0, _composite.Fields.Count);
+                }
+
+                data[i] = new()
+                {
+                    Size = writeRequirement,
+                    WriteState = fieldState,
+                    Converter = converter,
+                    BufferRequirement = writeRequirement
+                };
+            }
+
+            if (data is null)
+            {
+                writeState = null;
+                return _writeSizePrecomputed;
+            }
+
+            writeState = new WriteState
+            {
+                ArrayPool = ArrayPool<ElementState>.Shared,
+                Data = new(data, 0, _composite.Fields.Count),
+                AnyWriteState = true,
+                BoxedInstance = boxedInstance,
+            };
+            return _writeSizePrecomputed;
+        }
+
+        // Variable-size or nullable fields — per-field GetSizeOrDbNull is needed to compute the total,
+        // and per-field sizes must flow forward to Write. Always rent.
+        var arrayPool = ArrayPool<ElementState>.Shared;
+        var slowData = arrayPool.Rent(_composite.Fields.Count);
+        var totalSize = Size.Create(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
         var anyWriteState = false;
         for (var i = 0; i < _composite.Fields.Count; i++)
         {
             var field = _composite.Fields[i];
-            var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement);
-            object? fieldState = null;
-            var fieldSize = field.GetSizeOrDbNull(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
+            var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
+            var fieldSizeOrNull = field.GetSizeOrDbNull(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
             anyWriteState = anyWriteState || fieldState is not null;
-            data[i] = new()
+            slowData[i] = new()
             {
-                Size = fieldSize ?? -1,
+                Size = fieldSizeOrNull ?? -1,
                 WriteState = fieldState,
                 Converter = converter,
                 BufferRequirement = writeRequirement
             };
-            totalSize = totalSize.Combine(fieldSize ?? 0);
+            totalSize = totalSize.Combine(fieldSizeOrNull ?? 0);
         }
 
         writeState = new WriteState
         {
             ArrayPool = arrayPool,
-            Data = new(data, 0, _composite.Fields.Count),
+            Data = new(slowData, 0, _composite.Fields.Count),
             AnyWriteState = anyWriteState,
             BoxedInstance = boxedInstance,
         };
@@ -153,15 +228,30 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        if (writer.Current.WriteState is not null and not WriteState)
-            throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
+        // Null state is legitimate in two cases:
+        //   1. Exact-size composite — GetSize was skipped entirely. By construction of the combine pass
+        //      this means no provider field, no variable field, no nullable field.
+        //   2. Clamped-by-provider composite — GetSize ran but every field's provider produced null
+        //      state, so we skipped the WriteState allocation. All fields are individually fixed-size
+        //      (that's what _writeSizePrecomputed.Kind is Exact guarantees), so it works the same
+        //      way and resolution is just re-done via cached provider dispatch.
+        // Variable-size composites must always arrive with a populated WriteState, we can't recover
+        // per-field value-dependent sizes otherwise.
+        var writeState = writer.Current.WriteState switch
+        {
+            WriteState ws => ws,
+            null when _writeSizePrecomputed.Kind is SizeKind.Exact => null,
+            null => throw new InvalidOperationException("Composite Write requires per-field data from GetSize when any field is variable-size."),
+            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.")
+        };
+        Debug.Assert(_bufferRequirements.Write.Kind is not SizeKind.Exact || writeState is null,
+            "Exact-size composite must not carry write state — GetSize should have been skipped.");
 
         if (writer.ShouldFlush(sizeof(int)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
         writer.WriteInt32(_composite.Fields.Count);
 
-        var writeState = writer.Current.WriteState as WriteState;
         var boxedInstance = writeState?.BoxedInstance ?? value;
         var data = writeState?.Data.Array;
         for (var i = 0; i < _composite.Fields.Count; i++)
@@ -172,21 +262,27 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var field = _composite.Fields[i];
             writer.WriteAsOid(field.PgTypeId);
 
+            // No cached slot: uses GetDefaultWriteInfo which is stateless by construction,
+            // so there is nothing to dispose on this path. Per-value resolution, if it was needed,
+            // already ran at bind-time GetSize and would have populated the slot
+            // A slot with a null Converter is a default(ElementState) left behind by
+            // GetSize's lazy-rent: fields walked before the first state-producing provider aren't
+            // back-filled, and Write handles them per-slot the same way a fully-unallocated data
+            // array is handled in the truly-exact case.
             ElementState elementState;
-            if (data?[i] is not { } state)
+            if (data?[i] is { Converter: not null } state)
+                elementState = state;
+            else
             {
-                var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement);
-                object? fieldState = null;
+                var converter = field.GetDefaultWriteInfo(out var writeRequirement);
                 elementState = new()
                 {
-                    Size = field.IsDbNull(converter, boxedInstance, ref fieldState) ? -1 : writeRequirement,
+                    Size = field.IsDbNull(converter, boxedInstance, writeState: null) ? -1 : writeRequirement,
                     WriteState = null,
                     Converter = converter,
                     BufferRequirement = writeRequirement,
                 };
             }
-            else
-                elementState = state;
             var length = elementState.Size.Value;
             writer.WriteInt32(length);
             if (length is not -1)
@@ -218,15 +314,12 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 return;
 
             if (AnyWriteState)
-            {
-                for (var i = Data.Offset; i < array.Length; i++)
+                for (var i = Data.Offset; i < Data.Offset + Data.Count; i++)
                     if (array[i].WriteState is IDisposable disposable)
                         disposable.Dispose();
 
-                Array.Clear(Data.Array, Data.Offset, Data.Count);
-            }
-
-            ArrayPool?.Return(Data.Array);
+            Array.Clear(array, Data.Offset, Data.Count);
+            ArrayPool?.Return(array);
         }
     }
 }

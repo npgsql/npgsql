@@ -11,6 +11,8 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class PgSerializerOptions
 {
+    internal static UTF8Encoding DefaultUtf8Encoding => NpgsqlWriteBuffer.UTF8Encoding;
+
     /// <summary>
     /// Used by GetSchema to be able to attempt to resolve all type catalog types without exceptions.
     /// </summary>
@@ -30,7 +32,7 @@ public sealed class PgSerializerOptions
         UnspecifiedDBNullTypeInfo = new(this, new Converters.Internal.VoidConverter(), DataTypeName.Unspecified, unboxedType: typeof(DBNull));
     }
 
-    internal PgTypeInfo UnspecifiedDBNullTypeInfo { get; }
+    internal PgConcreteTypeInfo UnspecifiedDBNullTypeInfo { get; }
 
     PostgresType? _textPgType;
     internal PgTypeId TextPgTypeId => ToCanonicalTypeId(_textPgType ??= DatabaseInfo.GetPostgresType(DataTypeNames.Text));
@@ -48,7 +50,7 @@ public sealed class PgSerializerOptions
     internal NpgsqlDatabaseInfo DatabaseInfo { get; }
 
     public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
-    public Encoding TextEncoding { get; init; } = Encoding.UTF8;
+    public Encoding TextEncoding { get; init; } = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
     public IPgTypeInfoResolver TypeInfoResolver
     {
         get => _typeInfoResolver ??= new ChainTypeInfoResolver(_resolverChain);

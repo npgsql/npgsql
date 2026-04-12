@@ -127,12 +127,12 @@ public abstract class NpgsqlDataSource : DbDataSource
             ConnectionString = settings.ToString();
 
             // The data source name is reported in tracing/metrics, so avoid leaking the password through there.
-            Name = name ?? settings.ToStringWithoutPassword();
+            Name = name ?? settings.ApplicationName ?? settings.ToStringWithoutPassword();
         }
         else
         {
             ConnectionString = settings.ToStringWithoutPassword();
-            Name = name ?? ConnectionString;
+            Name = name ?? settings.ApplicationName ?? ConnectionString;
         }
 
         _password = settings.Password;

@@ -10,7 +10,7 @@ namespace Npgsql.Internal.Converters;
 sealed class CastingConverter<T>(PgConverter effectiveConverter)
     : PgConverter<T>(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
 {
-    protected override bool IsDbNullValue(T? value, ref object? writeState) => effectiveConverter.IsDbNullAsObject(value, ref writeState);
+    protected override bool IsDbNullValue(T? value, object? writeState) => effectiveConverter.IsDbNullAsObject(value, writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => effectiveConverter.CanConvert(format, out bufferRequirements);
@@ -44,18 +44,18 @@ sealed class CastingConverter<T>(PgConverter effectiveConverter)
     }
 }
 
-// Given there aren't many instantiations of converter resolvers (and it's fairly involved to write a fast one) we use the composing base class.
-sealed class CastingConverterResolver<T>(PgResolverTypeInfo effectiveResolverTypeInfo)
-    : PgComposingConverterResolver<T>(effectiveResolverTypeInfo.PgTypeId, effectiveResolverTypeInfo)
+// Given there aren't many instantiations of providers (and it's fairly involved to write a fast one) we use the composing base class.
+sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderTypeInfo)
+    : PgComposingTypeInfoProvider<T>(effectiveProviderTypeInfo.PgTypeId, effectiveProviderTypeInfo)
 {
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
-        => new CastingConverter<T>(effectiveResolution.Converter);
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
+        => new CastingConverter<T>(effectiveConcreteTypeInfo.Converter);
 
-    protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectiveTypeId)
-        => EffectiveTypeInfo.GetResolutionAsObject(value, expectedEffectiveTypeId);
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
+        => EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out writeState);
 }
 
 static class CastingTypeInfoExtensions
@@ -67,13 +67,13 @@ static class CastingTypeInfoExtensions
             return typeInfo;
 
         var type = typeInfo.Type;
-        if (typeInfo is PgResolverTypeInfo resolverTypeInfo)
-            return new PgResolverTypeInfo(typeInfo.Options,
-                (PgConverterResolver)Activator.CreateInstance(typeof(CastingConverterResolver<>).MakeGenericType(type),
-                    resolverTypeInfo)!, typeInfo.PgTypeId);
+        if (typeInfo is PgProviderTypeInfo providerTypeInfo)
+            return new PgProviderTypeInfo(typeInfo.Options,
+                (PgConcreteTypeInfoProvider)Activator.CreateInstance(typeof(CastingTypeInfoProvider<>).MakeGenericType(type),
+                    providerTypeInfo)!, typeInfo.PgTypeId);
 
-        var resolution = typeInfo.GetResolution();
-        return new PgTypeInfo(typeInfo.Options,
-            (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), resolution.Converter)!, resolution.PgTypeId);
+        var concreteTypeInfo = (PgConcreteTypeInfo)typeInfo;
+        return new PgConcreteTypeInfo(typeInfo.Options,
+            (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), concreteTypeInfo.Converter)!, concreteTypeInfo.PgTypeId);
     }
 }

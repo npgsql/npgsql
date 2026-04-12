@@ -1,3 +1,4 @@
+using Npgsql.Internal.Postgres;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -7,9 +8,9 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
@@ -21,7 +22,7 @@ enum FlushMode
 }
 
 // A streaming alternative to a System.IO.Stream, instead based on the preferable IBufferWriter.
-interface IStreamingWriter<T>: IBufferWriter<T>
+interface IStreamingWriter<T> : IBufferWriter<T>
 {
     void Flush(TimeSpan timeout = default);
     ValueTask FlushAsync(CancellationToken cancellationToken = default);
@@ -188,7 +189,9 @@ public sealed class PgWriter
     internal ValueTask BeginWrite(bool async, ValueMetadata current, CancellationToken cancellationToken)
     {
         _current = current;
-        if (ShouldFlush(current.BufferRequirement))
+
+        var bufferRequirementByteCount = BufferRequirements.GetMinimumBufferByteCount(current.BufferRequirement, current.Size.GetValueOrDefault());
+        if (ShouldFlush(bufferRequirementByteCount))
             return Flush(async, cancellationToken);
 
         return new();
@@ -273,19 +276,56 @@ public sealed class PgWriter
 
     public void WriteChars(ReadOnlySpan<char> data, Encoding encoding)
     {
+        if (encoding.CodePage == Encoding.UTF8.CodePage)
+        {
+            var fallback = encoding.EncoderFallback;
+            // We can only emulate these well known fallbacks in the fast path.
+            if (EncoderFallback.ExceptionFallback.Equals(fallback) || EncoderFallback.ReplacementFallback.Equals(fallback))
+            {
+                Utf8Core(data, replace: !EncoderFallback.ExceptionFallback.Equals(fallback), scalarMaxByteCount: 4);
+                return;
+            }
+        }
+
         // If we have more chars than bytes remaining we can immediately go to the slow path.
         if (data.Length <= Remaining)
         {
             // If not, it's worth a shot to see if we can convert in one go.
-            var encodedLength = encoding.GetByteCount(data);
-            if (!ShouldFlush(encodedLength))
+            if (!ShouldFlush(encoding.GetMaxByteCount(data.Length)) || !ShouldFlush(encoding.GetByteCount(data)))
             {
                 var count = encoding.GetBytes(data, Span);
                 Advance(count);
                 return;
             }
         }
+
         Core(data, encoding);
+
+        void Utf8Core(ReadOnlySpan<char> data, bool replace, int scalarMaxByteCount)
+        {
+            while (true)
+            {
+                var status = Utf8.FromUtf16(data, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: replace, isFinalBlock: true);
+                Advance(bytesWritten);
+
+                switch (status)
+                {
+                case OperationStatus.DestinationTooSmall:
+                    Flush();
+                    Ensure(scalarMaxByteCount);
+                    data = data.Slice(charsRead);
+                    break;
+                case OperationStatus.InvalidData:
+                    ThrowEncoderFallbackException();
+                    break;
+                default:
+                    return;
+                }
+            }
+
+            static void ThrowEncoderFallbackException()
+                => throw new EncoderFallbackException("Unable to translate Unicode character to specified code page");
+        }
 
         void Core(ReadOnlySpan<char> data, Encoding encoding)
         {
@@ -307,13 +347,20 @@ public sealed class PgWriter
 
     public ValueTask WriteCharsAsync(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken = default)
     {
+        if (encoding.CodePage == Encoding.UTF8.CodePage)
+        {
+            var fallback = encoding.EncoderFallback;
+            // We can only emulate these well known fallbacks in the fast path.
+            if (EncoderFallback.ExceptionFallback.Equals(fallback) || EncoderFallback.ReplacementFallback.Equals(fallback))
+                return Utf8Core(data, replace: !EncoderFallback.ExceptionFallback.Equals(fallback), scalarMaxByteCount: 4, cancellationToken);
+        }
+
         var dataSpan = data.Span;
         // If we have more chars than bytes remaining we can immediately go to the slow path.
         if (data.Length <= Remaining)
         {
             // If not, it's worth a shot to see if we can convert in one go.
-            var encodedLength = encoding.GetByteCount(dataSpan);
-            if (!ShouldFlush(encodedLength))
+            if (!ShouldFlush(encoding.GetMaxByteCount(data.Length)) || !ShouldFlush(encoding.GetByteCount(dataSpan)))
             {
                 var count = encoding.GetBytes(dataSpan, Span);
                 Advance(count);
@@ -322,6 +369,33 @@ public sealed class PgWriter
         }
 
         return Core(data, encoding, cancellationToken);
+
+        async ValueTask Utf8Core(ReadOnlyMemory<char> data, bool replace, int scalarMaxByteCount, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                var status = Utf8.FromUtf16(data.Span, Span, out var charsRead, out var bytesWritten, replaceInvalidSequences: replace,
+                    isFinalBlock: true);
+                Advance(bytesWritten);
+
+                switch (status)
+                {
+                case OperationStatus.DestinationTooSmall:
+                    await FlushAsync(cancellationToken).ConfigureAwait(false);
+                    Ensure(scalarMaxByteCount);
+                    data = data.Slice(charsRead);
+                    break;
+                case OperationStatus.InvalidData:
+                    ThrowEncoderFallbackException();
+                    break;
+                default:
+                    return;
+                }
+            }
+
+            static void ThrowEncoderFallbackException()
+                => throw new EncoderFallbackException("Unable to translate Unicode character to specified code page");
+        }
 
         async ValueTask Core(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken)
         {
@@ -384,6 +458,7 @@ public sealed class PgWriter
             }
         }
     }
+
     /// <summary>
     /// Gets a <see cref="Stream"/> that can be used to write to the underlying buffer.
     /// </summary>
@@ -392,10 +467,9 @@ public sealed class PgWriter
     public Stream GetStream(bool allowMixedIO = false)
         => new PgWriterStream(this, allowMixedIO);
 
-    public bool ShouldFlush(Size bufferRequirement)
-        => ShouldFlush(bufferRequirement is { Kind: SizeKind.UpperBound }
-            ? Math.Min(Current.Size.Value, bufferRequirement.Value)
-            : bufferRequirement.GetValueOrDefault());
+    // We also check pos != offset to speed up simple value writes, as field level buffering was handled by writer.StartWrite() already.
+    public bool ShouldFlushCurrent()
+        => !BufferingWrite && _pos != _offset && ShouldFlush(BufferRequirements.GetMinimumBufferByteCount(Current.BufferRequirement, Current.Size.GetValueOrDefault()));
 
     public bool ShouldFlush(int byteCount) => Remaining < byteCount && FlushMode is not FlushMode.None;
 
@@ -454,10 +528,10 @@ public sealed class PgWriter
     {
         Debug.Assert(bufferRequirement != -1);
 
-        // ShouldFlush depends on the current size for upper bound requirements, so we must set it beforehand.
+        var bufferRequirementByteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, byteCount);
         _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
 
-        if (ShouldFlush(bufferRequirement))
+        if (ShouldFlush(bufferRequirementByteCount))
             return Core(async, cancellationToken);
 
         return new(new NestedWriteScope());

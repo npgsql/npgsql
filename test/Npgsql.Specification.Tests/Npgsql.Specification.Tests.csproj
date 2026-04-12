@@ -13,4 +13,8 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="YTest.MTP.XUnit2" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);xUnit1004</NoWarn>
+  </PropertyGroup>
 </Project>

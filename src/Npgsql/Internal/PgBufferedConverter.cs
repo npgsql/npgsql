@@ -14,14 +14,7 @@ public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false)
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => throw new NotSupportedException();
 
-    public sealed override T Read(PgReader reader)
-    {
-        // We check FieldAtStart to speed up simple value reads, as field level buffering was handled by reader.StartRead() already.
-        if (!reader.FieldAtStart && reader.ShouldBufferCurrent())
-            ThrowIORequired(reader.CurrentBufferRequirement);
-
-        return ReadCore(reader);
-    }
+    public sealed override T Read(PgReader reader) => ReadCore(reader);
 
     public sealed override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(Read(reader));
@@ -29,13 +22,7 @@ public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false)
     internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => new(Read(reader)!);
 
-    public sealed override void Write(PgWriter writer, T value)
-    {
-        if (!writer.BufferingWrite && writer.ShouldFlush(writer.CurrentBufferRequirement))
-            ThrowIORequired(writer.CurrentBufferRequirement);
-
-        WriteCore(writer, value);
-    }
+    public sealed override void Write(PgWriter writer, T value) => WriteCore(writer, value);
 
     public sealed override ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default)
     {

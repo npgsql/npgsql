@@ -516,6 +516,7 @@ public sealed partial class NpgsqlConnector
             if (activity is not null)
                 NpgsqlActivitySource.SetException(activity, e);
             Break(e, markHostAsOfflineOnConnecting: true);
+            FullCleanup();
             throw;
         }
 
@@ -1589,10 +1590,10 @@ public sealed partial class NpgsqlConnector
 
                 Debug.Assert(msg != null, "Message is null for code: " + messageCode);
 
-                // Reset flushed bytes after any RFQ or in between potentially long running operations.
+                // Rebase the cumulative buffer-end counter after any RFQ or in between potentially long-running operations.
                 // Just in case we'll hit that 15 exbibyte limit of a signed long...
                 if (messageCode is BackendMessageCode.ReadyForQuery or BackendMessageCode.CopyData or BackendMessageCode.NotificationResponse)
-                    ReadBuffer.ResetFlushedBytes();
+                    ReadBuffer.RebaseBufferEndPosition();
 
                 return msg;
             }
@@ -2305,7 +2306,7 @@ public sealed partial class NpgsqlConnector
 
                 var connection = Connection;
 
-                FullCleanup();
+                Cleanup();
 
                 if (connection is not null)
                 {

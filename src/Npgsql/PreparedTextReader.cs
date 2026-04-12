@@ -2,22 +2,19 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal;
 
 namespace Npgsql;
 
 sealed class PreparedTextReader : TextReader
 {
     string _str = null!;
-    NpgsqlReadBuffer.ColumnStream _stream = null!;
 
     int _position;
     bool _disposed;
 
-    public void Init(string str, NpgsqlReadBuffer.ColumnStream stream)
+    public void Init(string str)
     {
         _str = str;
-        _stream = stream;
         _disposed = false;
         _position = 0;
     }
@@ -90,7 +87,7 @@ sealed class PreparedTextReader : TextReader
     public override Task<string> ReadToEndAsync() => Task.FromResult(ReadToEnd());
 
     void CheckDisposed()
-        => ObjectDisposedException.ThrowIf(_disposed || _stream.IsDisposed, this);
+        => ObjectDisposedException.ThrowIf(_disposed, this);
 
     public void Restart()
     {
@@ -100,12 +97,9 @@ sealed class PreparedTextReader : TextReader
 
     protected override void Dispose(bool disposing)
     {
-        base.Dispose(disposing);
-
         if (disposing)
-        {
             _disposed = true;
-            _stream.Dispose();
-        }
+
+        base.Dispose(disposing);
     }
 }

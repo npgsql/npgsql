@@ -11,8 +11,8 @@ sealed class NullableConverter<T>(PgConverter<T> effectiveConverter)
     : PgConverter<T?>(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
     where T : struct
 {
-    protected override bool IsDbNullValue(T? value, ref object? writeState)
-        => value is null || effectiveConverter.IsDbNull(value.GetValueOrDefault(), ref writeState);
+    protected override bool IsDbNullValue(T? value, object? writeState)
+        => value is null || effectiveConverter.IsDbNull(value.GetValueOrDefault(), writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => effectiveConverter.CanConvert(format, out bufferRequirements);
@@ -39,18 +39,18 @@ sealed class NullableConverter<T>(PgConverter<T> effectiveConverter)
         => effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
 }
 
-sealed class NullableConverterResolver<T>(PgResolverTypeInfo effectiveTypeInfo)
-    : PgComposingConverterResolver<T?>(effectiveTypeInfo.PgTypeId, effectiveTypeInfo)
+sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
+    : PgComposingTypeInfoProvider<T?>(effectiveTypeInfo.PgTypeId, effectiveTypeInfo)
     where T : struct
 {
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T?> CreateConverter(PgConverterResolution effectiveResolution)
-        => new NullableConverter<T>(effectiveResolution.GetConverter<T>());
+    protected override PgConverter<T?> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
+        => new NullableConverter<T>((PgConverter<T>)effectiveConcreteTypeInfo.Converter);
 
-    protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId)
-        => value is { } inner
-            ? EffectiveTypeInfo.GetResolution(inner, expectedEffectivePgTypeId)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
+        => value is not null
+            ? EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value.GetValueOrDefault(), out writeState)
             : null;
 }

@@ -1,2 +1,1 @@
-﻿#nullable enable
-static Npgsql.NpgsqlJsonNetExtensions.UseJsonNet<TMapper>(this TMapper mapper, Newtonsoft.Json.JsonSerializerSettings? settings = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> TMapper
+#nullable enable

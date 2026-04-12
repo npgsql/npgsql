@@ -52,13 +52,15 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     internal static DataTypeName ValidatedName(string fullyQualifiedDataTypeName)
         => new(fullyQualifiedDataTypeName, validated: true);
 
+    bool IsUnqualifiedDisplayName => SchemaSpan is "pg_catalog" || IsUnqualified;
+
     // Includes schema unless it's pg_catalog or the schema is an invalid character used to represent an unspecified schema.
     public string DisplayName =>
-        Value.StartsWith("pg_catalog", StringComparison.Ordinal) || IsUnqualified
+        IsUnqualifiedDisplayName
             ? UnqualifiedDisplayName
             : Schema + "." + UnqualifiedDisplayName;
 
-    public string UnqualifiedDisplayName => ToDisplayName(UnqualifiedNameSpan);
+    public string UnqualifiedDisplayName => ToDisplayName(UnqualifiedNameSpan, mapAliases: IsUnqualifiedDisplayName);
 
     internal ReadOnlySpan<char> SchemaSpan => Value.AsSpan(0, _value.IndexOf('.'));
     public string Schema => Value.Substring(0, _value.IndexOf('.'));
@@ -124,27 +126,20 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
 
     // Create a DataTypeName from a broader range of valid names.
     // including SQL aliases like 'timestamp without time zone', trailing facet info etc.
-    public static DataTypeName FromDisplayName(string displayName, string? schema = null)
-        => FromDisplayName(displayName, schema, assumeUnqualified: false); // user strings may come fully qualified.
-
-    // This method is used during type loading, it allows us to accept friendly names in constructors, without having to preconcatenate the schema.
-    internal static DataTypeName FromDisplayName(string displayName, string? schema, bool assumeUnqualified)
+    public static DataTypeName FromDisplayName(string displayName)
     {
         var displayNameSpan = displayName.AsSpan().Trim();
 
         var schemaEndIndex = displayNameSpan.IndexOf('.');
         ReadOnlySpan<char> schemaSpan;
-        if (schemaEndIndex is not -1 && !assumeUnqualified)
+        if (schemaEndIndex is not -1)
         {
-            if (schema is not null)
-                throw new ArgumentException("Schema provided for a fully qualified name.");
-
             schemaSpan = displayNameSpan.Slice(0, schemaEndIndex);
             displayNameSpan = displayNameSpan.Slice(schemaEndIndex + 1);
         }
         else
         {
-            schemaSpan = schema is null ? $"{InvalidIdentifier}" : schema.AsSpan();
+            schemaSpan = $"{InvalidIdentifier}";
         }
 
         // Then we strip either of the two valid array representations to get the base type name (with or without facets).
@@ -196,7 +191,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             var value => value
         };
 
-        if (schema is null && DataTypeNames.IsWellKnownUnqualifiedName(mapped))
+        if (DataTypeNames.IsWellKnownUnqualifiedName(mapped))
             schemaSpan = "pg_catalog".AsSpan();
 
         return new(string.Concat(schemaSpan, ".", isArray ? "_" : "", mapped));
@@ -207,29 +202,33 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     // Additionally array types have a '_' prefix while for readability their element type should be postfixed with '[]'.
     // See the table for all the aliases https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
     // Alternatively some of the source lives at https://github.com/postgres/postgres/blob/c8e1ba736b2b9e8c98d37a5b77c4ed31baf94147/src/backend/utils/adt/format_type.c#L186
-    static string ToDisplayName(ReadOnlySpan<char> unqualifiedName)
+    static string ToDisplayName(ReadOnlySpan<char> unqualifiedName, bool mapAliases)
     {
         var isArray = unqualifiedName.IndexOf('_') is 0;
         var baseTypeName = isArray ? unqualifiedName.Slice(1) : unqualifiedName;
 
-        var mappedBaseType = baseTypeName switch
+        string? mappedBaseType = null;
+        if (mapAliases)
         {
-            "bool" => "boolean",
-            "bpchar" => "character",
-            "decimal" => "numeric",
-            "float4" => "real",
-            "float8" => "double precision",
-            "int2" => "smallint",
-            "int4" => "integer",
-            "int8" => "bigint",
-            "time" => "time without time zone",
-            "timestamp" => "timestamp without time zone",
-            "timetz" => "time with time zone",
-            "timestamptz" => "timestamp with time zone",
-            "varbit" => "bit varying",
-            "varchar" => "character varying",
-            _ => null
-        };
+            mappedBaseType = baseTypeName switch
+            {
+                "bool" => "boolean",
+                "bpchar" => "character",
+                "decimal" => "numeric",
+                "float4" => "real",
+                "float8" => "double precision",
+                "int2" => "smallint",
+                "int4" => "integer",
+                "int8" => "bigint",
+                "time" => "time without time zone",
+                "timestamp" => "timestamp without time zone",
+                "timetz" => "time with time zone",
+                "timestamptz" => "timestamp with time zone",
+                "varbit" => "bit varying",
+                "varchar" => "character varying",
+                _ => null
+            };
+        }
 
         return isArray
             ? string.Concat(mappedBaseType ?? baseTypeName, "[]")

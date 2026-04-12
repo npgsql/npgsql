@@ -10,7 +10,7 @@ sealed class VersionPrefixedTextConverter<T>(byte versionPrefix, PgConverter<T> 
 {
     BufferRequirements _innerRequirements;
 
-    protected override bool IsDbNullValue(T? value, ref object? writeState) => textConverter.IsDbNull(value, ref writeState);
+    protected override bool IsDbNullValue(T? value, object? writeState) => textConverter.IsDbNull(value, writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => VersionPrefixedTextConverter.CanConvert(textConverter, format, out _innerRequirements, out bufferRequirements);
@@ -73,10 +73,9 @@ static class VersionPrefixedTextConverter
                 throw new InvalidCastException($"Unknown wire format version: {actualVersion}");
         }
 
-        // No need for a nested read, all text converters will read CurrentRemaining bytes.
-        // We only need to buffer data if we're binary, otherwise the caller would have had to do so
-        // as we directly expose the underlying text converter requirements for the text data format.
-        await reader.Buffer(async, textConverterReadRequirement, cancellationToken).ConfigureAwait(false);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(textConverterReadRequirement, reader.CurrentRemaining);
+        if (reader.ShouldBuffer(byteCount))
+            await reader.Buffer(async, byteCount, cancellationToken).ConfigureAwait(false);
     }
 
     public static bool CanConvert(PgConverter textConverter, DataFormat format, out BufferRequirements textConverterRequirements, out BufferRequirements bufferRequirements)

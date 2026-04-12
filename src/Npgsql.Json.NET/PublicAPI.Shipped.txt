@@ -1,3 +1,4 @@
-﻿#nullable enable
+#nullable enable
 Npgsql.NpgsqlJsonNetExtensions
 static Npgsql.NpgsqlJsonNetExtensions.UseJsonNet(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, Newtonsoft.Json.JsonSerializerSettings? settings = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+static Npgsql.NpgsqlJsonNetExtensions.UseJsonNet<TMapper>(this TMapper mapper, Newtonsoft.Json.JsonSerializerSettings? settings = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> TMapper

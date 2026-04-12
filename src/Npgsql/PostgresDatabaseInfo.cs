@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
@@ -523,7 +524,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             switch (postgresTypeDefinition.Type)
             {
             case 'b': // Normal base type
-                var baseType = new PostgresBaseType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID);
+                var baseType = new PostgresBaseType(postgresTypeDefinition.DataTypeName, postgresTypeDefinition.OID);
                 byOID[baseType.OID] = baseType;
                 return true;
 
@@ -537,7 +538,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     return false;
                 }
 
-                var arrayType = new PostgresArrayType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, elementPostgresType);
+                var arrayType = new PostgresArrayType(postgresTypeDefinition.DataTypeName, postgresTypeDefinition.OID, elementPostgresType);
                 byOID[arrayType.OID] = arrayType;
                 return true;
             }
@@ -552,7 +553,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     return false;
                 }
 
-                var rangeType = new PostgresRangeType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, subtypePostgresType);
+                var rangeType = new PostgresRangeType(postgresTypeDefinition.DataTypeName, postgresTypeDefinition.OID, subtypePostgresType);
                 byOID[rangeType.OID] = rangeType;
                 return true;
             }
@@ -573,17 +574,17 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     return false;
                 }
 
-                var multirangeType = new PostgresMultirangeType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, rangePostgresType);
+                var multirangeType = new PostgresMultirangeType(postgresTypeDefinition.DataTypeName, postgresTypeDefinition.OID, rangePostgresType);
                 byOID[multirangeType.OID] = multirangeType;
                 return true;
 
             case 'e': // Enum
-                var enumType = new PostgresEnumType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID);
+                var enumType = new PostgresEnumType(postgresTypeDefinition.DataTypeName, postgresTypeDefinition.OID);
                 byOID[enumType.OID] = enumType;
                 return true;
 
             case 'c': // Composite
-                var compositeType = new PostgresCompositeType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID);
+                var compositeType = new PostgresCompositeType(postgresTypeDefinition.DataTypeName, postgresTypeDefinition.OID);
                 byOID[compositeType.OID] = compositeType;
                 return true;
 
@@ -596,7 +597,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     return false;
                 }
 
-                var domainType = new PostgresDomainType(postgresTypeDefinition.Namespace, postgresTypeDefinition.Name, postgresTypeDefinition.OID, basePostgresType, postgresTypeDefinition.NotNull);
+                var domainType = new PostgresDomainType(postgresTypeDefinition.DataTypeName, postgresTypeDefinition.OID, basePostgresType, postgresTypeDefinition.NotNull);
                 byOID[domainType.OID] = domainType;
                 return true;
 
@@ -610,4 +611,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
     }
 }
 
-readonly record struct PostgresTypeDefinition(string Namespace, uint OID, string Name, char Type, bool NotNull, uint ElemTypeOID);
+readonly record struct PostgresTypeDefinition(string Namespace, uint OID, string Name, char Type, bool NotNull, uint ElemTypeOID)
+{
+    public DataTypeName DataTypeName => DataTypeName.CreateFullyQualifiedName(Namespace + "." + Name);
+}
