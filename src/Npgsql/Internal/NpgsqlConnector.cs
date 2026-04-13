@@ -673,7 +673,14 @@ public sealed partial class NpgsqlConnector
         ConnectionLogger.LogTrace("Negotiating GSS encryption");
 
         var targetName = $"{KerberosServiceName}/{Host}";
-        var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
+        // See https://github.com/postgres/postgres/blob/a0dd0702e464f206b08c99a74cb58809c51aafa5/src/interfaces/libpq/fe-secure-gssapi.c#L651-L658
+        // We do not support delegation (TokenImpersonationLevel.Delegation) for now (#6540)
+        var clientOptions = new NegotiateAuthenticationClientOptions
+        {
+            TargetName = targetName,
+            RequireMutualAuthentication = true,
+            RequiredProtectionLevel = ProtectionLevel.EncryptAndSign
+        };
 
         NegotiateOptionsCallback?.Invoke(clientOptions);
 
