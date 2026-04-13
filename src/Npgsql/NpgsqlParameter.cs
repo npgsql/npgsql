@@ -790,12 +790,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             catch
             {
-                // DisposeWriteState is assumed not to throw. Any broken contract surfaces its exception here over the bind exception.
                 if (_writeState is { } ws)
                 {
                     ConcreteTypeInfo.DisposeWriteState(ws);
                     _writeState = null;
                 }
+                if (_subStream is not null)
+                {
+                    _subStream.Dispose();
+                    _subStream = null;
+                }
+                _useSubStream = false;
                 throw;
             }
         }
