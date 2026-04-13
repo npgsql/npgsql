@@ -1852,10 +1852,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             ThrowInvalidSequentialSeek(column, ordinal);
 
         if (column == ordinal)
-        {
-            Debug.Assert(reader.Current.Format == fieldFormat, "Field reinterpretation happened?");
             return reader.Restart(resumableOp);
-        }
 
         reader.Commit();
         var columnLength = BufferSeekToColumn(column, ordinal, !_isRowBuffered);
