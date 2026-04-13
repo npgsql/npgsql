@@ -294,6 +294,17 @@ public sealed class FieldDescription
     /// </summary>
     internal DataFormat DataFormat { get; set; }
 
+    /// <summary>
+    /// Whether this field's data was requested in text format because the user opted into UnknownResultType
+    /// (via NpgsqlCommand.UnknownResultTypeList or AllResultTypesAreUnknown). Bindings for such fields are
+    /// expected to reinterpret the text bytes through a converter that could potentially only support binary formats.
+    /// </summary>
+    /// <remarks>
+    /// DataFormat.Text today exclusively signals that we executed with an UnknownResultTypeList.
+    /// If we ever want to fully support DataFormat.Text we'll need to flow UnknownResultType status separately.
+    /// </remarks>
+    internal bool IsUnknownResultType => DataFormat is DataFormat.Text;
+
     internal Field Field { get; private set; }
 
     internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
@@ -328,7 +339,7 @@ public sealed class FieldDescription
     {
         Debug.Assert(result.IsDefault || (
             ReferenceEquals(_serializerOptions, result.TypeInfo.Options) && (
-                IsUnknownResultType() && result.TypeInfo.PgTypeId == _serializerOptions.TextPgTypeId ||
+                IsUnknownResultType && result.TypeInfo.PgTypeId == _serializerOptions.TextPgTypeId ||
                 // Normal resolution
                 result.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
@@ -344,6 +355,9 @@ public sealed class FieldDescription
         }
 
         Core(type, out result);
+        if (!result.IsDefault && result.Binding.DataFormat != DataFormat)
+            ThrowHelper.ThrowInvalidOperationException(
+                $"Binding for column '{Name}' produced format '{result.Binding.DataFormat}' but the field format is '{DataFormat}'.");
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         void Core(Type? type, out ReadConversionContext lastReadConversionContext)
@@ -351,20 +365,15 @@ public sealed class FieldDescription
             PgFieldBinding binding;
             switch (DataFormat)
             {
-            case DataFormat.Text when IsUnknownResultType():
+            case DataFormat.Text when IsUnknownResultType:
             {
-                // Try to resolve some 'pg_catalog.text' type info for the expected clr type.
+                // Resolve the converter against pg_catalog.text, UnknownResultType reads text bytes
+                // for any column type. Every pg_catalog.text mapping we own declares text-format support, so a converter that
+                // can't bind to text here throws and surfaces as a missing mapping rather than getting silently reinterpreted.
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgTypeId, _serializerOptions);
                 var concreteTypeInfo = typeInfo.MakeConcreteForField(Field);
-
-                // We start binding to DataFormat.Binary as it's the broadest supported format.
-                // The format however is irrelevant as 'pg_catalog.text' data is identical across either.
-                // Given we did a resolution against 'pg_catalog.text' and not the actual field type we're in reinterpretation territory anyway.
-                if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out binding))
-                    binding = concreteTypeInfo.BindField(DataFormat.Text);
-
+                binding = concreteTypeInfo.BindField(DataFormat.Text);
                 lastReadConversionContext = new(concreteTypeInfo, binding);
-
                 break;
             }
             case DataFormat.Binary or DataFormat.Text:
@@ -388,10 +397,6 @@ public sealed class FieldDescription
             if (_objectConversionContext.TypeInfo is null && type is not null)
                 _ = ObjectConversionContext;
         }
-
-        // DataFormat.Text today exclusively signals that we executed with an UnknownResultTypeList.
-        // If we ever want to fully support DataFormat.Text we'll need to flow UnknownResultType status separately.
-        bool IsUnknownResultType() => DataFormat is DataFormat.Text;
     }
 
     /// <summary>

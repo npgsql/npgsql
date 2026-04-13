@@ -695,6 +695,7 @@ public class PgReader
         return fieldSize;
     }
 
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void Commit()
     {

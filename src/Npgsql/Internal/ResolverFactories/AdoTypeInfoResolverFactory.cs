@@ -90,10 +90,10 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             // Uses the bytea converters, as neither type has a header.
             mappings.AddType<byte[]>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()),
+                static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter(supportsTextFormat: true)),
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter(supportsTextFormat: true)),
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Text,
                 static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
@@ -117,10 +117,10 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                     static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
                 // Uses the bytea converters, as neither type has a header.
                 mappings.AddType<byte[]>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()),
+                    static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter(supportsTextFormat: true)),
                     MatchRequirement.DataTypeName);
                 mappings.AddStructType<ReadOnlyMemory<byte>>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
+                    static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter(supportsTextFormat: true)),
                     MatchRequirement.DataTypeName);
                 mappings.AddType<Stream>(dataTypeName,
                     static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
@@ -141,10 +141,10 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddStructType<char>(DataTypeNames.Jsonb,
                 static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<char>(jsonbVersion, new CharTextConverter(options.TextEncoding))));
             mappings.AddType<byte[]>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<byte[]>(jsonbVersion, new ArrayByteaConverter())),
+                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<byte[]>(jsonbVersion, new ArrayByteaConverter(supportsTextFormat: true))),
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, new ReadOnlyMemoryByteaConverter())),
+                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, new ReadOnlyMemoryByteaConverter(supportsTextFormat: true))),
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Jsonb,
                 static (options, mapping, _) => new PgConcreteTypeInfo(options, new VersionPrefixedTextConverter<Stream>(jsonbVersion, new StreamConverter(supportsTextFormat: true)), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
@@ -171,9 +171,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Bytea
             mappings.AddType<byte[]>(DataTypeNames.Bytea,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter(supportsTextFormat: false)), isDefault: true);
             mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter(supportsTextFormat: false)));
             mappings.AddType<Stream>(DataTypeNames.Bytea,
                 // TODO handling bytea textually would require conversions to hex strings, so currently we don't support it.
                 static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: false), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
