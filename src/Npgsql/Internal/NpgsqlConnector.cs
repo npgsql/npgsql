@@ -637,7 +637,7 @@ public sealed partial class NpgsqlConnector
                 return GssEncryptionResult.GetCredentialFailure;
             }
 
-            if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
+            if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
             {
                 // Unable to retrieve credentials
                 // If it's required, throw an appropriate exception
