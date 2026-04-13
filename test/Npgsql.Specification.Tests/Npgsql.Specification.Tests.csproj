@@ -12,6 +12,8 @@
     <PackageReference Include="AdoNet.Specification.Tests" />
     <PackageReference Include="xunit" />
     <PackageReference Include="YTest.MTP.XUnit2" />
+    <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CrashDump" />
   </ItemGroup>
 
   <PropertyGroup>
