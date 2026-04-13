@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -937,6 +938,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     throw new AggregateException(disposalException, ex);
                 }
             }
+
+            if (disposalException is not null)
+                ExceptionDispatchInfo.Throw(disposalException);
         }
         finally
         {

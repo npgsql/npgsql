@@ -194,27 +194,26 @@ public sealed class PgWriter
         if (binding.IsDbNullBinding)
             ThrowHelper.ThrowArgumentException("Binding context cannot be for a DbNull.", nameof(binding));
 
-        // TODO maybe we can share PgValueBindingContext in the writer.
+        var bufferRequirement = binding.BufferRequirement;
+        var size = binding.Size.GetValueOrDefault();
         _current = new ValueMetadata
         {
             Format = binding.DataFormat,
-            BufferRequirement = binding.BufferRequirement,
-            Size = binding.Size.GetValueOrDefault(),
+            BufferRequirement = bufferRequirement,
+            Size = size,
             // WriteState is generally null, checking for null and showing the null literal to the JIT allows us to skip the write barrier if so.
             WriteState = binding.WriteState is null ? null : binding.WriteState
         };
 
-        return ShouldFlush(binding.BufferRequirement.GetValueOrDefault()) ? Flush(async, cancellationToken) : new();
+        return ShouldFlush(BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, size.GetValueOrDefault()))
+            ? Flush(async, cancellationToken)
+            : new();
     }
 
     internal void EndWrite(Size expectedByteCount)
         => CommitAndResetTotal(expectedByteCount.GetValueOrDefault());
 
     public ValueMetadata Current => _current;
-    internal Size CurrentBufferRequirement => _current.BufferRequirement;
-
-    // When we don't know the size during writing we're using the writer buffer as a sizing mechanism.
-    internal bool BufferingWrite => Current.Size.Kind is SizeKind.Unknown;
 
     // This method lives here to remove the chances oids will be cached on converters inadvertently when data type names should be used.
     // Such a mapping (for instance for array element oids) should be done per operation to ensure it is done in the context of a specific backend.
@@ -479,10 +478,6 @@ public sealed class PgWriter
     /// <returns>The stream.</returns>
     public Stream GetStream(bool allowMixedIO = false)
         => new PgWriterStream(this, allowMixedIO);
-
-    // We also check pos != offset to speed up simple value writes, as field level buffering was handled by writer.StartWrite() already.
-    public bool ShouldFlushCurrent()
-        => !BufferingWrite && _pos != _offset && ShouldFlush(BufferRequirements.GetMinimumBufferByteCount(Current.BufferRequirement, Current.Size.GetValueOrDefault()));
 
     public bool ShouldFlush(int byteCount) => Remaining < byteCount && FlushMode is not FlushMode.None;
 
