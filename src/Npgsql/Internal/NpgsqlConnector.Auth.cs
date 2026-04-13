@@ -331,7 +331,7 @@ partial class NpgsqlConnector
     {
         var targetName = $"{KerberosServiceName}/{Host}";
         // See https://github.com/postgres/postgres/blob/a0dd0702e464f206b08c99a74cb58809c51aafa5/src/interfaces/libpq/fe-auth.c#L111-L123
-        // We do not support delegation (TokenImpersonationLevel.Delegation) for now
+        // We do not support delegation (TokenImpersonationLevel.Delegation) for now (#6540)
         var clientOptions = new NegotiateAuthenticationClientOptions
         {
             TargetName = targetName,
