@@ -308,7 +308,7 @@ jobs:
             psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'" postgres
 
       - name: Test
-        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --logger "GitHubActions;report-warnings=false" --blame-crash --blame-hang-timeout 30s
+        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-progress --crashdump --hangdump --hangdump-timeout 30s
         shell: bash
 
       - name: Upload Test Hang Dumps
