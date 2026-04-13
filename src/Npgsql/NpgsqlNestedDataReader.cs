@@ -1,4 +1,4 @@
-﻿using Npgsql.Internal;
+using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using System;
 using System.Collections;

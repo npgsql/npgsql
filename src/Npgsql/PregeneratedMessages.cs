@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Text;
 using Npgsql.Internal;
 using Npgsql.Util;

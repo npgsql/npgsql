@@ -1,4 +1,4 @@
-﻿using Npgsql;
+using Npgsql;
 using Npgsql.Tests;
 using NUnit.Framework;
 using System;

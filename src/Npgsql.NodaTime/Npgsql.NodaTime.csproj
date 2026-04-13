@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Authors>Shay Rojansky</Authors>
     <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>

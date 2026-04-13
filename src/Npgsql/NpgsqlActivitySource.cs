@@ -1,4 +1,4 @@
-﻿using Npgsql.Internal;
+using Npgsql.Internal;
 using System;
 using System.Data;
 using System.Diagnostics;

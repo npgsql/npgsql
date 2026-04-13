@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Npgsql.Internal;
 
 namespace Npgsql.Tests.Support;

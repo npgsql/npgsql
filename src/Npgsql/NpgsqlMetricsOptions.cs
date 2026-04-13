@@ -1,4 +1,4 @@
-﻿namespace Npgsql;
+namespace Npgsql;
 
 /// <summary>
 /// Options to configure Npgsql's support for OpenTelemetry metrics.

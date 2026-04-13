@@ -1,4 +1,4 @@
-﻿namespace Npgsql.BackendMessages;
+namespace Npgsql.BackendMessages;
 
 /// <summary>
 /// DataRow is special in that it does not parse the actual contents of the backend message,

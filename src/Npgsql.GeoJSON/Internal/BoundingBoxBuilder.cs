@@ -1,4 +1,4 @@
-﻿using GeoJSON.Net.Geometry;
+using GeoJSON.Net.Geometry;
 
 namespace Npgsql.GeoJSON.Internal;
 
