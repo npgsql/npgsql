@@ -48,7 +48,7 @@ public abstract class PgConverter
     private protected bool IsDbNullValueAsObject(object? value, ref object? writeState)
         => IsDbNullValueAsObject(value, writeState);
 
-    internal abstract Size GetSizeAsObject(SizeContext context, object value, ref object? writeState);
+    internal abstract Size GetSizeAsObject(SizeContext context, object value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState);
 
     internal object ReadAsObject(PgReader reader)
         => ReadAsObject(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -135,19 +135,19 @@ public abstract class PgConverter<T> : PgConverter
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
-    public abstract Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState);
+    public abstract Size GetSize(SizeContext context, [DisallowNull]T value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState);
     public abstract void Write(PgWriter writer, [DisallowNull] T value);
     public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
     internal sealed override Type TypeToConvert => typeof(T);
 
-    internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
+    internal sealed override Size GetSizeAsObject(SizeContext context, object value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState)
         => GetSize(context, (T)value, ref writeState);
 }
 
 static class PgConverterExtensions
 {
-    public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
+    public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState)
     {
         if (converter.IsDbNull(value, writeState))
             return null;
@@ -170,7 +170,7 @@ static class PgConverterExtensions
         return size;
     }
 
-    public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
+    public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
     {
         if (converter.IsDbNullAsObject(value, writeState))
             return null;

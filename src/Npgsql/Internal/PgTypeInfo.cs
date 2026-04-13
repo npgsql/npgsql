@@ -340,7 +340,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         }
     }
 
-    public Size GetSize<T>(SizeContext context, [DisallowNull] T value, ref object? writeState)
+    public Size GetSize<T>(SizeContext context, [DisallowNull] T value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState)
     {
         if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
@@ -361,7 +361,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return size;
     }
 
-    public Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
+    public Size GetSizeAsObject(SizeContext context, object value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState)
     {
         if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
@@ -382,13 +382,13 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return size;
     }
 
-    public Size? IsDbNullOrGetSize<T>(SizeContext context, T? value, ref object? writeState)
+    public Size? IsDbNullOrGetSize<T>(SizeContext context, T? value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState)
         => GetConverter<T>().IsDbNull(value, writeState) ? null : GetSize(context, value, ref writeState);
 
-    public Size? IsDbNullOrGetSizeAsObject(SizeContext context, object? value, ref object? writeState)
+    public Size? IsDbNullOrGetSizeAsObject(SizeContext context, object? value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState)
         => Converter.IsDbNullAsObject(value, writeState) ? null : GetSizeAsObject(context, value, ref writeState);
 
-    public Size? IsNestedObjectDbNullOrGetSize(SizeContext context, object? value, ref object? writeState)
+    public Size? IsNestedObjectDbNullOrGetSize(SizeContext context, object? value, [NotNullIfNotNull(nameof(writeState))] ref object? writeState)
     {
         if (IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling))
             return null;
