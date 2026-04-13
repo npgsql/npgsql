@@ -8,6 +8,7 @@ using Npgsql.Util;
 namespace Npgsql.Internal.Converters;
 
 /// A converter to map strongly typed apis onto boxed converter results to produce a strongly typed converter over T.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class CastingConverter<T> : PgConverter<T>
 {
     readonly PgConverter _effectiveConverter;
