@@ -338,7 +338,10 @@ public sealed class FieldDescription
 
         var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectConversionContext : _objectConversionContext;
         if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
+        {
             result = objectInfo;
+            return;
+        }
 
         Core(type, out result);
 

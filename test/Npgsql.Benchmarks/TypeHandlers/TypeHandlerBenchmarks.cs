@@ -89,15 +89,15 @@ public abstract class TypeHandlerBenchmarks<T>
                 _writer.StartWrite(async: false, _valueBinding, CancellationToken.None).GetAwaiter().GetResult();
                 _converter.Write(_writer, value!);
                 _writer.EndWrite(_valueBinding.Size.Value);
+
+                Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
+                _readBuffer.AddBytesToRead(_writeBuffer.WritePosition);
+                _readBuffer.ReadPosition = 0;
+                _writeBuffer.WritePosition = 0;
+
+                _reader.Init(_valueBinding.DataFormat, _valueBinding.Size.Value.GetValueOrDefault());
+                _fieldBinding = new PgFieldBinding(DataFormat.Binary, _binaryRequirements.Read);
             }
-
-            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
-            _readBuffer.AddBytesToRead(_writeBuffer.WritePosition);
-            _readBuffer.ReadPosition = 0;
-            _writeBuffer.WritePosition = 0;
-
-            _reader.Init(_valueBinding.DataFormat, (size ?? -1).Value);
-            _fieldBinding = new PgFieldBinding(DataFormat.Binary, _binaryRequirements.Read);
         }
     }
 
