@@ -59,7 +59,10 @@ public abstract class PgTypeInfo
         if (this is not PgProviderTypeInfo providerTypeInfo)
             return (PgConcreteTypeInfo)this;
 
-        return providerTypeInfo.GetForField(field) ?? providerTypeInfo.GetDefault(null);
+        // Decided providers skip GetDefault's validation. The prior GetForField call already validated
+        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        return providerTypeInfo.GetForField(field)
+            ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? field.PgTypeId : null);
     }
 
     /// <summary>
@@ -102,7 +105,10 @@ public abstract class PgTypeInfo
             ? providerTypeInfo.GetForValueAsObject(context, (object?)value, out writeState)
             : providerTypeInfo.GetForValue(context, value, out writeState);
 
-        return concreteTypeInfo ?? providerTypeInfo.GetDefault(null);
+        // Decided providers skip GetDefault's validation. The prior GetForValue call already validated
+        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        return concreteTypeInfo
+            ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
     }
 
     /// <summary>
@@ -135,7 +141,10 @@ public abstract class PgTypeInfo
         if (this is not PgProviderTypeInfo providerTypeInfo)
             return (PgConcreteTypeInfo)this;
 
-        return providerTypeInfo.GetForValueAsObject(context, value, out writeState) ?? providerTypeInfo.GetDefault(null);
+        // Decided providers skip GetDefault's validation. The prior GetForValueAsObject call already
+        // validated the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        return providerTypeInfo.GetForValueAsObject(context, value, out writeState)
+            ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
     }
 
     // We assume a weakly typed info does not support reading as the converter won't be able to produce the derived type statically.
