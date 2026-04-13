@@ -1,4 +1,4 @@
-﻿using Npgsql.Internal;
+using Npgsql.Internal;
 using Npgsql.Internal.Converters;
 using System.Collections.Generic;
 using System.Text;

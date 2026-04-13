@@ -1,4 +1,4 @@
-﻿using Npgsql.BackendMessages;
+using Npgsql.BackendMessages;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;

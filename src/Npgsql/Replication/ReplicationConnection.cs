@@ -1,4 +1,4 @@
-﻿using Npgsql.BackendMessages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System;
 using System.Collections.Generic;

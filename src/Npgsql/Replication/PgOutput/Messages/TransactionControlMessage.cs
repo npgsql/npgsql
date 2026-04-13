@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NpgsqlTypes;
 
 namespace Npgsql.Replication.PgOutput.Messages;

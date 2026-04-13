@@ -1,4 +1,4 @@
-﻿using NpgsqlTypes;
+using NpgsqlTypes;
 using NUnit.Framework;
 using System;
 using System.Data;

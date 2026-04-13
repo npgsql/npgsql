@@ -1,4 +1,4 @@
-﻿namespace Npgsql.BackendMessages;
+namespace Npgsql.BackendMessages;
 
 sealed class EmptyQueryMessage : IBackendMessage
 {

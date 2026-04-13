@@ -1,4 +1,4 @@
-﻿using NUnit.Framework;
+using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
 using static Npgsql.Tests.TestUtil;

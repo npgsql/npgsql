@@ -1,4 +1,4 @@
-﻿using Npgsql.BackendMessages;
+using Npgsql.BackendMessages;
 using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;

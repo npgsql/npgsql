@@ -1,4 +1,4 @@
-﻿namespace Npgsql.Replication.PgOutput;
+namespace Npgsql.Replication.PgOutput;
 
 /// <summary>
 /// The kind of data transmitted for a tuple in a Logical Replication Protocol message.

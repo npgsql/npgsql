@@ -1,4 +1,4 @@
-﻿namespace Npgsql.Replication;
+namespace Npgsql.Replication;
 
 /// <summary>
 /// Decides what to do with the snapshot created during logical slot initialization.
