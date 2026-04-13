@@ -557,6 +557,16 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             _connector = null;
         }
 
+        // Deterministically release each parameter's provider-produced write state and binding state.
+        // ResetDbType cascades through ResetTypeInfo which disposes both; clearing the type hints is
+        // incidental (the params aren't reused after the importer closes). GC would eventually catch
+        // anything we miss, but we'd rather not leak pooled buffers held in write state.
+        if (_params is not null)
+        {
+            foreach (var p in _params)
+                p?.ResetDbType();
+        }
+
         _buf = null;
         _state = ImporterState.Disposed;
     }

@@ -593,12 +593,23 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_bindingContext is not null)
             DisposeBindingState();
 
+        // Dispose any provider-produced _writeState against its current ConcreteTypeInfo before we
+        // overwrite it — once reassigned, the restored ConcreteTypeInfo can't dispose state produced
+        // by the about-to-be-discarded one.
+        if (_writeState is { } ws)
+        {
+            ConcreteTypeInfo?.DisposeWriteState(ws);
+            _writeState = null;
+        }
+
         TypeInfo = typeInfo;
         ConcreteTypeInfo = concreteTypeInfo;
     }
 
     /// Attempt to resolve a type info based on available (postgres) type information on the parameter.
-    internal void ResolveTypeInfo(PgSerializerOptions options, IDbTypeResolver? dbTypeResolver)
+    /// When <paramref name="willBind"/> is false (e.g. SchemaOnly), any provider-produced write state is
+    /// disposed immediately because no Bind call will follow to take ownership of it.
+    internal void ResolveTypeInfo(PgSerializerOptions options, IDbTypeResolver? dbTypeResolver, bool willBind = true)
     {
         var typeInfo = TypeInfo;
         var staticValueType = StaticValueType;
@@ -676,6 +687,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             Debug.Assert(typeInfo is not null);
             DisposeBindingState();
+
+            // Dispose any stale _writeState from a previous resolution against its current
+            // ConcreteTypeInfo before the branches below overwrite it — this covers the "failed resolution,
+            // caller fixed the value, called again" self-heal path (e.g. NpgsqlBinaryImporter's PgTypeId check).
+            if (_writeState is { } staleWs)
+            {
+                ConcreteTypeInfo?.DisposeWriteState(staleWs);
+                _writeState = null;
+            }
+
             if (staticValueType == typeof(object))
             {
                 // Pull from Value (not _value) so we also support object typed generic params.
@@ -687,6 +708,14 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             else
             {
                 ConcreteTypeInfo = MakeConcreteTypeInfoForTypedValue(typeInfo);
+            }
+
+            // If no Bind follows (SchemaOnly), release the provider-produced state immediately so
+            // lifecycle stays contained inside the parameter.
+            if (!willBind && _writeState is { } ws)
+            {
+                ConcreteTypeInfo.DisposeWriteState(ws);
+                _writeState = null;
             }
         }
 
@@ -704,16 +733,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 $"Your database details or Npgsql type loading configuration may be incorrect. Alternatively your PostgreSQL installation might need to be upgraded, or an extension adding the missing data type might not have been installed.");
     }
 
-    /// Dispose write state produced during ResolveTypeInfo when Bind won't follow (e.g. SchemaOnly).
-    internal void DisposeResolutionWriteState()
-    {
-        if (_writeState is { } ws)
-        {
-            _writeState = null;
-            ConcreteTypeInfo?.DisposeWriteState(ws);
-        }
-    }
-
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
     internal void Bind(out DataFormat format, out Size size, DataFormat? requiredFormat = null)
     {
@@ -721,36 +740,72 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
+        // Bind is atomic *and* self-cleaning: the local binding is only committed to _bindingContext
+        // (and _writeState nulled) after every check passes, and any exception before commit disposes
+        // the resolution-time _writeState ourselves so callers don't need to know about it.
         if (_bindingContext is null)
         {
             if (_size > 0)
                 HandleSizeTruncation(ConcreteTypeInfo);
 
-            if (_useSubStream)
+            try
             {
-                _bindingContext = BindSubStream();
-            }
-            else if (StaticValueType == typeof(object))
-            {
-                // Pull from Value so we also support object typed generic params.
-                var value = Value;
-                if (value is null)
-                    ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
+                PgValueBinding bindingContext;
+                if (_useSubStream)
+                {
+                    bindingContext = BindSubStream();
+                }
+                else if (StaticValueType == typeof(object))
+                {
+                    // Pull from Value so we also support object typed generic params.
+                    var value = Value;
+                    if (value is null)
+                        ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
 
-                _bindingContext = ConcreteTypeInfo.IsNestedObjectDbNull(value, _writeState, ParameterDbNullHandling)
-                    ? new PgValueBinding(DataFormat.Binary, 0, null, _writeState)
-                    : ConcreteTypeInfo.BindParameterValueAsObject(value, _writeState, ParameterDbNullHandling, requiredFormat);
+                    bindingContext = ConcreteTypeInfo.IsNestedObjectDbNull(value, _writeState, ParameterDbNullHandling)
+                        ? new PgValueBinding(DataFormat.Binary, 0, null, _writeState)
+                        : ConcreteTypeInfo.BindParameterValueAsObject(value, _writeState, ParameterDbNullHandling, requiredFormat);
+                }
+                else
+                {
+                    bindingContext = BindTypedValue(ConcreteTypeInfo, formatPreference: requiredFormat);
+                }
+
+                // Enforce that provider-produced _writeState flows end-to-end through the binding unchanged.
+                // A converter that accepts _writeState as input must thread the same instance into its returned
+                // binding's WriteState. Swapping to a different instance is a contract violation because it
+                // forks the lifecycle (the resolution-time state would be orphaned and the bind-time state
+                // would be unowned by this parameter).
+                if (_writeState is not null && !ReferenceEquals(_writeState, bindingContext.WriteState))
+                    ThrowHelper.ThrowInvalidOperationException(
+                        $"Binding for parameter '{ParameterName}' replaced the provider-produced write state with a different instance. " +
+                        "Converters must thread the write state through unchanged.");
+
+                if (requiredFormat is not null && bindingContext.DataFormat != requiredFormat)
+                    ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
+
+                // Binding and ownership transfer of state happen together.
+                _bindingContext = bindingContext;
+                _writeState = null;
             }
-            else
+            catch
             {
-                _bindingContext = BindTypedValue(ConcreteTypeInfo, formatPreference: requiredFormat);
+                // DisposeWriteState is assumed not to throw. Any broken contract surfaces its exception here over the bind exception.
+                if (_writeState is { } ws)
+                {
+                    ConcreteTypeInfo.DisposeWriteState(ws);
+                    _writeState = null;
+                }
+                throw;
             }
+        }
+        else if (requiredFormat is not null && _bindingContext.GetValueOrDefault().DataFormat != requiredFormat)
+        {
+            ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
         }
 
         format = Format;
         size = _bindingContext.GetValueOrDefault().Size ?? -1;
-        if (requiredFormat is not null && format != requiredFormat)
-            ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         PgValueBinding BindSubStream()
@@ -806,6 +861,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 }
                 else if (value is Stream)
                 {
+                    // Substream path abandons the resolver-produced state, we must dispose it here to prevent the no swap exception.
+                    if (_writeState is { } ws)
+                    {
+                        typeInfo.DisposeWriteState(ws);
+                        _writeState = null;
+                    }
                     _useSubStream = true;
                 }
             }
@@ -896,9 +957,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     private protected void ResetTypeInfo()
     {
+        DisposeBindingState();
+
+        // Dispose any provider-produced _writeState as well.
+        if (_writeState is { } ws)
+        {
+            ConcreteTypeInfo?.DisposeWriteState(ws);
+            _writeState = null;
+        }
+
         TypeInfo = null;
         ConcreteTypeInfo = null;
-        DisposeBindingState();
     }
 
     private protected void DisposeBindingState()
