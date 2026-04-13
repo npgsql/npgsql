@@ -588,7 +588,7 @@ readonly struct PgFieldBinding
         BufferRequirement = bufferRequirement;
     }
 
-    // DataFormat can differ from the actual field format if data will be reintrepreted for this binding (e.g. UnknownResultType)
+    // DataFormat can differ from the actual field format if data will be reinterpreted for this binding (e.g. UnknownResultType)
     public DataFormat DataFormat { get; }
     public Size BufferRequirement { get; }
 }

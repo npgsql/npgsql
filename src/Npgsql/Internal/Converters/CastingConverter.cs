@@ -77,7 +77,7 @@ sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderType
 
 static class CastingTypeInfoExtensions
 {
-    [RequiresDynamicCode("Changing boxing type infos to their non-boxing counterpart can require creating new generic types or methods, which requires creating code at runtime. This may not be AOT  when AOT compiling")]
+    [RequiresDynamicCode("Converting weakly typed type infos to their strongly typed counterpart can require creating new generic types or methods at runtime, which may not work when AOT compiling.")]
     internal static PgTypeInfo ToStronglyTyped(this PgTypeInfo typeInfo)
     {
         if (typeInfo.IsStronglyTyped)
