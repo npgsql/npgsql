@@ -4,7 +4,7 @@
 
 PostgreSQL 11 stored procedures can be called, but unfortunately not with `CommandType.StoredProcedure`. PostgreSQL has supported stored *functions* for a long while, and since these have acted as replacements for non-existing procedures, Npgsql's `CommandType.StoredProcedure` has been implemented to invoke them; this means that `CommandType.StoredProcedure` translates into `SELECT * FROM my_stored_function()`. The new stored procedures introduce a special invocation syntax - `CALL my_stored_procedure()` - which is incompatible with the existing stored function syntax.
 
-On the brighter side, it's very easy to invoke stored procedures (or functions) yourself - you don't really need `CommandType.StoredProcedure`. Simply create a regular command and set `CommandText` to `CALL my_stored_procedure(@p1, @p2)`, handling parameters like you would any other statement. In fact, with Npgsql and PostgreSQL, `CommandType.StoredProcedure` doesn't really have any added value over constructing the command yourself.
+On the brighter side, it's very easy to invoke stored procedures (or functions) yourself - you don't really need `CommandType.StoredProcedure`. Simply create a regular command and set `CommandText` to `CALL my_stored_procedure($1, $2)`, handling parameters like you would any other statement. In fact, with Npgsql and PostgreSQL, `CommandType.StoredProcedure` doesn't really have any added value over constructing the command yourself.
 
 ## <a name="broken_connection_from_pool">I opened a pooled connection, and it throws right away when I use it! What gives?</a>
 
@@ -53,8 +53,8 @@ await using (var cmd = new NpgsqlCommand(...)) {
 When sending a JSONB parameter, you must explicitly specify its type to be JSONB with NpgsqlDbType:
 
 ```csharp
-await using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES (@p)", conn)) {
-  cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, jsonText);
+await using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES ($1)", conn)) {
+  cmd.Parameters.AddWithValue(NpgsqlDbType.Jsonb, jsonText);
 }
 ```
 
