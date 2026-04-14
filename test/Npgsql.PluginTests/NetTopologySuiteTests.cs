@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
@@ -148,6 +148,85 @@ public class NetTopologySuiteTests : TestBase
         cmd.Parameters.AddWithValue("p1", geometry);
         cmd.CommandText = $"SELECT st_asewkb(@p1) = st_asewkb({sqlRepresentation})";
         Assert.That(cmd.ExecuteScalar(), Is.True);
+    }
+
+    [Test]
+    public async Task ReadWithHandleOrdinatesXY_FiltersZCoordinate()
+    {
+        // This test verifies that handleOrdinates IS respected during read operations
+        await using var conn = await OpenConnectionAsync(handleOrdinates: Ordinates.XY);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT ST_MakePoint(1, 2, 3)"; // Create a 3D point in SQL
+
+        var result = (Point)cmd.ExecuteScalar()!;
+
+        // The Z coordinate should be filtered out during reading based on handleOrdinates: XY
+        Assert.That(result.CoordinateSequence.HasZ, Is.False,
+            "Z coordinate was correctly filtered during read");
+        Assert.That(result.X, Is.EqualTo(1d));
+        Assert.That(result.Y, Is.EqualTo(2d));
+        Assert.That(result.Z, Is.NaN, "Z coordinate should be NaN when filtered out");
+    }
+
+    [Test]
+    public async Task WriteWithHandleOrdinatesXY_ShouldFilterZCoordinate()
+    {
+        // This test verifies that when handleOrdinates is set to XY,
+        // Z coordinates are correctly filtered out during write operations.
+        var pointWithZ = new Point(1d, 2d, 3d);
+
+        await using var conn = await OpenConnectionAsync(handleOrdinates: Ordinates.XY);
+        await using var cmd = conn.CreateCommand();
+        cmd.Parameters.AddWithValue("p1", pointWithZ);
+        cmd.CommandText = "SELECT ST_Z(@p1::geometry)";
+
+        var result = cmd.ExecuteScalar();
+
+        // Z coordinate should be filtered out and return NULL
+        Assert.That(result, Is.EqualTo(DBNull.Value),
+            "Z coordinate should be filtered during write when handleOrdinates: Ordinates.XY");
+    }
+
+    [Test]
+    public async Task WriteWithHandleOrdinatesXY_ShouldFilterMCoordinate()
+    {
+        // This test verifies that when handleOrdinates is set to XY,
+        // M coordinates are correctly filtered out during write operations.
+        var pointWithM = new Point(
+            new DotSpatialAffineCoordinateSequence([1d, 2d], [double.NaN], [4d]),
+            GeometryFactory.Default);
+
+        await using var conn = await OpenConnectionAsync(handleOrdinates: Ordinates.XY);
+        await using var cmd = conn.CreateCommand();
+        cmd.Parameters.AddWithValue("p1", pointWithM);
+        cmd.CommandText = "SELECT ST_M(@p1::geometry)";
+
+        var result = cmd.ExecuteScalar();
+
+        // M coordinate should be filtered out and return NULL
+        Assert.That(result, Is.EqualTo(DBNull.Value),
+            "M coordinate should be filtered during write when handleOrdinates: Ordinates.XY");
+    }
+
+    [Test]
+    public async Task WriteWithHandleOrdinatesXYZ_ShouldFilterMCoordinate()
+    {
+        // This test verifies that when handleOrdinates is set to XYZ,
+        // M coordinates are correctly filtered out during write operations.
+        var pointWithZM = new Point(
+            new DotSpatialAffineCoordinateSequence([1d, 2d], [3d], [4d]),
+            GeometryFactory.Default);
+
+        await using var conn = await OpenConnectionAsync(handleOrdinates: Ordinates.XYZ);
+        await using var cmd = conn.CreateCommand();
+        cmd.Parameters.AddWithValue("p1", pointWithZM);
+        cmd.CommandText = "SELECT ST_M(@p1::geometry)";
+
+        var result = cmd.ExecuteScalar();
+
+        // M coordinate should be filtered out and return NULL
+        Assert.That(result, Is.EqualTo(DBNull.Value),
+            "M coordinate should be filtered during write when handleOrdinates: Ordinates.XYZ");
     }
 
     [Test]

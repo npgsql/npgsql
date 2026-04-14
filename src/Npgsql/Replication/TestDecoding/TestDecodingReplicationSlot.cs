@@ -1,4 +1,4 @@
-﻿using Npgsql.Replication.Internal;
+using Npgsql.Replication.Internal;
 
 namespace Npgsql.Replication.TestDecoding;
 

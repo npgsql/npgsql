@@ -1,4 +1,4 @@
-﻿using Npgsql.BackendMessages;
+using Npgsql.BackendMessages;
 using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -97,7 +97,7 @@ static class ThrowHelper
         => throw new IndexOutOfRangeException(message);
 
     [DoesNotReturn]
-    internal static void ThrowIndexOutOfRangeException(string message, object argument)
+    internal static void ThrowIndexOutOfRangeException(string message, int argument)
         => throw new IndexOutOfRangeException(string.Format(message, argument));
 
     [DoesNotReturn]

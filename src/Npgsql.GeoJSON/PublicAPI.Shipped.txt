@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 Npgsql.GeoJSON.CrsMap
 Npgsql.GeoJSON.CrsMapExtensions
 Npgsql.GeoJSONOptions
@@ -11,3 +11,5 @@ static Npgsql.GeoJSON.CrsMapExtensions.GetCrsMap(this Npgsql.NpgsqlDataSource! d
 static Npgsql.GeoJSON.CrsMapExtensions.GetCrsMapAsync(this Npgsql.NpgsqlDataSource! dataSource) -> System.Threading.Tasks.Task<Npgsql.GeoJSON.CrsMap!>!
 static Npgsql.NpgsqlGeoJSONExtensions.UseGeoJson(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, Npgsql.GeoJSON.CrsMap! crsMap, Npgsql.GeoJSONOptions options = Npgsql.GeoJSONOptions.None, bool geographyAsDefault = false) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 static Npgsql.NpgsqlGeoJSONExtensions.UseGeoJson(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, Npgsql.GeoJSONOptions options = Npgsql.GeoJSONOptions.None, bool geographyAsDefault = false) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+static Npgsql.NpgsqlGeoJSONExtensions.UseGeoJson<TMapper>(this TMapper mapper, Npgsql.GeoJSON.CrsMap! crsMap, Npgsql.GeoJSONOptions options = Npgsql.GeoJSONOptions.None, bool geographyAsDefault = false) -> TMapper
+static Npgsql.NpgsqlGeoJSONExtensions.UseGeoJson<TMapper>(this TMapper mapper, Npgsql.GeoJSONOptions options = Npgsql.GeoJSONOptions.None, bool geographyAsDefault = false) -> TMapper

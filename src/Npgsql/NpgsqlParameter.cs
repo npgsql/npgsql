@@ -660,14 +660,14 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
 
         // This step isn't part of BindValue because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
-        // We never reuse resolutions for resolvers across executions as a mutable value itself may influence the result.
+        // We never reuse concrete type infos from providers across executions as a mutable value itself may influence the result.
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
-        if (!previouslyResolved || typeInfo!.IsResolverInfo)
+        if (!previouslyResolved || typeInfo is not PgConcreteTypeInfo)
         {
             ResetBindingInfo();
-            var resolution = ResolveConverter(typeInfo!);
-            Converter = resolution.Converter;
-            PgTypeId = resolution.PgTypeId;
+            var concreteTypeInfo = GetConcreteTypeInfo(typeInfo!);
+            Converter = concreteTypeInfo.Converter;
+            PgTypeId = concreteTypeInfo.PgTypeId;
         }
 
         void ThrowNoTypeInfo()
@@ -685,10 +685,20 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     // Pull from Value so we also support object typed generic params.
-    private protected virtual PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
+    private protected virtual PgConcreteTypeInfo GetConcreteTypeInfo(PgTypeInfo typeInfo)
     {
         _asObject = true;
-        return typeInfo.GetObjectResolution(Value);
+        return typeInfo.GetObjectConcreteTypeInfo(Value, out _writeState);
+    }
+
+    /// Dispose write state produced during ResolveTypeInfo when Bind won't follow (e.g. SchemaOnly).
+    internal void DisposeResolutionWriteState()
+    {
+        if (_writeState is { } ws)
+        {
+            _writeState = null;
+            TypeInfo?.DisposeWriteState(ws);
+        }
     }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
@@ -759,7 +769,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_useSubStream && value is not null)
             value = _subStream = new SubReadStream((Stream)value, _size);
 
-        if (TypeInfo!.BindObject(Converter!, value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
+        Size size = default;
+        if (TypeInfo!.BindObject(Converter!, value, ref size, ref _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;

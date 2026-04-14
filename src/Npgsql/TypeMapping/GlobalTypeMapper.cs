@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
@@ -101,10 +101,16 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             var typeInfo = TypeMappingOptions.GetTypeInfoInternal(type, null);
-            if (typeInfo is PgResolverTypeInfo info)
-                dataTypeName = info.GetObjectResolution(value).PgTypeId.DataTypeName;
+            if (typeInfo is PgProviderTypeInfo providerInfo)
+            {
+                dataTypeName = providerInfo.GetObjectConcreteTypeInfo(value, out var state).PgTypeId.DataTypeName;
+                if (state is not null)
+                    providerInfo.DisposeWriteState(state);
+            }
             else
-                dataTypeName = typeInfo?.GetResolution().PgTypeId.DataTypeName;
+            {
+                dataTypeName = ((PgConcreteTypeInfo?)typeInfo)?.PgTypeId.DataTypeName;
+            }
         }
         catch
         {

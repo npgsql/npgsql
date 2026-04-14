@@ -33,7 +33,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var numRanges = reader.ReadInt32();
-        var multirange = (T)(object)(typeof(T).IsArray ? new TRange[numRanges] : new List<TRange>());
+        var multirange = (T)(object)(typeof(T).IsArray ? new TRange[numRanges] : new List<TRange>(numRanges));
 
         for (var i = 0; i < numRanges; i++)
         {

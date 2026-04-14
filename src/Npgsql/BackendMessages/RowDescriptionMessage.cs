@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -124,14 +124,14 @@ sealed class RowDescriptionMessage : IBackendMessage
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)ordinal < (uint)Count)
+            if ((uint)ordinal >= (uint)Count)
             {
-                Debug.Assert(_fields[ordinal] != null);
-                return _fields[ordinal]!;
+                ThrowHelper.ThrowIndexOutOfRangeException("Ordinal is out of range, value must be between 0 and {0} (exclusive).", Count);
+                return default!;
             }
 
-            ThrowHelper.ThrowIndexOutOfRangeException("Ordinal must be between 0 and " + (Count - 1));
-            return default!;
+            Debug.Assert(_fields[ordinal] != null);
+            return _fields[ordinal]!;
         }
     }
 

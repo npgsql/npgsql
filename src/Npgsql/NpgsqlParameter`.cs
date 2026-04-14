@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -84,13 +84,13 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     private protected override void SetOutputValueCore(NpgsqlDataReader reader, int ordinal)
         => TypedValue = reader.GetFieldValue<T>(ordinal);
 
-    private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo)
+    private protected override PgConcreteTypeInfo GetConcreteTypeInfo(PgTypeInfo typeInfo)
     {
         if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing)
-            return base.ResolveConverter(typeInfo);
+            return base.GetConcreteTypeInfo(typeInfo);
 
         _asObject = false;
-        return typeInfo.GetResolution(TypedValue);
+        return typeInfo.GetConcreteTypeInfo(TypedValue, out _writeState);
     }
 
     // We ignore allowNullReference, it's just there to control the base implementation.
@@ -104,7 +104,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         }
 
         var value = TypedValue;
-        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, out _writeState, out var dataFormat, formatPreference) is { } info)
+        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, ref _writeState, out var dataFormat, formatPreference) is { } info)
         {
             WriteSize = size;
             _bufferRequirement = info.BufferRequirement;

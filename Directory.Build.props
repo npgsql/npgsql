@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
     <VersionPrefix>11.0.0-preview.1</VersionPrefix>
     <LangVersion>latest</LangVersion>

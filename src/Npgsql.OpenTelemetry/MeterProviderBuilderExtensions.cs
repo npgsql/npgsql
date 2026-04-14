@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using OpenTelemetry.Metrics;
 
 // ReSharper disable once CheckNamespace

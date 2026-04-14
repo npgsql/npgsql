@@ -1,10 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
 
   <PropertyGroup>
     <DebugType>portable</DebugType>
     <AssemblyName>Npgsql.Benchmarks</AssemblyName>
     <OutputType>Exe</OutputType>
-    <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
     
     <!-- Suppress security audit errors as errors (especially from SqlClient) in this benchmark-only project -->
     <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>

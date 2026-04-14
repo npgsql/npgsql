@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
@@ -61,7 +61,7 @@ JOIN pg_class AS cls ON cls.oid = attr.attrelid
 JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
 WHERE
     atttypid <> 0 AND
-    relkind IN ('r', 'v', 'm') AND
+    relkind IN ('r', 'v', 'm', 'p') AND
     NOT attisdropped AND
     nspname NOT IN ('pg_catalog', 'information_schema') AND
     attnum > 0 AND

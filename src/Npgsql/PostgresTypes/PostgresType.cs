@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.PostgresTypes;
@@ -20,13 +21,12 @@ public abstract class PostgresType
     /// Constructs a representation of a PostgreSQL data type.
     /// </summary>
     /// <param name="ns">The data type's namespace (or schema).</param>
-    /// <param name="name">The data type's name.</param>
+    /// <param name="name">The data type's display name.</param>
     /// <param name="oid">The data type's OID.</param>
     private protected PostgresType(string ns, string name, uint oid)
     {
-        DataTypeName = DataTypeName.FromDisplayName(name, ns, assumeUnqualified: true);
+        DataTypeName = DataTypeName.FromDisplayName(ns is null or "pg_catalog" ? name : ns + "." + name);
         OID = oid;
-        FullName = Namespace + "." + Name;
     }
 
     /// <summary>
@@ -38,7 +38,6 @@ public abstract class PostgresType
     {
         DataTypeName = dataTypeName;
         OID = oid.Value;
-        FullName = Namespace + "." + Name;
     }
 
     #endregion
@@ -67,7 +66,8 @@ public abstract class PostgresType
     /// <summary>
     /// The full name of the backend type, including its namespace.
     /// </summary>
-    public string FullName { get; }
+    [field: MaybeNull]
+    public string FullName => field ??= Namespace + "." + Name;
 
     internal DataTypeName DataTypeName { get; }
 

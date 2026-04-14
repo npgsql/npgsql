@@ -1,4 +1,4 @@
-﻿using NpgsqlTypes;
+using NpgsqlTypes;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

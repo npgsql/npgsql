@@ -1,4 +1,4 @@
-﻿namespace Npgsql.Replication.PgOutput;
+namespace Npgsql.Replication.PgOutput;
 
 /// <summary>
 /// The Logical Streaming Replication Protocol version.

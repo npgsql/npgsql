@@ -6,7 +6,10 @@ namespace Npgsql.Internal.Converters.Internal;
 sealed class VoidConverter : PgBufferedConverter<object?>
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => CanConvertBufferedDefault(DataFormat.Binary, out bufferRequirements); // Text is identical
+    {
+        bufferRequirements = BufferRequirements.CreateFixedSize(0);
+        return true;
+    }
 
     protected override object? ReadCore(PgReader reader) => null;
     protected override void WriteCore(PgWriter writer, object? value) => throw new NotSupportedException();

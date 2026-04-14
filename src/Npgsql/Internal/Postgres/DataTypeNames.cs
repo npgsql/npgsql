@@ -79,7 +79,16 @@ static class DataTypeNames
     public static DataTypeName Varbit => ValidatedName("pg_catalog.varbit");
     public static DataTypeName TsVector => ValidatedName("pg_catalog.tsvector");
     public static DataTypeName TsQuery => ValidatedName("pg_catalog.tsquery");
+    public static DataTypeName RegClass => ValidatedName("pg_catalog.regclass");
+    public static DataTypeName RegCollation => ValidatedName("pg_catalog.regcollation");
     public static DataTypeName RegConfig => ValidatedName("pg_catalog.regconfig");
+    public static DataTypeName RegDictionary => ValidatedName("pg_catalog.regdictionary");
+    public static DataTypeName RegNamespace => ValidatedName("pg_catalog.regnamespace");
+    public static DataTypeName RegOper => ValidatedName("pg_catalog.regoper");
+    public static DataTypeName RegOperator => ValidatedName("pg_catalog.regoperator");
+    public static DataTypeName RegProc => ValidatedName("pg_catalog.regproc");
+    public static DataTypeName RegProcedure => ValidatedName("pg_catalog.regprocedure");
+    public static DataTypeName RegRole => ValidatedName("pg_catalog.regrole");
     public static DataTypeName Uuid => ValidatedName("pg_catalog.uuid");
     public static DataTypeName Xml => ValidatedName("pg_catalog.xml");
     public static DataTypeName Json => ValidatedName("pg_catalog.json");

@@ -1,4 +1,4 @@
-﻿using Npgsql.NodaTime.Internal;
+using Npgsql.NodaTime.Internal;
 using Npgsql.TypeMapping;
 
 // ReSharper disable once CheckNamespace

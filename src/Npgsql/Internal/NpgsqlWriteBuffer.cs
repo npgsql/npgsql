@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
@@ -20,8 +20,10 @@ sealed class NpgsqlWriteBuffer : IDisposable
 {
     #region Fields and Properties
 
-    internal static readonly UTF8Encoding UTF8Encoding = new(false, true);
-    internal static readonly UTF8Encoding RelaxedUTF8Encoding = new(false, false);
+    internal static readonly UTF8Encoding UTF8Encoding = new ThrowingUTF8Encoding();
+    internal static readonly UTF8Encoding RelaxedUTF8Encoding = Encoding.UTF8 as UTF8Encoding ?? new(false, throwOnInvalidBytes: false);
+
+    sealed class ThrowingUTF8Encoding() : UTF8Encoding(false, throwOnInvalidBytes: true);
 
     internal readonly NpgsqlConnector Connector;
 

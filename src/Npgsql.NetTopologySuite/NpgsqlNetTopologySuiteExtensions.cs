@@ -1,4 +1,4 @@
-﻿using NetTopologySuite.Geometries;
+using NetTopologySuite.Geometries;
 using Npgsql.NetTopologySuite.Internal;
 using Npgsql.TypeMapping;
 

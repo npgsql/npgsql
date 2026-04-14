@@ -1,4 +1,4 @@
-﻿using Npgsql.Internal.Postgres;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.PostgresTypes;
 

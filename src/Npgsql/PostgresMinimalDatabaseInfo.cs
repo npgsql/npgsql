@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
@@ -65,7 +65,16 @@ sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
         Add(DataTypeNames.Varbit, oid: 1562, arrayOid: 1563);
         Add(DataTypeNames.TsVector, oid: 3614, arrayOid: 3643);
         Add(DataTypeNames.TsQuery, oid: 3615, arrayOid: 3645);
+        Add(DataTypeNames.RegClass, oid: 2205, arrayOid: 2210);
+        Add(DataTypeNames.RegCollation, oid: 4191, arrayOid: 4192);
         Add(DataTypeNames.RegConfig, oid: 3734, arrayOid: 3735);
+        Add(DataTypeNames.RegDictionary, oid: 3769, arrayOid: 3770);
+        Add(DataTypeNames.RegNamespace, oid: 4089, arrayOid: 4090);
+        Add(DataTypeNames.RegOper, oid: 2203, arrayOid: 2208);
+        Add(DataTypeNames.RegOperator, oid: 2204, arrayOid: 2209);
+        Add(DataTypeNames.RegProc, oid: 24, arrayOid: 1008);
+        Add(DataTypeNames.RegProcedure, oid: 2202, arrayOid: 2207);
+        Add(DataTypeNames.RegRole, oid: 4096, arrayOid: 4097);
         Add(DataTypeNames.Uuid, oid: 2950, arrayOid: 2951);
         Add(DataTypeNames.Xml, oid: 142, arrayOid: 143);
         Add(DataTypeNames.Json, oid: 114, arrayOid: 199);

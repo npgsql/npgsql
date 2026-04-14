@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
 using Npgsql.Internal.Converters;
 

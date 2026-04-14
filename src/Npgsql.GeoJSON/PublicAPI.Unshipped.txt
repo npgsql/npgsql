@@ -1,3 +1,1 @@
-﻿#nullable enable
-static Npgsql.NpgsqlGeoJSONExtensions.UseGeoJson<TMapper>(this TMapper mapper, Npgsql.GeoJSON.CrsMap! crsMap, Npgsql.GeoJSONOptions options = Npgsql.GeoJSONOptions.None, bool geographyAsDefault = false) -> TMapper
-static Npgsql.NpgsqlGeoJSONExtensions.UseGeoJson<TMapper>(this TMapper mapper, Npgsql.GeoJSONOptions options = Npgsql.GeoJSONOptions.None, bool geographyAsDefault = false) -> TMapper
+#nullable enable

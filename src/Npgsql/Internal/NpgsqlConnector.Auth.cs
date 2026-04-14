@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Security;
@@ -61,7 +61,8 @@ partial class NpgsqlConnector
             case AuthenticationRequestType.GSS:
             case AuthenticationRequestType.SSPI:
                 ThrowIfNotAllowed(requiredAuthModes, msg.AuthRequestType == AuthenticationRequestType.GSS ? RequireAuthMode.GSS : RequireAuthMode.SSPI);
-                await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, this, cancellationToken).ConfigureAwait(false);
+                var isKerberos = msg.AuthRequestType == AuthenticationRequestType.GSS;
+                await DataSource.IntegratedSecurityHandler.NegotiateAuthentication(async, isKerberos, this, cancellationToken).ConfigureAwait(false);
                 return;
 
             case AuthenticationRequestType.GSSContinue:
@@ -327,19 +328,34 @@ partial class NpgsqlConnector
         await Flush(async, cancellationToken).ConfigureAwait(false);
     }
 
-    internal async ValueTask AuthenticateGSS(bool async, CancellationToken cancellationToken)
+    internal async ValueTask AuthenticateGSS(bool async, bool isKerberos, CancellationToken cancellationToken)
     {
         var targetName = $"{KerberosServiceName}/{Host}";
+        // See https://github.com/postgres/postgres/blob/a0dd0702e464f206b08c99a74cb58809c51aafa5/src/interfaces/libpq/fe-auth.c#L111-L123
+        // We do not support delegation (TokenImpersonationLevel.Delegation) for now (#6540)
+        var clientOptions = new NegotiateAuthenticationClientOptions
+        {
+            TargetName = targetName,
+            RequireMutualAuthentication = true
+        };
+        // If postgres requests GSS, we explicitly ask for Kerberos
+        // Instead of relying on SSPI on windows to pick the correct protocol (Kerberos instead of NTLM)
+        // Otherwise, leave Negotiate to allow SSPI to pick whatever it thinks is correct
+        // This behavior differs from libpq, which prefers SSPI to pick the protocol
+        // But mimics PGJDBC
+        // On UNIX only Kerberos is supported, so no need to differentiate between OSes
+        // TODO: PGJBC has a parameter to force SSPI. Not sure we need something like this.
+        if (isKerberos)
+            clientOptions.Package = "Kerberos";
 
-        var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
         NegotiateOptionsCallback?.Invoke(clientOptions);
 
         using var authContext = new NegotiateAuthentication(clientOptions);
         var data = authContext.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
-        if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
+        if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
         {
             // Unable to retrieve credentials or some other issue
-            throw new NpgsqlException($"Unable to authenticate with GSS: received {statusCode} instead of the expected ContinueNeeded");
+            throw new NpgsqlException($"Unable to authenticate with GSS: received {statusCode} instead of the expected ContinueNeeded or Completed");
         }
         await WritePassword(data, 0, data.Length, async, cancellationToken).ConfigureAwait(false);
         await Flush(async, cancellationToken).ConfigureAwait(false);

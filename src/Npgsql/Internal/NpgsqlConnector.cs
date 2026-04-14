@@ -516,6 +516,7 @@ public sealed partial class NpgsqlConnector
             if (activity is not null)
                 NpgsqlActivitySource.SetException(activity, e);
             Break(e, markHostAsOfflineOnConnecting: true);
+            FullCleanup();
             throw;
         }
 
@@ -605,7 +606,14 @@ public sealed partial class NpgsqlConnector
         ConnectionLogger.LogTrace("Negotiating GSS encryption");
 
         var targetName = $"{KerberosServiceName}/{Host}";
-        var clientOptions = new NegotiateAuthenticationClientOptions { TargetName = targetName };
+        // See https://github.com/postgres/postgres/blob/a0dd0702e464f206b08c99a74cb58809c51aafa5/src/interfaces/libpq/fe-secure-gssapi.c#L651-L658
+        // We do not support delegation (TokenImpersonationLevel.Delegation) for now (#6540)
+        var clientOptions = new NegotiateAuthenticationClientOptions
+        {
+            TargetName = targetName,
+            RequireMutualAuthentication = true,
+            RequiredProtectionLevel = ProtectionLevel.EncryptAndSign
+        };
 
         NegotiateOptionsCallback?.Invoke(clientOptions);
 
@@ -629,7 +637,7 @@ public sealed partial class NpgsqlConnector
                 return GssEncryptionResult.GetCredentialFailure;
             }
 
-            if (statusCode != NegotiateAuthenticationStatusCode.ContinueNeeded)
+            if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
             {
                 // Unable to retrieve credentials
                 // If it's required, throw an appropriate exception
@@ -1589,10 +1597,10 @@ public sealed partial class NpgsqlConnector
 
                 Debug.Assert(msg != null, "Message is null for code: " + messageCode);
 
-                // Reset flushed bytes after any RFQ or in between potentially long running operations.
+                // Rebase the cumulative buffer-end counter after any RFQ or in between potentially long-running operations.
                 // Just in case we'll hit that 15 exbibyte limit of a signed long...
                 if (messageCode is BackendMessageCode.ReadyForQuery or BackendMessageCode.CopyData or BackendMessageCode.NotificationResponse)
-                    ReadBuffer.ResetFlushedBytes();
+                    ReadBuffer.RebaseBufferEndPosition();
 
                 return msg;
             }
@@ -2305,7 +2313,7 @@ public sealed partial class NpgsqlConnector
 
                 var connection = Connection;
 
-                FullCleanup();
+                Cleanup();
 
                 if (connection is not null)
                 {

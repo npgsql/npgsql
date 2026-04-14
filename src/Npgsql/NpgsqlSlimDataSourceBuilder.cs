@@ -789,6 +789,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlDataSource Build()
     {
+        ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
         if (ConnectionStringBuilder.Host!.Contains(','))
@@ -808,6 +809,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
     {
+        ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
         ValidateMultiHost();
@@ -815,9 +817,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         return new(connectionStringBuilder, config);
     }
 
-    (NpgsqlConnectionStringBuilder, NpgsqlDataSourceConfiguration) PrepareConfiguration()
+    // Used in testing.
+    internal (NpgsqlConnectionStringBuilder, NpgsqlDataSourceConfiguration) PrepareConfiguration()
     {
-        ConnectionStringBuilder.PostProcessAndValidate();
         var connectionStringBuilder = ConnectionStringBuilder.Clone();
 
         var sslClientAuthenticationOptionsCallback = _sslClientAuthenticationOptionsCallback;
@@ -855,7 +857,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         }
 
         if ((_passwordProvider is not null || _periodicPasswordProvider is not null) &&
-            (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
+            (connectionStringBuilder.Password is not null || connectionStringBuilder.Passfile is not null))
         {
             throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
         }
