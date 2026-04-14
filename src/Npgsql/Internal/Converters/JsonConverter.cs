@@ -54,14 +54,14 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
                     ? await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false)
                     : JsonDocument.Parse(stream)),
 
-                JsonTypeInfo<T> typeInfoOfT => async
-                    ? await JsonSerializer.DeserializeAsync(stream, typeInfoOfT, cancellationToken).ConfigureAwait(false)
-                    : JsonSerializer.Deserialize(stream, typeInfoOfT),
+                JsonTypeInfo<T> typeInfoOfT => (T?)(async
+                    ? await JsonSerializer.DeserializeAsync(stream, (JsonTypeInfo)typeInfoOfT, cancellationToken).ConfigureAwait(false)
+                    : JsonSerializer.Deserialize(stream, (JsonTypeInfo)typeInfoOfT)),
 
                 _ => (T?)(async
-                    ? await JsonSerializer.DeserializeAsync(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo, cancellationToken)
+                    ? await JsonSerializer.DeserializeAsync(stream, _jsonTypeInfo, cancellationToken)
                         .ConfigureAwait(false)
-                    : JsonSerializer.Deserialize(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo))
+                    : JsonSerializer.Deserialize(stream, _jsonTypeInfo))
             };
         }
 
