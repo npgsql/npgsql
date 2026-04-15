@@ -24,15 +24,15 @@ public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false)
 
     public sealed override void Write(PgWriter writer, T value) => WriteCore(writer, value);
 
-    public sealed override ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default)
+    public sealed override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
     {
         Write(writer, value);
         return new();
     }
 
-    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)
     {
-        Write(writer, (T)value);
+        Write(writer, (T)value!);
         return new();
     }
 }

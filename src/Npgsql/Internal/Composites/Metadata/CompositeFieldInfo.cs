@@ -127,7 +127,7 @@ abstract class CompositeFieldInfo
         }
     }
 
-    protected ValueTask WriteAsObject(bool async, PgConverter converter, PgWriter writer, object value, CancellationToken cancellationToken)
+    protected ValueTask WriteAsObject(bool async, PgConverter converter, PgWriter writer, object? value, CancellationToken cancellationToken)
     {
         if (async)
             return converter.WriteAsObjectAsync(writer, value, cancellationToken);
@@ -166,10 +166,10 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
 {
     readonly Action<object, T>? _setter;
     readonly int _parameterIndex;
-    readonly Func<object, T> _getter;
+    readonly Func<object?, T> _getter;
     readonly bool _asObject;
 
-    CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter)
+    CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter)
         : base(name, typeInfo, nominalPgTypeId)
     {
         if (typeInfo.Type != typeof(T))
@@ -190,12 +190,12 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     }
 
     // Accessed through reflection (ReflectionCompositeInfoFactory)
-    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, int parameterIndex)
+    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter, int parameterIndex)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _parameterIndex = parameterIndex;
 
     // Accessed through reflection (ReflectionCompositeInfoFactory)
-    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, Action<object, T> setter)
+    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter, Action<object, T> setter)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _setter = setter;
 
@@ -295,16 +295,16 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
             : ((PgConverter<T>)converter).IsDbNullOrGetSize(format, writeRequirement, value, ref writeState);
     }
 
-    public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken)
+    public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object? instance, CancellationToken cancellationToken)
     {
         var value = _getter(instance);
         if (AsObject(converter))
-            return WriteAsObject(async, converter, writer, value!, cancellationToken);
+            return WriteAsObject(async, converter, writer, value, cancellationToken);
 
         if (async)
-            return ((PgConverter<T>)converter).WriteAsync(writer, value!, cancellationToken);
+            return ((PgConverter<T>)converter).WriteAsync(writer, value, cancellationToken);
 
-        ((PgConverter<T>)converter).Write(writer, value!);
+        ((PgConverter<T>)converter).Write(writer, value);
         return new();
     }
 }

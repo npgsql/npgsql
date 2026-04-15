@@ -82,7 +82,7 @@ public abstract class PgConverter
     /// <summary>Writes a <typeparamref name="T"/> value to the writer.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write<T>(PgWriter writer, [DisallowNull] T value)
+    public void Write<T>(PgWriter writer, T value)
     {
         if (typeof(T) != TypeToConvert)
         {
@@ -95,12 +95,12 @@ public abstract class PgConverter
     /// <summary>Asynchronously writes a <typeparamref name="T"/> value to the writer.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ValueTask WriteAsync<T>(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default)
+    public ValueTask WriteAsync<T>(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => typeof(T) != TypeToConvert
             ? WriteAsObjectAsync(writer, value, cancellationToken)
             : UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
 
-    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, object? writeState)
+    internal bool IsDbNullAsObject(object? value, object? writeState)
     {
         if (value is null && !TypeAcceptsNull)
             ThrowInvalidNullValue();
@@ -115,7 +115,7 @@ public abstract class PgConverter
 
     private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
 
-    internal abstract Size GetSizeAsObject(SizeContext context, object value, ref object? writeState);
+    internal abstract Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState);
 
     internal object ReadAsObject(PgReader reader)
         => ReadAsObject(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -125,13 +125,13 @@ public abstract class PgConverter
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
     internal abstract ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken);
 
-    internal void WriteAsObject(PgWriter writer, object value)
+    internal void WriteAsObject(PgWriter writer, object? value)
         => WriteAsObject(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
-    internal ValueTask WriteAsObjectAsync(PgWriter writer, object value, CancellationToken cancellationToken = default)
+    internal ValueTask WriteAsObjectAsync(PgWriter writer, object? value, CancellationToken cancellationToken = default)
         => WriteAsObject(async: true, writer, value, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
-    internal abstract ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken);
+    internal abstract ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken);
 
     internal enum DbNullPredicate : byte
     {
@@ -186,7 +186,7 @@ public abstract class PgConverter<T> : PgConverter
         => IsDbNullValue((T?)value, writeState);
 
     /// Checks whether <paramref name="value"/> is considered a database null by this converter.
-    public bool IsDbNull([NotNullWhen(false)] T? value, object? writeState)
+    public bool IsDbNull(T? value, object? writeState)
     {
         Debug.Assert(value is not null || TypeAcceptsNull, "TypeAcceptsNull issue, null reached the typed IsDbNull on a converter whose T does not accept null.");
         return DbNullPredicateKind switch
@@ -200,7 +200,7 @@ public abstract class PgConverter<T> : PgConverter
 
     [Obsolete("Use the overload without ref.")]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
+    public bool IsDbNull(T? value, ref object? writeState)
         => IsDbNull(value, writeState);
 
     /// Reads a <typeparamref name="T"/> value from the reader.
@@ -209,15 +209,28 @@ public abstract class PgConverter<T> : PgConverter
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
-    public abstract Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState);
+    public abstract Size GetSize(SizeContext context,
+#nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
+        T value,
+#nullable restore
+        ref object? writeState);
 
     /// Writes a <typeparamref name="T"/> value to the writer.
-    public abstract void Write(PgWriter writer, [DisallowNull] T value);
-    /// Asynchronously writes a <typeparamref name="T"/> value to the writer.
-    public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
+    public abstract void Write(PgWriter writer,
+#nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
+        T value
+#nullable restore
+        );
 
-    internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
-        => GetSize(context, (T)value, ref writeState);
+    /// Asynchronously writes a <typeparamref name="T"/> value to the writer.
+    public abstract ValueTask WriteAsync(PgWriter writer,
+#nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
+        T value,
+#nullable restore
+        CancellationToken cancellationToken = default);
+
+    internal sealed override Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState)
+        => GetSize(context, (T)value!, ref writeState);
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
@@ -251,7 +264,10 @@ static class PgConverterExtensions
 
         if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
             return byteCount;
-        var size = converter.GetSize(new(format, writeRequirement), value, ref writeState);
+        // Value may legitimately be null when a Custom predicate opts into null-writing (IsDbNullValue returning false for null).
+        // GetSize's oblivious T parameter accepts it, but we are in a nullability aware context so we must null forgive.
+        Debug.Assert(converter.TypeAcceptsNull || value is not null);
+        var size = converter.GetSize(new(format, writeRequirement), value!, ref writeState);
 
         switch (size.Kind)
         {

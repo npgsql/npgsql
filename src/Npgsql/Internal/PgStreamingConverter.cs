@@ -49,12 +49,12 @@ public abstract class PgStreamingConverter<T>(bool customDbNullPredicate = false
         }
     }
 
-    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)
     {
         if (async)
-            return WriteAsync(writer, (T)value, cancellationToken);
+            return WriteAsync(writer, (T)value!, cancellationToken);
 
-        Write(writer, (T)value);
+        Write(writer, (T)value!);
         return new();
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
@@ -24,7 +23,7 @@ sealed class NullableConverter<T>(PgConverter<T> effectiveConverter)
     public override ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => this.ReadAsyncAsNullable(effectiveConverter, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, [DisallowNull]T? value, ref object? writeState)
+    public override Size GetSize(SizeContext context, T? value, ref object? writeState)
         => effectiveConverter.GetSize(context, value.GetValueOrDefault(), ref writeState);
 
     public override void Write(PgWriter writer, T? value)
@@ -36,7 +35,7 @@ sealed class NullableConverter<T>(PgConverter<T> effectiveConverter)
     internal override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => effectiveConverter.ReadAsObject(async, reader, cancellationToken);
 
-    internal override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+    internal override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)
         => effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
 }
 

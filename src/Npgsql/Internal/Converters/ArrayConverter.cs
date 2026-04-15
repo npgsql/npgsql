@@ -144,7 +144,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         {
             var value = GetValue(collection, indices);
             return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value!, ref writeState)
+                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
                 : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
         }
 
@@ -219,7 +219,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         {
             var value = GetValue(collection, indices.One);
             return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value!, ref writeState)
+                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
                 : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
         }
 

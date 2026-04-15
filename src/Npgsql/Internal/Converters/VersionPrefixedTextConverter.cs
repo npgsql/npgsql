@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,13 +20,13 @@ sealed class VersionPrefixedTextConverter<T>(byte versionPrefix, PgConverter<T> 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState)
+    public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => textConverter.GetSize(context, value, ref writeState).Combine(context.Format is DataFormat.Binary ? sizeof(byte) : 0);
 
-    public override void Write(PgWriter writer, [DisallowNull]T value)
+    public override void Write(PgWriter writer, T value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
 
-    public override ValueTask WriteAsync(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken = default)
+    public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => Write(async: true, writer, value, cancellationToken);
 
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
@@ -36,7 +35,7 @@ sealed class VersionPrefixedTextConverter<T>(byte versionPrefix, PgConverter<T> 
         return async ? await textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : textConverter.Read(reader);
     }
 
-    async ValueTask Write(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
+    async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
         await VersionPrefixedTextConverter.WriteVersion(async, versionPrefix, writer, cancellationToken).ConfigureAwait(false);
         if (async)
