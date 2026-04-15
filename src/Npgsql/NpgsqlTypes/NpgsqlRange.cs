@@ -93,12 +93,12 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     public static readonly NpgsqlRange<T> Empty = new(default, default, RangeFlags.Empty);
 
     /// <summary>
-    /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.
+    /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false (i.e. the range is non-empty with a finite lower bound).
     /// </summary>
     public T? LowerBound { get; }
 
     /// <summary>
-    /// The upper bound of the range. Only valid when <see cref="UpperBoundInfinite"/> is false.
+    /// The upper bound of the range. Only valid when <see cref="UpperBoundInfinite"/> is false (i.e. the range is non-empty with a finite upper bound).
     /// </summary>
     public T? UpperBound { get; }
 
