@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
@@ -21,6 +22,9 @@ public class DateIntervalConverter(PgConverter<NpgsqlRange<LocalDate>> rangeConv
             ? await rangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
             // ReSharper disable once MethodHasAsyncOverloadWithCancellation
             : rangeConverter.Read(reader);
+
+        if (range.IsEmpty)
+            throw new InvalidCastException("Cannot read an empty range as a NodaTime DateInterval.");
 
         var upperBound = range.UpperBound;
 
