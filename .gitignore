@@ -19,3 +19,4 @@ artifacts/
 *.ide/
 .vs/
 TestResult.xml
+*.lscache
