@@ -12,13 +12,25 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConverter
 {
-    internal DbNullPredicate DbNullPredicateKind { get; }
+    bool CustomDbNullPredicate { get; }
+    /// <summary>
+    /// True when CLR null can reach this converter's API surface.
+    /// Auto-derived from <see cref="TypeToConvert"/> (or from an internal wrapper's effective type if passed).
+    /// Orthogonal to <see cref="HandleDbNull"/>: the two combine into <see cref="DbNullPredicateKind"/> as Custom (HandleDbNull true),
+    /// Null (HandleDbNull false, TypeAcceptsNull true), or None (both false).
+    /// </summary>
+    internal bool TypeAcceptsNull { get; }
+    internal DbNullPredicate DbNullPredicateKind
+        => CustomDbNullPredicate ? DbNullPredicate.Custom
+            : TypeAcceptsNull ? DbNullPredicate.Null
+            : DbNullPredicate.None;
     public bool IsDbNullable => DbNullPredicateKind is not DbNullPredicate.None;
 
-    private protected PgConverter(Type type, bool isNullDefaultValue, bool customDbNullPredicate = false)
+    private protected PgConverter(Type type, bool typeAcceptsNull, bool customDbNullPredicate)
     {
         TypeToConvert = type;
-        DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
+        TypeAcceptsNull = typeAcceptsNull;
+        CustomDbNullPredicate = customDbNullPredicate;
     }
 
     /// <summary>
@@ -89,14 +101,17 @@ public abstract class PgConverter
             : UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
 
     internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, object? writeState)
-        => DbNullPredicateKind switch
+    {
+        if (value is null && !TypeAcceptsNull)
+            ThrowInvalidNullValue();
+        return DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
-            DbNullPredicate.None => value is null && ThrowInvalidNullValue(),
-            // We do the null check to keep the NotNullWhen(false) invariant.
-            DbNullPredicate.Custom => IsDbNullValueAsObject(value, writeState) || (value is null && ThrowInvalidNullValue()),
+            DbNullPredicate.None => false,
+            DbNullPredicate.Custom => IsDbNullValueAsObject(value, writeState),
             _ => ThrowDbNullPredicateOutOfRange()
         };
+    }
 
     private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
 
@@ -144,6 +159,9 @@ public abstract class PgConverter<T> : PgConverter
     private protected PgConverter(bool customDbNullPredicate)
         : base(typeof(T), default(T) is null, customDbNullPredicate) { }
 
+    private protected PgConverter(Type effectiveType, bool customDbNullPredicate)
+        : base(typeof(T), !effectiveType.IsValueType || Nullable.GetUnderlyingType(effectiveType) is not null, customDbNullPredicate) { }
+
 #pragma warning disable CS0618 // Obsolete - delegates to ref overload for binary compat with existing overrides
     protected virtual bool IsDbNullValue(T? value, object? writeState)
     {
@@ -164,21 +182,21 @@ public abstract class PgConverter<T> : PgConverter
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected virtual bool IsDbNullValue(T? value, ref object? writeState) => throw new NotSupportedException();
 
-    // Object null semantics as follows, if T is a struct (so excluding nullable) report false for null values, don't throw on the cast.
-    // As a result this creates symmetry with IsDbNull when we're dealing with a struct T, as it cannot be passed null at all.
     private protected override bool IsDbNullValueAsObject(object? value, object? writeState)
-        => (default(T) is null || value is not null) && IsDbNullValue((T?)value, writeState);
+        => IsDbNullValue((T?)value, writeState);
 
     /// Checks whether <paramref name="value"/> is considered a database null by this converter.
     public bool IsDbNull([NotNullWhen(false)] T? value, object? writeState)
-        => DbNullPredicateKind switch
+    {
+        Debug.Assert(value is not null || TypeAcceptsNull, "TypeAcceptsNull issue, null reached the typed IsDbNull on a converter whose T does not accept null.");
+        return DbNullPredicateKind switch
         {
             DbNullPredicate.Null => value is null,
             DbNullPredicate.None => false,
-            // We do the null check to keep the NotNullWhen(false) invariant.
-            DbNullPredicate.Custom => IsDbNullValue(value, writeState) || (value is null && ThrowInvalidNullValue()),
+            DbNullPredicate.Custom => IsDbNullValue(value, writeState),
             _ => ThrowDbNullPredicateOutOfRange()
         };
+    }
 
     [Obsolete("Use the overload without ref.")]
     [EditorBrowsable(EditorBrowsableState.Never)]

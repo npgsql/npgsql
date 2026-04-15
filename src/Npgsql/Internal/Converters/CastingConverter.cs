@@ -9,13 +9,17 @@ using Npgsql.Util;
 namespace Npgsql.Internal.Converters;
 
 /// A converter that adapts a boxed converter's results to an exact-type converter over T, wrapping the read/write
-/// paths through object to present a typed surface for a converter whose TypeToConvert is only a base of T.
+/// paths through object to present a typed surface for a converter whose TypeToConvert is in a subtype relationship
+/// with T — a base, a subtype, or a boxing target (e.g. an int? converter backing a CastingConverter for object).
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class CastingConverter<T> : PgConverter<T>
 {
     readonly PgConverter _effectiveConverter;
 
-    public CastingConverter(PgConverter effectiveConverter) : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
+    public CastingConverter(PgConverter effectiveConverter)
+        : base(
+            effectiveType: effectiveConverter.TypeToConvert,
+            customDbNullPredicate: effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
     {
         if (!typeof(T).IsInSubtypeRelationshipWith(effectiveConverter.TypeToConvert))
             throw new ArgumentException(
