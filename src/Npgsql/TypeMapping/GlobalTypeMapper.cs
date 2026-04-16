@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
 using Npgsql.Internal.ResolverFactories;
@@ -14,84 +13,64 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
     readonly UserTypeMapper _userTypeMapper = new();
     readonly List<PgTypeInfoResolverFactory> _pluginResolverFactories = [];
-    readonly ReaderWriterLockSlim _lock = new();
+    readonly object _sync = new();
     PgTypeInfoResolverFactory[] _typeMappingResolvers = [];
 
     internal IEnumerable<PgTypeInfoResolverFactory> GetPluginResolverFactories()
     {
-        var resolvers = new List<PgTypeInfoResolverFactory>();
-        _lock.EnterReadLock();
-        try
-        {
-            resolvers.AddRange(_pluginResolverFactories);
-        }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
-
-        return resolvers;
+        lock (_sync)
+            return new List<PgTypeInfoResolverFactory>(_pluginResolverFactories);
     }
 
     internal PgTypeInfoResolverFactory? GetUserMappingsResolverFactory()
     {
-        _lock.EnterReadLock();
-        try
-        {
+        lock (_sync)
             return _userTypeMapper.Items.Count > 0 ? _userTypeMapper : null;
-        }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
     }
 
     internal void AddGlobalTypeMappingResolvers(PgTypeInfoResolverFactory[] factories, Func<PgTypeInfoResolverChainBuilder>? builderFactory = null, bool overwrite = false)
     {
-        // Good enough logic to prevent SlimBuilder overriding the normal Builder.
-        if (overwrite || factories.Length > _typeMappingResolvers.Length)
+        lock (_sync)
         {
-            _builderFactory = builderFactory;
-            _typeMappingResolvers = factories;
-            ResetTypeMappingCache();
+            // Good enough logic to prevent SlimBuilder overriding the normal Builder.
+            if (overwrite || factories.Length > _typeMappingResolvers.Length)
+            {
+                _builderFactory = builderFactory;
+                _typeMappingResolvers = factories;
+                _typeMappingOptions = null;
+            }
         }
     }
-
-    void ResetTypeMappingCache() => _typeMappingOptions = null;
 
     PgSerializerOptions? _typeMappingOptions;
     Func<PgTypeInfoResolverChainBuilder>? _builderFactory;
     JsonSerializerOptions? _jsonSerializerOptions;
 
-    PgSerializerOptions TypeMappingOptions
-    {
-        get
-        {
-            if (_typeMappingOptions is not null)
-                return _typeMappingOptions;
+    PgSerializerOptions TypeMappingOptions => _typeMappingOptions ?? BuildTypeMappingOptions();
 
-            _lock.EnterReadLock();
-            try
+    PgSerializerOptions BuildTypeMappingOptions()
+    {
+        lock (_sync)
+        {
+            if (_typeMappingOptions is { } existing)
+                return existing;
+
+            var builder = _builderFactory?.Invoke() ?? new();
+            builder.AppendResolverFactory(_userTypeMapper);
+            foreach (var factory in _pluginResolverFactories)
+                builder.AppendResolverFactory(factory);
+            foreach (var factory in _typeMappingResolvers)
+                builder.AppendResolverFactory(factory);
+            var chain = builder.Build();
+            var options = new PgSerializerOptions(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, chain)
             {
-                var builder = _builderFactory?.Invoke() ?? new();
-                builder.AppendResolverFactory(_userTypeMapper);
-                foreach (var factory in _pluginResolverFactories)
-                    builder.AppendResolverFactory(factory);
-                foreach (var factory in _typeMappingResolvers)
-                    builder.AppendResolverFactory(factory);
-                var chain = builder.Build();
-                return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, chain)
-                {
-                    // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
-                    PortableTypeIds = true,
-                    // Don't throw if our catalog doesn't know the datatypename.
-                    IntrospectionMode = true
-                };
-            }
-            finally
-            {
-                _lock.ExitReadLock();
-            }
+                // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
+                PortableTypeIds = true,
+                // Don't throw if our catalog doesn't know the datatypename.
+                IntrospectionMode = true
+            };
+            _typeMappingOptions = options;
+            return options;
         }
     }
 
@@ -121,8 +100,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     /// <inheritdoc />
     public void AddTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             var type = factory.GetType();
 
@@ -140,53 +118,21 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             }
 
             _pluginResolverFactories.Insert(0, factory);
-            ResetTypeMappingCache();
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
+            _typeMappingOptions = null;
         }
     }
 
     public void AddDbTypeResolverFactory(DbTypeResolverFactory factory)
         => throw new NotSupportedException("The global type mapper does not support DbTypeResolverFactories. Call this method on a data source builder instead.");
 
-    void ReplaceTypeInfoResolverFactory(PgTypeInfoResolverFactory factory)
-    {
-        _lock.EnterWriteLock();
-        try
-        {
-            var type = factory.GetType();
-
-            for (var i = 0; i < _pluginResolverFactories.Count; i++)
-            {
-                if (_pluginResolverFactories[i].GetType() == type)
-                {
-                    _pluginResolverFactories[i] = factory;
-                    break;
-                }
-            }
-
-            ResetTypeMappingCache();
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
     /// <inheritdoc />
     public void Reset()
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             _pluginResolverFactories.Clear();
             _userTypeMapper.Items.Clear();
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
+            _typeMappingOptions = null;
         }
     }
 
@@ -200,9 +146,25 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     /// <inheritdoc />
     public INpgsqlTypeMapper ConfigureJsonOptions(JsonSerializerOptions serializerOptions)
     {
-        _jsonSerializerOptions = serializerOptions;
-        // If JsonTypeInfoResolverFactory exists we replace it with a configured instance on the same index of the array.
-        ReplaceTypeInfoResolverFactory(new JsonTypeInfoResolverFactory(serializerOptions));
+        lock (_sync)
+        {
+            _jsonSerializerOptions = serializerOptions;
+
+            // If JsonTypeInfoResolverFactory exists we replace it with a configured instance on the same index of the array.
+            var factory = new JsonTypeInfoResolverFactory(serializerOptions);
+            var type = factory.GetType();
+
+            for (var i = 0; i < _pluginResolverFactories.Count; i++)
+            {
+                if (_pluginResolverFactories[i].GetType() == type)
+                {
+                    _pluginResolverFactories[i] = factory;
+                    break;
+                }
+            }
+
+            _typeMappingOptions = null;
+        }
         return this;
     }
 
@@ -213,7 +175,9 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeInfoResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, _jsonSerializerOptions));
+        // Use a re-entered lock to add the read of _jsonSerializerOptions to the total scope.
+        lock (_sync)
+            AddTypeInfoResolverFactory(new JsonDynamicTypeInfoResolverFactory(jsonbClrTypes, jsonClrTypes, _jsonSerializerOptions));
         return this;
     }
 
@@ -238,32 +202,22 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             _userTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
-            ResetTypeMappingCache();
+            _typeMappingOptions = null;
             return this;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
     /// <inheritdoc />
     public bool UnmapEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             var removed = _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
-            ResetTypeMappingCache();
+            _typeMappingOptions = null;
             return removed;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
@@ -272,16 +226,11 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     public INpgsqlTypeMapper MapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             _userTypeMapper.MapEnum(clrType, pgName, nameTranslator);
-            ResetTypeMappingCache();
+            _typeMappingOptions = null;
             return this;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
@@ -289,16 +238,11 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     public bool UnmapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             var removed = _userTypeMapper.UnmapEnum(clrType, pgName, nameTranslator);
-            ResetTypeMappingCache();
+            _typeMappingOptions = null;
             return removed;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
@@ -317,16 +261,11 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     public INpgsqlTypeMapper MapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
-            ResetTypeMappingCache();
+            _typeMappingOptions = null;
             return this;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
@@ -335,16 +274,11 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     public bool UnmapComposite([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)]
         Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_sync)
         {
             var result = _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
-            ResetTypeMappingCache();
+            _typeMappingOptions = null;
             return result;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 }
