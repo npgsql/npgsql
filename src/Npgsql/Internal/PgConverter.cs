@@ -112,7 +112,8 @@ public abstract class PgConverter
             ? WriteAsObjectAsync(writer, value, cancellationToken)
             : UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
 
-    internal bool IsDbNullAsObject(object? value, object? writeState)
+    /// Checks whether <paramref name="value"/> is considered a database null by this converter.
+    public bool IsDbNullAsObject(object? value, object? writeState)
     {
         if (value is null && !TypeAcceptsNull)
             ThrowInvalidNullValue();
@@ -129,7 +130,8 @@ public abstract class PgConverter
 
     private protected abstract Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState);
 
-    internal Size BindAsObject(SizeContext context, object? value, ref object? writeState)
+    /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
+    public Size BindAsObject(SizeContext context, object? value, ref object? writeState)
     {
         Debug.Assert(TypeAcceptsNull || value is not null);
 
@@ -150,17 +152,21 @@ public abstract class PgConverter
         return size;
     }
 
-    internal object? ReadAsObject(PgReader reader)
-        => ReadAsObject(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
-    internal ValueTask<object?> ReadAsObjectAsync(PgReader reader, CancellationToken cancellationToken = default)
+    /// Reads a value from the reader.
+    public object? ReadAsObject(PgReader reader)
+        => ReadAsObject(async: false, reader, CancellationToken.None).Result;
+    /// Asynchronously reads a value from the reader.
+    public ValueTask<object?> ReadAsObjectAsync(PgReader reader, CancellationToken cancellationToken = default)
         => ReadAsObject(async: true, reader, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
     internal abstract ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken);
 
-    internal void WriteAsObject(PgWriter writer, object? value)
+    /// Writes <paramref name="value"/> to the writer.
+    public void WriteAsObject(PgWriter writer, object? value)
         => WriteAsObject(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
-    internal ValueTask WriteAsObjectAsync(PgWriter writer, object? value, CancellationToken cancellationToken = default)
+    /// Asynchronously writes <paramref name="value"/> to the writer.
+    public ValueTask WriteAsObjectAsync(PgWriter writer, object? value, CancellationToken cancellationToken = default)
         => WriteAsObject(async: true, writer, value, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
