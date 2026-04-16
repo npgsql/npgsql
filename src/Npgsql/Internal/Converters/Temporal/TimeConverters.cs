@@ -10,8 +10,8 @@ sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
         return format is DataFormat.Binary;
     }
-    protected override TimeOnly ReadCore(PgReader reader) => new(reader.ReadInt64() * 10);
-    protected override void WriteCore(PgWriter writer, TimeOnly value) => writer.WriteInt64(value.Ticks / 10);
+    public override TimeOnly Read(PgReader reader) => new(reader.ReadInt64() * 10);
+    public override void Write(PgWriter writer, TimeOnly value) => writer.WriteInt64(value.Ticks / 10);
 }
 
 sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>
@@ -21,8 +21,8 @@ sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
         return format is DataFormat.Binary;
     }
-    protected override TimeSpan ReadCore(PgReader reader) => new(reader.ReadInt64() * 10);
-    protected override void WriteCore(PgWriter writer, TimeSpan value) => writer.WriteInt64(value.Ticks / 10);
+    public override TimeSpan Read(PgReader reader) => new(reader.ReadInt64() * 10);
+    public override void Write(PgWriter writer, TimeSpan value) => writer.WriteInt64(value.Ticks / 10);
 }
 
 sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
@@ -34,7 +34,7 @@ sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
         return format is DataFormat.Binary;
     }
 
-    protected override DateTimeOffset ReadCore(PgReader reader)
+    public override DateTimeOffset Read(PgReader reader)
     {
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
         var ticks = reader.ReadInt64() * 10;
@@ -42,7 +42,7 @@ sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
         return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
     }
 
-    protected override void WriteCore(PgWriter writer, DateTimeOffset value)
+    public override void Write(PgWriter writer, DateTimeOffset value)
     {
         writer.WriteInt64(value.TimeOfDay.Ticks / 10);
         writer.WriteInt32(-(int)(value.Offset.Ticks / TimeSpan.TicksPerSecond));

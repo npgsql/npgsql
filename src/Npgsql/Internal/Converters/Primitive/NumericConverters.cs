@@ -98,7 +98,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumb
         return format is DataFormat.Binary;
     }
 
-    protected override T ReadCore(PgReader reader)
+    public override T Read(PgReader reader)
     {
         var digitCount = reader.ReadInt16();
         var digits = stackalloc short[StackAllocByteThreshold / sizeof(short)].Slice(0, digitCount);;
@@ -120,7 +120,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumb
             _ => throw new NotSupportedException()
         });
 
-    protected override void WriteCore(PgWriter writer, T value)
+    public override void Write(PgWriter writer, T value)
     {
         // We don't know how many digits we need so we allocate enough for the builder to use.
         Span<short> destination = stackalloc short[PgNumeric.Builder.MaxDecimalNumericDigits];

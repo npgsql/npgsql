@@ -11,10 +11,10 @@ sealed class LineSegmentConverter : PgBufferedConverter<NpgsqlLSeg>
         return format is DataFormat.Binary;
     }
 
-    protected override NpgsqlLSeg ReadCore(PgReader reader)
+    public override NpgsqlLSeg Read(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());
 
-    protected override void WriteCore(PgWriter writer, NpgsqlLSeg value)
+    public override void Write(PgWriter writer, NpgsqlLSeg value)
     {
         writer.WriteDouble(value.Start.X);
         writer.WriteDouble(value.Start.Y);

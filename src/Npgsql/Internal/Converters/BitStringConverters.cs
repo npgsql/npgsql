@@ -105,7 +105,7 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
         return format is DataFormat.Binary;
     }
 
-    protected override BitVector32 ReadCore(PgReader reader)
+    public override BitVector32 Read(PgReader reader)
     {
         if (reader.CurrentRemaining > sizeof(int) + sizeof(int))
             throw new InvalidCastException("Can't read a BIT(N) with more than 32 bits to BitVector32, only up to BIT(32).");
@@ -121,7 +121,7 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
         };
     }
 
-    protected override void WriteCore(PgWriter writer, BitVector32 value)
+    public override void Write(PgWriter writer, BitVector32 value)
     {
         writer.WriteInt32(32);
         writer.WriteInt32(value.Data);
@@ -138,7 +138,7 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
         return format is DataFormat.Binary;
     }
 
-    protected override bool ReadCore(PgReader reader)
+    public override bool Read(PgReader reader)
     {
         var bits = reader.ReadInt32();
         return bits switch
@@ -151,7 +151,7 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
     }
 
     protected override Size BindValue(in BindContext context, bool value, ref object? writeState) => MaxSize;
-    protected override void WriteCore(PgWriter writer, bool value)
+    public override void Write(PgWriter writer, bool value)
     {
         writer.WriteInt32(1);
         writer.WriteByte(value ? (byte)128 : (byte)0);

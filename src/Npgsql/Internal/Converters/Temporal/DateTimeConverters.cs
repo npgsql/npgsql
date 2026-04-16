@@ -44,10 +44,10 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
         return context.BufferRequirement;
     }
 
-    protected override DateTime ReadCore(PgReader reader)
+    public override DateTime Read(PgReader reader)
         => PgTimestamp.Decode(reader.ReadInt64(), _kind, _dateTimeInfinityConversions);
 
-    protected override void WriteCore(PgWriter writer, DateTime value)
+    public override void Write(PgWriter writer, DateTime value)
         => writer.WriteInt64(PgTimestamp.Encode(value, _dateTimeInfinityConversions));
 }
 
@@ -75,9 +75,9 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
         return context.BufferRequirement;
     }
 
-    protected override DateTimeOffset ReadCore(PgReader reader)
+    public override DateTimeOffset Read(PgReader reader)
         => new(PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions), TimeSpan.Zero);
 
-    protected override void WriteCore(PgWriter writer, DateTimeOffset value)
+    public override void Write(PgWriter writer, DateTimeOffset value)
         => writer.WriteInt64(PgTimestamp.Encode(value.DateTime, _dateTimeInfinityConversions));
 }

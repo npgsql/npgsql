@@ -12,6 +12,6 @@ sealed class InternalCharConverter<T> : PgBufferedConverter<T> where T : INumber
         return format is DataFormat.Binary;
     }
 
-    protected override T ReadCore(PgReader reader) => T.CreateChecked(reader.ReadByte());
-    protected override void WriteCore(PgWriter writer, T value) => writer.WriteByte(byte.CreateChecked(value));
+    public override T Read(PgReader reader) => T.CreateChecked(reader.ReadByte());
+    public override void Write(PgWriter writer, T value) => writer.WriteByte(byte.CreateChecked(value));
 }

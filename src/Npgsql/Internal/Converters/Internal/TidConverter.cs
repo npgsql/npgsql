@@ -10,8 +10,8 @@ sealed class TidConverter : PgBufferedConverter<NpgsqlTid>
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(uint) + sizeof(ushort));
         return format is DataFormat.Binary;
     }
-    protected override NpgsqlTid ReadCore(PgReader reader) => new(reader.ReadUInt32(), reader.ReadUInt16());
-    protected override void WriteCore(PgWriter writer, NpgsqlTid value)
+    public override NpgsqlTid Read(PgReader reader) => new(reader.ReadUInt32(), reader.ReadUInt16());
+    public override void Write(PgWriter writer, NpgsqlTid value)
     {
         writer.WriteUInt32(value.BlockNumber);
         writer.WriteUInt16(value.OffsetNumber);

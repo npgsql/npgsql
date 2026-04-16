@@ -33,7 +33,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
                 $"Can't handle IPAddress with AddressFamily {ipAddress.AddressFamily}, only InterNetwork or InterNetworkV6!")
         };
 
-    protected override NpgsqlInet ReadCore(PgReader reader)
+    public override NpgsqlInet Read(PgReader reader)
     {
         var (ip, netmask) = ReadImpl(reader, shouldBeCidr: false);
         return new(ip, netmask);
@@ -53,7 +53,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         return (new IPAddress(bytes), mask);
     }
 
-    protected override void WriteCore(PgWriter writer, NpgsqlInet value)
+    public override void Write(PgWriter writer, NpgsqlInet value)
         => WriteImpl(writer, (value.Address, value.Netmask), isCidr: false);
 
     internal static void WriteImpl(PgWriter writer, (IPAddress Address, byte Netmask) value, bool isCidr)

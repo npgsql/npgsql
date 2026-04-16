@@ -12,13 +12,13 @@ sealed class NpgsqlCidrConverter : PgBufferedConverter<NpgsqlCidr>
     protected override Size BindValue(in BindContext context, NpgsqlCidr value, ref object? writeState)
         => NpgsqlInetConverter.BindValueImpl(context, value.Address, ref writeState);
 
-    protected override NpgsqlCidr ReadCore(PgReader reader)
+    public override NpgsqlCidr Read(PgReader reader)
     {
         var (ip, netmask) = NpgsqlInetConverter.ReadImpl(reader, shouldBeCidr: true);
         return new(ip, netmask);
     }
 
-    protected override void WriteCore(PgWriter writer, NpgsqlCidr value)
+    public override void Write(PgWriter writer, NpgsqlCidr value)
         => NpgsqlInetConverter.WriteImpl(writer, (value.Address, value.Netmask), isCidr: true);
 }
 #pragma warning restore CS0618

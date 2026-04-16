@@ -11,12 +11,12 @@ sealed class BoxConverter : PgBufferedConverter<NpgsqlBox>
         return format is DataFormat.Binary;
     }
 
-    protected override NpgsqlBox ReadCore(PgReader reader)
+    public override NpgsqlBox Read(PgReader reader)
         => new(
             new NpgsqlPoint(reader.ReadDouble(), reader.ReadDouble()),
             new NpgsqlPoint(reader.ReadDouble(), reader.ReadDouble()));
 
-    protected override void WriteCore(PgWriter writer, NpgsqlBox value)
+    public override void Write(PgWriter writer, NpgsqlBox value)
     {
         writer.WriteDouble(value.Right);
         writer.WriteDouble(value.Top);

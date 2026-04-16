@@ -12,9 +12,9 @@ sealed class LocalTimeConverter : PgBufferedConverter<LocalTime>
     }
 
     // PostgreSQL time resolution == 1 microsecond == 10 ticks
-    protected override LocalTime ReadCore(PgReader reader)
+    public override LocalTime Read(PgReader reader)
         => LocalTime.FromTicksSinceMidnight(reader.ReadInt64() * 10);
 
-    protected override void WriteCore(PgWriter writer, LocalTime value)
+    public override void Write(PgWriter writer, LocalTime value)
         => writer.WriteInt64(value.TickOfDay / 10);
 }

@@ -147,7 +147,7 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
         return format is DataFormat.Binary or DataFormat.Text;
     }
 
-    protected override char ReadCore(PgReader reader)
+    public override char Read(PgReader reader)
     {
         var byteSeq = reader.ReadBytes(Math.Min(_oneCharMaxByteCount.Value, reader.CurrentRemaining));
         Debug.Assert(byteSeq.IsSingleSegment);
@@ -168,7 +168,7 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
         return encoding.GetByteCount(spanValue);
     }
 
-    protected override void WriteCore(PgWriter writer, char value)
+    public override void Write(PgWriter writer, char value)
     {
         Span<char> spanValue = [value];
         writer.WriteChars(spanValue, encoding);

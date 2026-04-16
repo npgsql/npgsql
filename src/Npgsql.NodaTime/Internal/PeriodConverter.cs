@@ -13,7 +13,7 @@ sealed class PeriodConverter(bool dateTimeInfinityConversions) : PgBufferedConve
         return format is DataFormat.Binary;
     }
 
-    protected override Period ReadCore(PgReader reader)
+    public override Period Read(PgReader reader)
     {
         var microsecondsInDay = reader.ReadInt64();
         var days = reader.ReadInt32();
@@ -42,7 +42,7 @@ sealed class PeriodConverter(bool dateTimeInfinityConversions) : PgBufferedConve
         }.Build().Normalize();
     }
 
-    protected override void WriteCore(PgWriter writer, Period value)
+    public override void Write(PgWriter writer, Period value)
     {
         if (dateTimeInfinityConversions)
         {
