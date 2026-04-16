@@ -156,7 +156,7 @@ abstract class CompositeFieldInfo
     public abstract void ReadDbNull(CompositeBuilder builder);
     public abstract ValueTask Read(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default);
     public abstract bool IsDbNull(PgConverter converter, object instance, object? writeState);
-    public abstract Size? GetSizeOrDbNull(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState);
+    public abstract Size? IsDbNullOrGetSize(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState);
     public abstract ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken);
 }
 
@@ -281,12 +281,12 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         return AsObject(converter) ? converter.IsDbNullAsObject(value, writeState) : ((PgConverter<T>)converter).IsDbNull(value, writeState);
     }
 
-    public override Size? GetSizeOrDbNull(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState)
+    public override Size? IsDbNullOrGetSize(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState)
     {
         var value = _getter(instance);
         return AsObject(converter)
-            ? converter.GetSizeOrDbNullAsObject(format, writeRequirement, value, ref writeState)
-            : ((PgConverter<T>)converter).GetSizeOrDbNull(format, writeRequirement, value, ref writeState);
+            ? converter.IsDbNullOrGetSizeAsObject(format, writeRequirement, value, ref writeState)
+            : ((PgConverter<T>)converter).IsDbNullOrGetSize(format, writeRequirement, value, ref writeState);
     }
 
     public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken)

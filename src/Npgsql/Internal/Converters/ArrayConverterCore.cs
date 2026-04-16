@@ -14,7 +14,7 @@ interface IElementOperations
 {
     object CreateCollection(ReadOnlySpan<int> lengths);
     int GetCollectionCount(object collection, out int[]? lengths);
-    Size? GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState);
+    Size? IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState);
     ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
     ValueTask Write(bool async, PgWriter writer, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
 }
@@ -42,7 +42,7 @@ readonly struct ArrayConverterCore(
         // leave writeState alone — any mutation is a contract violation in the element converter.
         Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
         var originalWriteState = writeState;
-        var isDbNull = elemOps.GetSizeOrDbNull(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
+        var isDbNull = elemOps.IsDbNullOrGetSize(new(DataFormat.Binary, binaryRequirements.Write), values, arrayIndices, ref writeState) is null;
         Debug.Assert(ReferenceEquals(writeState, originalWriteState), "Fixed-size element converter mutated writeState during a null probe.");
         return isDbNull;
     }
@@ -51,7 +51,7 @@ readonly struct ArrayConverterCore(
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     Size SizeElement(SizeContext context, object values, IterationIndices indices, ref object? elemState, ref Size size, ref bool anyWriteState)
     {
-        var elemSize = elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
+        var elemSize = elemOps.IsDbNullOrGetSize(context, values, indices, ref elemState);
         anyWriteState = anyWriteState || elemState is not null;
         size = size.Combine(elemSize ?? 0);
         return elemSize ?? -1;

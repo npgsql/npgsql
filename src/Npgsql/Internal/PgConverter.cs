@@ -209,7 +209,7 @@ public abstract class PgConverter<T> : PgConverter
 
 static class PgConverterExtensions
 {
-    public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
+    public static Size? IsDbNullOrGetSize<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {
         if (converter.IsDbNull(value, writeState))
             return null;
@@ -232,7 +232,7 @@ static class PgConverterExtensions
         return size;
     }
 
-    public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
+    public static Size? IsDbNullOrGetSizeAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
     {
         if (converter.IsDbNullAsObject(value, writeState))
             return null;

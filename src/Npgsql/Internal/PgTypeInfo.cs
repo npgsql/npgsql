@@ -329,7 +329,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         Debug.Assert(Converter is PgConverter<T>);
-        if (Unsafe.As<PgConverter<T>>(Converter).GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+        if (Unsafe.As<PgConverter<T>>(Converter).IsDbNullOrGetSize(format, bufferRequirements.Write, value, ref writeState) is not { } size)
             return new(format, bufferRequirements.Write, null, null);
 
         return new(format, bufferRequirements.Write, size, writeState);
@@ -347,7 +347,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        if (value is DBNull && Type != typeof(DBNull) || Converter.GetSizeOrDbNullAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+        if (value is DBNull && Type != typeof(DBNull) || Converter.IsDbNullOrGetSizeAsObject(format, bufferRequirements.Write, value, ref writeState) is not { } size)
         {
             return new(format, bufferRequirements.Write, null, null);
         }

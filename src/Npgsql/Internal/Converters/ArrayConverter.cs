@@ -137,8 +137,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
 
-        Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
-            => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
+        Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+            => _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
         {
@@ -207,8 +207,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             return ((IList<TElement?>)collection).Count;
         }
 
-        Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
-            => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
+        Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+            => _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
         {
