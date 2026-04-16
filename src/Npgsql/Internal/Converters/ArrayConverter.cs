@@ -145,7 +145,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             var value = GetValue(collection, indices);
             return typeof(TElement) == typeof(object)
                 ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.BindAsObject(context, value, ref writeState)
-                : _elemConverter.IsDbNullOrBind(context.Format, context.BufferRequirement, value, ref writeState);
+                : _elemConverter.IsDbNull(value, writeState) ? null : _elemConverter.Bind(context, value!, ref writeState);
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
@@ -220,7 +220,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             var value = GetValue(collection, indices[0]);
             return typeof(TElement) == typeof(object)
                 ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.BindAsObject(context, value, ref writeState)
-                : _elemConverter.IsDbNullOrBind(context.Format, context.BufferRequirement, value, ref writeState);
+                : _elemConverter.IsDbNull(value, writeState) ? null : _elemConverter.Bind(context, value!, ref writeState);
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)

@@ -322,22 +322,6 @@ static class PgConverterExtensions
             return default;
         }
     }
-
-    public static Size? IsDbNullOrBind<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
-    {
-        if (converter.IsDbNull(value, writeState))
-            return null;
-
-        return converter.Bind(new(format, writeRequirement), value!, ref writeState);
-    }
-
-    public static Size? IsDbNullOrBindAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
-    {
-        if (converter.IsDbNullAsObject(value, writeState))
-            return null;
-
-        return converter.BindAsObject(new(format, writeRequirement) { NestedObjectDbNullHandling = nestedObjectDbNullHandling }, value, ref writeState);
-    }
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]

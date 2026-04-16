@@ -290,9 +290,17 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         var value = _getter(instance);
         // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
         // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
-        return AsObject(converter)
-            ? converter.IsDbNullOrBindAsObject(format, writeRequirement, value, ref writeState, NestedObjectDbNullHandling.Default)
-            : ((PgConverter<T>)converter).IsDbNullOrBind(format, writeRequirement, value, ref writeState);
+        if (AsObject(converter))
+        {
+            if (converter.IsDbNullAsObject(value, writeState))
+                return null;
+            return converter.BindAsObject(new(format, writeRequirement) { NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default }, value, ref writeState);
+        }
+
+        var typedConverter = (PgConverter<T>)converter;
+        if (typedConverter.IsDbNull(value, writeState))
+            return null;
+        return typedConverter.Bind(new(format, writeRequirement), value!, ref writeState);
     }
 
     public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object? instance, CancellationToken cancellationToken)
