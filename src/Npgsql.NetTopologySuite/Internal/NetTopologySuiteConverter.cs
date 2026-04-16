@@ -24,7 +24,7 @@ sealed class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(Read(reader));
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
         var lengthStream = new LengthStream();
         lengthStream.SetLength(0);

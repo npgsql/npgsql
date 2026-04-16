@@ -67,7 +67,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         return multirange;
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count);
@@ -77,7 +77,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         for (var i = 0; i < value.Count; i++)
         {
             object? innerState = null;
-            var rangeSize = _rangeConverter.IsDbNullOrGetSize(context.Format, _rangeRequirements.Write, value[i], ref innerState);
+            var rangeSize = _rangeConverter.IsDbNullOrBind(context.Format, _rangeRequirements.Write, value[i], ref innerState);
             anyWriteState = anyWriteState || innerState is not null;
             // Ranges should never be NULL.
             Debug.Assert(rangeSize.HasValue);

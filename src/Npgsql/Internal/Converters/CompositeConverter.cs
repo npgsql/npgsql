@@ -131,7 +131,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         return builder.Complete();
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
         var boxedInstance = (object)value;
 
@@ -188,7 +188,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             return _writeSizePrecomputed;
         }
 
-        // Variable-size or nullable fields — per-field IsDbNullOrGetSize is needed to compute the total,
+        // Variable-size or nullable fields — per-field IsDbNullOrBind is needed to compute the total,
         // and per-field sizes must flow forward to Write. Always rent.
         var arrayPool = ArrayPool<ElementState>.Shared;
         var slowData = arrayPool.Rent(_composite.Fields.Count);
@@ -198,7 +198,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         {
             var field = _composite.Fields[i];
             var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
-            var fieldSizeOrNull = field.IsDbNullOrGetSize(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
+            var fieldSizeOrNull = field.IsDbNullOrBind(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
             anyWriteState = anyWriteState || fieldState is not null;
             slowData[i] = new()
             {

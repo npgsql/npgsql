@@ -47,7 +47,7 @@ sealed class CubeConverter : PgStreamingConverter<NpgsqlCube>
         return new NpgsqlCube(lowerLeft, upperRight);
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlCube value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, NpgsqlCube value, ref object? writeState)
         => sizeof(int) + sizeof(double) * (value.IsPoint ? value.Dimensions : value.Dimensions * 2);
 
     public override void Write(PgWriter writer, NpgsqlCube value)

@@ -9,7 +9,7 @@ sealed class NpgsqlCidrConverter : PgBufferedConverter<NpgsqlCidr>
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => NpgsqlInetConverter.CanConvertImpl(format, out bufferRequirements);
 
-    public override Size GetSize(SizeContext context, NpgsqlCidr value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, NpgsqlCidr value, ref object? writeState)
         => NpgsqlInetConverter.GetSizeImpl(context, value.Address, ref writeState);
 
     protected override NpgsqlCidr ReadCore(PgReader reader)

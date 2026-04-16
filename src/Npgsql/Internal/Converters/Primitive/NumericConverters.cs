@@ -53,7 +53,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
         }
     }
 
-    public override Size GetSize(SizeContext context, BigInteger value, ref object? writeState) =>
+    protected override Size GetSize(SizeContext context, BigInteger value, ref object? writeState) =>
         PgNumeric.GetByteCount(PgNumeric.GetDigitCount(value));
 
     public override void Write(PgWriter writer, BigInteger value)
@@ -106,7 +106,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumb
         return value;
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState) =>
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState) =>
         PgNumeric.GetByteCount(default(T) switch
         {
             _ when typeof(decimal) == typeof(T) => PgNumeric.GetDigitCount((decimal)(object)value),

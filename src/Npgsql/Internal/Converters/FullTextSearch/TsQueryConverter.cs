@@ -121,7 +121,7 @@ sealed class TsQueryConverter<T>(Encoding encoding) : PgStreamingConverter<T>
         }
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
         => value.Kind is Empty
             ? 4
             : 4 + GetNodeLength(value);

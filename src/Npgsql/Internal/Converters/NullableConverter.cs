@@ -30,8 +30,8 @@ sealed class NullableConverter<T> : PgConverter<T?>
     public override ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => this.ReadAsyncAsNullable(_effectiveConverter, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, T? value, ref object? writeState)
-        => _effectiveConverter.GetSize(context, value.GetValueOrDefault(), ref writeState);
+    protected override Size GetSize(SizeContext context, T? value, ref object? writeState)
+        => _effectiveConverter.Bind(context, value.GetValueOrDefault(), ref writeState);
 
     public override void Write(PgWriter writer, T? value)
         => _effectiveConverter.Write(writer, value.GetValueOrDefault());

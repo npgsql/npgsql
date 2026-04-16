@@ -18,7 +18,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     protected abstract T ReadCore(PgReader reader);
     protected abstract void WriteCore(PgWriter writer, T value);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
         => throw new NotSupportedException();
 
     public sealed override T Read(PgReader reader) => ReadCore(reader);

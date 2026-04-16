@@ -13,7 +13,7 @@ sealed class MacaddrConverter(bool macaddr8) : PgBufferedConverter<PhysicalAddre
         return format is DataFormat.Binary;
     }
 
-    public override Size GetSize(SizeContext context, PhysicalAddress value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, PhysicalAddress value, ref object? writeState)
         => value.GetAddressBytes().Length;
 
     protected override PhysicalAddress ReadCore(PgReader reader)

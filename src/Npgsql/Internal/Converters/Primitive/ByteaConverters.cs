@@ -24,7 +24,7 @@ abstract class ByteaConverters<T>(bool supportsTextFormat) : PgStreamingConverte
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
         => ConvertTo(value).Length;
 
     public override void Write(PgWriter writer, T value)
@@ -82,7 +82,7 @@ sealed class ArrayByteaConverter(bool supportsTextFormat) : PgStreamingConverter
         return bytes;
     }
 
-    public override Size GetSize(SizeContext context, byte[] value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, byte[] value, ref object? writeState)
         => value.Length;
 
     public override void Write(PgWriter writer, byte[] value)

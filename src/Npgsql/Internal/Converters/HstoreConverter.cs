@@ -17,7 +17,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
         // Number of lengths (count, key length, value length).
         var totalSize = sizeof(int) + value.Count * (sizeof(int) + sizeof(int));

@@ -462,28 +462,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
         var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
-
-        Size size;
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-        {
-            size = byteCount;
-        }
-        else
-        {
-            size = Unsafe.As<PgConverter<T>>(Converter).GetSize(context, value!, ref writeState);
-
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-                break;
-            case SizeKind.Unknown:
-                // Not valid yet.
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-                break;
-            }
-        }
-
+        var size = Unsafe.As<PgConverter<T>>(Converter).Bind(context, value!, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
@@ -499,27 +478,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
         var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
-
-        Size size;
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-        {
-            size = byteCount;
-        }
-        else
-        {
-            size = Converter.GetSizeAsObject(context, value, ref writeState);
-
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-                break;
-            case SizeKind.Unknown:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-                break;
-            }
-        }
-
+        var size = Converter.BindAsObject(context, value, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }
 

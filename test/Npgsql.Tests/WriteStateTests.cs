@@ -284,7 +284,7 @@ public class WriteStateTests : TestBase
             writer.WriteInt32(value);
         }
 
-        public override Size GetSize(SizeContext context, int value, ref object? writeState)
+        protected override Size GetSize(SizeContext context, int value, ref object? writeState)
         {
             // Range/Multirange call the subtype converter directly with a fresh null writeState, so for those tests the
             // subtype must produce state from GetSize. For the array tests the provider has already populated non-null

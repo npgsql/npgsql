@@ -95,7 +95,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         return new NpgsqlRange<TSubtype>(lowerBound, upperBound, flags);
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
     {
         var totalSize = Size.Create(1);
         if (value.IsEmpty)
@@ -105,7 +105,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if (!value.LowerBoundInfinite)
         {
             var subTypeState = (object?)null;
-            if (_subtypeConverter.IsDbNullOrGetSize(context.Format, _subtypeRequirements.Write, value.LowerBound!, ref subTypeState) is { } size)
+            if (_subtypeConverter.IsDbNullOrBind(context.Format, _subtypeRequirements.Write, value.LowerBound!, ref subTypeState) is { } size)
             {
                 totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
                 (state ??= new WriteState()).LowerBoundSize = size;
@@ -118,7 +118,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if (!value.UpperBoundInfinite)
         {
             var subTypeState = (object?)null;
-            if (_subtypeConverter.IsDbNullOrGetSize(context.Format, _subtypeRequirements.Write, value.UpperBound!, ref subTypeState) is { } size)
+            if (_subtypeConverter.IsDbNullOrBind(context.Format, _subtypeRequirements.Write, value.UpperBound!, ref subTypeState) is { } size)
             {
                 totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
                 (state ??= new WriteState()).UpperBoundSize = size;

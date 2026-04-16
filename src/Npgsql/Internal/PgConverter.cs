@@ -127,7 +127,28 @@ public abstract class PgConverter
 
     private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
 
-    internal abstract Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState);
+    private protected abstract Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState);
+
+    internal Size BindAsObject(SizeContext context, object? value, ref object? writeState)
+    {
+        Debug.Assert(TypeAcceptsNull || value is not null);
+
+        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+            return byteCount;
+        var size = GetSizeAsObject(context, value, ref writeState);
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
+        return size;
+    }
 
     internal object? ReadAsObject(PgReader reader)
         => ReadAsObject(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -221,6 +242,31 @@ public abstract class PgConverter<T> : PgConverter
 #nullable restore
     Read(PgReader reader);
 
+    public Size Bind(SizeContext context,
+#nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
+        T value,
+#nullable restore
+        ref object? writeState)
+    {
+        Debug.Assert(TypeAcceptsNull || value is not null);
+
+        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+            return byteCount;
+        var size = GetSize(context, value, ref writeState);
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
+            break;
+        case SizeKind.Unknown:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
+            break;
+        }
+
+        return size;
+    }
+
     /// Asynchronously reads a <typeparamref name="T"/> value from the reader.
     public abstract ValueTask<
 #nullable disable // T may or may not be nullable depending on the derived converter's read behavior.
@@ -229,7 +275,7 @@ public abstract class PgConverter<T> : PgConverter
     > ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
-    public abstract Size GetSize(SizeContext context,
+    protected abstract Size GetSize(SizeContext context,
 #nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
         T value,
 #nullable restore
@@ -249,7 +295,7 @@ public abstract class PgConverter<T> : PgConverter
 #nullable restore
         CancellationToken cancellationToken = default);
 
-    internal sealed override Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState)
+    private protected sealed override Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState)
         => GetSize(context, (T)value!, ref writeState);
 }
 
@@ -277,53 +323,20 @@ static class PgConverterExtensions
         }
     }
 
-    public static Size? IsDbNullOrGetSize<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
+    public static Size? IsDbNullOrBind<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {
         if (converter.IsDbNull(value, writeState))
             return null;
 
-        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-            return byteCount;
-        // Value may legitimately be null when a Custom predicate opts into null-writing (IsDbNullValue returning false for null).
-        // GetSize's oblivious T parameter accepts it, but we are in a nullability aware context so we must null forgive.
-        Debug.Assert(converter.TypeAcceptsNull || value is not null);
-        var size = converter.GetSize(new(format, writeRequirement), value!, ref writeState);
-
-        switch (size.Kind)
-        {
-        case SizeKind.UpperBound:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-            break;
-        case SizeKind.Unknown:
-            // Not valid yet.
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-            break;
-        }
-
-        return size;
+        return converter.Bind(new(format, writeRequirement), value!, ref writeState);
     }
 
-    public static Size? IsDbNullOrGetSizeAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
+    public static Size? IsDbNullOrBindAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
     {
         if (converter.IsDbNullAsObject(value, writeState))
             return null;
 
-        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-            return byteCount;
-        var size = converter.GetSizeAsObject(new(format, writeRequirement) { NestedObjectDbNullHandling = nestedObjectDbNullHandling }, value, ref writeState);
-
-        switch (size.Kind)
-        {
-        case SizeKind.UpperBound:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-            break;
-        case SizeKind.Unknown:
-            // Not valid yet.
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-            break;
-        }
-
-        return size;
+        return converter.BindAsObject(new(format, writeRequirement) { NestedObjectDbNullHandling = nestedObjectDbNullHandling }, value, ref writeState);
     }
 }
 

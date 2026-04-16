@@ -21,7 +21,7 @@ sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Str
     public override ValueTask<Stream> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(reader.GetStream());
 
-    public override Size GetSize(SizeContext context, Stream value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, Stream value, ref object? writeState)
     {
         if (value.CanSeek)
             return checked((int)(value.Length - value.Position));

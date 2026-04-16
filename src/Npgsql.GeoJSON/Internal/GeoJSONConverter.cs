@@ -36,7 +36,7 @@ sealed class GeoJSONConverter<T> : PgStreamingConverter<T> where T : IGeoJSONObj
     public override async ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => (T)await GeoJSONConverter.Read(async: true, reader, BoundingBox ? new BoundingBoxBuilder() : null, _getCrs, cancellationToken).ConfigureAwait(false);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
         => GeoJSONConverter.GetSize(context, value, ref writeState);
 
     public override void Write(PgWriter writer, T value)

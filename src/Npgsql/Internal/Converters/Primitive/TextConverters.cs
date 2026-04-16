@@ -47,7 +47,7 @@ static class TextConverter
                     : encoding.GetString(bytes));
         }
 
-        public override Size GetSize(SizeContext context, T value, ref object? writeState)
+        protected override Size GetSize(SizeContext context, T value, ref object? writeState)
             => TextConverterHelpers.GetSize(ref context, TConv.ConvertTo(value), encoding);
 
         public override void Write(PgWriter writer, T value)
@@ -83,7 +83,7 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, encoding);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
         => TextConverterHelpers.GetSize(ref context, ConvertTo(value), encoding);
 
     public override void Write(PgWriter writer, T value)
@@ -162,7 +162,7 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
         return destination[0];
     }
 
-    public override Size GetSize(SizeContext context, char value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, char value, ref object? writeState)
     {
         Span<char> spanValue = [value];
         return encoding.GetByteCount(spanValue);
@@ -189,7 +189,7 @@ sealed class TextReaderTextConverter(Encoding encoding) : PgStreamingConverter<T
     public override ValueTask<TextReader> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => reader.GetTextReaderAsync(encoding, cancellationToken);
 
-    public override Size GetSize(SizeContext context, TextReader value, ref object? writeState) => throw new NotImplementedException();
+    protected override Size GetSize(SizeContext context, TextReader value, ref object? writeState) => throw new NotImplementedException();
     public override void Write(PgWriter writer, TextReader value) => throw new NotImplementedException();
     public override ValueTask WriteAsync(PgWriter writer, TextReader value, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }
@@ -216,7 +216,7 @@ sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<Get
     public override ValueTask<GetChars> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 
-    public override Size GetSize(SizeContext context, GetChars value, ref object? writeState) => throw new NotSupportedException();
+    protected override Size GetSize(SizeContext context, GetChars value, ref object? writeState) => throw new NotSupportedException();
     public override void Write(PgWriter writer, GetChars value) => throw new NotSupportedException();
     public override ValueTask WriteAsync(PgWriter writer, GetChars value, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 

@@ -17,7 +17,7 @@ sealed class JsonNetJsonConverter<T>(bool jsonb, Encoding textEncoding, JsonSeri
     public override async ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => (T?)await JsonNetJsonConverter.Read(async: true, jsonb, reader, typeof(T), settings, textEncoding, cancellationToken).ConfigureAwait(false);
 
-    public override Size GetSize(SizeContext context, T? value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T? value, ref object? writeState)
         => JsonNetJsonConverter.GetSize(jsonb, context, typeof(T), settings, textEncoding, value, ref writeState);
 
     public override void Write(PgWriter writer, T? value)

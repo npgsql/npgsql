@@ -61,7 +61,7 @@ sealed class TsVectorConverter(Encoding encoding) : PgStreamingConverter<NpgsqlT
         return new NpgsqlTsVector(lexemes, noCheck: true);
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlTsVector value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, NpgsqlTsVector value, ref object? writeState)
     {
         var size = 4;
         foreach (var l in value)

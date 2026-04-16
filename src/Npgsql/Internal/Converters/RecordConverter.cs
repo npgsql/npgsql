@@ -65,7 +65,7 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
         return factory is null ? (T)(object)result : factory(result);
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
         => throw new NotSupportedException();
 
     public override void Write(PgWriter writer, T value)

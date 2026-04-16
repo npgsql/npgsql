@@ -258,7 +258,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             public override async ValueTask<Guid> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
                 => Guid.Parse(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
 
-            public override Size GetSize(SizeContext context, Guid value, ref object? writeState)
+            protected override Size GetSize(SizeContext context, Guid value, ref object? writeState)
                 => TextConverterHelpers.GetSize(ref context, value.ToString().AsMemory(), encoding);
 
             public override void Write(PgWriter writer, Guid value)
