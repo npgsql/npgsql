@@ -224,6 +224,18 @@ public class JsonTests : TestBase
         await cmd.ExecuteNonQueryAsync();
     }
 
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6517")]
+    public Task Roundtrip_JsonNode()
+        => AssertType(
+            (JsonNode)new JsonObject { ["Bar"] = 8 },
+            IsJsonb ? """{"Bar": 8}""" : """{"Bar":8}""",
+            PostgresType,
+            // By default we map JsonNode to jsonb
+            dataTypeInference: IsJsonb ? DataTypeInference.Match : DataTypeInference.Mismatch,
+            valueTypeEqualsFieldType: false,
+            comparer: (x, y) => x.ToString() == y.ToString());
+
     public JsonTests(string dataTypeName)
     {
         if (dataTypeName == "jsonb")

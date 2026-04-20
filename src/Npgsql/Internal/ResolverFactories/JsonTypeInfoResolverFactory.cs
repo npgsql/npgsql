@@ -49,14 +49,16 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                     mapping.CreateInfo(options,
                         new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
 
-                mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
                 mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options, new JsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
                 mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options, new JsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
                 mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options, new JsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
+                // JsonNode after specific subtypes so exact matches are preferred; predicate catches all other JsonNode descendants.
+                mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)),
+                    mapping => mapping with { TypeMatchPredicate = static type => type is null || typeof(JsonNode).IsAssignableFrom(type) });
             }
 
             return mappings;
@@ -79,6 +81,8 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                     return JsonMetadataServices.CreateValueInfo<JsonArray>(options, JsonMetadataServices.JsonArrayConverter);
                 if (type == typeof(JsonValue))
                     return JsonMetadataServices.CreateValueInfo<JsonValue>(options, JsonMetadataServices.JsonValueConverter);
+                if (type == typeof(JsonNode))
+                    return JsonMetadataServices.CreateValueInfo<JsonNode>(options, JsonMetadataServices.JsonNodeConverter);
                 return null;
             }
         }
@@ -101,6 +105,7 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                 mappings.AddArrayType<JsonObject>(dataTypeName);
                 mappings.AddArrayType<JsonArray>(dataTypeName);
                 mappings.AddArrayType<JsonValue>(dataTypeName);
+                mappings.AddArrayType<JsonNode>(dataTypeName);
             }
 
             return mappings;
