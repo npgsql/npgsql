@@ -103,7 +103,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
             return this;
         }
 
-        public DynamicMappingCollection AddResolverMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type type, string dataTypeName, TypeInfoFactory factory, Func<TypeInfoMapping, TypeInfoMapping>? configureMapping = null)
+        public DynamicMappingCollection AddProviderMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type type, string dataTypeName, TypeInfoFactory factory, Func<TypeInfoMapping, TypeInfoMapping>? configureMapping = null)
         {
             if (type.IsValueType)
             {
@@ -133,7 +133,7 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
             return this;
         }
 
-        public DynamicMappingCollection AddResolverArrayMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type elementType, string dataTypeName)
+        public DynamicMappingCollection AddProviderArrayMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type elementType, string dataTypeName)
         {
             if (elementType.IsValueType)
             {
