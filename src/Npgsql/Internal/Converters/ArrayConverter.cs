@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -82,6 +83,13 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     {
         readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.GetConverter(DataFormat.Binary);
 
+        // When the effective array type's element type differs from TElement (e.g. IntEnum[] with TElement=int),
+        // CreateCollection uses Array.CreateInstanceFromArrayType to produce the correctly-typed array. The API's
+        // contract is MethodTable-only: any metadata-reachable Type works, no per-element-type allocator codegen
+        // preservation is required, and no IL3050/DAM annotations are needed.
+        readonly Type? _effectiveType =
+            effectiveType is { IsArray: true } && effectiveType.GetElementType() != typeof(TElement) ? effectiveType : null;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static TElement? GetValue(object collection, IterationIndices indices)
         {
@@ -128,7 +136,16 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         }
 
         object IElementOperations.CreateCollection(ReadOnlySpan<int> lengths)
-            => lengths.Length switch
+        {
+            if (_effectiveType is { } arrayType)
+                return lengths.Length switch
+                {
+                    0 => Array.CreateInstanceFromArrayType(arrayType, 0),
+                    1 => Array.CreateInstanceFromArrayType(arrayType, lengths[0]),
+                    _ => Array.CreateInstanceFromArrayType(arrayType, lengths.ToArray())
+                };
+
+            return lengths.Length switch
             {
                 0 => Array.Empty<TElement?>(),
                 1 => new TElement?[lengths[0]],
@@ -141,6 +158,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
                 8 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
                 _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
             };
+        }
 
         int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);

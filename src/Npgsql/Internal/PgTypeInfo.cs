@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -22,7 +23,8 @@ public abstract class PgTypeInfo
     /// Resolves the type the info should advertise. <paramref name="requestedType"/> must be on the same subtype
     /// chain as <paramref name="type"/>: when narrower (or equal) it is returned as-is (the under-reporting case);
     /// when wider <paramref name="type"/> is returned (the polymorphic-alias case, the info advertises the
-    /// converter's type back to a wider query). Throws when the two types are not in any subtype relationship.
+    /// converter's type back to a wider query). An enum requestedType over its underlying-type converter is also
+    /// accepted (representation-identical); throws when the types share none of these relationships.
     /// </summary>
     private protected static Type ResolveType(Type type, Type? requestedType)
     {
@@ -32,6 +34,9 @@ public abstract class PgTypeInfo
             return requestedType;
         if (type.IsAssignableTo(requestedType))
             return type;
+        // Enum and underlying type are representation-identical: accept the enum requestedType as a narrower report.
+        if (requestedType.IsEnum && requestedType.GetEnumUnderlyingType() == type)
+            return requestedType;
         throw new ArgumentException(
             $"The requested type {requestedType} is not in a subtype relationship with the converter's type {type}.",
             nameof(requestedType));
@@ -359,7 +364,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     // <paramref name="binary"/> fills the binary slot, <paramref name="text"/> fills the text slot.
     // Both slots may carry the same instance (multi-format converter), different instances (single-format per
     // slot), or — only one of them may be null when the format isn't supported. At least one slot must be filled.
-    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter? binary, PgConverter? text, PgTypeId pgTypeId, Type? requestedType = null)
+    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter? binary, PgConverter? text, PgTypeId pgTypeId, Type? requestedType = null, bool? supportsReading = null, bool? supportsWriting = null)
         : base(options, (binary ?? text ?? ThrowNoSlot()).TypeToConvert, pgTypeId, requestedType)
     {
         if (binary is not null && text is not null && binary.TypeToConvert != text.TypeToConvert)
@@ -378,8 +383,20 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         }
 
         var canonical = binary ?? text!;
-        _supportsReading = GetDefaultSupportsReading(canonical.TypeToConvert, requestedType);
-        _supportsWriting = GetDefaultSupportsWriting(canonical.TypeToConvert, requestedType);
+
+        // Enum-over-underlying is representation-identical via IEnumUnderlyingConverter's reinterpret;
+        // surface that internally without touching the general GetDefault* helpers (which would let
+        // arbitrary external converters claim the same compatibility unsafely). Callers can still
+        // override either direction via the explicit args.
+        var enumUnderlying = canonical is IEnumUnderlyingConverter
+            && requestedType is { IsEnum: true }
+            && requestedType.GetEnumUnderlyingType() == canonical.TypeToConvert;
+
+        // Set fields directly to bypass init guards on default values; init props enforce directional widen-to-true.
+        _supportsReading = supportsReading
+            ?? (enumUnderlying ? true : GetDefaultSupportsReading(canonical.TypeToConvert, requestedType));
+        _supportsWriting = supportsWriting
+            ?? (enumUnderlying ? true : GetDefaultSupportsWriting(canonical.TypeToConvert, requestedType));
     }
 
     [DoesNotReturn]
@@ -398,11 +415,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         DataFormat? preferredFormat = null,
         bool? supportsReading = null,
         bool? supportsWriting = null)
-        => new(options, binary, null, pgTypeId, requestedType)
+        => new(options, binary, null, pgTypeId, requestedType, supportsReading, supportsWriting)
         {
             PreferredFormat = preferredFormat,
-            SupportsReading = supportsReading ?? GetDefaultSupportsReading(binary.TypeToConvert, requestedType),
-            SupportsWriting = supportsWriting ?? GetDefaultSupportsWriting(binary.TypeToConvert, requestedType),
         };
 
     /// <summary>
@@ -418,11 +433,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         DataFormat? preferredFormat = null,
         bool? supportsReading = null,
         bool? supportsWriting = null)
-        => new(options, binary, text, pgTypeId, requestedType)
+        => new(options, binary, text, pgTypeId, requestedType, supportsReading, supportsWriting)
         {
             PreferredFormat = preferredFormat,
-            SupportsReading = supportsReading ?? GetDefaultSupportsReading(binary.TypeToConvert, requestedType),
-            SupportsWriting = supportsWriting ?? GetDefaultSupportsWriting(binary.TypeToConvert, requestedType),
         };
 
     /// <summary>

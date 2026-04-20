@@ -34,7 +34,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     public sealed override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(Read(reader));
 
-    internal sealed override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+    internal override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => new(Read(reader));
 
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -47,7 +47,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
         return new();
     }
 
-    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)
+    internal override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)
     {
         Write(writer, (T)value!);
         return new();
