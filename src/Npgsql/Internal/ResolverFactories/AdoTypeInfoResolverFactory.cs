@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
@@ -34,6 +35,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 info = GetPgEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
             if (info is null && type is not null && dataTypeName is not null)
                 info = GetStreamTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+            if (info is null && type is not null && type.IsEnum)
+                info = GetEnumTypeInfo(type, dataTypeName, options);
 
             return info;
         }
@@ -46,6 +49,44 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             var converter = new StreamConverter(supportsTextFormat: true);
             return PgConcreteTypeInfo.Create(options, binary: converter, text: converter, dataTypeName, supportsWriting: false);
         }
+
+        static PgTypeInfo? GetEnumTypeInfo(Type type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        {
+            Debug.Assert(type.IsEnum);
+
+            var underlyingType = type.GetEnumUnderlyingType();
+
+            // Resolve the underlying type's info just to derive the PgTypeId and validate that the resolver chain
+            // recognizes the underlying mapped to this dataTypeName. The wire format knowledge is baked into
+            // EnumUnderlyingConverter itself (matching the default Ado mappings: byte/sbyte/short → Int2, int → Int4,
+            // long → Int8), so no inner converter reference is needed.
+            var underlyingInfo = options.TypeInfoResolver.GetTypeInfo(underlyingType, dataTypeName, options);
+            if (underlyingInfo?.PgTypeId is not { } pgTypeId)
+                return null;
+
+            var wrappedConverter = CreateEnumUnderlyingConverter(type, underlyingType);
+            if (wrappedConverter is null)
+                return null;
+
+            return PgConcreteTypeInfo.Create(options, binary: wrappedConverter, pgTypeId, requestedType: type);
+        }
+
+        static PgConverter? CreateEnumUnderlyingConverter(Type enumType, Type underlyingType)
+            => Type.GetTypeCode(underlyingType) switch
+            {
+                // PG has no unsigned integer types; unsigned .NET underlyings ride on the same wire format as their
+                // signed counterparts (ushort → smallint, uint → integer, ulong → bigint) with CreateChecked handling
+                // out-of-range values at read/write time.
+                TypeCode.Int32 => new EnumUnderlyingConverter<int>(enumType),
+                TypeCode.Int64 => new EnumUnderlyingConverter<long>(enumType),
+                TypeCode.Int16 => new EnumUnderlyingConverter<short>(enumType),
+                TypeCode.Byte => new EnumUnderlyingConverter<byte>(enumType),
+                TypeCode.SByte => new EnumUnderlyingConverter<sbyte>(enumType),
+                TypeCode.UInt32 => new EnumUnderlyingConverter<uint>(enumType),
+                TypeCode.UInt64 => new EnumUnderlyingConverter<ulong>(enumType),
+                TypeCode.UInt16 => new EnumUnderlyingConverter<ushort>(enumType),
+                _ => null
+            };
 
         static PgTypeInfo? GetPgEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
@@ -484,8 +525,18 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 && (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType)))
             {
                 info = GetPgEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
+                       GetEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
                        GetObjectArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options);
             }
+
+            // CLR enum array write path: type is known (e.g. IntEnum[]) but no dataTypeName.
+            if (info is null && type is not null && dataTypeName is null
+                && TypeInfoMappingCollection.IsArrayLikeType(type, out elementType)
+                && elementType.IsEnum)
+            {
+                info = GetEnumArrayTypeInfoForWrite(elementType, type, options);
+            }
+
             return info;
         }
 
@@ -666,6 +717,96 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddProviderArrayType<object>(pgElementType.DataTypeName);
             return mappings.Find(type, dataTypeName, options);
         }
+
+        static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+        {
+            if (elementType is null || !elementType.IsEnum)
+                return null;
+
+            // Enum underlying-type support is limited to actual array types (T[], T[,]). The runtime doesn't root T[]
+            // when only generic interfaces arrays implement (IList<T>, etc.) reach metadata, and there's no
+            // trim-safe API for producing an array from one of those interfaces. Users who want IList<MyEnum>
+            // assign the array at the call site: `IList<MyEnum> list = reader.GetFieldValue<MyEnum[]>(...)`.
+            // See dotnet/runtime#127249 for the discussion that established this constraint.
+            if (type is not null && !type.IsArray)
+                return null;
+
+            // Resolve the underlying type's element info through the full chain.
+            var underlyingType = elementType.GetEnumUnderlyingType();
+            var elementDataTypeName = pgElementType.DataTypeName;
+            var elemInfo = options.TypeInfoResolver.GetTypeInfo(underlyingType, elementDataTypeName, options);
+            if (elemInfo is null)
+                return null;
+
+            var concreteElemInfo = elemInfo as PgConcreteTypeInfo ?? elemInfo.MakeConcreteForField(
+                Field.CreateUnspecified(elemInfo.PgTypeId!.Value));
+
+            if (concreteElemInfo.GetConverter(DataFormat.Binary).TypeToConvert != underlyingType)
+                return null;
+
+            // Build array converter using the underlying type; storage is produced as type (MyEnum[]) via
+            // Array.CreateInstanceFromArrayType. IntEnum[] and int[] are layout-identical for value types with
+            // the same underlying representation, so Unsafe.As<int?[]> access is bit-safe.
+            var arrayConverter = CreateEnumArrayConverter(underlyingType, concreteElemInfo, type);
+            if (arrayConverter is null)
+                return null;
+
+            return PgConcreteTypeInfo.Create(options, binary: arrayConverter, dataTypeName, requestedType: type, supportsReading: true);
+        }
+
+        static PgTypeInfo? GetEnumArrayTypeInfoForWrite(Type elementType, Type arrayType, PgSerializerOptions options)
+        {
+            Debug.Assert(elementType.IsEnum);
+
+            // Same restriction as the read path: only actual array types are supported for enum underlying-type
+            // collections. See the matching comment on GetEnumArrayTypeInfo and dotnet/runtime#127249.
+            if (!arrayType.IsArray)
+                return null;
+
+            // Resolve the underlying type's element info.
+            var underlyingType = elementType.GetEnumUnderlyingType();
+            var elemInfo = options.TypeInfoResolver.GetTypeInfo(underlyingType, null, options);
+            if (elemInfo is null || elemInfo.PgTypeId is null)
+                return null;
+
+            var concreteElemInfo = elemInfo as PgConcreteTypeInfo ?? elemInfo.MakeConcreteForField(
+                Field.CreateUnspecified(elemInfo.PgTypeId.Value));
+
+            if (concreteElemInfo.GetConverter(DataFormat.Binary).TypeToConvert != underlyingType)
+                return null;
+
+            // Find the array PG type for the element's PG type.
+            var elementPgTypeId = concreteElemInfo.PgTypeId;
+            var elementDataTypeName = options.DatabaseInfo.GetDataTypeName(elementPgTypeId);
+            var pgType = options.DatabaseInfo.GetPostgresType(elementDataTypeName);
+            if (pgType is not PostgresBaseType { Array: { } arrayPgType })
+                return null;
+
+            var arrayDataTypeName = arrayPgType.DataTypeName;
+            var arrayConverter = CreateEnumArrayConverter(underlyingType, concreteElemInfo, arrayType);
+            if (arrayConverter is null)
+                return null;
+
+            return PgConcreteTypeInfo.Create(options, arrayConverter, arrayDataTypeName, requestedType: arrayType, supportsReading: true);
+        }
+
+        static PgConverter? CreateEnumArrayConverter(Type underlyingType, PgConcreteTypeInfo elemInfo, Type? arrayType)
+            => Type.GetTypeCode(underlyingType) switch
+            {
+                // TElement is the underlying type; effectiveType (arrayType) is e.g. IntEnum[] which drives
+                // Array.CreateInstanceFromArrayType to produce the correctly-typed array. The API's contract
+                // is MethodTable-only, so any metadata-reachable array Type works without IL3050 suppression
+                // or DAM annotations.
+                TypeCode.Int32 => ArrayConverter<Array>.CreateArrayBased<int>(elemInfo, arrayType),
+                TypeCode.Int64 => ArrayConverter<Array>.CreateArrayBased<long>(elemInfo, arrayType),
+                TypeCode.Int16 => ArrayConverter<Array>.CreateArrayBased<short>(elemInfo, arrayType),
+                TypeCode.Byte => ArrayConverter<Array>.CreateArrayBased<byte>(elemInfo, arrayType),
+                TypeCode.SByte => ArrayConverter<Array>.CreateArrayBased<sbyte>(elemInfo, arrayType),
+                TypeCode.UInt32 => ArrayConverter<Array>.CreateArrayBased<uint>(elemInfo, arrayType),
+                TypeCode.UInt64 => ArrayConverter<Array>.CreateArrayBased<ulong>(elemInfo, arrayType),
+                TypeCode.UInt16 => ArrayConverter<Array>.CreateArrayBased<ushort>(elemInfo, arrayType),
+                _ => null
+            };
 
         static PgTypeInfo? GetPgEnumArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {

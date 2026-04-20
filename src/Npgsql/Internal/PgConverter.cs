@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
+using static Npgsql.Internal.Converters.IEnumUnderlyingConverter;
 
 namespace Npgsql.Internal;
 
@@ -104,7 +105,9 @@ public abstract class PgConverter
     Read<T>(PgReader reader)
         => typeof(T) == TypeToConvert
             ? UnsafeAs<T>().Read(reader)
-            : (T)ReadAsObject(reader)!;
+            : IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported
+                ? ReadAsEnumUnderlying<T>(reader)
+                : (T)ReadAsObject(reader)!;
 
     /// <summary>Asynchronously reads a value from the reader as <typeparamref name="T"/>.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
@@ -118,12 +121,43 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
 
+        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+            return new(ReadAsEnumUnderlying<T>(reader));
+
         var task = ReadAsObjectAsync(reader, cancellationToken);
         return task.IsCompletedSuccessfully ? new((T)task.Result!) : ReadAndUnboxAsync(task);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static async ValueTask<T> ReadAndUnboxAsync(ValueTask<object?> task)
             => (T)(await task.ConfigureAwait(false))!;
+    }
+
+    /// <summary>Db-null check for <typeparamref name="T"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool IsDbNull<T>(T? value, object? writeState)
+    {
+        if (typeof(T) == TypeToConvert)
+            return UnsafeAs<T>().IsDbNull(value, writeState);
+
+        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+            return IsDbNullAsEnumUnderlying(value, writeState);
+
+        return IsDbNullAsObject(value, writeState);
+    }
+
+    /// <summary>Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Size Bind<T>(in BindContext context, T value, ref object? writeState)
+    {
+        if (typeof(T) == TypeToConvert)
+            return UnsafeAs<T>().Bind(context, value, ref writeState);
+
+        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+            return BindAsEnumUnderlying(context, value, ref writeState);
+
+        return BindAsObject(context, value, ref writeState);
     }
 
     /// <summary>Writes a <typeparamref name="T"/> value to the writer.</summary>
@@ -136,6 +170,13 @@ public abstract class PgConverter
             UnsafeAs<T>().Write(writer, value);
             return;
         }
+
+        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+        {
+            WriteAsEnumUnderlying(writer, value);
+            return;
+        }
+
         WriteAsObject(writer, value);
     }
 
@@ -143,25 +184,18 @@ public abstract class PgConverter
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ValueTask WriteAsync<T>(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => typeof(T) == TypeToConvert
-            ? UnsafeAs<T>().WriteAsync(writer, value, cancellationToken)
-            : WriteAsObjectAsync(writer, value, cancellationToken);
+    {
+        if (typeof(T) == TypeToConvert)
+            return UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
 
-    /// <summary>Db-null check for <typeparamref name="T"/>.</summary>
-    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IsDbNull<T>(T? value, object? writeState)
-        => typeof(T) == TypeToConvert
-            ? UnsafeAs<T>().IsDbNull(value, writeState)
-            : IsDbNullAsObject(value, writeState);
+        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+        {
+            WriteAsEnumUnderlying(writer, value);
+            return new();
+        }
 
-    /// <summary>Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.</summary>
-    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Size Bind<T>(in BindContext context, T value, ref object? writeState)
-        => typeof(T) == TypeToConvert
-            ? UnsafeAs<T>().Bind(context, value, ref writeState)
-            : BindAsObject(context, value, ref writeState);
+        return WriteAsObjectAsync(writer, value, cancellationToken);
+    }
 
     /// Checks whether <paramref name="value"/> is considered a database null by this converter.
     public bool IsDbNullAsObject(object? value, object? writeState)
