@@ -49,16 +49,14 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                     mapping.CreateInfo(options,
                         new JsonConverter<JsonElement, JsonElement>(jsonb, options.TextEncoding, serializerOptions)));
 
-                // Single mapping for JsonNode and all descendants (JsonObject, JsonArray, JsonValue);
-                // STJ's JsonNodeConverter handles polymorphic serialization/deserialization.
-                // Not using 'type is null' here since string is the default for json/jsonb (see AdoTypeInfoResolverFactory).
                 mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
-                    new PgConcreteTypeInfo(options,
-                        new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions),
-                        new DataTypeName(mapping.DataTypeName),
-                        unboxedType: mapping.Type != typeof(JsonNode) ? mapping.Type : null)
-                    { SupportsReading = true },
-                    mapping => mapping with { TypeMatchPredicate = static type => typeof(JsonNode).IsAssignableFrom(type) });
+                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonObject>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonObject, JsonObject>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonArray>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonArray, JsonArray>(jsonb, options.TextEncoding, serializerOptions)));
+                mappings.AddType<JsonValue>(dataTypeName, (options, mapping, _) =>
+                    mapping.CreateInfo(options, new JsonConverter<JsonValue, JsonValue>(jsonb, options.TextEncoding, serializerOptions)));
             }
 
             return mappings;
@@ -75,6 +73,12 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                     return JsonMetadataServices.CreateValueInfo<JsonDocument>(options, JsonMetadataServices.JsonDocumentConverter);
                 if (type == typeof(JsonElement))
                     return JsonMetadataServices.CreateValueInfo<JsonElement>(options, JsonMetadataServices.JsonElementConverter);
+                if (type == typeof(JsonObject))
+                    return JsonMetadataServices.CreateValueInfo<JsonObject>(options, JsonMetadataServices.JsonObjectConverter);
+                if (type == typeof(JsonArray))
+                    return JsonMetadataServices.CreateValueInfo<JsonArray>(options, JsonMetadataServices.JsonArrayConverter);
+                if (type == typeof(JsonValue))
+                    return JsonMetadataServices.CreateValueInfo<JsonValue>(options, JsonMetadataServices.JsonValueConverter);
                 if (type == typeof(JsonNode))
                     return JsonMetadataServices.CreateValueInfo<JsonNode>(options, JsonMetadataServices.JsonNodeConverter);
                 return null;
@@ -96,6 +100,9 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
             {
                 mappings.AddArrayType<JsonDocument>(dataTypeName);
                 mappings.AddStructArrayType<JsonElement>(dataTypeName);
+                mappings.AddArrayType<JsonObject>(dataTypeName);
+                mappings.AddArrayType<JsonArray>(dataTypeName);
+                mappings.AddArrayType<JsonValue>(dataTypeName);
                 mappings.AddArrayType<JsonNode>(dataTypeName);
             }
 
