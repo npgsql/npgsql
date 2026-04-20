@@ -59,7 +59,6 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                         unboxedType: mapping.Type != typeof(JsonNode) ? mapping.Type : null),
                     mapping => mapping with
                     {
-                        MatchRequirement = MatchRequirement.Single,
                         TypeMatchPredicate = static type => typeof(JsonNode).IsAssignableFrom(type)
                     });
             }
