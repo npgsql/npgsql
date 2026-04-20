@@ -53,7 +53,7 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                 // STJ's JsonNodeConverter handles polymorphic serialization/deserialization.
                 mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
                     mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)),
-                    mapping => mapping with { TypeMatchPredicate = static type => type is null || typeof(JsonNode).IsAssignableFrom(type) });
+                    mapping => mapping with { TypeMatchPredicate = static type => typeof(JsonNode).IsAssignableFrom(type) });
             }
 
             return mappings;
