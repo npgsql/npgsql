@@ -106,7 +106,9 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                                        || dataTypeName != DataTypeNames.Jsonb && dataTypeName != DataTypeNames.Json)
                 return null;
 
-            return CreateCollection().AddMapping(type, dataTypeName, (options, mapping, _) =>
+            var matchedType = Nullable.GetUnderlyingType(type) ?? type;
+
+            return CreateCollection().AddMapping(matchedType, dataTypeName, (options, mapping, _) =>
             {
                 var jsonb = dataTypeName == DataTypeNames.Jsonb;
 
@@ -141,7 +143,8 @@ sealed class JsonDynamicTypeInfoResolverFactory(
 
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
             => type is not null && IsArrayLikeType(type, out var elementType) && IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName)
-                ? base.GetMappings(elementType, elementDataTypeName, options)?.AddArrayMapping(elementType, elementDataTypeName)
+                ? base.GetMappings(elementType, elementDataTypeName, options)
+                    ?.AddArrayMapping(Nullable.GetUnderlyingType(elementType) ?? elementType, elementDataTypeName)
                 : null;
 
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings, TypeInfoMappingCollection baseMappings)
@@ -151,7 +154,12 @@ sealed class JsonDynamicTypeInfoResolverFactory(
 
             var dynamicMappings = CreateCollection(baseMappings);
             foreach (var mapping in baseMappings.Items)
+            {
+                // Always handle Nullable<T> mappings as part of the underlying type.
+                if (Nullable.GetUnderlyingType(mapping.Type) is not null)
+                    continue;
                 dynamicMappings.AddArrayMapping(mapping.Type, mapping.DataTypeName);
+            }
             mappings.AddRange(dynamicMappings.ToTypeInfoMappingCollection());
 
             return mappings;

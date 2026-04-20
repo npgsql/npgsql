@@ -65,10 +65,11 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
 
         public DynamicMappingCollection AddMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type type, string dataTypeName, TypeInfoFactory factory, Func<TypeInfoMapping, TypeInfoMapping>? configureMapping = null)
         {
-            if (type.IsValueType && Nullable.GetUnderlyingType(type) is not null)
-                throw new NotSupportedException("Mapping nullable types is not supported, map its underlying type instead to get both.");
-
             if (type.IsValueType)
+            {
+                if (Nullable.GetUnderlyingType(type) is not null)
+                    throw new NotSupportedException("Mapping nullable types is not supported, map its underlying type instead to get both.");
+
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddStructType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
                     .MakeGenericMethod(type).Invoke(_mappings ??= new(),
@@ -77,7 +78,9 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
                         factory,
                         configureMapping
                     ]);
+            }
             else
+            {
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
                     .MakeGenericMethod(type).Invoke(_mappings ??= new(),
@@ -86,28 +89,37 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
                         factory,
                         configureMapping
                     ]);
+            }
             return this;
         }
 
         public DynamicMappingCollection AddArrayMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type elementType, string dataTypeName)
         {
             if (elementType.IsValueType)
+            {
+                if (Nullable.GetUnderlyingType(elementType) is not null)
+                    throw new NotSupportedException("Mapping nullable types is not supported, map its underlying type instead to get both.");
+
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddStructArrayType), [typeof(string)])!
                     .MakeGenericMethod(elementType).Invoke(_mappings ??= new(), [dataTypeName]);
+            }
             else
+            {
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddArrayType), [typeof(string)])!
                     .MakeGenericMethod(elementType).Invoke(_mappings ??= new(), [dataTypeName]);
+            }
             return this;
         }
 
         public DynamicMappingCollection AddResolverMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type type, string dataTypeName, TypeInfoFactory factory, Func<TypeInfoMapping, TypeInfoMapping>? configureMapping = null)
         {
-            if (type.IsValueType && Nullable.GetUnderlyingType(type) is not null)
-                throw new NotSupportedException("Mapping nullable types is not supported");
-
             if (type.IsValueType)
+            {
+                if (Nullable.GetUnderlyingType(type) is not null)
+                    throw new NotSupportedException("Mapping nullable types is not supported, map its underlying type instead to get both.");
+
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddResolverStructType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
                     .MakeGenericMethod(type).Invoke(_mappings ??= new(),
@@ -116,7 +128,9 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
                         factory,
                         configureMapping
                     ]);
+            }
             else
+            {
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddResolverType), [typeof(string), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>)])!
                     .MakeGenericMethod(type).Invoke(_mappings ??= new(),
@@ -125,19 +139,27 @@ public abstract class DynamicTypeInfoResolver : IPgTypeInfoResolver
                         factory,
                         configureMapping
                     ]);
+            }
             return this;
         }
 
         public DynamicMappingCollection AddResolverArrayMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type elementType, string dataTypeName)
         {
             if (elementType.IsValueType)
+            {
+                if (Nullable.GetUnderlyingType(elementType) is not null)
+                    throw new NotSupportedException("Mapping nullable types is not supported, map its underlying type instead to get both.");
+
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddResolverStructArrayType), [typeof(string)])!
                     .MakeGenericMethod(elementType).Invoke(_mappings ??= new(), [dataTypeName]);
+            }
             else
+            {
                 typeof(TypeInfoMappingCollection)
                     .GetMethod(nameof(TypeInfoMappingCollection.AddResolverArrayType), [typeof(string)])!
                     .MakeGenericMethod(elementType).Invoke(_mappings ??= new(), [dataTypeName]);
+            }
             return this;
         }
 
