@@ -51,9 +51,17 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
 
                 // Single mapping for JsonNode and all descendants (JsonObject, JsonArray, JsonValue);
                 // STJ's JsonNodeConverter handles polymorphic serialization/deserialization.
+                // Uses unboxedType for subtypes so TypeInfoCache type checks pass (same pattern as IPAddress).
                 mappings.AddType<JsonNode>(dataTypeName, (options, mapping, _) =>
-                    mapping.CreateInfo(options, new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions)),
-                    mapping => mapping with { TypeMatchPredicate = static type => typeof(JsonNode).IsAssignableFrom(type) });
+                    new PgConcreteTypeInfo(options,
+                        new JsonConverter<JsonNode, JsonNode>(jsonb, options.TextEncoding, serializerOptions),
+                        new DataTypeName(mapping.DataTypeName),
+                        unboxedType: mapping.Type != typeof(JsonNode) ? mapping.Type : null),
+                    mapping => mapping with
+                    {
+                        MatchRequirement = MatchRequirement.Single,
+                        TypeMatchPredicate = static type => typeof(JsonNode).IsAssignableFrom(type)
+                    });
             }
 
             return mappings;
