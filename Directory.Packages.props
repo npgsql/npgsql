@@ -1,17 +1,17 @@
 <Project>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <LoggingAbstractionsPackageVersion>10.0.6</LoggingAbstractionsPackageVersion>
-    <DependencyInjectionAbstractionsPackageVersion>10.0.6</DependencyInjectionAbstractionsPackageVersion>
+    <LoggingAbstractionsPackageVersion>10.0.7</LoggingAbstractionsPackageVersion>
+    <DependencyInjectionAbstractionsPackageVersion>10.0.7</DependencyInjectionAbstractionsPackageVersion>
     
     <!-- For tests only -->
-    <DependencyInjectionPackageVersion>10.0.6</DependencyInjectionPackageVersion>
-    <LoggingPackageVersion>10.0.6</LoggingPackageVersion>
+    <DependencyInjectionPackageVersion>10.0.7</DependencyInjectionPackageVersion>
+    <LoggingPackageVersion>10.0.7</LoggingPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(LoggingAbstractionsPackageVersion)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(DependencyInjectionAbstractionsPackageVersion)" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.15.2" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.15.3" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
@@ -21,7 +21,7 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
 
     <!-- Build -->
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.202" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.203" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.3.0" />
@@ -39,8 +39,8 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.3" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="OpenTelemetry" Version="1.15.2" />
-    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.15.2" />
+    <PackageVersion Include="OpenTelemetry" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.15.3" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
