@@ -18,6 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  global_json_file: './global.json'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   AOT_Compat: |
     param([string]$targetFramework)
@@ -92,7 +93,7 @@ jobs:
       matrix:
         os: [ ubuntu-24.04 ]
         pg_major: [ 18 ]
-        tfm: [ net10.0 ]
+        tfm: [ net11.0 ]
 
     steps:
       - name: Checkout
@@ -111,6 +112,8 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v5.2.0
+        with:
+          global-json-file: ${{ env.global_json_file }}
 
       - name: Write script
         run: echo "$AOT_Compat" > test-aot-compatibility.ps1
@@ -126,7 +129,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04]
         pg_major: [ 18 ]
-        tfm: [ net10.0 ]
+        tfm: [ net11.0 ]
 
     steps:
       - name: Checkout
@@ -145,6 +148,8 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v5.2.0
+        with:
+          global-json-file: ${{ env.global_json_file }}
 
       - name: Start PostgreSQL
         run: |
