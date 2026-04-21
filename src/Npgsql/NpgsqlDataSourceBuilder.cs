@@ -590,6 +590,17 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Optional override for the DNS lookup client used by SRV discovery.
+    /// When <see langword="null"/> (the default), the system resolver is used.
+    /// Override in tests to inject mock SRV responses without a live DNS server.
+    /// </summary>
+    public DnsClient.ILookupClient? SrvLookupClient
+    {
+        get => _internalBuilder.SrvLookupClient;
+        set => _internalBuilder.SrvLookupClient = value;
+    }
+
+    /// <summary>
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>
     public NpgsqlDataSource Build()

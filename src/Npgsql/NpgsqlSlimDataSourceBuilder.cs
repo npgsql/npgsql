@@ -789,6 +789,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlDataSource Build()
     {
+        ResolveSrvIfNeeded();
         ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
@@ -809,12 +810,29 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
     {
+        ResolveSrvIfNeeded();
         ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
         ValidateMultiHost();
 
         return new(connectionStringBuilder, config);
+    }
+
+    /// <summary>
+    /// Optional override for the DNS lookup client used by SRV discovery.
+    /// When <see langword="null"/> (the default), the system resolver is used.
+    /// Override in tests to inject mock SRV responses without a live DNS server.
+    /// </summary>
+    public DnsClient.ILookupClient? SrvLookupClient { get; set; }
+
+    void ResolveSrvIfNeeded()
+    {
+        var srvHost = ConnectionStringBuilder.SrvHost;
+        if (string.IsNullOrWhiteSpace(srvHost))
+            return;
+
+        ConnectionStringBuilder.Host = SrvLookup.ResolveToHostString(srvHost, SrvLookupClient);
     }
 
     // Used in testing.
