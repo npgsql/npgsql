@@ -1,9 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Net;
-using DnsClient;
-using DnsClient.Protocol;
 using NUnit.Framework;
+using static Npgsql.SrvLookup;
 
 namespace Npgsql.SrvTests;
 
@@ -15,10 +12,6 @@ namespace Npgsql.SrvTests;
 ///
 /// <see cref="ResolveSrvLive"/> queries actual SRV records published at
 /// <c>_postgresql._tcp.mmatvei.ru</c> and verifies priority ordering end-to-end.
-///
-/// Set the environment variable <c>NPGSQL_TEST_SRV_DNS</c> to an IP address (e.g.
-/// <c>88.212.208.183</c>) to force a specific nameserver when the system resolver has a stale
-/// negative cache.
 /// </summary>
 class SrvLookupTests
 {
@@ -69,11 +62,10 @@ class SrvLookupTests
     public void Sort_priority_ascending()
     {
         // Lower priority number = preferred (RFC 2782 §3)
-        var result = SrvLookup.SortAndBuild(new[]
-        {
-            MakeSrv(100, 1, 5432, "replica.example.com."),
-            MakeSrv(10,  1, 5432, "primary.example.com."),
-        });
+        var result = SrvLookup.SortAndBuild([
+            new SrvRecord(100, 1, 5432, "replica.example.com"),
+            new SrvRecord( 10, 1, 5432, "primary.example.com"),
+        ]);
         var hosts = result!.Split(',');
         Assert.That(hosts[0], Is.EqualTo("primary.example.com:5432"), "priority 10 must come first");
         Assert.That(hosts[1], Is.EqualTo("replica.example.com:5432"), "priority 100 must come second");
@@ -83,34 +75,25 @@ class SrvLookupTests
     public void Sort_weight_descending_within_priority()
     {
         // Same priority: higher weight = more preferred
-        var result = SrvLookup.SortAndBuild(new[]
-        {
-            MakeSrv(10,  1, 5432, "light.example.com."),
-            MakeSrv(10, 50, 5433, "heavy.example.com."),
-        });
+        var result = SrvLookup.SortAndBuild([
+            new SrvRecord(10,  1, 5432, "light.example.com"),
+            new SrvRecord(10, 50, 5433, "heavy.example.com"),
+        ]);
         var hosts = result!.Split(',');
         Assert.That(hosts[0], Is.EqualTo("heavy.example.com:5433"), "weight 50 must come first");
         Assert.That(hosts[1], Is.EqualTo("light.example.com:5432"));
     }
 
     [Test]
-    public void Sort_trailing_dot_stripped_from_fqdn()
-    {
-        var result = SrvLookup.SortAndBuild(new[] { MakeSrv(10, 1, 5432, "pg.example.com.") });
-        Assert.That(result, Is.EqualTo("pg.example.com:5432"));
-    }
-
-    [Test]
     public void Sort_mixed_matches_mmatvei_ru_ordering()
     {
         // Mirrors the four real records published at _postgresql._tcp.mmatvei.ru
-        var result = SrvLookup.SortAndBuild(new[]
-        {
-            MakeSrv(100, 1, 5432, "pg.mmatvei.ru."),
-            MakeSrv( 96, 1, 5432, "pg4.mmatvei.ru."),
-            MakeSrv( 99, 1, 5432, "pg2.mmatvei.ru."),
-            MakeSrv( 97, 1, 5432, "pg3.mmatvei.ru."),
-        });
+        var result = SrvLookup.SortAndBuild([
+            new SrvRecord(100, 1, 5432, "pg.mmatvei.ru"),
+            new SrvRecord( 96, 1, 5432, "pg4.mmatvei.ru"),
+            new SrvRecord( 99, 1, 5432, "pg2.mmatvei.ru"),
+            new SrvRecord( 97, 1, 5432, "pg3.mmatvei.ru"),
+        ]);
         var hosts = result!.Split(',');
         Assert.That(hosts[0], Is.EqualTo("pg4.mmatvei.ru:5432"),  "priority 96 first");
         Assert.That(hosts[1], Is.EqualTo("pg3.mmatvei.ru:5432"),  "priority 97 second");
@@ -121,7 +104,7 @@ class SrvLookupTests
     [Test]
     public void Sort_empty_sequence_returns_null()
     {
-        Assert.That(SrvLookup.SortAndBuild(Array.Empty<SrvRecord>()), Is.Null);
+        Assert.That(SrvLookup.SortAndBuild([]), Is.Null);
     }
 
     // -----------------------------------------------------------------------
@@ -130,28 +113,16 @@ class SrvLookupTests
 
     /// <summary>
     /// Queries real SRV records published at <c>_postgresql._tcp.mmatvei.ru</c> and verifies
-    /// that npgsql resolves and orders them correctly.  The test skips automatically if the
+    /// that Npgsql resolves and orders them correctly.  The test skips automatically if the
     /// records are unreachable so it never breaks an offline build.
     /// </summary>
     [Test]
     public void ResolveSrvLive()
     {
-        var dnsEnv = Environment.GetEnvironmentVariable("NPGSQL_TEST_SRV_DNS");
-
-        LookupClient client;
-        if (dnsEnv is { Length: > 0 } && IPAddress.TryParse(dnsEnv, out var ip))
-        {
-            client = new LookupClient(new LookupClientOptions(ip) { UseCache = false });
-        }
-        else
-        {
-            client = new LookupClient(new LookupClientOptions { UseCache = false });
-        }
-
         string hostString;
         try
         {
-            hostString = SrvLookup.ResolveToHostString("mmatvei.ru", client);
+            hostString = SrvLookup.ResolveToHostString("mmatvei.ru");
         }
         catch (NpgsqlException ex)
         {
@@ -169,16 +140,5 @@ class SrvLookupTests
 
         foreach (var h in hosts)
             Assert.That(h, Contains.Substring(":"), $"Expected host:port format, got: {h}");
-    }
-
-    // -----------------------------------------------------------------------
-    // Helpers
-    // -----------------------------------------------------------------------
-
-    static SrvRecord MakeSrv(ushort priority, ushort weight, ushort port, string target)
-    {
-        var info = new ResourceRecordInfo(
-            "_postgresql._tcp.example.com", ResourceRecordType.SRV, QueryClass.IN, 60, 0);
-        return new SrvRecord(info, priority, weight, port, DnsString.Parse(target));
     }
 }
