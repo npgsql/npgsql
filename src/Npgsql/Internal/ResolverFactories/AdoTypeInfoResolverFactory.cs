@@ -31,7 +31,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
         {
             var info = Mappings.Find(type, dataTypeName, options);
             if (info is null && dataTypeName is not null)
-                info = GetEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+                info = GetPgEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
             if (info is null && type is not null && dataTypeName is not null)
                 info = GetStreamTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
 
@@ -47,7 +47,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             return PgConcreteTypeInfo.Create(options, binary: converter, text: converter, dataTypeName, supportsWriting: false);
         }
 
-        static PgTypeInfo? GetEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+        static PgTypeInfo? GetPgEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
             if (type is not null && type != typeof(object) && type != typeof(string)
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
@@ -483,7 +483,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 && options.DatabaseInfo.GetPostgresType(dataTypeName) is PostgresArrayType { Element: var pgElementType }
                 && (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType)))
             {
-                info = GetEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
+                info = GetPgEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
                        GetObjectArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options);
             }
             return info;
@@ -667,7 +667,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             return mappings.Find(type, dataTypeName, options);
         }
 
-        static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+        static PgTypeInfo? GetPgEnumArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
             if ((type is not null && type != typeof(object) && elementType != typeof(string))
                 || pgElementType is not PostgresEnumType enumType)
