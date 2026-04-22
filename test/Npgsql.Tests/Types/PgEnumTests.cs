@@ -11,7 +11,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-public class EnumTests : TestBase
+public class PgEnumTests : TestBase
 {
     enum Mood { Sad, Ok, Happy }
     enum AnotherEnum { Value1, Value2 }
