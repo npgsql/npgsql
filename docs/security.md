@@ -43,7 +43,7 @@ Connections to PostgreSQL are unencrypted by default, but you can turn on sessio
 
 To use GSS-API, configure your PostgreSQL for GSS-API session encryption ([docs](https://www.postgresql.org/docs/current/gssapi-enc.html)). Once that's done, you can use `GSS Encryption Mode` in your connection string to configure support (this is similar to the PG [`gccencmode`](https://www.postgresql.org/docs/16/libpq-connect.html#LIBPQ-CONNECT-GSSENCMODE) parameter):
 
-SSL Mode            | Meaning
+GSS Encryption Mode | Meaning
 ------------------- | ---------
 Disable             | Only try a non-GSSAPI-encrypted connection.
 Prefer (default)    | If there are GSSAPI credentials present (i.e., in a credentials cache), first try a GSSAPI-encrypted connection; if that fails or there are no credentials, try a non-GSSAPI-encrypted connection.
