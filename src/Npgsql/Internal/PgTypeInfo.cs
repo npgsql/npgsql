@@ -228,8 +228,6 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     readonly bool _canTextConvert;
     readonly BufferRequirements _textBufferRequirements;
 
-    readonly Type _typeToConvert;
-
     public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
         : this(options, converter, pgTypeId, requestedType: null)
     {}
@@ -238,7 +236,6 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         : base(options, converter, pgTypeId, requestedType)
     {
         Converter = converter;
-        _typeToConvert = converter.TypeToConvert;
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
     }
@@ -246,69 +243,18 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     Type TypeToConvert
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get
-        {
-            Debug.Assert(Converter.TypeToConvert == _typeToConvert);
-            return _typeToConvert;
-        }
+        get => Converter.TypeToConvert;
     }
 
     public PgConverter Converter { get; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    PgConverter<T> UnsafeGetConverter<T>()
-    {
-        // Justification: avoid perf cost of casting to a known base class type per field read.
-        Debug.Assert(Converter is PgConverter<T>);
-        return Unsafe.As<PgConverter<T>>(Converter);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal T ConverterRead<T>(PgReader reader)
-        => typeof(T) != TypeToConvert
-            ? (T)Converter.ReadAsObject(reader)
-            : UnsafeGetConverter<T>().Read(reader);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal ValueTask<T> ConverterReadAsync<T>(PgReader reader, CancellationToken cancellationToken)
-    {
-        if (typeof(T) != TypeToConvert)
-        {
-            var task = Converter.ReadAsObjectAsync(reader, cancellationToken);
-            return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
-        }
-
-        return UnsafeGetConverter<T>().ReadAsync(reader, cancellationToken);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        async ValueTask<T> ReadAndUnboxAsync(ValueTask<object> task)
-            => (T)await task.ConfigureAwait(false);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void ConverterWrite<T>(PgWriter writer, [DisallowNull]T value)
-    {
-        if (typeof(T) != TypeToConvert)
-        {
-            Converter.WriteAsObject(writer, value);
-            return;
-        }
-        UnsafeGetConverter<T>().Write(writer, value);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal ValueTask ConverterWriteAsync<T>(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
-        => typeof(T) != TypeToConvert
-            ? Converter.WriteAsObjectAsync(writer, value, cancellationToken)
-            : UnsafeGetConverter<T>().WriteAsync(writer, value, cancellationToken);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)
     {
         var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
         reader.StartRead(dataFormat, bufferRequirement);
-        var result = ConverterRead<T>(reader);
+        var result = Converter.Read<T>(reader);
         reader.EndRead();
         return result;
     }
@@ -318,10 +264,10 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         var bufferRequirement = (dataFormat is DataFormat.Binary ? _binaryBufferRequirements : _textBufferRequirements).Read;
         await reader.StartReadAsync(dataFormat, bufferRequirement, cancellationToken).ConfigureAwait(false);
 
-        // Copy of ConverterReadAsync to keep everything in one async frame.
+        // Inline copy of Converter.ReadAsync<T> to keep everything in one async frame.
         var result = typeof(T) != TypeToConvert
             ? (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await UnsafeGetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            : await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
@@ -374,7 +320,8 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
 
-        if (UnsafeGetConverter<T>().IsDbNullOrGetSize(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+        Debug.Assert(Converter is PgConverter<T>);
+        if (Unsafe.As<PgConverter<T>>(Converter).GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
             return new(format, bufferRequirements.Write, null, null);
 
         return new(format, bufferRequirements.Write, size, writeState);

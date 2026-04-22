@@ -88,9 +88,9 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     {
         Debug.Assert(TypedValue is not null);
         if (async)
-            return typeInfo.ConverterWriteAsync(writer, TypedValue, cancellationToken);
+            return typeInfo.Converter.WriteAsync(writer, TypedValue, cancellationToken);
 
-        typeInfo.ConverterWrite(writer, TypedValue);
+        typeInfo.Converter.Write(writer, TypedValue);
         return new();
     }
 
