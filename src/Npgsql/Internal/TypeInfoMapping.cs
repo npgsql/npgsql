@@ -156,8 +156,9 @@ public sealed class TypeInfoMappingCollection
 
         if (fallback is { } fbMapping)
         {
+            Debug.Assert(type is not null);
             var resolvedDataTypeName = ResolveFullyQualifiedDataTypeName(dataTypeName, fbMapping.DataTypeName, options);
-            return fbMapping.Factory(options, fbMapping with { Type = type!, DataTypeName = resolvedDataTypeName }, dataTypeName is not null);
+            return fbMapping.Factory(options, fbMapping with { Type = type, DataTypeName = resolvedDataTypeName }, dataTypeName is not null);
         }
 
         return null;
@@ -206,11 +207,11 @@ public sealed class TypeInfoMappingCollection
             var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var converter = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var unboxedType = ComputeUnboxedType(defaultType: mappingType, converter.TypeToConvert, mapping.Type);
-            var readingSupported = innerInfo.SupportsReading && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, unboxedType));
+            var readingSupported = innerInfo.SupportsReading
+                                   && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, requestedType: mapping.Type));
             var writingSupported = innerInfo.SupportsWriting && (supportsWriting ?? true);
 
-            return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType)
+            return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), requestedType: mapping.Type)
             {
                 PreferredFormat = preferredFormat,
                 SupportsReading = readingSupported,
@@ -229,47 +230,20 @@ public sealed class TypeInfoMappingCollection
             var innerInfo = (PgProviderTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var typeInfoProvider = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var unboxedType = ComputeUnboxedType(defaultType: mappingType, typeInfoProvider.TypeToConvert, mapping.Type);
-            var readingSupported = innerInfo.SupportsReading && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(typeInfoProvider.TypeToConvert, unboxedType));
+            var readingSupported = innerInfo.SupportsReading && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(typeInfoProvider.TypeToConvert, mapping.Type));
             var writingSupported = innerInfo.SupportsWriting && (supportsWriting ?? true);
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
             PgTypeId? pgTypeId = innerInfo.PgTypeId is not null
                 ? options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName))
                 : null;
-            return new PgProviderTypeInfo(options, typeInfoProvider, pgTypeId, unboxedType)
+            return new PgProviderTypeInfo(options, typeInfoProvider, pgTypeId, requestedType: mapping.Type)
             {
                 PreferredFormat = preferredFormat,
                 SupportsReading = readingSupported,
                 SupportsWriting = writingSupported
             };
         };
-
-    static Type? ComputeUnboxedType(Type defaultType, Type converterType, Type matchedType)
-    {
-        // The minimal hierarchy that should hold for things to work is object < converterType < matchedType.
-        // Though these types could often be seen in a hierarchy: object < converterType < defaultType < matchedType.
-        // Some caveats with the latter being for instance Array being the matchedType while the defaultType is int[].
-        Debug.Assert(converterType.IsAssignableFrom(matchedType) || matchedType == typeof(object));
-        Debug.Assert(converterType.IsAssignableFrom(defaultType));
-
-        // A special case for object matches, where we return a more specific type than was matched.
-        // This is to report e.g. Array converters as Array when their matched type was object.
-        if (matchedType == typeof(object))
-            return converterType;
-
-        // This is to report e.g. Array converters as int[,,,] when their matched type was such.
-        if (matchedType != defaultType)
-            return matchedType;
-
-        // If defaultType does not equal converterType we take defaultType as it's more specific.
-        // This is to report e.g. Array converters as int[] when their matched type was their default type.
-        if (defaultType != converterType)
-            return defaultType;
-
-        // Keep the converter type.
-        return null;
-    }
 
     public void Add(TypeInfoMapping mapping) => _items.Add(mapping);
 
@@ -526,7 +500,7 @@ public sealed class TypeInfoMappingCollection
                     (PgConverter<Array>)((PgConcreteTypeInfo)nullableInnerInfo).Converter);
 
             return new PgConcreteTypeInfo(innerInfo.Options, converter,
-                innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
+                innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object)) { SupportsWriting = false };
         }
     }
 
@@ -640,7 +614,7 @@ public sealed class TypeInfoMappingCollection
                         (PgProviderTypeInfo)nullableInnerInfo);
 
                 return new PgProviderTypeInfo(innerInfo.Options, provider,
-                    innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false };
+                    innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object)) { SupportsWriting = false };
             }
         }
 
@@ -707,43 +681,39 @@ public sealed class TypeInfoMappingCollection
 
     static ArrayConverter<Array> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return ArrayConverter<Array>.CreateArrayBased<TElement>((PgConcreteTypeInfo)elemInfo, mapping.Type);
+        if (!elemInfo.IsStronglyTyped)
+            ThrowWeaklyTypedNotSupported(provider: false);
 
-        ThrowBoxingNotSupported(provider: false);
-        return default;
+        return ArrayConverter<Array>.CreateArrayBased<TElement>((PgConcreteTypeInfo)elemInfo, mapping.Type);
     }
 
     static ArrayConverter<IList<TElement>> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return ArrayConverter<IList<TElement>>.CreateListBased<TElement>((PgConcreteTypeInfo)elemInfo);
+        if (!elemInfo.IsStronglyTyped)
+            ThrowWeaklyTypedNotSupported(provider: false);
 
-        ThrowBoxingNotSupported(provider: false);
-        return default;
+        return ArrayConverter<IList<TElement>>.CreateListBased<TElement>((PgConcreteTypeInfo)elemInfo);
     }
 
     static ArrayTypeInfoProvider<Array, TElement> CreateArrayBasedTypeInfoProvider<TElement>(TypeInfoMapping mapping, PgProviderTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return new ArrayTypeInfoProvider<Array, TElement>(elemInfo, mapping.Type);
+        if (!elemInfo.IsStronglyTyped)
+            ThrowWeaklyTypedNotSupported(provider: true);
 
-        ThrowBoxingNotSupported(provider: true);
-        return default;
+        return new ArrayTypeInfoProvider<Array, TElement>(elemInfo, mapping.Type);
     }
 
     static ArrayTypeInfoProvider<IList<TElement>, TElement> CreateListBasedTypeInfoProvider<TElement>(TypeInfoMapping mapping, PgProviderTypeInfo elemInfo)
     {
-        if (!elemInfo.IsBoxing)
-            return new ArrayTypeInfoProvider<IList<TElement>, TElement>(elemInfo, mapping.Type);
+        if (!elemInfo.IsStronglyTyped)
+            ThrowWeaklyTypedNotSupported(provider: true);
 
-        ThrowBoxingNotSupported(provider: true);
-        return default;
+        return new ArrayTypeInfoProvider<IList<TElement>, TElement>(elemInfo, mapping.Type);
     }
 
     [DoesNotReturn]
-    static void ThrowBoxingNotSupported(bool provider)
-        => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(provider ? " type info provider" : "")} instead.");
+    static void ThrowWeaklyTypedNotSupported(bool provider)
+        => throw new InvalidOperationException($"Weakly typed infos are not supported, manually construct a mapping over a casting converter{(provider ? " type info provider" : "")} instead.");
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]

@@ -47,7 +47,6 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int GetMinimumBufferByteCount(Size bufferRequirement, int valueSize)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(valueSize);
         var reqByteCount = bufferRequirement.GetValueOrDefault();
         switch (bufferRequirement.Kind)
         {

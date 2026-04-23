@@ -4,6 +4,7 @@ using BenchmarkDotNet.Configs;
 
 namespace Npgsql.Benchmarks;
 
+// [InProcess]
 [Config(typeof(Config))]
 public class GetFieldValue
 {

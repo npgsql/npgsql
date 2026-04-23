@@ -85,7 +85,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
-            subInfo = subInfo.ToNonBoxing();
+            subInfo = subInfo.ToStronglyTyped();
 
             var converterType = typeof(NpgsqlRange<>).MakeGenericType(subInfo.Type);
 
@@ -96,7 +96,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type),
                             ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
-                        unboxedType: matchedType is not null && matchedType != converterType ? converterType : null
+                        requestedType: matchedType
                     ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
@@ -144,7 +144,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
-            subInfo = subInfo.ToNonBoxing();
+            subInfo = subInfo.ToStronglyTyped();
 
             var converterType = subInfo.Type.MakeArrayType();
 
@@ -155,7 +155,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(converterType, subInfo.Type),
                             ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
-                        unboxedType: type is not null && type != converterType ? converterType : null
+                        requestedType: type
                     ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }

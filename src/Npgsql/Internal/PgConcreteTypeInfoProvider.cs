@@ -102,4 +102,5 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
 public readonly struct ProviderValueContext
 {
     public PgTypeId? ExpectedPgTypeId { get; init; }
+    public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
 }
