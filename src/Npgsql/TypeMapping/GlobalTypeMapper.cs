@@ -55,12 +55,13 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             if (_typeMappingOptions is { } existing)
                 return existing;
 
+            // We need to add our factories in reverse order because we first have to run the builder factory, which comes pre-seeded.
             var builder = _builderFactory?.Invoke() ?? new();
-            builder.AppendResolverFactory(_userTypeMapper);
-            foreach (var factory in _pluginResolverFactories)
-                builder.AppendResolverFactory(factory);
             foreach (var factory in _typeMappingResolvers)
-                builder.AppendResolverFactory(factory);
+                builder.PrependResolverFactory(factory);
+            foreach (var factory in _pluginResolverFactories)
+                builder.PrependResolverFactory(factory);
+            builder.PrependResolverFactory(_userTypeMapper);
             var chain = builder.Build();
             var options = new PgSerializerOptions(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, chain)
             {
