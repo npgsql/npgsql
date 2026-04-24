@@ -679,7 +679,9 @@ public sealed partial class NpgsqlConnector
         {
             TargetName = targetName,
             RequireMutualAuthentication = true,
-            RequiredProtectionLevel = ProtectionLevel.EncryptAndSign
+            RequiredProtectionLevel = ProtectionLevel.EncryptAndSign,
+            // GSS encryption only works with kerberos
+            Package = "Kerberos"
         };
 
         NegotiateOptionsCallback?.Invoke(clientOptions);
