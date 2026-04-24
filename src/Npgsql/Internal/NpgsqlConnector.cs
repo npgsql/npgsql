@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -1847,7 +1848,7 @@ public sealed partial class NpgsqlConnector
         (sender, certificate, chain, sslPolicyErrors)
             => true;
 
-    static RemoteCertificateValidationCallback SslRootValidation(bool verifyFull, string? certRootPath, X509Certificate2Collection? caCertificates)
+    RemoteCertificateValidationCallback SslRootValidation(bool verifyFull, string? certRootPath, X509Certificate2Collection? caCertificates)
         => (_, certificate, chain, sslPolicyErrors) =>
         {
             if (certificate is null || chain is null)
@@ -1860,25 +1861,7 @@ public sealed partial class NpgsqlConnector
             if (verifyFull && sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
                 return false;
 
-            var certs = new X509Certificate2Collection();
-
-            if (certRootPath is null)
-            {
-                Debug.Assert(caCertificates is { Count: > 0 });
-                certs.AddRange(caCertificates);
-            }
-            else
-            {
-                Debug.Assert(caCertificates is null or { Count: > 0 });
-                if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
-                    certs.ImportFromPemFile(certRootPath);
-
-                if (certs.Count == 0)
-                {
-                    // This is not a PEM certificate, probably PFX
-                    certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
-                }
-            }
+            var certs = GetCustomRootCertificates(certRootPath, caCertificates);
 
             chain.ChainPolicy.CustomTrustStore.AddRange(certs);
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
@@ -1887,6 +1870,66 @@ public sealed partial class NpgsqlConnector
 
             return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
         };
+
+    private X509Certificate2Collection GetCustomRootCertificates(string? certRootPath, X509Certificate2Collection? caCertificates)
+    {
+        if (certRootPath is null)
+        {
+            Debug.Assert(caCertificates is { Count: > 0 });
+            return caCertificates;
+        }
+        else
+        {
+            Debug.Assert(caCertificates is null or { Count: 0 });
+
+            // Add the file timestamp to the cache key, in case the certificate file is modified while
+            // the application is running.
+            // If this happens, a useless old entry will remain in the cache, but we don't really
+            // expect the file to change in the first place.
+            var certRootTimeStamp = TryGetFileTimeStamp(certRootPath);
+
+            if (certRootTimeStamp.HasValue)
+            {
+                return DataSource.CustomRootCertificateCache.GetOrAdd((certRootPath, certRootTimeStamp.Value), certRoot =>
+                    LoadRootCertificatesFromFile(certRoot.Item1));
+            }
+            else
+            {
+                // For security reasons, don't cache the certificates if we can't invalidate the cache.
+                return LoadRootCertificatesFromFile(certRootPath);
+            }
+        }
+    }
+
+    private static X509Certificate2Collection LoadRootCertificatesFromFile(string certRootPath)
+    {
+        var certs = new X509Certificate2Collection();
+
+        if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
+            certs.ImportFromPemFile(certRootPath);
+
+        if (certs.Count == 0)
+        {
+            // This is not a PEM certificate, probably PFX
+            certs.Add(X509CertificateLoader.LoadPkcs12FromFile(certRootPath, null));
+        }
+
+        return certs;
+    }
+
+    private static DateTime? TryGetFileTimeStamp(string path)
+    {
+        try
+        {
+            return File.GetLastWriteTimeUtc(path);
+        }
+        catch
+        {
+            // Ignore errors at this point. If the file is loaded afterwards, the code that
+            // does that will hopefully throw a more meaningful exception.
+            return null;
+        }
+    }
 
     #endregion SSL
 
