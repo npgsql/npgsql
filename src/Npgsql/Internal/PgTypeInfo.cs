@@ -273,12 +273,6 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return result;
     }
 
-    public BufferRequirements? GetBufferRequirements(DataFormat format)
-    {
-        var success = CanConvert(format, out var bufferRequirements);
-        return success ? bufferRequirements : null;
-    }
-
     // Having it here so we can easily extend any behavior.
     internal void DisposeWriteState(object writeState)
     {
@@ -347,7 +341,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
-    bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    public bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         switch (format)
         {
