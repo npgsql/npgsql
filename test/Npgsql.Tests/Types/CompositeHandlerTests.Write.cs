@@ -83,7 +83,7 @@ public partial class CompositeHandlerTests
 
     [Test]
     public void Write_type_with_private_getter_throws()
-        => Assert.ThrowsAsync<InvalidOperationException>(async () => await Write(new TypeWithPrivateGetter()));
+        => Assert.ThrowsAsync<InvalidCastException>(async () => await Write(new TypeWithPrivateGetter()));
 
     [Test]
     public Task Write_type_with_private_setter()
@@ -91,7 +91,7 @@ public partial class CompositeHandlerTests
 
     [Test]
     public void Write_type_without_getter_throws()
-        => Assert.ThrowsAsync<InvalidOperationException>(async () => await Write(new TypeWithoutGetter()));
+        => Assert.ThrowsAsync<InvalidCastException>(async () => await Write(new TypeWithoutGetter()));
 
     [Test]
     public Task Write_type_without_setter() =>

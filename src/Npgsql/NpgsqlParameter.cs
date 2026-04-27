@@ -697,18 +697,36 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 _writeState = null;
             }
 
-            if (staticValueType == typeof(object))
+            try
             {
-                // Pull from Value (not _value) so we also support object typed generic params.
-                var value = Value;
-                ConcreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(
-                    new() { NestedObjectDbNullHandling = ParameterDbNullHandling },
-                    value is DBNull ? null : value,
-                    out _writeState);
+                if (staticValueType == typeof(object))
+                {
+                    // Pull from Value (not _value) so we also support object typed generic params.
+                    var value = Value;
+                    ConcreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(
+                        new() { NestedObjectDbNullHandling = ParameterDbNullHandling },
+                        value is DBNull ? null : value,
+                        out _writeState);
+                }
+                else
+                {
+                    ConcreteTypeInfo = MakeConcreteTypeInfoForTypedValue(typeInfo);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                ConcreteTypeInfo = MakeConcreteTypeInfoForTypedValue(typeInfo);
+                // Wrap provider-thrown errors (e.g. DateTime kind validation in the value-dispatched path) with
+                // parameter context. Mirrors AdoSerializerHelpers.ThrowWritingNotSupported's framing — surface
+                // whichever of NpgsqlDbType / DataTypeName the caller actually declared, since at this layer the
+                // target identity is the user's declaration, not a fully-resolved concrete type id.
+                var pgTypeString = _npgsqlDbType is { } npgsqlDbType
+                    ? $"NpgsqlDbType '{npgsqlDbType}'"
+                    : _dataTypeName is { } dataTypeName
+                        ? $"DataTypeName '{dataTypeName}'"
+                        : "no NpgsqlDbType or DataTypeName";
+                ThrowHelper.ThrowInvalidCastException(
+                    $"Writing values of '{GetValueType(staticValueType)?.FullName ?? "null"}' for parameter '{ParameterName}' having {pgTypeString} is not supported. See the inner exception for details.",
+                    innerException: ex);
             }
 
             // If no Bind follows (SchemaOnly), release the provider-produced state immediately so
@@ -792,7 +810,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 _binding = binding;
                 _writeState = null;
             }
-            catch
+            catch (Exception ex)
             {
                 if (_writeState is { } ws)
                 {
@@ -805,7 +823,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     _subStream = null;
                 }
                 _useSubStream = false;
-                throw;
+                // Wrap with resolution context, which is easier than letting nested converters reconstruct the right context themselves.
+                // Use the parameter's value-type logic so the message reflects the type that the caller passed, not what info was resolved.
+                ThrowHelper.ThrowInvalidCastException(
+                    $"Could not bind parameter '{ParameterName}' of CLR type '{GetValueType(StaticValueType)?.FullName ?? "null"}' to PostgreSQL type '{ConcreteTypeInfo.Options.GetDataTypeName(ConcreteTypeInfo.PgTypeId).DisplayName}'. See the inner exception for details.",
+                    innerException: ex);
             }
         }
         else if (requiredFormat is not null && _binding.GetValueOrDefault().DataFormat != requiredFormat)

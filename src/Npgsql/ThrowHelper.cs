@@ -65,6 +65,10 @@ static class ThrowHelper
         throw new InvalidCastException(message);
 
     [DoesNotReturn]
+    internal static void ThrowInvalidCastException(string message, Exception innerException) =>
+        throw new InvalidCastException(message, innerException);
+
+    [DoesNotReturn]
     internal static void ThrowInvalidCastException_NoValue() =>
         throw new InvalidCastException("Field is null.");
 

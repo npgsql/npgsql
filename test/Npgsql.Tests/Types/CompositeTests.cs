@@ -423,7 +423,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        Assert.ThrowsAsync<ArgumentException>(() => AssertType(
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
             connection,
             new SomeCompositeWithTypeInfoProviderType { DateTimes = [DateTime.UnixEpoch] }, // UTC DateTime
             """("{""1970-01-01 01:00:00"",""1970-01-02 01:00:00""}")""",
@@ -480,7 +480,7 @@ CREATE TYPE {compositeType} AS (id int, created_at timestamp)");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        Assert.ThrowsAsync<ArgumentException>(() => AssertType(
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
             connection,
             new SomeCompositeWithFixedSizeTypeInfoProviderField
             {

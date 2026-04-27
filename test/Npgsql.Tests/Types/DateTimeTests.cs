@@ -162,7 +162,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Timestamp_cannot_write_utc_DateTime()
-        => AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
+        => AssertTypeUnsupportedWrite<DateTime, InvalidCastException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
 
     [Test]
     public Task Timestamp_as_long()
@@ -266,8 +266,8 @@ public class DateTimeTests : TestBase
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_DateTime()
     {
-        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
-        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, InvalidCastException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, InvalidCastException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
     }
 
     [Test]
@@ -293,7 +293,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Timestamptz_cannot_write_non_utc_DateTimeOffset()
-        => AssertTypeUnsupportedWrite<DateTimeOffset, ArgumentException>(new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.FromHours(2)));
+        => AssertTypeUnsupportedWrite<DateTimeOffset, InvalidCastException>(new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.FromHours(2)));
 
     [Test]
     public Task Timestamptz_as_long()
@@ -366,7 +366,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Cannot_mix_DateTime_Kinds_in_array()
-        => AssertTypeUnsupportedWrite<DateTime[], ArgumentException>([
+        => AssertTypeUnsupportedWrite<DateTime[], InvalidCastException>([
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local)
         ]);
@@ -374,7 +374,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Cannot_mix_DateTime_Kinds_in_range()
-        => AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>, ArgumentException>(new NpgsqlRange<DateTime>(
+        => AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>, InvalidCastException>(new NpgsqlRange<DateTime>(
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local)));
 
@@ -384,7 +384,7 @@ public class DateTimeTests : TestBase
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
 
-        await AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>[], ArgumentException>([
+        await AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>[], InvalidCastException>([
             new NpgsqlRange<DateTime>(
                 new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
                 new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),

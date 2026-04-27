@@ -926,7 +926,7 @@ $$ LANGUAGE plpgsql;";
             H = largeString
         });
 
-        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
     }
 
     record BigComposite
@@ -965,7 +965,7 @@ $$ LANGUAGE plpgsql;";
         };
         cmd.Parameters.AddWithValue("a", array);
 
-        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
     }
 
     [Test]
@@ -1003,7 +1003,7 @@ $$ LANGUAGE plpgsql;";
             DataTypeName = rangeType
         });
 
-        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
     }
 
     [Test]
@@ -1046,7 +1046,7 @@ $$ LANGUAGE plpgsql;";
             DataTypeName = rangeType + "_multirange"
         });
 
-        Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
     }
 
     [Test, Description("CreateCommand before connection open")]

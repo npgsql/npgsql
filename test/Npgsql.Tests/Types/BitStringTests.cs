@@ -125,5 +125,5 @@ public class BitStringTests : TestBase
 
     [Test]
     public Task Write_as_string_validation()
-        => AssertTypeUnsupportedWrite<string, ArgumentException>("001q0", "bit varying");
+        => AssertTypeUnsupportedWrite<string, InvalidCastException>("001q0", "bit varying");
 }
