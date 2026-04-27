@@ -42,6 +42,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             req = BufferRequirements.Create(readSuccess ? readReq : Size.Unknown, writeSuccess ? writeReq : Size.Unknown);
         }
 
+        // Composite always has potential per-field bind-time side effects (provider resolution, converter-level
+        // value validation via HandleFixedSizeBind on the field's converter). Force the parent to invoke GetSize so
+        // we can fire those by walking the fields, regardless of whether our combined write size is exact.
+        HandleFixedSizeBind = true;
+
         // Capture the combined write size before clamping so GetSize can return it unchanged. This is the
         // full requirement we know internally — externally we hide it behind an upper-bound to force GetSize
         // to fire for provider-backed composites, but the number itself is still correct.
@@ -136,11 +141,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         var boxedInstance = (object)value;
 
         // When the combine pass produced an exact size, every field is individually fixed-size and
-        // non-nullable — the only reason we're in GetSize at all is that some field defers resolution
-        // to a provider and we clamped externally to force this entry. Walk fields purely for bind-time
-        // resolution side effects; the size is the precomputed one from the constructor. Rent lazily
-        // so the common DateTime-kind-style case (providers that validate but produce no state) pays
-        // no ElementState array allocation.
+        // non-nullable. We still walk fields to fire per-field bind-time side effects: provider-backed
+        // fields run resolution via GetWriteInfo (which calls MakeConcreteForValue → provider.GetForValue).
+        // Fields also go through IsDbNullOrBind when HandleFixedSizeBind is requested to fire any converter validation.
+        // Size is the precomputed one from the constructor. Rent lazily so fields
+        // that produce no state and resolve to the default pay no ElementState array allocation.
         if (_writeSizePrecomputed.Kind is SizeKind.Exact)
         {
             ElementState[]? data = null;
@@ -149,7 +154,14 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 var field = _composite.Fields[i];
                 var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
 
-                // Skip populating the slot when the provider produced no state and the resolved converter is the same as the default.
+                // Non-provider-backed fields don't run any per-value dispatch in GetWriteInfo — invoke
+                // IsDbNullOrBind so the field's converter Bind fires (cheap when HandleFixedSizeBind=false; runs
+                // validation when true). Path A invariant: fields are non-nullable, so the size return is
+                // never null and matches writeRequirement.
+                if (converter.HandleFixedSizeBind)
+                    field.IsDbNullOrBind(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
+
+                // Skip populating the slot when no state was produced and the resolved typeinfo is the same as the default.
                 // The common case — DateTime-kind and similar pure-validation providers — satisfies both and pays no slot allocation.
                 // A provider that happens to return a non-default concrete for a decided id still has its
                 // converter captured so Write uses it instead of demoting silently to the default.

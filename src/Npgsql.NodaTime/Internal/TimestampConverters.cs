@@ -20,18 +20,26 @@ sealed class InstantConverter(bool dateTimeInfinityConversions) : PgBufferedConv
         => writer.WriteInt64(EncodeInstant(value, dateTimeInfinityConversions));
 }
 
-sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<ZonedDateTime>
+sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
 {
+    readonly bool _dateTimeInfinityConversions;
+
+    public ZonedDateTimeConverter(bool dateTimeInfinityConversions)
+    {
+        _dateTimeInfinityConversions = dateTimeInfinityConversions;
+        HandleFixedSizeBind = true;
+    }
+
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
         return format is DataFormat.Binary;
     }
 
-    protected override ZonedDateTime ReadCore(PgReader reader)
-        => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).InUtc();
+    public override ZonedDateTime Read(PgReader reader)
+        => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).InUtc();
 
-    protected override void WriteCore(PgWriter writer, ZonedDateTime value)
+    protected override Size GetSize(SizeContext context, ZonedDateTime value, ref object? writeState)
     {
         if (value.Zone != DateTimeZone.Utc && !LegacyTimestampBehavior)
         {
@@ -41,22 +49,33 @@ sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
                 "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
         }
 
-        writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
+        return context.BufferRequirement;
     }
+
+    public override void Write(PgWriter writer, ZonedDateTime value)
+        => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
 }
 
-sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<OffsetDateTime>
+sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
 {
+    readonly bool _dateTimeInfinityConversions;
+
+    public OffsetDateTimeConverter(bool dateTimeInfinityConversions)
+    {
+        _dateTimeInfinityConversions = dateTimeInfinityConversions;
+        HandleFixedSizeBind = true;
+    }
+
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
         return format is DataFormat.Binary;
     }
 
-    protected override OffsetDateTime ReadCore(PgReader reader)
-        => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).WithOffset(Offset.Zero);
+    public override OffsetDateTime Read(PgReader reader)
+        => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).WithOffset(Offset.Zero);
 
-    protected override void WriteCore(PgWriter writer, OffsetDateTime value)
+    protected override Size GetSize(SizeContext context, OffsetDateTime value, ref object? writeState)
     {
         if (value.Offset != Offset.Zero && !LegacyTimestampBehavior)
         {
@@ -66,8 +85,11 @@ sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffe
                 "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
         }
 
-        writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
+        return context.BufferRequirement;
     }
+
+    public override void Write(PgWriter writer, OffsetDateTime value)
+        => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
 }
 
 sealed class LocalDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<LocalDateTime>

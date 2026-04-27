@@ -13,9 +13,7 @@ delegate PgConcreteTypeInfo? DateTimeTypeInfoProviderDelegate<T>(
 
 sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 {
-    readonly PgSerializerOptions _options;
     readonly DateTimeTypeInfoProviderDelegate<T> _provider;
-    readonly Func<PgTypeId, PgConverter> _factory;
     readonly PgTypeId _timestampTz;
     readonly PgConcreteTypeInfo _timestampTzConcreteTypeInfo;
     readonly PgTypeId _timestamp;
@@ -25,9 +23,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     internal DateTimeTypeInfoProvider(PgSerializerOptions options, DateTimeTypeInfoProviderDelegate<T> provider,
         Func<PgTypeId, PgConverter> factory, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
     {
-        _options = options;
         _provider = provider;
-        _factory = factory;
         _timestampTz = timestampTz;
         _timestamp = timestamp;
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
@@ -56,9 +52,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
             return context.ExpectedPgTypeId == _timestamp
                 ? throw new ArgumentException(
-                    string.Format(NpgsqlStrings.TimestampNoDateTimeUtc,
-                        _options.GetDataTypeName(_timestamp).DisplayName,
-                        _options.GetDataTypeName(_timestampTz).DisplayName), nameof(value))
+                    NpgsqlStrings.TimestampNoDateTimeUtc, nameof(value))
                 : validateOnly ? null : GetDefault(context.ExpectedPgTypeId ?? _timestampTz);
         }
 
@@ -67,8 +61,7 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             && !(_dateTimeInfinityConversions && (value == DateTime.MinValue || value == DateTime.MaxValue)))
         {
             throw new ArgumentException(
-                string.Format(NpgsqlStrings.TimestampTzNoDateTimeUnspecified, value.Kind,
-                    _options.GetDataTypeName(_timestampTz).DisplayName), nameof(value));
+                string.Format(NpgsqlStrings.TimestampTzNoDateTimeUnspecified, value.Kind), nameof(value));
         }
 
         // We coalesce with expectedPgTypeId to throw on unknown type ids.

@@ -21,7 +21,7 @@ interface IElementOperations
 
 readonly struct ArrayConverterCore(
     IElementOperations elemOps,
-    PgTypeInfo elementTypeInfo,
+    PgConcreteTypeInfo elementTypeInfo,
     bool elemTypeDbNullable,
     int? expectedDimensions,
     BufferRequirements binaryRequirements,
@@ -32,7 +32,7 @@ readonly struct ArrayConverterCore(
     internal const string ReadNonNullableCollectionWithNullsExceptionMessage =
         "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable collection type instead.";
 
-    PgTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
+    PgConcreteTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
     bool IsDbNull(SizeContext context, object values, IterationIndices arrayIndices, object? writeState)
@@ -86,7 +86,10 @@ readonly struct ArrayConverterCore(
             fixedSizeElements = true;
             var nulls = 0;
             var lastLength = metadata.LastDimension;
-            if (ElemTypeDbNullable)
+            // Iterate per element when the element typeinfo's bind isn't value-independent (its size path
+            // has per-value side effects to fire), or when we need to count nulls for nullable elements.
+            // Otherwise the size is just count*elemByteCount and we skip the iteration entirely.
+            if (ElemTypeDbNullable || ElementTypeInfo.Converter.HandleFixedSizeBind)
             {
                 var elemContext = new SizeContext(context.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
                 do

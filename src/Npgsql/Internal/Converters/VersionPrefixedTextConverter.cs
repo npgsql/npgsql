@@ -6,9 +6,9 @@ namespace Npgsql.Internal.Converters;
 
 sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
 {
-    BufferRequirements _innerRequirements;
     readonly byte _versionPrefix;
     readonly PgConverter<T> _textConverter;
+    BufferRequirements _innerRequirements;
 
     public VersionPrefixedTextConverter(byte versionPrefix, PgConverter<T> textConverter)
     {
