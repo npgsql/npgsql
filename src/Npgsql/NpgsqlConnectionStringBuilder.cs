@@ -1374,7 +1374,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Description("Load table composite type definitions, and not just free-standing composite types.")]
     [DisplayName("Load Table Composites")]
     [NpgsqlConnectionStringProperty]
-    [Obsolete("Specifying type loading options through the connection string is obsolete, use the DataSource builder instead. See the 9.0 release notes for more information.")]
+    [Obsolete("Specifying type loading options through the connection string is obsolete, use the DataSource builder instead. See the 9.0 release notes at https://www.npgsql.org/doc/release-notes/9.0.html for more information.")]
     public bool LoadTableComposites
     {
         get => _loadTableComposites;
@@ -1393,7 +1393,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Description("A compatibility mode for special PostgreSQL server types.")]
     [DisplayName("Server Compatibility Mode")]
     [NpgsqlConnectionStringProperty]
-    [Obsolete("Specifying type loading options through the connection string is obsolete, use the DataSource builder instead. See the 9.0 release notes for more information.")]
+    [Obsolete("Specifying type loading options through the connection string is obsolete, use the DataSource builder instead. See the 9.0 release notes at https://www.npgsql.org/doc/release-notes/9.0.html for more information.")]
     public ServerCompatibilityMode ServerCompatibilityMode
     {
         // Physical replication connections don't allow regular queries, so we can't load types from PG

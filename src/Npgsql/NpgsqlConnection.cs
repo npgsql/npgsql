@@ -78,13 +78,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// The global type mapper, which contains defaults used by all new connections.
     /// Modify mappings on this mapper to affect your entire application.
     /// </summary>
-    [Obsolete("Global-level type mapping has been replaced with data source mapping, see the 7.0 release notes.")]
+    [Obsolete("Global-level type mapping has been replaced with data source mapping, see the 7.0 release notes at https://www.npgsql.org/doc/release-notes/7.0.html for more information.")]
     public static INpgsqlTypeMapper GlobalTypeMapper => TypeMapping.GlobalTypeMapper.Instance;
 
     /// <summary>
-    /// Connection-level type mapping is no longer supported. See the 7.0 release notes for configuring type mapping on NpgsqlDataSource.
+    /// Connection-level type mapping is no longer supported. See the 7.0 release notes at https://www.npgsql.org/doc/release-notes/7.0.html for configuring type mapping on NpgsqlDataSource.
     /// </summary>
-    [Obsolete("Connection-level type mapping is no longer supported. See the 7.0 release notes for configuring type mapping on NpgsqlDataSource.", true)]
+    [Obsolete("Connection-level type mapping is no longer supported. See the 7.0 release notes at https://www.npgsql.org/doc/release-notes/7.0.html for configuring type mapping on NpgsqlDataSource.", true)]
     public INpgsqlTypeMapper TypeMapper
         => throw new NotSupportedException();
 
