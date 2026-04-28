@@ -14,7 +14,7 @@ interface IElementOperations
 {
     object CreateCollection(ReadOnlySpan<int> lengths);
     int GetCollectionCount(object collection, out int[]? lengths);
-    Size? IsDbNullOrBind(SizeContext context, object collection, IterationIndices indices, ref object? writeState);
+    Size? IsDbNullOrBind(BindContext context, object collection, IterationIndices indices, ref object? writeState);
     ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
     ValueTask Write(bool async, PgWriter writer, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
 }
@@ -35,10 +35,10 @@ readonly struct ArrayConverterCore(
     PgConcreteTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
-    bool IsDbNull(SizeContext context, object values, IterationIndices arrayIndices, object? writeState)
+    bool IsDbNull(BindContext context, object values, IterationIndices arrayIndices, object? writeState)
     {
-        // This call will only skip GetSize if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
-        // Fixed-size element converters cannot produce per-value write state, so IsDbNullOrGetSize must
+        // This call will only skip BindValue if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
+        // Fixed-size element converters cannot produce per-value write state, so IsDbNullOrBind must
         // leave writeState alone — any mutation is a contract violation in the element converter.
         Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
         var originalWriteState = writeState;
@@ -49,7 +49,7 @@ readonly struct ArrayConverterCore(
 
     // Sizes a single element, accumulates into running size/anyWriteState, and returns the per-slot Size (-1 sentinel for NULL).
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    Size SizeElement(SizeContext context, object values, IterationIndices indices, ref object? elemState, ref Size size, ref bool anyWriteState)
+    Size SizeElement(BindContext context, object values, IterationIndices indices, ref object? elemState, ref Size size, ref bool anyWriteState)
     {
         var elemSize = elemOps.IsDbNullOrBind(context, values, indices, ref elemState);
         anyWriteState = anyWriteState || elemState is not null;
@@ -57,7 +57,7 @@ readonly struct ArrayConverterCore(
         return elemSize ?? -1;
     }
 
-    public Size GetSize(SizeContext context, object values, ref object? writeState)
+    public Size BindValue(BindContext context, object values, ref object? writeState)
     {
         Debug.Assert(context.Format is DataFormat.Binary);
 
@@ -91,7 +91,7 @@ readonly struct ArrayConverterCore(
             // Otherwise the size is just count*elemByteCount and we skip the iteration entirely.
             if (ElemTypeDbNullable || ElementTypeInfo.Converter.HandleFixedSizeBind)
             {
-                var elemContext = new SizeContext(context.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
+                var elemContext = new BindContext(context.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
                 do
                 {
                     if (IsDbNull(elemContext, values, indices, elemData?[indices.IndicesSum].WriteState))
@@ -274,7 +274,7 @@ readonly struct ArrayConverterCore(
         var lastCount = metadata.LastDimension;
         var offset = state.Data.Offset;
         var fixedSizeElements = state.FixedSizeElements;
-        var elemContext = new SizeContext(writer.Current.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = state.NestedObjectDbNullHandling };
+        var elemContext = new BindContext(writer.Current.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = state.NestedObjectDbNullHandling };
         do
         {
             if (writer.ShouldFlush(sizeof(int)))

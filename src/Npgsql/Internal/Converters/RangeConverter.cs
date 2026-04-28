@@ -95,7 +95,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         return new NpgsqlRange<TSubtype>(lowerBound, upperBound, flags);
     }
 
-    protected override Size GetSize(SizeContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
+    protected override Size BindValue(BindContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
     {
         var totalSize = Size.Create(1);
         if (value.IsEmpty)

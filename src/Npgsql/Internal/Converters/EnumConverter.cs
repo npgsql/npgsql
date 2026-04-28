@@ -39,7 +39,7 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
         return format is DataFormat.Binary or DataFormat.Text;
     }
 
-    protected override Size GetSize(SizeContext context, TEnum value, ref object? writeState)
+    protected override Size BindValue(BindContext context, TEnum value, ref object? writeState)
     {
         if (!_enumToLabel.TryGetValue(value, out var str))
             throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");

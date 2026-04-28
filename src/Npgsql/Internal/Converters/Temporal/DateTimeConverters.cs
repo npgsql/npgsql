@@ -9,7 +9,7 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
     readonly bool _dateTimeInfinityConversions;
     readonly DateTimeKind _kind;
 
-    // Kind validation runs in the size path so the GetSize-skip optimization is bypassed.
+    // Kind validation runs in BindValue so the bind-skip optimization is bypassed.
     // Bind-time enforcement replaces the prior provider-level kind throw, allowing decided-pgTypeId callers
     // to erase the provider entirely.
     public DateTimeConverter(bool dateTimeInfinityConversions, DateTimeKind kind)
@@ -25,7 +25,7 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
         return format is DataFormat.Binary;
     }
 
-    protected override Size GetSize(SizeContext context, DateTime value, ref object? writeState)
+    protected override Size BindValue(BindContext context, DateTime value, ref object? writeState)
     {
         if (_kind is DateTimeKind.Utc)
         {
@@ -68,7 +68,7 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
         return format is DataFormat.Binary;
     }
 
-    protected override Size GetSize(SizeContext context, DateTimeOffset value, ref object? writeState)
+    protected override Size BindValue(BindContext context, DateTimeOffset value, ref object? writeState)
     {
         if (value.Offset != TimeSpan.Zero)
             throw new ArgumentException($"Cannot write DateTimeOffset with Offset={value.Offset}, only offset 0 (UTC) is supported.", nameof(value));

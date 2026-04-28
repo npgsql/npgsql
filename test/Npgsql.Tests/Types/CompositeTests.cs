@@ -434,7 +434,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
 
     // A composite whose only provider-backed field has a fixed-size default concrete (plain timestamp,
     // 8 bytes). Exercises the path where the composite's combined write size is exact but gets clamped
-    // externally because a field defers to a provider: GetSize fires for bind-time resolution, observes
+    // externally because a field defers to a provider: BindValue fires for bind-time resolution, observes
     // that no field produced write state, skips the WriteState allocation, and Write proceeds to call the relevant converter.
     [Test]
     public async Task Composite_containing_fixed_size_type_info_provider_field()
@@ -465,7 +465,7 @@ CREATE TYPE {compositeType} AS (id int, created_at timestamp)");
 
     // Companion to the above — confirms that deterministic provider-level errors (DateTime kind
     // mismatch against plain timestamp) still surface when the field is fixed-size, now via the
-    // bind-time GetSize checkpoint instead of the first Write.
+    // bind-time BindValue checkpoint instead of the first Write.
     [Test]
     public async Task Composite_containing_fixed_size_type_info_provider_field_throws()
     {

@@ -12,7 +12,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
     readonly CompositeInfo<T> _composite;
     readonly BufferRequirements _bufferRequirements;
     // Precomputed write size from the constructor's combine pass, taken before the provider-field clamp
-    // and the upper-bound limit. When Exact, GetSize can return this directly without per-field sizing —
+    // and the upper-bound limit. When Exact, BindValue can return this directly without per-field sizing —
     // the per-field loop still runs for bind-time resolution side-effects, but size is already known.
     readonly Size _writeSizePrecomputed;
 
@@ -43,20 +43,20 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         }
 
         // Composite always has potential per-field bind-time side effects (provider resolution, converter-level
-        // value validation via HandleFixedSizeBind on the field's converter). Force the parent to invoke GetSize so
+        // value validation via HandleFixedSizeBind on the field's converter). Force the parent to invoke BindValue so
         // we can fire those by walking the fields, regardless of whether our combined write size is exact.
         HandleFixedSizeBind = true;
 
-        // Capture the combined write size before clamping so GetSize can return it unchanged. This is the
-        // full requirement we know internally — externally we hide it behind an upper-bound to force GetSize
+        // Capture the combined write size before clamping so BindValue can return it unchanged. This is the
+        // full requirement we know internally — externally we hide it behind an upper-bound to force BindValue
         // to fire for provider-backed composites, but the number itself is still correct.
         _writeSizePrecomputed = req.Write;
 
         // When any field defers resolution to a provider, downgrade the externally-reported write size to
         // an upper bound. This is the sole mechanism by which bind-time resolution is triggered: non-exact
-        // writes route through GetSize, where per-field GetWriteInfo calls dispatch into providers and
+        // writes route through BindValue, where per-field GetWriteInfo calls dispatch into providers and
         // surface deterministic value-level errors (e.g. DateTime kind mismatches) at bind instead of at
-        // first Write. Composites with only concrete fields stay exact and skip GetSize as before.
+        // first Write. Composites with only concrete fields stay exact and skip BindValue as before.
         if (anyProviderField && req.Write.Kind is SizeKind.Exact)
             req = BufferRequirements.Create(req.Read, Size.CreateUpperBound(req.Write.Value));
 
@@ -136,7 +136,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         return builder.Complete();
     }
 
-    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size BindValue(BindContext context, T value, ref object? writeState)
     {
         var boxedInstance = (object)value;
 
@@ -241,9 +241,9 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
         // Null state is legitimate in two cases:
-        //   1. Exact-size composite — GetSize was skipped entirely. By construction of the combine pass
+        //   1. Exact-size composite — BindValue was skipped entirely. By construction of the combine pass
         //      this means no provider field, no variable field, no nullable field.
-        //   2. Clamped-by-provider composite — GetSize ran but every field's provider produced null
+        //   2. Clamped-by-provider composite — BindValue ran but every field's provider produced null
         //      state, so we skipped the WriteState allocation. All fields are individually fixed-size
         //      (that's what _writeSizePrecomputed.Kind is Exact guarantees), so it works the same
         //      way and resolution is just re-done via cached provider dispatch.
@@ -253,11 +253,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         {
             WriteState ws => ws,
             null when _writeSizePrecomputed.Kind is SizeKind.Exact => null,
-            null => throw new InvalidOperationException("Composite Write requires per-field data from GetSize when any field is variable-size."),
+            null => throw new InvalidOperationException("Composite Write requires per-field data from BindValue when any field is variable-size."),
             _ => throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.")
         };
         Debug.Assert(_bufferRequirements.Write.Kind is not SizeKind.Exact || writeState is null,
-            "Exact-size composite must not carry write state — GetSize should have been skipped.");
+            "Exact-size composite must not carry write state — BindValue should have been skipped.");
 
         if (writer.ShouldFlush(sizeof(int)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -276,9 +276,9 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
             // No cached slot: uses GetDefaultWriteInfo which is stateless by construction,
             // so there is nothing to dispose on this path. Per-value resolution, if it was needed,
-            // already ran at bind-time GetSize and would have populated the slot
+            // already ran at bind-time and would have populated the slot
             // A slot with a null Converter is a default(ElementState) left behind by
-            // GetSize's lazy-rent: fields walked before the first state-producing provider aren't
+            // BindValue's lazy-rent: fields walked before the first state-producing provider aren't
             // back-filled, and Write handles them per-slot the same way a fully-unallocated data
             // array is handled in the truly-exact case.
             ElementState elementState;

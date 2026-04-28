@@ -80,7 +80,7 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
         return result;
     }
 
-    protected override Size GetSize(SizeContext context, T? value, ref object? writeState)
+    protected override Size BindValue(BindContext context, T? value, ref object? writeState)
     {
         var capacity = 0;
         if (typeof(T) == typeof(JsonDocument))
@@ -93,7 +93,7 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
         else
             JsonSerializer.Serialize(stream, value, _objectTypeInfo);
 
-        return JsonConverter.GetSizeCore(_jsonb, stream, _textEncoding, ref writeState);
+        return JsonConverter.BindValueCore(_jsonb, stream, _textEncoding, ref writeState);
     }
 
     public override void Write(PgWriter writer, T? value)
@@ -154,7 +154,7 @@ static class JsonConverter
         return (new(chars, 0, charCount), rentedBuffer);
     }
 
-    public static Size GetSizeCore(bool jsonb, MemoryStream stream, Encoding encoding, ref object? writeState)
+    public static Size BindValueCore(bool jsonb, MemoryStream stream, Encoding encoding, ref object? writeState)
     {
         if (encoding.CodePage == Encoding.UTF8.CodePage)
         {

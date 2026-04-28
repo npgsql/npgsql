@@ -36,10 +36,10 @@ sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
         return format is DataFormat.Binary;
     }
 
-    public override ZonedDateTime Read(PgReader reader)
+    protected override ZonedDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).InUtc();
 
-    protected override Size GetSize(SizeContext context, ZonedDateTime value, ref object? writeState)
+    protected override Size BindValue(BindContext context, ZonedDateTime value, ref object? writeState)
     {
         if (value.Zone != DateTimeZone.Utc && !LegacyTimestampBehavior)
         {
@@ -52,7 +52,7 @@ sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
         return context.BufferRequirement;
     }
 
-    public override void Write(PgWriter writer, ZonedDateTime value)
+    protected override void WriteCore(PgWriter writer, ZonedDateTime value)
         => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
 }
 
@@ -72,10 +72,10 @@ sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
         return format is DataFormat.Binary;
     }
 
-    public override OffsetDateTime Read(PgReader reader)
+    protected override OffsetDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).WithOffset(Offset.Zero);
 
-    protected override Size GetSize(SizeContext context, OffsetDateTime value, ref object? writeState)
+    protected override Size BindValue(BindContext context, OffsetDateTime value, ref object? writeState)
     {
         if (value.Offset != Offset.Zero && !LegacyTimestampBehavior)
         {
@@ -88,7 +88,7 @@ sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
         return context.BufferRequirement;
     }
 
-    public override void Write(PgWriter writer, OffsetDateTime value)
+    protected override void WriteCore(PgWriter writer, OffsetDateTime value)
         => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
 }
 

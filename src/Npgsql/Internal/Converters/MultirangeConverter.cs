@@ -67,7 +67,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         return multirange;
     }
 
-    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size BindValue(BindContext context, T value, ref object? writeState)
     {
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count);

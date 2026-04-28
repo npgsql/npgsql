@@ -17,8 +17,8 @@ sealed class JsonNetJsonConverter<T>(bool jsonb, Encoding textEncoding, JsonSeri
     public override async ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => (T?)await JsonNetJsonConverter.Read(async: true, jsonb, reader, typeof(T), settings, textEncoding, cancellationToken).ConfigureAwait(false);
 
-    protected override Size GetSize(SizeContext context, T? value, ref object? writeState)
-        => JsonNetJsonConverter.GetSize(jsonb, context, typeof(T), settings, textEncoding, value, ref writeState);
+    protected override Size BindValue(BindContext context, T? value, ref object? writeState)
+        => JsonNetJsonConverter.BindValue(jsonb, context, typeof(T), settings, textEncoding, value, ref writeState);
 
     public override void Write(PgWriter writer, T? value)
         => JsonNetJsonConverter.Write(jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();
@@ -60,7 +60,7 @@ static class JsonNetJsonConverter
         return jsonSerializer.Deserialize(textReader, type);
     }
 
-    public static Size GetSize(bool jsonb, SizeContext context, Type type, JsonSerializerSettings settings, Encoding encoding, object? value, ref object? writeState)
+    public static Size BindValue(bool jsonb, BindContext context, Type type, JsonSerializerSettings settings, Encoding encoding, object? value, ref object? writeState)
     {
         var jsonSerializer = JsonSerializer.CreateDefault(settings);
         var sb = new StringBuilder(256);

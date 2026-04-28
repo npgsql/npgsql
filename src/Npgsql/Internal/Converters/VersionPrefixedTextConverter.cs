@@ -28,7 +28,7 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    protected override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size BindValue(BindContext context, T value, ref object? writeState)
         => _textConverter.Bind(context, value, ref writeState).Combine(context.Format is DataFormat.Binary ? sizeof(byte) : 0);
 
     public override void Write(PgWriter writer, T value)

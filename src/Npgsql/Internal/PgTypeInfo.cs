@@ -461,7 +461,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             return new(DataFormat.Binary, Size.Zero, null, writeState);
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+        var context = new BindContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
         var size = Unsafe.As<PgConverter<T>>(Converter).Bind(context, value!, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }
@@ -477,7 +477,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             return new(DataFormat.Binary, Size.Zero, null, writeState);
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+        var context = new BindContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
         var size = Converter.BindAsObject(context, value, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }

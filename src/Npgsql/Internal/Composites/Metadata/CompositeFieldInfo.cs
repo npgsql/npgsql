@@ -39,7 +39,7 @@ abstract class CompositeFieldInfo
         {
             // Lift the default concrete's buffer requirements and converter so the composite gets an
             // accurate per-field size even when resolution is deferred. IsProviderBacked still signals that
-            // GetWriteInfo / GetSize must go through BindValue for per-value dispatch at bind time —
+            // GetWriteInfo / BindValue must go through MakeConcreteForValue for per-value dispatch at bind time —
             // that's where provider-backed fields (DateTime kind, late-bound, etc.) surface deterministic
             // errors. The cached default is reused by GetDefaultWriteInfo on CompositeConverter's Path A,
             // where per-value resolution has already completed without producing state.
@@ -106,7 +106,7 @@ abstract class CompositeFieldInfo
     /// Returns a deterministic write converter for this field without running per-value dispatch —
     /// for concrete fields the one-and-only converter, for provider fields the default concrete that
     /// was resolved at construction. Used by CompositeConverter.Write's Path A, which only runs when
-    /// bind-time GetSize has already completed and produced no per-field state; the default converter
+    /// bind-time BindValue has already completed and produced no per-field state; the default converter
     /// writes the same bytes as any value-dispatched variant for a decided field id and carries no
     /// state to dispose.
     /// </summary>

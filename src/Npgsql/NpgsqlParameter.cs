@@ -531,7 +531,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     #region Internals
 
     /// The DBNull handling mode parameters apply at their own ADO.NET boundary.
-    /// Compositional converters inherit this from SizeContext / ProviderValueContext.
+    /// Compositional converters inherit this from BindContext / ProviderValueContext.
     internal const NestedObjectDbNullHandling ParameterDbNullHandling = NestedObjectDbNullHandling.Extended;
 
     private protected virtual Type StaticValueType => typeof(object);

@@ -56,8 +56,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         }
     }
 
-    protected override Size GetSize(SizeContext context, T values, ref object? writeState)
-        => _arrayConverterCore.GetSize(context, values, ref writeState);
+    protected override Size BindValue(BindContext context, T values, ref object? writeState)
+        => _arrayConverterCore.BindValue(context, values, ref writeState);
 
     public override void Write(PgWriter writer, T values)
         => _arrayConverterCore.Write(async: false, writer, values, CancellationToken.None).GetAwaiter().GetResult();
@@ -140,7 +140,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
 
-        Size? IElementOperations.IsDbNullOrBind(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+        Size? IElementOperations.IsDbNullOrBind(BindContext context, object collection, IterationIndices indices, ref object? writeState)
         {
             var value = GetValue(collection, indices);
             return typeof(TElement) == typeof(object)
@@ -215,7 +215,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             return ((IList<TElement?>)collection).Count;
         }
 
-        Size? IElementOperations.IsDbNullOrBind(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+        Size? IElementOperations.IsDbNullOrBind(BindContext context, object collection, IterationIndices indices, ref object? writeState)
         {
             var value = GetValue(collection, indices[0]);
             return typeof(TElement) == typeof(object)
@@ -487,7 +487,7 @@ sealed class PolymorphicArrayConverter<TBase>(
             : structElementCollectionConverter.ReadAsync(reader, cancellationToken);
     }
 
-    protected override Size GetSize(SizeContext context, TBase value, ref object? writeState)
+    protected override Size BindValue(BindContext context, TBase value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported");
 
     public override void Write(PgWriter writer, TBase value)

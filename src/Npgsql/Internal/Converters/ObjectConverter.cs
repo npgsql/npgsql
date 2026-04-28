@@ -25,7 +25,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
     public override object Read(PgReader reader) => throw new NotSupportedException();
     public override ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    protected override Size GetSize(SizeContext context, object value, ref object? writeState)
+    protected override Size BindValue(BindContext context, object value, ref object? writeState)
     {
         var (concreteTypeInfo, effectiveState) = writeState switch
         {

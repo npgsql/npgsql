@@ -45,7 +45,7 @@ sealed class IntervalConverter(PgConverter<NpgsqlRange<Instant>> rangeConverter,
         return new(start, end);
     }
 
-    protected override Size GetSize(SizeContext context, Interval value, ref object? writeState)
+    protected override Size BindValue(BindContext context, Interval value, ref object? writeState)
         => rangeConverter.Bind(context, IntervalToNpgsqlRange(value), ref writeState);
 
     public override void Write(PgWriter writer, Interval value)

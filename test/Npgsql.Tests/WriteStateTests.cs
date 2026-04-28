@@ -72,7 +72,7 @@ public class WriteStateTests : TestBase
     public async Task Range_write_state_flows()
     {
         // Verifies write state propagation through a range composition:
-        //   RangeConverter<int> -> tracking int subtype (GetSize populates writeState)
+        //   RangeConverter<int> -> tracking int subtype (BindValue populates writeState)
         // The range converter must carry each bound's subtype state into BeginNestedWrite so the subtype's
         // WriteCore observes the provider-produced sentinel.
         var tracker = new WriteStateTracker();
@@ -284,10 +284,10 @@ public class WriteStateTests : TestBase
             writer.WriteInt32(value);
         }
 
-        protected override Size GetSize(SizeContext context, int value, ref object? writeState)
+        protected override Size BindValue(BindContext context, int value, ref object? writeState)
         {
             // Range/Multirange call the subtype converter directly with a fresh null writeState, so for those tests the
-            // subtype must produce state from GetSize. For the array tests the provider has already populated non-null
+            // subtype must produce state from BindValue. For the array tests the provider has already populated non-null
             // state and the ??= is a no-op, preserving existing behavior.
             if (_generatesWriteState)
                 writeState ??= "provider-state";
