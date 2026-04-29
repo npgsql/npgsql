@@ -99,15 +99,7 @@ public abstract class PgConverter
             _ => ThrowDbNullPredicateOutOfRange()
         };
 
-    [Obsolete("Use the overload without ref.")]
-    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, ref object? writeState)
-        => IsDbNullAsObject(value, writeState);
-
     private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
-
-    [Obsolete("Use the overload without ref.")]
-    private protected bool IsDbNullValueAsObject(object? value, ref object? writeState)
-        => IsDbNullValueAsObject(value, writeState);
 
     internal abstract Size GetSizeAsObject(SizeContext context, object value, ref object? writeState);
 
