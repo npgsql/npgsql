@@ -243,18 +243,22 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
     }
 
+    Type TypeToConvert
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            Debug.Assert(Converter.TypeToConvert == _typeToConvert);
+            return _typeToConvert;
+        }
+    }
+
     public PgConverter Converter { get; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    bool ShouldReadAsObject<T>() => typeof(T) != _typeToConvert;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    PgConverter<T> GetConverter<T>()
+    PgConverter<T> UnsafeGetConverter<T>()
     {
-        if (ShouldReadAsObject<T>())
-            ThrowHelper.ThrowInvalidCastException("Invalid type for converter.");
-
         // Justification: avoid perf cost of casting to a known base class type per field read.
         Debug.Assert(Converter is PgConverter<T>);
         return Unsafe.As<PgConverter<T>>(Converter);
@@ -262,24 +266,20 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ConverterRead<T>(PgReader reader)
-    {
-        if (ShouldReadAsObject<T>())
-            return (T)Converter.ReadAsObject(reader);
-
-        return GetConverter<T>().Read(reader);
-    }
+        => typeof(T) != TypeToConvert
+            ? (T)Converter.ReadAsObject(reader)
+            : UnsafeGetConverter<T>().Read(reader);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ValueTask<T> ConverterReadAsync<T>(PgReader reader, CancellationToken cancellationToken)
     {
-        var converter = Converter;
-        if (ShouldReadAsObject<T>())
+        if (typeof(T) != TypeToConvert)
         {
-            var task = converter.ReadAsObjectAsync(reader, cancellationToken);
+            var task = Converter.ReadAsObjectAsync(reader, cancellationToken);
             return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
         }
 
-        return GetConverter<T>().ReadAsync(reader, cancellationToken);
+        return UnsafeGetConverter<T>().ReadAsync(reader, cancellationToken);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         async ValueTask<T> ReadAndUnboxAsync(ValueTask<object> task)
@@ -288,11 +288,20 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void ConverterWrite<T>(PgWriter writer, [DisallowNull]T value)
-        => GetConverter<T>().Write(writer, value);
+    {
+        if (typeof(T) != TypeToConvert)
+        {
+            Converter.WriteAsObject(writer, value);
+            return;
+        }
+        UnsafeGetConverter<T>().Write(writer, value);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ValueTask ConverterWriteAsync<T>(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
-        => GetConverter<T>().WriteAsync(writer, value, cancellationToken);
+        => typeof(T) != TypeToConvert
+            ? Converter.WriteAsObjectAsync(writer, value, cancellationToken)
+            : UnsafeGetConverter<T>().WriteAsync(writer, value, cancellationToken);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ReadFieldValue<T>(PgReader reader, DataFormat dataFormat)
@@ -310,9 +319,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         await reader.StartReadAsync(dataFormat, bufferRequirement, cancellationToken).ConfigureAwait(false);
 
         // Copy of ConverterReadAsync to keep everything in one async frame.
-        var result = ShouldReadAsObject<T>()
+        var result = typeof(T) != TypeToConvert
             ? (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
-            : await GetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+            : await UnsafeGetConverter<T>().ReadAsync(reader, cancellationToken).ConfigureAwait(false);
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
@@ -356,13 +365,16 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     /// When result is null, the value was interpreted to be a SQL NULL.
     internal PgValueBinding BindParameterValue<T>(T? value, object? writeState, DataFormat? formatPreference = null)
     {
+        if (typeof(T) != TypeToConvert)
+            return BindParameterObjectValue(value, writeState, formatPreference);
+
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
 
-        if (GetConverter<T>().GetSizeOrDbNull(format, bufferRequirements.Write, value, ref writeState) is not { } size)
+        if (UnsafeGetConverter<T>().IsDbNullOrGetSize(format, bufferRequirements.Write, value, ref writeState) is not { } size)
             return new(format, bufferRequirements.Write, null, null);
 
         return new(format, bufferRequirements.Write, size, writeState);
