@@ -179,6 +179,7 @@ public abstract class PgConverter<T> : PgConverter
     private protected override bool IsDbNullValueAsObject(object? value, object? writeState)
         => (default(T) is null || value is not null) && IsDbNullValue((T?)value, writeState);
 
+    /// Checks whether <paramref name="value"/> is considered a database null by this converter.
     public bool IsDbNull([NotNullWhen(false)] T? value, object? writeState)
         => DbNullPredicateKind switch
         {
@@ -195,13 +196,18 @@ public abstract class PgConverter<T> : PgConverter
     public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
         => IsDbNull(value, writeState);
 
+    /// Reads a <typeparamref name="T"/> value from the reader.
     public abstract T Read(PgReader reader);
+    /// Asynchronously reads a <typeparamref name="T"/> value from the reader.
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
+    /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
     public abstract Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState);
-    public abstract void Write(PgWriter writer, [DisallowNull] T value);
-    public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
+    /// Writes a <typeparamref name="T"/> value to the writer.
+    public abstract void Write(PgWriter writer, [DisallowNull] T value);
+    /// Asynchronously writes a <typeparamref name="T"/> value to the writer.
+    public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
     internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
         => GetSize(context, (T)value, ref writeState);
