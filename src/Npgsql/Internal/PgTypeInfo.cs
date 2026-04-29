@@ -53,7 +53,10 @@ public abstract class PgTypeInfo
         if (this is not PgProviderTypeInfo providerTypeInfo)
             return (PgConcreteTypeInfo)this;
 
-        return providerTypeInfo.GetConcreteTypeInfo(field) ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+        // Decided providers skip GetDefault's validation. The prior GetForField call already validated
+        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        return providerTypeInfo.GetConcreteTypeInfo(field)
+            ?? providerTypeInfo.GetDefaultConcreteTypeInfo(providerTypeInfo.PgTypeId is null ? field.PgTypeId : null);
     }
 
     public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value, out object? writeState)
@@ -74,7 +77,10 @@ public abstract class PgTypeInfo
             ? providerTypeInfo.GetAsObjectConcreteTypeInfo(context, (object?)value, out writeState)
             : providerTypeInfo.GetConcreteTypeInfo(context, value, out writeState);
 
-        return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+        // Decided providers skip GetDefault's validation. The prior GetForValue call already validated
+        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        return concreteTypeInfo
+            ?? providerTypeInfo.GetDefaultConcreteTypeInfo(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
     }
 
     public PgConcreteTypeInfo GetObjectConcreteTypeInfo(object? value, out object? writeState)
@@ -92,7 +98,9 @@ public abstract class PgTypeInfo
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is not DBNull)
                 concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(context, value, out writeState);
-            return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+            // Decided providers skip GetDefault's validation. The prior GetForValueAsObject call already
+            // validated the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+            return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
         default:
             return ThrowNotSupported();
         }
