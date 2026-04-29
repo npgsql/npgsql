@@ -57,6 +57,9 @@ public abstract class PgTypeInfo
     }
 
     public PgConcreteTypeInfo GetConcreteTypeInfo<T>(T? value, out object? writeState)
+        => GetConcreteTypeInfo(default, value, out writeState);
+
+    public PgConcreteTypeInfo GetConcreteTypeInfo<T>(ProviderValueContext context, T? value, out object? writeState)
     {
         if (this is not PgProviderTypeInfo providerTypeInfo)
         {
@@ -68,14 +71,17 @@ public abstract class PgTypeInfo
         // This will never cause boxing as weakly typed infos only happen for subtype relationships, i.e. reference types.
         // We make sure to fall through to ProvideConcreteTypeInfo which has a better error if T is not at all related to this info.
         var concreteTypeInfo = PgProviderTypeInfo.GetProvider(providerTypeInfo) is not PgConcreteTypeInfoProvider<T> && providerTypeInfo.Type == typeof(T)
-            ? providerTypeInfo.GetAsObjectConcreteTypeInfo(default, (object?)value, out writeState)
-            : providerTypeInfo.GetConcreteTypeInfo(default, value, out writeState);
+            ? providerTypeInfo.GetAsObjectConcreteTypeInfo(context, (object?)value, out writeState)
+            : providerTypeInfo.GetConcreteTypeInfo(context, value, out writeState);
 
         return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
     }
 
-    // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
     public PgConcreteTypeInfo GetObjectConcreteTypeInfo(object? value, out object? writeState)
+        => GetObjectConcreteTypeInfo(default, value, out writeState);
+
+    // Note: this api is not called GetConcreteTypeInfoAsObject as the semantics are extended, DBNull is a NULL value for all object values.
+    public PgConcreteTypeInfo GetObjectConcreteTypeInfo(ProviderValueContext context, object? value, out object? writeState)
     {
         writeState = null;
         switch (this)
@@ -85,7 +91,7 @@ public abstract class PgTypeInfo
         case PgProviderTypeInfo providerTypeInfo:
             PgConcreteTypeInfo? concreteTypeInfo = null;
             if (value is not DBNull)
-                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(default, value, out writeState);
+                concreteTypeInfo = providerTypeInfo.GetAsObjectConcreteTypeInfo(context, value, out writeState);
             return concreteTypeInfo ?? providerTypeInfo.GetDefaultConcreteTypeInfo(null);
         default:
             return ThrowNotSupported();
@@ -156,7 +162,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
-    public PgConcreteTypeInfo? GetConcreteTypeInfo<T>(ProviderValueContext context, T? value, out object? writeState)
+    public new PgConcreteTypeInfo? GetConcreteTypeInfo<T>(ProviderValueContext context, T? value, out object? writeState)
     {
         if (PgTypeId is { } pgTypeId)
         {
