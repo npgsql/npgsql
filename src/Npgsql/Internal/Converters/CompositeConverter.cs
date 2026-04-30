@@ -20,11 +20,16 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
     {
         _composite = composite;
 
+        // Composite always has potential per-field bind-time side effects (provider resolution, converter-level
+        // value validation). The fan-in below AND-s every field's IsBindOptional claim through the loop;
+        // combined with the cumulative Write Kind it produces the composite's IsBindOptional.
+        var isBindOptional = true;
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
         var anyProviderField = false;
         foreach (var field in _composite.Fields)
         {
             anyProviderField = anyProviderField || field.IsProviderBacked;
+            isBindOptional &= field.IsBinaryBindOptional;
 
             var readReq = field.BinaryReadRequirement;
             var writeReq = field.BinaryWriteRequirement;
@@ -42,10 +47,6 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             req = BufferRequirements.Create(readSuccess ? readReq : Size.Unknown, writeSuccess ? writeReq : Size.Unknown);
         }
 
-        // Composite always has potential per-field bind-time side effects (provider resolution, converter-level
-        // value validation via HandleFixedSizeBind on the field's converter). Force the parent to invoke BindValue so
-        // we can fire those by walking the fields, regardless of whether our combined write size is exact.
-        HandleFixedSizeBind = true;
 
         // Capture the combined write size before clamping so BindValue can return it unchanged. This is the
         // full requirement we know internally — externally we hide it behind an upper-bound to force BindValue
@@ -61,9 +62,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             req = BufferRequirements.Create(req.Read, Size.CreateUpperBound(req.Write.Value));
 
         // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
-        req = BufferRequirements.Create(Limit(req.Read), Limit(req.Write));
-
-        _bufferRequirements = req;
+        // IsBindOptional rides on the field-claim fan-in AND the post-clamp Write being Exact — a clamped
+        // (or nullable-shifted) Write means the Bind dispatch can't satisfy the size from the bufreq alone.
+        var finalRead = Limit(req.Read);
+        var finalWrite = Limit(req.Write);
+        _bufferRequirements = BufferRequirements.Create(finalRead, finalWrite, optionalBind: isBindOptional && finalWrite.Kind is SizeKind.Exact);
 
         // Return unknown if we hit the limit.
         static Size Limit(Size requirement)
@@ -143,7 +146,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // When the combine pass produced an exact size, every field is individually fixed-size and
         // non-nullable. We still walk fields to fire per-field bind-time side effects: provider-backed
         // fields run resolution via GetWriteInfo (which calls MakeConcreteForValue → provider.GetForValue).
-        // Fields also go through IsDbNullOrBind when HandleFixedSizeBind is requested to fire any converter validation.
+        // Fields whose resolved concrete declares per-value bind work go through IsDbNullOrBind.
         // Size is the precomputed one from the constructor. Rent lazily so fields
         // that produce no state and resolve to the default pay no ElementState array allocation.
         if (_writeSizePrecomputed.Kind is SizeKind.Exact)
@@ -152,14 +155,10 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             for (var i = 0; i < _composite.Fields.Count; i++)
             {
                 var field = _composite.Fields[i];
-                var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
+                var converter = field.GetWriteInfo(boxedInstance, out var fieldContext, out var fieldState);
 
-                // Non-provider-backed fields don't run any per-value dispatch in GetWriteInfo — invoke
-                // IsDbNullOrBind so the field's converter Bind fires (cheap when HandleFixedSizeBind=false; runs
-                // validation when true). Path A invariant: fields are non-nullable, so the size return is
-                // never null and matches writeRequirement.
-                if (converter.HandleFixedSizeBind)
-                    field.IsDbNullOrBind(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
+                if (!fieldContext.IsBindOptional)
+                    field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
 
                 // Skip populating the slot when no state was produced and the resolved typeinfo is the same as the default.
                 // The common case — DateTime-kind and similar pure-validation providers — satisfies both and pays no slot allocation.
@@ -177,10 +176,10 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
                 data[i] = new()
                 {
-                    Size = writeRequirement,
+                    Size = fieldContext.BufferRequirement,
                     WriteState = fieldState,
                     Converter = converter,
-                    BufferRequirement = writeRequirement
+                    BufferRequirement = fieldContext.BufferRequirement
                 };
             }
 
@@ -209,15 +208,15 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         for (var i = 0; i < _composite.Fields.Count; i++)
         {
             var field = _composite.Fields[i];
-            var converter = field.GetWriteInfo(boxedInstance, out var writeRequirement, out var fieldState);
-            var fieldSizeOrNull = field.IsDbNullOrBind(converter, context.Format, writeRequirement, boxedInstance, ref fieldState);
+            var converter = field.GetWriteInfo(boxedInstance, out var fieldContext, out var fieldState);
+            var fieldSizeOrNull = field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
             anyWriteState = anyWriteState || fieldState is not null;
             slowData[i] = new()
             {
                 Size = fieldSizeOrNull ?? -1,
                 WriteState = fieldState,
                 Converter = converter,
-                BufferRequirement = writeRequirement
+                BufferRequirement = fieldContext.BufferRequirement
             };
             totalSize = totalSize.Combine(fieldSizeOrNull ?? 0);
         }

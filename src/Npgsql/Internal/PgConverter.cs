@@ -149,21 +149,19 @@ public abstract class PgConverter
 
     private protected abstract Size BindValueAsObject(in BindContext context, object? value, ref object? writeState);
 
-    /// <summary>
-    /// Hint declared by the converter: when true, the bind paths invoke the value-based size path
-    /// (<c>BindValue</c> / <c>BindValueAsObject</c>) for fixed-size values even when the buffer requirement
-    /// for writing is <see cref="SizeKind.Exact"/>. Set to true on converters whose size path has
-    /// per-value side effects that must run at bind time (e.g. value-shape validation).
-    /// </summary>
-    protected internal bool HandleFixedSizeBind { get; init; }
 
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
     public Size BindAsObject(in BindContext context, object? value, ref object? writeState)
     {
         Debug.Assert(TypeAcceptsNull || value is not null);
 
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount } && !HandleFixedSizeBind)
-            return byteCount;
+        if (context.IsBindOptional)
+        {
+            if (context.BufferRequirement.Kind is not SizeKind.Exact)
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
+            return context.BufferRequirement;
+        }
         var size = BindValueAsObject(context, value, ref writeState);
 
         switch (size.Kind)
@@ -291,8 +289,13 @@ public abstract class PgConverter<T> : PgConverter
     {
         Debug.Assert(TypeAcceptsNull || value is not null);
 
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount } && !HandleFixedSizeBind)
-            return byteCount;
+        if (context.IsBindOptional)
+        {
+            if (context.BufferRequirement.Kind is not SizeKind.Exact)
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
+            return context.BufferRequirement;
+        }
         var size = BindValue(context, value, ref writeState);
 
         switch (size.Kind)
@@ -381,6 +384,12 @@ public readonly struct BindContext(DataFormat format, Size bufferRequirement)
 {
     public required Size BufferRequirement { get; init; } = bufferRequirement;
     public DataFormat Format { get; } = format;
+
+    /// <summary>
+    /// When true, the bind path may short-circuit to <see cref="BufferRequirement"/> without invoking
+    /// <c>BindValue</c>. Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/>.
+    /// </summary>
+    public bool IsBindOptional { get; init; }
 
     public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
 }

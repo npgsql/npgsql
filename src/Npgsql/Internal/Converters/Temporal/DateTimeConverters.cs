@@ -9,19 +9,18 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
     readonly bool _dateTimeInfinityConversions;
     readonly DateTimeKind _kind;
 
-    // Kind validation runs in BindValue so the bind-skip optimization is bypassed.
-    // Bind-time enforcement replaces the prior provider-level kind throw, allowing decided-pgTypeId callers
-    // to erase the provider entirely.
+    // Kind validation runs in BindValue. Bind-time enforcement replaces the prior provider-level kind throw,
+    // allowing decided-pgTypeId callers to erase the provider entirely.
     public DateTimeConverter(bool dateTimeInfinityConversions, DateTimeKind kind)
     {
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
         _kind = kind;
-        HandleFixedSizeBind = true;
     }
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        // optionalBind=false opts the fixed-size requirement out of the bind-skip optimization so kind validation fires.
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false);
         return format is DataFormat.Binary;
     }
 
@@ -59,12 +58,12 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
     public DateTimeOffsetConverter(bool dateTimeInfinityConversions)
     {
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        HandleFixedSizeBind = true;
     }
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        // optionalBind=false opts the fixed-size requirement out of the bind-skip optimization so offset validation fires.
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false);
         return format is DataFormat.Binary;
     }
 

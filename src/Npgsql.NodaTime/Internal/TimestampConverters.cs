@@ -20,24 +20,16 @@ sealed class InstantConverter(bool dateTimeInfinityConversions) : PgBufferedConv
         => writer.WriteInt64(EncodeInstant(value, dateTimeInfinityConversions));
 }
 
-sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
+sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<ZonedDateTime>
 {
-    readonly bool _dateTimeInfinityConversions;
-
-    public ZonedDateTimeConverter(bool dateTimeInfinityConversions)
-    {
-        _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        HandleFixedSizeBind = true;
-    }
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false);
         return format is DataFormat.Binary;
     }
 
     protected override ZonedDateTime ReadCore(PgReader reader)
-        => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).InUtc();
+        => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).InUtc();
 
     protected override Size BindValue(in BindContext context, ZonedDateTime value, ref object? writeState)
     {
@@ -53,27 +45,19 @@ sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
     }
 
     protected override void WriteCore(PgWriter writer, ZonedDateTime value)
-        => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
+        => writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
 }
 
-sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
+sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<OffsetDateTime>
 {
-    readonly bool _dateTimeInfinityConversions;
-
-    public OffsetDateTimeConverter(bool dateTimeInfinityConversions)
-    {
-        _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        HandleFixedSizeBind = true;
-    }
-
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false);
         return format is DataFormat.Binary;
     }
 
     protected override OffsetDateTime ReadCore(PgReader reader)
-        => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).WithOffset(Offset.Zero);
+        => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).WithOffset(Offset.Zero);
 
     protected override Size BindValue(in BindContext context, OffsetDateTime value, ref object? writeState)
     {
@@ -89,7 +73,7 @@ sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
     }
 
     protected override void WriteCore(PgWriter writer, OffsetDateTime value)
-        => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
+        => writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
 }
 
 sealed class LocalDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<LocalDateTime>

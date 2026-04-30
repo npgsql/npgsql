@@ -81,23 +81,35 @@ abstract class CompositeFieldInfo
         return concreteTypeInfo.Converter;
     }
 
-    public PgConverter GetWriteInfo(object instance, out Size writeRequirement, out object? writeState)
+    public PgConverter GetWriteInfo(object instance, out BindContext context, out object? writeState)
     {
         writeState = null;
         var concreteTypeInfo = ConcreteTypeInfo ?? MakeConcreteForValue(instance, out writeState);
         if (!concreteTypeInfo.SupportsWriting)
             AdoSerializerHelpers.ThrowReadingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
 
+        Size writeRequirement;
+        bool isBindOptional;
         if (!IsProviderBacked)
         {
             writeRequirement = _binaryBufferRequirements.Write;
+            isBindOptional = _binaryBufferRequirements.IsBindOptional;
         }
         else
         {
             if (!concreteTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
                 ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
             writeRequirement = bufferRequirements.Write;
+            isBindOptional = bufferRequirements.IsBindOptional;
         }
+
+        // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
+        // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
+        context = new BindContext(DataFormat.Binary, writeRequirement)
+        {
+            IsBindOptional = isBindOptional,
+            NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default
+        };
 
         return concreteTypeInfo.Converter;
     }
@@ -119,6 +131,7 @@ abstract class CompositeFieldInfo
 
     public string Name { get; }
     public PgTypeId PgTypeId { get; }
+    public bool IsBinaryBindOptional => _binaryBufferRequirements.IsBindOptional;
     public Size BinaryReadRequirement => _binaryBufferRequirements.Read;
     public Size BinaryWriteRequirement => _binaryBufferRequirements.Write;
 
@@ -138,7 +151,7 @@ abstract class CompositeFieldInfo
     public abstract void ReadDbNull(CompositeBuilder builder);
     public abstract ValueTask Read(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default);
     public abstract bool IsDbNull(PgConverter converter, object instance, object? writeState);
-    public abstract Size? IsDbNullOrBind(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState);
+    public abstract Size? IsDbNullOrBind(PgConverter converter, object instance, in BindContext context, ref object? writeState);
     public abstract ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken);
 }
 
@@ -227,12 +240,9 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     public override bool IsDbNull(PgConverter converter, object instance, object? writeState)
         => converter.IsDbNull(_getter(instance), writeState);
 
-    public override Size? IsDbNullOrBind(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState)
+    public override Size? IsDbNullOrBind(PgConverter converter, object instance, in BindContext context, ref object? writeState)
     {
         var value = _getter(instance);
-        // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
-        // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
-        var context = new BindContext(format, writeRequirement) { NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default };
         return converter.IsDbNull(value, writeState) ? null : converter.Bind(context, value!, ref writeState);
     }
 

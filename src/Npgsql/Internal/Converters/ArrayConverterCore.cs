@@ -89,9 +89,13 @@ readonly struct ArrayConverterCore(
             // Iterate per element when the element typeinfo's bind isn't value-independent (its size path
             // has per-value side effects to fire), or when we need to count nulls for nullable elements.
             // Otherwise the size is just count*elemByteCount and we skip the iteration entirely.
-            if (ElemTypeDbNullable || ElementTypeInfo.Converter.HandleFixedSizeBind)
+            if (ElemTypeDbNullable || !binaryRequirements.IsBindOptional)
             {
-                var elemContext = new BindContext(context.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
+                var elemContext = new BindContext(context.Format, binaryRequirements.Write)
+                {
+                    IsBindOptional = binaryRequirements.IsBindOptional,
+                    NestedObjectDbNullHandling = context.NestedObjectDbNullHandling
+                };
                 do
                 {
                     if (IsDbNull(elemContext, values, indices, elemData?[indices.IndicesSum].WriteState))
@@ -274,7 +278,11 @@ readonly struct ArrayConverterCore(
         var lastCount = metadata.LastDimension;
         var offset = state.Data.Offset;
         var fixedSizeElements = state.FixedSizeElements;
-        var elemContext = new BindContext(writer.Current.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = state.NestedObjectDbNullHandling };
+        var elemContext = new BindContext(writer.Current.Format, binaryRequirements.Write)
+        {
+            IsBindOptional = binaryRequirements.IsBindOptional,
+            NestedObjectDbNullHandling = state.NestedObjectDbNullHandling
+        };
         do
         {
             if (writer.ShouldFlush(sizeof(int)))
