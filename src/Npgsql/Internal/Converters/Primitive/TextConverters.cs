@@ -24,7 +24,7 @@ static class TextConverter
     {
         public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         {
-            bufferRequirements = BufferRequirements.None;
+            bufferRequirements = BufferRequirements.Streaming;
             return format is DataFormat.Binary or DataFormat.Text;
         }
 
@@ -94,7 +94,7 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return format is DataFormat.Binary or DataFormat.Text;
     }
 
@@ -179,7 +179,7 @@ sealed class TextReaderTextConverter(Encoding encoding) : PgStreamingConverter<T
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return format is DataFormat.Binary or DataFormat.Text;
     }
 
@@ -204,7 +204,7 @@ sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<Get
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return format is DataFormat.Binary or DataFormat.Text;
     }
 

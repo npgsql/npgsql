@@ -9,7 +9,7 @@ sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Str
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return supportsTextFormat
             ? format is DataFormat.Text or DataFormat.Binary
             : format is DataFormat.Binary;

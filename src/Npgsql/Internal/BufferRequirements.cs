@@ -19,7 +19,10 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public Size Read => _read;
     public Size Write => _write;
 
-    /// Streaming
+    /// Streaming read and write; converter handles its own chunking
+    public static BufferRequirements Streaming => new(Size.Unknown, Size.Unknown);
+    /// <inheritdoc cref="Streaming"/>
+    [Obsolete("Use BufferRequirements.Streaming instead.")]
     public static BufferRequirements None => new(Size.Unknown, Size.Unknown);
     /// Entire value should be buffered
     public static BufferRequirements Value => new(Size.CreateUpperBound(int.MaxValue), Size.CreateUpperBound(int.MaxValue));

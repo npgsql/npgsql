@@ -12,7 +12,7 @@ abstract class ByteaConverters<T>(bool supportsTextFormat) : PgStreamingConverte
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return supportsTextFormat
             ? format is DataFormat.Binary or DataFormat.Text
             : format is DataFormat.Binary;
@@ -62,7 +62,7 @@ sealed class ArrayByteaConverter(bool supportsTextFormat) : PgStreamingConverter
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return supportsTextFormat
             ? format is DataFormat.Binary or DataFormat.Text
             : format is DataFormat.Binary;

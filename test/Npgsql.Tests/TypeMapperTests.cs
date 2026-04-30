@@ -248,7 +248,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
         {
             public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
             {
-                bufferRequirements = BufferRequirements.None;
+                bufferRequirements = BufferRequirements.Streaming;
                 return format is DataFormat.Binary or DataFormat.Text;
             }
 
