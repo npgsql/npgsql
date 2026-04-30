@@ -126,7 +126,7 @@ public abstract class PgConverter
     /// <summary>Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Size Bind<T>(BindContext context, T value, ref object? writeState)
+    public Size Bind<T>(in BindContext context, T value, ref object? writeState)
         => typeof(T) == TypeToConvert
             ? UnsafeAs<T>().Bind(context, value, ref writeState)
             : BindAsObject(context, value, ref writeState);
@@ -147,7 +147,7 @@ public abstract class PgConverter
 
     private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
 
-    private protected abstract Size BindValueAsObject(BindContext context, object? value, ref object? writeState);
+    private protected abstract Size BindValueAsObject(in BindContext context, object? value, ref object? writeState);
 
     /// <summary>
     /// Hint declared by the converter: when true, the bind paths invoke the value-based size path
@@ -158,7 +158,7 @@ public abstract class PgConverter
     protected internal bool HandleFixedSizeBind { get; init; }
 
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
-    public Size BindAsObject(BindContext context, object? value, ref object? writeState)
+    public Size BindAsObject(in BindContext context, object? value, ref object? writeState)
     {
         Debug.Assert(TypeAcceptsNull || value is not null);
 
@@ -283,7 +283,7 @@ public abstract class PgConverter<T> : PgConverter
     > ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
-    public Size Bind(BindContext context,
+    public Size Bind(in BindContext context,
 #nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
         T value,
 #nullable restore
@@ -311,7 +311,7 @@ public abstract class PgConverter<T> : PgConverter
     /// <summary>Per-value bind step for <typeparamref name="T"/>. Computes the wire size and produces any
     /// <paramref name="writeState"/> needed by the subsequent write phase. <see cref="Bind"/> wraps this
     /// call and enforces size-kind invariants.</summary>
-    protected virtual Size BindValue(BindContext context,
+    protected virtual Size BindValue(in BindContext context,
 #nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
         T value,
 #nullable restore
@@ -346,7 +346,7 @@ public abstract class PgConverter<T> : PgConverter
 #nullable restore
         CancellationToken cancellationToken = default);
 
-    private protected sealed override Size BindValueAsObject(BindContext context, object? value, ref object? writeState)
+    private protected sealed override Size BindValueAsObject(in BindContext context, object? value, ref object? writeState)
         => BindValue(context, (T)value!, ref writeState);
 }
 
@@ -395,7 +395,7 @@ public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
 
     public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
 
-    public static implicit operator SizeContext(BindContext context)
+    public static implicit operator SizeContext(in BindContext context)
         => new(context.Format, context.BufferRequirement) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
 }
 

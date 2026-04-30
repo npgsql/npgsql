@@ -38,7 +38,7 @@ public sealed class CastingConverter<T> : PgConverter<T>
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => this.ReadAsObjectAsyncAsT(_effectiveConverter, reader, cancellationToken);
 
-    protected override Size BindValue(BindContext context, T value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
         => _effectiveConverter.BindAsObject(context, value, ref writeState);
 
     public override void Write(PgWriter writer, T value)

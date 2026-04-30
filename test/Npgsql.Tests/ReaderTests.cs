@@ -2696,7 +2696,7 @@ sealed class CustomStreamConverter : PgStreamingConverter<Stream>
         return ms;
     }
 
-    protected override Size BindValue(BindContext context, Stream value, ref object? writeState) => throw new NotSupportedException();
+    protected override Size BindValue(in BindContext context, Stream value, ref object? writeState) => throw new NotSupportedException();
     public override void Write(PgWriter writer, Stream value) => throw new NotSupportedException();
     public override ValueTask WriteAsync(PgWriter writer, Stream value, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
@@ -2707,7 +2707,7 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
 
     internal ExplodingTypeHandler(bool safe) => _safe = safe;
 
-    protected override Size BindValue(BindContext context, int value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, int value, ref object? writeState)
         => throw new NotSupportedException();
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)

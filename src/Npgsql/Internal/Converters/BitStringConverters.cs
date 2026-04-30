@@ -60,7 +60,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
         static byte ReverseBits(byte b) => (byte)(((b * 0x80200802UL) & 0x0884422110UL) * 0x0101010101UL >> 32);
     }
 
-    protected override Size BindValue(BindContext context, BitArray value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, BitArray value, ref object? writeState)
         => sizeof(int) + GetByteCountFromBitCount(value.Length);
 
     public override void Write(PgWriter writer, BitArray value)
@@ -150,7 +150,7 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
         };
     }
 
-    protected override Size BindValue(BindContext context, bool value, ref object? writeState) => MaxSize;
+    protected override Size BindValue(in BindContext context, bool value, ref object? writeState) => MaxSize;
     protected override void WriteCore(PgWriter writer, bool value)
     {
         writer.WriteInt32(1);
@@ -185,7 +185,7 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
         return sb.ToString();
     }
 
-    protected override Size BindValue(BindContext context, string value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, string value, ref object? writeState)
     {
         if (value.AsSpan().IndexOfAnyExcept('0', '1') is not -1 and var index)
             throw new ArgumentException($"Invalid bitstring character '{value[index]}' at index: {index}", nameof(value));

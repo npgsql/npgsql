@@ -136,7 +136,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         return builder.Complete();
     }
 
-    protected override Size BindValue(BindContext context, T value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
     {
         var boxedInstance = (object)value;
 

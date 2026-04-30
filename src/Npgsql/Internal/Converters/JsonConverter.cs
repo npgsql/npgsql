@@ -80,7 +80,7 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
         return result;
     }
 
-    protected override Size BindValue(BindContext context, T? value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, T? value, ref object? writeState)
     {
         var capacity = 0;
         if (typeof(T) == typeof(JsonDocument))

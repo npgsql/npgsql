@@ -34,7 +34,7 @@ public class DateIntervalConverter(PgConverter<NpgsqlRange<LocalDate>> rangeConv
         return new(range.LowerBound, upperBound);
     }
 
-    protected override Size BindValue(BindContext context, DateInterval value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, DateInterval value, ref object? writeState)
         => rangeConverter.Bind(context, new NpgsqlRange<LocalDate>(value.Start, value.End), ref writeState);
 
     public override void Write(PgWriter writer, DateInterval value)

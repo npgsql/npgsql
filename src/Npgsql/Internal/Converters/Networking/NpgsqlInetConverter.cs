@@ -21,7 +21,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         return format == DataFormat.Binary;
     }
 
-    protected override Size BindValue(BindContext context, NpgsqlInet value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, NpgsqlInet value, ref object? writeState)
         => BindValueImpl(context, value.Address, ref writeState);
 
     internal static Size BindValueImpl(BindContext context, IPAddress ipAddress, ref object? writeState)

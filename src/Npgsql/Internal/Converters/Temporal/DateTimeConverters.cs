@@ -25,7 +25,7 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
         return format is DataFormat.Binary;
     }
 
-    protected override Size BindValue(BindContext context, DateTime value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, DateTime value, ref object? writeState)
     {
         if (_kind is DateTimeKind.Utc)
         {
@@ -68,7 +68,7 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
         return format is DataFormat.Binary;
     }
 
-    protected override Size BindValue(BindContext context, DateTimeOffset value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, DateTimeOffset value, ref object? writeState)
     {
         if (value.Offset != TimeSpan.Zero)
             throw new ArgumentException($"Cannot write DateTimeOffset with Offset={value.Offset}, only offset 0 (UTC) is supported.", nameof(value));

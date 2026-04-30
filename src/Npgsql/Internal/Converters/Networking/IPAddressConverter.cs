@@ -9,7 +9,7 @@ sealed class IPAddressConverter : PgBufferedConverter<IPAddress>
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => NpgsqlInetConverter.CanConvertImpl(format, out bufferRequirements);
 
-    protected override Size BindValue(BindContext context, IPAddress value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, IPAddress value, ref object? writeState)
         => NpgsqlInetConverter.BindValueImpl(context, value, ref writeState);
 
     protected override IPAddress ReadCore(PgReader reader)

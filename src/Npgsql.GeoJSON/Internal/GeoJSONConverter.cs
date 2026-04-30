@@ -36,7 +36,7 @@ sealed class GeoJSONConverter<T> : PgStreamingConverter<T> where T : IGeoJSONObj
     public override async ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => (T)await GeoJSONConverter.Read(async: true, reader, BoundingBox ? new BoundingBoxBuilder() : null, _getCrs, cancellationToken).ConfigureAwait(false);
 
-    protected override Size BindValue(BindContext context, T value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
         => GeoJSONConverter.BindValue(context, value, ref writeState);
 
     public override void Write(PgWriter writer, T value)
@@ -284,7 +284,7 @@ static class GeoJSONConverter
         }
     }
 
-    public static Size BindValue(BindContext context, IGeoJSONObject value, ref object? writeState)
+    public static Size BindValue(in BindContext context, IGeoJSONObject value, ref object? writeState)
         => value.Type switch
         {
             GeoJSONObjectType.Point => BindValue((Point)value),
@@ -397,7 +397,7 @@ static class GeoJSONConverter
         return length;
     }
 
-    static Size BindValue(BindContext context, GeometryCollection value, ref object? writeState)
+    static Size BindValue(in BindContext context, GeometryCollection value, ref object? writeState)
     {
         var length = Size.Create(SizeOfHeaderWithLength);
         if (GetSrid(value.CRS) != 0)

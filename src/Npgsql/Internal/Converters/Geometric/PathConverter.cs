@@ -40,7 +40,7 @@ sealed class PathConverter : PgStreamingConverter<NpgsqlPath>
         return result;
     }
 
-    protected override Size BindValue(BindContext context, NpgsqlPath value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, NpgsqlPath value, ref object? writeState)
         => 5 + value.Count * sizeof(double) * 2;
 
     public override void Write(PgWriter writer, NpgsqlPath value)

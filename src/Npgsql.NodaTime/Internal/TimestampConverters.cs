@@ -39,7 +39,7 @@ sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
     protected override ZonedDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).InUtc();
 
-    protected override Size BindValue(BindContext context, ZonedDateTime value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, ZonedDateTime value, ref object? writeState)
     {
         if (value.Zone != DateTimeZone.Utc && !LegacyTimestampBehavior)
         {
@@ -75,7 +75,7 @@ sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
     protected override OffsetDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).WithOffset(Offset.Zero);
 
-    protected override Size BindValue(BindContext context, OffsetDateTime value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, OffsetDateTime value, ref object? writeState)
     {
         if (value.Offset != Offset.Zero && !LegacyTimestampBehavior)
         {
