@@ -435,7 +435,7 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Range && (type == typeof(NpgsqlRange<int>) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
                     return new PgConcreteTypeInfo(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
                 }
                 return null;
@@ -449,7 +449,7 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Range.ToArrayName() && (type == typeof(NpgsqlRange<int>[]) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
                     var rangeInfo = new PgConcreteTypeInfo(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
                     var arrayConverter = ArrayConverter<NpgsqlRange<int>[]>.CreateArrayBased<NpgsqlRange<int>>(rangeInfo, typeof(NpgsqlRange<int>[]));
                     return new PgConcreteTypeInfo(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Range.ToArrayName()));
@@ -465,8 +465,8 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Multirange && (type == typeof(NpgsqlRange<int>[]) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
-                    var multirange = new MultirangeConverter<NpgsqlRange<int>[], NpgsqlRange<int>>(range);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
+                    var multirange = PgConverterFactory.CreateArrayMultirangeConverter(range, options);
                     return new PgConcreteTypeInfo(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
                 }
                 return null;
@@ -480,8 +480,8 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Multirange.ToArrayName() && (type == typeof(NpgsqlRange<int>[][]) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
-                    var multirange = new MultirangeConverter<NpgsqlRange<int>[], NpgsqlRange<int>>(range);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
+                    var multirange = PgConverterFactory.CreateArrayMultirangeConverter(range, options);
                     var multirangeInfo = new PgConcreteTypeInfo(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
                     var arrayConverter = ArrayConverter<NpgsqlRange<int>[][]>.CreateArrayBased<NpgsqlRange<int>[]>(multirangeInfo, typeof(NpgsqlRange<int>[][]));
                     return new PgConcreteTypeInfo(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange.ToArrayName()));

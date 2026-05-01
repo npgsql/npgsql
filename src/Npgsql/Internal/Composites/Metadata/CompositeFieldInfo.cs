@@ -88,29 +88,13 @@ abstract class CompositeFieldInfo
         if (!concreteTypeInfo.SupportsWriting)
             AdoSerializerHelpers.ThrowReadingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
 
-        Size writeRequirement;
-        bool isBindOptional;
-        if (!IsProviderBacked)
-        {
-            writeRequirement = _binaryBufferRequirements.Write;
-            isBindOptional = _binaryBufferRequirements.IsBindOptional;
-        }
-        else
-        {
-            if (!concreteTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
-                ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
-            writeRequirement = bufferRequirements.Write;
-            isBindOptional = bufferRequirements.IsBindOptional;
-        }
+        var ctx = !IsProviderBacked
+            ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional)
+            : BindContext.Create(concreteTypeInfo.Converter, DataFormat.Binary);
 
         // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
         // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
-        context = new BindContext(DataFormat.Binary, writeRequirement)
-        {
-            IsBindOptional = isBindOptional,
-            NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default
-        };
-
+        context = ctx with { NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default };
         return concreteTypeInfo.Converter;
     }
 

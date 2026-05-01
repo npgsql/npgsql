@@ -379,19 +379,57 @@ static class PgConverterExtensions
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-[method: SetsRequiredMembers]
-public readonly struct BindContext(DataFormat format, Size bufferRequirement)
+public readonly struct BindContext
 {
-    public required Size BufferRequirement { get; init; } = bufferRequirement;
-    public DataFormat Format { get; } = format;
+    /// <summary>The data format selected for this bind.</summary>
+    public DataFormat Format { get; private init; }
 
     /// <summary>
-    /// When true, the bind path may short-circuit to <see cref="BufferRequirement"/> without invoking
-    /// <c>BindValue</c>. Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/>.
+    /// The size requirement for writing values with <see cref="Format"/>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.Write"/> returned by <see cref="PgConverter.CanConvert"/>.
     /// </summary>
-    public bool IsBindOptional { get; init; }
+    public Size BufferRequirement { get; private init; }
 
+    /// <summary>
+    /// When true, composing converters may use <see cref="BufferRequirement"/> directly and skip the nested <c>Bind</c> call entirely.
+    /// <c>Bind</c> can be called anyway at which point it just short-circuits, without invoking <c>BindValue</c>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/> returned by <see cref="PgConverter.CanConvert"/>.
+    /// </summary>
+    public bool IsBindOptional { get; private init; }
+
+    // Public init as this can be caller decided.
+    /// <summary>
+    /// The policy for how nested object-typed values should have their database null-shaped values handled during this bind.
+    /// See <see cref="NestedObjectDbNullHandling"/> for per-mode semantics.
+    /// </summary>
     public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
+
+    /// <summary>
+    /// Constructs a <see cref="BindContext"/> at <paramref name="format"/>, populated from the
+    /// cached buffer requirements on <paramref name="converter"/>. Throws if the converter does not
+    /// support <paramref name="format"/>. This is the preferred construction route;
+    /// <see cref="CreateUnchecked"/> is the escape hatch for callers without a converter info on hand.
+    /// </summary>
+    public static BindContext Create(PgConverter converter, DataFormat format)
+    {
+        if (!converter.CanConvert(format, out var bufferRequirements))
+            ThrowHelper.ThrowInvalidOperationException($"Converter '{converter.GetType().FullName}' does not support data format '{format}'.");
+        return CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional);
+    }
+
+    /// <summary>
+    /// Constructs a <see cref="BindContext"/> from caller-supplied values without verifying that
+    /// <paramref name="bufferRequirement"/> and <paramref name="isBindOptional"/> match the converter's
+    /// cached requirements. Callers must ensure these values are consistent with the converter that
+    /// will receive this context.
+    /// </summary>
+    public static BindContext CreateUnchecked(DataFormat format, Size bufferRequirement, bool isBindOptional)
+        => new()
+        {
+            Format = format,
+            BufferRequirement = bufferRequirement,
+            IsBindOptional = isBindOptional
+        };
 }
 
 [Obsolete("Use BindContext instead.")]

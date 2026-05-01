@@ -41,11 +41,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
         }
 
         var result = concreteTypeInfo.Converter.BindAsObject(
-            new(context.Format, bufferRequirements.Write)
-            {
-                IsBindOptional = bufferRequirements.IsBindOptional,
-                NestedObjectDbNullHandling = context.NestedObjectDbNullHandling
-            },
+            BindContext.Create(concreteTypeInfo.Converter, context.Format) with { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling },
             value,
             ref effectiveState);
         if (effectiveState is not null)

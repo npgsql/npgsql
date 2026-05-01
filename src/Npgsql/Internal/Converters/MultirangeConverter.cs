@@ -74,10 +74,13 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
         var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
         var anyWriteState = false;
+        var rangeContext = BindContext.Create(_rangeConverter, context.Format);
         for (var i = 0; i < value.Count; i++)
         {
             object? innerState = null;
-            var rangeSize = _rangeConverter.IsDbNull(value[i], innerState) ? null : (Size?)_rangeConverter.Bind(new(context.Format, _rangeRequirements.Write) { IsBindOptional = _rangeRequirements.IsBindOptional }, value[i], ref innerState);
+            var rangeSize = _rangeConverter.IsDbNull(value[i], innerState)
+                ? null
+                : (Size?)_rangeConverter.Bind(rangeContext, value[i], ref innerState);
             anyWriteState = anyWriteState || innerState is not null;
             // Ranges should never be NULL.
             Debug.Assert(rangeSize.HasValue);

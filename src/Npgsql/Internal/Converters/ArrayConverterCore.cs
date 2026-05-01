@@ -81,7 +81,9 @@ readonly struct ArrayConverterCore(
         var arrayPool = providerState?.ArrayPool;
         var elemData = providerState?.Data.Array;
         var fixedSizeElements = false;
-        if (binaryRequirements.Write is { Kind: SizeKind.Exact, Value: var elemByteCount })
+        var elemContext = BindContext.Create(ElementTypeInfo.Converter, context.Format)
+            with { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
+        if (elemContext.BufferRequirement is { Kind: SizeKind.Exact, Value: var elemByteCount })
         {
             fixedSizeElements = true;
             var nulls = 0;
@@ -89,13 +91,8 @@ readonly struct ArrayConverterCore(
             // Iterate per element when the element typeinfo's bind isn't value-independent (its size path
             // has per-value side effects to fire), or when we need to count nulls for nullable elements.
             // Otherwise the size is just count*elemByteCount and we skip the iteration entirely.
-            if (ElemTypeDbNullable || !binaryRequirements.IsBindOptional)
+            if (ElemTypeDbNullable || !elemContext.IsBindOptional)
             {
-                var elemContext = new BindContext(context.Format, binaryRequirements.Write)
-                {
-                    IsBindOptional = binaryRequirements.IsBindOptional,
-                    NestedObjectDbNullHandling = context.NestedObjectDbNullHandling
-                };
                 do
                 {
                     if (IsDbNull(elemContext, values, indices, elemData?[indices.IndicesSum].WriteState))
@@ -278,11 +275,8 @@ readonly struct ArrayConverterCore(
         var lastCount = metadata.LastDimension;
         var offset = state.Data.Offset;
         var fixedSizeElements = state.FixedSizeElements;
-        var elemContext = new BindContext(writer.Current.Format, binaryRequirements.Write)
-        {
-            IsBindOptional = binaryRequirements.IsBindOptional,
-            NestedObjectDbNullHandling = state.NestedObjectDbNullHandling
-        };
+        var elemContext = BindContext.Create(ElementTypeInfo.Converter, writer.Current.Format)
+            with { NestedObjectDbNullHandling = state.NestedObjectDbNullHandling };
         do
         {
             if (writer.ShouldFlush(sizeof(int)))
@@ -290,13 +284,13 @@ readonly struct ArrayConverterCore(
 
             var elem = elemData?[offset + indices.IndicesSum] ?? default;
             var length = fixedSizeElements
-                ? ElemTypeDbNullable && IsDbNull(elemContext, values, indices, elem.WriteState) ? -1 : binaryRequirements.Write.Value
+                ? ElemTypeDbNullable && IsDbNull(elemContext, values, indices, elem.WriteState) ? -1 : elemContext.BufferRequirement.Value
                 : elem.Size.Value;
 
             writer.WriteInt32(length);
             if (length is not -1)
             {
-                using var _ = await writer.BeginNestedWrite(async, binaryRequirements.Write,
+                using var _ = await writer.BeginNestedWrite(async, elemContext.BufferRequirement,
                     length, elem.WriteState, cancellationToken).ConfigureAwait(false);
                 await elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
             }
