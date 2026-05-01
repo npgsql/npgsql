@@ -18,9 +18,6 @@ public abstract class PgTypeInfo
 
         HasExactType = requestedType is null || requestedType == type;
         Type = requestedType is null ? type : GetReportedType(type, requestedType) ?? type;
-
-        SupportsReading = GetDefaultSupportsReading(type, requestedType);
-        SupportsWriting = true;
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? requestedType = null)
@@ -33,8 +30,6 @@ public abstract class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
-    public bool SupportsReading { get; init; }
-    public bool SupportsWriting { get; init; }
     public DataFormat? PreferredFormat { get; init; }
 
     // True when the reported type matches the converter's type exactly (no reported type given at construction, or
@@ -149,12 +144,12 @@ public abstract class PgTypeInfo
                ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
     }
 
-    // We assume a weakly typed info does not support reading as the converter won't be able to produce the derived type statically.
-    // Cases like Array converters reading int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
-    internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
-        => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
-
-    static Type? GetReportedType(Type converterType, Type requestedType)
+    /// <summary>
+    /// Validates that <paramref name="requestedType"/> is in a subtype relationship with <paramref name="converterType"/>
+    /// and returns the type to surface as the reported type — the requested type if it widens the converter type,
+    /// or null when the converter type itself is the right reported type.
+    /// </summary>
+    protected static Type? GetReportedType(Type converterType, Type requestedType)
     {
         if (!requestedType.IsInSubtypeRelationshipWith(converterType))
             throw new ArgumentException($"The requested type {requestedType} is not in a subtype relationship with the converter's type {converterType}.", nameof(requestedType));
@@ -292,6 +287,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         Converter = converter;
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
+
+        SupportsReading = GetDefaultSupportsReading(converter.TypeToConvert, requestedType);
+        SupportsWriting = true;
     }
 
     Type TypeToConvert
@@ -301,6 +299,15 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 
     public PgConverter Converter { get; }
+
+    public bool SupportsReading { get; init; }
+    public bool SupportsWriting { get; init; }
+
+    // We assume a non-exact typed info does not support reading as the converter won't be able to produce the derived type statically.
+    // Cases like Array converters reading int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
+    internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
+        => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
+
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
     internal bool CanReadTo(Type type) => Type == type || (!HasExactType && Type.IsAssignableTo(type));

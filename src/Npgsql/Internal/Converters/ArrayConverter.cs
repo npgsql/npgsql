@@ -514,7 +514,7 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
             static (_, state) =>
                 new(state.ConcreteInfo.Options,
                     new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.ConcreteInfo.Converter, (PgConverter<TBase>)state.ConcreteNullableInfo.Converter),
-                    state.ConcreteInfo.PgTypeId),
+                    state.ConcreteInfo.PgTypeId) { SupportsWriting = false },
             state);
     }
 }

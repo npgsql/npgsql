@@ -86,6 +86,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 return null;
 
             subInfo = subInfo.ToExactTypeInfo();
+            var subConcrete = (PgConcreteTypeInfo)subInfo;
 
             var converterType = typeof(NpgsqlRange<>).MakeGenericType(subInfo.Type);
 
@@ -97,7 +98,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                             ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
                         requestedType: matchedType
-                    ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
+                    ) { PreferredFormat = subConcrete.PreferredFormat, SupportsWriting = subConcrete.SupportsWriting },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }
@@ -145,6 +146,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 return null;
 
             subInfo = subInfo.ToExactTypeInfo();
+            var subConcrete = (PgConcreteTypeInfo)subInfo;
 
             var converterType = subInfo.Type.MakeArrayType();
 
@@ -156,7 +158,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                             ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
                         requestedType: type
-                    ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
+                    ) { PreferredFormat = subConcrete.PreferredFormat, SupportsWriting = subConcrete.SupportsWriting },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }

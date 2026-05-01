@@ -696,11 +696,14 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             // If no Bind follows (SchemaOnly), release the provider-produced state immediately so
             // lifecycle stays contained inside the parameter.
-            if (!willBind && _writeState is { } ws)
+            if ((!willBind || !ConcreteTypeInfo.SupportsWriting) && _writeState is { } ws)
             {
                 ConcreteTypeInfo.DisposeWriteState(ws);
                 _writeState = null;
             }
+
+            if (!ConcreteTypeInfo.SupportsWriting)
+                AdoSerializerHelpers.ThrowWritingNotSupported(GetValueType(staticValueType), options, ConcreteTypeInfo.PgTypeId, _npgsqlDbType, ParameterName, resolved: true);
         }
 
         void ThrowNoTypeInfo()

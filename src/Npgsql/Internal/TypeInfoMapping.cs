@@ -204,12 +204,12 @@ public sealed class TypeInfoMappingCollection
             if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
                 resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
 
-            var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
-            var converter = mapper(mapping, innerInfo);
-            var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var readingSupported = innerInfo.SupportsReading
-                                   && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, requestedType: mapping.Type));
-            var writingSupported = innerInfo.SupportsWriting && (supportsWriting ?? true);
+            var innerConcrete = (PgConcreteTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
+            var converter = mapper(mapping, innerConcrete);
+            var preferredFormat = copyPreferredFormat ? innerConcrete.PreferredFormat : null;
+            var readingSupported = innerConcrete.SupportsReading
+                                   && (supportsReading ?? PgConcreteTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, requestedType: mapping.Type));
+            var writingSupported = innerConcrete.SupportsWriting && (supportsWriting ?? true);
 
             return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), requestedType: mapping.Type)
             {
@@ -227,11 +227,10 @@ public sealed class TypeInfoMappingCollection
             if (!DataTypeName.IsFullyQualified(innerMapping.DataTypeName.AsSpan()))
                 resolvedInnerMapping = innerMapping with { DataTypeName = new DataTypeName(mapping.DataTypeName).Schema + "." + innerMapping.DataTypeName };
 
-            var innerInfo = (PgProviderTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
-            var typeInfoProvider = mapper(mapping, innerInfo);
-            var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var readingSupported = innerInfo.SupportsReading && (supportsReading ?? PgTypeInfo.GetDefaultSupportsReading(typeInfoProvider.TypeToConvert, mapping.Type));
-            var writingSupported = innerInfo.SupportsWriting && (supportsWriting ?? true);
+            var innerInfo = innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
+
+            var providerInfo = (PgProviderTypeInfo)innerInfo;
+            var typeInfoProvider = mapper(mapping, providerInfo);
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
             PgTypeId? pgTypeId = innerInfo.PgTypeId is not null
@@ -239,9 +238,7 @@ public sealed class TypeInfoMappingCollection
                 : null;
             return new PgProviderTypeInfo(options, typeInfoProvider, pgTypeId, requestedType: mapping.Type)
             {
-                PreferredFormat = preferredFormat,
-                SupportsReading = readingSupported,
-                SupportsWriting = writingSupported
+                PreferredFormat = copyPreferredFormat ? providerInfo.PreferredFormat : null,
             };
         };
 
@@ -614,7 +611,7 @@ public sealed class TypeInfoMappingCollection
                         (PgProviderTypeInfo)nullableInnerInfo);
 
                 return new PgProviderTypeInfo(innerInfo.Options, provider,
-                    innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object)) { SupportsWriting = false };
+                    innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object));
             }
         }
 
@@ -802,6 +799,5 @@ public static class TypeInfoMappingHelpers
         => new(options, provider, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
         {
             PreferredFormat = preferredFormat,
-            SupportsWriting = supportsWriting
         };
 }

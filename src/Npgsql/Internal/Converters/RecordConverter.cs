@@ -45,6 +45,8 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 
             var concreteTypeInfo = typeInfo.MakeConcreteForField(Field.CreateUnspecified(pgTypeId));
+            if (!concreteTypeInfo.SupportsReading)
+                AdoSerializerHelpers.ThrowReadingNotSupported(IsObjectArrayRecord ? typeof(object) : null, options, pgTypeId, resolved: true);
             var binding = concreteTypeInfo.BindField(DataFormat.Binary);
             var scope = await reader.BeginNestedRead(async, length, binding.BufferRequirement, cancellationToken).ConfigureAwait(false);
             try

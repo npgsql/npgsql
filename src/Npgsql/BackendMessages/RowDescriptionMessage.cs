@@ -372,6 +372,8 @@ public sealed class FieldDescription
                 // can't bind to text here throws and surfaces as a missing mapping rather than getting silently reinterpreted.
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgTypeId, _serializerOptions);
                 var concreteTypeInfo = typeInfo.MakeConcreteForField(Field);
+                if (!concreteTypeInfo.SupportsReading)
+                    AdoSerializerHelpers.ThrowReadingNotSupported(type, _serializerOptions, _serializerOptions.TextPgTypeId, resolved: true);
 
                 binding = concreteTypeInfo.BindField(DataFormat.Text);
                 lastReadConversionContext = new(concreteTypeInfo, binding);
@@ -381,6 +383,8 @@ public sealed class FieldDescription
             {
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), _serializerOptions.ToCanonicalTypeId(PostgresType), _serializerOptions);
                 var concreteTypeInfo = typeInfo.MakeConcreteForField(Field);
+                if (!concreteTypeInfo.SupportsReading)
+                    AdoSerializerHelpers.ThrowReadingNotSupported(type, _serializerOptions, _serializerOptions.ToCanonicalTypeId(PostgresType), resolved: true);
 
                 // If we don't support the DataFormat we'll just throw.
                 binding = concreteTypeInfo.BindField(DataFormat);

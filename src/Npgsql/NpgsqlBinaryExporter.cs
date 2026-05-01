@@ -347,6 +347,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             // Binary export has no type info so we only do caller-directed interpretation of data.
             var concreteTypeInfo = typeInfo.MakeConcreteForField(
                 Field.CreateUnspecified(typeInfo.PgTypeId ?? ((PgProviderTypeInfo)typeInfo).GetDefault(null).PgTypeId));
+            if (!concreteTypeInfo.SupportsReading)
+                AdoSerializerHelpers.ThrowReadingNotSupported(type, options, concreteTypeInfo.PgTypeId, resolved: true);
             return new(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat.Binary));
 
             PgTypeId GetRepresentationalOrDefault(string dataTypeName)
