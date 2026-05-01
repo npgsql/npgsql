@@ -236,10 +236,7 @@ public sealed class TypeInfoMappingCollection
             PgTypeId? pgTypeId = innerInfo.PgTypeId is not null
                 ? options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName))
                 : null;
-            return new PgProviderTypeInfo(options, typeInfoProvider, pgTypeId, requestedType: mapping.Type)
-            {
-                PreferredFormat = copyPreferredFormat ? providerInfo.PreferredFormat : null,
-            };
+            return new PgProviderTypeInfo(options, typeInfoProvider, pgTypeId, requestedType: mapping.Type);
         };
 
     public void Add(TypeInfoMapping mapping) => _items.Add(mapping);
@@ -779,25 +776,9 @@ public static class TypeInfoMappingHelpers
     /// <param name="provider">The provider to create a PgProviderTypeInfo for.</param>
     /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgProviderTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
     /// <returns>The created info instance.</returns>
-    public static PgProviderTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConcreteTypeInfoProvider provider, bool includeDataTypeName)
-        => new(options, provider, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
-        {
-            PreferredFormat = null
-        };
-
-    /// <summary>
-    /// Creates a PgProviderTypeInfo from a mapping, options, and a provider.
-    /// </summary>
-    /// <param name="mapping">The mapping to create an info for.</param>
-    /// <param name="options">The options to use.</param>
-    /// <param name="provider">The provider to create a PgProviderTypeInfo for.</param>
-    /// <param name="includeDataTypeName">Whether to pass mapping.DataTypeName to the PgProviderTypeInfo constructor, mandatory when TypeInfoFactory(..., requiresDataTypeName: true).</param>
-    /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
-    /// <param name="supportsWriting">Whether the converters returned from the given provider support writing.</param>
-    /// <returns>The created info instance.</returns>
-    public static PgProviderTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConcreteTypeInfoProvider provider, bool includeDataTypeName, DataFormat? preferredFormat = null, bool supportsWriting = true)
-        => new(options, provider, includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null)
-        {
-            PreferredFormat = preferredFormat,
-        };
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConcreteTypeInfoProvider provider, bool includeDataTypeName)
+    {
+        PgTypeId? pgTypeId = includeDataTypeName ? new PgTypeId(new DataTypeName(mapping.DataTypeName)) : null;
+        return new PgProviderTypeInfo(options, provider, pgTypeId);
+    }
 }

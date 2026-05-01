@@ -30,8 +30,6 @@ public abstract class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
-    public DataFormat? PreferredFormat { get; init; }
-
     // True when the reported type matches the converter's type exactly (no reported type given at construction, or
     // the given reported type equals the converter type). When false, the reported type is a widening of the converter
     // type (e.g. Array/Stream base-type reporting, enum-underlying widening) and the caller must dispatch through the
@@ -308,6 +306,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
         => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
 
+    public DataFormat? PreferredFormat { get; init; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
     internal bool CanReadTo(Type type) => Type == type || (!HasExactType && Type.IsAssignableTo(type));
