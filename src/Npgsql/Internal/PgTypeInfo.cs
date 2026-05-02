@@ -343,7 +343,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     // TryBind for reading.
     internal bool TryBindField(DataFormat format, out PgFieldBinding binding)
     {
-        if (!CanConvert(format, out var bufferRequirements))
+        if (!Converter.CanConvert(format, out var bufferRequirements))
         {
             binding = default;
             return false;
@@ -401,36 +401,30 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
-    public bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        switch (format)
-        {
-        case DataFormat.Binary:
-            bufferRequirements = _binaryBufferRequirements;
-            return _canBinaryConvert;
-        case DataFormat.Text:
-            bufferRequirements = _textBufferRequirements;
-            return _canTextConvert;
-        }
-
-        return Converter.CanConvert(format, out bufferRequirements);
-    }
-
     DataFormat ResolveFormat(out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
     {
         // First try to check for preferred support.
         switch (formatPreference)
         {
-        case DataFormat.Binary when CanConvert(DataFormat.Binary, out bufferRequirements):
+        case DataFormat.Binary when _canBinaryConvert:
+            bufferRequirements = _binaryBufferRequirements;
             return DataFormat.Binary;
-        case DataFormat.Text when CanConvert(DataFormat.Text, out bufferRequirements):
+        case DataFormat.Text when _canTextConvert:
+            bufferRequirements = _textBufferRequirements;
             return DataFormat.Text;
         default:
             // The common case, no preference given (or no match) means we default to binary if supported.
-            if (CanConvert(DataFormat.Binary, out bufferRequirements))
+            if (_canBinaryConvert)
+            {
+                bufferRequirements = _binaryBufferRequirements;
                 return DataFormat.Binary;
-            if (CanConvert(DataFormat.Text, out bufferRequirements))
+            }
+
+            if (Converter.CanConvert(DataFormat.Text, out bufferRequirements))
+            {
+                bufferRequirements = _textBufferRequirements;
                 return DataFormat.Text;
+            }
 
             ThrowHelper.ThrowInvalidOperationException("Converter doesn't support any data format.");
             bufferRequirements = default;

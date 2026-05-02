@@ -52,7 +52,7 @@ abstract class CompositeFieldInfo
             return;
         }
 
-        if (!concrete.CanConvert(DataFormat.Binary, out var bufferRequirements))
+        if (!concrete.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
         {
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
             return;
@@ -240,7 +240,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         var concreteTypeInfo = PgTypeInfo.MakeConcreteForValue(value, out writeState);
         if (!concreteTypeInfo.SupportsWriting)
             AdoSerializerHelpers.ThrowWritingNotSupported(typeof(T), PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
-        if (!concreteTypeInfo.CanConvert(DataFormat.Binary, out var bufferRequirements))
+        if (!concreteTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
         {
             ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
             writeRequirement = default;

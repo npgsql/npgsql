@@ -32,7 +32,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        if (!concreteTypeInfo.CanConvert(context.Format, out var bufferRequirements))
+        if (!concreteTypeInfo.Converter.CanConvert(context.Format, out var bufferRequirements))
         {
             ThrowHelper.ThrowNotSupportedException($"Resolvedconverter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
             return default;
@@ -69,7 +69,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var found = concreteTypeInfo.CanConvert(DataFormat.Binary, out var bufferRequirements);
+        var found = concreteTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements);
         Debug.Assert(found);
         var writeRequirement = bufferRequirements.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
