@@ -81,8 +81,11 @@ abstract class CompositeFieldInfo
         return concreteTypeInfo.Converter;
     }
 
-    public PgConverter GetWriteInfo(object instance, out BindContext context, out object? writeState)
+    public PgConverter GetWriteInfo(object instance, in BindContext nestingContext, out BindContext context, out object? writeState)
     {
+        if (nestingContext.Format != DataFormat.Binary)
+            ThrowHelper.ThrowInvalidOperationException("Only binary format is supported for composite fields.");
+
         writeState = null;
         var concreteTypeInfo = ConcreteTypeInfo ?? MakeConcreteForValue(instance, out writeState);
         if (!concreteTypeInfo.SupportsWriting)
@@ -90,7 +93,7 @@ abstract class CompositeFieldInfo
 
         var ctx = !IsProviderBacked
             ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional)
-            : BindContext.Create(concreteTypeInfo.Converter, DataFormat.Binary);
+            : BindContext.CreateNested(nestingContext, concreteTypeInfo.Converter);
 
         // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
         // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).

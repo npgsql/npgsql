@@ -101,7 +101,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if (value.IsEmpty)
             return totalSize; // Just flags.
 
-        var subtypeContext = BindContext.Create(_subtypeConverter, context.Format);
+        var subtypeContext = BindContext.CreateNested(context, _subtypeConverter);
         WriteState? state = null;
         if (!value.LowerBoundInfinite)
         {

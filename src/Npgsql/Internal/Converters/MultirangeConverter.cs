@@ -74,7 +74,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
         var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
         var anyWriteState = false;
-        var rangeContext = BindContext.Create(_rangeConverter, context.Format);
+        var rangeContext = BindContext.CreateNested(context, _rangeConverter);
         for (var i = 0; i < value.Count; i++)
         {
             object? innerState = null;

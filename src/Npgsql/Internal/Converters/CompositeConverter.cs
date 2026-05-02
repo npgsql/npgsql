@@ -155,7 +155,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             for (var i = 0; i < _composite.Fields.Count; i++)
             {
                 var field = _composite.Fields[i];
-                var converter = field.GetWriteInfo(boxedInstance, out var fieldContext, out var fieldState);
+                var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out var fieldState);
 
                 if (!fieldContext.IsBindOptional)
                     field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
@@ -208,7 +208,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         for (var i = 0; i < _composite.Fields.Count; i++)
         {
             var field = _composite.Fields[i];
-            var converter = field.GetWriteInfo(boxedInstance, out var fieldContext, out var fieldState);
+            var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out var fieldState);
             var fieldSizeOrNull = field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
             anyWriteState = anyWriteState || fieldState is not null;
             slowData[i] = new()

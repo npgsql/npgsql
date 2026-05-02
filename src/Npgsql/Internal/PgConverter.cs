@@ -405,16 +405,21 @@ public readonly struct BindContext
     public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
 
     /// <summary>
-    /// Constructs a <see cref="BindContext"/> at <paramref name="format"/>, populated from the
-    /// cached buffer requirements on <paramref name="converter"/>. Throws if the converter does not
-    /// support <paramref name="format"/>. This is the preferred construction route;
-    /// <see cref="CreateUnchecked"/> is the escape hatch for callers without a converter info on hand.
+    /// Constructs a <see cref="BindContext"/> from a converter info, propagating relevant context from <paramref name="nestingContext"/>.
+    /// Composing converters (arrays, ranges, multiranges, composites, etc.) use this to thread any policy through to nested binds.
     /// </summary>
-    public static BindContext Create(PgConverter converter, DataFormat format)
+    public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
     {
+        var format = nestingContext.Format;
         if (!converter.CanConvert(format, out var bufferRequirements))
             ThrowHelper.ThrowInvalidOperationException($"Converter '{converter.GetType().FullName}' does not support data format '{format}'.");
-        return CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional);
+        return new()
+        {
+            Format = format,
+            BufferRequirement = bufferRequirements.Write,
+            IsBindOptional = bufferRequirements.IsBindOptional,
+            NestedObjectDbNullHandling = nestingContext.NestedObjectDbNullHandling
+        };
     }
 
     /// <summary>

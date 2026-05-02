@@ -140,12 +140,14 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
 
-        Size? IElementOperations.IsDbNullOrBind(in BindContext context, object collection, IterationIndices indices, ref object? writeState)
+        Size? IElementOperations.IsDbNullOrBind(in BindContext context, object collection, IterationIndices indices, ref object? writeState, NestedObjectDbNullHandling? nullCheckHandling)
         {
             var value = GetValue(collection, indices);
-            return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.BindAsObject(context, value, ref writeState)
-                : _elemConverter.IsDbNull(value, writeState) ? null : _elemConverter.Bind(context, value!, ref writeState);
+            if (typeof(TElement) == typeof(object))
+                return ArrayConverterCore.IsDbNullOrBindObject(_elemConverter, context, value, ref writeState, nullCheckHandling);
+            if (_elemConverter.IsDbNull(value, writeState))
+                return null;
+            return nullCheckHandling is null ? _elemConverter.Bind(context, value!, ref writeState) : Size.Zero;
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
@@ -215,12 +217,14 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             return ((IList<TElement?>)collection).Count;
         }
 
-        Size? IElementOperations.IsDbNullOrBind(in BindContext context, object collection, IterationIndices indices, ref object? writeState)
+        Size? IElementOperations.IsDbNullOrBind(in BindContext context, object collection, IterationIndices indices, ref object? writeState, NestedObjectDbNullHandling? nullCheckHandling)
         {
             var value = GetValue(collection, indices[0]);
-            return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.BindAsObject(context, value, ref writeState)
-                : _elemConverter.IsDbNull(value, writeState) ? null : _elemConverter.Bind(context, value!, ref writeState);
+            if (typeof(TElement) == typeof(object))
+                return ArrayConverterCore.IsDbNullOrBindObject(_elemConverter, context, value, ref writeState, nullCheckHandling);
+            if (_elemConverter.IsDbNull(value, writeState))
+                return null;
+            return nullCheckHandling is null ? _elemConverter.Bind(context, value!, ref writeState) : Size.Zero;
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
