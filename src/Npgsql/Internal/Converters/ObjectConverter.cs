@@ -46,7 +46,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
             ref effectiveState);
         if (effectiveState is not null)
         {
-            if (writeState is WriteState s && !ReferenceEquals(s.EffectiveState, effectiveState))
+            if (writeState is WriteState s)
                 s.EffectiveState = effectiveState;
             else
                 writeState = new WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };

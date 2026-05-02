@@ -69,6 +69,31 @@ public class WriteStateTests : TestBase
     }
 
     [Test]
+    public async Task Object_write_state_upgrades_when_late_bound_inner_produces_at_bind()
+    {
+        // Verifies the bind-time writeState upgrade path: late-bound resolution returns a converter
+        // whose provider does not pre-populate state, so writeState arrives at ObjectConverter.BindValue
+        // as a bare PgConcreteTypeInfo (non-IDisposable). The inner converter's BindValue then produces
+        // state during bind, and ObjectConverter must upgrade the outer writeState reference from the
+        // bare PgConcreteTypeInfo to a wrapped ObjectConverter.WriteState (IDisposable).
+        // Exercises the disposability-conditional lifecycle rule: replacing a non-IDisposable reference
+        // with an IDisposable wrapper is allowed because the original carries no disposal obligation.
+        var tracker = new WriteStateTracker();
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.AddTypeInfoResolverFactory(
+            new WriteStateTrackingResolverFactory(fixedSize: false, tracker, produceProviderState: false, generatesWriteStateAtBind: true));
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<object> { ParameterName = "p", TypedValue = 42, DataTypeName = "integer" });
+        await cmd.ExecuteNonQueryAsync();
+
+        Assert.That(tracker.WriteWriteStateReceived, Is.True,
+            "Write did not receive write state after late-bound bind-time upgrade");
+    }
+
+    [Test]
     public async Task Range_write_state_flows()
     {
         // Verifies write state propagation through a range composition:
@@ -295,33 +320,34 @@ public class WriteStateTests : TestBase
         }
     }
 
-    sealed class WriteStateTrackingProvider(PgSerializerOptions options, bool fixedSize, WriteStateTracker tracker) : PgConcreteTypeInfoProvider<int>
+    sealed class WriteStateTrackingProvider(PgSerializerOptions options, bool fixedSize, WriteStateTracker tracker, bool produceProviderState = true, bool generatesWriteStateAtBind = false) : PgConcreteTypeInfoProvider<int>
     {
         PgConcreteTypeInfo? _concreteTypeInfo;
 
         PgConcreteTypeInfo GetOrCreate()
-            => _concreteTypeInfo ??= new(options, new WriteStateTrackingConverter(fixedSize, tracker), options.GetCanonicalTypeId(DataTypeNames.Int4));
+            => _concreteTypeInfo ??= new(options, new WriteStateTrackingConverter(fixedSize, tracker, generatesWriteStateAtBind), options.GetCanonicalTypeId(DataTypeNames.Int4));
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
         protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
         {
-            writeState = "provider-state";
+            if (produceProviderState)
+                writeState = "provider-state";
             return GetOrCreate();
         }
     }
 
-    sealed class WriteStateTrackingResolverFactory(bool fixedSize, WriteStateTracker tracker) : PgTypeInfoResolverFactory
+    sealed class WriteStateTrackingResolverFactory(bool fixedSize, WriteStateTracker tracker, bool produceProviderState = true, bool generatesWriteStateAtBind = false) : PgTypeInfoResolverFactory
     {
-        public override IPgTypeInfoResolver CreateResolver() => new Resolver(fixedSize, tracker);
+        public override IPgTypeInfoResolver CreateResolver() => new Resolver(fixedSize, tracker, produceProviderState, generatesWriteStateAtBind);
         public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver();
 
-        sealed class Resolver(bool fixedSize, WriteStateTracker tracker) : IPgTypeInfoResolver
+        sealed class Resolver(bool fixedSize, WriteStateTracker tracker, bool produceProviderState, bool generatesWriteStateAtBind) : IPgTypeInfoResolver
         {
             public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             {
                 if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                    return new PgProviderTypeInfo(options, new WriteStateTrackingProvider(options, fixedSize, tracker), DataTypeNames.Int4);
+                    return new PgProviderTypeInfo(options, new WriteStateTrackingProvider(options, fixedSize, tracker, produceProviderState, generatesWriteStateAtBind), DataTypeNames.Int4);
 
                 // object->int4 goes through LateBoundTypeInfoProvider which delegates back to the int resolver above,
                 // letting us exercise write-state propagation across the object (late-bound) element layer.

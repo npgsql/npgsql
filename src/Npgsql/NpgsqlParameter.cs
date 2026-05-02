@@ -793,16 +793,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     binding = BindTypedValue(ConcreteTypeInfo, formatPreference: requiredFormat);
                 }
 
-                // Enforce that provider-produced _writeState flows end-to-end through the binding unchanged.
-                // A converter that accepts _writeState as input must thread the same instance into its returned
-                // binding's WriteState. Swapping to a different instance is a contract violation because it
-                // forks the lifecycle (the resolution-time state would be orphaned and the bind-time state
-                // would be unowned by this parameter).
-                if (_writeState is not null && !ReferenceEquals(_writeState, binding.WriteState))
-                    ThrowHelper.ThrowInvalidOperationException(
-                        $"Binding for parameter '{ParameterName}' replaced the provider-produced write state with a different instance. " +
-                        "Converters must thread the write state through unchanged.");
-
                 if (requiredFormat is not null && binding.DataFormat != requiredFormat)
                     ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
 

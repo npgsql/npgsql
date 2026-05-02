@@ -96,19 +96,21 @@ readonly struct ArrayConverterCore(
         var elemData = providerState?.Data.Array;
         var fixedSizeElements = false;
         var elemContext = BindContext.CreateNested(context, ElementTypeInfo.Converter);
-        if (elemContext.BufferRequirement is { Kind: SizeKind.Exact, Value: var elemByteCount })
+        if (elemContext.IsBindFixedSize)
         {
             fixedSizeElements = true;
+            var elemByteCount = elemContext.BufferRequirement.Value;
             var nulls = 0;
             var lastLength = metadata.LastDimension;
-            // Iterate per element when the element typeinfo's bind isn't value-independent (its size path
-            // has per-value side effects to fire), or when we need to count nulls for nullable elements.
-            // Otherwise the size is just count*elemByteCount and we skip the iteration entirely.
+
             if (ElemTypeDbNullable || !elemContext.IsBindOptional)
             {
+                var nullCheckHandling = elemContext.IsBindOptional ? (NestedObjectDbNullHandling?)context.NestedObjectDbNullHandling : null;
                 do
                 {
-                    if (IsDbNull(values, indices, elemData?[indices.IndicesSum].WriteState, context.NestedObjectDbNullHandling))
+                    object? elemState = null;
+                    var elemSize = elemOps.IsDbNullOrBind(elemContext, values, indices, ref elemState, nullCheckHandling);
+                    if (elemSize is null)
                         nulls++;
                 }
                 while (indices.TryAdvance(lastLength, metadata.DimensionLengths));

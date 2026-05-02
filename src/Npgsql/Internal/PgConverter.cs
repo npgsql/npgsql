@@ -149,7 +149,6 @@ public abstract class PgConverter
 
     private protected abstract Size BindValueAsObject(in BindContext context, object? value, ref object? writeState);
 
-
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
     public Size BindAsObject(in BindContext context, object? value, ref object? writeState)
     {
@@ -162,8 +161,21 @@ public abstract class PgConverter
                     $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
             return context.BufferRequirement;
         }
-        var size = BindValueAsObject(context, value, ref writeState);
 
+        // writeState identity discipline:
+        // - Fixed-size: any change is forbidden (no production, no swap, no clear).
+        // - Non-fixed-size: monotonic — null → non-null is the production transition; an existing
+        //   IDisposable identity must be preserved (provenance carries disposal obligation), and
+        //   clearing is forbidden. Non-disposable references may be replaced by another non-null
+        //   reference without violating the lifecycle.
+        var originalWriteState = writeState;
+        var size = BindValueAsObject(context, value, ref writeState);
+        if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
+            && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
+            ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
+
+        // Catches non-Exact sizes from both paths (the IsBindFixedSize Kind check is folded in here —
+        // a converter declaring fixed-size that returned a non-Exact size trips this same throw).
         switch (size.Kind)
         {
         case SizeKind.UpperBound:
@@ -216,6 +228,14 @@ public abstract class PgConverter
 
     private protected bool ThrowDbNullPredicateOutOfRange()
         => throw new UnreachableException($"Unknown case {DbNullPredicateKind.ToString()}");
+
+    [DoesNotReturn]
+    private protected static void ThrowWriteStateLifecycleViolation(bool isBindFixedSize)
+    {
+        if (isBindFixedSize)
+            throw new InvalidOperationException("Fixed-size BindValue must not modify the writeState reference.");
+        throw new InvalidOperationException("BindValue must not orphan an IDisposable writeState reference, nor clear an existing one.");
+    }
 }
 
 public abstract class PgConverter<T> : PgConverter
@@ -296,7 +316,18 @@ public abstract class PgConverter<T> : PgConverter
                     $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
             return context.BufferRequirement;
         }
+
+        // writeState identity discipline:
+        // - Fixed-size: any change is forbidden (no production, no swap, no clear).
+        // - Non-fixed-size: monotonic — null → non-null is the production transition; an existing
+        //   IDisposable identity must be preserved (provenance carries disposal obligation), and
+        //   clearing is forbidden. Non-disposable references may be replaced by another non-null
+        //   reference (e.g. polymorphic-dispatch upgrade) without violating the lifecycle.
+        var originalWriteState = writeState;
         var size = BindValue(context, value, ref writeState);
+        if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
+            && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
+            ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
 
         switch (size.Kind)
         {
@@ -392,10 +423,18 @@ public readonly struct BindContext
 
     /// <summary>
     /// When true, composing converters may use <see cref="BufferRequirement"/> directly and skip the nested <c>Bind</c> call entirely.
-    /// <c>Bind</c> can be called anyway at which point it just short-circuits, without invoking <c>BindValue</c>.
+    /// <c>Bind</c> can be called anyway at which point it just short-circuits, without invoking <c>BindValue</c>. Implies <see cref="IsBindFixedSize"/>.
     /// Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/> returned by <see cref="PgConverter.CanConvert"/>.
     /// </summary>
     public bool IsBindOptional { get; private init; }
+
+    /// <summary>
+    /// True when <see cref="BufferRequirement"/> is value-independent — every value's size equals
+    /// <see cref="BufferRequirement"/>. Composing converters use this to compute closed-form aggregate
+    /// sizes without per-element ledgers, even when <c>Bind</c> must still be called for side effects
+    /// (validation, etc.). Synthesized from <see cref="Size.Kind"/> being <see cref="SizeKind.Exact"/>.
+    /// </summary>
+    public bool IsBindFixedSize => BufferRequirement.Kind is SizeKind.Exact;
 
     // Public init as this can be caller decided.
     /// <summary>

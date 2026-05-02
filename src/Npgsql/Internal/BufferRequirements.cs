@@ -24,9 +24,16 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public Size Write => _write;
 
     /// <summary>
+    /// True when <see cref="Write"/> has <see cref="SizeKind.Exact"/>, meaning the converter's bind size
+    /// is value-independent — every value serializes to exactly <see cref="Write"/> bytes. Converters that
+    /// declare this contract MUST NOT produce writeState in BindValue; if writeState is needed, declare
+    /// a non-Exact Kind (UpperBound or Unknown) so the per-value path is selected.
+    /// </summary>
+    public bool IsBindFixedSize => _write.Kind is SizeKind.Exact;
+
+    /// <summary>
     /// True when bind can be skipped for this format — the converter has no per-value bind work
-    /// (sizing, validation, write-state production) and <see cref="Write"/> is <see cref="SizeKind.Exact"/>,
-    /// so the bind result is fully determined by the cached requirements.
+    /// (sizing, validation, writeState production). Implies <see cref="IsBindFixedSize"/>.
     /// </summary>
     public bool IsBindOptional => _optionalBind;
 
