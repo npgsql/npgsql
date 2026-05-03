@@ -1,4 +1,6 @@
 #nullable enable
+Npgsql.NpgsqlConnectionStringBuilder.SrvHost.get -> string?
+Npgsql.NpgsqlConnectionStringBuilder.SrvHost.set -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.Multiplexing.get -> bool
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.Multiplexing.set -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingBufferThresholdBytes.get -> int

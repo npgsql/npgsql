@@ -789,6 +789,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlDataSource Build()
     {
+        ResolveSrvIfNeeded();
         ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
@@ -809,12 +810,22 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
     {
+        ResolveSrvIfNeeded();
         ConnectionStringBuilder.PostProcessAndValidate();
         var (connectionStringBuilder, config) = PrepareConfiguration();
 
         ValidateMultiHost();
 
         return new(connectionStringBuilder, config);
+    }
+
+    void ResolveSrvIfNeeded()
+    {
+        var srvHost = ConnectionStringBuilder.SrvHost;
+        if (string.IsNullOrWhiteSpace(srvHost))
+            return;
+
+        ConnectionStringBuilder.Host = SrvLookup.ResolveToHostString(srvHost);
     }
 
     // Used in testing.
