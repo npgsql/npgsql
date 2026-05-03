@@ -189,18 +189,20 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
     public PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
     {
-        if (pgTypeId is { } id && PgTypeId is { } decidedId)
+        if (PgTypeId is { } decidedId)
         {
-            if (id != decidedId)
+            if (pgTypeId is { } id && id != decidedId)
                 ThrowUnexpectedPgTypeId(nameof(pgTypeId));
-
-            Debug.Assert(_defaultConcrete is not null);
-            return _defaultConcrete;
+        }
+        else if (pgTypeId is not null)
+        {
+            var result = _typeInfoProvider.GetDefault(pgTypeId);
+            ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
+            return result;
         }
 
-        var result = _typeInfoProvider.GetDefault(pgTypeId ?? PgTypeId);
-        ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
-        return result;
+        Debug.Assert(_defaultConcrete is not null);
+        return _defaultConcrete;
     }
 
     public PgConcreteTypeInfo? GetForField(Field field)
