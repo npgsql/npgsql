@@ -304,7 +304,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             return DBNull.Value;
 
         using var _ = PgReader.BeginNestedRead(columnLength, column.ObjectBinding.BufferRequirement);
-        return column.ObjectTypeInfo.Converter.ReadAsObject(PgReader);
+        return column.ObjectTypeInfo.Converter.ReadAsObject(PgReader)!;
     }
 
     /// <inheritdoc />
@@ -336,19 +336,21 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         var info = GetOrAddConverterInfo(typeof(T), column, ordinal);
 
         if (columnLength == -1)
-        {
-            // When T is a Nullable<T> (and only in that case), we support returning null
-            if (default(T) is null && typeof(T).IsValueType)
-                return default!;
-
-            if (typeof(T) == typeof(object))
-                return (T)(object)DBNull.Value;
-
-            ThrowHelper.ThrowInvalidCastException_NoValue();
-        }
+            return DbNullOrThrow<T>();
 
         using var _ = PgReader.BeginNestedRead(columnLength, info.Binding.BufferRequirement);
         return info.TypeInfo.Converter.Read<T>(PgReader);
+    }
+
+    static T DbNullOrThrow<T>()
+    {
+        // When T is a Nullable<T> (and only in that case), we support returning null
+        if (default(T) is null && typeof(T).IsValueType)
+            return default!;
+        if (typeof(T) == typeof(object))
+            return (T)(object)DBNull.Value;
+        ThrowHelper.ThrowInvalidCastException_NoValue();
+        return default!;
     }
 
     /// <inheritdoc />

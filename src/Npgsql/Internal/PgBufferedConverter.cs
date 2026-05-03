@@ -19,8 +19,8 @@ public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false)
     public sealed override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(Read(reader));
 
-    internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
-        => new(Read(reader)!);
+    internal sealed override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+        => new(Read(reader));
 
     public sealed override void Write(PgWriter writer, T value) => WriteCore(writer, value);
 

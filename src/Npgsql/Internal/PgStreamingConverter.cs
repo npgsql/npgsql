@@ -29,23 +29,23 @@ public abstract class PgStreamingConverter<T>(bool customDbNullPredicate = false
         return task.AsTask();
     }
 
-    internal sealed override unsafe ValueTask<object> ReadAsObject(
+    internal sealed override unsafe ValueTask<object?> ReadAsObject(
         bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (!async)
-            return new(Read(reader)!);
+            return new(Read(reader));
 
         var task = ReadAsync(reader, cancellationToken);
         return task.IsCompletedSuccessfully
-            ? new(task.Result!)
+            ? new(task.Result)
             : PgStreamingConverterHelpers.AwaitTask(task.AsTask(), new(this, &BoxResult));
 
-        static object BoxResult(Task task)
+        static object? BoxResult(Task task)
         {
             // Justification: exact type Unsafe.As used to reduce generic duplication cost.
             Debug.Assert(task is Task<T>);
             // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<T> rooting.
-            return new ValueTask<T>(task: Unsafe.As<Task<T>>(task)).Result!;
+            return new ValueTask<T>(task: Unsafe.As<Task<T>>(task)).Result;
         }
     }
 
@@ -71,7 +71,7 @@ static class PgStreamingConverterHelpers
     // Split out from the generic class to amortize the huge size penalty per async state machine, which would otherwise be per
     // instantiation.
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-    public static async ValueTask<object> AwaitTask(Task task, Continuation continuation)
+    public static async ValueTask<object?> AwaitTask(Task task, Continuation continuation)
     {
         await task.ConfigureAwait(false);
         var result = continuation.Invoke(task);
@@ -85,16 +85,16 @@ static class PgStreamingConverterHelpers
     public readonly unsafe struct Continuation
     {
         public object Handle { get; }
-        readonly delegate*<Task, object> _continuation;
+        readonly delegate*<Task, object?> _continuation;
 
         /// <param name="handle">A reference to the type that houses the static method <see ref="continuation"/> points to.</param>
         /// <param name="continuation">The continuation</param>
-        public Continuation(object handle, delegate*<Task, object> continuation)
+        public Continuation(object handle, delegate*<Task, object?> continuation)
         {
             Handle = handle;
             _continuation = continuation;
         }
 
-        public object Invoke(Task task) => _continuation(task);
+        public object? Invoke(Task task) => _continuation(task);
     }
 }

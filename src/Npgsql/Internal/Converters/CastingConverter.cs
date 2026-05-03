@@ -34,7 +34,7 @@ public sealed class CastingConverter<T> : PgConverter<T>
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => _effectiveConverter.CanConvert(format, out bufferRequirements);
 
-    public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader);
+    public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader)!;
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => this.ReadAsObjectAsyncAsT(_effectiveConverter, reader, cancellationToken);
@@ -48,7 +48,7 @@ public sealed class CastingConverter<T> : PgConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => _effectiveConverter.WriteAsObjectAsync(writer, value, cancellationToken);
 
-    internal override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+    internal override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => async
             ? _effectiveConverter.ReadAsObjectAsync(reader, cancellationToken)
             : new(_effectiveConverter.ReadAsObject(reader));

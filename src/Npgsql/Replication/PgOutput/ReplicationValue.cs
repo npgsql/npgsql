@@ -135,15 +135,7 @@ public class ReplicationValue
         switch (Kind)
         {
         case TupleDataKind.Null:
-            // When T is a Nullable<T> (and only in that case), we support returning null
-            if (default(T) is null && typeof(T).IsValueType)
-                return default!;
-
-            if (typeof(T) == typeof(object))
-                return (T)(object)DBNull.Value;
-
-            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
-            break;
+            return DbNullOrThrow<T>();
 
         case TupleDataKind.UnchangedToastedValue:
             throw new InvalidCastException(
@@ -165,15 +157,7 @@ public class ReplicationValue
         switch (Kind)
         {
         case TupleDataKind.Null:
-            // When T is a Nullable<T> (and only in that case), we support returning null
-            if (default(T) is null && typeof(T).IsValueType)
-                return default!;
-
-            if (typeof(T) == typeof(object))
-                return (T)(object)DBNull.Value;
-
-            ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
-            break;
+            return DbNullOrThrow<T>();
 
         case TupleDataKind.UnchangedToastedValue:
             throw new InvalidCastException(
@@ -185,6 +169,17 @@ public class ReplicationValue
         var reader = PgReader;
         reader.Init(conversionContext.Binding.DataFormat, Length);
         return await conversionContext.TypeInfo.ReadFieldValueAsync<T>(PgReader, conversionContext.Binding, cancellationToken).ConfigureAwait(false);
+    }
+
+    T DbNullOrThrow<T>()
+    {
+        // When T is a Nullable<T> (and only in that case), we support returning null
+        if (default(T) is null && typeof(T).IsValueType)
+            return default!;
+        if (typeof(T) == typeof(object))
+            return (T)(object)DBNull.Value;
+        ThrowHelper.ThrowInvalidCastException_NoValue(_fieldDescription);
+        return default!;
     }
 
     void ThrowIfInitialized()

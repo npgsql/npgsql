@@ -32,7 +32,7 @@ sealed class NullableConverter<T>(PgConverter<T> effectiveConverter)
     public override ValueTask WriteAsync(PgWriter writer, T? value, CancellationToken cancellationToken = default)
         => effectiveConverter.WriteAsync(writer, value.GetValueOrDefault(), cancellationToken);
 
-    internal override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+    internal override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => effectiveConverter.ReadAsObject(async, reader, cancellationToken);
 
     internal override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)

@@ -320,6 +320,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         // When T is a Nullable<T>, we support returning null
         if (default(T) is null && typeof(T).IsValueType)
             return default!;
+        if (typeof(T) == typeof(object))
+            return (T)(object)DBNull.Value;
         throw new InvalidCastException("Column is null");
     }
 

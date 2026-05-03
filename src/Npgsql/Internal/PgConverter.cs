@@ -56,27 +56,35 @@ public abstract class PgConverter
     /// <summary>Reads a value from the reader as <typeparamref name="T"/>.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public T Read<T>(PgReader reader)
+    public
+#nullable disable // T may or may not be nullable depending on the converter's read behavior.
+    T
+#nullable restore
+    Read<T>(PgReader reader)
         => typeof(T) != TypeToConvert
-            ? (T)ReadAsObject(reader)
+            ? (T)ReadAsObject(reader)!
             : UnsafeAs<T>().Read(reader);
 
     /// <summary>Asynchronously reads a value from the reader as <typeparamref name="T"/>.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ValueTask<T> ReadAsync<T>(PgReader reader, CancellationToken cancellationToken = default)
+    public ValueTask<
+#nullable disable // T may or may not be nullable depending on the converter's read behavior.
+    T
+#nullable restore
+    > ReadAsync<T>(PgReader reader, CancellationToken cancellationToken = default)
     {
         if (typeof(T) != TypeToConvert)
         {
             var task = ReadAsObjectAsync(reader, cancellationToken);
-            return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
+            return task.IsCompletedSuccessfully ? new((T)task.Result!) : ReadAndUnboxAsync(task);
         }
 
         return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        static async ValueTask<T> ReadAndUnboxAsync(ValueTask<object> task)
-            => (T)await task.ConfigureAwait(false);
+        static async ValueTask<T> ReadAndUnboxAsync(ValueTask<object?> task)
+            => (T)(await task.ConfigureAwait(false))!;
     }
 
     /// <summary>Writes a <typeparamref name="T"/> value to the writer.</summary>
@@ -117,13 +125,13 @@ public abstract class PgConverter
 
     internal abstract Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState);
 
-    internal object ReadAsObject(PgReader reader)
+    internal object? ReadAsObject(PgReader reader)
         => ReadAsObject(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
-    internal ValueTask<object> ReadAsObjectAsync(PgReader reader, CancellationToken cancellationToken = default)
+    internal ValueTask<object?> ReadAsObjectAsync(PgReader reader, CancellationToken cancellationToken = default)
         => ReadAsObject(async: true, reader, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
-    internal abstract ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken);
+    internal abstract ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken);
 
     internal void WriteAsObject(PgWriter writer, object? value)
         => WriteAsObject(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
@@ -204,9 +212,18 @@ public abstract class PgConverter<T> : PgConverter
         => IsDbNull(value, writeState);
 
     /// Reads a <typeparamref name="T"/> value from the reader.
-    public abstract T Read(PgReader reader);
+    public abstract
+#nullable disable // T may or may not be nullable depending on the derived converter's read behavior.
+    T
+#nullable restore
+    Read(PgReader reader);
+
     /// Asynchronously reads a <typeparamref name="T"/> value from the reader.
-    public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
+    public abstract ValueTask<
+#nullable disable // T may or may not be nullable depending on the derived converter's read behavior.
+    T
+#nullable restore
+    > ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
     public abstract Size GetSize(SizeContext context,

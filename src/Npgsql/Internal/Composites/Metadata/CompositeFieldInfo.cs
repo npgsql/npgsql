@@ -121,7 +121,7 @@ abstract class CompositeFieldInfo
         return new();
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-        async ValueTask Core(CompositeBuilder builder, ValueTask<object> task)
+        async ValueTask Core(CompositeBuilder builder, ValueTask<object?> task)
         {
             builder.AddValue(await task.ConfigureAwait(false));
         }
@@ -148,7 +148,7 @@ abstract class CompositeFieldInfo
     public abstract Type Type { get; }
 
     protected abstract PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState);
-    protected abstract void AddValue(CompositeBuilder builder, object value);
+    protected abstract void AddValue(CompositeBuilder builder, object? value);
 
     public abstract StrongBox CreateBox();
     public abstract void Set(object instance, StrongBox value);
@@ -251,7 +251,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         return concreteTypeInfo.Converter;
     }
 
-    protected override void AddValue(CompositeBuilder builder, object value) => builder.AddValue((T)value);
+    protected override void AddValue(CompositeBuilder builder, object? value) => builder.AddValue((T)value!);
 
     public override ValueTask Read(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default)
     {

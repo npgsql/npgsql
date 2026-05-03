@@ -419,7 +419,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         // Inline copy of Converter.ReadAsync<T> to keep everything in one async frame.
         var result = typeof(T) != Converter.TypeToConvert
-            ? (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
+            ? (T)(await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!
             : await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
 
         await reader.EndReadAsync().ConfigureAwait(false);
