@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
@@ -27,6 +28,7 @@ public abstract class PgConverter
 
     private protected PgConverter(Type type, bool typeAcceptsNull)
     {
+        Debug.Assert(type == GetType().GetBase(typeof(PgConverter<>))!.GetGenericArguments()[0]);
         TypeToConvert = type;
         TypeAcceptsNull = typeAcceptsNull;
     }
@@ -48,6 +50,9 @@ public abstract class PgConverter
 
     internal Type TypeToConvert { get; }
 
+    // Dispatch helpers below all gate on `typeof(T) == TypeToConvert` rather than `this is PgConverter<T>`:
+    // a Type-handle reference compare avoids the isinst MethodTable chain walk per call. Both produce the
+    // same answer but typeof equality is cheaper on the hot path.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     PgConverter<T> UnsafeAs<T>()
     {
@@ -65,9 +70,9 @@ public abstract class PgConverter
     T
 #nullable restore
     Read<T>(PgReader reader)
-        => typeof(T) != TypeToConvert
-            ? (T)ReadAsObject(reader)!
-            : UnsafeAs<T>().Read(reader);
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().Read(reader)
+            : (T)ReadAsObject(reader)!;
 
     /// <summary>Asynchronously reads a value from the reader as <typeparamref name="T"/>.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
@@ -78,13 +83,11 @@ public abstract class PgConverter
 #nullable restore
     > ReadAsync<T>(PgReader reader, CancellationToken cancellationToken = default)
     {
-        if (typeof(T) != TypeToConvert)
-        {
-            var task = ReadAsObjectAsync(reader, cancellationToken);
-            return task.IsCompletedSuccessfully ? new((T)task.Result!) : ReadAndUnboxAsync(task);
-        }
+        if (typeof(T) == TypeToConvert)
+            return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
 
-        return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
+        var task = ReadAsObjectAsync(reader, cancellationToken);
+        return task.IsCompletedSuccessfully ? new((T)task.Result!) : ReadAndUnboxAsync(task);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static async ValueTask<T> ReadAndUnboxAsync(ValueTask<object?> task)
@@ -96,21 +99,37 @@ public abstract class PgConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write<T>(PgWriter writer, T value)
     {
-        if (typeof(T) != TypeToConvert)
+        if (typeof(T) == TypeToConvert)
         {
-            WriteAsObject(writer, value);
+            UnsafeAs<T>().Write(writer, value);
             return;
         }
-        UnsafeAs<T>().Write(writer, value);
+        WriteAsObject(writer, value);
     }
 
     /// <summary>Asynchronously writes a <typeparamref name="T"/> value to the writer.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ValueTask WriteAsync<T>(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => typeof(T) != TypeToConvert
-            ? WriteAsObjectAsync(writer, value, cancellationToken)
-            : UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().WriteAsync(writer, value, cancellationToken)
+            : WriteAsObjectAsync(writer, value, cancellationToken);
+
+    /// <summary>Db-null check for <typeparamref name="T"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool IsDbNull<T>(T? value, object? writeState)
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().IsDbNull(value, writeState)
+            : IsDbNullAsObject(value, writeState);
+
+    /// <summary>Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Size Bind<T>(SizeContext context, T value, ref object? writeState)
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().Bind(context, value, ref writeState)
+            : BindAsObject(context, value, ref writeState);
 
     /// Checks whether <paramref name="value"/> is considered a database null by this converter.
     public bool IsDbNullAsObject(object? value, object? writeState)
