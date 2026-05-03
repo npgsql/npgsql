@@ -34,7 +34,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
 
         if (!concreteTypeInfo.Converter.CanConvert(context.Format, out var bufferRequirements))
         {
-            ThrowHelper.ThrowNotSupportedException($"Resolvedconverter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
+            ThrowHelper.ThrowNotSupportedException($"Resolved converter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
             return default;
         }
 
