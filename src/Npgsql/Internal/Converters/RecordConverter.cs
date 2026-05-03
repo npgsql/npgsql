@@ -39,16 +39,19 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
             var pgTypeId = options.ToCanonicalTypeId(postgresType);
 
             // TODO resolve based on types expected by _factory (pass in a Type[] during construcion)
-            // Only allow object polymorphism for object[] records, valuetuple records are always strongly typed.
+            // Only allow object polymorphism for object[] records; valuetuple records always have exact types.
             var typeInfo = (IsObjectArrayRecord ? options.GetTypeInfo(typeof(object), pgTypeId) : options.GetDefaultTypeInfo(pgTypeId))
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 
-            var converterInfo = typeInfo.Bind(new Field("?", pgTypeId, -1), DataFormat.Binary);
-            var scope = await reader.BeginNestedRead(async, length, converterInfo.BufferRequirement, cancellationToken).ConfigureAwait(false);
+            var concreteTypeInfo = typeInfo.MakeConcreteForField(Field.CreateUnspecified(pgTypeId));
+            if (!concreteTypeInfo.SupportsReading)
+                AdoSerializerHelpers.ThrowReadingNotSupported(IsObjectArrayRecord ? typeof(object) : null, options, pgTypeId, resolved: true);
+            var binding = concreteTypeInfo.BindField(DataFormat.Binary);
+            var scope = await reader.BeginNestedRead(async, length, binding.BufferRequirement, cancellationToken).ConfigureAwait(false);
             try
             {
-                result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
+                result[i] = await concreteTypeInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
             }
             finally
             {

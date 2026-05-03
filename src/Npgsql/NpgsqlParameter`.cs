@@ -1,7 +1,6 @@
 using System;
 using System.Data;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -16,21 +15,19 @@ namespace Npgsql;
 /// <typeparam name="T">The type of the value that will be stored in the parameter.</typeparam>
 public sealed class NpgsqlParameter<T> : NpgsqlParameter
 {
-    T? _typedValue;
-
     /// <summary>
     /// Gets or sets the strongly-typed value of the parameter.
     /// </summary>
     public T? TypedValue
     {
-        get => _typedValue;
+        get;
         set
         {
             if (typeof(T) == typeof(object) && ShouldResetObjectTypeInfo(value))
                 ResetTypeInfo();
             else
-                ResetBindingInfo();
-            _typedValue = value;
+                DisposeBindingState();
+            field = value;
         }
     }
 
@@ -81,54 +78,24 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    private protected override void SetOutputValueCore(NpgsqlDataReader reader, int ordinal)
-        => TypedValue = reader.GetFieldValue<T>(ordinal);
+    private protected override PgConcreteTypeInfo MakeConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
+        => typeInfo.MakeConcreteForValue(TypedValue, out _writeState);
 
-    private protected override PgConcreteTypeInfo GetConcreteTypeInfo(PgTypeInfo typeInfo)
+    private protected override PgValueBinding BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
+        => typeInfo.BindParameterValue(TypedValue, _writeState, formatPreference);
+
+    private protected override ValueTask WriteTypedValue(bool async, PgConcreteTypeInfo typeInfo, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (typeof(T) == typeof(object) || TypeInfo!.IsBoxing)
-            return base.GetConcreteTypeInfo(typeInfo);
-
-        _asObject = false;
-        return typeInfo.GetConcreteTypeInfo(TypedValue, out _writeState);
-    }
-
-    // We ignore allowNullReference, it's just there to control the base implementation.
-    private protected override void BindCore(DataFormat? formatPreference, bool allowNullReference = false)
-    {
-        if (_asObject)
-        {
-            // If we're object typed we should not support null.
-            base.BindCore(formatPreference, typeof(T) != typeof(object));
-            return;
-        }
-
-        var value = TypedValue;
-        if (TypeInfo!.Bind(Converter!.UnsafeDowncast<T>(), value, out var size, ref _writeState, out var dataFormat, formatPreference) is { } info)
-        {
-            WriteSize = size;
-            _bufferRequirement = info.BufferRequirement;
-        }
-        else
-        {
-            WriteSize = -1;
-            _bufferRequirement = default;
-        }
-
-        Format = dataFormat;
-    }
-
-    private protected override ValueTask WriteValue(bool async, PgWriter writer, CancellationToken cancellationToken)
-    {
-        if (_asObject)
-            return base.WriteValue(async, writer, cancellationToken);
-
+        Debug.Assert(TypedValue is not null);
         if (async)
-            return Converter!.UnsafeDowncast<T>().WriteAsync(writer, TypedValue!, cancellationToken);
+            return typeInfo.Converter.WriteAsync(writer, TypedValue, cancellationToken);
 
-        Converter!.UnsafeDowncast<T>().Write(writer, TypedValue!);
+        typeInfo.Converter.Write(writer, TypedValue);
         return new();
     }
+
+    private protected override void SetOutputTypedValue(NpgsqlDataReader reader, int ordinal)
+        => TypedValue = reader.GetFieldValue<T>(ordinal);
 
     private protected override NpgsqlParameter CloneCore() =>
         // use fields instead of properties

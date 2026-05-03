@@ -16,7 +16,10 @@ public abstract class PgConverter
     public bool IsDbNullable => DbNullPredicateKind is not DbNullPredicate.None;
 
     private protected PgConverter(Type type, bool isNullDefaultValue, bool customDbNullPredicate = false)
-        => DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
+    {
+        TypeToConvert = type;
+        DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
+    }
 
     /// <summary>
     /// Whether this converter can handle the given format and with which buffer requirements.
@@ -27,7 +30,63 @@ public abstract class PgConverter
     /// <remarks>The buffer requirements should not cover database NULL reads or writes, these are handled by the caller.</remarks>
     public abstract bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
 
-    internal abstract Type TypeToConvert { get; }
+    internal Type TypeToConvert { get; }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    PgConverter<T> UnsafeAs<T>()
+    {
+        // Justification: avoid perf cost of casting to a known base class type per dispatch call.
+        Debug.Assert(typeof(T) == TypeToConvert);
+        Debug.Assert(this is PgConverter<T>);
+        return Unsafe.As<PgConverter<T>>(this);
+    }
+
+    /// <summary>Reads a value from the reader as <typeparamref name="T"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T Read<T>(PgReader reader)
+        => typeof(T) != TypeToConvert
+            ? (T)ReadAsObject(reader)
+            : UnsafeAs<T>().Read(reader);
+
+    /// <summary>Asynchronously reads a value from the reader as <typeparamref name="T"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ValueTask<T> ReadAsync<T>(PgReader reader, CancellationToken cancellationToken = default)
+    {
+        if (typeof(T) != TypeToConvert)
+        {
+            var task = ReadAsObjectAsync(reader, cancellationToken);
+            return task.IsCompletedSuccessfully ? new((T)task.Result) : ReadAndUnboxAsync(task);
+        }
+
+        return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static async ValueTask<T> ReadAndUnboxAsync(ValueTask<object> task)
+            => (T)await task.ConfigureAwait(false);
+    }
+
+    /// <summary>Writes a <typeparamref name="T"/> value to the writer.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write<T>(PgWriter writer, [DisallowNull] T value)
+    {
+        if (typeof(T) != TypeToConvert)
+        {
+            WriteAsObject(writer, value);
+            return;
+        }
+        UnsafeAs<T>().Write(writer, value);
+    }
+
+    /// <summary>Asynchronously writes a <typeparamref name="T"/> value to the writer.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ValueTask WriteAsync<T>(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default)
+        => typeof(T) != TypeToConvert
+            ? WriteAsObjectAsync(writer, value, cancellationToken)
+            : UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
 
     internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, object? writeState)
         => DbNullPredicateKind switch
@@ -40,15 +99,7 @@ public abstract class PgConverter
             _ => ThrowDbNullPredicateOutOfRange()
         };
 
-    [Obsolete("Use the overload without ref.")]
-    internal bool IsDbNullAsObject([NotNullWhen(false)] object? value, ref object? writeState)
-        => IsDbNullAsObject(value, writeState);
-
     private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
-
-    [Obsolete("Use the overload without ref.")]
-    private protected bool IsDbNullValueAsObject(object? value, ref object? writeState)
-        => IsDbNullValueAsObject(value, writeState);
 
     internal abstract Size GetSizeAsObject(SizeContext context, object value, ref object? writeState);
 
@@ -128,6 +179,7 @@ public abstract class PgConverter<T> : PgConverter
     private protected override bool IsDbNullValueAsObject(object? value, object? writeState)
         => (default(T) is null || value is not null) && IsDbNullValue((T?)value, writeState);
 
+    /// Checks whether <paramref name="value"/> is considered a database null by this converter.
     public bool IsDbNull([NotNullWhen(false)] T? value, object? writeState)
         => DbNullPredicateKind switch
         {
@@ -144,14 +196,18 @@ public abstract class PgConverter<T> : PgConverter
     public bool IsDbNull([NotNullWhen(false)] T? value, ref object? writeState)
         => IsDbNull(value, writeState);
 
+    /// Reads a <typeparamref name="T"/> value from the reader.
     public abstract T Read(PgReader reader);
+    /// Asynchronously reads a <typeparamref name="T"/> value from the reader.
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
+    /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
     public abstract Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState);
-    public abstract void Write(PgWriter writer, [DisallowNull] T value);
-    public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
-    internal sealed override Type TypeToConvert => typeof(T);
+    /// Writes a <typeparamref name="T"/> value to the writer.
+    public abstract void Write(PgWriter writer, [DisallowNull] T value);
+    /// Asynchronously writes a <typeparamref name="T"/> value to the writer.
+    public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
     internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
         => GetSize(context, (T)value, ref writeState);
@@ -159,7 +215,7 @@ public abstract class PgConverter<T> : PgConverter
 
 static class PgConverterExtensions
 {
-    public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
+    public static Size? IsDbNullOrGetSize<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
     {
         if (converter.IsDbNull(value, writeState))
             return null;
@@ -182,7 +238,7 @@ static class PgConverterExtensions
         return size;
     }
 
-    public static Size? GetSizeOrDbNullAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
+    public static Size? IsDbNullOrGetSizeAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState)
     {
         if (converter.IsDbNullAsObject(value, writeState))
             return null;
@@ -203,13 +259,6 @@ static class PgConverterExtensions
         }
 
         return size;
-    }
-
-    internal static PgConverter<T> UnsafeDowncast<T>(this PgConverter converter)
-    {
-        // Justification: avoid perf cost of casting to a known base class type per read/write, see callers.
-        Debug.Assert(converter is PgConverter<T>);
-        return Unsafe.As<PgConverter<T>>(converter);
     }
 }
 

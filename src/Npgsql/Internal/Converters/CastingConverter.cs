@@ -3,43 +3,58 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
+using Npgsql.Util;
 
 namespace Npgsql.Internal.Converters;
 
-/// A converter to map strongly typed apis onto boxed converter results to produce a strongly typed converter over T.
-sealed class CastingConverter<T>(PgConverter effectiveConverter)
-    : PgConverter<T>(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
+/// A converter that adapts a boxed converter's results to an exact-type converter over T, wrapping the read/write
+/// paths through object to present a typed surface for a converter whose TypeToConvert is only a base of T.
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public sealed class CastingConverter<T> : PgConverter<T>
 {
-    protected override bool IsDbNullValue(T? value, object? writeState) => effectiveConverter.IsDbNullAsObject(value, writeState);
+    readonly PgConverter _effectiveConverter;
+
+    public CastingConverter(PgConverter effectiveConverter) : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
+    {
+        if (!typeof(T).IsInSubtypeRelationshipWith(effectiveConverter.TypeToConvert))
+            throw new ArgumentException(
+                $"Values for the effective converter's type {effectiveConverter.TypeToConvert} cannot be cast to the type {typeof(T)} for this converter.",
+                nameof(effectiveConverter));
+
+        _effectiveConverter = effectiveConverter;
+    }
+
+    protected override bool IsDbNullValue(T? value, object? writeState) => _effectiveConverter.IsDbNullAsObject(value, writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => effectiveConverter.CanConvert(format, out bufferRequirements);
+        => _effectiveConverter.CanConvert(format, out bufferRequirements);
 
-    public override T Read(PgReader reader) => (T)effectiveConverter.ReadAsObject(reader);
+    public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader);
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => this.ReadAsObjectAsyncAsT(effectiveConverter, reader, cancellationToken);
+        => this.ReadAsObjectAsyncAsT(_effectiveConverter, reader, cancellationToken);
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
-        => effectiveConverter.GetSizeAsObject(context, value!, ref writeState);
+        => _effectiveConverter.GetSizeAsObject(context, value!, ref writeState);
 
     public override void Write(PgWriter writer, T value)
-        => effectiveConverter.WriteAsObject(writer, value!);
+        => _effectiveConverter.WriteAsObject(writer, value!);
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => effectiveConverter.WriteAsObjectAsync(writer, value!, cancellationToken);
+        => _effectiveConverter.WriteAsObjectAsync(writer, value!, cancellationToken);
 
     internal override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => async
-            ? effectiveConverter.ReadAsObjectAsync(reader, cancellationToken)
-            : new(effectiveConverter.ReadAsObject(reader));
+            ? _effectiveConverter.ReadAsObjectAsync(reader, cancellationToken)
+            : new(_effectiveConverter.ReadAsObject(reader));
 
     internal override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
     {
+        // Cast here to keep our T contract, and otherwise return more accurate invalid cast exceptions (as the effective converter will cast as well).
         if (async)
-            return effectiveConverter.WriteAsObjectAsync(writer, value, cancellationToken);
+            return _effectiveConverter.WriteAsObjectAsync(writer, (T)value, cancellationToken);
 
-        effectiveConverter.WriteAsObject(writer, value);
+        _effectiveConverter.WriteAsObject(writer, (T)value);
         return new();
     }
 }
@@ -51,19 +66,22 @@ sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderType
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
-        => new CastingConverter<T>(effectiveConcreteTypeInfo.Converter);
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType)
+    {
+        requestedType = null;
+        return new CastingConverter<T>(effectiveConcreteTypeInfo.Converter);
+    }
 
     protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
-        => EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out writeState);
+        => EffectiveTypeInfo.GetForValueAsObject(effectiveContext, value, out writeState);
 }
 
 static class CastingTypeInfoExtensions
 {
-    [RequiresDynamicCode("Changing boxing converters to their non-boxing counterpart can require creating new generic types or methods, which requires creating code at runtime. This may not be AOT  when AOT compiling")]
-    internal static PgTypeInfo ToNonBoxing(this PgTypeInfo typeInfo)
+    [RequiresDynamicCode("Producing an exact-type info from one without an exact type can require creating new generic types or methods at runtime, which may not work when AOT compiling.")]
+    internal static PgTypeInfo ToExactTypeInfo(this PgTypeInfo typeInfo)
     {
-        if (!typeInfo.IsBoxing)
+        if (typeInfo.HasExactType)
             return typeInfo;
 
         var type = typeInfo.Type;

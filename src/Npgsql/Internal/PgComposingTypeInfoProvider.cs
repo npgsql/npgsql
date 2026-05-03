@@ -13,6 +13,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected PgComposingTypeInfoProvider(PgTypeId? pgTypeId, PgProviderTypeInfo effectiveTypeInfo)
     {
+        ArgumentNullException.ThrowIfNull(effectiveTypeInfo);
         if (pgTypeId is null && effectiveTypeInfo.PgTypeId is not null)
             throw new ArgumentNullException(nameof(pgTypeId), $"Cannot be null if {nameof(effectiveTypeInfo)}.{nameof(PgTypeInfo.PgTypeId)} is not null.");
 
@@ -22,13 +23,13 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
-    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo);
+    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType);
     protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
         PgTypeId? effectiveTypeId = pgTypeId is { } id ? GetEffectiveTypeId(id) : null;
-        var concreteTypeInfo = EffectiveTypeInfo.GetDefaultConcreteTypeInfo(effectiveTypeId);
+        var concreteTypeInfo = EffectiveTypeInfo.GetDefault(effectiveTypeId);
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
         return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
@@ -45,7 +46,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
     {
-        if (EffectiveTypeInfo.GetConcreteTypeInfo(field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId)}) is not { } concreteTypeInfo)
+        if (EffectiveTypeInfo.GetForField(field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId)}) is not { } concreteTypeInfo)
             return null;
 
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
@@ -70,7 +71,14 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return _concreteInfoCache.GetOrAdd(
             concreteTypeInfo,
             static (_, state)
-                => new(state.ConcreteTypeInfo.Options, state.Instance.CreateConverter(state.ConcreteTypeInfo), state.PgTypeId),
+                => new(state.ConcreteTypeInfo.Options,
+                    state.Instance.CreateConverter(state.ConcreteTypeInfo, out var requestedType),
+                    state.PgTypeId,
+                    requestedType: requestedType)
+                {
+                    SupportsReading = state.ConcreteTypeInfo.SupportsReading,
+                    SupportsWriting = state.ConcreteTypeInfo.SupportsWriting
+                },
             state);
     }
 }

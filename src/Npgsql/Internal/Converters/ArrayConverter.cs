@@ -137,8 +137,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
 
-        Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
-            => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
+        Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+            => _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
         {
@@ -207,8 +207,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             return ((IList<TElement?>)collection).Count;
         }
 
-        Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
-            => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
+        Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+            => _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, GetValue(collection, indices.One), ref writeState);
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
         {
@@ -250,7 +250,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     }
 }
 
-sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type effectiveType)
+sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeInfo, Type requestedMappingType)
     : PgComposingTypeInfoProvider<T>(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null,
         elementTypeInfo)
     where T : notnull
@@ -260,13 +260,19 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
-    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo)
+    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType)
     {
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
-            return ArrayConverter<T>.CreateArrayBased<TElement>(effectiveConcreteTypeInfo, effectiveType);
+        {
+            requestedType = requestedMappingType;
+            return ArrayConverter<T>.CreateArrayBased<TElement>(effectiveConcreteTypeInfo, requestedType);
+        }
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
+        {
+            requestedType = requestedMappingType;
             return ArrayConverter<T>.CreateListBased<TElement>(effectiveConcreteTypeInfo);
+        }
 
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
@@ -285,7 +291,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out _), null);
             foreach (var value in array)
             {
-                var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
+                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -316,7 +322,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(list.Count, null);
             foreach (var value in list)
             {
-                var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
+                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -347,7 +353,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(list.Count, null);
             foreach (var value in list)
             {
-                var result = EffectiveTypeInfo.GetConcreteTypeInfo(effectiveContext, value, out var state);
+                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -378,7 +384,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out var dimensionLengths), dimensionLengths);
             foreach (var value in array)
             {
-                var result = EffectiveTypeInfo.GetAsObjectConcreteTypeInfo(effectiveContext, value, out var state);
+                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -486,15 +492,15 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
     }
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
-        => GetOrAdd(_effectiveTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId), _effectiveNullableTypeInfo.GetDefaultConcreteTypeInfo(pgTypeId));
+        => GetOrAdd(_effectiveTypeInfo.GetDefault(pgTypeId), _effectiveNullableTypeInfo.GetDefault(pgTypeId));
 
     protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, TBase? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
     {
-        var concreteTypeInfo = _effectiveTypeInfo.GetConcreteTypeInfo(field);
-        var concreteNullableTypeInfo = _effectiveNullableTypeInfo.GetConcreteTypeInfo(field);
+        var concreteTypeInfo = _effectiveTypeInfo.GetForField(field);
+        var concreteNullableTypeInfo = _effectiveNullableTypeInfo.GetForField(field);
 
         return concreteTypeInfo is not null && concreteNullableTypeInfo is not null
             ? GetOrAdd(concreteTypeInfo, concreteNullableTypeInfo)
@@ -508,7 +514,7 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
             static (_, state) =>
                 new(state.ConcreteInfo.Options,
                     new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.ConcreteInfo.Converter, (PgConverter<TBase>)state.ConcreteNullableInfo.Converter),
-                    state.ConcreteInfo.PgTypeId),
+                    state.ConcreteInfo.PgTypeId) { SupportsWriting = false },
             state);
     }
 }

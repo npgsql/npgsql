@@ -32,7 +32,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, context.Format) is not { } bufferRequirements)
+        if (!concreteTypeInfo.Converter.CanConvert(context.Format, out var bufferRequirements))
         {
             ThrowHelper.ThrowNotSupportedException($"Resolved converter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
             return default;
@@ -69,7 +69,9 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var writeRequirement = concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary)!.Value.Write;
+        var found = concreteTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements);
+        Debug.Assert(found);
+        var writeRequirement = bufferRequirements.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
@@ -113,8 +115,11 @@ sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typ
             return GetDefaultCore(context.ExpectedPgTypeId);
         }
 
-        var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(value.GetType(), context.ExpectedPgTypeId ?? typeId, options);
-        var concreteTypeInfo = typeInfo.GetObjectConcreteTypeInfo(value, out var effectiveState);
+        var valueType = value.GetType();
+        var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, context.ExpectedPgTypeId ?? typeId, options);
+        var concreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(value, out var effectiveState);
+        if (!concreteTypeInfo.SupportsWriting)
+            AdoSerializerHelpers.ThrowWritingNotSupported(valueType, options, concreteTypeInfo.PgTypeId, resolved: true);
         writeState = effectiveState is not null
             ? new ObjectConverter.WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
             : concreteTypeInfo;

@@ -5,7 +5,7 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-// Many ways to achieve strongly typed composition on top of a polymorphic element type.
+// Many ways to achieve exact-type composition on top of a polymorphic element type.
 // Including pushing construction through a GVM visitor pattern on the element handler,
 // manual reimplementation of the element logic in the array provider, and other ways.
 // This one however is by far the most lightweight on both the implementation duplication and code bloat axes.
@@ -29,14 +29,14 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
     }
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
-        => GetOrAdd(_elementTypeInfo.GetDefaultConcreteTypeInfo(_elementPgTypeId));
+        => GetOrAdd(_elementTypeInfo.GetDefault(_elementPgTypeId));
 
     protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
     {
-        var elementConcreteTypeInfo = _elementTypeInfo.GetConcreteTypeInfo(field with { PgTypeId = _elementPgTypeId });
+        var elementConcreteTypeInfo = _elementTypeInfo.GetForField(field with { PgTypeId = _elementPgTypeId });
         return elementConcreteTypeInfo is not null ? GetOrAdd(elementConcreteTypeInfo) : null;
     }
 

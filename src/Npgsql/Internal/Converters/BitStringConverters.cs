@@ -230,8 +230,8 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
 /// Otherwise we return a BitArray converter. Polymorphic writing through this provider is not supported.
 sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, PgTypeId bitString) : PgConcreteTypeInfoProvider<object>
 {
-    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString);
-    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString);
+    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString) { SupportsWriting = false };
+    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString) { SupportsWriting = false };
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => GetConcreteInfo(field: null);
