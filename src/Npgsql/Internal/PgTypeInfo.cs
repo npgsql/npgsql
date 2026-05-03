@@ -52,11 +52,12 @@ public abstract class PgTypeInfo
     /// </remarks>
     public PgConcreteTypeInfo MakeConcreteForField(Field field)
     {
-        if (this is not PgProviderTypeInfo providerTypeInfo)
-            return (PgConcreteTypeInfo)this;
+        if (this is PgConcreteTypeInfo concrete)
+            return concrete;
 
         // Decided providers skip GetDefault's validation. The prior GetForField call already validated
         // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        var providerTypeInfo = (PgProviderTypeInfo)this;
         return providerTypeInfo.GetForField(field)
                ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? field.PgTypeId : null);
     }
@@ -88,15 +89,16 @@ public abstract class PgTypeInfo
     /// </remarks>
     public PgConcreteTypeInfo MakeConcreteForValue<T>(ProviderValueContext context, T? value, out object? writeState)
     {
-        if (this is not PgProviderTypeInfo providerTypeInfo)
+        if (this is PgConcreteTypeInfo concrete)
         {
             writeState = null;
-            return (PgConcreteTypeInfo)this;
+            return concrete;
         }
 
         // Make sure we handle the non-exact typed provider case.
         // This will never cause boxing as non-exact typed infos only happen for subtype relationships, i.e. reference types.
         // We make sure to fall through to GetForValue which has a better error if T is not at all related to this info.
+        var providerTypeInfo = (PgProviderTypeInfo)this;
         var concreteTypeInfo = PgProviderTypeInfo.GetProvider(providerTypeInfo) is not PgConcreteTypeInfoProvider<T> && providerTypeInfo.Type == typeof(T)
             ? providerTypeInfo.GetForValueAsObject(context, (object?)value, out writeState)
             : providerTypeInfo.GetForValue(context, value, out writeState);
@@ -132,14 +134,24 @@ public abstract class PgTypeInfo
     /// </remarks>
     public PgConcreteTypeInfo MakeConcreteForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
     {
-        writeState = null;
-        if (this is not PgProviderTypeInfo providerTypeInfo)
-            return (PgConcreteTypeInfo)this;
+        if (this is PgConcreteTypeInfo concrete)
+        {
+            writeState = null;
+            return concrete;
+        }
 
         // Decided providers skip GetDefault's validation. The prior GetForValueAsObject call already validated
         // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        var providerTypeInfo = (PgProviderTypeInfo)this;
         return providerTypeInfo.GetForValueAsObject(context, value, out writeState)
                ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
+    }
+
+    // Having it here so we can easily extend any behavior.
+    internal void DisposeWriteState(object writeState)
+    {
+        if (writeState is IDisposable disposable)
+            disposable.Dispose();
     }
 
     /// <summary>
@@ -312,7 +324,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     internal bool CanReadTo(Type type) => Type == type || (!HasExactType && Type.IsAssignableTo(type));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal T ReadFieldValue<T>(PgReader reader, PgFieldBinding binding)
+    internal T ReadFieldValue<T>(PgReader reader, in PgFieldBinding binding)
     {
         reader.StartRead(binding);
         var result = Converter.Read<T>(reader);
@@ -331,13 +343,6 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
-    }
-
-    // Having it here so we can easily extend any behavior.
-    internal void DisposeWriteState(object writeState)
-    {
-        if (writeState is IDisposable disposable)
-            disposable.Dispose();
     }
 
     // TryBind for reading.
