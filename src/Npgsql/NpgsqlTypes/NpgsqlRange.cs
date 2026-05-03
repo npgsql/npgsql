@@ -93,16 +93,14 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     public static readonly NpgsqlRange<T> Empty = new(default, default, RangeFlags.Empty);
 
     /// <summary>
-    /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.
+    /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false (i.e. the range is non-empty with a finite lower bound).
     /// </summary>
-    [MaybeNull, AllowNull]
-    public T LowerBound { get; }
+    public T? LowerBound { get; }
 
     /// <summary>
-    /// The upper bound of the range. Only valid when <see cref="UpperBoundInfinite"/> is false.
+    /// The upper bound of the range. Only valid when <see cref="UpperBoundInfinite"/> is false (i.e. the range is non-empty with a finite upper bound).
     /// </summary>
-    [MaybeNull, AllowNull]
-    public T UpperBound { get; }
+    public T? UpperBound { get; }
 
     /// <summary>
     /// The characteristics of the boundaries.
@@ -122,11 +120,13 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <summary>
     /// True if the lower bound is indefinite (i.e. infinite or unbounded); otherwise, false.
     /// </summary>
+    [MemberNotNullWhen(false, nameof(LowerBound))]
     public bool LowerBoundInfinite => (Flags & RangeFlags.LowerBoundInfinite) != 0;
 
     /// <summary>
     /// True if the upper bound is indefinite (i.e. infinite or unbounded); otherwise, false.
     /// </summary>
+    [MemberNotNullWhen(false, nameof(UpperBound))]
     public bool UpperBoundInfinite => (Flags & RangeFlags.UpperBoundInfinite) != 0;
 
     /// <summary>
@@ -139,8 +139,8 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// </summary>
     /// <param name="lowerBound">The lower bound of the range.</param>
     /// <param name="upperBound">The upper bound of the range.</param>
-    public NpgsqlRange([AllowNull] T lowerBound, [AllowNull] T upperBound)
-        : this(lowerBound, true, false, upperBound, true, false) { }
+    public NpgsqlRange(T lowerBound, T upperBound)
+        : this(lowerBound, lowerBoundIsInclusive: true, lowerBoundInfinite: false, upperBound, upperBoundIsInclusive: true, upperBoundInfinite: false) { }
 
     /// <summary>
     /// Constructs an <see cref="NpgsqlRange{T}"/> with definite bounds.
@@ -149,10 +149,8 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <param name="lowerBoundIsInclusive">True if the lower bound is is part of the range (i.e. inclusive); otherwise, false.</param>
     /// <param name="upperBound">The upper bound of the range.</param>
     /// <param name="upperBoundIsInclusive">True if the upper bound is part of the range (i.e. inclusive); otherwise, false.</param>
-    public NpgsqlRange(
-        [AllowNull] T lowerBound, bool lowerBoundIsInclusive,
-        [AllowNull] T upperBound, bool upperBoundIsInclusive)
-        : this(lowerBound, lowerBoundIsInclusive, false, upperBound, upperBoundIsInclusive, false) { }
+    public NpgsqlRange(T lowerBound, bool lowerBoundIsInclusive, T upperBound, bool upperBoundIsInclusive)
+        : this(lowerBound, lowerBoundIsInclusive, lowerBoundInfinite: false, upperBound, upperBoundIsInclusive, upperBoundInfinite: false) { }
 
     /// <summary>
     /// Constructs an <see cref="NpgsqlRange{T}"/>.
@@ -163,9 +161,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <param name="upperBound">The upper bound of the range.</param>
     /// <param name="upperBoundIsInclusive">True if the upper bound is part of the range (i.e. inclusive); otherwise, false.</param>
     /// <param name="upperBoundInfinite">True if the upper bound is indefinite (i.e. infinite or unbounded); otherwise, false.</param>
-    public NpgsqlRange(
-        [AllowNull] T lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite,
-        [AllowNull] T upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite)
+    public NpgsqlRange(T? lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite, T? upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite)
         : this(
             lowerBound,
             upperBound,
@@ -181,7 +177,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <param name="lowerBound">The lower bound of the range.</param>
     /// <param name="upperBound">The upper bound of the range.</param>
     /// <param name="flags">The characteristics of the range boundaries.</param>
-    internal NpgsqlRange([AllowNull] T lowerBound, [AllowNull] T upperBound, RangeFlags flags) : this()
+    internal NpgsqlRange(T? lowerBound, T? upperBound, RangeFlags flags) : this()
     {
         // TODO: We need to check if the bounds are implicitly empty. E.g. '(1,1)' or '(0,0]'.
         // See: https://github.com/npgsql/npgsql/issues/1943.
@@ -207,7 +203,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <returns>
     /// True if the range is implicitly empty; otherwise, false.
     /// </returns>
-    static bool IsEmptyRange([AllowNull] T lowerBound, [AllowNull] T upperBound, RangeFlags flags)
+    static bool IsEmptyRange(T? lowerBound, T? upperBound, RangeFlags flags)
     {
         // ---------------------------------------------------------------------------------
         // We only want to check for those conditions that are unambiguously erroneous:
@@ -234,7 +230,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
             return false;
 
         if (!HasEquatableBounds)
-            return lowerBound?.Equals(upperBound) ?? false;
+            return lowerBound.Equals(upperBound);
 
         var lower = (IEquatable<T>)lowerBound;
         var upper = (IEquatable<T>)upperBound;

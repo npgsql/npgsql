@@ -40,3 +40,6 @@
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.SetLength(long value) -> void
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.Write(byte[]! buffer, int offset, int count) -> void
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.WriteAsync(byte[]! buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+NpgsqlTypes.NpgsqlRange<T>.LowerBound.get -> T?
+NpgsqlTypes.NpgsqlRange<T>.UpperBound.get -> T?
+NpgsqlTypes.NpgsqlRange<T>.NpgsqlRange(T? lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite, T? upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite) -> void
