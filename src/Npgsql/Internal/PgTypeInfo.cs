@@ -155,9 +155,8 @@ public abstract class PgTypeInfo
     }
 
     /// <summary>
-    /// Validates that <paramref name="requestedType"/> is in a subtype relationship with <paramref name="converterType"/>
-    /// and returns the type to surface as the reported type — the requested type if it widens the converter type,
-    /// or null when the converter type itself is the right reported type.
+    /// Returns <paramref name="requestedType"/> when it is a strict subtype of <paramref name="converterType"/>, otherwise null.
+    /// Throws when the two are not in a subtype relationship.
     /// </summary>
     protected static Type? GetReportedType(Type converterType, Type requestedType)
     {

@@ -806,7 +806,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             int subSize;
             if (stream.CanSeek)
             {
-                subSize = Math.Min(_size, checked((int)(stream.Length - stream.Position)));
+                var remaining = Math.Max(0, stream.Length - stream.Position);
+                subSize = remaining < _size ? (int)remaining : _size;
                 _subStream = new SubReadStream(stream, _size);
             }
             else

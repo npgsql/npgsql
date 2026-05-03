@@ -12,7 +12,7 @@ static class TypeExtensions
         /// </summary>
         /// <remarks>
         /// Returns <see langword="true"/> when the types are identical, when one inherits from or implements the other,
-        /// or more generally when a reference conversion exists between them.
+        /// or more generally when an implicit reference or boxing conversion exists between them.
         /// </remarks>
         /// <param name="other">The type to check the relationship with.</param>
         /// <returns><see langword="true"/> if either type is assignable to the other; otherwise, <see langword="false"/>.</returns>
