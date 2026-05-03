@@ -32,7 +32,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, context.Format) is not { } bufferRequirements)
+        if (concreteTypeInfo.GetBufferRequirements(context.Format) is not { } bufferRequirements)
         {
             ThrowHelper.ThrowNotSupportedException($"Resolved converter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
             return default;
@@ -69,7 +69,7 @@ sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredic
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var writeRequirement = concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary)!.Value.Write;
+        var writeRequirement = concreteTypeInfo.GetBufferRequirements(DataFormat.Binary)!.Value.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
@@ -114,7 +114,7 @@ sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typ
         }
 
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(value.GetType(), context.ExpectedPgTypeId ?? typeId, options);
-        var concreteTypeInfo = typeInfo.GetObjectConcreteTypeInfo(value, out var effectiveState);
+        var concreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(value, out var effectiveState);
         writeState = effectiveState is not null
             ? new ObjectConverter.WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
             : concreteTypeInfo;

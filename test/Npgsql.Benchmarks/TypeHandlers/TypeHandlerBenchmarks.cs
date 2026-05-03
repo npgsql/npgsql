@@ -4,11 +4,10 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using Npgsql.Internal;
-
-#nullable disable
 
 namespace Npgsql.Benchmarks.TypeHandlers;
 
@@ -44,10 +43,11 @@ public abstract class TypeHandlerBenchmarks<T>
     readonly NpgsqlReadBuffer _readBuffer;
     readonly BufferRequirements _binaryRequirements;
 
-    T _value;
-    Size _elementSize;
+    T? _value;
+    PgValueBinding _valueBinding;
+    PgFieldBinding _fieldBinding;
 
-    protected TypeHandlerBenchmarks(PgConverter handler)
+    protected TypeHandlerBenchmarks(PgConverter<T> handler)
     {
         var stream = new EndlessStream();
         _converter = (PgConverter<T>)handler ?? throw new ArgumentNullException(nameof(handler));
@@ -58,11 +58,11 @@ public abstract class TypeHandlerBenchmarks<T>
         _converter.CanConvert(DataFormat.Binary, out _binaryRequirements);
     }
 
-    public IEnumerable<T> Values() => ValuesOverride();
+    public IEnumerable<T?> Values() => ValuesOverride();
 
-    protected virtual IEnumerable<T> ValuesOverride() => [default(T)];
+    protected virtual IEnumerable<T?> ValuesOverride() => [default];
 
-    [ParamsSource(nameof(Values))]
+    [ParamsSource(nameof(Values)), MaybeNull]
     public T Value
     {
         get => _value;
@@ -80,28 +80,35 @@ public abstract class TypeHandlerBenchmarks<T>
             }
 
             _value = value;
-            object state = null;
-            var size = _elementSize = _converter.GetSizeOrDbNullAsObject(DataFormat.Binary, _binaryRequirements.Write, value, ref state)!.Value;
-            var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = size, WriteState = state };
+            object? writeState = null;
+            var size = _converter.GetSizeOrDbNull(DataFormat.Binary, _binaryRequirements.Write, value, ref writeState);
+            _valueBinding = new PgValueBinding(DataFormat.Binary, _binaryRequirements.Write, size, writeState);
 
-            _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
-            _converter.WriteAsObject(_writer, value);
-            _writer.Commit(size.Value);
+            if (!_valueBinding.IsDbNullBinding)
+            {
+                _writer.StartWrite(async: false, _valueBinding, CancellationToken.None).GetAwaiter().GetResult();
+                _converter.Write(_writer, value!);
+                _writer.EndWrite(_valueBinding.Size.Value);
 
-            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
-            _readBuffer.AddBytesToRead(_writeBuffer.WritePosition);
-            _readBuffer.ReadPosition = 0;
-            _writeBuffer.WritePosition = 0;
+                Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _writeBuffer.WritePosition);
+                _readBuffer.AddBytesToRead(_writeBuffer.WritePosition);
+                _readBuffer.ReadPosition = 0;
+                _writeBuffer.WritePosition = 0;
 
-            _reader.Init(size.Value, DataFormat.Binary);
+                _reader.Init(_valueBinding.DataFormat, _valueBinding.Size.Value.GetValueOrDefault());
+                _fieldBinding = new PgFieldBinding(DataFormat.Binary, _binaryRequirements.Read);
+            }
         }
     }
 
     [Benchmark]
     public T Read()
     {
+        if (_valueBinding.IsDbNullBinding)
+            return default!;
+
         _readBuffer.ReadPosition = 0;
-        _reader.StartRead(_binaryRequirements.Read);
+        _reader.StartRead(_fieldBinding);
         var value = _converter.Read(_reader);
         _reader.EndRead();
         return value;
@@ -110,9 +117,12 @@ public abstract class TypeHandlerBenchmarks<T>
     [Benchmark]
     public void Write()
     {
+        if (_valueBinding.IsDbNullBinding)
+            return;
+
         _writer.RefreshBuffer();
-        var current = new ValueMetadata { Format = DataFormat.Binary, BufferRequirement = _binaryRequirements.Write, Size = _elementSize, WriteState = null };
-        _writer.BeginWrite(async: false, current, CancellationToken.None).GetAwaiter().GetResult();
-        _converter.Write(_writer, _value);
+        _writer.StartWrite(async: false, _valueBinding, CancellationToken.None).GetAwaiter().GetResult();
+        _converter.Write(_writer, Value!);
+        _writer.EndWrite(_valueBinding.Size.GetValueOrDefault());
     }
 }

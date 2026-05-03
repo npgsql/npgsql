@@ -477,7 +477,7 @@ public class PgReader
         _charsReadBuffer = null;
     }
 
-    internal void Init(int fieldSize, DataFormat fieldFormat, bool resumable = false)
+    internal void Init(DataFormat fieldFormat, int fieldSize, bool resumable = false)
     {
         if (Initialized)
             ThrowHelper.ThrowInvalidOperationException("Already initialized");
@@ -485,15 +485,15 @@ public class PgReader
         _fieldStartPos = _buffer.CumulativeReadPosition;
         _fieldEndPos = _fieldStartPos + fieldSize;
         _fieldSize = fieldSize;
-        _fieldFormat = fieldFormat;
         _resumable = resumable;
+        _fieldFormat = fieldFormat;
     }
 
-    internal void StartRead(Size bufferRequirement)
+    internal void StartRead(PgFieldBinding binding)
     {
         Debug.Assert(FieldSize >= 0);
-        _fieldBufferRequirement = bufferRequirement;
-        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(binding.BufferRequirement, FieldSize);
+        _fieldBufferRequirement = binding.BufferRequirement;
         if (ShouldBuffer(byteCount))
             BufferNoInlined(byteCount);
 
@@ -502,11 +502,11 @@ public class PgReader
             => Buffer(byteCount);
     }
 
-    internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
+    internal ValueTask StartReadAsync(PgFieldBinding binding, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        _fieldBufferRequirement = bufferRequirement;
-        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(binding.BufferRequirement, FieldSize);
+        _fieldBufferRequirement = binding.BufferRequirement;
         return ShouldBuffer(byteCount) ? BufferAsync(byteCount, cancellationToken) : new();
     }
 
@@ -668,6 +668,7 @@ public class PgReader
         _currentSize = UninitializedSentinel;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int Restart(bool resumable)
     {
         if (!Initialized)
@@ -693,6 +694,7 @@ public class PgReader
         Debug.Assert(Initialized);
         return fieldSize;
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void Commit()

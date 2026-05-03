@@ -202,6 +202,12 @@ readonly struct GetChars(int read)
 
 sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<GetChars>
 {
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.None;
+        return format is DataFormat.Binary or DataFormat.Text;
+    }
+
     public override GetChars Read(PgReader reader)
         => reader.CharsReadActive
             ? ResumableRead(reader)
