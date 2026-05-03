@@ -17,9 +17,7 @@ public sealed class CastingConverter<T> : PgConverter<T>
     readonly PgConverter _effectiveConverter;
 
     public CastingConverter(PgConverter effectiveConverter)
-        : base(
-            effectiveType: effectiveConverter.TypeToConvert,
-            customDbNullPredicate: effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
+        : base(effectiveType: effectiveConverter.TypeToConvert)
     {
         if (!typeof(T).IsInSubtypeRelationshipWith(effectiveConverter.TypeToConvert))
             throw new ArgumentException(
@@ -27,6 +25,7 @@ public sealed class CastingConverter<T> : PgConverter<T>
                 nameof(effectiveConverter));
 
         _effectiveConverter = effectiveConverter;
+        HandleDbNull = effectiveConverter.HandleDbNull;
     }
 
     protected override bool IsDbNullValue(T? value, object? writeState) => _effectiveConverter.IsDbNullAsObject(value, writeState);

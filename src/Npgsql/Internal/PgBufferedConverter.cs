@@ -6,8 +6,15 @@ using System.Threading.Tasks;
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false) : PgConverter<T>(customDbNullPredicate)
+public abstract class PgBufferedConverter<T> : PgConverter<T>
 {
+    protected PgBufferedConverter()
+    {
+    }
+
+    [Obsolete("Call the parameterless constructor and set HandleDbNull directly.")]
+    protected PgBufferedConverter(bool customDbNullPredicate) => HandleDbNull = customDbNullPredicate;
+
     protected abstract T ReadCore(PgReader reader);
     protected abstract void WriteCore(PgWriter writer, T value);
 

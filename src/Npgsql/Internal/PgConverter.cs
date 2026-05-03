@@ -12,7 +12,6 @@ namespace Npgsql.Internal;
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConverter
 {
-    bool CustomDbNullPredicate { get; }
     /// <summary>
     /// True when CLR null can reach this converter's API surface.
     /// Auto-derived from <see cref="TypeToConvert"/> (or from an internal wrapper's effective type if passed).
@@ -21,17 +20,22 @@ public abstract class PgConverter
     /// </summary>
     internal bool TypeAcceptsNull { get; }
     internal DbNullPredicate DbNullPredicateKind
-        => CustomDbNullPredicate ? DbNullPredicate.Custom
+        => HandleDbNull ? DbNullPredicate.Custom
             : TypeAcceptsNull ? DbNullPredicate.Null
             : DbNullPredicate.None;
     public bool IsDbNullable => DbNullPredicateKind is not DbNullPredicate.None;
 
-    private protected PgConverter(Type type, bool typeAcceptsNull, bool customDbNullPredicate)
+    private protected PgConverter(Type type, bool typeAcceptsNull)
     {
         TypeToConvert = type;
         TypeAcceptsNull = typeAcceptsNull;
-        CustomDbNullPredicate = customDbNullPredicate;
     }
+
+    /// <summary>
+    /// True when the converter has a custom IsDbNullValue override that should be consulted to determine db-nullness.
+    /// When false, db-nullness is decided purely based on whether the <see cref="TypeToConvert"/> accepts nulls naturally.
+    /// </summary>
+    protected internal bool HandleDbNull { get; init; }
 
     /// <summary>
     /// Whether this converter can handle the given format and with which buffer requirements.
@@ -164,11 +168,10 @@ public abstract class PgConverter
 
 public abstract class PgConverter<T> : PgConverter
 {
-    private protected PgConverter(bool customDbNullPredicate)
-        : base(typeof(T), default(T) is null, customDbNullPredicate) { }
+    private protected PgConverter() : base(typeof(T), default(T) is null) { }
 
-    private protected PgConverter(Type effectiveType, bool customDbNullPredicate)
-        : base(typeof(T), !effectiveType.IsValueType || Nullable.GetUnderlyingType(effectiveType) is not null, customDbNullPredicate) { }
+    private protected PgConverter(Type effectiveType)
+        : base(typeof(T), !effectiveType.IsValueType || Nullable.GetUnderlyingType(effectiveType) is not null) { }
 
 #pragma warning disable CS0618 // Obsolete - delegates to ref overload for binary compat with existing overrides
     protected virtual bool IsDbNullValue(T? value, object? writeState)

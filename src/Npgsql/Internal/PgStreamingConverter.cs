@@ -8,8 +8,15 @@ using System.Threading.Tasks;
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public abstract class PgStreamingConverter<T>(bool customDbNullPredicate = false) : PgConverter<T>(customDbNullPredicate)
+public abstract class PgStreamingConverter<T> : PgConverter<T>
 {
+    protected PgStreamingConverter()
+    {
+    }
+
+    [Obsolete("Call the parameterless constructor and set HandleDbNull directly.")]
+    protected PgStreamingConverter(bool customDbNullPredicate) => HandleDbNull = customDbNullPredicate;
+
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         bufferRequirements = BufferRequirements.None;
