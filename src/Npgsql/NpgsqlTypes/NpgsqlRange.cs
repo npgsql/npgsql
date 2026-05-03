@@ -140,7 +140,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <param name="lowerBound">The lower bound of the range.</param>
     /// <param name="upperBound">The upper bound of the range.</param>
     public NpgsqlRange(T lowerBound, T upperBound)
-        : this(lowerBound, true, false, upperBound, true, false) { }
+        : this(lowerBound, lowerBoundIsInclusive: true, lowerBoundInfinite: false, upperBound, upperBoundIsInclusive: true, upperBoundInfinite: false) { }
 
     /// <summary>
     /// Constructs an <see cref="NpgsqlRange{T}"/> with definite bounds.
@@ -150,7 +150,7 @@ public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     /// <param name="upperBound">The upper bound of the range.</param>
     /// <param name="upperBoundIsInclusive">True if the upper bound is part of the range (i.e. inclusive); otherwise, false.</param>
     public NpgsqlRange(T lowerBound, bool lowerBoundIsInclusive, T upperBound, bool upperBoundIsInclusive)
-        : this(lowerBound, lowerBoundIsInclusive, false, upperBound, upperBoundIsInclusive, false) { }
+        : this(lowerBound, lowerBoundIsInclusive, lowerBoundInfinite: false, upperBound, upperBoundIsInclusive, upperBoundInfinite: false) { }
 
     /// <summary>
     /// Constructs an <see cref="NpgsqlRange{T}"/>.
