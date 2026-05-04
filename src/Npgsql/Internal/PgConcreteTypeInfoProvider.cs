@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -15,7 +16,7 @@ public abstract class PgConcreteTypeInfoProvider
     public PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
     {
         var result = GetDefaultCore(pgTypeId);
-        if (pgTypeId is { } id && result.PgTypeId != id)
+        if (pgTypeId.HasValue && result.PgTypeId != Nullable.GetValueRefOrDefaultRef(in pgTypeId))
             ThrowPgTypeIdMismatch(nameof(GetDefaultCore));
         return result;
     }
@@ -37,7 +38,8 @@ public abstract class PgConcreteTypeInfoProvider
     public PgConcreteTypeInfo? GetForValueAsObject(ProviderValueContext context, object? value, ref object? writeState)
     {
         var result = GetForValueAsObjectCore(context, value, ref writeState);
-        if (context.ExpectedPgTypeId is { } id && result is not null && result.PgTypeId != id)
+        var expected = context.ExpectedPgTypeId;
+        if (result is not null && expected.HasValue && result.PgTypeId != Nullable.GetValueRefOrDefaultRef(in expected))
             ThrowPgTypeIdMismatch(nameof(GetForValueAsObjectCore));
         return result;
     }
@@ -97,7 +99,8 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
     public PgConcreteTypeInfo? GetForValue(ProviderValueContext context, T? value, ref object? writeState)
     {
         var result = GetForValueCore(context, value, ref writeState);
-        if (context.ExpectedPgTypeId is { } id && result is not null && result.PgTypeId != id)
+        var expected = context.ExpectedPgTypeId;
+        if (result is not null && expected.HasValue && result.PgTypeId != Nullable.GetValueRefOrDefaultRef(in expected))
             ThrowPgTypeIdMismatch(nameof(GetForValueCore));
         return result;
     }
