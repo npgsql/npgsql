@@ -55,6 +55,6 @@ sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
 
     protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
         => value is not null
-            ? EffectiveTypeInfo.GetForValue(effectiveContext, value.GetValueOrDefault(), out writeState)
+            ? GetEffectiveForValue(effectiveContext, value.GetValueOrDefault(), out writeState)
             : null;
 }

@@ -291,7 +291,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out _), null);
             foreach (var value in array)
             {
-                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
+                var result = GetEffectiveForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -322,7 +322,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(list.Count, null);
             foreach (var value in list)
             {
-                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
+                var result = GetEffectiveForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -353,7 +353,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(list.Count, null);
             foreach (var value in list)
             {
-                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
+                var result = GetEffectiveForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
@@ -384,7 +384,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             metadata = PgArrayMetadata.Create(ArrayConverterCore.GetArrayLengths(array, out var dimensionLengths), dimensionLengths);
             foreach (var value in array)
             {
-                var result = EffectiveTypeInfo.GetForValue(effectiveContext, value, out var state);
+                var result = GetEffectiveForValue(effectiveContext, value, out var state);
                 if (state is not null && elemData is null)
                 {
                     elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
