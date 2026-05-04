@@ -72,14 +72,9 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
             if (CreateInfo(type, pgTypeId, options, validatePgTypeIds) is not { } info)
                 return null;
 
-            var isDefaultInfo = type is null;
             if (infos is null)
             {
-                // Also add defaults by their info type to save a future resolver lookup + resize.
-                infos = isDefaultInfo
-                    ? new [] { (type, info), (info.Type, info) }
-                    : new [] { (type, info) };
-
+                infos = new [] { (type, info) };
                 if (_cacheByPgTypeId.TryAdd(pgTypeId, infos))
                     return info;
             }
@@ -91,19 +86,9 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
                 if (FindMatch(type, infos) is { } racedInfo)
                     return racedInfo;
 
-                // Also add defaults by their info type to save a future resolver lookup + resize.
                 var oldInfos = infos;
-                var hasExactType = false;
-                if (isDefaultInfo)
-                {
-                    foreach (var oldInfo in oldInfos)
-                        if (oldInfo.Type == info.Type)
-                            hasExactType = true;
-                }
-                Array.Resize(ref infos, oldInfos.Length + (isDefaultInfo && !hasExactType ? 2 : 1));
+                Array.Resize(ref infos, oldInfos.Length + 1);
                 infos[oldInfos.Length] = (type, info);
-                if (isDefaultInfo && !hasExactType)
-                    infos[oldInfos.Length + 1] = (info.Type, info);
 
                 if (_cacheByPgTypeId.TryUpdate(pgTypeId, infos, oldInfos))
                     return info;

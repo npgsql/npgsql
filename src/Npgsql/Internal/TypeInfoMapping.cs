@@ -272,13 +272,13 @@ public sealed class TypeInfoMappingCollection
     {
         var mapping = new TypeInfoMapping(typeof(T), dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
+        _items.Add(mapping);
         if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
                 CreateComposedFactory(typeof(T), mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
-        _items.Add(mapping);
     }
 
     public void AddProviderType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
@@ -399,13 +399,13 @@ public sealed class TypeInfoMappingCollection
     {
         var mapping = new TypeInfoMapping(type, dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
+        _items.Add(mapping);
         if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
                 CreateComposedFactory(type, mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
-        _items.Add(mapping);
         _items.Add(new TypeInfoMapping(nullableType, dataTypeName,
             CreateComposedFactory(nullableType, mapping, nullableConverter, copyPreferredFormat: true))
             {
