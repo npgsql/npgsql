@@ -209,7 +209,8 @@ public sealed class TypeInfoMappingCollection
             var preferredFormat = copyPreferredFormat ? innerConcrete.PreferredFormat : null;
             var readingSupported = innerConcrete.SupportsReading
                                    && (supportsReading ?? PgConcreteTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, requestedType: mapping.Type));
-            var writingSupported = innerConcrete.SupportsWriting && (supportsWriting ?? true);
+            var writingSupported = innerConcrete.SupportsWriting
+                                   && (supportsWriting ?? PgConcreteTypeInfo.GetDefaultSupportsWriting(converter.TypeToConvert, requestedType: mapping.Type));
 
             return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), requestedType: mapping.Type)
             {

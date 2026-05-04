@@ -307,6 +307,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         : this(options, converter, pgTypeId, requestedType: null)
     {}
 
+    bool _supportsReading;
+    bool _supportsWriting;
+
     internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
         : base(options, converter, pgTypeId, requestedType)
     {
@@ -314,19 +317,53 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
 
-        SupportsReading = GetDefaultSupportsReading(converter.TypeToConvert, requestedType);
-        SupportsWriting = true;
+        // Set fields directly to bypass init guards on default values; init props enforce directional widen-to-true.
+        _supportsReading = GetDefaultSupportsReading(converter.TypeToConvert, requestedType);
+        _supportsWriting = GetDefaultSupportsWriting(converter.TypeToConvert, requestedType);
     }
 
     public PgConverter Converter { get; }
 
-    public bool SupportsReading { get; init; }
-    public bool SupportsWriting { get; init; }
+    // Author widen-to-true is only meaningful in the under-reporting direction (Type narrower than the converter's
+    // type): the converter actually returns instances assignable to Type at runtime via author contract.
+    public bool SupportsReading
+    {
+        get => _supportsReading;
+        init
+        {
+            if (value && !_supportsReading && !Type.IsAssignableTo(Converter.TypeToConvert))
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"Cannot widen {nameof(SupportsReading)} to true; reported type {Type} is not narrower-or-equal to converter type {Converter.TypeToConvert} (under-reporting direction).");
+            _supportsReading = value;
+        }
+    }
 
-    // Default reads false only when the resolved Type is narrower than the converter type (under-reporting case);
-    // caller can opt in to true via the init setter when they know the converter actually produces the narrower type.
+    // Author widen-to-true is only meaningful in the polymorphic-alias direction (Type wider than the converter's
+    // type), where the AsObject write path can route the wider inbound value through the narrower converter via cast.
+    public bool SupportsWriting
+    {
+        get => _supportsWriting;
+        init
+        {
+            if (value && !_supportsWriting && !Converter.TypeToConvert.IsAssignableTo(Type))
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"Cannot widen {nameof(SupportsWriting)} to true; converter type {Converter.TypeToConvert} is not narrower-or-equal to reported type {Type} (polymorphic-alias direction).");
+            _supportsWriting = value;
+        }
+    }
+
+    // Defaults compute over the resolved Type (what the info will advertise), not the raw requestedType, so the
+    // wider-than-converter case naturally collapses to self-comparison.
+    //   - Exact (Type == converter type): both checks are self-comparisons → true.
+    //   - Under-reporting (Type narrower than converter type): read true (info.Type fits in caller's slot of the same
+    //     type), write false-ish (writing the narrower advertised type into the wider converter is safe via cast,
+    //     so this also returns true via assignability).
+    //   - Polymorphic alias (Type == converter type, requestedType wider): self-comparison → true.
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
         => type.IsAssignableTo(ResolveType(type, requestedType));
+
+    internal static bool GetDefaultSupportsWriting(Type type, Type? requestedType)
+        => ResolveType(type, requestedType).IsAssignableTo(type);
 
     public DataFormat? PreferredFormat { get; init; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
