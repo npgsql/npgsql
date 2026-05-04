@@ -212,7 +212,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         // Always validate the default provider result, the info will be re-used so there is no real downside.
         var result = typeInfoProvider.GetDefault(pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null);
-        ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
+        ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
         _defaultConcrete = result;
     }
 
@@ -226,7 +226,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         else if (pgTypeId is not null)
         {
             var result = _typeInfoProvider.GetDefault(pgTypeId);
-            ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
             return result;
         }
 
@@ -241,7 +241,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         var result = _typeInfoProvider.GetForField(field);
         if (result is not null)
-            ValidateResult(nameof(PgConcreteTypeInfoProvider.GetForField), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForField), result);
         return result;
     }
 
@@ -263,7 +263,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
             : ThrowNotSupportedType(typeof(T));
 
         if (result is not null)
-            ValidateResult(nameof(PgConcreteTypeInfoProvider<>.GetForValue), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider<>.GetForValue), result);
         return result;
 
         PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
@@ -287,7 +287,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         writeState = null;
         var result = _typeInfoProvider.GetForValueAsObject(context, value, ref writeState);
         if (result is not null)
-            ValidateResult(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result);
         return result;
     }
 
@@ -296,18 +296,22 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     static void ThrowUnexpectedPgTypeId(string parameterName)
         => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
 
-    void ValidateResult(string methodName, PgConcreteTypeInfo result)
-        => ValidateResult(methodName, result, _typeInfoProvider.TypeToConvert, this, Options.PortableTypeIds);
-
-    static void ValidateResult(string methodName, PgConcreteTypeInfo result, Type expectedTypeToConvert, PgTypeInfo expected, bool expectPortableTypeIds)
+    void ValidateConcrete(string methodName, PgConcreteTypeInfo result)
     {
+        // Skip self-validation for framework-internal providers (e.g. composing infrastructure); see PgConcreteTypeInfoProvider.IsInternalProvider.
+        if (_typeInfoProvider.IsInternalProvider)
+            return;
+
+        var expectedTypeToConvert = _typeInfoProvider.TypeToConvert;
         if (expectedTypeToConvert != typeof(object) && result.Converter.TypeToConvert != expectedTypeToConvert)
             throw new InvalidOperationException($"'{methodName}' returned a {nameof(result.Converter)} of type {result.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
 
         // Plugins ship in-tree, so this fires in release. The result must fit the outer info's contract:
         // canonical when the outer is HasExactType=true, otherwise narrower-or-equal on the chain.
-        if (!expected.AcceptsResult(result))
-            throw new InvalidOperationException($"'{methodName}' returned a concrete type info advertising type {result.Type} which is incompatible with this info's contract (Type={expected.Type}, HasExactType={expected.HasExactType}).");
+        if (!AcceptsResult(result))
+            throw new InvalidOperationException($"'{methodName}' returned a concrete type info advertising type {result.Type} which is incompatible with this info's contract (Type={Type}, HasExactType={HasExactType}).");
+
+        var expectPortableTypeIds = Options.PortableTypeIds;
 
         if (expectPortableTypeIds && result.PgTypeId.IsOid || !expectPortableTypeIds && result.PgTypeId.IsDataTypeName)
             throw new InvalidOperationException($"'{methodName}' returned a concrete type info with a {nameof(result.PgTypeId)} that was not in canonical form.");

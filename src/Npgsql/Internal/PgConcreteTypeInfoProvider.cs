@@ -70,6 +70,18 @@ public abstract class PgConcreteTypeInfoProvider
     /// </summary>
     internal virtual bool AllowConcreteVariance => false;
 
+    /// <summary>
+    /// Whether this provider is part of the framework's own resolution mechanism rather than plugin-authored code.
+    /// Providers are dual-natured — extensible surface plus tier-2 resolution mechanism — and this flag lets the
+    /// framework label its own composing infrastructure to skip self-validation without affecting the surface that
+    /// plugins extend.
+    /// </summary>
+    /// <remarks>
+    /// Compare to the cache layer (tier-1): the cache is purely mechanism, not extensible surface, so it doesn't need
+    /// an analogous flag — the whole class is framework-only by construction.
+    /// </remarks>
+    internal bool IsInternalProvider { get; private protected init; }
+
     private protected abstract PgConcreteTypeInfo? GetForValueAsObjectCore(ProviderValueContext context, object? value, ref object? writeState);
 
     private protected static void ThrowPgTypeIdMismatch(string methodName)

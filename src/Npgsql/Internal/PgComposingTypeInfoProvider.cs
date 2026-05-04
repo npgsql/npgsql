@@ -19,6 +19,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
         _pgTypeId = pgTypeId;
         EffectiveTypeInfo = effectiveTypeInfo;
+        IsInternalProvider = true;
     }
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
