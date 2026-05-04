@@ -69,6 +69,10 @@ sealed class CastingTypeInfoProvider<T> : PgComposingTypeInfoProvider<T>
         Debug.Assert(!effectiveProviderTypeInfo.HasExactType, "CastingTypeInfoProvider is for wrapping non-exact providers; an exact provider doesn't need the cast.");
     }
 
+    // Wraps a dynamically-obtained inner — not a same-authoring-unit composition. The inner's contract must still be
+    // verified per dispatch.
+    protected override bool IsCompositionalUnit => false;
+
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 

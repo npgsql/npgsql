@@ -22,6 +22,19 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         IsInternalProvider = true;
     }
 
+    /// <summary>
+    /// Whether this composer and its inner provider are part of the same compositional unit — both authored together
+    /// by the same factory (e.g. a plugin or framework resolver via TypeInfoMapping) and tested as one whole. When
+    /// true, the framework can dispatch to the inner directly, skipping the inner's wrapping validation; when false,
+    /// the inner is treated as dynamically obtained and validated per call.
+    /// </summary>
+    /// <remarks>
+    /// Default true reflects the typical case: composers built via TypeInfoMapping helpers (e.g. <c>AddArrayType</c>)
+    /// where one authoring unit produces both layers. Composers wrapping arbitrary dynamically-obtained inners (e.g.
+    /// <c>CastingTypeInfoProvider</c>) opt out so the inner's contract is verified per dispatch.
+    /// </remarks>
+    protected virtual bool IsCompositionalUnit => true;
+
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
     protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType);
