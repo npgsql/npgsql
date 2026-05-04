@@ -48,14 +48,14 @@ public abstract class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
-    // Invariance bit on the (Converter.TypeToConvert, Type) pair: true when no requestedType was given or it equalled
-    // the converter type, false when Type and the converter type differ (in either direction along their shared
-    // subtype chain). False covers two construction cases that are indistinguishable downstream:
-    //   - Under-reporting: Type is narrower than the converter type (e.g. ArrayConverter<Array> answering as int[]).
-    //   - Polymorphic alias: Type is the converter type returned to a wider query (e.g. typeof(object)).
-    // When false the typed fast path is unsafe and dispatch routes through the AsObject APIs with a runtime cast,
-    // letting one converter cover multiple advertised types.
-    internal bool HasExactType { get; }
+    // Forward-looking contract bit about the converter consumers will ultimately use through this info: true when the
+    // converter's type matches Type canonically, false when consumers should expect variation (the typed fast path is
+    // unsafe; dispatch routes through the AsObject APIs with a runtime cast).
+    //   - Concrete: false when (Converter.TypeToConvert, Type) differ in either direction along their shared subtype
+    //     chain (under-reporting or polymorphic alias).
+    //   - Provider: false when the underlying provider is polymorphic and will dispatch to varied concretes per call;
+    //     even though the wrapping pair (TypeToConvert, Type) is invariant, what flows out is not.
+    internal bool HasExactType { get; private protected init; }
 
     public PgTypeId? PgTypeId { get; }
 
@@ -66,6 +66,12 @@ public abstract class PgTypeInfo
     // requestedType on the chain, covers polymorphic-alias and under-reporting in one branch.
     internal bool ResolvesAs(Type? requestedType)
         => requestedType is null || requestedType == Type || (!HasExactType && Type.IsAssignableTo(requestedType));
+
+    // On the outer info (this), check whether a concrete result is admissible per the outer's contract.
+    // HasExactType=true requires canonical match (result.Type == Type); HasExactType=false admits narrower-or-equal
+    // results on the subtype chain. Used at provider boundaries to validate that concretes flowing out fit.
+    internal bool AcceptsResult(PgConcreteTypeInfo result)
+        => result.Type == Type || (!HasExactType && result.Type.IsAssignableTo(Type));
 
     /// <summary>
     /// Makes a <see cref="PgConcreteTypeInfo"/> for the given field.
@@ -196,9 +202,17 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     {
         _typeInfoProvider = typeInfoProvider;
 
+        // When the underlying provider permits concrete variance and the resolved Type isn't a leaf (sealed / value
+        // type), dispatched concretes may vary along Type's subtype chain — HasExactType=false honestly previews that.
+        // requestedType narrowing flows through Type: a variant provider narrowed via requestedType to a sealed
+        // wrapper Type is canonical at that leaf, regardless of the underlying floor. Canonical providers over
+        // non-sealed floors can opt out via AllowConcreteVariance=false.
+        if (typeInfoProvider.AllowConcreteVariance && !Type.IsSealed)
+            HasExactType = false;
+
         // Always validate the default provider result, the info will be re-used so there is no real downside.
         var result = typeInfoProvider.GetDefault(pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null);
-        ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result, typeInfoProvider.TypeToConvert, options.PortableTypeIds);
+        ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
         _defaultConcrete = result;
     }
 
@@ -283,12 +297,17 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
 
     void ValidateResult(string methodName, PgConcreteTypeInfo result)
-        => ValidateResult(methodName, result, _typeInfoProvider.TypeToConvert, Options.PortableTypeIds);
+        => ValidateResult(methodName, result, _typeInfoProvider.TypeToConvert, this, Options.PortableTypeIds);
 
-    static void ValidateResult(string methodName, PgConcreteTypeInfo result, Type expectedTypeToConvert, bool expectPortableTypeIds)
+    static void ValidateResult(string methodName, PgConcreteTypeInfo result, Type expectedTypeToConvert, PgTypeInfo expected, bool expectPortableTypeIds)
     {
         if (expectedTypeToConvert != typeof(object) && result.Converter.TypeToConvert != expectedTypeToConvert)
             throw new InvalidOperationException($"'{methodName}' returned a {nameof(result.Converter)} of type {result.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
+
+        // Plugins ship in-tree, so this fires in release. The result must fit the outer info's contract:
+        // canonical when the outer is HasExactType=true, otherwise narrower-or-equal on the chain.
+        if (!expected.AcceptsResult(result))
+            throw new InvalidOperationException($"'{methodName}' returned a concrete type info advertising type {result.Type} which is incompatible with this info's contract (Type={expected.Type}, HasExactType={expected.HasExactType}).");
 
         if (expectPortableTypeIds && result.PgTypeId.IsOid || !expectPortableTypeIds && result.PgTypeId.IsDataTypeName)
             throw new InvalidOperationException($"'{methodName}' returned a concrete type info with a {nameof(result.PgTypeId)} that was not in canonical form.");

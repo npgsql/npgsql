@@ -17,6 +17,9 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
     readonly PgTypeId _elementPgTypeId;
     readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
+    // Dispatched concretes always advertise Type=Array, narrower than this provider's TypeToConvert=object.
+    internal override bool AllowConcreteVariance => true;
+
     public PolymorphicArrayTypeInfoProvider(PgTypeId pgTypeId, PgProviderTypeInfo elementTypeInfo, Func<PgConcreteTypeInfo, PgConverter> elementToArrayConverterFactory)
     {
         if (elementTypeInfo.PgTypeId is null)

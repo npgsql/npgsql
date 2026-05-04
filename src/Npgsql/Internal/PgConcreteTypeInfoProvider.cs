@@ -62,6 +62,14 @@ public abstract class PgConcreteTypeInfoProvider
 
     internal abstract Type TypeToConvert { get; }
 
+    /// <summary>
+    /// Whether dispatched concretes from this provider may have a <see cref="PgTypeInfo.Type"/> that varies along the
+    /// <see cref="TypeToConvert"/> subtype chain. Defaults to <see langword="false"/>: providers are canonical unless
+    /// they explicitly opt in. Polymorphic providers that dispatch to varied concretes per call must override to
+    /// <see langword="true"/>.
+    /// </summary>
+    internal virtual bool AllowConcreteVariance => false;
+
     private protected abstract PgConcreteTypeInfo? GetForValueAsObjectCore(ProviderValueContext context, object? value, ref object? writeState);
 
     private protected static void ThrowPgTypeIdMismatch(string methodName)
