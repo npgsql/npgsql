@@ -35,8 +35,9 @@ public abstract class PgConcreteTypeInfoProvider
     /// <summary>
     /// Gets the appropriate type info based on the given value and expected type id.
     /// </summary>
-    public PgConcreteTypeInfo? GetForValueAsObject(ProviderValueContext context, object? value, ref object? writeState)
+    public PgConcreteTypeInfo? GetForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
     {
+        writeState = null;
         var result = GetForValueAsObjectCore(context, value, ref writeState);
         var expected = context.ExpectedPgTypeId;
         if (result is not null && expected.HasValue && result.PgTypeId != Nullable.GetValueRefOrDefaultRef(in expected))
@@ -96,8 +97,9 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
     /// <summary>
     /// Gets the appropriate type info based on the given value and expected type id.
     /// </summary>
-    public PgConcreteTypeInfo? GetForValue(ProviderValueContext context, T? value, ref object? writeState)
+    public PgConcreteTypeInfo? GetForValue(ProviderValueContext context, T? value, out object? writeState)
     {
+        writeState = null;
         var result = GetForValueCore(context, value, ref writeState);
         var expected = context.ExpectedPgTypeId;
         if (result is not null && expected.HasValue && result.PgTypeId != Nullable.GetValueRefOrDefaultRef(in expected))

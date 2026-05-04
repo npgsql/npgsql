@@ -259,7 +259,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         writeState = null;
         var result = _typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
-            ? providerT.GetForValue(context, value, ref writeState)
+            ? providerT.GetForValue(context, value, out writeState)
             : ThrowNotSupportedType(typeof(T));
 
         if (result is not null)
@@ -284,8 +284,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        writeState = null;
-        var result = _typeInfoProvider.GetForValueAsObject(context, value, ref writeState);
+        var result = _typeInfoProvider.GetForValueAsObject(context, value, out writeState);
         if (result is not null)
             ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result);
         return result;
