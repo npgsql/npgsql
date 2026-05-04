@@ -15,9 +15,27 @@ public abstract class PgTypeInfo
     PgTypeInfo(PgSerializerOptions options, Type type, Type? requestedType)
     {
         Options = options;
-
         HasExactType = requestedType is null || requestedType == type;
-        Type = requestedType is null ? type : GetReportedType(type, requestedType) ?? type;
+        Type = ResolveType(type, requestedType);
+    }
+
+    /// <summary>
+    /// Resolves the type the info should advertise. <paramref name="requestedType"/> must be on the same subtype
+    /// chain as <paramref name="type"/>: when narrower (or equal) it is returned as-is (the under-reporting case);
+    /// when wider <paramref name="type"/> is returned (the polymorphic-alias case, the info advertises the
+    /// converter's type back to a wider query). Throws when the two types are not in any subtype relationship.
+    /// </summary>
+    private protected static Type ResolveType(Type type, Type? requestedType)
+    {
+        if (requestedType is null || requestedType == type)
+            return type;
+        if (requestedType.IsAssignableTo(type))
+            return requestedType;
+        if (type.IsAssignableTo(requestedType))
+            return type;
+        throw new ArgumentException(
+            $"The requested type {requestedType} is not in a subtype relationship with the converter's type {type}.",
+            nameof(requestedType));
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? requestedType = null)
@@ -30,16 +48,24 @@ public abstract class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
-    // True when the reported type matches the converter's type exactly (no reported type given at construction, or
-    // the given reported type equals the converter type). When false, the reported type is a widening of the converter
-    // type (e.g. Array/Stream base-type reporting, enum-underlying widening) and the caller must dispatch through the
-    // info — the info routes reference-variance cases through the object APIs and layout-identity cases (enum) through
-    // the typed path with Unsafe.As, as appropriate for the widening kind.
-    // Having a single converter cover multiple reported types (Arrays, Streams) reduces the number of generic
-    // instantiations that need to be compiled for AOT.
+    // Invariance bit on the (Converter.TypeToConvert, Type) pair: true when no requestedType was given or it equalled
+    // the converter type, false when Type and the converter type differ (in either direction along their shared
+    // subtype chain). False covers two construction cases that are indistinguishable downstream:
+    //   - Under-reporting: Type is narrower than the converter type (e.g. ArrayConverter<Array> answering as int[]).
+    //   - Polymorphic alias: Type is the converter type returned to a wider query (e.g. typeof(object)).
+    // When false the typed fast path is unsafe and dispatch routes through the AsObject APIs with a runtime cast,
+    // letting one converter cover multiple advertised types.
     internal bool HasExactType { get; }
 
     public PgTypeId? PgTypeId { get; }
+
+    // Same predicate used at construction (ResolveType) and at the cache to validate that an info answers a given query.
+    // Null requestedType: any info fits (PgTypeId-only queries).
+    // requestedType == Type: trivial match.
+    // Otherwise: only when this info acknowledges it isn't the exact answer (HasExactType=false) and Type sits below
+    // requestedType on the chain, covers polymorphic-alias and under-reporting in one branch.
+    internal bool ResolvesAs(Type? requestedType)
+        => requestedType is null || requestedType == Type || (!HasExactType && Type.IsAssignableTo(requestedType));
 
     /// <summary>
     /// Makes a <see cref="PgConcreteTypeInfo"/> for the given field.
@@ -154,17 +180,6 @@ public abstract class PgTypeInfo
             disposable.Dispose();
     }
 
-    /// <summary>
-    /// Returns <paramref name="requestedType"/> when it is a strict subtype of <paramref name="converterType"/>, otherwise null.
-    /// Throws when the two are not in a subtype relationship.
-    /// </summary>
-    protected static Type? GetReportedType(Type converterType, Type requestedType)
-    {
-        if (!requestedType.IsInSubtypeRelationshipWith(converterType))
-            throw new ArgumentException($"The requested type {requestedType} is not in a subtype relationship with the converter's type {converterType}.", nameof(requestedType));
-
-        return requestedType != converterType && requestedType.IsAssignableTo(converterType) ? requestedType : null;
-    }
 }
 
 public sealed class PgProviderTypeInfo : PgTypeInfo
@@ -303,26 +318,22 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         SupportsWriting = true;
     }
 
-    Type TypeToConvert
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Converter.TypeToConvert;
-    }
-
     public PgConverter Converter { get; }
 
     public bool SupportsReading { get; init; }
     public bool SupportsWriting { get; init; }
 
-    // We assume a non-exact typed info does not support reading as the converter won't be able to produce the derived type statically.
-    // Cases like Array converters reading int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
+    // Default reads false only when the resolved Type is narrower than the converter type (under-reporting case);
+    // caller can opt in to true via the init setter when they know the converter actually produces the narrower type.
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
-        => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
+        => type.IsAssignableTo(ResolveType(type, requestedType));
 
     public DataFormat? PreferredFormat { get; init; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
-    internal bool CanReadTo(Type type) => Type == type || (!HasExactType && Type.IsAssignableTo(type));
+    // Cache hits are invariant in advertised type vs requested read type.
+    // A different request type means a different cache key, no matter how compatible the type chains are.
+    internal bool CanReadTo(Type type) => Type == type;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ReadFieldValue<T>(PgReader reader, in PgFieldBinding binding)
@@ -338,7 +349,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
         // Inline copy of Converter.ReadAsync<T> to keep everything in one async frame.
-        var result = typeof(T) != TypeToConvert
+        var result = typeof(T) != Converter.TypeToConvert
             ? (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
             : await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
 
@@ -371,7 +382,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     /// When result is null, the value was interpreted to be a SQL NULL.
     internal PgValueBinding BindParameterValue<T>(T? value, object? writeState, DataFormat? formatPreference = null)
     {
-        if (typeof(T) != TypeToConvert)
+        if (typeof(T) != Converter.TypeToConvert)
             return BindParameterObjectValue(value, writeState, formatPreference);
 
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
