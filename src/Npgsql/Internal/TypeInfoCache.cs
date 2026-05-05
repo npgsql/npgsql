@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -20,17 +21,11 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
             throw new InvalidOperationException("Cannot use this type argument.");
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="type"></param>
-    /// <param name="pgTypeId"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
     public PgTypeInfo? GetOrAddInfo(Type? type, TPgTypeId? pgTypeId)
     {
-        if (pgTypeId is { } id)
+        if (pgTypeId.HasValue)
         {
+            ref readonly var id = ref Nullable.GetValueRefOrDefaultRef(in pgTypeId);
             if (_cacheByPgTypeId.TryGetValue(id, out var infos))
                 if (FindMatch(type, infos) is { } info)
                     return info;
@@ -55,6 +50,7 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
             return null;
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         PgTypeInfo? AddByType(Type type)
         {
             // We don't pass PgTypeId as we're interested in default converters here.
@@ -67,6 +63,7 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
                     : _cacheByClrType[type];
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         PgTypeInfo? AddEntryById(Type? type, TPgTypeId pgTypeId, (Type? Type, PgTypeInfo Info)[]? infos)
         {
             if (CreateInfo(type, pgTypeId, options, validatePgTypeIds) is not { } info)
@@ -74,7 +71,7 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
 
             if (infos is null)
             {
-                infos = new [] { (type, info) };
+                infos = [(type, info)];
                 if (_cacheByPgTypeId.TryAdd(pgTypeId, infos))
                     return info;
             }
