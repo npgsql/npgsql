@@ -372,12 +372,11 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     }
 
     // Defaults compute over the resolved Type (what the info will advertise), not the raw requestedType, so the
-    // wider-than-converter case naturally collapses to self-comparison.
-    //   - Exact (Type == converter type): both checks are self-comparisons → true.
-    //   - Under-reporting (Type narrower than converter type): read true (info.Type fits in caller's slot of the same
-    //     type), write false-ish (writing the narrower advertised type into the wider converter is safe via cast,
-    //     so this also returns true via assignability).
-    //   - Polymorphic alias (Type == converter type, requestedType wider): self-comparison → true.
+    // wider-than-converter case (polymorphic alias) collapses to self-comparison and yields reading=true, writing=true.
+    // The exact-type case (Type == converter type) does the same. Under-reporting (Type narrower than converter type)
+    // is asymmetric: the converter type is wider so it isn't assignable to Type, yielding reading=false (authors opt
+    // in via SupportsReading=true to assert their converter actually returns runtime instances of Type), while Type is
+    // narrower than the converter type, which is assignable, yielding writing=true.
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
         => type.IsAssignableTo(ResolveType(type, requestedType));
 

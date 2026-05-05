@@ -2165,11 +2165,11 @@ LANGUAGE plpgsql VOLATILE";
         await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
         Assert.That(await reader.ReadAsync(), Is.True);
-        var custom = reader.GetFieldValue<CustomStream>(0);
+        using var custom = reader.GetFieldValue<CustomStream>(0);
         Assert.That(custom, Is.InstanceOf<CustomStream>());
 
         Assert.That(await reader.ReadAsync(), Is.True);
-        var general = reader.GetFieldValue<Stream>(0);
+        using var general = reader.GetFieldValue<Stream>(0);
         Assert.That(general, Is.Not.InstanceOf<CustomStream>(),
             "Reader cache aliased the CustomStream-specific info onto a Stream query — the resolver chain must be re-consulted on type change.");
     }
@@ -2680,16 +2680,18 @@ sealed class CustomStreamConverter : PgStreamingConverter<Stream>
 {
     public override Stream Read(PgReader reader)
     {
+        using var bytes = reader.GetStream();
         var ms = new CustomStream();
-        reader.GetStream().CopyTo(ms);
+        bytes.CopyTo(ms);
         ms.Position = 0;
         return ms;
     }
 
     public override async ValueTask<Stream> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
+        await using var bytes = reader.GetStream();
         var ms = new CustomStream();
-        await reader.GetStream().CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+        await bytes.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
         ms.Position = 0;
         return ms;
     }
