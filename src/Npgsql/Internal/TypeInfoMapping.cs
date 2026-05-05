@@ -606,21 +606,21 @@ public sealed class TypeInfoMappingCollection
             {
                 var provider =
                     new PolymorphicArrayTypeInfoProvider<Array>((PgProviderTypeInfo)innerInfo,
-                        (PgProviderTypeInfo)nullableInnerInfo);
+                        (PgProviderTypeInfo)nullableInnerInfo, isCompositionalUnit: true);
 
                 return new PgProviderTypeInfo(innerInfo.Options, provider,
                     innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object));
             }
         }
 
-    public void AddPolymorphicProviderArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
+    internal void AddPolymorphicProviderArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
         => AddPolymorphicProviderArrayType(GetMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
 
-    public void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
+    internal void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
     {
         AddPolymorphicProviderArrayType(elementMapping, typeof(object),
             (mapping, elementInfo) => new PolymorphicArrayTypeInfoProvider(
-                elementInfo.Options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elementInfo, elementToArrayConverterFactory(elementInfo.Options))
+                elementInfo.Options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elementInfo, elementToArrayConverterFactory(elementInfo.Options), isCompositionalUnit: true)
         , null);
 
         void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> converter, Func<Type?, bool>? typeMatchPredicate)
