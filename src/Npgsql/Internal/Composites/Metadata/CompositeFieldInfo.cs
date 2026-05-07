@@ -96,11 +96,12 @@ abstract class CompositeFieldInfo
     }
 
     /// <summary>
-    /// Returns a deterministic write converter for this field without running per-value dispatch —
-    /// for concrete fields the one-and-only converter, for provider fields the default concrete that
-    /// was resolved at construction. Used by CompositeConverter.Write's Path A, which only runs when
-    /// bind-time BindValue has already completed and produced no per-field state; the default converter
-    /// writes the same bytes as any value-dispatched variant for a decided field id and carries no
+    /// Returns the field's cached default converter and its write requirement without running per-value
+    /// dispatch. Only valid for non-provider-backed fields — provider-backed fields have no cached default
+    /// (ConcreteTypeInfo stays null) and must go through MakeConcreteForValue at bind time. Used by
+    /// CompositeConverter.Write to fill in slots that bind-time did not populate: composite-level
+    /// IsBindOptional skipping BindValue entirely, and fast-path lazy-rent gaps where a field produced
+    /// no state. The cached default writes the same bytes a stateful slot would have and carries no
     /// state to dispose.
     /// </summary>
     public PgConverter GetDefaultWriteInfo(out Size writeRequirement)

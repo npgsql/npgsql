@@ -154,8 +154,18 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 if (!fieldContext.IsBindOptional)
                     field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
 
+                // Skip slot population when no state was produced — composites with all-stateless fields pay
+                // no ElementState array allocation. Slots before the first state producer stay default and
+                // Write resolves them via GetDefaultWriteInfo (Path A's gap handling).
+                if (fieldState is null)
+                    continue;
+
                 if (data is null)
+                {
                     data = ArrayPool<ElementState>.Shared.Rent(_composite.Fields.Count);
+                    // Clear any stale slots left behind by the previous pool user; gaps must read as default(ElementState).
+                    Array.Clear(data, 0, _composite.Fields.Count);
+                }
 
                 data[i] = new()
                 {
@@ -252,12 +262,15 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var field = _composite.Fields[i];
             writer.WriteAsOid(field.PgTypeId);
 
-            // data is null when composite-level BindValue was skipped (composite IsBindOptional=true);
-            // every field is then non-provider-backed + IsBindOptional + fixed-size by construction, so
-            // each field's default converter and cached write requirement suffice to produce the slot.
+            // Two cases for falling through to the cached default:
+            //   1. data is null — composite-level BindValue was skipped (composite IsBindOptional=true);
+            //      every field is non-provider-backed + IsBindOptional + fixed-size by construction.
+            //   2. data[i] is default(ElementState) — fast-path lazy-rent gap; the field produced no state
+            //      and was skipped during slot population. The cached default writes the same bytes a
+            //      stateful slot would have, with no per-slot disposal obligation.
             ElementState elementState;
-            if (data is not null)
-                elementState = data[i];
+            if (data?[i] is { Converter: not null } state)
+                elementState = state;
             else
             {
                 var converter = field.GetDefaultWriteInfo(out var writeRequirement);
