@@ -129,7 +129,7 @@ readonly struct ArrayConverterCore(
                 do
                 {
                     object? elemState = null;
-                    var elemSize = SizeElement(context, values, indices, ref elemState, ref size, ref anyWriteState);
+                    var elemSize = SizeElement(elemContext, values, indices, ref elemState, ref size, ref anyWriteState);
                     elemData[indices.IndicesSum] = (elemSize, elemState);
                 }
                 while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
@@ -140,7 +140,7 @@ readonly struct ArrayConverterCore(
                 do
                 {
                     ref var elem = ref elemData[indices.IndicesSum];
-                    elem.Size = SizeElement(context, values, indices, ref elem.WriteState, ref size, ref anyWriteState);
+                    elem.Size = SizeElement(elemContext, values, indices, ref elem.WriteState, ref size, ref anyWriteState);
                 }
                 while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
             }
