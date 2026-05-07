@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
+using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -221,6 +223,32 @@ public class DateTimeTests : TestBase
             },
             @"{[""1998-04-12 13:26:38"",""1998-04-12 15:26:38""],[""1998-04-13 13:26:38"",""1998-04-13 15:26:38""]}",
             "tsmultirange");
+    }
+
+    // Pins the structural property the composite fast-path depends on: the registered DateTime
+    // providers (timestamp / timestamptz, plus their range and multirange variants) are
+    // pgTypeIdClassified, so a resolution with a decided pgTypeId erases the provider and returns
+    // a PgConcreteTypeInfo. Composite fields always resolve with a decided pgTypeId from metadata,
+    // so this is what makes a DateTime field non-provider-backed. Array compositions over an erased
+    // element propagate the erasure via the dual-mapper composer's concrete branch.
+    [Test]
+    public async Task DateTime_resolution_is_erased_to_concrete_when_pgTypeId_is_decided()
+    {
+        await using var dataSource = CreateDataSource();
+        await using var _ = await dataSource.OpenConnectionAsync();
+        var options = dataSource.CurrentReloadableState.SerializerOptions;
+
+        Assert.That(options.GetTypeInfo(typeof(DateTime), DataTypeNames.Timestamp), Is.TypeOf<PgConcreteTypeInfo>());
+        Assert.That(options.GetTypeInfo(typeof(DateTime), DataTypeNames.TimestampTz), Is.TypeOf<PgConcreteTypeInfo>());
+
+        var timestampArray = DataTypeNames.Timestamp.ToArrayName();
+        Assert.That(options.GetTypeInfo(typeof(DateTime[]), timestampArray), Is.TypeOf<PgConcreteTypeInfo>());
+        Assert.That(options.GetTypeInfo(typeof(DateTime?[]), timestampArray), Is.TypeOf<PgConcreteTypeInfo>());
+        Assert.That(options.GetTypeInfo(typeof(List<DateTime>), timestampArray), Is.TypeOf<PgConcreteTypeInfo>());
+
+        // No decided pgTypeId — wrapper short-circuits, provider stays alive for late selection.
+        Assert.That(options.GetDefaultTypeInfo(typeof(DateTime)), Is.TypeOf<PgProviderTypeInfo>());
+        Assert.That(options.GetDefaultTypeInfo(typeof(DateTime[])), Is.TypeOf<PgProviderTypeInfo>());
     }
 
     #endregion
