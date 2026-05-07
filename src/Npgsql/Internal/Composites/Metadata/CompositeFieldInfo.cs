@@ -123,7 +123,7 @@ abstract class CompositeFieldInfo
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
         async ValueTask Core(CompositeBuilder builder, ValueTask<object> task)
         {
-            builder.AddValue(await task.ConfigureAwait(false));
+            AddValue(builder, await task.ConfigureAwait(false));
         }
     }
 
