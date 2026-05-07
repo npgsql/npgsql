@@ -125,7 +125,7 @@ static class AsyncHelpers
         // Cheap if we have all the data.
         var task = effectiveConverter.ReadAsObjectAsync(reader, cancellationToken);
         if (task.IsCompletedSuccessfully)
-            return new((T)task.Result);
+            return new((T)task.Result!);
 
         // Otherwise we do one additional allocation, this allows us to share state machine codegen for all Ts.
         var source = new PoolingCompletionSource<T>();

@@ -6,8 +6,10 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
-sealed class ObjectConverter() : PgStreamingConverter<object>(customDbNullPredicate: true)
+sealed class ObjectConverter : PgStreamingConverter<object>
 {
+    public ObjectConverter() => HandleDbNull = true;
+
     protected override bool IsDbNullValue(object? value, object? writeState)
     {
         var (concreteTypeInfo, effectiveState) = writeState switch

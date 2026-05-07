@@ -76,27 +76,20 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
     internal DataTypeName? FindDataTypeName(Type type, object? value)
     {
-        DataTypeName? dataTypeName;
         try
         {
             var typeInfo = TypeMappingOptions.GetTypeInfoInternal(type, null);
-            if (typeInfo is PgProviderTypeInfo providerInfo)
-            {
-                var concreteTypeInfo = providerInfo.MakeConcreteForValueAsObject(value is DBNull ? null : value, out var state);
-                if (state is not null)
-                    concreteTypeInfo.DisposeWriteState(state);
-                dataTypeName = concreteTypeInfo.PgTypeId.DataTypeName;
-            }
-            else
-            {
-                dataTypeName = ((PgConcreteTypeInfo?)typeInfo)?.PgTypeId.DataTypeName;
-            }
+            if (typeInfo is null)
+                return null;
+            var concreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(value, out var writeState);
+            if (writeState is not null)
+                concreteTypeInfo.DisposeWriteState(writeState);
+            return concreteTypeInfo.PgTypeId.DataTypeName;
         }
         catch
         {
-            dataTypeName = null;
+            return null;
         }
-        return dataTypeName;
     }
 
     internal static GlobalTypeMapper Instance { get; }

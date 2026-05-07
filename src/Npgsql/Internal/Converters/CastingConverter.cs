@@ -9,13 +9,15 @@ using Npgsql.Util;
 namespace Npgsql.Internal.Converters;
 
 /// A converter that adapts a boxed converter's results to an exact-type converter over T, wrapping the read/write
-/// paths through object to present a typed surface for a converter whose TypeToConvert is only a base of T.
+/// paths through object to present a typed surface for a converter whose TypeToConvert is in a subtype relationship
+/// with T — a base, a subtype, or a boxing target (e.g. an int? converter backing a CastingConverter for object).
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class CastingConverter<T> : PgConverter<T>
 {
     readonly PgConverter _effectiveConverter;
 
-    public CastingConverter(PgConverter effectiveConverter) : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
+    public CastingConverter(PgConverter effectiveConverter)
+        : base(effectiveType: effectiveConverter.TypeToConvert)
     {
         if (!typeof(T).IsInSubtypeRelationshipWith(effectiveConverter.TypeToConvert))
             throw new ArgumentException(
@@ -23,6 +25,7 @@ public sealed class CastingConverter<T> : PgConverter<T>
                 nameof(effectiveConverter));
 
         _effectiveConverter = effectiveConverter;
+        HandleDbNull = effectiveConverter.HandleDbNull;
     }
 
     protected override bool IsDbNullValue(T? value, object? writeState) => _effectiveConverter.IsDbNullAsObject(value, writeState);
@@ -30,32 +33,32 @@ public sealed class CastingConverter<T> : PgConverter<T>
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => _effectiveConverter.CanConvert(format, out bufferRequirements);
 
-    public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader);
+    public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader)!;
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => this.ReadAsObjectAsyncAsT(_effectiveConverter, reader, cancellationToken);
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
-        => _effectiveConverter.GetSizeAsObject(context, value!, ref writeState);
+        => _effectiveConverter.GetSizeAsObject(context, value, ref writeState);
 
     public override void Write(PgWriter writer, T value)
-        => _effectiveConverter.WriteAsObject(writer, value!);
+        => _effectiveConverter.WriteAsObject(writer, value);
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => _effectiveConverter.WriteAsObjectAsync(writer, value!, cancellationToken);
+        => _effectiveConverter.WriteAsObjectAsync(writer, value, cancellationToken);
 
-    internal override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+    internal override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => async
             ? _effectiveConverter.ReadAsObjectAsync(reader, cancellationToken)
             : new(_effectiveConverter.ReadAsObject(reader));
 
-    internal override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+    internal override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)
     {
         // Cast here to keep our T contract, and otherwise return more accurate invalid cast exceptions (as the effective converter will cast as well).
         if (async)
-            return _effectiveConverter.WriteAsObjectAsync(writer, (T)value, cancellationToken);
+            return _effectiveConverter.WriteAsObjectAsync(writer, (T)value!, cancellationToken);
 
-        _effectiveConverter.WriteAsObject(writer, (T)value);
+        _effectiveConverter.WriteAsObject(writer, (T)value!);
         return new();
     }
 }

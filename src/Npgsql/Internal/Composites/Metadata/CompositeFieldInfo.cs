@@ -121,13 +121,13 @@ abstract class CompositeFieldInfo
         return new();
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-        async ValueTask Core(CompositeBuilder builder, ValueTask<object> task)
+        async ValueTask Core(CompositeBuilder builder, ValueTask<object?> task)
         {
             builder.AddValue(await task.ConfigureAwait(false));
         }
     }
 
-    protected ValueTask WriteAsObject(bool async, PgConverter converter, PgWriter writer, object value, CancellationToken cancellationToken)
+    protected ValueTask WriteAsObject(bool async, PgConverter converter, PgWriter writer, object? value, CancellationToken cancellationToken)
     {
         if (async)
             return converter.WriteAsObjectAsync(writer, value, cancellationToken);
@@ -148,7 +148,7 @@ abstract class CompositeFieldInfo
     public abstract Type Type { get; }
 
     protected abstract PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState);
-    protected abstract void AddValue(CompositeBuilder builder, object value);
+    protected abstract void AddValue(CompositeBuilder builder, object? value);
 
     public abstract StrongBox CreateBox();
     public abstract void Set(object instance, StrongBox value);
@@ -166,10 +166,10 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
 {
     readonly Action<object, T>? _setter;
     readonly int _parameterIndex;
-    readonly Func<object, T> _getter;
+    readonly Func<object?, T> _getter;
     readonly bool _asObject;
 
-    CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter)
+    CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter)
         : base(name, typeInfo, nominalPgTypeId)
     {
         if (typeInfo.Type != typeof(T))
@@ -190,12 +190,12 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     }
 
     // Accessed through reflection (ReflectionCompositeInfoFactory)
-    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, int parameterIndex)
+    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter, int parameterIndex)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _parameterIndex = parameterIndex;
 
     // Accessed through reflection (ReflectionCompositeInfoFactory)
-    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, Action<object, T> setter)
+    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter, Action<object, T> setter)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _setter = setter;
 
@@ -251,7 +251,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         return concreteTypeInfo.Converter;
     }
 
-    protected override void AddValue(CompositeBuilder builder, object value) => builder.AddValue((T)value);
+    protected override void AddValue(CompositeBuilder builder, object? value) => builder.AddValue((T)value!);
 
     public override ValueTask Read(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default)
     {
@@ -288,21 +288,23 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
     public override Size? IsDbNullOrGetSize(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState)
     {
         var value = _getter(instance);
+        // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
+        // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
         return AsObject(converter)
-            ? converter.IsDbNullOrGetSizeAsObject(format, writeRequirement, value, ref writeState)
+            ? converter.IsDbNullOrGetSizeAsObject(format, writeRequirement, value, ref writeState, NestedObjectDbNullHandling.Default)
             : ((PgConverter<T>)converter).IsDbNullOrGetSize(format, writeRequirement, value, ref writeState);
     }
 
-    public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken)
+    public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object? instance, CancellationToken cancellationToken)
     {
         var value = _getter(instance);
         if (AsObject(converter))
-            return WriteAsObject(async, converter, writer, value!, cancellationToken);
+            return WriteAsObject(async, converter, writer, value, cancellationToken);
 
         if (async)
-            return ((PgConverter<T>)converter).WriteAsync(writer, value!, cancellationToken);
+            return ((PgConverter<T>)converter).WriteAsync(writer, value, cancellationToken);
 
-        ((PgConverter<T>)converter).Write(writer, value!);
+        ((PgConverter<T>)converter).Write(writer, value);
         return new();
     }
 }

@@ -1562,9 +1562,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
             var reader = PgReader;
-            return await SeekToColumnAsync(ordinal, context.Binding.DataFormat).ConfigureAwait(false) is DbNullSentinel
-                ? DbNullValueOrThrow<T>(ordinal)
-                : await context.TypeInfo.ReadFieldValueAsync<T>(reader, context.Binding, cancellationToken).ConfigureAwait(false);
+            if (await SeekToColumnAsync(ordinal, context.Binding.DataFormat).ConfigureAwait(false) is DbNullSentinel)
+                return DbNullValueOrThrow<T>(ordinal);
+
+            return await context.TypeInfo.ReadFieldValueAsync<T>(reader, context.Binding, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -1581,9 +1582,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         ThrowIfNotInResult();
         var context = GetConversionContext(ordinal, type: typeof(T) == typeof(object) ? null : typeof(T));
 
-        return SeekToColumn(ordinal, context.Binding.DataFormat) is DbNullSentinel
-            ? DbNullValueOrThrow<T>(ordinal)
-            : context.TypeInfo.ReadFieldValue<T>(PgReader, context.Binding);
+        if (SeekToColumn(ordinal, context.Binding.DataFormat) is DbNullSentinel)
+            return DbNullValueOrThrow<T>(ordinal);
+
+        return context.TypeInfo.ReadFieldValue<T>(PgReader, context.Binding);
     }
 
     #endregion

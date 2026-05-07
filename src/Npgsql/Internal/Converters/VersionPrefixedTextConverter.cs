@@ -1,19 +1,26 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class VersionPrefixedTextConverter<T>(byte versionPrefix, PgConverter<T> textConverter)
-    : PgStreamingConverter<T>(textConverter.DbNullPredicateKind is DbNullPredicate.Custom)
+sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
 {
     BufferRequirements _innerRequirements;
+    readonly byte _versionPrefix;
+    readonly PgConverter<T> _textConverter;
 
-    protected override bool IsDbNullValue(T? value, object? writeState) => textConverter.IsDbNull(value, writeState);
+    public VersionPrefixedTextConverter(byte versionPrefix, PgConverter<T> textConverter)
+    {
+        _versionPrefix = versionPrefix;
+        _textConverter = textConverter;
+        HandleDbNull = textConverter.HandleDbNull;
+    }
+
+    protected override bool IsDbNullValue(T? value, object? writeState) => _textConverter.IsDbNull(value, writeState);
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => VersionPrefixedTextConverter.CanConvert(textConverter, format, out _innerRequirements, out bufferRequirements);
+        => VersionPrefixedTextConverter.CanConvert(_textConverter, format, out _innerRequirements, out bufferRequirements);
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
@@ -21,28 +28,28 @@ sealed class VersionPrefixedTextConverter<T>(byte versionPrefix, PgConverter<T> 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState)
-        => textConverter.GetSize(context, value, ref writeState).Combine(context.Format is DataFormat.Binary ? sizeof(byte) : 0);
+    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+        => _textConverter.GetSize(context, value, ref writeState).Combine(context.Format is DataFormat.Binary ? sizeof(byte) : 0);
 
-    public override void Write(PgWriter writer, [DisallowNull]T value)
+    public override void Write(PgWriter writer, T value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
 
-    public override ValueTask WriteAsync(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken = default)
+    public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => Write(async: true, writer, value, cancellationToken);
 
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
-        await VersionPrefixedTextConverter.ReadVersion(async, versionPrefix, reader, _innerRequirements.Read, cancellationToken).ConfigureAwait(false);
-        return async ? await textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : textConverter.Read(reader);
+        await VersionPrefixedTextConverter.ReadVersion(async, _versionPrefix, reader, _innerRequirements.Read, cancellationToken).ConfigureAwait(false);
+        return async ? await _textConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false) : _textConverter.Read(reader);
     }
 
-    async ValueTask Write(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
+    async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        await VersionPrefixedTextConverter.WriteVersion(async, versionPrefix, writer, cancellationToken).ConfigureAwait(false);
+        await VersionPrefixedTextConverter.WriteVersion(async, _versionPrefix, writer, cancellationToken).ConfigureAwait(false);
         if (async)
-            await textConverter.WriteAsync(writer, value, cancellationToken).ConfigureAwait(false);
+            await _textConverter.WriteAsync(writer, value, cancellationToken).ConfigureAwait(false);
         else
-            textConverter.Write(writer, value);
+            _textConverter.Write(writer, value);
     }
 }
 

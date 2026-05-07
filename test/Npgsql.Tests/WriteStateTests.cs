@@ -248,19 +248,30 @@ public class WriteStateTests : TestBase
         public bool WriteWriteStateReceived;
     }
 
-    sealed class WriteStateTrackingConverter(bool fixedSize, WriteStateTracker tracker, bool generatesWriteState = false)
-        : PgBufferedConverter<int>(customDbNullPredicate: true)
+    sealed class WriteStateTrackingConverter : PgBufferedConverter<int>
     {
+        readonly bool _fixedSize;
+        readonly WriteStateTracker _tracker;
+        readonly bool _generatesWriteState;
+
+        public WriteStateTrackingConverter(bool fixedSize, WriteStateTracker tracker, bool generatesWriteState = false)
+        {
+            _fixedSize = fixedSize;
+            _tracker = tracker;
+            _generatesWriteState = generatesWriteState;
+            HandleDbNull = true;
+        }
+
         public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         {
-            bufferRequirements = fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
+            bufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
             return format is DataFormat.Binary;
         }
 
         protected override bool IsDbNullValue(int value, object? writeState)
         {
             if (writeState is not null)
-                tracker.IsDbNullWriteStateReceived = true;
+                _tracker.IsDbNullWriteStateReceived = true;
             return false;
         }
 
@@ -269,7 +280,7 @@ public class WriteStateTests : TestBase
         protected override void WriteCore(PgWriter writer, int value)
         {
             if (writer.Current.WriteState is not null)
-                tracker.WriteWriteStateReceived = true;
+                _tracker.WriteWriteStateReceived = true;
             writer.WriteInt32(value);
         }
 
@@ -278,7 +289,7 @@ public class WriteStateTests : TestBase
             // Range/Multirange call the subtype converter directly with a fresh null writeState, so for those tests the
             // subtype must produce state from GetSize. For the array tests the provider has already populated non-null
             // state and the ??= is a no-op, preserving existing behavior.
-            if (generatesWriteState)
+            if (_generatesWriteState)
                 writeState ??= "provider-state";
             return sizeof(int);
         }

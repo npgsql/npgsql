@@ -6,8 +6,15 @@ using System.Threading.Tasks;
 namespace Npgsql.Internal;
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false) : PgConverter<T>(customDbNullPredicate)
+public abstract class PgBufferedConverter<T> : PgConverter<T>
 {
+    protected PgBufferedConverter()
+    {
+    }
+
+    [Obsolete("Call the parameterless constructor and set HandleDbNull directly.")]
+    protected PgBufferedConverter(bool customDbNullPredicate) => HandleDbNull = customDbNullPredicate;
+
     protected abstract T ReadCore(PgReader reader);
     protected abstract void WriteCore(PgWriter writer, T value);
 
@@ -19,20 +26,20 @@ public abstract class PgBufferedConverter<T>(bool customDbNullPredicate = false)
     public sealed override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(Read(reader));
 
-    internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
-        => new(Read(reader)!);
+    internal sealed override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+        => new(Read(reader));
 
     public sealed override void Write(PgWriter writer, T value) => WriteCore(writer, value);
 
-    public sealed override ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default)
+    public sealed override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
     {
         Write(writer, value);
         return new();
     }
 
-    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+    internal sealed override ValueTask WriteAsObject(bool async, PgWriter writer, object? value, CancellationToken cancellationToken)
     {
-        Write(writer, (T)value);
+        Write(writer, (T)value!);
         return new();
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -92,6 +91,7 @@ public abstract class PgConcreteTypeInfoProvider
             $"'{methodName}' incorrectly returned a different {nameof(PgTypeId)} in its concrete type info than the caller passed in.");
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
 {
     /// <summary>
@@ -124,7 +124,37 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
         => default(T) is null || value is not null ? GetForValueCore(context, (T?)value, ref writeState) : null;
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct ProviderValueContext
 {
     public PgTypeId? ExpectedPgTypeId { get; init; }
+    public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
+}
+
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+static class PgConcreteTypeInfoProviderExtensions
+{
+    extension(PgConcreteTypeInfoProvider provider)
+    {
+        internal PgConcreteTypeInfo? GetForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
+        {
+            writeState = null;
+            switch (context.NestedObjectDbNullHandling)
+            {
+            case NestedObjectDbNullHandling.ExtendedThrowOnNull:
+                if (value is null)
+                    ThrowHelper.ThrowArgumentNullException("Object-typed value cannot be null, a db null value must be used instead.", nameof(value));
+                goto case NestedObjectDbNullHandling.Extended;
+            case NestedObjectDbNullHandling.Extended:
+                if (value is DBNull)
+                    return null;
+                goto case NestedObjectDbNullHandling.Default;
+            case NestedObjectDbNullHandling.Default:
+                return value is null ? null : provider.GetForValueAsObject(context, value, out writeState);
+            default:
+                ThrowHelper.ThrowUnreachableException();
+                return default;
+            }
+        }
+    }
 }
