@@ -593,8 +593,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_binding is not null)
             DisposeBindingState();
 
-        // Dispose any provider-produced _writeState against its current ConcreteTypeInfo before we
-        // overwrite it — once reassigned, the restored ConcreteTypeInfo can't dispose state produced
+        // Dispose any provider-produced _providerWriteState against its current ConcreteTypeInfo before
+        // we overwrite it — once reassigned, the restored ConcreteTypeInfo can't dispose state produced
         // by the about-to-be-discarded one.
         if (_providerWriteState is { } ws)
         {
@@ -721,7 +721,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             catch (Exception ex)
             {
-                // MakeConcrete may have assigned _writeState already before throwing, dispose before we throw.
+                // MakeConcrete may have assigned _providerWriteState already before throwing, dispose before we throw.
                 if (providerWriteState is { } failedWs)
                 {
                     typeInfo.DisposeWriteState(failedWs);
@@ -777,9 +777,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
         // We might call this twice, once during validation and once during WriteBind, only compute things once.
-        // Bind is atomic *and* self-cleaning: the local binding is only committed to _binding
-        // (and _writeState nulled) after every check passes, and any exception before commit disposes
-        // the resolution-time _writeState ourselves so callers don't need to know about it.
+        // Bind is atomic *and* self-cleaning: ownership of the binding (and the resolution-time
+        // _providerWriteState it absorbs) commits to _binding only after the try succeeds, the post-try
+        // format check disposes the bound state via DisposeBindingState before throwing, and any
+        // exception during compute disposes the resolution-time _providerWriteState in the catch — so
+        // callers never see a half-bound parameter.
         if (_binding is null)
         {
             if (_size > 0)
@@ -1001,7 +1003,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         DisposeBindingState();
 
-        // Dispose any provider-produced _writeState as well.
+        // Dispose any provider-produced _providerWriteState as well.
         if (_providerWriteState is { } ws)
         {
             ConcreteTypeInfo?.DisposeWriteState(ws);

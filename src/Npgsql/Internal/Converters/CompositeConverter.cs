@@ -232,10 +232,12 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        // Null state is legitimate when composite IsBindOptional=true and BindValue was skipped entirely.
-        // By construction of the combine pass that means no provider field, no variable field, no nullable
-        // field, and total size within the limit; every field can be written from its cached default.
-        // Variable-size composites must always arrive with a populated WriteState, we can't recover
+        // Null state is legitimate in two Exact-size scenarios:
+        //   1. composite IsBindOptional=true → BindValue was skipped entirely; every field writes from
+        //      its cached default (no provider/variable/nullable field, total within the limit).
+        //   2. composite IsBindOptional=false (e.g. a fixed-size field opted out for validation) but
+        //      no field produced per-value state — BindValue ran, the lazy-rent fast-path returned null.
+        // Variable-size composites must always arrive with a populated WriteState; we can't recover
         // per-field value-dependent sizes otherwise.
         var writeState = writer.Current.WriteState switch
         {

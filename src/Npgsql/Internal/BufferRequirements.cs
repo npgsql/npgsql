@@ -10,7 +10,8 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     readonly Size _read;
     readonly Size _write;
     // True when bind can be skipped — the converter has no per-value bind work AND Write is Exact.
-    // The invariant is enforced at every construction and combine, so callers can read IsBindOptional directly.
+    // Construction is permissive (loose combinations are admissible to keep room for upcoming measuring
+    // work); the invariant is gated at Bind entry, which throws if IsBindOptional=true with non-Exact Write.
     readonly bool _optionalBind;
 
     BufferRequirements(Size read, Size write, bool optionalBind)
@@ -58,16 +59,12 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     /// <summary>Custom requirements with explicit <see cref="IsBindOptional"/>; use when the Kind-derived default is wrong (rare).</summary>
     public static BufferRequirements Create(Size read, Size write, bool optionalBind) => new(read, write, optionalBind);
 
-    public BufferRequirements Combine(Size read, Size write)
-    {
-        var newWrite = _write.Combine(write);
-        return new(_read.Combine(read), newWrite, _optionalBind && newWrite.Kind is SizeKind.Exact);
-    }
-
     public BufferRequirements Combine(BufferRequirements other)
     {
+        // Both sides carry explicit IsBindOptional — AND them. The combined write Kind is independent and
+        // is gated at Bind entry (until measuring lands and the contract loosens).
         var newWrite = _write.Combine(other._write);
-        return new(_read.Combine(other._read), newWrite, _optionalBind && other._optionalBind && newWrite.Kind is SizeKind.Exact);
+        return new(_read.Combine(other._read), newWrite, _optionalBind && other._optionalBind);
     }
 
     public BufferRequirements Combine(int byteCount)
