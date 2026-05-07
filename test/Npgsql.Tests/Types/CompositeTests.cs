@@ -433,7 +433,7 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         Assert.That(ex!.InnerException, Is.TypeOf<ArgumentException>());
     }
 
-[Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
     public async Task Table_as_composite([Values] bool enabled)
     {
         await using var adminConnection = await OpenConnectionAsync();
@@ -752,7 +752,7 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
         public DateTime[]? DateTimes { get; set; }
     }
 
-record NameTranslationComposite
+    record NameTranslationComposite
     {
         public int Simple { get; set; }
         public int TwoWords { get; set; }

@@ -95,7 +95,7 @@ readonly struct ArrayConverterCore(
         var arrayPool = providerState?.ArrayPool;
         var elemData = providerState?.Data.Array;
         var fixedSizeElements = false;
-        var elemContext = BindContext.CreateNested(context, ElementTypeInfo.Converter);
+        var elemContext = BindContext.CreateNested(context, binaryRequirements);
         if (elemContext.IsBindFixedSize)
         {
             fixedSizeElements = true;

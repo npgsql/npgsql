@@ -29,7 +29,15 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
         => Read(async: true, reader, cancellationToken);
 
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
-        => _textConverter.Bind(context, value, ref writeState).Combine(context.Format is DataFormat.Binary ? sizeof(byte) : 0);
+    {
+        // Only the binary path combines the version-prefix byte into the outer requirement (see CanConvert);
+        // text leaves outer == inner, so we can pass it through without nesting.
+        if (context.Format is not DataFormat.Binary)
+            return _textConverter.Bind(context, value, ref writeState);
+
+        var innerContext = BindContext.CreateNested(context, _innerRequirements);
+        return _textConverter.Bind(innerContext, value, ref writeState).Combine(sizeof(byte));
+    }
 
     public override void Write(PgWriter writer, T value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();

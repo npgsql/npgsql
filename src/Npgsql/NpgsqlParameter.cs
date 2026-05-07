@@ -743,9 +743,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         [DoesNotReturn]
         void ThrowWritingNotSupported(PgSerializerOptions options, Type? type, Exception? inner = null, bool resolved = false)
         {
+            // Prefer the user-supplied type id — the resolved concrete can legitimately differ from what
+            // the user configured (e.g. writing DBNull resolves to an unspecified-DBNull info regardless
+            // of the parameter's NpgsqlDbType), and naming that resolved type in the error would confuse
+            // the user about what they pinned. Fall back to the resolved id only when nothing was pinned
+            // so the message still names *something* on inferred-from-value paths.
             PgTypeId? pgTypeId = null;
             if (_npgsqlDbType is null && _dataTypeName is { } dataTypeName && options.DatabaseInfo.TryGetPostgresTypeByName(dataTypeName, out var pgType))
                 pgTypeId = pgType.DataTypeName;
+            if (pgTypeId is null && resolved && ConcreteTypeInfo is not null)
+                pgTypeId = ConcreteTypeInfo.PgTypeId;
             AdoSerializerHelpers.ThrowWritingNotSupported(type, options, pgTypeId, _npgsqlDbType, ParameterName, inner, resolved);
         }
 
