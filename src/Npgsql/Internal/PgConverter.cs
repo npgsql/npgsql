@@ -152,7 +152,8 @@ public abstract class PgConverter
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
     public Size BindAsObject(in BindContext context, object? value, ref object? writeState)
     {
-        Debug.Assert(TypeAcceptsNull || value is not null);
+        if (value is null && !TypeAcceptsNull)
+            ThrowInvalidNullValue();
 
         if (context.IsBindOptional)
         {
