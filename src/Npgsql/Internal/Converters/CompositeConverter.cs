@@ -11,9 +11,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly CompositeInfo<T> _composite;
     readonly BufferRequirements _bufferRequirements;
-    // Precomputed write size from the constructor's combine pass, taken before the provider-field clamp
-    // and the upper-bound limit. When Exact, BindValue can return this directly without per-field sizing —
-    // the per-field loop still runs for bind-time resolution side-effects, but size is already known.
+    // Precomputed write size from the constructor's combine pass, taken before the upper-bound Limit.
+    // When Exact, BindValue can return this directly without per-field sizing — the per-field loop still
+    // runs for bind-time validation side effects, but size is already known. Exact requires all fields
+    // non-provider-backed (provider-backed contribute Streaming via GetBinaryRequirements), so by
+    // construction the cached defaults aggregated here equal the actuals at bind time.
     readonly Size _writeSizePrecomputed;
 
     public CompositeConverter(CompositeInfo<T> composite)
@@ -23,28 +25,19 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // Composite always has potential per-field bind-time side effects (provider resolution, converter-level
         // value validation). The fan-in below AND-s every field's IsBindOptional claim through the loop;
         // combined with the cumulative Write Kind it produces the composite's IsBindOptional.
+        // Provider-backed fields contribute Streaming via GetBinaryRequirements (their cached default's
+        // requirements are unsafe to aggregate against — the resolved concrete at bind time may differ).
+        // The aggregation collapses naturally: Streaming fans into Unknown via TryCombine, IsBindOptional
+        // ANDs to false, and the final Write Kind becomes non-Exact for any composite with provider fields.
         var isBindOptional = true;
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
         foreach (var field in _composite.Fields)
         {
-            Size readReq;
-            Size writeReq;
-            if (field.IsProviderBacked)
-            {
-                // Provider-backed fields can resolve to different concretes per-value at bind time;
-                // the cached default's requirements / IsBindOptional are unsafe to aggregate against.
-                // Collapse to Unknown so BindValue computes the total at bind time, and force isBindOptional
-                // to false because the actual resolved converter may have per-value bind work.
-                readReq = Size.Unknown;
-                writeReq = Size.Unknown;
-                isBindOptional = false;
-            }
-            else
-            {
-                isBindOptional &= field.IsBinaryBindOptional;
-                readReq = field.BinaryReadRequirement;
-                writeReq = field.BinaryWriteRequirement;
-            }
+            var fieldReqs = field.GetBinaryRequirements();
+            isBindOptional &= fieldReqs.IsBindOptional;
+
+            var readReq = fieldReqs.Read;
+            var writeReq = fieldReqs.Write;
 
             // If field is nullable we cannot depend on its buffer size being fixed.
             if (field.IsDbNullable)
@@ -161,19 +154,8 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 if (!fieldContext.IsBindOptional)
                     field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
 
-                // Skip populating the slot when no state was produced and the resolved typeinfo is the same as the default.
-                // The common case — DateTime-kind and similar pure-validation providers — satisfies both and pays no slot allocation.
-                // A provider that happens to return a non-default concrete for a decided id still has its
-                // converter captured so Write uses it instead of demoting silently to the default.
-                if (fieldState is null && ReferenceEquals(converter, field.GetDefaultWriteInfo(out _)))
-                    continue;
-
                 if (data is null)
-                {
                     data = ArrayPool<ElementState>.Shared.Rent(_composite.Fields.Count);
-                    // clear any stale slots left behind by the previous pool user.
-                    Array.Clear(data, 0, _composite.Fields.Count);
-                }
 
                 data[i] = new()
                 {
@@ -240,13 +222,9 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        // Null state is legitimate in two cases:
-        //   1. Exact-size composite — BindValue was skipped entirely. By construction of the combine pass
-        //      this means no provider field, no variable field, no nullable field.
-        //   2. Clamped-by-provider composite — BindValue ran but every field's provider produced null
-        //      state, so we skipped the WriteState allocation. All fields are individually fixed-size
-        //      (that's what _writeSizePrecomputed.Kind is Exact guarantees), so it works the same
-        //      way and resolution is just re-done via cached provider dispatch.
+        // Null state is legitimate when composite IsBindOptional=true and BindValue was skipped entirely.
+        // By construction of the combine pass that means no provider field, no variable field, no nullable
+        // field, and total size within the limit; every field can be written from its cached default.
         // Variable-size composites must always arrive with a populated WriteState, we can't recover
         // per-field value-dependent sizes otherwise.
         var writeState = writer.Current.WriteState switch
@@ -274,16 +252,12 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var field = _composite.Fields[i];
             writer.WriteAsOid(field.PgTypeId);
 
-            // No cached slot: uses GetDefaultWriteInfo which is stateless by construction,
-            // so there is nothing to dispose on this path. Per-value resolution, if it was needed,
-            // already ran at bind-time and would have populated the slot
-            // A slot with a null Converter is a default(ElementState) left behind by
-            // BindValue's lazy-rent: fields walked before the first state-producing provider aren't
-            // back-filled, and Write handles them per-slot the same way a fully-unallocated data
-            // array is handled in the truly-exact case.
+            // data is null when composite-level BindValue was skipped (composite IsBindOptional=true);
+            // every field is then non-provider-backed + IsBindOptional + fixed-size by construction, so
+            // each field's default converter and cached write requirement suffice to produce the slot.
             ElementState elementState;
-            if (data?[i] is { Converter: not null } state)
-                elementState = state;
+            if (data is not null)
+                elementState = data[i];
             else
             {
                 var converter = field.GetDefaultWriteInfo(out var writeRequirement);

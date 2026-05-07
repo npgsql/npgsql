@@ -112,15 +112,30 @@ abstract class CompositeFieldInfo
 
     public string Name { get; }
     public PgTypeId PgTypeId { get; }
-    public bool IsBinaryBindOptional => _binaryBufferRequirements.IsBindOptional;
-    public Size BinaryReadRequirement => _binaryBufferRequirements.Read;
-    public Size BinaryWriteRequirement => _binaryBufferRequirements.Write;
 
     /// True when this field defers converter resolution to bind time via a provider.
     [MemberNotNullWhen(false, nameof(ConcreteTypeInfo))]
     public bool IsProviderBacked { get; }
 
     public abstract Type Type { get; }
+
+    /// <summary>
+    /// Per-format binary buffer requirements for this field. A direction the field doesn't support collapses
+    /// to <see cref="Size.Unknown"/> here — the composite tolerates one-directional fields and only fails if
+    /// the unsupported direction is actually exercised at the use site. Provider-backed fields return
+    /// <see cref="BufferRequirements.Streaming"/> because we can't honestly aggregate over the unbounded set of
+    /// concretes the provider may produce.
+    /// </summary>
+    public BufferRequirements GetBinaryRequirements()
+    {
+        if (IsProviderBacked)
+            return BufferRequirements.Streaming;
+
+        var reqs = _binaryBufferRequirements;
+        var readReq = ConcreteTypeInfo.SupportsReading ? reqs.Read : Size.Unknown;
+        var writeReq = ConcreteTypeInfo.SupportsWriting ? reqs.Write : Size.Unknown;
+        return BufferRequirements.Create(readReq, writeReq, optionalBind: reqs.IsBindOptional);
+    }
 
     protected abstract PgConcreteTypeInfo MakeConcreteForValue(object instance, out object? writeState);
 
