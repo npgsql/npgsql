@@ -614,7 +614,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var typeInfo = TypeInfo;
         var staticValueType = StaticValueType;
         var previouslyResolved = ReferenceEquals(typeInfo?.Options, options);
-        Debug.Assert(!previouslyResolved || ConcreteTypeInfo is not null);
+        // previouslyResolved implies TypeInfo is set (the Options compare wouldn't otherwise match a
+        // non-null options). It does NOT imply ConcreteTypeInfo is set — a prior attempt may have
+        // thrown during MakeConcreteForValue, leaving TypeInfo set and ConcreteTypeInfo null. The
+        // line 687 branch re-enters concrete resolution for that state.
+        Debug.Assert(!previouslyResolved || typeInfo is not null);
         if (!previouslyResolved)
         {
             var valueType = GetValueType(staticValueType);
@@ -797,10 +801,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     binding = BindTypedValue(ConcreteTypeInfo, _providerWriteState, formatPreference: requiredFormat);
                 }
 
-                if (requiredFormat is not null && binding.DataFormat != requiredFormat)
-                    ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
-
-                // Binding and ownership transfer of state happen together.
+                // Binding and ownership transfer of state happen together — _binding now owns
+                // binding.WriteState end-to-end, including across the format-mismatch throw below
+                // (DisposeBindingState cleans up on parameter teardown).
                 _binding = binding;
                 _providerWriteState = null;
             }
@@ -823,9 +826,15 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     $"Could not bind parameter '{ParameterName}' of CLR type '{GetValueType(StaticValueType)?.FullName ?? "null"}' to PostgreSQL type '{ConcreteTypeInfo.Options.GetDataTypeName(ConcreteTypeInfo.PgTypeId).DisplayName}'. See the inner exception for details.",
                     innerException: ex);
             }
+
         }
-        else if (requiredFormat is not null && _binding.GetValueOrDefault().DataFormat != requiredFormat)
+
+        // _binding is now set (fresh from the try above, or pre-existing on retry). On format mismatch
+        // dispose eagerly: Write's finally never fires (the command failed pre-execute) and a stale
+        // wrong-format _binding would block retries until the user resets Value/Size.
+        if (requiredFormat is not null && _binding.GetValueOrDefault().DataFormat != requiredFormat)
         {
+            DisposeBindingState();
             ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
         }
 

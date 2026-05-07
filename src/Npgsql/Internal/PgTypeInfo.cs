@@ -330,6 +330,9 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
 public sealed class PgConcreteTypeInfo : PgTypeInfo
 {
+    readonly bool _supportsReading;
+    readonly bool _supportsWriting;
+
     readonly bool _canBinaryConvert;
     readonly BufferRequirements _binaryBufferRequirements;
 
@@ -339,9 +342,6 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
         : this(options, converter, pgTypeId, requestedType: null)
     {}
-
-    bool _supportsReading;
-    bool _supportsWriting;
 
     internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
         : base(options, converter, pgTypeId, requestedType)
