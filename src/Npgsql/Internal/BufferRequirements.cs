@@ -59,10 +59,16 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public static BufferRequirements Create(Size read, Size write, bool optionalBind) => new(read, write, optionalBind);
 
     public BufferRequirements Combine(Size read, Size write)
-        => new(_read.Combine(read), _write.Combine(write), _optionalBind);
+    {
+        var newWrite = _write.Combine(write);
+        return new(_read.Combine(read), newWrite, _optionalBind && newWrite.Kind is SizeKind.Exact);
+    }
 
     public BufferRequirements Combine(BufferRequirements other)
-        => new(_read.Combine(other._read), _write.Combine(other._write), _optionalBind && other._optionalBind);
+    {
+        var newWrite = _write.Combine(other._write);
+        return new(_read.Combine(other._read), newWrite, _optionalBind && other._optionalBind && newWrite.Kind is SizeKind.Exact);
+    }
 
     public BufferRequirements Combine(int byteCount)
         => Combine(CreateFixedSize(byteCount));
