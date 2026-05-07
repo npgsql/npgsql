@@ -25,14 +25,26 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // combined with the cumulative Write Kind it produces the composite's IsBindOptional.
         var isBindOptional = true;
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
-        var anyProviderField = false;
         foreach (var field in _composite.Fields)
         {
-            anyProviderField = anyProviderField || field.IsProviderBacked;
-            isBindOptional &= field.IsBinaryBindOptional;
-
-            var readReq = field.BinaryReadRequirement;
-            var writeReq = field.BinaryWriteRequirement;
+            Size readReq;
+            Size writeReq;
+            if (field.IsProviderBacked)
+            {
+                // Provider-backed fields can resolve to different concretes per-value at bind time;
+                // the cached default's requirements / IsBindOptional are unsafe to aggregate against.
+                // Collapse to Unknown so BindValue computes the total at bind time, and force isBindOptional
+                // to false because the actual resolved converter may have per-value bind work.
+                readReq = Size.Unknown;
+                writeReq = Size.Unknown;
+                isBindOptional = false;
+            }
+            else
+            {
+                isBindOptional &= field.IsBinaryBindOptional;
+                readReq = field.BinaryReadRequirement;
+                writeReq = field.BinaryWriteRequirement;
+            }
 
             // If field is nullable we cannot depend on its buffer size being fixed.
             if (field.IsDbNullable)
@@ -47,22 +59,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             req = BufferRequirements.Create(readSuccess ? readReq : Size.Unknown, writeSuccess ? writeReq : Size.Unknown);
         }
 
-
-        // Capture the combined write size before clamping so BindValue can return it unchanged. This is the
-        // full requirement we know internally — externally we hide it behind an upper-bound to force BindValue
-        // to fire for provider-backed composites, but the number itself is still correct.
+        // BindValue can return this directly when Exact (no provider field, no nullable, no overflow).
         _writeSizePrecomputed = req.Write;
 
-        // When any field defers resolution to a provider, downgrade the externally-reported write size to
-        // an upper bound. This is the sole mechanism by which bind-time resolution is triggered: non-exact
-        // writes route through BindValue, where per-field GetWriteInfo calls dispatch into providers and
-        // surface deterministic value-level errors (e.g. DateTime kind mismatches) at bind instead of at
-        // first Write. Composites with only concrete fields stay exact and skip BindValue as before.
-        if (anyProviderField && req.Write.Kind is SizeKind.Exact)
-            req = BufferRequirements.Create(req.Read, Size.CreateUpperBound(req.Write.Value));
-
         // We have to put a limit on the requirements we report otherwise smaller buffer sizes won't work.
-        // IsBindOptional rides on the field-claim fan-in AND the post-clamp Write being Exact — a clamped
+        // IsBindOptional rides on the field-claim fan-in AND the final Write being Exact — a Limit-clamped
         // (or nullable-shifted) Write means the Bind dispatch can't satisfy the size from the bufreq alone.
         var finalRead = Limit(req.Read);
         var finalWrite = Limit(req.Write);

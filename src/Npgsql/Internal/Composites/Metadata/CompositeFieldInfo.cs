@@ -30,35 +30,29 @@ abstract class CompositeFieldInfo
         if (typeInfo.PgTypeId is null)
             ThrowHelper.ThrowArgumentException("Type info cannot have an undecided PgTypeId.", nameof(typeInfo));
 
-        PgConcreteTypeInfo concrete;
         if (typeInfo is PgConcreteTypeInfo direct)
         {
-            concrete = direct;
+            if (!direct.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
+            {
+                ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
+                return;
+            }
+            _binaryBufferRequirements = bufferRequirements;
+            ConcreteTypeInfo = direct;
         }
-        else if (typeInfo is PgProviderTypeInfo providerTypeInfo)
+        else if (typeInfo is PgProviderTypeInfo)
         {
-            // Lift the default concrete's buffer requirements and converter so the composite gets an
-            // accurate per-field size even when resolution is deferred. IsProviderBacked still signals that
-            // GetWriteInfo / BindValue must go through MakeConcreteForValue for per-value dispatch at bind time —
-            // that's where provider-backed fields (DateTime kind, late-bound, etc.) surface deterministic
-            // errors. The cached default is reused by GetDefaultWriteInfo on CompositeConverter's Path A,
-            // where per-value resolution has already completed without producing state.
-            concrete = providerTypeInfo.GetDefault(null);
+            // Provider-backed fields defer to per-value resolution at bind time via MakeConcreteForValue.
+            // No cached default is materialized here: the cached default's requirements are unsafe to trust
+            // (resolved converter at bind time may differ), and consumers (CompositeConverter aggregation,
+            // GetDefaultWriteInfo) are gated to skip provider-backed fields. ConcreteTypeInfo and
+            // _binaryBufferRequirements stay at their default null/zero values.
             IsProviderBacked = true;
         }
         else
         {
             ThrowHelper.ThrowInvalidOperationException($"Unsupported {nameof(PgTypeInfo)} '{typeInfo.GetType().FullName}' for composite field '{name}'.");
-            return;
         }
-
-        if (!concrete.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
-        {
-            ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
-            return;
-        }
-        _binaryBufferRequirements = bufferRequirements;
-        ConcreteTypeInfo = concrete;
     }
 
     public PgConverter GetReadInfo(out Size readRequirement)
@@ -89,7 +83,7 @@ abstract class CompositeFieldInfo
         writeState = null;
         var concreteTypeInfo = ConcreteTypeInfo ?? MakeConcreteForValue(instance, out writeState);
         if (!concreteTypeInfo.SupportsWriting)
-            AdoSerializerHelpers.ThrowReadingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
+            AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
 
         var ctx = !IsProviderBacked
             ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional)
