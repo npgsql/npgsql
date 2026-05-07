@@ -453,14 +453,22 @@ public readonly struct BindContext
         var format = nestingContext.Format;
         if (!converter.CanConvert(format, out var bufferRequirements))
             ThrowHelper.ThrowInvalidOperationException($"Converter '{converter.GetType().FullName}' does not support data format '{format}'.");
-        return new()
+        return CreateNested(nestingContext, bufferRequirements);
+    }
+
+    /// <summary>
+    /// Variant of <see cref="CreateNested(in BindContext, PgConverter)"/> for callers that already
+    /// hold the inner converter's <see cref="BufferRequirements"/> (e.g. composing converters that
+    /// captured them in their constructor). Skips the per-call <c>CanConvert</c> roundtrip.
+    /// </summary>
+    public static BindContext CreateNested(in BindContext nestingContext, BufferRequirements requirements)
+        => new()
         {
-            Format = format,
-            BufferRequirement = bufferRequirements.Write,
-            IsBindOptional = bufferRequirements.IsBindOptional,
+            Format = nestingContext.Format,
+            BufferRequirement = requirements.Write,
+            IsBindOptional = requirements.IsBindOptional,
             NestedObjectDbNullHandling = nestingContext.NestedObjectDbNullHandling
         };
-    }
 
     /// <summary>
     /// Constructs a <see cref="BindContext"/> from caller-supplied values without verifying that
