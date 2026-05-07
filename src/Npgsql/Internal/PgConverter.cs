@@ -263,7 +263,7 @@ static class PgConverterExtensions
         {
         case NestedObjectDbNullHandling.ExtendedThrowOnNull:
             if (value is null)
-                ThrowHelper.ThrowArgumentNullException(nameof(value), "Object-typed value cannot be null, a db null value must be used instead.");
+                ThrowHelper.ThrowArgumentNullException("Object-typed value cannot be null, a db null value must be used instead.", nameof(value));
             goto case NestedObjectDbNullHandling.Extended;
         case NestedObjectDbNullHandling.Extended:
             if (value is DBNull)
