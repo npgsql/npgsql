@@ -15,9 +15,27 @@ public abstract class PgTypeInfo
     PgTypeInfo(PgSerializerOptions options, Type type, Type? requestedType)
     {
         Options = options;
-
         HasExactType = requestedType is null || requestedType == type;
-        Type = requestedType is null ? type : GetReportedType(type, requestedType) ?? type;
+        Type = ResolveType(type, requestedType);
+    }
+
+    /// <summary>
+    /// Resolves the type the info should advertise. <paramref name="requestedType"/> must be on the same subtype
+    /// chain as <paramref name="type"/>: when narrower (or equal) it is returned as-is (the under-reporting case);
+    /// when wider <paramref name="type"/> is returned (the polymorphic-alias case, the info advertises the
+    /// converter's type back to a wider query). Throws when the two types are not in any subtype relationship.
+    /// </summary>
+    private protected static Type ResolveType(Type type, Type? requestedType)
+    {
+        if (requestedType is null || requestedType == type)
+            return type;
+        if (requestedType.IsAssignableTo(type))
+            return requestedType;
+        if (type.IsAssignableTo(requestedType))
+            return type;
+        throw new ArgumentException(
+            $"The requested type {requestedType} is not in a subtype relationship with the converter's type {type}.",
+            nameof(requestedType));
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? requestedType = null)
@@ -30,16 +48,39 @@ public abstract class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
-    // True when the reported type matches the converter's type exactly (no reported type given at construction, or
-    // the given reported type equals the converter type). When false, the reported type is a widening of the converter
-    // type (e.g. Array/Stream base-type reporting, enum-underlying widening) and the caller must dispatch through the
-    // info — the info routes reference-variance cases through the object APIs and layout-identity cases (enum) through
-    // the typed path with Unsafe.As, as appropriate for the widening kind.
-    // Having a single converter cover multiple reported types (Arrays, Streams) reduces the number of generic
-    // instantiations that need to be compiled for AOT.
-    internal bool HasExactType { get; }
+    // Whether the eventual converter's type is exactly Type. False when what flows out can vary along the shared
+    // subtype chain (under-report, polymorphic alias).
+    //   - Concrete: false when (Converter.TypeToConvert, Type) differ.
+    //   - Provider: false when the underlying provider is polymorphic and dispatches to varied concretes per call,
+    //     even though the wrapping pair (Provider.TypeToConvert, Type) is invariant.
+    internal bool HasExactType { get; private protected init; }
 
     public PgTypeId? PgTypeId { get; }
+
+    // Shared validation. Throws if info doesn't belong to options or its Type isn't compatible with expectedType
+    // (when allowSubtypes is true, subtypes are accepted). Plugins ship in-tree, so this fires in release. Hot success
+    // path is the inlinable predicate. The cold throw path is factored out so callers only pay for the predicate when
+    // valid.
+    internal static void ValidateInfo(string contextName, PgTypeInfo info, PgSerializerOptions options, Type? expectedType, bool allowSubtypes)
+    {
+        if (info.Options != options || !IsCompatibleResolution(info.Type, expectedType, allowSubtypes))
+            Throw(contextName, info, options, expectedType, allowSubtypes);
+
+        // Strict equality when allowSubtypes is false. Otherwise also admits subtypes of expectedType (covers polymorphic-alias
+        // and under-reporting). Null expectedType means "any", used by callers that care only about ownership.
+        static bool IsCompatibleResolution(Type? resolvedType, Type? expectedType, bool allowSubtypes)
+            => expectedType is null
+                || resolvedType is not null && (resolvedType == expectedType || (allowSubtypes && resolvedType.IsAssignableTo(expectedType)));
+
+        static void Throw(string contextName, PgTypeInfo info, PgSerializerOptions options, Type? expectedType, bool allowSubtypes)
+        {
+            if (info.Options != options)
+                throw new InvalidOperationException($"'{contextName}' returned a {nameof(PgTypeInfo)} from a different {nameof(PgSerializerOptions)} instance.");
+
+            if (!IsCompatibleResolution(info.Type, expectedType, allowSubtypes))
+                throw new InvalidOperationException($"'{contextName}' returned a {nameof(PgTypeInfo)} advertising type {info.Type} which is incompatible with expected type {expectedType}.");
+        }
+    }
 
     /// <summary>
     /// Makes a <see cref="PgConcreteTypeInfo"/> for the given field.
@@ -154,17 +195,6 @@ public abstract class PgTypeInfo
             disposable.Dispose();
     }
 
-    /// <summary>
-    /// Returns <paramref name="requestedType"/> when it is a strict subtype of <paramref name="converterType"/>, otherwise null.
-    /// Throws when the two are not in a subtype relationship.
-    /// </summary>
-    protected static Type? GetReportedType(Type converterType, Type requestedType)
-    {
-        if (!requestedType.IsInSubtypeRelationshipWith(converterType))
-            throw new ArgumentException($"The requested type {requestedType} is not in a subtype relationship with the converter's type {converterType}.", nameof(requestedType));
-
-        return requestedType != converterType && requestedType.IsAssignableTo(converterType) ? requestedType : null;
-    }
 }
 
 public sealed class PgProviderTypeInfo : PgTypeInfo
@@ -181,26 +211,36 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     {
         _typeInfoProvider = typeInfoProvider;
 
+        // When the underlying provider permits concrete variance and the resolved Type isn't a leaf (sealed / value
+        // type), dispatched concretes may vary along Type's subtype chain — HasExactType=false honestly previews that.
+        // requestedType narrowing flows through Type: a variant provider narrowed via requestedType to a sealed
+        // wrapper Type is canonical at that leaf, regardless of the underlying floor. Canonical providers over
+        // non-sealed floors can opt out via AllowConcreteVariance=false.
+        if (typeInfoProvider.AllowConcreteVariance && !Type.IsSealed)
+            HasExactType = false;
+
         // Always validate the default provider result, the info will be re-used so there is no real downside.
         var result = typeInfoProvider.GetDefault(pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null);
-        ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result, typeInfoProvider.TypeToConvert, options.PortableTypeIds);
+        ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
         _defaultConcrete = result;
     }
 
     public PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
     {
-        if (pgTypeId is { } id && PgTypeId is { } decidedId)
+        if (PgTypeId is { } decidedId)
         {
-            if (id != decidedId)
+            if (pgTypeId is { } id && id != decidedId)
                 ThrowUnexpectedPgTypeId(nameof(pgTypeId));
-
-            Debug.Assert(_defaultConcrete is not null);
-            return _defaultConcrete;
+        }
+        else if (pgTypeId is not null)
+        {
+            var result = _typeInfoProvider.GetDefault(pgTypeId);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
+            return result;
         }
 
-        var result = _typeInfoProvider.GetDefault(pgTypeId ?? PgTypeId);
-        ValidateResult(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
-        return result;
+        Debug.Assert(_defaultConcrete is not null);
+        return _defaultConcrete;
     }
 
     public PgConcreteTypeInfo? GetForField(Field field)
@@ -210,7 +250,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         var result = _typeInfoProvider.GetForField(field);
         if (result is not null)
-            ValidateResult(nameof(PgConcreteTypeInfoProvider.GetForField), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForField), result);
         return result;
     }
 
@@ -228,11 +268,11 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         writeState = null;
         var result = _typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
-            ? providerT.GetForValue(context, value, ref writeState)
+            ? providerT.GetForValue(context, value, out writeState)
             : ThrowNotSupportedType(typeof(T));
 
         if (result is not null)
-            ValidateResult(nameof(PgConcreteTypeInfoProvider<>.GetForValue), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider<>.GetForValue), result);
         return result;
 
         PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
@@ -253,10 +293,9 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        writeState = null;
-        var result = _typeInfoProvider.GetForValueAsObject(context, value, ref writeState);
+        var result = _typeInfoProvider.GetForValueAsObject(context, value, out writeState);
         if (result is not null)
-            ValidateResult(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result);
         return result;
     }
 
@@ -265,16 +304,13 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     static void ThrowUnexpectedPgTypeId(string parameterName)
         => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
 
-    void ValidateResult(string methodName, PgConcreteTypeInfo result)
-        => ValidateResult(methodName, result, _typeInfoProvider.TypeToConvert, Options.PortableTypeIds);
-
-    static void ValidateResult(string methodName, PgConcreteTypeInfo result, Type expectedTypeToConvert, bool expectPortableTypeIds)
+    void ValidateConcrete(string methodName, PgConcreteTypeInfo result)
     {
-        if (expectedTypeToConvert != typeof(object) && result.Converter.TypeToConvert != expectedTypeToConvert)
-            throw new InvalidOperationException($"'{methodName}' returned a {nameof(result.Converter)} of type {result.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
+        // Skip self-validation for framework-internal providers (e.g. composing infrastructure); see PgConcreteTypeInfoProvider.IsInternalProvider.
+        if (_typeInfoProvider.IsInternalProvider)
+            return;
 
-        if (expectPortableTypeIds && result.PgTypeId.IsOid || !expectPortableTypeIds && result.PgTypeId.IsDataTypeName)
-            throw new InvalidOperationException($"'{methodName}' returned a concrete type info with a {nameof(result.PgTypeId)} that was not in canonical form.");
+        ValidateInfo(methodName, result, Options, Type, allowSubtypes: !HasExactType);
     }
 }
 
@@ -290,6 +326,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         : this(options, converter, pgTypeId, requestedType: null)
     {}
 
+    bool _supportsReading;
+    bool _supportsWriting;
+
     internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
         : base(options, converter, pgTypeId, requestedType)
     {
@@ -297,30 +336,59 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
         _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
 
-        SupportsReading = GetDefaultSupportsReading(converter.TypeToConvert, requestedType);
-        SupportsWriting = true;
-    }
-
-    Type TypeToConvert
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Converter.TypeToConvert;
+        // Set fields directly to bypass init guards on default values; init props enforce directional widen-to-true.
+        _supportsReading = GetDefaultSupportsReading(converter.TypeToConvert, requestedType);
+        _supportsWriting = GetDefaultSupportsWriting(converter.TypeToConvert, requestedType);
     }
 
     public PgConverter Converter { get; }
 
-    public bool SupportsReading { get; init; }
-    public bool SupportsWriting { get; init; }
+    // Author widen-to-true is only meaningful in the under-reporting direction (Type narrower than the converter's
+    // type): the converter actually returns instances assignable to Type at runtime via author contract.
+    public bool SupportsReading
+    {
+        get => _supportsReading;
+        init
+        {
+            if (value && !_supportsReading && !Type.IsAssignableTo(Converter.TypeToConvert))
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"Cannot widen {nameof(SupportsReading)} to true; reported type {Type} is not narrower-or-equal to converter type {Converter.TypeToConvert} (under-reporting direction).");
+            _supportsReading = value;
+        }
+    }
 
-    // We assume a non-exact typed info does not support reading as the converter won't be able to produce the derived type statically.
-    // Cases like Array converters reading int[], int[,] etc. are the exception and the reason why SupportsReading is a settable property.
+    // Author widen-to-true is only meaningful in the polymorphic-alias direction (Type wider than the converter's
+    // type), where the AsObject write path can route the wider inbound value through the narrower converter via cast.
+    public bool SupportsWriting
+    {
+        get => _supportsWriting;
+        init
+        {
+            if (value && !_supportsWriting && !Converter.TypeToConvert.IsAssignableTo(Type))
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"Cannot widen {nameof(SupportsWriting)} to true; converter type {Converter.TypeToConvert} is not narrower-or-equal to reported type {Type} (polymorphic-alias direction).");
+            _supportsWriting = value;
+        }
+    }
+
+    // Defaults compute over the resolved Type (what the info will advertise), not the raw requestedType, so the
+    // wider-than-converter case (polymorphic alias) collapses to self-comparison and yields reading=true, writing=true.
+    // The exact-type case (Type == converter type) does the same. Under-reporting (Type narrower than converter type)
+    // is asymmetric: the converter type is wider so it isn't assignable to Type, yielding reading=false (authors opt
+    // in via SupportsReading=true to assert their converter actually returns runtime instances of Type), while Type is
+    // narrower than the converter type, which is assignable, yielding writing=true.
     internal static bool GetDefaultSupportsReading(Type type, Type? requestedType)
-        => requestedType is null || GetReportedType(type, requestedType) is not { } reportedType || reportedType == type;
+        => type.IsAssignableTo(ResolveType(type, requestedType));
+
+    internal static bool GetDefaultSupportsWriting(Type type, Type? requestedType)
+        => ResolveType(type, requestedType).IsAssignableTo(type);
 
     public DataFormat? PreferredFormat { get; init; }
     public new PgTypeId PgTypeId => base.PgTypeId.GetValueOrDefault();
 
-    internal bool CanReadTo(Type type) => Type == type || (!HasExactType && Type.IsAssignableTo(type));
+    // Cache hits are invariant in advertised type vs requested read type.
+    // A different request type means a different cache key, no matter how compatible the type chains are.
+    internal bool CanReadTo(Type type) => Type == type;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal T ReadFieldValue<T>(PgReader reader, in PgFieldBinding binding)
@@ -336,7 +404,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
         // Inline copy of Converter.ReadAsync<T> to keep everything in one async frame.
-        var result = typeof(T) != TypeToConvert
+        var result = typeof(T) != Converter.TypeToConvert
             ? (T)await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false)
             : await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
 
@@ -369,7 +437,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     /// When result is null, the value was interpreted to be a SQL NULL.
     internal PgValueBinding BindParameterValue<T>(T? value, object? writeState, DataFormat? formatPreference = null)
     {
-        if (typeof(T) != TypeToConvert)
+        if (typeof(T) != Converter.TypeToConvert)
             return BindParameterObjectValue(value, writeState, formatPreference);
 
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.

@@ -25,6 +25,12 @@ public readonly struct PgTypeId: IEquatable<PgTypeId>
     public Oid Oid
         => IsOid ? _oid : throw new InvalidOperationException("This value does not describe an Oid.");
 
+    internal void Deconstruct(out Oid oid, out DataTypeName dataTypeName)
+    {
+        oid = _oid;
+        dataTypeName = _dataTypeName;
+    }
+
     public static implicit operator PgTypeId(DataTypeName name) => new(name);
     public static implicit operator PgTypeId(Oid id) => new(id);
 

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -60,9 +61,18 @@ public sealed class CastingConverter<T> : PgConverter<T>
 }
 
 // Given there aren't many instantiations of providers (and it's fairly involved to write a fast one) we use the composing base class.
-sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderTypeInfo)
-    : PgComposingTypeInfoProvider<T>(effectiveProviderTypeInfo.PgTypeId, effectiveProviderTypeInfo)
+sealed class CastingTypeInfoProvider<T> : PgComposingTypeInfoProvider<T>
 {
+    public CastingTypeInfoProvider(PgProviderTypeInfo effectiveProviderTypeInfo)
+        : base(effectiveProviderTypeInfo.PgTypeId, effectiveProviderTypeInfo)
+    {
+        Debug.Assert(!effectiveProviderTypeInfo.HasExactType, "CastingTypeInfoProvider is for wrapping non-exact providers; an exact provider doesn't need the cast.");
+    }
+
+    // Wraps a dynamically-obtained inner — not a same-authoring-unit composition. The inner's contract must still be
+    // verified per dispatch.
+    protected override bool IsCompositionalUnit => false;
+
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
@@ -73,7 +83,7 @@ sealed class CastingTypeInfoProvider<T>(PgProviderTypeInfo effectiveProviderType
     }
 
     protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
-        => EffectiveTypeInfo.GetForValueAsObject(effectiveContext, value, out writeState);
+        => GetEffectiveForValueAsObject(effectiveContext, value, out writeState);
 }
 
 static class CastingTypeInfoExtensions

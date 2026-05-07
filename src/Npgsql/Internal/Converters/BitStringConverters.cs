@@ -233,6 +233,9 @@ sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, P
     readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString) { SupportsWriting = false };
     readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString) { SupportsWriting = false };
 
+    // Dispatched concretes vary in advertised Type (bool vs BitArray) per field's TypeModifier.
+    internal override bool AllowConcreteVariance => true;
+
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => GetConcreteInfo(field: null);
 

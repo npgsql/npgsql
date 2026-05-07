@@ -209,7 +209,8 @@ public sealed class TypeInfoMappingCollection
             var preferredFormat = copyPreferredFormat ? innerConcrete.PreferredFormat : null;
             var readingSupported = innerConcrete.SupportsReading
                                    && (supportsReading ?? PgConcreteTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, requestedType: mapping.Type));
-            var writingSupported = innerConcrete.SupportsWriting && (supportsWriting ?? true);
+            var writingSupported = innerConcrete.SupportsWriting
+                                   && (supportsWriting ?? PgConcreteTypeInfo.GetDefaultSupportsWriting(converter.TypeToConvert, requestedType: mapping.Type));
 
             return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), requestedType: mapping.Type)
             {
@@ -272,13 +273,13 @@ public sealed class TypeInfoMappingCollection
     {
         var mapping = new TypeInfoMapping(typeof(T), dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
+        _items.Add(mapping);
         if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
                 CreateComposedFactory(typeof(T), mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
-        _items.Add(mapping);
     }
 
     public void AddProviderType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
@@ -399,13 +400,13 @@ public sealed class TypeInfoMappingCollection
     {
         var mapping = new TypeInfoMapping(type, dataTypeName, createInfo);
         mapping = configure?.Invoke(mapping) ?? mapping;
+        _items.Add(mapping);
         if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
                 CreateComposedFactory(type, mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
-        _items.Add(mapping);
         _items.Add(new TypeInfoMapping(nullableType, dataTypeName,
             CreateComposedFactory(nullableType, mapping, nullableConverter, copyPreferredFormat: true))
             {
@@ -605,21 +606,21 @@ public sealed class TypeInfoMappingCollection
             {
                 var provider =
                     new PolymorphicArrayTypeInfoProvider<Array>((PgProviderTypeInfo)innerInfo,
-                        (PgProviderTypeInfo)nullableInnerInfo);
+                        (PgProviderTypeInfo)nullableInnerInfo, isCompositionalUnit: true);
 
                 return new PgProviderTypeInfo(innerInfo.Options, provider,
                     innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object));
             }
         }
 
-    public void AddPolymorphicProviderArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
+    internal void AddPolymorphicProviderArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
         => AddPolymorphicProviderArrayType(GetMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
 
-    public void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
+    internal void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConcreteTypeInfo, PgConverter>> elementToArrayConverterFactory)
     {
         AddPolymorphicProviderArrayType(elementMapping, typeof(object),
             (mapping, elementInfo) => new PolymorphicArrayTypeInfoProvider(
-                elementInfo.Options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elementInfo, elementToArrayConverterFactory(elementInfo.Options))
+                elementInfo.Options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elementInfo, elementToArrayConverterFactory(elementInfo.Options), isCompositionalUnit: true)
         , null);
 
         void AddPolymorphicProviderArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgProviderTypeInfo, PgConcreteTypeInfoProvider> converter, Func<Type?, bool>? typeMatchPredicate)

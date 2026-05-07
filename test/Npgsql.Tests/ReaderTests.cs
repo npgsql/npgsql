@@ -2153,6 +2153,27 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(connection.State, Is.EqualTo(ConnectionState.Closed));
     }
 
+    [Test, Description("Per-ordinal conversion cache must be invariant in advertised type vs requested read type — a chain-compatible cached entry from a prior typed read must not satisfy a query for a different type, the resolver chain has to be re-consulted.")]
+    public async Task ReaderCache_invariant_in_read_type()
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.AddTypeInfoResolverFactory(new CustomStreamResolverFactory());
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand(@"SELECT '\x01'::bytea UNION ALL SELECT '\x02'::bytea", connection);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+
+        Assert.That(await reader.ReadAsync(), Is.True);
+        using var custom = reader.GetFieldValue<CustomStream>(0);
+        Assert.That(custom, Is.InstanceOf<CustomStream>());
+
+        Assert.That(await reader.ReadAsync(), Is.True);
+        using var general = reader.GetFieldValue<Stream>(0);
+        Assert.That(general, Is.Not.InstanceOf<CustomStream>(),
+            "Reader cache aliased the CustomStream-specific info onto a Stream query — the resolver chain must be re-consulted on type change.");
+    }
+
     #region Cancellation
 
     [Test, Description("Cancels ReadAsync via the NpgsqlCommand.Cancel, with successful PG cancellation")]
@@ -2629,6 +2650,55 @@ sealed class ExplodingTypeHandlerResolverFactory(bool safe) : PgTypeInfoResolver
             return null;
         }
     }
+}
+
+sealed class CustomStream : MemoryStream;
+
+sealed class CustomStreamResolverFactory : PgTypeInfoResolverFactory
+{
+    public override IPgTypeInfoResolver CreateResolver() => new Resolver();
+    public override IPgTypeInfoResolver? CreateArrayResolver() => null;
+
+    sealed class Resolver : IPgTypeInfoResolver
+    {
+        // Converter handles Stream but the info advertises CustomStream — HasExactType=false (under-reporting), which is
+        // the construction shape that previously enabled the cache's variance-tolerant CanReadTo to alias this info onto
+        // a Stream query.
+        public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+            => type == typeof(CustomStream) && dataTypeName == DataTypeNames.Bytea
+                ? new PgConcreteTypeInfo(options, new CustomStreamConverter(), DataTypeNames.Bytea, requestedType: typeof(CustomStream))
+                {
+                    // Under-reporting: converter produces Stream values that are actually CustomStream instances.
+                    SupportsReading = true,
+                    SupportsWriting = false,
+                }
+                : null;
+    }
+}
+
+sealed class CustomStreamConverter : PgStreamingConverter<Stream>
+{
+    public override Stream Read(PgReader reader)
+    {
+        using var bytes = reader.GetStream();
+        var ms = new CustomStream();
+        bytes.CopyTo(ms);
+        ms.Position = 0;
+        return ms;
+    }
+
+    public override async ValueTask<Stream> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+    {
+        await using var bytes = reader.GetStream();
+        var ms = new CustomStream();
+        await bytes.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+        ms.Position = 0;
+        return ms;
+    }
+
+    public override Size GetSize(SizeContext context, Stream value, ref object? writeState) => throw new NotSupportedException();
+    public override void Write(PgWriter writer, Stream value) => throw new NotSupportedException();
+    public override ValueTask WriteAsync(PgWriter writer, Stream value, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
 
 class ExplodingTypeHandler : PgBufferedConverter<int>

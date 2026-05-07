@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -20,17 +21,11 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
             throw new InvalidOperationException("Cannot use this type argument.");
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="type"></param>
-    /// <param name="pgTypeId"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
     public PgTypeInfo? GetOrAddInfo(Type? type, TPgTypeId? pgTypeId)
     {
-        if (pgTypeId is { } id)
+        if (pgTypeId.HasValue)
         {
+            ref readonly var id = ref Nullable.GetValueRefOrDefaultRef(in pgTypeId);
             if (_cacheByPgTypeId.TryGetValue(id, out var infos))
                 if (FindMatch(type, infos) is { } info)
                     return info;
@@ -55,6 +50,7 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
             return null;
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         PgTypeInfo? AddByType(Type type)
         {
             // We don't pass PgTypeId as we're interested in default converters here.
@@ -67,19 +63,15 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
                     : _cacheByClrType[type];
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         PgTypeInfo? AddEntryById(Type? type, TPgTypeId pgTypeId, (Type? Type, PgTypeInfo Info)[]? infos)
         {
             if (CreateInfo(type, pgTypeId, options, validatePgTypeIds) is not { } info)
                 return null;
 
-            var isDefaultInfo = type is null;
             if (infos is null)
             {
-                // Also add defaults by their info type to save a future resolver lookup + resize.
-                infos = isDefaultInfo
-                    ? new [] { (type, info), (info.Type, info) }
-                    : new [] { (type, info) };
-
+                infos = [(type, info)];
                 if (_cacheByPgTypeId.TryAdd(pgTypeId, infos))
                     return info;
             }
@@ -91,19 +83,9 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
                 if (FindMatch(type, infos) is { } racedInfo)
                     return racedInfo;
 
-                // Also add defaults by their info type to save a future resolver lookup + resize.
                 var oldInfos = infos;
-                var hasExactType = false;
-                if (isDefaultInfo)
-                {
-                    foreach (var oldInfo in oldInfos)
-                        if (oldInfo.Type == info.Type)
-                            hasExactType = true;
-                }
-                Array.Resize(ref infos, oldInfos.Length + (isDefaultInfo && !hasExactType ? 2 : 1));
+                Array.Resize(ref infos, oldInfos.Length + 1);
                 infos[oldInfos.Length] = (type, info);
-                if (isDefaultInfo && !hasExactType)
-                    infos[oldInfos.Length + 1] = (info.Type, info);
 
                 if (_cacheByPgTypeId.TryUpdate(pgTypeId, infos, oldInfos))
                     return info;
@@ -122,12 +104,7 @@ sealed class TypeInfoCache<TPgTypeId>(PgSerializerOptions options, bool validate
             if (pgTypeId is not null && info.PgTypeId != pgTypeId)
                 throw new InvalidOperationException("A Postgres type was passed but the resolved PgTypeInfo does not have an equal PgTypeId.");
 
-            if (type is not null && info.Type != type)
-            {
-                // Types were not equal, throw for HasExactType = true, otherwise we throw when the returned type isn't assignable to the requested type.
-                if (info.HasExactType || !info.Type.IsAssignableTo(type))
-                    throw new InvalidOperationException($"A CLR type '{type}' was passed but the resolved PgTypeInfo does not have a compatible type: {info.Type}.");
-            }
+            PgTypeInfo.ValidateInfo("resolver chain", info, options, type, allowSubtypes: !info.HasExactType);
 
             return info;
         }

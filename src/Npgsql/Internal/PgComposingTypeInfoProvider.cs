@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -19,7 +20,50 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
         _pgTypeId = pgTypeId;
         EffectiveTypeInfo = effectiveTypeInfo;
+        IsInternalProvider = true;
     }
+
+    /// <summary>
+    /// Whether this composer and its inner provider are part of the same compositional unit — both authored together
+    /// by the same factory (e.g. a plugin or framework resolver via TypeInfoMapping) and tested as one whole. When
+    /// true, the framework can dispatch to the inner directly, skipping the inner's wrapping validation; when false,
+    /// the inner is treated as dynamically obtained and validated per call.
+    /// </summary>
+    /// <remarks>
+    /// Default true reflects the typical case: composers built via TypeInfoMapping helpers (e.g. <c>AddArrayType</c>)
+    /// where one authoring unit produces both layers. Composers wrapping arbitrary dynamically-obtained inners (e.g.
+    /// <c>CastingTypeInfoProvider</c>) opt out so the inner's contract is verified per dispatch.
+    /// </remarks>
+    protected virtual bool IsCompositionalUnit => true;
+
+    // Dispatch helpers route to the inner provider directly when this composer is a compositional unit (skipping the
+    // inner's wrapping ValidateConcrete) or through the wrapping info otherwise (validated). Composers should call
+    // these instead of EffectiveTypeInfo.GetFor* directly to honor the IsCompositionalUnit contract.
+    // AggressiveInlining ensures the virtual IsCompositionalUnit access devirtualizes when called from sealed derived
+    // composers, collapsing the branch to a constant at JIT time.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected PgConcreteTypeInfo GetEffectiveDefault(PgTypeId? pgTypeId)
+        => IsCompositionalUnit
+            ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetDefault(pgTypeId)
+            : EffectiveTypeInfo.GetDefault(pgTypeId);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected PgConcreteTypeInfo? GetEffectiveForField(Field field)
+        => IsCompositionalUnit
+            ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForField(field)
+            : EffectiveTypeInfo.GetForField(field);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected PgConcreteTypeInfo? GetEffectiveForValue<TInner>(ProviderValueContext context, TInner? value, out object? writeState)
+        => IsCompositionalUnit
+            ? ((PgConcreteTypeInfoProvider<TInner>)PgProviderTypeInfo.GetProvider(EffectiveTypeInfo)).GetForValue(context, value, out writeState)
+            : EffectiveTypeInfo.GetForValue(context, value, out writeState);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected PgConcreteTypeInfo? GetEffectiveForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
+        => IsCompositionalUnit
+            ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForValueAsObject(context, value, out writeState)
+            : EffectiveTypeInfo.GetForValueAsObject(context, value, out writeState);
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
@@ -29,7 +73,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
         PgTypeId? effectiveTypeId = pgTypeId is { } id ? GetEffectiveTypeId(id) : null;
-        var concreteTypeInfo = EffectiveTypeInfo.GetDefault(effectiveTypeId);
+        var concreteTypeInfo = GetEffectiveDefault(effectiveTypeId);
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);
         return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
@@ -46,7 +90,8 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
     {
-        if (EffectiveTypeInfo.GetForField(field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId)}) is not { } concreteTypeInfo)
+        var effectiveField = field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId) };
+        if (GetEffectiveForField(effectiveField) is not { } concreteTypeInfo)
             return null;
 
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);

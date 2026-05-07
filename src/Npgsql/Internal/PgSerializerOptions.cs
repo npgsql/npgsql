@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -22,7 +23,8 @@ public sealed class PgSerializerOptions
     readonly PgTypeInfoResolverChain _resolverChain;
     readonly Func<string>? _timeZoneProvider;
     IPgTypeInfoResolver? _typeInfoResolver;
-    object? _typeInfoCache;
+    TypeInfoCache<Oid>? _oidCache;
+    TypeInfoCache<DataTypeName>? _dataTypeNameCache;
 
     internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, PgTypeInfoResolverChain? resolverChain = null, Func<string>? timeZoneProvider = null)
     {
@@ -75,27 +77,43 @@ public sealed class PgSerializerOptions
     internal bool MultirangesEnabled => _resolverChain.MultirangesEnabled;
     internal bool ArraysEnabled => _resolverChain.ArraysEnabled;
 
-    // We don't verify the kind of pgTypeId we get, it'll throw if it's incorrect.
-    // It's up to the caller to call GetCanonicalTypeId if they want to use an oid instead of a DataTypeName.
-    // This also makes it easier to realize it should be a cached value if infos for different CLR types are requested for the same
-    // pgTypeId. Effectively it should be 'impossible' to get the wrong kind via any PgConverterOptions api which is what this is mainly
-    // for.
-    PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId)
+    // GetTypeInfoCore consumes the canonical pair: only the side matching PortableTypeIds is read, the other is
+    // expected to be default. Callers must canonicalize before calling — public entries (GetDefaultTypeInfo/GetTypeInfo)
+    // do this via GetCanonicalTypeId, which routes through DatabaseInfo.GetDataTypeName/GetOid (form-tolerant). The
+    // internal entry trusts callers to have canonicalized; passing a non-matching kind silently dispatches with a
+    // default opposite-side value.
+    PgTypeInfo? GetTypeInfoCore(Type? type, Oid? oid, DataTypeName? dataTypeName)
         => PortableTypeIds
-            ? ((TypeInfoCache<DataTypeName>)(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this))).GetOrAddInfo(type, pgTypeId?.DataTypeName)
-            : ((TypeInfoCache<Oid>)(_typeInfoCache ??= new TypeInfoCache<Oid>(this))).GetOrAddInfo(type, pgTypeId?.Oid);
+            ? (_dataTypeNameCache ??= new TypeInfoCache<DataTypeName>(this)).GetOrAddInfo(type, dataTypeName)
+            : (_oidCache ??= new TypeInfoCache<Oid>(this)).GetOrAddInfo(type, oid);
 
     internal PgTypeInfo? GetTypeInfoInternal(Type? type, PgTypeId? pgTypeId)
-        => GetTypeInfoCore(type, pgTypeId);
+        => !pgTypeId.HasValue
+            ? GetTypeInfoCore(type, null, null)
+            : GetTypeInfoInternal(type, Nullable.GetValueRefOrDefaultRef(in pgTypeId));
+
+    internal PgTypeInfo? GetTypeInfoInternal(Type? type, PgTypeId pgTypeId)
+    {
+        var (oid, dataTypeName) = pgTypeId;
+        Debug.Assert(PortableTypeIds ? oid == default : dataTypeName == default,
+            "PgTypeId form does not match PortableTypeIds; caller must canonicalize.");
+        return GetTypeInfoCore(type, oid, dataTypeName);
+    }
 
     public PgTypeInfo? GetDefaultTypeInfo(Type type)
-        => GetTypeInfoCore(type, null);
+        => GetTypeInfoCore(type, null, null);
 
     public PgTypeInfo? GetDefaultTypeInfo(PgTypeId pgTypeId)
-        => GetTypeInfoCore(null, GetCanonicalTypeId(pgTypeId));
+    {
+        var (oid, dataTypeName) = GetCanonicalTypeId(pgTypeId);
+        return GetTypeInfoCore(null, oid, dataTypeName);
+    }
 
     public PgTypeInfo? GetTypeInfo(Type type, PgTypeId pgTypeId)
-        => GetTypeInfoCore(type, GetCanonicalTypeId(pgTypeId));
+    {
+        var (oid, dataTypeName) = GetCanonicalTypeId(pgTypeId);
+        return GetTypeInfoCore(type, oid, dataTypeName);
+    }
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
     internal PgTypeId GetCanonicalTypeId(PgTypeId pgTypeId)

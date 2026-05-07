@@ -15,9 +15,13 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
     readonly PgProviderTypeInfo _elementTypeInfo;
     readonly Func<PgConcreteTypeInfo, PgConverter> _elementToArrayConverterFactory;
     readonly PgTypeId _elementPgTypeId;
+    readonly bool _isCompositionalUnit;
     readonly ConcurrentDictionary<PgConcreteTypeInfo, PgConcreteTypeInfo> _concreteInfoCache = new(ReferenceEqualityComparer.Instance);
 
-    public PolymorphicArrayTypeInfoProvider(PgTypeId pgTypeId, PgProviderTypeInfo elementTypeInfo, Func<PgConcreteTypeInfo, PgConverter> elementToArrayConverterFactory)
+    // Dispatched concretes always advertise Type=Array, narrower than this provider's TypeToConvert=object.
+    internal override bool AllowConcreteVariance => true;
+
+    public PolymorphicArrayTypeInfoProvider(PgTypeId pgTypeId, PgProviderTypeInfo elementTypeInfo, Func<PgConcreteTypeInfo, PgConverter> elementToArrayConverterFactory, bool isCompositionalUnit = false)
     {
         if (elementTypeInfo.PgTypeId is null)
             throw new ArgumentException("Type info cannot have an undecided PgTypeId.", nameof(elementTypeInfo));
@@ -26,17 +30,24 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
         _elementTypeInfo = elementTypeInfo;
         _elementToArrayConverterFactory = elementToArrayConverterFactory;
         _elementPgTypeId = elementTypeInfo.PgTypeId!.Value;
+        _isCompositionalUnit = isCompositionalUnit;
     }
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
-        => GetOrAdd(_elementTypeInfo.GetDefault(_elementPgTypeId));
+        => GetOrAdd(_isCompositionalUnit
+            ? PgProviderTypeInfo.GetProvider(_elementTypeInfo).GetDefault(_elementPgTypeId)
+            : _elementTypeInfo.GetDefault(_elementPgTypeId));
 
     protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
     {
-        var elementConcreteTypeInfo = _elementTypeInfo.GetForField(field with { PgTypeId = _elementPgTypeId });
+        // When constructed as a same-authoring-unit composition, route directly to the inner provider, skipping the
+        // inner's wrapping ValidateConcrete on each call.
+        var elementConcreteTypeInfo = _isCompositionalUnit
+            ? PgProviderTypeInfo.GetProvider(_elementTypeInfo).GetForField(field with { PgTypeId = _elementPgTypeId })
+            : _elementTypeInfo.GetForField(field with { PgTypeId = _elementPgTypeId });
         return elementConcreteTypeInfo is not null ? GetOrAdd(elementConcreteTypeInfo) : null;
     }
 
