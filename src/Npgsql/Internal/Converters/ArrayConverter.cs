@@ -143,9 +143,15 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
         {
             var value = GetValue(collection, indices);
-            return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
-                : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
+            if (typeof(TElement) == typeof(object))
+            {
+                if (_elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling))
+                    return null;
+                if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+                    return byteCount;
+                return _elemConverter.GetSizeAsObject(context, value, ref writeState);
+            }
+            return _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
@@ -218,9 +224,15 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
         {
             var value = GetValue(collection, indices.One);
-            return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
-                : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
+            if (typeof(TElement) == typeof(object))
+            {
+                if (_elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling))
+                    return null;
+                if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+                    return byteCount;
+                return _elemConverter.GetSizeAsObject(context, value, ref writeState);
+            }
+            return _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
