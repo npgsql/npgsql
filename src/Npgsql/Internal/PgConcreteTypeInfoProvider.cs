@@ -136,7 +136,7 @@ static class PgConcreteTypeInfoProviderExtensions
 {
     extension(PgConcreteTypeInfoProvider provider)
     {
-        internal PgConcreteTypeInfo? GetForNestedObjectValue(ProviderValueContext context, object? value, out object? writeState)
+        internal PgConcreteTypeInfo? GetForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
         {
             writeState = null;
             switch (context.NestedObjectDbNullHandling)

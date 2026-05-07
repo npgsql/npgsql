@@ -766,7 +766,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     if (value is null)
                         ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
 
-                    binding = ConcreteTypeInfo.Converter.IsNestedObjectDbNull(value, _writeState, ParameterDbNullHandling)
+                    binding = ConcreteTypeInfo.Converter.IsDbNullAsNestedObject(value, _writeState, ParameterDbNullHandling)
                         ? new PgValueBinding(DataFormat.Binary, 0, null, _writeState)
                         : ConcreteTypeInfo.BindParameterValueAsObject(value, _writeState, ParameterDbNullHandling, requiredFormat);
                 }

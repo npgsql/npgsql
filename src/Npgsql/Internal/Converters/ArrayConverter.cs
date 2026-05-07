@@ -144,7 +144,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         {
             var value = GetValue(collection, indices);
             return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
+                ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
                 : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
         }
 
@@ -219,7 +219,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         {
             var value = GetValue(collection, indices.One);
             return typeof(TElement) == typeof(object)
-                ? _elemConverter.IsNestedObjectDbNull(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
+                ? _elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling) ? null : _elemConverter.GetSizeAsObject(context, value, ref writeState)
                 : _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
         }
 
@@ -305,7 +305,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in array)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {
@@ -338,7 +338,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in list)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {
@@ -371,7 +371,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in list)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {
@@ -404,7 +404,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in array)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForNestedObjectValue(effectiveContext, value, out var state)
+                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValueAsObject(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
                 {

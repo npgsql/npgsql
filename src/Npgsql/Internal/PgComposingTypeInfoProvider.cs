@@ -66,10 +66,10 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             : EffectiveTypeInfo.GetForValueAsObject(context, value, out writeState);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected PgConcreteTypeInfo? GetEffectiveForNestedObjectValue(ProviderValueContext context, object? value, out object? writeState)
+    protected PgConcreteTypeInfo? GetEffectiveForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
         => IsCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForNestedObjectValue(context, value, out writeState)
-            : EffectiveTypeInfo.GetForNestedObjectValue(context, value, out writeState);
+            ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForValueAsNestedObject(context, value, out writeState)
+            : EffectiveTypeInfo.GetForValueAsNestedObject(context, value, out writeState);
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);

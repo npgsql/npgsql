@@ -257,7 +257,7 @@ public abstract class PgConverter<T> : PgConverter
 static class PgConverterExtensions
 {
     /// Checks whether <paramref name="value"/> is considered a database null under the given <paramref name="handling"/> policy.
-    public static bool IsNestedObjectDbNull(this PgConverter converter, object? value, object? writeState, NestedObjectDbNullHandling handling)
+    public static bool IsDbNullAsNestedObject(this PgConverter converter, object? value, object? writeState, NestedObjectDbNullHandling handling)
     {
         switch (handling)
         {

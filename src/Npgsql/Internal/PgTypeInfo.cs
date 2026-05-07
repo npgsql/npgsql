@@ -298,7 +298,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
-    internal PgConcreteTypeInfo? GetForNestedObjectValue(ProviderValueContext context, object? value, out object? writeState)
+    internal PgConcreteTypeInfo? GetForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
     {
         if (PgTypeId is { } pgTypeId)
         {
@@ -310,7 +310,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        return _typeInfoProvider.GetForNestedObjectValue(context, value, out writeState);
+        return _typeInfoProvider.GetForValueAsNestedObject(context, value, out writeState);
     }
 
     public static PgConcreteTypeInfoProvider GetProvider(PgProviderTypeInfo instance) => instance._typeInfoProvider;
