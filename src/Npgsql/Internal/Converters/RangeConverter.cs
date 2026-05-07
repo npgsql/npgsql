@@ -112,8 +112,8 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
                 (state ??= new WriteState()).LowerBoundSize = size;
                 state.LowerBoundWriteState = subTypeState;
             }
-            else if (state is not null)
-                state.LowerBoundSize = -1;
+            else
+                (state ??= new WriteState()).LowerBoundSize = -1;
         }
 
         if (!value.UpperBoundInfinite)
@@ -126,8 +126,8 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
                 (state ??= new WriteState()).UpperBoundSize = size;
                 state.UpperBoundWriteState = subTypeState;
             }
-            else if (state is not null)
-                state.UpperBoundSize = -1;
+            else
+                (state ??= new WriteState()).UpperBoundSize = -1;
         }
 
         writeState = state;
