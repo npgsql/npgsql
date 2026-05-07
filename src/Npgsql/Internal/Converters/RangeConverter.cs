@@ -104,30 +104,28 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         WriteState? state = null;
         if (!value.LowerBoundInfinite)
         {
-            totalSize = totalSize.Combine(sizeof(int));
             var subTypeState = (object?)null;
             if (_subtypeConverter.IsDbNullOrGetSize(context.Format, _subtypeRequirements.Write, value.LowerBound!, ref subTypeState) is { } size)
             {
-                totalSize = totalSize.Combine(size);
+                totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
                 (state ??= new WriteState()).LowerBoundSize = size;
                 state.LowerBoundWriteState = subTypeState;
             }
-            else if (state is not null)
-                state.LowerBoundSize = -1;
+            else
+                (state ??= new WriteState()).LowerBoundSize = -1;
         }
 
         if (!value.UpperBoundInfinite)
         {
-            totalSize = totalSize.Combine(sizeof(int));
             var subTypeState = (object?)null;
             if (_subtypeConverter.IsDbNullOrGetSize(context.Format, _subtypeRequirements.Write, value.UpperBound!, ref subTypeState) is { } size)
             {
-                totalSize = totalSize.Combine(size);
+                totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
                 (state ??= new WriteState()).UpperBoundSize = size;
                 state.UpperBoundWriteState = subTypeState;
             }
-            else if (state is not null)
-                state.UpperBoundSize = -1;
+            else
+                (state ??= new WriteState()).UpperBoundSize = -1;
         }
 
         writeState = state;
