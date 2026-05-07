@@ -79,7 +79,7 @@ public class NodaTimeTests : TestBase, IDisposable
 
     [Test]
     public Task Timestamp_cannot_write_utc_DateTime()
-        => AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
+        => AssertTypeUnsupportedWrite<DateTime, InvalidCastException, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
 
     [Test]
     public async Task Tsrange_as_NpgsqlRange_of_LocalDateTime()
@@ -202,19 +202,19 @@ public class NodaTimeTests : TestBase, IDisposable
 
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_ZonedDateTime()
-        => await AssertTypeUnsupportedWrite<ZonedDateTime, ArgumentException>(
+        => await AssertTypeUnsupportedWrite<ZonedDateTime, InvalidCastException, ArgumentException>(
             new LocalDateTime().InUtc().ToInstant().InZone(DateTimeZoneProviders.Tzdb["Europe/Berlin"]),
             "timestamp with time zone");
 
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_OffsetDateTime()
-        => await AssertTypeUnsupportedWrite<OffsetDateTime, ArgumentException>(new LocalDateTime().WithOffset(Offset.FromHours(2)), "timestamp with time zone");
+        => await AssertTypeUnsupportedWrite<OffsetDateTime, InvalidCastException, ArgumentException>(new LocalDateTime().WithOffset(Offset.FromHours(2)), "timestamp with time zone");
 
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_DateTime()
     {
-        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
-        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, InvalidCastException, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, InvalidCastException, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
     }
 
     [Test]

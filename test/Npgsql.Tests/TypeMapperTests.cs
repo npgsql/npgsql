@@ -248,7 +248,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
         {
             public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
             {
-                bufferRequirements = BufferRequirements.None;
+                bufferRequirements = BufferRequirements.Streaming;
                 return format is DataFormat.Binary or DataFormat.Text;
             }
 
@@ -258,8 +258,8 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             public override async ValueTask<Guid> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
                 => Guid.Parse(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
 
-            public override Size GetSize(SizeContext context, Guid value, ref object? writeState)
-                => TextConverterHelpers.GetSize(ref context, value.ToString().AsMemory(), encoding);
+            protected override Size BindValue(in BindContext context, Guid value, ref object? writeState)
+                => TextConverterHelpers.BindValue(context, value.ToString().AsMemory(), encoding);
 
             public override void Write(PgWriter writer, Guid value)
                 => writer.WriteChars(value.ToString().AsSpan(), encoding);

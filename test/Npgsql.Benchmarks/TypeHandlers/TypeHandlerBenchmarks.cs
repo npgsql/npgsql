@@ -81,7 +81,7 @@ public abstract class TypeHandlerBenchmarks<T>
 
             _value = value;
             object? writeState = null;
-            var size = _converter.IsDbNullOrGetSize(DataFormat.Binary, _binaryRequirements.Write, value, ref writeState);
+            var size = _converter.IsDbNull(value, writeState) ? null : (Size?)_converter.Bind(BindContext.CreateUnchecked(DataFormat.Binary, _binaryRequirements.Write, _binaryRequirements.IsBindOptional), value, ref writeState);
             _valueBinding = new PgValueBinding(DataFormat.Binary, _binaryRequirements.Write, size, writeState);
 
             if (!_valueBinding.IsDbNullBinding)

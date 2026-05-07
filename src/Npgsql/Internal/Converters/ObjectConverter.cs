@@ -25,7 +25,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
     public override object Read(PgReader reader) => throw new NotSupportedException();
     public override ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    public override Size GetSize(SizeContext context, object value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, object value, ref object? writeState)
     {
         var (concreteTypeInfo, effectiveState) = writeState switch
         {
@@ -40,14 +40,13 @@ sealed class ObjectConverter : PgStreamingConverter<object>
             return default;
         }
 
-        // Fixed size converters won't have a GetSize implementation.
-        if (bufferRequirements.Write.Kind is SizeKind.Exact)
-            return bufferRequirements.Write;
-
-        var result = concreteTypeInfo.Converter.GetSizeAsObject(context, value, ref effectiveState);
+        var result = concreteTypeInfo.Converter.BindAsObject(
+            BindContext.CreateNested(context, bufferRequirements),
+            value,
+            ref effectiveState);
         if (effectiveState is not null)
         {
-            if (writeState is WriteState s && !ReferenceEquals(s.EffectiveState, effectiveState))
+            if (writeState is WriteState s)
                 s.EffectiveState = effectiveState;
             else
                 writeState = new WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };

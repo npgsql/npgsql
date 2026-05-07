@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
@@ -27,6 +28,7 @@ public abstract class PgConverter
 
     private protected PgConverter(Type type, bool typeAcceptsNull)
     {
+        Debug.Assert(type == GetType().GetBase(typeof(PgConverter<>))!.GetGenericArguments()[0]);
         TypeToConvert = type;
         TypeAcceptsNull = typeAcceptsNull;
     }
@@ -48,6 +50,9 @@ public abstract class PgConverter
 
     internal Type TypeToConvert { get; }
 
+    // Dispatch helpers below all gate on `typeof(T) == TypeToConvert` rather than `this is PgConverter<T>`:
+    // a Type-handle reference compare avoids the isinst MethodTable chain walk per call. Both produce the
+    // same answer but typeof equality is cheaper on the hot path.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     PgConverter<T> UnsafeAs<T>()
     {
@@ -65,9 +70,9 @@ public abstract class PgConverter
     T
 #nullable restore
     Read<T>(PgReader reader)
-        => typeof(T) != TypeToConvert
-            ? (T)ReadAsObject(reader)!
-            : UnsafeAs<T>().Read(reader);
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().Read(reader)
+            : (T)ReadAsObject(reader)!;
 
     /// <summary>Asynchronously reads a value from the reader as <typeparamref name="T"/>.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
@@ -78,13 +83,11 @@ public abstract class PgConverter
 #nullable restore
     > ReadAsync<T>(PgReader reader, CancellationToken cancellationToken = default)
     {
-        if (typeof(T) != TypeToConvert)
-        {
-            var task = ReadAsObjectAsync(reader, cancellationToken);
-            return task.IsCompletedSuccessfully ? new((T)task.Result!) : ReadAndUnboxAsync(task);
-        }
+        if (typeof(T) == TypeToConvert)
+            return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
 
-        return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
+        var task = ReadAsObjectAsync(reader, cancellationToken);
+        return task.IsCompletedSuccessfully ? new((T)task.Result!) : ReadAndUnboxAsync(task);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static async ValueTask<T> ReadAndUnboxAsync(ValueTask<object?> task)
@@ -96,23 +99,40 @@ public abstract class PgConverter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write<T>(PgWriter writer, T value)
     {
-        if (typeof(T) != TypeToConvert)
+        if (typeof(T) == TypeToConvert)
         {
-            WriteAsObject(writer, value);
+            UnsafeAs<T>().Write(writer, value);
             return;
         }
-        UnsafeAs<T>().Write(writer, value);
+        WriteAsObject(writer, value);
     }
 
     /// <summary>Asynchronously writes a <typeparamref name="T"/> value to the writer.</summary>
     /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ValueTask WriteAsync<T>(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => typeof(T) != TypeToConvert
-            ? WriteAsObjectAsync(writer, value, cancellationToken)
-            : UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().WriteAsync(writer, value, cancellationToken)
+            : WriteAsObjectAsync(writer, value, cancellationToken);
 
-    internal bool IsDbNullAsObject(object? value, object? writeState)
+    /// <summary>Db-null check for <typeparamref name="T"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool IsDbNull<T>(T? value, object? writeState)
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().IsDbNull(value, writeState)
+            : IsDbNullAsObject(value, writeState);
+
+    /// <summary>Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.</summary>
+    /// <remarks>Dispatches to the typed converter when <typeparamref name="T"/> matches <see cref="TypeToConvert"/>; otherwise routes through the object-erased path.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Size Bind<T>(in BindContext context, T value, ref object? writeState)
+        => typeof(T) == TypeToConvert
+            ? UnsafeAs<T>().Bind(context, value, ref writeState)
+            : BindAsObject(context, value, ref writeState);
+
+    /// Checks whether <paramref name="value"/> is considered a database null by this converter.
+    public bool IsDbNullAsObject(object? value, object? writeState)
     {
         if (value is null && !TypeAcceptsNull)
             ThrowInvalidNullValue();
@@ -127,19 +147,64 @@ public abstract class PgConverter
 
     private protected abstract bool IsDbNullValueAsObject(object? value, object? writeState);
 
-    internal abstract Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState);
+    private protected abstract Size BindValueAsObject(in BindContext context, object? value, ref object? writeState);
 
-    internal object? ReadAsObject(PgReader reader)
-        => ReadAsObject(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
-    internal ValueTask<object?> ReadAsObjectAsync(PgReader reader, CancellationToken cancellationToken = default)
+    /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
+    public Size BindAsObject(in BindContext context, object? value, ref object? writeState)
+    {
+        if (value is null && !TypeAcceptsNull)
+            ThrowInvalidNullValue();
+
+        if (context.IsBindOptional)
+        {
+            if (context.BufferRequirement.Kind is not SizeKind.Exact)
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
+            return context.BufferRequirement;
+        }
+
+        // writeState identity discipline:
+        // - Fixed-size: any change is forbidden (no production, no swap, no clear).
+        // - Non-fixed-size: monotonic — null → non-null is the production transition; an existing
+        //   IDisposable identity must be preserved (provenance carries disposal obligation), and
+        //   clearing is forbidden. Non-disposable references may be replaced by another non-null
+        //   reference without violating the lifecycle.
+        var originalWriteState = writeState;
+        var size = BindValueAsObject(context, value, ref writeState);
+        if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
+            && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
+            ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
+
+        // Catches non-Exact sizes from both paths (the IsBindFixedSize Kind check is folded in here —
+        // a converter declaring fixed-size that returned a non-Exact size trips this same throw).
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for BindValue.");
+            break;
+        case SizeKind.Unknown:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for BindValue.");
+            break;
+        }
+
+        return size;
+    }
+
+    /// Reads a value from the reader.
+    public object? ReadAsObject(PgReader reader)
+        => ReadAsObject(async: false, reader, CancellationToken.None).Result;
+    /// Asynchronously reads a value from the reader.
+    public ValueTask<object?> ReadAsObjectAsync(PgReader reader, CancellationToken cancellationToken = default)
         => ReadAsObject(async: true, reader, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
     internal abstract ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken);
 
-    internal void WriteAsObject(PgWriter writer, object? value)
+    /// Writes <paramref name="value"/> to the writer.
+    public void WriteAsObject(PgWriter writer, object? value)
         => WriteAsObject(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
-    internal ValueTask WriteAsObjectAsync(PgWriter writer, object? value, CancellationToken cancellationToken = default)
+    /// Asynchronously writes <paramref name="value"/> to the writer.
+    public ValueTask WriteAsObjectAsync(PgWriter writer, object? value, CancellationToken cancellationToken = default)
         => WriteAsObject(async: true, writer, value, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
@@ -164,6 +229,14 @@ public abstract class PgConverter
 
     private protected bool ThrowDbNullPredicateOutOfRange()
         => throw new UnreachableException($"Unknown case {DbNullPredicateKind.ToString()}");
+
+    [DoesNotReturn]
+    private protected static void ThrowWriteStateLifecycleViolation(bool isBindFixedSize)
+    {
+        if (isBindFixedSize)
+            throw new InvalidOperationException("Fixed-size BindValue must not modify the writeState reference.");
+        throw new InvalidOperationException("BindValue must not orphan an IDisposable writeState reference, nor clear an existing one.");
+    }
 }
 
 public abstract class PgConverter<T> : PgConverter
@@ -184,7 +257,7 @@ public abstract class PgConverter<T> : PgConverter
         var isDbNull = IsDbNullValue(value, ref writeState);
         if (!ReferenceEquals(writeState, originalWriteState))
             ThrowHelper.ThrowInvalidOperationException(
-                $"{GetType().FullName} mutated writeState from its IsDbNullValue override. Override the overload without ref and produce write state only in GetSize.");
+                $"Converter mutated writeState from its IsDbNullValue override. Override the overload without ref and produce write state only in {nameof(BindValue)}.");
         return isDbNull;
     }
 #pragma warning restore CS0618
@@ -224,16 +297,75 @@ public abstract class PgConverter<T> : PgConverter
     /// Asynchronously reads a <typeparamref name="T"/> value from the reader.
     public abstract ValueTask<
 #nullable disable // T may or may not be nullable depending on the derived converter's read behavior.
-    T
+        T
 #nullable restore
     > ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
     /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
-    public abstract Size GetSize(SizeContext context,
+    public Size Bind(in BindContext context,
 #nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
         T value,
 #nullable restore
-        ref object? writeState);
+        ref object? writeState)
+    {
+        Debug.Assert(TypeAcceptsNull || value is not null);
+
+        if (context.IsBindOptional)
+        {
+            if (context.BufferRequirement.Kind is not SizeKind.Exact)
+                ThrowHelper.ThrowInvalidOperationException(
+                    $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
+            return context.BufferRequirement;
+        }
+
+        // writeState identity discipline:
+        // - Fixed-size: any change is forbidden (no production, no swap, no clear).
+        // - Non-fixed-size: monotonic — null → non-null is the production transition; an existing
+        //   IDisposable identity must be preserved (provenance carries disposal obligation), and
+        //   clearing is forbidden. Non-disposable references may be replaced by another non-null
+        //   reference (e.g. polymorphic-dispatch upgrade) without violating the lifecycle.
+        var originalWriteState = writeState;
+        var size = BindValue(context, value, ref writeState);
+        if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
+            && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
+            ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
+
+        switch (size.Kind)
+        {
+        case SizeKind.UpperBound:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for {nameof(BindValue)}.");
+            break;
+        case SizeKind.Unknown:
+            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for {nameof(BindValue)}.");
+            break;
+        }
+
+        return size;
+    }
+
+    /// <summary>Per-value bind step for <typeparamref name="T"/>. Computes the wire size and produces any
+    /// <paramref name="writeState"/> needed by the subsequent write phase. <see cref="Bind"/> wraps this
+    /// call and enforces size-kind invariants.</summary>
+    protected virtual Size BindValue(in BindContext context,
+#nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
+        T value,
+#nullable restore
+        ref object? writeState)
+    {
+#pragma warning disable CS0618 // Bridge: legacy GetSize overrides flow through this default until they migrate.
+        return GetSize(context, value, ref writeState);
+#pragma warning restore CS0618
+    }
+
+    /// Computes the serialized size for <paramref name="value"/>, producing any required <paramref name="writeState"/>.
+    [Obsolete("Override BindValue instead.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected virtual Size GetSize(SizeContext context,
+#nullable disable // T may or may not be nullable depending on the derived converter's IsDbNullValue override.
+        T value,
+#nullable restore
+        ref object? writeState)
+        => throw new NotSupportedException($"Converter must override {nameof(BindValue)}.");
 
     /// Writes a <typeparamref name="T"/> value to the writer.
     public abstract void Write(PgWriter writer,
@@ -249,8 +381,8 @@ public abstract class PgConverter<T> : PgConverter
 #nullable restore
         CancellationToken cancellationToken = default);
 
-    internal sealed override Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState)
-        => GetSize(context, (T)value!, ref writeState);
+    private protected sealed override Size BindValueAsObject(in BindContext context, object? value, ref object? writeState)
+        => BindValue(context, (T)value!, ref writeState);
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
@@ -276,57 +408,84 @@ static class PgConverterExtensions
             return default;
         }
     }
-
-    public static Size? IsDbNullOrGetSize<T>(this PgConverter<T> converter, DataFormat format, Size writeRequirement, T? value, ref object? writeState)
-    {
-        if (converter.IsDbNull(value, writeState))
-            return null;
-
-        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-            return byteCount;
-        // Value may legitimately be null when a Custom predicate opts into null-writing (IsDbNullValue returning false for null).
-        // GetSize's oblivious T parameter accepts it, but we are in a nullability aware context so we must null forgive.
-        Debug.Assert(converter.TypeAcceptsNull || value is not null);
-        var size = converter.GetSize(new(format, writeRequirement), value!, ref writeState);
-
-        switch (size.Kind)
-        {
-        case SizeKind.UpperBound:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-            break;
-        case SizeKind.Unknown:
-            // Not valid yet.
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-            break;
-        }
-
-        return size;
-    }
-
-    public static Size? IsDbNullOrGetSizeAsObject(this PgConverter converter, DataFormat format, Size writeRequirement, object? value, ref object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling = NestedObjectDbNullHandling.Default)
-    {
-        if (converter.IsDbNullAsObject(value, writeState))
-            return null;
-
-        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-            return byteCount;
-        var size = converter.GetSizeAsObject(new(format, writeRequirement) { NestedObjectDbNullHandling = nestedObjectDbNullHandling }, value, ref writeState);
-
-        switch (size.Kind)
-        {
-        case SizeKind.UpperBound:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-            break;
-        case SizeKind.Unknown:
-            // Not valid yet.
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-            break;
-        }
-
-        return size;
-    }
 }
 
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct BindContext
+{
+    /// <summary>The data format selected for this bind.</summary>
+    public DataFormat Format { get; private init; }
+
+    /// <summary>
+    /// The size requirement for writing values with <see cref="Format"/>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.Write"/> returned by <see cref="PgConverter.CanConvert"/>.
+    /// </summary>
+    public Size BufferRequirement { get; private init; }
+
+    /// <summary>
+    /// When true, composing converters may use <see cref="BufferRequirement"/> directly and skip the nested <c>Bind</c> call entirely.
+    /// <c>Bind</c> can be called anyway at which point it just short-circuits, without invoking <c>BindValue</c>. Implies <see cref="IsBindFixedSize"/>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/> returned by <see cref="PgConverter.CanConvert"/>.
+    /// </summary>
+    public bool IsBindOptional { get; private init; }
+
+    /// <summary>
+    /// True when <see cref="BufferRequirement"/> is value-independent — every value's size equals
+    /// <see cref="BufferRequirement"/>. Composing converters use this to compute closed-form aggregate
+    /// sizes without per-element ledgers, even when <c>Bind</c> must still be called for side effects
+    /// (validation, etc.). Synthesized from <see cref="Size.Kind"/> being <see cref="SizeKind.Exact"/>.
+    /// </summary>
+    public bool IsBindFixedSize => BufferRequirement.Kind is SizeKind.Exact;
+
+    // Public init as this can be caller decided.
+    /// <summary>
+    /// The policy for how nested object-typed values should have their database null-shaped values handled during this bind.
+    /// See <see cref="NestedObjectDbNullHandling"/> for per-mode semantics.
+    /// </summary>
+    public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
+
+    /// <summary>
+    /// Constructs a <see cref="BindContext"/> from a converter info, propagating relevant context from <paramref name="nestingContext"/>.
+    /// Composing converters (arrays, ranges, multiranges, composites, etc.) use this to thread any policy through to nested binds.
+    /// </summary>
+    public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
+    {
+        var format = nestingContext.Format;
+        if (!converter.CanConvert(format, out var bufferRequirements))
+            ThrowHelper.ThrowInvalidOperationException($"Converter '{converter.GetType().FullName}' does not support data format '{format}'.");
+        return CreateNested(nestingContext, bufferRequirements);
+    }
+
+    /// <summary>
+    /// Variant of <see cref="CreateNested(in BindContext, PgConverter)"/> for callers that already
+    /// hold the inner converter's <see cref="BufferRequirements"/> (e.g. composing converters that
+    /// captured them in their constructor). Skips the per-call <c>CanConvert</c> roundtrip.
+    /// </summary>
+    public static BindContext CreateNested(in BindContext nestingContext, BufferRequirements requirements)
+        => new()
+        {
+            Format = nestingContext.Format,
+            BufferRequirement = requirements.Write,
+            IsBindOptional = requirements.IsBindOptional,
+            NestedObjectDbNullHandling = nestingContext.NestedObjectDbNullHandling
+        };
+
+    /// <summary>
+    /// Constructs a <see cref="BindContext"/> from caller-supplied values without verifying that
+    /// <paramref name="bufferRequirement"/> and <paramref name="isBindOptional"/> match the converter's
+    /// cached requirements. Callers must ensure these values are consistent with the converter that
+    /// will receive this context.
+    /// </summary>
+    public static BindContext CreateUnchecked(DataFormat format, Size bufferRequirement, bool isBindOptional)
+        => new()
+        {
+            Format = format,
+            BufferRequirement = bufferRequirement,
+            IsBindOptional = isBindOptional
+        };
+}
+
+[Obsolete("Use BindContext instead.")]
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 [method: SetsRequiredMembers]
 public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
@@ -335,6 +494,9 @@ public readonly struct SizeContext(DataFormat format, Size bufferRequirement)
     public DataFormat Format { get; } = format;
 
     public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
+
+    public static implicit operator SizeContext(in BindContext context)
+        => new(context.Format, context.BufferRequirement) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
 }
 
 /// <summary>

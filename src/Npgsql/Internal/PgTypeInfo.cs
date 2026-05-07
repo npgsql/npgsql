@@ -330,6 +330,9 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
 public sealed class PgConcreteTypeInfo : PgTypeInfo
 {
+    readonly bool _supportsReading;
+    readonly bool _supportsWriting;
+
     readonly bool _canBinaryConvert;
     readonly BufferRequirements _binaryBufferRequirements;
 
@@ -339,9 +342,6 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
         : this(options, converter, pgTypeId, requestedType: null)
     {}
-
-    bool _supportsReading;
-    bool _supportsWriting;
 
     internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
         : base(options, converter, pgTypeId, requestedType)
@@ -418,9 +418,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
         // Inline copy of Converter.ReadAsync<T> to keep everything in one async frame.
-        var result = typeof(T) != Converter.TypeToConvert
-            ? (T)(await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!
-            : await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+        var result = typeof(T) == Converter.TypeToConvert
+            ? await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false)
+            : (T)(await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!;
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
@@ -461,29 +461,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             return new(DataFormat.Binary, Size.Zero, null, writeState);
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
-
-        Size size;
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-        {
-            size = byteCount;
-        }
-        else
-        {
-            size = Unsafe.As<PgConverter<T>>(Converter).GetSize(context, value!, ref writeState);
-
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-                break;
-            case SizeKind.Unknown:
-                // Not valid yet.
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-                break;
-            }
-        }
-
+        var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional)
+            with { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+        var size = Unsafe.As<PgConverter<T>>(Converter).Bind(context, value!, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }
 
@@ -498,28 +478,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
             return new(DataFormat.Binary, Size.Zero, null, writeState);
 
         var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
-
-        Size size;
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-        {
-            size = byteCount;
-        }
-        else
-        {
-            size = Converter.GetSizeAsObject(context, value, ref writeState);
-
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-                break;
-            case SizeKind.Unknown:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-                break;
-            }
-        }
-
+        var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional)
+            with { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+        var size = Converter.BindAsObject(context, value, ref writeState);
         return new(format, bufferRequirements.Write, size, writeState);
     }
 

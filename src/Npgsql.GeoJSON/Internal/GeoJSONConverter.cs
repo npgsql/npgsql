@@ -36,8 +36,8 @@ sealed class GeoJSONConverter<T> : PgStreamingConverter<T> where T : IGeoJSONObj
     public override async ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => (T)await GeoJSONConverter.Read(async: true, reader, BoundingBox ? new BoundingBoxBuilder() : null, _getCrs, cancellationToken).ConfigureAwait(false);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
-        => GeoJSONConverter.GetSize(context, value, ref writeState);
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
+        => GeoJSONConverter.BindValue(context, value, ref writeState);
 
     public override void Write(PgWriter writer, T value)
         => GeoJSONConverter.Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
@@ -284,16 +284,16 @@ static class GeoJSONConverter
         }
     }
 
-    public static Size GetSize(SizeContext context, IGeoJSONObject value, ref object? writeState)
+    public static Size BindValue(in BindContext context, IGeoJSONObject value, ref object? writeState)
         => value.Type switch
         {
-            GeoJSONObjectType.Point => GetSize((Point)value),
-            GeoJSONObjectType.LineString => GetSize((LineString)value),
-            GeoJSONObjectType.Polygon => GetSize((Polygon)value),
-            GeoJSONObjectType.MultiPoint => GetSize((MultiPoint)value),
-            GeoJSONObjectType.MultiLineString => GetSize((MultiLineString)value),
-            GeoJSONObjectType.MultiPolygon => GetSize((MultiPolygon)value),
-            GeoJSONObjectType.GeometryCollection => GetSize(context, (GeometryCollection)value, ref writeState),
+            GeoJSONObjectType.Point => BindValue((Point)value),
+            GeoJSONObjectType.LineString => BindValue((LineString)value),
+            GeoJSONObjectType.Polygon => BindValue((Polygon)value),
+            GeoJSONObjectType.MultiPoint => BindValue((MultiPoint)value),
+            GeoJSONObjectType.MultiLineString => BindValue((MultiLineString)value),
+            GeoJSONObjectType.MultiPolygon => BindValue((MultiPolygon)value),
+            GeoJSONObjectType.GeometryCollection => BindValue(context, (GeometryCollection)value, ref writeState),
             _ => throw UnknownPostGisType()
         };
 
@@ -310,7 +310,7 @@ static class GeoJSONConverter
         return false;
     }
 
-    static Size GetSize(Point value)
+    static Size BindValue(Point value)
     {
         var length = Size.Create(SizeOfHeader + SizeOfPoint(HasZ(value.Coordinates)));
         if (GetSrid(value.CRS) != 0)
@@ -319,7 +319,7 @@ static class GeoJSONConverter
         return length;
     }
 
-    static Size GetSize(LineString value)
+    static Size BindValue(LineString value)
     {
         var coordinates = value.Coordinates;
         if (NotValid(coordinates, out var hasZ))
@@ -332,7 +332,7 @@ static class GeoJSONConverter
         return length;
     }
 
-    static Size GetSize(Polygon value)
+    static Size BindValue(Polygon value)
     {
         var lines = value.Coordinates;
         var length = Size.Create(SizeOfHeaderWithLength + SizeOfLength * lines.Count);
@@ -358,7 +358,7 @@ static class GeoJSONConverter
         return length;
     }
 
-    static Size GetSize(MultiPoint value)
+    static Size BindValue(MultiPoint value)
     {
         var length = Size.Create(SizeOfHeaderWithLength);
         if (GetSrid(value.CRS) != 0)
@@ -366,12 +366,12 @@ static class GeoJSONConverter
 
         var coordinates = value.Coordinates;
         foreach (var t in coordinates)
-            length = length.Combine(GetSize(t));
+            length = length.Combine(BindValue(t));
 
         return length;
     }
 
-    static Size GetSize(MultiLineString value)
+    static Size BindValue(MultiLineString value)
     {
         var length = Size.Create(SizeOfHeaderWithLength);
         if (GetSrid(value.CRS) != 0)
@@ -379,12 +379,12 @@ static class GeoJSONConverter
 
         var coordinates = value.Coordinates;
         foreach (var t in coordinates)
-            length = length.Combine(GetSize(t));
+            length = length.Combine(BindValue(t));
 
         return length;
     }
 
-    static Size GetSize(MultiPolygon value)
+    static Size BindValue(MultiPolygon value)
     {
         var length = Size.Create(SizeOfHeaderWithLength);
         if (GetSrid(value.CRS) != 0)
@@ -392,12 +392,12 @@ static class GeoJSONConverter
 
         var coordinates = value.Coordinates;
         foreach (var t in coordinates)
-            length = length.Combine(GetSize(t));
+            length = length.Combine(BindValue(t));
 
         return length;
     }
 
-    static Size GetSize(SizeContext context, GeometryCollection value, ref object? writeState)
+    static Size BindValue(in BindContext context, GeometryCollection value, ref object? writeState)
     {
         var length = Size.Create(SizeOfHeaderWithLength);
         if (GetSrid(value.CRS) != 0)
@@ -405,7 +405,7 @@ static class GeoJSONConverter
 
         var geometries = value.Geometries;
         foreach (var t in geometries)
-            length = length.Combine(GetSize(context, (IGeoJSONObject)t, ref writeState));
+            length = length.Combine(BindValue(context, (IGeoJSONObject)t, ref writeState));
 
         return length;
     }

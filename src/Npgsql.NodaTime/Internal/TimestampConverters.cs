@@ -24,14 +24,14 @@ sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false);
         return format is DataFormat.Binary;
     }
 
     protected override ZonedDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).InUtc();
 
-    protected override void WriteCore(PgWriter writer, ZonedDateTime value)
+    protected override Size BindValue(in BindContext context, ZonedDateTime value, ref object? writeState)
     {
         if (value.Zone != DateTimeZone.Utc && !LegacyTimestampBehavior)
         {
@@ -41,22 +41,25 @@ sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
                 "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
         }
 
-        writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
+        return context.BufferRequirement;
     }
+
+    protected override void WriteCore(PgWriter writer, ZonedDateTime value)
+        => writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
 }
 
 sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<OffsetDateTime>
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false);
         return format is DataFormat.Binary;
     }
 
     protected override OffsetDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).WithOffset(Offset.Zero);
 
-    protected override void WriteCore(PgWriter writer, OffsetDateTime value)
+    protected override Size BindValue(in BindContext context, OffsetDateTime value, ref object? writeState)
     {
         if (value.Offset != Offset.Zero && !LegacyTimestampBehavior)
         {
@@ -66,8 +69,11 @@ sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffe
                 "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
         }
 
-        writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
+        return context.BufferRequirement;
     }
+
+    protected override void WriteCore(PgWriter writer, OffsetDateTime value)
+        => writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
 }
 
 sealed class LocalDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<LocalDateTime>

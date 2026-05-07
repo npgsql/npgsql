@@ -21,10 +21,10 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         return format == DataFormat.Binary;
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlInet value, ref object? writeState)
-        => GetSizeImpl(context, value.Address, ref writeState);
+    protected override Size BindValue(in BindContext context, NpgsqlInet value, ref object? writeState)
+        => BindValueImpl(context, value.Address, ref writeState);
 
-    internal static Size GetSizeImpl(SizeContext context, IPAddress ipAddress, ref object? writeState)
+    internal static Size BindValueImpl(in BindContext context, IPAddress ipAddress, ref object? writeState)
         => ipAddress.AddressFamily switch
         {
             AddressFamily.InterNetwork => 8,

@@ -18,5 +18,23 @@ static class TypeExtensions
         /// <returns><see langword="true"/> if either type is assignable to the other; otherwise, <see langword="false"/>.</returns>
         public bool IsInSubtypeRelationshipWith(Type other) =>
             type.IsAssignableTo(other) || other.IsAssignableTo(type);
+
+        /// <summary>
+        /// Walks the inheritance chain returning the first base type matching <paramref name="baseType"/>.
+        /// When <paramref name="baseType"/> is an open generic definition, returns the closed form encountered.
+        /// </summary>
+        public Type? GetBase(Type baseType)
+        {
+            var t = type;
+            while (t is not null)
+            {
+                if (baseType.IsGenericTypeDefinition
+                        ? t.IsGenericType && t.GetGenericTypeDefinition() == baseType
+                        : t == baseType)
+                    return t;
+                t = t.BaseType;
+            }
+            return null;
+        }
     }
 }

@@ -56,8 +56,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         }
     }
 
-    public override Size GetSize(SizeContext context, T values, ref object? writeState)
-        => _arrayConverterCore.GetSize(context, values, ref writeState);
+    protected override Size BindValue(in BindContext context, T values, ref object? writeState)
+        => _arrayConverterCore.BindValue(context, values, ref writeState);
 
     public override void Write(PgWriter writer, T values)
         => _arrayConverterCore.Write(async: false, writer, values, CancellationToken.None).GetAwaiter().GetResult();
@@ -140,18 +140,14 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
 
-        Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+        Size? IElementOperations.IsDbNullOrBind(in BindContext context, object collection, IterationIndices indices, ref object? writeState, NestedObjectDbNullHandling? nullCheckHandling)
         {
             var value = GetValue(collection, indices);
             if (typeof(TElement) == typeof(object))
-            {
-                if (_elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling))
-                    return null;
-                if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-                    return byteCount;
-                return _elemConverter.GetSizeAsObject(context, value, ref writeState);
-            }
-            return _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
+                return ArrayConverterCore.IsDbNullOrBindObject(_elemConverter, context, value, ref writeState, nullCheckHandling);
+            if (_elemConverter.IsDbNull(value, writeState))
+                return null;
+            return nullCheckHandling is null ? _elemConverter.Bind(context, value!, ref writeState) : Size.Zero;
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
@@ -221,18 +217,14 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
             return ((IList<TElement?>)collection).Count;
         }
 
-        Size? IElementOperations.IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState)
+        Size? IElementOperations.IsDbNullOrBind(in BindContext context, object collection, IterationIndices indices, ref object? writeState, NestedObjectDbNullHandling? nullCheckHandling)
         {
-            var value = GetValue(collection, indices.One);
+            var value = GetValue(collection, indices[0]);
             if (typeof(TElement) == typeof(object))
-            {
-                if (_elemConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling))
-                    return null;
-                if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
-                    return byteCount;
-                return _elemConverter.GetSizeAsObject(context, value, ref writeState);
-            }
-            return _elemConverter.IsDbNullOrGetSize(context.Format, context.BufferRequirement, value, ref writeState);
+                return ArrayConverterCore.IsDbNullOrBindObject(_elemConverter, context, value, ref writeState, nullCheckHandling);
+            if (_elemConverter.IsDbNull(value, writeState))
+                return null;
+            return nullCheckHandling is null ? _elemConverter.Bind(context, value!, ref writeState) : Size.Zero;
         }
 
         ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, IterationIndices indices, CancellationToken cancellationToken)
@@ -499,7 +491,7 @@ sealed class PolymorphicArrayConverter<TBase>(
             : structElementCollectionConverter.ReadAsync(reader, cancellationToken);
     }
 
-    public override Size GetSize(SizeContext context, TBase value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, TBase value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported");
 
     public override void Write(PgWriter writer, TBase value)

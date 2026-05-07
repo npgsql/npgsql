@@ -14,14 +14,18 @@ interface IElementOperations
 {
     object CreateCollection(ReadOnlySpan<int> lengths);
     int GetCollectionCount(object collection, out int[]? lengths);
-    Size? IsDbNullOrGetSize(SizeContext context, object collection, IterationIndices indices, ref object? writeState);
+    /// When <paramref name="nullCheckHandling"/> is non-null, the implementation performs only the
+    /// null check using the supplied policy and skips the BindValue call; <paramref name="context"/>
+    /// is unused and may be <c>default</c>. The returned <see cref="Size"/> is meaningless in that mode —
+    /// callers should treat any non-null return as "not a db null".
+    Size? IsDbNullOrBind(in BindContext context, object collection, IterationIndices indices, ref object? writeState, NestedObjectDbNullHandling? nullCheckHandling = null);
     ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
     ValueTask Write(bool async, PgWriter writer, object collection,  IterationIndices indices, CancellationToken cancellationToken = default);
 }
 
 readonly struct ArrayConverterCore(
     IElementOperations elemOps,
-    PgTypeInfo elementTypeInfo,
+    PgConcreteTypeInfo elementTypeInfo,
     bool elemTypeDbNullable,
     int? expectedDimensions,
     BufferRequirements binaryRequirements,
@@ -32,32 +36,42 @@ readonly struct ArrayConverterCore(
     internal const string ReadNonNullableCollectionWithNullsExceptionMessage =
         "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable collection type instead.";
 
-    PgTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
+    PgConcreteTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
-    bool IsDbNull(SizeContext context, object values, IterationIndices arrayIndices, object? writeState)
+    bool IsDbNull(object values, IterationIndices arrayIndices, object? writeState, NestedObjectDbNullHandling handling)
     {
-        // This call will only skip GetSize if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
-        // Fixed-size element converters cannot produce per-value write state, so IsDbNullOrGetSize must
+        // This call will only skip BindValue if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
+        // Fixed-size element converters cannot produce per-value write state, so IsDbNullOrBind must
         // leave writeState alone — any mutation is a contract violation in the element converter.
         Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
         var originalWriteState = writeState;
-        var isDbNull = elemOps.IsDbNullOrGetSize(context, values, arrayIndices, ref writeState) is null;
-        Debug.Assert(ReferenceEquals(writeState, originalWriteState), "Fixed-size element converter mutated writeState during a null probe.");
+        var isDbNull = elemOps.IsDbNullOrBind(default, values, arrayIndices, ref writeState, nullCheckHandling: handling) is null;
+        Debug.Assert(ReferenceEquals(writeState, originalWriteState), "Element converter mutated writeState during a null probe.");
         return isDbNull;
+    }
+
+    internal static Size? IsDbNullOrBindObject(PgConverter elementConverter, in BindContext context, object? value, ref object? writeState, NestedObjectDbNullHandling? nullCheckHandling)
+    {
+        if (nullCheckHandling is { } handling)
+            return elementConverter.IsDbNullAsNestedObject(value, writeState, handling) ? null : Size.Zero;
+
+        return elementConverter.IsDbNullAsNestedObject(value, writeState, context.NestedObjectDbNullHandling)
+            ? null
+            : elementConverter.BindAsObject(context, value, ref writeState);
     }
 
     // Sizes a single element, accumulates into running size/anyWriteState, and returns the per-slot Size (-1 sentinel for NULL).
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    Size SizeElement(SizeContext context, object values, IterationIndices indices, ref object? elemState, ref Size size, ref bool anyWriteState)
+    Size SizeElement(in BindContext context, object values, IterationIndices indices, ref object? elemState, ref Size size, ref bool anyWriteState)
     {
-        var elemSize = elemOps.IsDbNullOrGetSize(context, values, indices, ref elemState);
+        var elemSize = elemOps.IsDbNullOrBind(context, values, indices, ref elemState);
         anyWriteState = anyWriteState || elemState is not null;
         size = size.Combine(elemSize ?? 0);
         return elemSize ?? -1;
     }
 
-    public Size GetSize(SizeContext context, object values, ref object? writeState)
+    public Size BindValue(in BindContext context, object values, ref object? writeState)
     {
         Debug.Assert(context.Format is DataFormat.Binary);
 
@@ -81,17 +95,22 @@ readonly struct ArrayConverterCore(
         var arrayPool = providerState?.ArrayPool;
         var elemData = providerState?.Data.Array;
         var fixedSizeElements = false;
-        if (binaryRequirements.Write is { Kind: SizeKind.Exact, Value: var elemByteCount })
+        var elemContext = BindContext.CreateNested(context, binaryRequirements);
+        if (elemContext.IsBindFixedSize)
         {
             fixedSizeElements = true;
+            var elemByteCount = elemContext.BufferRequirement.Value;
             var nulls = 0;
             var lastLength = metadata.LastDimension;
-            if (ElemTypeDbNullable)
+
+            if (ElemTypeDbNullable || !elemContext.IsBindOptional)
             {
-                var elemContext = new SizeContext(context.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = context.NestedObjectDbNullHandling };
+                var nullCheckHandling = elemContext.IsBindOptional ? (NestedObjectDbNullHandling?)context.NestedObjectDbNullHandling : null;
                 do
                 {
-                    if (IsDbNull(elemContext, values, indices, elemData?[indices.IndicesSum].WriteState))
+                    object? elemState = null;
+                    var elemSize = elemOps.IsDbNullOrBind(elemContext, values, indices, ref elemState, nullCheckHandling);
+                    if (elemSize is null)
                         nulls++;
                 }
                 while (indices.TryAdvance(lastLength, metadata.DimensionLengths));
@@ -110,7 +129,7 @@ readonly struct ArrayConverterCore(
                 do
                 {
                     object? elemState = null;
-                    var elemSize = SizeElement(context, values, indices, ref elemState, ref size, ref anyWriteState);
+                    var elemSize = SizeElement(elemContext, values, indices, ref elemState, ref size, ref anyWriteState);
                     elemData[indices.IndicesSum] = (elemSize, elemState);
                 }
                 while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
@@ -121,7 +140,7 @@ readonly struct ArrayConverterCore(
                 do
                 {
                     ref var elem = ref elemData[indices.IndicesSum];
-                    elem.Size = SizeElement(context, values, indices, ref elem.WriteState, ref size, ref anyWriteState);
+                    elem.Size = SizeElement(elemContext, values, indices, ref elem.WriteState, ref size, ref anyWriteState);
                 }
                 while (indices.TryAdvance(lastCount, metadata.DimensionLengths));
             }
@@ -271,7 +290,6 @@ readonly struct ArrayConverterCore(
         var lastCount = metadata.LastDimension;
         var offset = state.Data.Offset;
         var fixedSizeElements = state.FixedSizeElements;
-        var elemContext = new SizeContext(writer.Current.Format, binaryRequirements.Write) { NestedObjectDbNullHandling = state.NestedObjectDbNullHandling };
         do
         {
             if (writer.ShouldFlush(sizeof(int)))
@@ -279,7 +297,7 @@ readonly struct ArrayConverterCore(
 
             var elem = elemData?[offset + indices.IndicesSum] ?? default;
             var length = fixedSizeElements
-                ? ElemTypeDbNullable && IsDbNull(elemContext, values, indices, elem.WriteState) ? -1 : binaryRequirements.Write.Value
+                ? ElemTypeDbNullable && IsDbNull(values, indices, elem.WriteState, state.NestedObjectDbNullHandling) ? -1 : binaryRequirements.Write.Value
                 : elem.Size.Value;
 
             writer.WriteInt32(length);

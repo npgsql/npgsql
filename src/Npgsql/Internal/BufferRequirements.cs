@@ -9,38 +9,70 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
 {
     readonly Size _read;
     readonly Size _write;
+    // True when bind can be skipped — the converter has no per-value bind work AND Write is Exact.
+    // Construction is permissive (loose combinations are admissible to keep room for upcoming measuring
+    // work); the invariant is gated at Bind entry, which throws if IsBindOptional=true with non-Exact Write.
+    readonly bool _optionalBind;
 
-    BufferRequirements(Size read, Size write)
+    BufferRequirements(Size read, Size write, bool optionalBind)
     {
         _read = read;
         _write = write;
+        _optionalBind = optionalBind;
     }
 
     public Size Read => _read;
     public Size Write => _write;
 
-    /// Streaming
-    public static BufferRequirements None => new(Size.Unknown, Size.Unknown);
-    /// Entire value should be buffered
-    public static BufferRequirements Value => new(Size.CreateUpperBound(int.MaxValue), Size.CreateUpperBound(int.MaxValue));
-    /// Fixed size value should be buffered
-    public static BufferRequirements CreateFixedSize(int byteCount) => new(byteCount, byteCount);
-    /// Custom requirements
-    public static BufferRequirements Create(Size value) => new(value, value);
-    public static BufferRequirements Create(Size read, Size write) => new(read, write);
+    /// <summary>
+    /// True when <see cref="Write"/> has <see cref="SizeKind.Exact"/>, meaning the converter's bind size
+    /// is value-independent — every value serializes to exactly <see cref="Write"/> bytes. Converters that
+    /// declare this contract MUST NOT produce writeState in BindValue; if writeState is needed, declare
+    /// a non-Exact Kind (UpperBound or Unknown) so the per-value path is selected.
+    /// </summary>
+    public bool IsBindFixedSize => _write.Kind is SizeKind.Exact;
 
-    public BufferRequirements Combine(Size read, Size write)
-        => new(_read.Combine(read), _write.Combine(write));
+    /// <summary>
+    /// True when bind can be skipped for this format — the converter has no per-value bind work
+    /// (sizing, validation, writeState production). Implies <see cref="IsBindFixedSize"/>.
+    /// </summary>
+    public bool IsBindOptional => _optionalBind;
+
+    /// Streaming read and write; converter handles its own chunking.
+    public static BufferRequirements Streaming => new(Size.Unknown, Size.Unknown, optionalBind: false);
+    /// <inheritdoc cref="Streaming"/>
+    [Obsolete("Use BufferRequirements.Streaming instead.")]
+    public static BufferRequirements None => new(Size.Unknown, Size.Unknown, optionalBind: false);
+    /// Entire value should be buffered
+    public static BufferRequirements Value => new(Size.CreateUpperBound(int.MaxValue), Size.CreateUpperBound(int.MaxValue), optionalBind: false);
+    /// Fixed size value should be buffered. <see cref="IsBindOptional"/> is true (the size is fully
+    /// determined); converters that still need bind to fire (e.g. validation) use the explicit overload.
+    public static BufferRequirements CreateFixedSize(int byteCount) => new(byteCount, byteCount, optionalBind: true);
+    /// <summary>Fixed size value with explicit <see cref="IsBindOptional"/>; pass false when the converter
+    /// has per-value bind work (e.g. value-shape validation) to fire.</summary>
+    public static BufferRequirements CreateFixedSize(int byteCount, bool optionalBind) => new(byteCount, byteCount, optionalBind);
+    /// Custom requirements. Defaults <see cref="IsBindOptional"/> to true when <paramref name="value"/> is
+    /// <see cref="SizeKind.Exact"/> (no per-value bind work needed when the size is fully known).
+    public static BufferRequirements Create(Size value) => new(value, value, optionalBind: value.Kind is SizeKind.Exact);
+    /// <inheritdoc cref="Create(Size)"/>
+    public static BufferRequirements Create(Size read, Size write) => new(read, write, optionalBind: write.Kind is SizeKind.Exact);
+    /// <summary>Custom requirements with explicit <see cref="IsBindOptional"/>; use when the Kind-derived default is wrong (rare).</summary>
+    public static BufferRequirements Create(Size read, Size write, bool optionalBind) => new(read, write, optionalBind);
 
     public BufferRequirements Combine(BufferRequirements other)
-        => Combine(other._read, other._write);
+    {
+        // Both sides carry explicit IsBindOptional — AND them. The combined write Kind is independent and
+        // is gated at Bind entry (until measuring lands and the contract loosens).
+        var newWrite = _write.Combine(other._write);
+        return new(_read.Combine(other._read), newWrite, _optionalBind && other._optionalBind);
+    }
 
     public BufferRequirements Combine(int byteCount)
         => Combine(CreateFixedSize(byteCount));
 
-    public bool Equals(BufferRequirements other) => _read.Equals(other._read) && _write.Equals(other._write);
+    public bool Equals(BufferRequirements other) => _read.Equals(other._read) && _write.Equals(other._write) && _optionalBind == other._optionalBind;
     public override bool Equals(object? obj) => obj is BufferRequirements other && Equals(other);
-    public override int GetHashCode() => HashCode.Combine(_read, _write);
+    public override int GetHashCode() => HashCode.Combine(_read, _write, _optionalBind);
     public static bool operator ==(BufferRequirements left, BufferRequirements right) => left.Equals(right);
     public static bool operator !=(BufferRequirements left, BufferRequirements right) => !left.Equals(right);
 

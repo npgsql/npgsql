@@ -95,18 +95,20 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         return new NpgsqlRange<TSubtype>(lowerBound, upperBound, flags);
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
     {
         var totalSize = Size.Create(1);
         if (value.IsEmpty)
             return totalSize; // Just flags.
 
+        var subtypeContext = BindContext.CreateNested(context, _subtypeRequirements);
         WriteState? state = null;
         if (!value.LowerBoundInfinite)
         {
             var subTypeState = (object?)null;
-            if (_subtypeConverter.IsDbNullOrGetSize(context.Format, _subtypeRequirements.Write, value.LowerBound!, ref subTypeState) is { } size)
+            if (!_subtypeConverter.IsDbNull(value.LowerBound!, null))
             {
+                var size = _subtypeConverter.Bind(subtypeContext, value.LowerBound!, ref subTypeState);
                 totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
                 (state ??= new WriteState()).LowerBoundSize = size;
                 state.LowerBoundWriteState = subTypeState;
@@ -118,8 +120,9 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if (!value.UpperBoundInfinite)
         {
             var subTypeState = (object?)null;
-            if (_subtypeConverter.IsDbNullOrGetSize(context.Format, _subtypeRequirements.Write, value.UpperBound!, ref subTypeState) is { } size)
+            if (!_subtypeConverter.IsDbNull(value.UpperBound!, null))
             {
+                var size = _subtypeConverter.Bind(subtypeContext, value.UpperBound!, ref subTypeState);
                 totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
                 (state ??= new WriteState()).UpperBoundSize = size;
                 state.UpperBoundWriteState = subTypeState;
