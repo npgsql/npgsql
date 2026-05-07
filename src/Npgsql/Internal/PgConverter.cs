@@ -156,12 +156,7 @@ public abstract class PgConverter
             ThrowInvalidNullValue();
 
         if (context.IsBindOptional)
-        {
-            if (context.BufferRequirement.Kind is not SizeKind.Exact)
-                ThrowHelper.ThrowInvalidOperationException(
-                    $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
             return context.BufferRequirement;
-        }
 
         // writeState identity discipline:
         // - Fixed-size: any change is forbidden (no production, no swap, no clear).
@@ -178,18 +173,6 @@ public abstract class PgConverter
             if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
                 && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
                 ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
-
-            // Catches non-Exact sizes from both paths (the IsBindFixedSize Kind check is folded in here —
-            // a converter declaring fixed-size that returned a non-Exact size trips this same throw).
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for BindValue.");
-                break;
-            case SizeKind.Unknown:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for BindValue.");
-                break;
-            }
         }
         catch
         {
@@ -335,12 +318,7 @@ public abstract class PgConverter<T> : PgConverter
         Debug.Assert(TypeAcceptsNull || value is not null);
 
         if (context.IsBindOptional)
-        {
-            if (context.BufferRequirement.Kind is not SizeKind.Exact)
-                ThrowHelper.ThrowInvalidOperationException(
-                    $"{nameof(BufferRequirements.IsBindOptional)}=true requires an {nameof(SizeKind.Exact)} buffer requirement.");
             return context.BufferRequirement;
-        }
 
         // writeState identity discipline:
         // - Fixed-size: any change is forbidden (no production, no swap, no clear).
@@ -357,16 +335,6 @@ public abstract class PgConverter<T> : PgConverter
             if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
                 && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
                 ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
-
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for {nameof(BindValue)}.");
-                break;
-            case SizeKind.Unknown:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for {nameof(BindValue)}.");
-                break;
-            }
         }
         catch
         {
