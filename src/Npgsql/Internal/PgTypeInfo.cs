@@ -456,6 +456,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
+        // Db nulls are format agnostic, any format will do here, bind can decide to ignore these based on size for overall format handling.
         if (Unsafe.As<PgConverter<T>>(Converter).IsDbNull(value, writeState))
             return new(DataFormat.Binary, Size.Zero, null, writeState);
 
@@ -492,6 +493,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         if (!SupportsWriting)
             ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
 
+        // Db nulls are format agnostic, any format will do here, bind can decide to ignore these based on size for overall format handling.
         if (Converter.IsDbNullAsObject(value, writeState))
             return new(DataFormat.Binary, Size.Zero, null, writeState);
 
