@@ -24,7 +24,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
     protected override Size BindValue(in BindContext context, NpgsqlInet value, ref object? writeState)
         => BindValueImpl(context, value.Address, ref writeState);
 
-    internal static Size BindValueImpl(BindContext context, IPAddress ipAddress, ref object? writeState)
+    internal static Size BindValueImpl(in BindContext context, IPAddress ipAddress, ref object? writeState)
         => ipAddress.AddressFamily switch
         {
             AddressFamily.InterNetwork => 8,

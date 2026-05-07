@@ -180,11 +180,12 @@ class MiscTypeTests : TestBase
         await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) },
             "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}",
             "timestamp with time zone[]", dataTypeInference: DataTypeInference.Nothing);
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertTypeWrite(dataSource, new object?[]
+        var ex = Assert.ThrowsAsync<InvalidCastException>(() => AssertTypeWrite(dataSource, new object?[]
             {
                 DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
             }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
             dataTypeInference: DataTypeInference.Nothing));
+        Assert.That(ex!.InnerException, Is.TypeOf<ArgumentException>());
     }
 
     [Test]

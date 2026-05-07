@@ -926,7 +926,8 @@ $$ LANGUAGE plpgsql;";
             H = largeString
         });
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
     record BigComposite
@@ -965,7 +966,8 @@ $$ LANGUAGE plpgsql;";
         };
         cmd.Parameters.AddWithValue("a", array);
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
     [Test]
@@ -1003,7 +1005,8 @@ $$ LANGUAGE plpgsql;";
             DataTypeName = rangeType
         });
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
     [Test]
@@ -1046,7 +1049,8 @@ $$ LANGUAGE plpgsql;";
             DataTypeName = rangeType + "_multirange"
         });
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.That(ex!.InnerException, Is.TypeOf<OverflowException>());
     }
 
     [Test, Description("CreateCommand before connection open")]

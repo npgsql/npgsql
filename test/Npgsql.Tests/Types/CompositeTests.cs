@@ -423,13 +423,14 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
+        var ex = Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
             connection,
             new SomeCompositeWithTypeInfoProviderType { DateTimes = [DateTime.UnixEpoch] }, // UTC DateTime
             """("{""1970-01-01 01:00:00"",""1970-01-02 01:00:00""}")""",
             compositeType,
             dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.DateTimes!.SequenceEqual(expected.DateTimes!)));
+        Assert.That(ex!.InnerException, Is.TypeOf<ArgumentException>());
     }
 
     // A composite whose only provider-backed field has a fixed-size default concrete (plain timestamp,
@@ -480,7 +481,7 @@ CREATE TYPE {compositeType} AS (id int, created_at timestamp)");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
+        var ex = Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
             connection,
             new SomeCompositeWithFixedSizeTypeInfoProviderField
             {
@@ -490,6 +491,7 @@ CREATE TYPE {compositeType} AS (id int, created_at timestamp)");
             """(42,"1970-01-01 00:00:00")""",
             compositeType,
             dataTypeInference: DataTypeInference.Nothing));
+        Assert.That(ex!.InnerException, Is.TypeOf<ArgumentException>());
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]

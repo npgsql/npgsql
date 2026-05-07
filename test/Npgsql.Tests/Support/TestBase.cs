@@ -615,6 +615,16 @@ public abstract class TestBase
         return result;
     }
 
+    public async Task<TException> AssertTypeUnsupportedWrite<T, TException, TInnerException>(T value, string? dataTypeName = null,
+        NpgsqlDataSource? dataSource = null, bool skipArrayCheck = false)
+        where TException : Exception
+        where TInnerException : Exception
+    {
+        var result = await AssertTypeUnsupportedWrite<T, TException>(value, dataTypeName, dataSource, skipArrayCheck);
+        Assert.That(result.InnerException, Is.TypeOf<TInnerException>());
+        return result;
+    }
+
     async Task<TException> AssertTypeUnsupportedWriteCore<T, TException>(T value, string? dataTypeName = null, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
