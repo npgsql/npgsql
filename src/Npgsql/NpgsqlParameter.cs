@@ -776,12 +776,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (TypeInfo is null || ConcreteTypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
-        // We might call this twice, once during validation and once during WriteBind, only compute things once.
-        // Bind is atomic *and* self-cleaning: ownership of the binding (and the resolution-time
-        // _providerWriteState it absorbs) commits to _binding only after the try succeeds, the post-try
-        // format check disposes the bound state via DisposeBindingState before throwing, and any
-        // exception during compute disposes the resolution-time _providerWriteState in the catch — so
-        // callers never see a half-bound parameter.
+        // Idempotent — validation pass and WriteBind both call this; first wins.
         if (_binding is null)
         {
             if (_size > 0)
@@ -801,23 +796,21 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     if (value is null)
                         ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
 
-                    binding = ConcreteTypeInfo.Converter.IsDbNullAsNestedObject(value, _providerWriteState, ParameterDbNullHandling)
-                        ? new PgValueBinding(DataFormat.Binary, 0, null, _providerWriteState)
-                        : ConcreteTypeInfo.BindParameterValueAsObject(value, _providerWriteState, ParameterDbNullHandling, requiredFormat);
+                    (var providerWriteState, _providerWriteState) = (_providerWriteState, null);
+                    binding = ConcreteTypeInfo.BindParameterValueAsNestedObject(value, providerWriteState, ParameterDbNullHandling, requiredFormat);
                 }
                 else
                 {
-                    binding = BindTypedValue(ConcreteTypeInfo, _providerWriteState, formatPreference: requiredFormat);
+                    (var providerWriteState, _providerWriteState) = (_providerWriteState, null);
+                    binding = BindTypedValue(ConcreteTypeInfo, providerWriteState, formatPreference: requiredFormat);
                 }
 
-                // Binding and ownership transfer of state happen together — _binding now owns
-                // binding.WriteState end-to-end, including across the format-mismatch throw below
-                // (DisposeBindingState cleans up on parameter teardown).
                 _binding = binding;
-                _providerWriteState = null;
             }
             catch (Exception ex)
             {
+                // Only pre-handoff throws (the raw-null check) leave _providerWriteState set; everything
+                // past the handoff is owned by the BindParameterValue family.
                 if (_providerWriteState is { } ws)
                 {
                     ConcreteTypeInfo.DisposeWriteState(ws);
@@ -829,13 +822,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     _subStream = null;
                 }
                 _useSubStream = false;
-                // Wrap with resolution context, which is easier than letting nested converters reconstruct the right context themselves.
-                // Use the parameter's value-type logic so the message reflects the type that the caller passed, not what info was resolved.
                 ThrowHelper.ThrowInvalidCastException(
                     $"Could not bind parameter '{ParameterName}' of CLR type '{GetValueType(StaticValueType)?.FullName ?? "null"}' to PostgreSQL type '{ConcreteTypeInfo.Options.GetDataTypeName(ConcreteTypeInfo.PgTypeId).DisplayName}'. See the inner exception for details.",
                     innerException: ex);
             }
-
         }
 
         // _binding is now set (fresh from the try above, or pre-existing on retry). On format mismatch

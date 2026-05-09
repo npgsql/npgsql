@@ -69,31 +69,35 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
     {
+        // Multirange Write needs per-element sizes from the wrapper, so the data array is unconditionally
+        // allocated. Wrapper is assigned to writeState before the per-element loop so a later inner Bind
+        // throw is caught by the framework wrapper and disposed via WriteState.Dispose, cascading to any
+        // populated slot's inner IDisposable state.
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count);
-
-        var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
-        var anyWriteState = false;
-        var rangeContext = BindContext.CreateNested(context, _rangeRequirements);
-        for (var i = 0; i < value.Count; i++)
-        {
-            object? innerState = null;
-            var rangeSize = _rangeConverter.IsDbNull(value[i], innerState)
-                ? null
-                : (Size?)_rangeConverter.Bind(rangeContext, value[i], ref innerState);
-            anyWriteState = anyWriteState || innerState is not null;
-            // Ranges should never be NULL.
-            Debug.Assert(rangeSize.HasValue);
-            data[i] = new(rangeSize.Value, innerState);
-            totalSize = totalSize.Combine(rangeSize.Value);
-        }
-
-        writeState = new WriteState
+        Array.Clear(data, 0, value.Count);
+        var state = new WriteState
         {
             ArrayPool = arrayPool,
             Data = new(data, 0, value.Count),
-            AnyWriteState = anyWriteState
+            AnyWriteState = false
         };
+        writeState = state;
+
+        var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
+        var rangeContext = BindContext.CreateNested(context, _rangeRequirements);
+        for (var i = 0; i < value.Count; i++)
+        {
+            // Ranges within a multirange are never db-null on the wire.
+            Debug.Assert(!_rangeConverter.IsDbNull(value[i], null));
+            object? innerState = null;
+            var rangeSize = _rangeConverter.Bind(rangeContext, value[i], ref innerState);
+            if (innerState is not null)
+                state.AnyWriteState = true;
+            data[i] = (rangeSize, innerState);
+            totalSize = totalSize.Combine(rangeSize);
+        }
+
         return totalSize;
     }
 

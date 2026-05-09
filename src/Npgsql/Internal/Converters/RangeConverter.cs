@@ -101,37 +101,38 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if (value.IsEmpty)
             return totalSize; // Just flags.
 
+        // Lazy allocation: WriteState is only needed to carry per-bound payload sizes. Both-infinite or
+        // both-null ranges skip allocation entirely (Write defaults writeState?.*BoundSize ?? -1, which
+        // null-bound flag rewriting handles correctly). After each successful inner Bind we assign the
+        // wrapper to writeState so a subsequent inner Bind's throw is caught by the framework wrapper
+        // and disposed via WriteState.Dispose, which cascades to any populated bound's inner state.
         var subtypeContext = BindContext.CreateNested(context, _subtypeRequirements);
         WriteState? state = null;
-        if (!value.LowerBoundInfinite)
+        if (!value.LowerBoundInfinite && !_subtypeConverter.IsDbNull(value.LowerBound!, null))
         {
-            var subTypeState = (object?)null;
-            if (!_subtypeConverter.IsDbNull(value.LowerBound!, null))
-            {
-                var size = _subtypeConverter.Bind(subtypeContext, value.LowerBound!, ref subTypeState);
-                totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
-                (state ??= new WriteState()).LowerBoundSize = size;
-                state.LowerBoundWriteState = subTypeState;
-            }
-            else
-                (state ??= new WriteState()).LowerBoundSize = -1;
+            object? subTypeState = null;
+            var size = _subtypeConverter.Bind(subtypeContext, value.LowerBound!, ref subTypeState);
+            state = new WriteState();
+            writeState = state;
+            state.LowerBoundSize = size;
+            state.LowerBoundWriteState = subTypeState;
+            totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
         }
 
-        if (!value.UpperBoundInfinite)
+        if (!value.UpperBoundInfinite && !_subtypeConverter.IsDbNull(value.UpperBound!, null))
         {
-            var subTypeState = (object?)null;
-            if (!_subtypeConverter.IsDbNull(value.UpperBound!, null))
+            object? subTypeState = null;
+            var size = _subtypeConverter.Bind(subtypeContext, value.UpperBound!, ref subTypeState);
+            if (state is null)
             {
-                var size = _subtypeConverter.Bind(subtypeContext, value.UpperBound!, ref subTypeState);
-                totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
-                (state ??= new WriteState()).UpperBoundSize = size;
-                state.UpperBoundWriteState = subTypeState;
+                state = new WriteState();
+                writeState = state;
             }
-            else
-                (state ??= new WriteState()).UpperBoundSize = -1;
+            state.UpperBoundSize = size;
+            state.UpperBoundWriteState = subTypeState;
+            totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
         }
 
-        writeState = state;
         return totalSize;
     }
 
@@ -207,11 +208,19 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         }
     }
 
-    sealed class WriteState
+    sealed class WriteState : IDisposable
     {
-        internal Size LowerBoundSize { get; set; }
+        // Default to -1 ("treat as infinite/null") so a partially populated WriteState — only one bound
+        // carrying real payload — leaves the unset bound's flag-rewriting in Write working correctly.
+        internal Size LowerBoundSize { get; set; } = -1;
         internal object? LowerBoundWriteState { get; set; }
-        internal Size UpperBoundSize { get; set; }
+        internal Size UpperBoundSize { get; set; } = -1;
         internal object? UpperBoundWriteState { get; set; }
+
+        public void Dispose()
+        {
+            (LowerBoundWriteState as IDisposable)?.Dispose();
+            (UpperBoundWriteState as IDisposable)?.Dispose();
+        }
     }
 }

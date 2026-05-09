@@ -170,7 +170,22 @@ public abstract class PgConverter
         //   clearing is forbidden. Non-disposable references may be replaced by another non-null
         //   reference without violating the lifecycle.
         var originalWriteState = writeState;
-        var size = BindValueAsObject(context, value, ref writeState);
+        Size size;
+        try
+        {
+            size = BindValueAsObject(context, value, ref writeState);
+        }
+        catch
+        {
+            // Contract: writeState transitions to null on throw. BindValue is free to assign partial
+            // state to writeState as it works (composing converters do this so their wrapper's Dispose
+            // can clean up populated slots). The framework's safety net here disposes anything still
+            // in writeState and nulls it, so callers see a uniform "clean on throw" semantic.
+            if (writeState is IDisposable d)
+                d.Dispose();
+            writeState = null;
+            throw;
+        }
         if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
             && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
             ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
@@ -325,7 +340,22 @@ public abstract class PgConverter<T> : PgConverter
         //   clearing is forbidden. Non-disposable references may be replaced by another non-null
         //   reference (e.g. polymorphic-dispatch upgrade) without violating the lifecycle.
         var originalWriteState = writeState;
-        var size = BindValue(context, value, ref writeState);
+        Size size;
+        try
+        {
+            size = BindValue(context, value, ref writeState);
+        }
+        catch
+        {
+            // Contract: writeState transitions to null on throw. BindValue is free to assign partial
+            // state to writeState as it works (composing converters do this so their wrapper's Dispose
+            // can clean up populated slots). The framework's safety net here disposes anything still
+            // in writeState and nulls it, so callers see a uniform "clean on throw" semantic.
+            if (writeState is IDisposable d)
+                d.Dispose();
+            writeState = null;
+            throw;
+        }
         if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
             && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
             ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);

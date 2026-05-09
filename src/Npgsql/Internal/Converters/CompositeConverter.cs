@@ -136,17 +136,17 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
     {
         var boxedInstance = (object)value;
+        var fieldCount = _composite.Fields.Count;
 
-        // When the combine pass produced an exact size, every field is individually fixed-size and
-        // non-nullable. We still walk fields to fire per-field bind-time side effects: provider-backed
-        // fields run resolution via GetWriteInfo (which calls MakeConcreteForValue → provider.GetForValue).
-        // Fields whose resolved concrete declares per-value bind work go through IsDbNullOrBind.
-        // Size is the precomputed one from the constructor. Rent lazily so fields
-        // that produce no state and resolve to the default pay no ElementState array allocation.
+        // Fast path: composite is Exact-sized, which excludes provider-backed fields (Streaming requirements
+        // would force the slow path). Walk fields for per-field bind-time side effects (validation via
+        // !IsBindOptional fields' IsDbNullOrBind), lazy-rent the wrapper on the first state-producing field —
+        // all-stateless composites pay no ElementState array allocation. Slots before the first state
+        // producer stay default; Write resolves them via GetDefaultWriteInfo (Path A's gap handling).
         if (_writeSizePrecomputed.Kind is SizeKind.Exact)
         {
-            ElementState[]? data = null;
-            for (var i = 0; i < _composite.Fields.Count; i++)
+            WriteState? state = null;
+            for (var i = 0; i < fieldCount; i++)
             {
                 var field = _composite.Fields[i];
                 var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out var fieldState);
@@ -154,74 +154,65 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 if (!fieldContext.IsBindOptional)
                     field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
 
-                // Skip slot population when no state was produced — composites with all-stateless fields pay
-                // no ElementState array allocation. Slots before the first state producer stay default and
-                // Write resolves them via GetDefaultWriteInfo (Path A's gap handling).
                 if (fieldState is null)
                     continue;
 
-                if (data is null)
+                if (state is null)
                 {
-                    data = ArrayPool<ElementState>.Shared.Rent(_composite.Fields.Count);
-                    // Clear any stale slots left behind by the previous pool user; gaps must read as default(ElementState).
-                    Array.Clear(data, 0, _composite.Fields.Count);
+                    state = RentWrapper(boxedInstance, fieldCount, anyWriteState: true);
+                    writeState = state;
                 }
 
-                data[i] = new()
-                {
-                    Size = fieldContext.BufferRequirement,
-                    WriteState = fieldState,
-                    Converter = converter,
-                    BufferRequirement = fieldContext.BufferRequirement
-                };
+                ref var slot = ref state.Data.Array![i];
+                slot.Size = fieldContext.BufferRequirement;
+                slot.WriteState = fieldState;
+                slot.Converter = converter;
+                slot.BufferRequirement = fieldContext.BufferRequirement;
             }
 
-            if (data is null)
-            {
+            if (state is null)
                 writeState = null;
-                return _writeSizePrecomputed;
-            }
-
-            writeState = new WriteState
-            {
-                ArrayPool = ArrayPool<ElementState>.Shared,
-                Data = new(data, 0, _composite.Fields.Count),
-                AnyWriteState = true,
-                BoxedInstance = boxedInstance,
-            };
             return _writeSizePrecomputed;
         }
 
-        // Variable-size or nullable fields — per-field IsDbNullOrBind is needed to compute the total,
-        // and per-field sizes must flow forward to Write. Always rent.
-        var arrayPool = ArrayPool<ElementState>.Shared;
-        var slowData = arrayPool.Rent(_composite.Fields.Count);
-        var totalSize = Size.Create(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
-        var anyWriteState = false;
-        for (var i = 0; i < _composite.Fields.Count; i++)
+        // Slow path: variable-size or nullable fields. Per-field IsDbNullOrBind drives the total and
+        // per-field sizes must flow forward to Write — rent unconditionally. Wrapper is assigned to
+        // writeState before the first field bind so a per-field throw is caught by the framework wrapper.
+        var slowState = RentWrapper(boxedInstance, fieldCount, anyWriteState: false);
+        writeState = slowState;
+        var slowData = slowState.Data.Array!;
+        var totalSize = Size.Create(sizeof(int) + fieldCount * (sizeof(uint) + sizeof(int)));
+        for (var i = 0; i < fieldCount; i++)
         {
             var field = _composite.Fields[i];
             var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out var fieldState);
             var fieldSizeOrNull = field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
-            anyWriteState = anyWriteState || fieldState is not null;
-            slowData[i] = new()
-            {
-                Size = fieldSizeOrNull ?? -1,
-                WriteState = fieldState,
-                Converter = converter,
-                BufferRequirement = fieldContext.BufferRequirement
-            };
+            if (fieldState is not null)
+                slowState.AnyWriteState = true;
+            ref var slot = ref slowData[i];
+            slot.Size = fieldSizeOrNull ?? -1;
+            slot.WriteState = fieldState;
+            slot.Converter = converter;
+            slot.BufferRequirement = fieldContext.BufferRequirement;
             totalSize = totalSize.Combine(fieldSizeOrNull ?? 0);
         }
 
-        writeState = new WriteState
-        {
-            ArrayPool = arrayPool,
-            Data = new(slowData, 0, _composite.Fields.Count),
-            AnyWriteState = anyWriteState,
-            BoxedInstance = boxedInstance,
-        };
         return totalSize;
+
+        static WriteState RentWrapper(object boxedInstance, int fieldCount, bool anyWriteState)
+        {
+            var data = ArrayPool<ElementState>.Shared.Rent(fieldCount);
+            // Stale slots from the previous pool user must read as default(ElementState) — Dispose iterates
+            // the full segment and relies on null WriteState in unfilled slots to skip them safely.
+            Array.Clear(data, 0, fieldCount);
+            return new WriteState
+            {
+                ArrayPool = ArrayPool<ElementState>.Shared,
+                Data = new(data, 0, fieldCount),
+                AnyWriteState = anyWriteState,
+                BoxedInstance = boxedInstance,
+            };
+        }
     }
 
     public override void Write(PgWriter writer, T value)
@@ -294,20 +285,20 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         }
     }
 
-    readonly struct ElementState
+    struct ElementState
     {
-        public required Size Size { get; init; }
-        public required object? WriteState { get; init; }
-        public required PgConverter Converter { get; init; }
-        public required Size BufferRequirement { get; init; }
+        public Size Size;
+        public object? WriteState;
+        public PgConverter? Converter;
+        public Size BufferRequirement;
     }
 
     class WriteState : IDisposable
     {
-        public required ArrayPool<ElementState>? ArrayPool { get; init; }
-        public required ArraySegment<ElementState> Data { get; init; }
-        public required bool AnyWriteState { get; init; }
-        public required object BoxedInstance { get; init; }
+        public required ArrayPool<ElementState>? ArrayPool { get; set; }
+        public required ArraySegment<ElementState> Data { get; set; }
+        public required bool AnyWriteState { get; set; }
+        public required object BoxedInstance { get; set; }
 
         public void Dispose()
         {

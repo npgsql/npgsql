@@ -312,11 +312,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
-                {
-                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    elemData.AsSpan(0, index).Clear();
-                }
+                    writeState = AllocateElementBuffer(effectiveContext, metadata, index, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -345,11 +341,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
-                {
-                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    elemData.AsSpan(0, index).Clear();
-                }
+                    writeState = AllocateElementBuffer(effectiveContext, metadata, index, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -378,11 +370,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValue(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
-                {
-                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    elemData.AsSpan(0, index).Clear();
-                }
+                    writeState = AllocateElementBuffer(effectiveContext, metadata, index, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -411,11 +399,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
                     : GetEffectiveForValueAsObject(effectiveContext, value, out state);
                 if (state is not null && elemData is null)
-                {
-                    elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
-                    elemData = elemDataArrayPool.Rent(metadata.TotalElements);
-                    elemData.AsSpan(0, index).Clear();
-                }
+                    writeState = AllocateElementBuffer(effectiveContext, metadata, index, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -442,20 +426,30 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             throw new NotSupportedException();
         }
 
-        if (elemData is not null)
+        return concreteTypeInfo;
+
+        // Pre-assigning the wrapper to writeState at first-rent makes populated slots' inner WriteStates
+        // reachable for the parameter-layer catch's IDisposable dispose chain when a later element
+        // iteration throws (inconsistent type infos, inner provider throw). The buffer return that
+        // happens after Dispose is incidental to the wrapper's disposal contract, not the motivation —
+        // it's the inner-state cleanup we're after.
+        static ArrayConverterWriteState AllocateElementBuffer(
+            ProviderValueContext effectiveContext, PgArrayMetadata metadata, int index,
+            out (Size, object? WriteState)[]? elemData, out ArrayPool<(Size, object?)>? elemDataArrayPool)
         {
-            writeState = new ArrayConverterWriteState
+            elemDataArrayPool = ArrayPool<(Size, object?)>.Shared;
+            elemData = elemDataArrayPool.Rent(metadata.TotalElements);
+            elemData.AsSpan(0, index).Clear();
+            return new ArrayConverterWriteState
             {
                 Metadata = metadata,
                 IterationIndices = metadata.CreateIndices(),
                 NestedObjectDbNullHandling = effectiveContext.NestedObjectDbNullHandling,
                 ArrayPool = elemDataArrayPool,
-                Data = new(elemData, 0, index),
+                Data = new(elemData, 0, metadata.TotalElements),
                 AnyWriteState = true
             };
         }
-
-        return concreteTypeInfo;
     }
 }
 
