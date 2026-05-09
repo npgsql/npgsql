@@ -429,13 +429,18 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     // TryBind for reading.
     internal bool TryBindField(DataFormat format, out PgFieldBinding binding)
     {
-        if (!Converter.CanConvert(format, out var bufferRequirements))
+        switch (format)
         {
+        case DataFormat.Binary when _canBinaryConvert:
+            binding = new(format, _binaryBufferRequirements.Read);
+            return true;
+        case DataFormat.Text when _canTextConvert:
+            binding = new(format, _textBufferRequirements.Read);
+            return true;
+        default:
             binding = default;
             return false;
         }
-        binding = new(format, bufferRequirements.Read);
-        return true;
     }
 
     // Bind for reading.
@@ -503,7 +508,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
                 return DataFormat.Binary;
             }
 
-            if (Converter.CanConvert(DataFormat.Text, out bufferRequirements))
+            if (_canTextConvert)
             {
                 bufferRequirements = _textBufferRequirements;
                 return DataFormat.Text;
