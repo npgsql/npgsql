@@ -123,9 +123,13 @@ readonly struct ArrayConverterCore(
             if (ElemTypeDbNullable || !elemContext.IsBindOptional)
             {
                 var nullCheckHandling = elemContext.IsBindOptional ? (NestedObjectDbNullHandling?)context.NestedObjectDbNullHandling : null;
+                var elemData = result.Data.Array;
                 do
                 {
-                    object? elemState = null;
+                    // Thread provider-produced per-slot WriteState into the null probe when it exists.
+                    // Fixed-size elements can't produce new state during validation so any ref-mutation
+                    // through IsDbNullOrBind is moot; reading into a local discards harmlessly.
+                    var elemState = elemData?[indices.IndicesSum].WriteState;
                     var elemSize = elemOps.IsDbNullOrBind(elemContext, values, indices, ref elemState, nullCheckHandling);
                     if (elemSize is null)
                         nulls++;
