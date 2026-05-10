@@ -28,7 +28,7 @@ public abstract class PgConverter
 
     private protected PgConverter(Type type, bool typeAcceptsNull)
     {
-        Debug.Assert(type == GetType().GetBase(typeof(PgConverter<>))!.GetGenericArguments()[0]);
+        Debug.Assert(GetType().GetBase(typeof(PgConverter<>))?.GetGenericArguments()[0] == type);
         TypeToConvert = type;
         TypeAcceptsNull = typeAcceptsNull;
     }
