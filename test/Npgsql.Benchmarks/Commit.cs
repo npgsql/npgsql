@@ -1,12 +1,10 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
 
 // ReSharper disable AssignNullToNotNullAttribute.Global
 
 namespace Npgsql.Benchmarks;
 
-[Config(typeof(Config))]
+[OperationsPerSecond]
 public class Commit
 {
     readonly NpgsqlConnection _conn;
@@ -18,17 +16,14 @@ public class Commit
         _cmd = new NpgsqlCommand("SELECT 1", _conn);
     }
 
+    [GlobalCleanup]
+    public void Cleanup() => _conn.Dispose();
+
     [Benchmark]
     public void Basic()
     {
         var tx = _conn.BeginTransaction();
         _cmd.ExecuteNonQuery();
         tx.Commit();
-    }
-
-    class Config : ManualConfig
-    {
-        public Config()
-            => AddColumn(StatisticColumn.OperationsPerSecond);
     }
 }

@@ -31,6 +31,14 @@ public class GetFieldValue
         _reader.Read();
     }
 
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        _reader.Dispose();
+        _cmd.Dispose();
+        _conn.Dispose();
+    }
+
     [Benchmark]
     public void NullableField() => _reader.GetFieldValue<int?>(0);
 

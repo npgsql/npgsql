@@ -67,6 +67,9 @@ public class WriteParameter
         _pgWriter = _connector.WriteBuffer.GetWriter(_connector.DatabaseInfo, FlushMode.None);
     }
 
+    [GlobalCleanup]
+    public void Cleanup() => _conn.Dispose();
+
     [Benchmark]
     public void NullableField() => Write(_nullableParam, (int?)0);
 
