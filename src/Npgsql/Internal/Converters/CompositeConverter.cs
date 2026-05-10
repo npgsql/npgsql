@@ -139,45 +139,32 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         var fieldCount = _composite.Fields.Count;
 
         // Fast path: composite is Exact-sized, which excludes provider-backed fields (Streaming requirements
-        // would force the slow path). Walk fields for per-field bind-time side effects (validation via
-        // !IsBindOptional fields' IsDbNullOrBind), lazy-rent the wrapper on the first state-producing field —
-        // all-stateless composites pay no ElementState array allocation. Slots before the first state
-        // producer stay default; Write resolves them via GetDefaultWriteInfo (Path A's gap handling).
+        // would force the slow path). Under the fixed-size BindValue contract no field can produce state,
+        // so the loop runs purely for validation side effects (!IsBindOptional fields' IsDbNullOrBind) and
+        // we never rent a wrapper. Write reconstructs each field's per-call data via GetDefaultWriteInfo.
         if (_writeSizePrecomputed.Kind is SizeKind.Exact)
         {
-            WriteState? state = null;
             for (var i = 0; i < fieldCount; i++)
             {
                 var field = _composite.Fields[i];
                 var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out var fieldState);
+                Debug.Assert(fieldState is null, "Exact-sized composite: GetWriteInfo must not produce state on cache-hit, non-provider-backed fields.");
 
                 if (!fieldContext.IsBindOptional)
-                    field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
-
-                if (fieldState is null)
-                    continue;
-
-                if (state is null)
                 {
-                    state = RentWrapper(boxedInstance, fieldCount, anyWriteState: true);
-                    writeState = state;
+                    field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
+                    Debug.Assert(fieldState is null, "Exact-sized composite: IsDbNullOrBind on a fixed-size field must not produce state.");
                 }
-
-                ref var slot = ref state.Data.Array![i];
-                slot.Size = fieldContext.BufferRequirement;
-                slot.WriteState = fieldState;
-                slot.Converter = converter;
-                slot.BufferRequirement = fieldContext.BufferRequirement;
             }
-
-            if (state is null)
-                writeState = null;
+            writeState = null;
             return _writeSizePrecomputed;
         }
 
         // Slow path: variable-size or nullable fields. Per-field IsDbNullOrBind drives the total and
         // per-field sizes must flow forward to Write — rent unconditionally. Wrapper is assigned to
         // writeState before the first field bind so a per-field throw is caught by the framework wrapper.
+        // GetWriteInfo's `out` and IsDbNullOrBind's `ref` write directly into slot.WriteState, so a throw
+        // mid-iteration leaves any produced state in the slot and the wrapper's Dispose handles it.
         var slowState = RentWrapper(boxedInstance, fieldCount, anyWriteState: false);
         writeState = slowState;
         var slowData = slowState.Data.Array!;
@@ -185,13 +172,12 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         for (var i = 0; i < fieldCount; i++)
         {
             var field = _composite.Fields[i];
-            var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out var fieldState);
-            var fieldSizeOrNull = field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref fieldState);
-            if (fieldState is not null)
-                slowState.AnyWriteState = true;
             ref var slot = ref slowData[i];
+            var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out slot.WriteState);
+            var fieldSizeOrNull = field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref slot.WriteState);
+            if (slot.WriteState is not null)
+                slowState.AnyWriteState = true;
             slot.Size = fieldSizeOrNull ?? -1;
-            slot.WriteState = fieldState;
             slot.Converter = converter;
             slot.BufferRequirement = fieldContext.BufferRequirement;
             totalSize = totalSize.Combine(fieldSizeOrNull ?? 0);
@@ -223,13 +209,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        // Null state is legitimate in two Exact-size scenarios:
-        //   1. composite IsBindOptional=true → BindValue was skipped entirely; every field writes from
-        //      its cached default (no provider/variable/nullable field, total within the limit).
-        //   2. composite IsBindOptional=false (e.g. a fixed-size field opted out for validation) but
-        //      no field produced per-value state — BindValue ran, the lazy-rent fast-path returned null.
-        // Variable-size composites must always arrive with a populated WriteState; we can't recover
-        // per-field value-dependent sizes otherwise.
+        // Exact-sized composites always arrive with null WriteState: either composite IsBindOptional=true
+        // skipped BindValue entirely, or BindValue ran the validation-only fast path (fixed-size fields
+        // can't produce state). Either way Write reconstructs each field's per-call data from
+        // GetDefaultWriteInfo. Variable-size composites must arrive with a populated WriteState since
+        // we can't recover per-field value-dependent sizes otherwise.
         var writeState = writer.Current.WriteState switch
         {
             WriteState ws => ws,
@@ -255,12 +239,11 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var field = _composite.Fields[i];
             writer.WriteAsOid(field.PgTypeId);
 
-            // Two cases for falling through to the cached default:
-            //   1. data is null — composite-level BindValue was skipped (composite IsBindOptional=true);
-            //      every field is non-provider-backed + IsBindOptional + fixed-size by construction.
-            //   2. data[i] is default(ElementState) — fast-path lazy-rent gap; the field produced no state
-            //      and was skipped during slot population. The cached default writes the same bytes a
-            //      stateful slot would have, with no per-slot disposal obligation.
+            // Falls through to the cached default whenever data is null — that's any Exact-sized composite
+            // (composite IsBindOptional=true skipped BindValue, or BindValue ran the validation-only fast
+            // path for fixed-size fields). The cached default writes the same bytes a stateful slot would
+            // have, with no per-slot disposal obligation. Variable-size composites must populate every
+            // slot during BindValue, so data[i].Converter is never null on the slow path.
             ElementState elementState;
             if (data?[i] is { Converter: not null } state)
                 elementState = state;

@@ -81,28 +81,40 @@ abstract class CompositeFieldInfo
             ThrowHelper.ThrowInvalidOperationException("Only binary format is supported for composite fields.");
 
         writeState = null;
-        var concreteTypeInfo = ConcreteTypeInfo ?? MakeConcreteForValue(instance, out writeState);
-        if (!concreteTypeInfo.SupportsWriting)
-            AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
+        try
+        {
+            var concreteTypeInfo = ConcreteTypeInfo ?? MakeConcreteForValue(instance, out writeState);
+            if (!concreteTypeInfo.SupportsWriting)
+                AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
 
-        var ctx = !IsProviderBacked
-            ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional)
-            : BindContext.CreateNested(nestingContext, concreteTypeInfo.Converter);
+            var ctx = !IsProviderBacked
+                ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional)
+                : BindContext.CreateNested(nestingContext, concreteTypeInfo.Converter);
 
-        // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
-        // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
-        context = ctx with { NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default };
-        return concreteTypeInfo.Converter;
+            // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
+            // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
+            context = ctx with { NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default };
+            return concreteTypeInfo.Converter;
+        }
+        catch
+        {
+            // MakeConcreteForValue can produce a writeState (often IDisposable) before a later step throws
+            // (resolved-but-no-mapping check, BindContext construction). Dispose so the partial state
+            // doesn't leak when GetWriteInfo doesn't return cleanly.
+            (var toDispose, writeState) = (writeState, null);
+            if (toDispose is not null)
+                PgTypeInfo.DisposeWriteState(toDispose);
+            throw;
+        }
     }
 
     /// <summary>
     /// Returns the field's cached default converter and its write requirement without running per-value
     /// dispatch. Only valid for non-provider-backed fields — provider-backed fields have no cached default
     /// (ConcreteTypeInfo stays null) and must go through MakeConcreteForValue at bind time. Used by
-    /// CompositeConverter.Write to fill in slots that bind-time did not populate: composite-level
-    /// IsBindOptional skipping BindValue entirely, and fast-path lazy-rent gaps where a field produced
-    /// no state. The cached default writes the same bytes a stateful slot would have and carries no
-    /// state to dispose.
+    /// CompositeConverter.Write on the Exact-sized path where BindValue produced no per-field state
+    /// (either composite IsBindOptional=true skipped BindValue, or fixed-size fields couldn't create state).
+    /// The cached default writes the same bytes a stateful slot would have and carries no state to dispose.
     /// </summary>
     public PgConverter GetDefaultWriteInfo(out Size writeRequirement)
     {
