@@ -140,13 +140,8 @@ readonly struct ArrayConverterCore(
             var elemData = result.Data.Array;
             if (elemData is null)
             {
-                // Own-rent: pool buffers may contain stale WriteState references; clear before populate
-                // so Dispose's iteration over the segment skips unfilled slots safely.
-                var arrayPool = ArrayPool<(Size, object?)>.Shared;
-                elemData = arrayPool.Rent(metadata.TotalElements);
-                Array.Clear(elemData, 0, metadata.TotalElements);
-                result.ArrayPool = arrayPool;
-                result.Data = new(elemData, 0, metadata.TotalElements);
+                result.RentElementBuffer(metadata.TotalElements);
+                elemData = result.Data.Array!;
             }
             // else: provider-supplied elemData already has valid per-element WriteState; the loop reads
             // and extends it through the slot ref.
@@ -371,6 +366,18 @@ sealed class ArrayConverterWriteState : MultiWriteState
 
     /// When true, all non-null elements have a fixed binary size and Data is not populated with per-element sizes.
     public bool FixedSizeElements { get; set; }
+
+    /// Rent the pooled element buffer and assign to ArrayPool/Data. Must clear the full segment because
+    /// pool buffers may carry stale WriteState refs from prior renters; mid-iteration throws would
+    /// otherwise have Dispose iterate uninitialized tail slots.
+    public void RentElementBuffer(int totalElements)
+    {
+        var pool = ArrayPool<(Size, object?)>.Shared;
+        var array = pool.Rent(totalElements);
+        array.AsSpan(0, totalElements).Clear();
+        ArrayPool = pool;
+        Data = new(array, 0, totalElements);
+    }
 }
 
 readonly struct PgArrayMetadata
