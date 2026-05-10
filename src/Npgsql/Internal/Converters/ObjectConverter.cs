@@ -40,6 +40,12 @@ sealed class ObjectConverter : PgStreamingConverter<object>
             return default;
         }
 
+        // Null the wrapper's EffectiveState before handoff. Inner BindAsObject's framework safety net
+        // disposes via our local ref on throw and nulls the local; the wrapper would otherwise hold a
+        // dangling reference to the same object, double-disposing through outer Bind's catch.
+        if (writeState is WriteState before)
+            before.EffectiveState = null;
+
         var result = concreteTypeInfo.Converter.BindAsObject(
             BindContext.CreateNested(context, bufferRequirements),
             value,
@@ -81,12 +87,21 @@ sealed class ObjectConverter : PgStreamingConverter<object>
     {
         public required PgConcreteTypeInfo ConcreteTypeInfo { get; init; }
         public required object? EffectiveState { get; set; }
+        int _disposed;
 
         // EffectiveState may hold a pooled WriteState from the underlying concrete converter
         // (composite, array, etc.). The outer DisposeWriteState on PgTypeInfo only sees this
         // wrapper, so the wrapper is responsible for cascading disposal to the inner state.
         public void Dispose()
         {
+            // Atomic idempotency guard — EffectiveState may be pool-backed; cascading double-dispose
+            // corrupts downstream pools. Atomic catches concurrent disposal too.
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
+                Debug.Assert(false, "ObjectConverter.WriteState double-dispose detected — caller violated lifecycle contract.");
+                return;
+            }
+
             if (EffectiveState is IDisposable disposable)
                 disposable.Dispose();
         }

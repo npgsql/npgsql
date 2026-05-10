@@ -555,9 +555,19 @@ class MultiWriteState : IDisposable
     public ArrayPool<(Size Size, object? WriteState)>? ArrayPool { get; set; }
     public ArraySegment<(Size Size, object? WriteState)> Data { get; set; }
     public bool AnyWriteState { get; set; }
+    int _disposed;
 
     public void Dispose()
     {
+        // Atomic idempotency guard — double-dispose returns the rented array to the pool twice, handing
+        // the same buffer to two different renters. Atomic also catches concurrent disposal once states
+        // start being reusable across executions (StableValue) where threading lifetimes broaden.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            Debug.Assert(false, "MultiWriteState double-dispose detected — caller violated lifecycle contract.");
+            return;
+        }
+
         if (Data.Array is not { } array)
             return;
 

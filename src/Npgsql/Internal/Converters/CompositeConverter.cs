@@ -282,9 +282,18 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         public required ArraySegment<ElementState> Data { get; set; }
         public required bool AnyWriteState { get; set; }
         public required object BoxedInstance { get; set; }
+        int _disposed;
 
         public void Dispose()
         {
+            // Atomic idempotency guard — double-dispose returns the rented ElementState[] to the pool
+            // twice. Atomic catches concurrent disposal too, important once states become reusable.
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
+                Debug.Assert(false, "CompositeConverter.WriteState double-dispose detected — caller violated lifecycle contract.");
+                return;
+            }
+
             if (Data.Array is not { } array)
                 return;
 

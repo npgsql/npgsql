@@ -216,9 +216,18 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         internal object? LowerBoundWriteState { get; set; }
         internal Size UpperBoundSize { get; set; } = -1;
         internal object? UpperBoundWriteState { get; set; }
+        int _disposed;
 
         public void Dispose()
         {
+            // Atomic idempotency guard — bound states may be pool-backed; cascading double-dispose
+            // corrupts downstream pools. Atomic catches concurrent disposal too.
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
+                Debug.Assert(false, "RangeConverter.WriteState double-dispose detected — caller violated lifecycle contract.");
+                return;
+            }
+
             (LowerBoundWriteState as IDisposable)?.Dispose();
             (UpperBoundWriteState as IDisposable)?.Dispose();
         }
