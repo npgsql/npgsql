@@ -65,16 +65,14 @@ class MiscTypeTests : TestBase
         await using (var cmd = new NpgsqlCommand("SELECT @p4::TEXT", conn))
         {
             cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null!);
-            var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteReaderAsync());
-            Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await cmd.ExecuteReaderAsync());
         }
 
         // Setting generic NpgsqlParameter<object>.Value to null is not allowed, only DBNull.Value
         await using (var cmd = new NpgsqlCommand("SELECT @p4::TEXT", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter<object>("p4", NpgsqlDbType.Text) { Value = null! });
-            var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteReaderAsync());
-            Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await cmd.ExecuteReaderAsync());
         }
     }
 
