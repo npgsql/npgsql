@@ -174,32 +174,38 @@ public abstract class PgConverter
         try
         {
             size = BindValueAsObject(context, value, ref writeState);
+
+            if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
+                && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
+                ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
+
+            // Catches non-Exact sizes from both paths (the IsBindFixedSize Kind check is folded in here —
+            // a converter declaring fixed-size that returned a non-Exact size trips this same throw).
+            switch (size.Kind)
+            {
+            case SizeKind.UpperBound:
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for BindValue.");
+                break;
+            case SizeKind.Unknown:
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for BindValue.");
+                break;
+            }
         }
         catch
         {
             // Contract: writeState transitions to null on throw. BindValue is free to assign partial
             // state to writeState as it works (composing converters do this so their wrapper's Dispose
             // can clean up populated slots). The framework's safety net here disposes anything still
-            // in writeState and nulls it, so callers see a uniform "clean on throw" semantic.
-            if (writeState is IDisposable d)
-                d.Dispose();
-            writeState = null;
+            // observable to us and nulls the slot, so callers see a uniform "clean on throw" semantic.
+            // Both current and original may need disposing on a lifecycle-violation swap; the
+            // ReferenceEquals gate collapses to a single Dispose on the legal no-swap case.
+            // Null first, then dispose: a throwing Dispose must not leave callers with a non-null
+            // writeState pointing at a half-disposed object — they'd dispose it again.
+            (var current, writeState) = (writeState, null);
+            (current as IDisposable)?.Dispose();
+            if (!ReferenceEquals(current, originalWriteState))
+                (originalWriteState as IDisposable)?.Dispose();
             throw;
-        }
-        if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
-            && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
-            ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
-
-        // Catches non-Exact sizes from both paths (the IsBindFixedSize Kind check is folded in here —
-        // a converter declaring fixed-size that returned a non-Exact size trips this same throw).
-        switch (size.Kind)
-        {
-        case SizeKind.UpperBound:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for BindValue.");
-            break;
-        case SizeKind.Unknown:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for BindValue.");
-            break;
         }
 
         return size;
@@ -344,30 +350,36 @@ public abstract class PgConverter<T> : PgConverter
         try
         {
             size = BindValue(context, value, ref writeState);
+
+            if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
+                && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
+                ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
+
+            switch (size.Kind)
+            {
+            case SizeKind.UpperBound:
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for {nameof(BindValue)}.");
+                break;
+            case SizeKind.Unknown:
+                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for {nameof(BindValue)}.");
+                break;
+            }
         }
         catch
         {
             // Contract: writeState transitions to null on throw. BindValue is free to assign partial
             // state to writeState as it works (composing converters do this so their wrapper's Dispose
             // can clean up populated slots). The framework's safety net here disposes anything still
-            // in writeState and nulls it, so callers see a uniform "clean on throw" semantic.
-            if (writeState is IDisposable d)
-                d.Dispose();
-            writeState = null;
+            // observable to us and nulls the slot, so callers see a uniform "clean on throw" semantic.
+            // Both current and original may need disposing on a lifecycle-violation swap; the
+            // ReferenceEquals gate collapses to a single Dispose on the legal no-swap case.
+            // Null first, then dispose: a throwing Dispose must not leave callers with a non-null
+            // writeState pointing at a half-disposed object — they'd dispose it again.
+            (var current, writeState) = (writeState, null);
+            (current as IDisposable)?.Dispose();
+            if (!ReferenceEquals(current, originalWriteState))
+                (originalWriteState as IDisposable)?.Dispose();
             throw;
-        }
-        if ((originalWriteState is not null || context.IsBindFixedSize) && !ReferenceEquals(originalWriteState, writeState)
-            && (context.IsBindFixedSize || writeState is null || originalWriteState is IDisposable))
-            ThrowWriteStateLifecycleViolation(context.IsBindFixedSize);
-
-        switch (size.Kind)
-        {
-        case SizeKind.UpperBound:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for {nameof(BindValue)}.");
-            break;
-        case SizeKind.Unknown:
-            ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for {nameof(BindValue)}.");
-            break;
         }
 
         return size;
