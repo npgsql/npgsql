@@ -69,10 +69,35 @@ public class WriteStateTests : TestBase
     }
 
     [Test]
+    public async Task Object_write_state_upgrades_when_late_bound_inner_produces_at_bind()
+    {
+        // Verifies the bind-time writeState upgrade path: late-bound resolution returns a converter
+        // whose provider does not pre-populate state, so writeState arrives at ObjectConverter.BindValue
+        // as a bare PgConcreteTypeInfo (non-IDisposable). The inner converter's BindValue then produces
+        // state during bind, and ObjectConverter must upgrade the outer writeState reference from the
+        // bare PgConcreteTypeInfo to a wrapped ObjectConverter.WriteState (IDisposable).
+        // Exercises the disposability-conditional lifecycle rule: replacing a non-IDisposable reference
+        // with an IDisposable wrapper is allowed because the original carries no disposal obligation.
+        var tracker = new WriteStateTracker();
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.AddTypeInfoResolverFactory(
+            new WriteStateTrackingResolverFactory(fixedSize: false, tracker, produceProviderState: false, generatesWriteStateAtBind: true));
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<object> { ParameterName = "p", TypedValue = 42, DataTypeName = "integer" });
+        await cmd.ExecuteNonQueryAsync();
+
+        Assert.That(tracker.WriteWriteStateReceived, Is.True,
+            "Write did not receive write state after late-bound bind-time upgrade");
+    }
+
+    [Test]
     public async Task Range_write_state_flows()
     {
         // Verifies write state propagation through a range composition:
-        //   RangeConverter<int> -> tracking int subtype (GetSize populates writeState)
+        //   RangeConverter<int> -> tracking int subtype (BindValue populates writeState)
         // The range converter must carry each bound's subtype state into BeginNestedWrite so the subtype's
         // WriteCore observes the provider-produced sentinel.
         var tracker = new WriteStateTracker();
@@ -284,10 +309,10 @@ public class WriteStateTests : TestBase
             writer.WriteInt32(value);
         }
 
-        public override Size GetSize(SizeContext context, int value, ref object? writeState)
+        protected override Size BindValue(in BindContext context, int value, ref object? writeState)
         {
             // Range/Multirange call the subtype converter directly with a fresh null writeState, so for those tests the
-            // subtype must produce state from GetSize. For the array tests the provider has already populated non-null
+            // subtype must produce state from BindValue. For the array tests the provider has already populated non-null
             // state and the ??= is a no-op, preserving existing behavior.
             if (_generatesWriteState)
                 writeState ??= "provider-state";
@@ -295,33 +320,34 @@ public class WriteStateTests : TestBase
         }
     }
 
-    sealed class WriteStateTrackingProvider(PgSerializerOptions options, bool fixedSize, WriteStateTracker tracker) : PgConcreteTypeInfoProvider<int>
+    sealed class WriteStateTrackingProvider(PgSerializerOptions options, bool fixedSize, WriteStateTracker tracker, bool produceProviderState = true, bool generatesWriteStateAtBind = false) : PgConcreteTypeInfoProvider<int>
     {
         PgConcreteTypeInfo? _concreteTypeInfo;
 
         PgConcreteTypeInfo GetOrCreate()
-            => _concreteTypeInfo ??= new(options, new WriteStateTrackingConverter(fixedSize, tracker), options.GetCanonicalTypeId(DataTypeNames.Int4));
+            => _concreteTypeInfo ??= new(options, new WriteStateTrackingConverter(fixedSize, tracker, generatesWriteStateAtBind), options.GetCanonicalTypeId(DataTypeNames.Int4));
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
         protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
         {
-            writeState = "provider-state";
+            if (produceProviderState)
+                writeState = "provider-state";
             return GetOrCreate();
         }
     }
 
-    sealed class WriteStateTrackingResolverFactory(bool fixedSize, WriteStateTracker tracker) : PgTypeInfoResolverFactory
+    sealed class WriteStateTrackingResolverFactory(bool fixedSize, WriteStateTracker tracker, bool produceProviderState = true, bool generatesWriteStateAtBind = false) : PgTypeInfoResolverFactory
     {
-        public override IPgTypeInfoResolver CreateResolver() => new Resolver(fixedSize, tracker);
+        public override IPgTypeInfoResolver CreateResolver() => new Resolver(fixedSize, tracker, produceProviderState, generatesWriteStateAtBind);
         public override IPgTypeInfoResolver CreateArrayResolver() => new ArrayResolver();
 
-        sealed class Resolver(bool fixedSize, WriteStateTracker tracker) : IPgTypeInfoResolver
+        sealed class Resolver(bool fixedSize, WriteStateTracker tracker, bool produceProviderState, bool generatesWriteStateAtBind) : IPgTypeInfoResolver
         {
             public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             {
                 if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                    return new PgProviderTypeInfo(options, new WriteStateTrackingProvider(options, fixedSize, tracker), DataTypeNames.Int4);
+                    return new PgProviderTypeInfo(options, new WriteStateTrackingProvider(options, fixedSize, tracker, produceProviderState, generatesWriteStateAtBind), DataTypeNames.Int4);
 
                 // object->int4 goes through LateBoundTypeInfoProvider which delegates back to the int resolver above,
                 // letting us exercise write-state propagation across the object (late-bound) element layer.
@@ -435,7 +461,7 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Range && (type == typeof(NpgsqlRange<int>) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
                     return new PgConcreteTypeInfo(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
                 }
                 return null;
@@ -449,7 +475,7 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Range.ToArrayName() && (type == typeof(NpgsqlRange<int>[]) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
                     var rangeInfo = new PgConcreteTypeInfo(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
                     var arrayConverter = ArrayConverter<NpgsqlRange<int>[]>.CreateArrayBased<NpgsqlRange<int>>(rangeInfo, typeof(NpgsqlRange<int>[]));
                     return new PgConcreteTypeInfo(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Range.ToArrayName()));
@@ -465,8 +491,8 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Multirange && (type == typeof(NpgsqlRange<int>[]) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
-                    var multirange = new MultirangeConverter<NpgsqlRange<int>[], NpgsqlRange<int>>(range);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
+                    var multirange = PgConverterFactory.CreateArrayMultirangeConverter(range, options);
                     return new PgConcreteTypeInfo(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
                 }
                 return null;
@@ -480,8 +506,8 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4Multirange.ToArrayName() && (type == typeof(NpgsqlRange<int>[][]) || type is null))
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    var range = new RangeConverter<int>(subtype);
-                    var multirange = new MultirangeConverter<NpgsqlRange<int>[], NpgsqlRange<int>>(range);
+                    var range = PgConverterFactory.CreateRangeConverter(subtype, options);
+                    var multirange = PgConverterFactory.CreateArrayMultirangeConverter(range, options);
                     var multirangeInfo = new PgConcreteTypeInfo(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
                     var arrayConverter = ArrayConverter<NpgsqlRange<int>[][]>.CreateArrayBased<NpgsqlRange<int>[]>(multirangeInfo, typeof(NpgsqlRange<int>[][]));
                     return new PgConcreteTypeInfo(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange.ToArrayName()));

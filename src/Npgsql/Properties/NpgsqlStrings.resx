@@ -92,10 +92,10 @@
         <value>Arrays aren't enabled; please call {0} on {1} to enable arrays.</value>
     </data>
     <data name="TimestampTzNoDateTimeUnspecified" xml:space="preserve">
-        <value>Cannot write DateTime with Kind={0} to PostgreSQL type '{1}', only UTC is supported. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
+        <value>Cannot write DateTime with Kind={0}, only UTC is supported. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
     </data>
     <data name="TimestampNoDateTimeUtc" xml:space="preserve">
-        <value>Cannot write DateTime with Kind=UTC to PostgreSQL type '{0}', consider using '{1}'. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
+        <value>Cannot write DateTime with Kind=UTC. Consider using timestamptz instead. Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.</value>
     </data>
     <data name="DynamicJsonNotEnabled" xml:space="preserve">
         <value>Type '{0}' required dynamic JSON serialization, which requires an explicit opt-in; call '{1}' on '{2}' or NpgsqlConnection.GlobalTypeMapper (see https://www.npgsql.org/doc/types/json.html and the 8.0 release notes for more details). Alternatively, if you meant to use Newtonsoft JSON.NET instead of System.Text.Json, call UseJsonNet() instead.

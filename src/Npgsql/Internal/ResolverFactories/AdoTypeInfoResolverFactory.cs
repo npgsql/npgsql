@@ -213,7 +213,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 mappings.AddProviderStructType<DateTime>(DataTypeNames.Timestamp,
                     static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeTypeInfoProvider.CreateProvider(options, options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
-                            options.EnableDateTimeInfinityConversions), requiresDataTypeName), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName), pgTypeIdClassified: true, isDefault: true);
             }
             mappings.AddStructType<long>(DataTypeNames.Timestamp,
                 static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
@@ -232,7 +232,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 mappings.AddProviderStructType<DateTime>(DataTypeNames.TimestampTz,
                     static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeTypeInfoProvider.CreateProvider(options, options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
-                            options.EnableDateTimeInfinityConversions), requiresDataTypeName), isDefault: true);
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName), pgTypeIdClassified: true, isDefault: true);
                 mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimestampTz,
                     static (options, mapping, _) => mapping.CreateInfo(options, new DateTimeOffsetConverter(options.EnableDateTimeInfinityConversions)));
             }

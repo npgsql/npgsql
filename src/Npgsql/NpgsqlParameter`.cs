@@ -78,23 +78,22 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    private protected override PgConcreteTypeInfo MakeConcreteTypeInfoForTypedValue(PgTypeInfo typeInfo)
+    private protected override PgConcreteTypeInfo MakeConcreteForTypedValue(PgTypeInfo typeInfo, out object? providerWriteState)
         => typeInfo.MakeConcreteForValue(
             new() { NestedObjectDbNullHandling = ParameterDbNullHandling },
             TypedValue,
-            out _writeState);
+            out providerWriteState);
 
-    private protected override PgValueBinding BindTypedValue(PgConcreteTypeInfo typeInfo, DataFormat? formatPreference)
-        => typeInfo.BindParameterValue(TypedValue, _writeState, ParameterDbNullHandling, formatPreference);
+    private protected override PgValueBinding BindTypedValue(PgConcreteTypeInfo concrete, object? providerWriteState, DataFormat? formatPreference)
+        => concrete.BindParameterValue(TypedValue, providerWriteState, ParameterDbNullHandling, formatPreference);
 
-    private protected override ValueTask WriteTypedValue(bool async, PgConcreteTypeInfo typeInfo, PgWriter writer, CancellationToken cancellationToken)
+    private protected override ValueTask WriteTypedValue(bool async, PgConcreteTypeInfo concrete, PgWriter writer, CancellationToken cancellationToken)
     {
         Debug.Assert(TypedValue is not null);
         if (async)
-            return typeInfo.Converter.WriteAsync(writer, TypedValue, cancellationToken);
-
-        typeInfo.Converter.Write(writer, TypedValue);
-        return new();
+            return concrete.Converter.WriteAsync(writer, TypedValue, cancellationToken);
+        concrete.Converter.Write(writer, TypedValue);
+        return new ValueTask();
     }
 
     private protected override void SetOutputTypedValue(NpgsqlDataReader reader, int ordinal)

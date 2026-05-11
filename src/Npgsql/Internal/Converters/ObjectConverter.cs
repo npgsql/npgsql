@@ -25,7 +25,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
     public override object Read(PgReader reader) => throw new NotSupportedException();
     public override ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    public override Size GetSize(SizeContext context, object value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, object value, ref object? writeState)
     {
         var (concreteTypeInfo, effectiveState) = writeState switch
         {
@@ -40,14 +40,19 @@ sealed class ObjectConverter : PgStreamingConverter<object>
             return default;
         }
 
-        // Fixed size converters won't have a GetSize implementation.
-        if (bufferRequirements.Write.Kind is SizeKind.Exact)
-            return bufferRequirements.Write;
+        // Null the wrapper's EffectiveState before handoff. Inner BindAsObject's framework safety net
+        // disposes via our local ref on throw and nulls the local; the wrapper would otherwise hold a
+        // dangling reference to the same object, double-disposing through outer Bind's catch.
+        if (writeState is WriteState before)
+            before.EffectiveState = null;
 
-        var result = concreteTypeInfo.Converter.GetSizeAsObject(context, value, ref effectiveState);
+        var result = concreteTypeInfo.Converter.BindAsObject(
+            BindContext.CreateNested(context, bufferRequirements),
+            value,
+            ref effectiveState);
         if (effectiveState is not null)
         {
-            if (writeState is WriteState s && !ReferenceEquals(s.EffectiveState, effectiveState))
+            if (writeState is WriteState s)
                 s.EffectiveState = effectiveState;
             else
                 writeState = new WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };
@@ -82,12 +87,21 @@ sealed class ObjectConverter : PgStreamingConverter<object>
     {
         public required PgConcreteTypeInfo ConcreteTypeInfo { get; init; }
         public required object? EffectiveState { get; set; }
+        int _disposed;
 
         // EffectiveState may hold a pooled WriteState from the underlying concrete converter
         // (composite, array, etc.). The outer DisposeWriteState on PgTypeInfo only sees this
         // wrapper, so the wrapper is responsible for cascading disposal to the inner state.
         public void Dispose()
         {
+            // Atomic idempotency guard — EffectiveState may be pool-backed; cascading double-dispose
+            // corrupts downstream pools. Atomic catches concurrent disposal too.
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
+                Debug.Assert(false, "ObjectConverter.WriteState double-dispose detected — caller violated lifecycle contract.");
+                return;
+            }
+
             if (EffectiveState is IDisposable disposable)
                 disposable.Dispose();
         }

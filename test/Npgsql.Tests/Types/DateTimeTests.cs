@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
+using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -162,7 +164,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Timestamp_cannot_write_utc_DateTime()
-        => AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
+        => AssertTypeUnsupportedWrite<DateTime, InvalidCastException, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "timestamp without time zone");
 
     [Test]
     public Task Timestamp_as_long()
@@ -223,6 +225,32 @@ public class DateTimeTests : TestBase
             "tsmultirange");
     }
 
+    // Pins the structural property the composite fast-path depends on: the registered DateTime
+    // providers (timestamp / timestamptz, plus their range and multirange variants) are
+    // pgTypeIdClassified, so a resolution with a decided pgTypeId erases the provider and returns
+    // a PgConcreteTypeInfo. Composite fields always resolve with a decided pgTypeId from metadata,
+    // so this is what makes a DateTime field non-provider-backed. Array compositions over an erased
+    // element propagate the erasure via the dual-mapper composer's concrete branch.
+    [Test]
+    public async Task DateTime_resolution_is_erased_to_concrete_when_pgTypeId_is_decided()
+    {
+        await using var dataSource = CreateDataSource();
+        await using var _ = await dataSource.OpenConnectionAsync();
+        var options = dataSource.CurrentReloadableState.SerializerOptions;
+
+        Assert.That(options.GetTypeInfo(typeof(DateTime), DataTypeNames.Timestamp), Is.TypeOf<PgConcreteTypeInfo>());
+        Assert.That(options.GetTypeInfo(typeof(DateTime), DataTypeNames.TimestampTz), Is.TypeOf<PgConcreteTypeInfo>());
+
+        var timestampArray = DataTypeNames.Timestamp.ToArrayName();
+        Assert.That(options.GetTypeInfo(typeof(DateTime[]), timestampArray), Is.TypeOf<PgConcreteTypeInfo>());
+        Assert.That(options.GetTypeInfo(typeof(DateTime?[]), timestampArray), Is.TypeOf<PgConcreteTypeInfo>());
+        Assert.That(options.GetTypeInfo(typeof(List<DateTime>), timestampArray), Is.TypeOf<PgConcreteTypeInfo>());
+
+        // No decided pgTypeId — wrapper short-circuits, provider stays alive for late selection.
+        Assert.That(options.GetDefaultTypeInfo(typeof(DateTime)), Is.TypeOf<PgProviderTypeInfo>());
+        Assert.That(options.GetDefaultTypeInfo(typeof(DateTime[])), Is.TypeOf<PgProviderTypeInfo>());
+    }
+
     #endregion
 
     #region Timestamp with timezone
@@ -266,8 +294,8 @@ public class DateTimeTests : TestBase
     [Test]
     public async Task Timestamptz_cannot_write_non_utc_DateTime()
     {
-        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
-        await AssertTypeUnsupportedWrite<DateTime, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, InvalidCastException, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Unspecified), "timestamp with time zone");
+        await AssertTypeUnsupportedWrite<DateTime, InvalidCastException, ArgumentException>(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local), "timestamp with time zone");
     }
 
     [Test]
@@ -293,7 +321,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Timestamptz_cannot_write_non_utc_DateTimeOffset()
-        => AssertTypeUnsupportedWrite<DateTimeOffset, ArgumentException>(new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.FromHours(2)));
+        => AssertTypeUnsupportedWrite<DateTimeOffset, InvalidCastException, ArgumentException>(new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.FromHours(2)));
 
     [Test]
     public Task Timestamptz_as_long()
@@ -366,7 +394,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Cannot_mix_DateTime_Kinds_in_array()
-        => AssertTypeUnsupportedWrite<DateTime[], ArgumentException>([
+        => AssertTypeUnsupportedWrite<DateTime[], InvalidCastException, ArgumentException>([
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local)
         ]);
@@ -374,7 +402,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Cannot_mix_DateTime_Kinds_in_range()
-        => AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>, ArgumentException>(new NpgsqlRange<DateTime>(
+        => AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>, InvalidCastException, ArgumentException>(new NpgsqlRange<DateTime>(
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local)));
 
@@ -384,7 +412,7 @@ public class DateTimeTests : TestBase
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
 
-        await AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>[], ArgumentException>([
+        await AssertTypeUnsupportedWrite<NpgsqlRange<DateTime>[], InvalidCastException, ArgumentException>([
             new NpgsqlRange<DateTime>(
                 new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
                 new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),

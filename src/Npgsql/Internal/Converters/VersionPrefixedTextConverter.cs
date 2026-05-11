@@ -6,9 +6,9 @@ namespace Npgsql.Internal.Converters;
 
 sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
 {
-    BufferRequirements _innerRequirements;
     readonly byte _versionPrefix;
     readonly PgConverter<T> _textConverter;
+    BufferRequirements _innerRequirements;
 
     public VersionPrefixedTextConverter(byte versionPrefix, PgConverter<T> textConverter)
     {
@@ -28,8 +28,16 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
-        => _textConverter.GetSize(context, value, ref writeState).Combine(context.Format is DataFormat.Binary ? sizeof(byte) : 0);
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
+    {
+        // Only the binary path combines the version-prefix byte into the outer requirement (see CanConvert);
+        // text leaves outer == inner, so we can pass it through without nesting.
+        if (context.Format is not DataFormat.Binary)
+            return _textConverter.Bind(context, value, ref writeState);
+
+        var innerContext = BindContext.CreateNested(context, _innerRequirements);
+        return _textConverter.Bind(innerContext, value, ref writeState).Combine(sizeof(byte));
+    }
 
     public override void Write(PgWriter writer, T value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();

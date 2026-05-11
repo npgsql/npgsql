@@ -19,7 +19,7 @@ public abstract class PgStreamingConverter<T> : PgConverter<T>
 
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return format is DataFormat.Binary;
     }
 

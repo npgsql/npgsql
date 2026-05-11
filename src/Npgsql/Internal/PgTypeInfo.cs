@@ -330,6 +330,9 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
 public sealed class PgConcreteTypeInfo : PgTypeInfo
 {
+    readonly bool _supportsReading;
+    readonly bool _supportsWriting;
+
     readonly bool _canBinaryConvert;
     readonly BufferRequirements _binaryBufferRequirements;
 
@@ -339,9 +342,6 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
         : this(options, converter, pgTypeId, requestedType: null)
     {}
-
-    bool _supportsReading;
-    bool _supportsWriting;
 
     internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
         : base(options, converter, pgTypeId, requestedType)
@@ -418,9 +418,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
         // Inline copy of Converter.ReadAsync<T> to keep everything in one async frame.
-        var result = typeof(T) != Converter.TypeToConvert
-            ? (T)(await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!
-            : await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false);
+        var result = typeof(T) == Converter.TypeToConvert
+            ? await Unsafe.As<PgConverter<T>>(Converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false)
+            : (T)(await Converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!;
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
@@ -429,13 +429,18 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     // TryBind for reading.
     internal bool TryBindField(DataFormat format, out PgFieldBinding binding)
     {
-        if (!Converter.CanConvert(format, out var bufferRequirements))
+        switch (format)
         {
+        case DataFormat.Binary when _canBinaryConvert:
+            binding = new(format, _binaryBufferRequirements.Read);
+            return true;
+        case DataFormat.Text when _canTextConvert:
+            binding = new(format, _textBufferRequirements.Read);
+            return true;
+        default:
             binding = default;
             return false;
         }
-        binding = new(format, bufferRequirements.Read);
-        return true;
     }
 
     // Bind for reading.
@@ -452,75 +457,83 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         if (typeof(T) != Converter.TypeToConvert)
             return BindParameterValueAsObject(value, writeState, nestedObjectDbNullHandling, formatPreference);
 
-        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
-        if (!SupportsWriting)
-            ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
-
-        // Db nulls are format agnostic, any format will do here, bind can decide to ignore these based on size for overall format handling.
-        if (Unsafe.As<PgConverter<T>>(Converter).IsDbNull(value, writeState))
-            return new(DataFormat.Binary, Size.Zero, null, writeState);
-
-        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
-
-        Size size;
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+        try
         {
-            size = byteCount;
+            // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
+            if (!SupportsWriting)
+                ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
+
+            // Db nulls are format agnostic, any format will do here, bind can decide to ignore these based on size for overall format handling.
+            if (Unsafe.As<PgConverter<T>>(Converter).IsDbNull(value, writeState))
+                return new(DataFormat.Binary, Size.Zero, null, writeState);
+
+            var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
+            var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional)
+                with { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+            var size = Unsafe.As<PgConverter<T>>(Converter).Bind(context, value!, ref writeState);
+            return new(format, bufferRequirements.Write, size, writeState);
         }
-        else
+        catch
         {
-            size = Unsafe.As<PgConverter<T>>(Converter).GetSize(context, value!, ref writeState);
-
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-                break;
-            case SizeKind.Unknown:
-                // Not valid yet.
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-                break;
-            }
+            // Pre-Bind throws (SupportsWriting, IsDbNull, ResolveFormat) bypass PgConverter.Bind's safety
+            // net so we dispose here. Bind throws null writeState via the safety net first, leaving this
+            // a no-op.
+            if (writeState is not null)
+                DisposeWriteState(writeState);
+            throw;
         }
-
-        return new(format, bufferRequirements.Write, size, writeState);
     }
 
-    internal PgValueBinding BindParameterValueAsObject(object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
+    /// Object route with parameter-policy null detection. Wraps <see cref="BindParameterValueAsObject"/>
+    /// with an upfront <see cref="PgConverterExtensions.IsDbNullAsNestedObject"/> check so callers (the
+    /// parameter layer) don't have to thread the policy themselves and can't leak writeState across the
+    /// pre-check.
+    internal PgValueBinding BindParameterValueAsNestedObject(object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
     {
-        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
-        if (!SupportsWriting)
-            ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
-
-        // Db nulls are format agnostic, any format will do here, bind can decide to ignore these based on size for overall format handling.
-        if (Converter.IsDbNullAsObject(value, writeState))
-            return new(DataFormat.Binary, Size.Zero, null, writeState);
-
-        var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-        var context = new SizeContext(format, bufferRequirements.Write) { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
-
-        Size size;
-        if (context.BufferRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+        bool isDbNull;
+        try
         {
-            size = byteCount;
+            isDbNull = Converter.IsDbNullAsNestedObject(value, writeState, nestedObjectDbNullHandling);
         }
-        else
+        catch
         {
-            size = Converter.GetSizeAsObject(context, value, ref writeState);
-
-            switch (size.Kind)
-            {
-            case SizeKind.UpperBound:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.UpperBound)} is not a valid return value for GetSize.");
-                break;
-            case SizeKind.Unknown:
-                ThrowHelper.ThrowInvalidOperationException($"{nameof(SizeKind.Unknown)} is not a valid return value for GetSize.");
-                break;
-            }
+            if (writeState is not null)
+                DisposeWriteState(writeState);
+            throw;
         }
 
-        return new(format, bufferRequirements.Write, size, writeState);
+        return isDbNull
+            ? new(DataFormat.Binary, Size.Zero, null, writeState)
+            : BindParameterValueAsObject(value, writeState, nestedObjectDbNullHandling, formatPreference);
+    }
+
+    PgValueBinding BindParameterValueAsObject(object? value, object? writeState, NestedObjectDbNullHandling nestedObjectDbNullHandling, DataFormat? formatPreference = null)
+    {
+        try
+        {
+            // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
+            if (!SupportsWriting)
+                ThrowHelper.ThrowNotSupportedException($"Writing {Type} is not supported for this type info.");
+
+            // Db nulls are format agnostic, any format will do here, bind can decide to ignore these based on size for overall format handling.
+            if (Converter.IsDbNullAsObject(value, writeState))
+                return new(DataFormat.Binary, Size.Zero, null, writeState);
+
+            var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
+            var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional)
+                with { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
+            var size = Converter.BindAsObject(context, value, ref writeState);
+            return new(format, bufferRequirements.Write, size, writeState);
+        }
+        catch
+        {
+            // Pre-Bind throws (SupportsWriting, IsDbNull, ResolveFormat) bypass PgConverter.Bind's safety
+            // net so we dispose here. Bind throws null writeState via the safety net first, leaving this
+            // a no-op.
+            if (writeState is not null)
+                DisposeWriteState(writeState);
+            throw;
+        }
     }
 
     DataFormat ResolveFormat(out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
@@ -542,7 +555,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
                 return DataFormat.Binary;
             }
 
-            if (Converter.CanConvert(DataFormat.Text, out bufferRequirements))
+            if (_canTextConvert)
             {
                 bufferRequirements = _textBufferRequirements;
                 return DataFormat.Text;
