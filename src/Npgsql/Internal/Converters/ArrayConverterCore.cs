@@ -124,13 +124,17 @@ readonly struct ArrayConverterCore(
             {
                 var nullCheckHandling = elemContext.IsBindOptional ? (NestedObjectDbNullHandling?)context.NestedObjectDbNullHandling : null;
                 var elemData = result.Data.Array;
+                // When the provider phase populated per-element state, pass `ref slot.WriteState` so the
+                // inner Bind envelope's safety net's null-on-throw reflects in the slot — wrapper.Dispose
+                // later sees null for the failing slot and skips, avoiding double-dispose of the input.
+                // When elemData is null, no per-element state exists; the local stays null throughout
+                // (fixed-size contract forbids production), so the safety net's null-on-throw is harmless.
+                // Fixed-size contract guarantees no mutation on normal return either way.
+                object? localState = null;
                 do
                 {
-                    // Thread provider-produced per-slot WriteState into the null probe when it exists.
-                    // Fixed-size elements can't produce new state during validation so any ref-mutation
-                    // through IsDbNullOrBind is moot; reading into a local discards harmlessly.
-                    var elemState = elemData?[indices.IndicesSum].WriteState;
-                    var elemSize = elemOps.IsDbNullOrBind(elemContext, values, indices, ref elemState, nullCheckHandling);
+                    ref var stateRef = ref elemData is null ? ref localState : ref elemData[indices.IndicesSum].WriteState;
+                    var elemSize = elemOps.IsDbNullOrBind(elemContext, values, indices, ref stateRef, nullCheckHandling);
                     if (elemSize is null)
                         nulls++;
                 }

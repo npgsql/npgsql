@@ -134,11 +134,15 @@ sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typ
         var valueType = value.GetType();
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, context.ExpectedPgTypeId ?? typeId, options);
         var concreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(value, out var effectiveState);
-        if (!concreteTypeInfo.SupportsWriting)
-            AdoSerializerHelpers.ThrowWritingNotSupported(valueType, options, concreteTypeInfo.PgTypeId, resolved: true);
+        // Stash into writeState before the SupportsWriting check so the framework safety net around
+        // this Core call can reach the produced state if the check throws. The wrapper's Dispose
+        // cascades to EffectiveState; PgConcreteTypeInfo (non-IDisposable) is a long-lived cached
+        // instance so the no-wrapper branch is naturally safe.
         writeState = effectiveState is not null
             ? new ObjectConverter.WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
             : concreteTypeInfo;
+        if (!concreteTypeInfo.SupportsWriting)
+            AdoSerializerHelpers.ThrowWritingNotSupported(valueType, options, concreteTypeInfo.PgTypeId, resolved: true);
 
         return GetDefault(context.ExpectedPgTypeId);
     }

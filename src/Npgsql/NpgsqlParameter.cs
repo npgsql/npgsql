@@ -694,24 +694,17 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             Debug.Assert(typeInfo is not null);
             ResetTypeInfo(reresolve: true);
 
-            object? providerWriteState = null;
-            try
-            {
-                var context = new ProviderValueContext { NestedObjectDbNullHandling = ParameterDbNullHandling };
-                var concrete = staticValueType == typeof(object)
-                    ? typeInfo.MakeConcreteForValueAsObject(context, Value is DBNull ? null : Value, out providerWriteState)
-                    : MakeConcreteForTypedValue(typeInfo, out providerWriteState);
+            // Framework gates guarantee `out providerWriteState` is null when MakeConcreteForValue*
+            // throws (provider safety net + "null result ⇒ null state" contract enforced at the gate),
+            // so no local catch-to-dispose is needed here. Exceptions propagate raw.
+            var context = new ProviderValueContext { NestedObjectDbNullHandling = ParameterDbNullHandling };
+            var concrete = staticValueType == typeof(object)
+                ? typeInfo.MakeConcreteForValueAsObject(context, Value is DBNull ? null : Value, out var providerWriteState)
+                : MakeConcreteForTypedValue(typeInfo, out providerWriteState);
 
-                // Skip the write barrier when the resolution produced the same concrete (e.g. cached provider results).
-                if (!ReferenceEquals(concrete, ConcreteTypeInfo))
-                    ConcreteTypeInfo = concrete;
-            }
-            catch (Exception ex)
-            {
-                if (providerWriteState is not null)
-                    typeInfo.DisposeWriteState(providerWriteState);
-                ThrowWritingNotSupported(options, GetValueType(staticValueType), inner: ex);
-            }
+            // Skip the write barrier when the resolution produced the same concrete (e.g. cached provider results).
+            if (!ReferenceEquals(concrete, ConcreteTypeInfo))
+                ConcreteTypeInfo = concrete;
 
             // SchemaOnly drops the resolver-produced state; Bind path promotes it.
             if (providerWriteState is not null)

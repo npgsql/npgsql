@@ -62,8 +62,20 @@ public abstract class PgTypeInfo
     // valid.
     internal static void ValidateInfo(string contextName, PgTypeInfo info, PgSerializerOptions options, Type? expectedType, bool allowSubtypes)
     {
-        if (info.Options != options || !IsCompatibleResolution(info.Type, expectedType, allowSubtypes))
-            Throw(contextName, info, options, expectedType, allowSubtypes);
+        object? writeState = null;
+        ValidateInfo(contextName, info, options, expectedType, allowSubtypes, ref writeState);
+    }
+
+    // writeState-bearing overload: disposes-and-nulls writeState before the throw so callers get
+    // "out param is null on throw" semantics without needing to wrap in try/catch.
+    private protected static void ValidateInfo(string contextName, PgTypeInfo info, PgSerializerOptions options, Type? expectedType, bool allowSubtypes, ref object? writeState)
+    {
+        if (info.Options == options && IsCompatibleResolution(info.Type, expectedType, allowSubtypes))
+            return;
+
+        (var toDispose, writeState) = (writeState, null);
+        (toDispose as IDisposable)?.Dispose();
+        Throw(contextName, info, options, expectedType, allowSubtypes);
 
         // Strict equality when allowSubtypes is false. Otherwise also admits subtypes of expectedType (covers polymorphic-alias
         // and under-reporting). Null expectedType means "any", used by callers that care only about ownership.
@@ -144,7 +156,8 @@ public abstract class PgTypeInfo
             : providerTypeInfo.GetForValue(context, value, out writeState);
 
         // Decided providers skip GetDefault's validation. The prior GetForValue call already validated
-        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it. The provider gate
+        // enforces "null result ⇒ null state," so the GetDefault fallback can't observe orphaned state.
         return concreteTypeInfo ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
     }
 
@@ -180,8 +193,10 @@ public abstract class PgTypeInfo
             return concrete;
         }
 
-        // Decided providers skip GetDefault's validation. The prior GetForValueAsObject call already validated
-        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        // Decided providers skip GetDefault's validation. The prior GetForValueAsObject call already
+        // validated the id. Undecided providers thread it so GetDefaultCore can dispatch on it. The
+        // provider gate enforces "null result ⇒ null state," so the GetDefault fallback can't observe
+        // orphaned state.
         var providerTypeInfo = (PgProviderTypeInfo)this;
         return providerTypeInfo.GetForValueAsObject(context, value, out writeState)
                ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? context.ExpectedPgTypeId : null);
@@ -220,7 +235,8 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         // Always validate the default provider result, the info will be re-used so there is no real downside.
         var result = typeInfoProvider.GetDefault(pgTypeId is { } id ? options.GetCanonicalTypeId(id) : null);
-        ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
+        object? writeState = null;
+        ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result, ref writeState);
         _defaultConcrete = result;
     }
 
@@ -234,7 +250,8 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         else if (pgTypeId is not null)
         {
             var result = _typeInfoProvider.GetDefault(pgTypeId);
-            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result);
+            object? writeState = null;
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result, ref writeState);
             return result;
         }
 
@@ -249,7 +266,10 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         var result = _typeInfoProvider.GetForField(field);
         if (result is not null)
-            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForField), result);
+        {
+            object? writeState = null;
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForField), result, ref writeState);
+        }
         return result;
     }
 
@@ -271,7 +291,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
             : ThrowNotSupportedType(typeof(T));
 
         if (result is not null)
-            ValidateConcrete(nameof(PgConcreteTypeInfoProvider<>.GetForValue), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider<>.GetForValue), result, ref writeState);
         return result;
 
         PgConcreteTypeInfo ThrowNotSupportedType(Type? type)
@@ -294,7 +314,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         var result = _typeInfoProvider.GetForValueAsObject(context, value, out writeState);
         if (result is not null)
-            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result);
+            ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result, ref writeState);
         return result;
     }
 
@@ -318,13 +338,13 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     static void ThrowUnexpectedPgTypeId(string parameterName)
         => throw new ArgumentException($"PgTypeId does not match the decided value on this {nameof(PgProviderTypeInfo)}.", parameterName);
 
-    void ValidateConcrete(string methodName, PgConcreteTypeInfo result)
+    void ValidateConcrete(string methodName, PgConcreteTypeInfo result, ref object? writeState)
     {
         // Skip self-validation for framework-internal providers (e.g. composing infrastructure); see PgConcreteTypeInfoProvider.IsInternalProvider.
         if (_typeInfoProvider.IsInternalProvider)
             return;
 
-        ValidateInfo(methodName, result, Options, Type, allowSubtypes: !HasExactType);
+        ValidateInfo(methodName, result, Options, Type, allowSubtypes: !HasExactType, ref writeState);
     }
 }
 
