@@ -164,7 +164,10 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // per-field sizes must flow forward to Write — rent unconditionally. Wrapper is assigned to
         // writeState before the first field bind so a per-field throw is caught by the framework wrapper.
         // GetWriteInfo's `out` and IsDbNullOrBind's `ref` write directly into slot.WriteState, so a throw
-        // mid-iteration leaves any produced state in the slot and the wrapper's Dispose handles it.
+        // mid-iteration leaves any produced state in the slot. AnyWriteState must be flipped immediately
+        // after GetWriteInfo populates the slot — IsDbNullValue takes writeState by value, so a throw
+        // from there bypasses the inner Bind safety net and would otherwise leave the flag false (causing
+        // MultiWriteState.Dispose to skip slot iteration and orphan the provider state).
         var slowState = RentWrapper(boxedInstance, fieldCount, anyWriteState: false);
         writeState = slowState;
         var slowData = slowState.Data.Array!;
@@ -174,6 +177,8 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             var field = _composite.Fields[i];
             ref var slot = ref slowData[i];
             var converter = field.GetWriteInfo(boxedInstance, context, out var fieldContext, out slot.WriteState);
+            if (slot.WriteState is not null)
+                slowState.AnyWriteState = true;
             var fieldSizeOrNull = field.IsDbNullOrBind(converter, boxedInstance, fieldContext, ref slot.WriteState);
             if (slot.WriteState is not null)
                 slowState.AnyWriteState = true;
