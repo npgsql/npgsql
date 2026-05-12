@@ -695,12 +695,24 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             ResetTypeInfo(reresolve: true);
 
             // Framework gates guarantee `out providerWriteState` is null when MakeConcreteForValue*
-            // throws (provider safety net + "null result ⇒ null state" contract enforced at the gate),
-            // so no local catch-to-dispose is needed here. Exceptions propagate raw.
-            var context = new ProviderValueContext { NestedObjectDbNullHandling = ParameterDbNullHandling };
-            var concrete = staticValueType == typeof(object)
-                ? typeInfo.MakeConcreteForValueAsObject(context, Value is DBNull ? null : Value, out var providerWriteState)
-                : MakeConcreteForTypedValue(typeInfo, out providerWriteState);
+            // throws (provider safety net + "null result ⇒ null state" contract enforced at the gate).
+            // The catch wraps any provider-side throw as InvalidCastException so users see a uniform
+            // "couldn't bind parameter" framing with the raw provider error as inner — no manual
+            // disposal needed since the gate already cleaned up.
+            object? providerWriteState;
+            PgConcreteTypeInfo concrete;
+            try
+            {
+                var context = new ProviderValueContext { NestedObjectDbNullHandling = ParameterDbNullHandling };
+                concrete = staticValueType == typeof(object)
+                    ? typeInfo.MakeConcreteForValueAsObject(context, Value is DBNull ? null : Value, out providerWriteState)
+                    : MakeConcreteForTypedValue(typeInfo, out providerWriteState);
+            }
+            catch (Exception ex)
+            {
+                ThrowWritingNotSupported(options, GetValueType(staticValueType), inner: ex);
+                throw;
+            }
 
             // Skip the write barrier when the resolution produced the same concrete (e.g. cached provider results).
             if (!ReferenceEquals(concrete, ConcreteTypeInfo))
