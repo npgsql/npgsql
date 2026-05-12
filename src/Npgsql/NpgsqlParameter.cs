@@ -752,7 +752,20 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // the type info may still support the required format, just not the format the cached
         // binding chose. Re-running Bind with the new preference can produce a satisfying binding.
         if (_isBound && requiredFormat is not null && _binding.DataFormat != requiredFormat.GetValueOrDefault())
+        {
             DisposeBindingState();
+            // First Bind consumed _providerWriteState into _binding. Re-resolve so the rebuild has
+            // the state late-bound paths (ObjectConverter.BindValue) require — without this the
+            // re-bind would hit "Invalid state" before the format-mismatch error could surface.
+            // Typed-concrete paths re-resolve to default state, harmless.
+            if (TypeInfo is not null && _providerWriteState is null)
+            {
+                var resolveContext = new ProviderValueContext { NestedObjectDbNullHandling = ParameterDbNullHandling };
+                _ = StaticValueType == typeof(object)
+                    ? TypeInfo.MakeConcreteForValueAsObject(resolveContext, Value is DBNull ? null : Value, out _providerWriteState)
+                    : MakeConcreteForTypedValue(TypeInfo, out _providerWriteState);
+            }
+        }
 
         // Idempotent — validation pass and WriteBind both call this; first wins.
         if (!_isBound)

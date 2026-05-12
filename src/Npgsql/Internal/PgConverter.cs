@@ -203,7 +203,10 @@ public abstract class PgConverter
             // writeState pointing at a half-disposed object — they'd dispose it again.
             (var current, writeState) = (writeState, null);
             (current as IDisposable)?.Dispose();
-            if (!ReferenceEquals(current, originalWriteState))
+            // current==null with original!=null means an inner safety net (transparent wrapper case)
+            // already disposed the original. Disposing again would double-dispose. The non-null branch
+            // handles the genuine lifecycle-violation swap where current and original differ.
+            if (current is not null && !ReferenceEquals(current, originalWriteState))
                 (originalWriteState as IDisposable)?.Dispose();
             throw;
         }
@@ -377,7 +380,10 @@ public abstract class PgConverter<T> : PgConverter
             // writeState pointing at a half-disposed object — they'd dispose it again.
             (var current, writeState) = (writeState, null);
             (current as IDisposable)?.Dispose();
-            if (!ReferenceEquals(current, originalWriteState))
+            // current==null with original!=null means an inner safety net (transparent wrapper case)
+            // already disposed the original. Disposing again would double-dispose. The non-null branch
+            // handles the genuine lifecycle-violation swap where current and original differ.
+            if (current is not null && !ReferenceEquals(current, originalWriteState))
                 (originalWriteState as IDisposable)?.Dispose();
             throw;
         }

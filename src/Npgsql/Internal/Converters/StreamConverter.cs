@@ -27,8 +27,8 @@ sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Str
             return checked((int)(value.Length - value.Position));
 
         var memoryStream = new MemoryStream();
-        value.CopyTo(memoryStream);
         writeState = memoryStream;
+        value.CopyTo(memoryStream);
         return checked((int)memoryStream.Length);
     }
 
