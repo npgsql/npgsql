@@ -107,12 +107,12 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         // wrapper to writeState so a subsequent inner Bind's throw is caught by the framework wrapper
         // and disposed via WriteState.Dispose, which cascades to any populated bound's inner state.
         var subtypeContext = BindContext.CreateNested(context, _subtypeRequirements);
-        WriteState? state = null;
+        RangeWriteState? state = null;
         if (!value.LowerBoundInfinite && !_subtypeConverter.IsDbNull(value.LowerBound!, null))
         {
             object? subTypeState = null;
             var size = _subtypeConverter.Bind(subtypeContext, value.LowerBound!, ref subTypeState);
-            state = new WriteState();
+            state = new RangeWriteState();
             writeState = state;
             state.LowerBoundSize = size;
             state.LowerBoundWriteState = subTypeState;
@@ -125,7 +125,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             var size = _subtypeConverter.Bind(subtypeContext, value.UpperBound!, ref subTypeState);
             if (state is null)
             {
-                state = new WriteState();
+                state = new RangeWriteState();
                 writeState = state;
             }
             state.UpperBoundSize = size;
@@ -144,7 +144,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
     async ValueTask Write(bool async, PgWriter writer, NpgsqlRange<TSubtype> value, CancellationToken cancellationToken)
     {
-        var writeState = writer.Current.WriteState as WriteState;
+        var writeState = writer.Current.WriteState as RangeWriteState;
         var lowerBoundSize = writeState?.LowerBoundSize ?? -1;
         var upperBoundSize = writeState?.UpperBoundSize ?? -1;
 
@@ -169,7 +169,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
         // Always need write state from this point.
         if (writeState is null)
-            throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
+            throw new InvalidCastException($"Invalid write state, expected {typeof(RangeWriteState).FullName}.");
 
         if (!lowerBoundInfinite)
         {
@@ -208,28 +208,29 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         }
     }
 
-    sealed class WriteState : IDisposable
+}
+
+file sealed class RangeWriteState : IDisposable
+{
+    // Default to -1 ("treat as infinite/null") so a partially populated WriteState — only one bound
+    // carrying real payload — leaves the unset bound's flag-rewriting in Write working correctly.
+    internal Size LowerBoundSize { get; set; } = -1;
+    internal object? LowerBoundWriteState { get; set; }
+    internal Size UpperBoundSize { get; set; } = -1;
+    internal object? UpperBoundWriteState { get; set; }
+    int _disposed;
+
+    public void Dispose()
     {
-        // Default to -1 ("treat as infinite/null") so a partially populated WriteState — only one bound
-        // carrying real payload — leaves the unset bound's flag-rewriting in Write working correctly.
-        internal Size LowerBoundSize { get; set; } = -1;
-        internal object? LowerBoundWriteState { get; set; }
-        internal Size UpperBoundSize { get; set; } = -1;
-        internal object? UpperBoundWriteState { get; set; }
-        int _disposed;
-
-        public void Dispose()
+        // Atomic idempotency guard — bound states may be pool-backed; cascading double-dispose
+        // corrupts downstream pools. Atomic catches concurrent disposal too.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
-            // Atomic idempotency guard — bound states may be pool-backed; cascading double-dispose
-            // corrupts downstream pools. Atomic catches concurrent disposal too.
-            if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            {
-                Debug.Assert(false, "RangeConverter.WriteState double-dispose detected — caller violated lifecycle contract.");
-                return;
-            }
-
-            (LowerBoundWriteState as IDisposable)?.Dispose();
-            (UpperBoundWriteState as IDisposable)?.Dispose();
+            Debug.Assert(false, $"{nameof(RangeWriteState)} double-dispose detected — caller violated lifecycle contract.");
+            return;
         }
+
+        (LowerBoundWriteState as IDisposable)?.Dispose();
+        (UpperBoundWriteState as IDisposable)?.Dispose();
     }
 }

@@ -546,7 +546,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             var mappings = new TypeInfoMappingCollection();
             mappings.AddProviderType<object>(pgElementType.DataTypeName,
-                (options, mapping, includeDataTypeName) => mapping.CreateInfo(options, new LateBoundTypeInfoProvider(options, elementId), includeDataTypeName), MatchRequirement.DataTypeName);
+                (options, mapping, includeDataTypeName) => mapping.CreateInfo(options, new LateBindingTypeInfoProvider(options, elementId), includeDataTypeName), MatchRequirement.DataTypeName);
             mappings.AddProviderArrayType<object>(pgElementType.DataTypeName);
             return mappings.Find(type, dataTypeName, options);
         }

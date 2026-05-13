@@ -6,17 +6,17 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
-sealed class ObjectConverter : PgStreamingConverter<object>
+sealed class LateBindingConverter : PgStreamingConverter<object>
 {
-    public ObjectConverter() => HandleDbNull = true;
+    public LateBindingConverter() => HandleDbNull = true;
 
     protected override bool IsDbNullValue(object? value, object? writeState)
     {
         var (concreteTypeInfo, effectiveState) = writeState switch
         {
             PgConcreteTypeInfo info => (info, (object?)null),
-            WriteState ws => (ws.ConcreteTypeInfo, ws.EffectiveState),
-            _ => throw new InvalidOperationException("writeState cannot be null, LateBoundTypeInfoProvider is expected to pre-populate it with concrete type info.")
+            LateBindingWriteState ws => (ws.ConcreteTypeInfo, ws.EffectiveState),
+            _ => throw new InvalidOperationException("writeState cannot be null, LateBindingTypeInfoProvider is expected to pre-populate it with concrete type info.")
         };
 
         return concreteTypeInfo.Converter.IsDbNullAsObject(value, effectiveState);
@@ -30,7 +30,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
         var (concreteTypeInfo, effectiveState) = writeState switch
         {
             PgConcreteTypeInfo info => (info, (object?)null),
-            WriteState state => (state.ConcreteTypeInfo, state.EffectiveState),
+            LateBindingWriteState state => (state.ConcreteTypeInfo, state.EffectiveState),
             _ => throw new InvalidOperationException("Invalid state")
         };
 
@@ -43,7 +43,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
         // Null the wrapper's EffectiveState before handoff. Inner BindAsObject's framework safety net
         // disposes via our local ref on throw and nulls the local; the wrapper would otherwise hold a
         // dangling reference to the same object, double-disposing through outer Bind's catch.
-        if (writeState is WriteState before)
+        if (writeState is LateBindingWriteState before)
             before.EffectiveState = null;
 
         var result = concreteTypeInfo.Converter.BindAsObject(
@@ -52,10 +52,10 @@ sealed class ObjectConverter : PgStreamingConverter<object>
             ref effectiveState);
         if (effectiveState is not null)
         {
-            if (writeState is WriteState s)
+            if (writeState is LateBindingWriteState s)
                 s.EffectiveState = effectiveState;
             else
-                writeState = new WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };
+                writeState = new LateBindingWriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState };
         }
 
         return result;
@@ -72,7 +72,7 @@ sealed class ObjectConverter : PgStreamingConverter<object>
         var (concreteTypeInfo, effectiveState) = writer.Current.WriteState switch
         {
             PgConcreteTypeInfo info => (info, (object?)null),
-            WriteState state => (state.ConcreteTypeInfo, state.EffectiveState),
+            LateBindingWriteState state => (state.ConcreteTypeInfo, state.EffectiveState),
             _ => throw new InvalidOperationException("Invalid state")
         };
 
@@ -82,37 +82,13 @@ sealed class ObjectConverter : PgStreamingConverter<object>
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
-
-    internal sealed class WriteState : IDisposable
-    {
-        public required PgConcreteTypeInfo ConcreteTypeInfo { get; init; }
-        public required object? EffectiveState { get; set; }
-        int _disposed;
-
-        // EffectiveState may hold a pooled WriteState from the underlying concrete converter
-        // (composite, array, etc.). The outer DisposeWriteState on PgTypeInfo only sees this
-        // wrapper, so the wrapper is responsible for cascading disposal to the inner state.
-        public void Dispose()
-        {
-            // Atomic idempotency guard — EffectiveState may be pool-backed; cascading double-dispose
-            // corrupts downstream pools. Atomic catches concurrent disposal too.
-            if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            {
-                Debug.Assert(false, "ObjectConverter.WriteState double-dispose detected — caller violated lifecycle contract.");
-                return;
-            }
-
-            if (EffectiveState is IDisposable disposable)
-                disposable.Dispose();
-        }
-    }
 }
 
 // TODO the goal is to allow this provider to return the underlying converter type info, but we're not there yet.
-// At that point we don't need the ObjectConverter any longer.
-sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typeId) : PgConcreteTypeInfoProvider<object>
+// At that point we don't need the LateBindingConverter any longer.
+sealed class LateBindingTypeInfoProvider(PgSerializerOptions options, PgTypeId typeId) : PgConcreteTypeInfoProvider<object>
 {
-    readonly PgConcreteTypeInfo _defaultConcreteTypeInfo = new(options, new ObjectConverter(), typeId);
+    readonly PgConcreteTypeInfo _defaultConcreteTypeInfo = new(options, new LateBindingConverter(), typeId);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
@@ -139,11 +115,35 @@ sealed class LateBoundTypeInfoProvider(PgSerializerOptions options, PgTypeId typ
         // cascades to EffectiveState; PgConcreteTypeInfo (non-IDisposable) is a long-lived cached
         // instance so the no-wrapper branch is naturally safe.
         writeState = effectiveState is not null
-            ? new ObjectConverter.WriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
+            ? new LateBindingWriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
             : concreteTypeInfo;
         if (!concreteTypeInfo.SupportsWriting)
             AdoSerializerHelpers.ThrowWritingNotSupported(valueType, options, concreteTypeInfo.PgTypeId, resolved: true);
 
         return GetDefault(context.ExpectedPgTypeId);
+    }
+}
+
+file sealed class LateBindingWriteState : IDisposable
+{
+    public required PgConcreteTypeInfo ConcreteTypeInfo { get; init; }
+    public required object? EffectiveState { get; set; }
+    int _disposed;
+
+    // EffectiveState may hold a pooled write state from the underlying concrete converter
+    // (composite, array, etc.). The outer DisposeWriteState on PgTypeInfo only sees this
+    // wrapper, so the wrapper is responsible for cascading disposal to the inner state.
+    public void Dispose()
+    {
+        // Atomic idempotency guard — EffectiveState may be pool-backed; cascading double-dispose
+        // corrupts downstream pools. Atomic catches concurrent disposal too.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            Debug.Assert(false, $"{nameof(LateBindingWriteState)} double-dispose detected — caller violated lifecycle contract.");
+            return;
+        }
+
+        if (EffectiveState is IDisposable disposable)
+            disposable.Dispose();
     }
 }

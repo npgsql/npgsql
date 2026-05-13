@@ -718,7 +718,7 @@ public sealed class TypeInfoMappingCollection
                     converter,
                     // Polymorphism only makes sense over a provider element; if the element provider was erased
                     // to a concrete (pgTypeIdClassified), there's no polymorphism left to express. Today's
-                    // polymorphic elements are unclassified object-shape providers (e.g. LateBoundTypeInfoProvider),
+                    // polymorphic elements are unclassified object-shape providers (e.g. LateBindingTypeInfoProvider),
                     // so this path isn't reached.
                     static (_, _) => throw new InvalidOperationException("Polymorphic provider arrays do not support pgTypeIdClassified element providers."),
                     supportsReading: true, supportsWriting: false))
