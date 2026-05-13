@@ -76,7 +76,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count);
         Array.Clear(data, 0, value.Count);
-        var state = new WriteState
+        var state = new MultirangeWriteState
         {
             ArrayPool = arrayPool,
             Data = new(data, 0, value.Count),
@@ -109,7 +109,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        if (writer.Current.WriteState is not WriteState writeState)
+        if (writer.Current.WriteState is not MultirangeWriteState writeState)
             throw new InvalidCastException($"Invalid state {writer.Current.WriteState?.GetType().FullName}.");
 
         if (writer.ShouldFlush(sizeof(int)))
@@ -140,7 +140,6 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         }
     }
 
-    sealed class WriteState : MultiWriteState
-    {
-    }
 }
+
+file sealed class MultirangeWriteState : MultiWriteState;

@@ -190,15 +190,15 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
         return totalSize;
 
-        static WriteState RentWrapper(object boxedInstance, int fieldCount, bool anyWriteState)
+        static CompositeWriteState RentWrapper(object boxedInstance, int fieldCount, bool anyWriteState)
         {
-            var data = ArrayPool<ElementState>.Shared.Rent(fieldCount);
-            // Stale slots from the previous pool user must read as default(ElementState) — Dispose iterates
+            var data = ArrayPool<CompositeFieldWriteState>.Shared.Rent(fieldCount);
+            // Stale slots from the previous pool user must read as default(CompositeFieldWriteState) — Dispose iterates
             // the full segment and relies on null WriteState in unfilled slots to skip them safely.
             Array.Clear(data, 0, fieldCount);
-            return new WriteState
+            return new CompositeWriteState
             {
-                ArrayPool = ArrayPool<ElementState>.Shared,
+                ArrayPool = ArrayPool<CompositeFieldWriteState>.Shared,
                 Data = new(data, 0, fieldCount),
                 AnyWriteState = anyWriteState,
                 BoxedInstance = boxedInstance,
@@ -221,10 +221,10 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // we can't recover per-field value-dependent sizes otherwise.
         var writeState = writer.Current.WriteState switch
         {
-            WriteState ws => ws,
+            CompositeWriteState ws => ws,
             null when _writeSizePrecomputed.Kind is SizeKind.Exact => null,
             null => throw new InvalidOperationException("Composite Write requires per-field data from BindValue when any field is variable-size."),
-            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.")
+            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(CompositeWriteState).FullName}.")
         };
         Debug.Assert(_bufferRequirements.Write.Kind is not SizeKind.Exact || writeState is null,
             "Exact-size composite must not carry write state — BindValue should have been skipped.");
@@ -249,7 +249,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             // path for fixed-size fields). The cached default writes the same bytes a stateful slot would
             // have, with no per-slot disposal obligation. Variable-size composites must populate every
             // slot during BindValue, so data[i].Converter is never null on the slow path.
-            ElementState elementState;
+            CompositeFieldWriteState elementState;
             if (data?[i] is { Converter: not null } state)
                 elementState = state;
             else
@@ -273,42 +273,43 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         }
     }
 
-    struct ElementState
-    {
-        public Size Size;
-        public object? WriteState;
-        public PgConverter? Converter;
-        public Size BufferRequirement;
-    }
+}
 
-    class WriteState : IDisposable
-    {
-        public required ArrayPool<ElementState>? ArrayPool { get; set; }
-        public required ArraySegment<ElementState> Data { get; set; }
-        public required bool AnyWriteState { get; set; }
-        public required object BoxedInstance { get; set; }
-        int _disposed;
+file struct CompositeFieldWriteState
+{
+    public Size Size;
+    public object? WriteState;
+    public PgConverter? Converter;
+    public Size BufferRequirement;
+}
 
-        public void Dispose()
+file sealed class CompositeWriteState : IDisposable
+{
+    public required ArrayPool<CompositeFieldWriteState>? ArrayPool { get; set; }
+    public required ArraySegment<CompositeFieldWriteState> Data { get; set; }
+    public required bool AnyWriteState { get; set; }
+    public required object BoxedInstance { get; set; }
+    int _disposed;
+
+    public void Dispose()
+    {
+        // Atomic idempotency guard — double-dispose returns the rented CompositeFieldWriteState[] to the pool
+        // twice. Atomic catches concurrent disposal too, important once states become reusable.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
-            // Atomic idempotency guard — double-dispose returns the rented ElementState[] to the pool
-            // twice. Atomic catches concurrent disposal too, important once states become reusable.
-            if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            {
-                Debug.Assert(false, "CompositeConverter.WriteState double-dispose detected — caller violated lifecycle contract.");
-                return;
-            }
-
-            if (Data.Array is not { } array)
-                return;
-
-            if (AnyWriteState)
-                for (var i = Data.Offset; i < Data.Offset + Data.Count; i++)
-                    if (array[i].WriteState is IDisposable disposable)
-                        disposable.Dispose();
-
-            Array.Clear(array, Data.Offset, Data.Count);
-            ArrayPool?.Return(array);
+            Debug.Assert(false, $"{nameof(CompositeWriteState)} double-dispose detected — caller violated lifecycle contract.");
+            return;
         }
+
+        if (Data.Array is not { } array)
+            return;
+
+        if (AnyWriteState)
+            for (var i = Data.Offset; i < Data.Offset + Data.Count; i++)
+                if (array[i].WriteState is IDisposable disposable)
+                    disposable.Dispose();
+
+        Array.Clear(array, Data.Offset, Data.Count);
+        ArrayPool?.Return(array);
     }
 }

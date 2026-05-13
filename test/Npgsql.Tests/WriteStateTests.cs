@@ -40,11 +40,11 @@ public class WriteStateTests : TestBase
     {
         // Verifies write state propagation through two layers with mixed element shapes:
         //   outer: ArrayTypeInfoProvider<object[], object>
-        //   inner: LateBoundTypeInfoProvider (object -> int or DBNull)
+        //   inner: LateBindingTypeInfoProvider (object -> int or DBNull)
         //            int path  -> WriteStateTrackingProvider<int>         (per-element wrapped WriteState)
         //            null path -> PgSerializerOptions.UnspecifiedDBNullTypeInfo (different concrete info entirely)
         // The tracking int converter's IsDbNullValue and WriteCore must see the provider-produced
-        // write state after passing through the array + ObjectConverter layers, while the DBNull
+        // write state after passing through the array + LateBindingConverter layers, while the DBNull
         // slots must flow through without disturbing the non-null slots.
         var tracker = new WriteStateTracker();
         var options = BuildOptions(b => b.EnableArrays(), new WriteStateTrackingResolverFactory(fixedSize, tracker));
@@ -67,10 +67,10 @@ public class WriteStateTests : TestBase
     public void Object_write_state_upgrades_when_late_bound_inner_produces_at_bind()
     {
         // Verifies the bind-time writeState upgrade path: late-bound resolution returns a converter
-        // whose provider does not pre-populate state, so writeState arrives at ObjectConverter.BindValue
+        // whose provider does not pre-populate state, so writeState arrives at LateBindingConverter.BindValue
         // as a bare PgConcreteTypeInfo (non-IDisposable). The inner converter's BindValue then produces
-        // state during bind, and ObjectConverter must upgrade the outer writeState reference from the
-        // bare PgConcreteTypeInfo to a wrapped ObjectConverter.WriteState (IDisposable).
+        // state during bind, and LateBindingConverter must upgrade the outer writeState reference from the
+        // bare PgConcreteTypeInfo to a wrapped LateBindingConverter.WriteState (IDisposable).
         // Exercises the disposability-conditional lifecycle rule: replacing a non-IDisposable reference
         // with an IDisposable wrapper is allowed because the original carries no disposal obligation.
         var tracker = new WriteStateTracker();
@@ -753,10 +753,10 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
                     return new PgProviderTypeInfo(options, new WriteStateTrackingProvider(options, fixedSize, tracker, produceProviderState, generatesWriteStateAtBind), DataTypeNames.Int4);
 
-                // object->int4 goes through LateBoundTypeInfoProvider which delegates back to the int resolver above,
+                // object->int4 goes through LateBindingTypeInfoProvider which delegates back to the int resolver above,
                 // letting us exercise write-state propagation across the object (late-bound) element layer.
                 if (dataTypeName == DataTypeNames.Int4 && type == typeof(object))
-                    return new PgProviderTypeInfo(options, new LateBoundTypeInfoProvider(options, options.GetCanonicalTypeId(DataTypeNames.Int4)), DataTypeNames.Int4);
+                    return new PgProviderTypeInfo(options, new LateBindingTypeInfoProvider(options, options.GetCanonicalTypeId(DataTypeNames.Int4)), DataTypeNames.Int4);
 
                 return null;
             }

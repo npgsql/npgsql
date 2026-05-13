@@ -755,7 +755,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             DisposeBindingState();
             // First Bind consumed _providerWriteState into _binding. Re-resolve so the rebuild has
-            // the state late-bound paths (ObjectConverter.BindValue) require — without this the
+            // the state late-bound paths (LateBindingConverter.BindValue) require — without this the
             // re-bind would hit "Invalid state" before the format-mismatch error could surface.
             // Typed-concrete paths re-resolve to default state, harmless.
             if (TypeInfo is not null && _providerWriteState is null)
