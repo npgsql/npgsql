@@ -70,7 +70,7 @@ public class WriteStateTests : TestBase
         // whose provider does not pre-populate state, so writeState arrives at LateBindingConverter.BindValue
         // as a bare PgConcreteTypeInfo (non-IDisposable). The inner converter's BindValue then produces
         // state during bind, and LateBindingConverter must upgrade the outer writeState reference from the
-        // bare PgConcreteTypeInfo to a wrapped LateBindingConverter.WriteState (IDisposable).
+        // bare PgConcreteTypeInfo to a wrapped LateBindingWriteState (IDisposable).
         // Exercises the disposability-conditional lifecycle rule: replacing a non-IDisposable reference
         // with an IDisposable wrapper is allowed because the original carries no disposal obligation.
         var tracker = new WriteStateTracker();

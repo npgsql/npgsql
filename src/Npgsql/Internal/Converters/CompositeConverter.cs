@@ -192,13 +192,13 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
         static CompositeWriteState RentWrapper(object boxedInstance, int fieldCount, bool anyWriteState)
         {
-            var data = ArrayPool<CompositeFieldWriteState>.Shared.Rent(fieldCount);
-            // Stale slots from the previous pool user must read as default(CompositeFieldWriteState) — Dispose iterates
+            var data = ArrayPool<CompositeWriteState.FieldState>.Shared.Rent(fieldCount);
+            // Stale slots from the previous pool user must read as default(CompositeWriteState.FieldState) — Dispose iterates
             // the full segment and relies on null WriteState in unfilled slots to skip them safely.
             Array.Clear(data, 0, fieldCount);
             return new CompositeWriteState
             {
-                ArrayPool = ArrayPool<CompositeFieldWriteState>.Shared,
+                ArrayPool = ArrayPool<CompositeWriteState.FieldState>.Shared,
                 Data = new(data, 0, fieldCount),
                 AnyWriteState = anyWriteState,
                 BoxedInstance = boxedInstance,
@@ -249,7 +249,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
             // path for fixed-size fields). The cached default writes the same bytes a stateful slot would
             // have, with no per-slot disposal obligation. Variable-size composites must populate every
             // slot during BindValue, so data[i].Converter is never null on the slow path.
-            CompositeFieldWriteState elementState;
+            CompositeWriteState.FieldState elementState;
             if (data?[i] is { Converter: not null } state)
                 elementState = state;
             else
@@ -275,25 +275,17 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
 }
 
-file struct CompositeFieldWriteState
-{
-    public Size Size;
-    public object? WriteState;
-    public PgConverter? Converter;
-    public Size BufferRequirement;
-}
-
 file sealed class CompositeWriteState : IDisposable
 {
-    public required ArrayPool<CompositeFieldWriteState>? ArrayPool { get; set; }
-    public required ArraySegment<CompositeFieldWriteState> Data { get; set; }
+    public required ArrayPool<FieldState>? ArrayPool { get; set; }
+    public required ArraySegment<FieldState> Data { get; set; }
     public required bool AnyWriteState { get; set; }
     public required object BoxedInstance { get; set; }
     int _disposed;
 
     public void Dispose()
     {
-        // Atomic idempotency guard — double-dispose returns the rented CompositeFieldWriteState[] to the pool
+        // Atomic idempotency guard — double-dispose returns the rented FieldState[] to the pool
         // twice. Atomic catches concurrent disposal too, important once states become reusable.
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
@@ -311,5 +303,13 @@ file sealed class CompositeWriteState : IDisposable
 
         Array.Clear(array, Data.Offset, Data.Count);
         ArrayPool?.Return(array);
+    }
+
+    public struct FieldState
+    {
+        public Size Size;
+        public object? WriteState;
+        public PgConverter? Converter;
+        public Size BufferRequirement;
     }
 }
