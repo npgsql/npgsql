@@ -11,10 +11,10 @@ sealed class LineConverter : PgBufferedConverter<NpgsqlLine>
         return format is DataFormat.Binary;
     }
 
-    protected override NpgsqlLine ReadCore(PgReader reader)
+    public override NpgsqlLine Read(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());
 
-    protected override void WriteCore(PgWriter writer, NpgsqlLine value)
+    public override void Write(PgWriter writer, NpgsqlLine value)
     {
         writer.WriteDouble(value.A);
         writer.WriteDouble(value.B);

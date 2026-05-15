@@ -12,10 +12,10 @@ sealed class GuidUuidConverter : PgBufferedConverter<Guid>
         return format is DataFormat.Binary;
     }
 
-    protected override Guid ReadCore(PgReader reader)
+    public override Guid Read(PgReader reader)
         => new(reader.ReadBytes(16).FirstSpan, bigEndian: true);
 
-    protected override void WriteCore(PgWriter writer, Guid value)
+    public override void Write(PgWriter writer, Guid value)
     {
         Span<byte> bytes = stackalloc byte[16];
         value.TryWriteBytes(bytes, bigEndian: true, out _);

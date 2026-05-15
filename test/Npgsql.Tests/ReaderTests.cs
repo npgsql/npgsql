@@ -2716,10 +2716,10 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
         return format is DataFormat.Binary;
     }
 
-    protected override void WriteCore(PgWriter writer, int value)
+    public override void Write(PgWriter writer, int value)
         => throw new NotSupportedException();
 
-    protected override int ReadCore(PgReader reader)
+    public override int Read(PgReader reader)
     {
         if (_safe)
             throw new Exception("Safe read exception as requested");

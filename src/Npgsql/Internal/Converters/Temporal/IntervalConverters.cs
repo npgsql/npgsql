@@ -12,7 +12,7 @@ sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>
         return format is DataFormat.Binary;
     }
 
-    protected override TimeSpan ReadCore(PgReader reader)
+    public override TimeSpan Read(PgReader reader)
     {
         var microseconds = reader.ReadInt64();
         var days = reader.ReadInt32();
@@ -24,7 +24,7 @@ sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>
             : new(microseconds * 10 + days * TimeSpan.TicksPerDay);
     }
 
-    protected override void WriteCore(PgWriter writer, TimeSpan value)
+    public override void Write(PgWriter writer, TimeSpan value)
     {
         var ticksInDay = value.Ticks - TimeSpan.TicksPerDay * value.Days;
         writer.WriteInt64(ticksInDay / 10);
@@ -41,7 +41,7 @@ sealed class NpgsqlIntervalConverter : PgBufferedConverter<NpgsqlInterval>
         return format is DataFormat.Binary;
     }
 
-    protected override NpgsqlInterval ReadCore(PgReader reader)
+    public override NpgsqlInterval Read(PgReader reader)
     {
         var ticks = reader.ReadInt64();
         var day = reader.ReadInt32();
@@ -49,7 +49,7 @@ sealed class NpgsqlIntervalConverter : PgBufferedConverter<NpgsqlInterval>
         return new NpgsqlInterval(month, day, ticks);
     }
 
-    protected override void WriteCore(PgWriter writer, NpgsqlInterval value)
+    public override void Write(PgWriter writer, NpgsqlInterval value)
     {
         writer.WriteInt64(value.Time);
         writer.WriteInt32(value.Days);

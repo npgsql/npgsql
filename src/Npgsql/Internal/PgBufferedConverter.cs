@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,13 +16,20 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     [Obsolete("Call the parameterless constructor and set HandleDbNull directly.")]
     protected PgBufferedConverter(bool customDbNullPredicate) => HandleDbNull = customDbNullPredicate;
 
-    protected abstract T ReadCore(PgReader reader);
-    protected abstract void WriteCore(PgWriter writer, T value);
+    [Obsolete("Override Read instead.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected virtual T ReadCore(PgReader reader) => throw new NotSupportedException("Override Read instead of ReadCore.");
+
+    [Obsolete("Override Write instead.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected virtual void WriteCore(PgWriter writer, T value) => throw new NotSupportedException("Override Write instead of WriteCore.");
 
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
         => throw new NotSupportedException();
 
-    public sealed override T Read(PgReader reader) => ReadCore(reader);
+#pragma warning disable CS0618 // Type or member is obsolete
+    public override T Read(PgReader reader) => ReadCore(reader);
+#pragma warning restore CS0618 // Type or member is obsolete
 
     public sealed override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(Read(reader));
@@ -29,7 +37,9 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     internal sealed override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => new(Read(reader));
 
-    public sealed override void Write(PgWriter writer, T value) => WriteCore(writer, value);
+#pragma warning disable CS0618 // Type or member is obsolete
+    public override void Write(PgWriter writer, T value) => WriteCore(writer, value);
+#pragma warning restore CS0618 // Type or member is obsolete
 
     public sealed override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
     {

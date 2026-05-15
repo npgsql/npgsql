@@ -11,6 +11,6 @@ sealed class VoidConverter : PgBufferedConverter<object?>
         return true;
     }
 
-    protected override object? ReadCore(PgReader reader) => null;
-    protected override void WriteCore(PgWriter writer, object? value) => throw new NotSupportedException();
+    public override object? Read(PgReader reader) => null;
+    public override void Write(PgWriter writer, object? value) => throw new NotSupportedException();
 }

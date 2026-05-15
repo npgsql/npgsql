@@ -12,6 +12,6 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T> where T : INumberBase<T
         return format is DataFormat.Binary;
     }
 
-    protected override T ReadCore(PgReader reader) => T.CreateChecked(reader.ReadDouble());
-    protected override void WriteCore(PgWriter writer, T value) => writer.WriteDouble(double.CreateChecked(value));
+    public override T Read(PgReader reader) => T.CreateChecked(reader.ReadDouble());
+    public override void Write(PgWriter writer, T value) => writer.WriteDouble(double.CreateChecked(value));
 }

@@ -8,6 +8,6 @@ sealed class UInt32Converter : PgBufferedConverter<uint>
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(uint));
         return format is DataFormat.Binary;
     }
-    protected override uint ReadCore(PgReader reader) => reader.ReadUInt32();
-    protected override void WriteCore(PgWriter writer, uint value) => writer.WriteUInt32(value);
+    public override uint Read(PgReader reader) => reader.ReadUInt32();
+    public override void Write(PgWriter writer, uint value) => writer.WriteUInt32(value);
 }

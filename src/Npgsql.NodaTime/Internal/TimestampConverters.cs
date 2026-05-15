@@ -13,10 +13,10 @@ sealed class InstantConverter(bool dateTimeInfinityConversions) : PgBufferedConv
         return format is DataFormat.Binary;
     }
 
-    protected override Instant ReadCore(PgReader reader)
+    public override Instant Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions);
 
-    protected override void WriteCore(PgWriter writer, Instant value)
+    public override void Write(PgWriter writer, Instant value)
         => writer.WriteInt64(EncodeInstant(value, dateTimeInfinityConversions));
 }
 
@@ -28,7 +28,7 @@ sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
         return format is DataFormat.Binary;
     }
 
-    protected override ZonedDateTime ReadCore(PgReader reader)
+    public override ZonedDateTime Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).InUtc();
 
     protected override Size BindValue(in BindContext context, ZonedDateTime value, ref object? writeState)
@@ -44,7 +44,7 @@ sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
         return context.BufferRequirement;
     }
 
-    protected override void WriteCore(PgWriter writer, ZonedDateTime value)
+    public override void Write(PgWriter writer, ZonedDateTime value)
         => writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
 }
 
@@ -56,7 +56,7 @@ sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffe
         return format is DataFormat.Binary;
     }
 
-    protected override OffsetDateTime ReadCore(PgReader reader)
+    public override OffsetDateTime Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).WithOffset(Offset.Zero);
 
     protected override Size BindValue(in BindContext context, OffsetDateTime value, ref object? writeState)
@@ -72,7 +72,7 @@ sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffe
         return context.BufferRequirement;
     }
 
-    protected override void WriteCore(PgWriter writer, OffsetDateTime value)
+    public override void Write(PgWriter writer, OffsetDateTime value)
         => writer.WriteInt64(EncodeInstant(value.ToInstant(), dateTimeInfinityConversions));
 }
 
@@ -84,9 +84,9 @@ sealed class LocalDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
         return format is DataFormat.Binary;
     }
 
-    protected override LocalDateTime ReadCore(PgReader reader)
+    public override LocalDateTime Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).InUtc().LocalDateTime;
 
-    protected override void WriteCore(PgWriter writer, LocalDateTime value)
+    public override void Write(PgWriter writer, LocalDateTime value)
         => writer.WriteInt64(EncodeInstant(value.InUtc().ToInstant(), dateTimeInfinityConversions));
 }

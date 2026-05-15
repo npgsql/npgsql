@@ -522,8 +522,8 @@ public class WriteStateTests : TestBase
             return false;
         }
 
-        protected override int ReadCore(PgReader reader) => reader.ReadInt32();
-        protected override void WriteCore(PgWriter writer, int value) => writer.WriteInt32(value);
+        public override int Read(PgReader reader) => reader.ReadInt32();
+        public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);
 
         protected override Size BindValue(in BindContext context, int value, ref object? writeState)
         {
@@ -662,8 +662,8 @@ public class WriteStateTests : TestBase
                 return format is DataFormat.Binary;
             }
 
-            protected override int ReadCore(PgReader reader) => reader.ReadInt32();
-            protected override void WriteCore(PgWriter writer, int value) => writer.WriteInt32(value);
+            public override int Read(PgReader reader) => reader.ReadInt32();
+            public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);
 
             protected override Size BindValue(in BindContext context, int value, ref object? writeState)
             {
@@ -704,9 +704,9 @@ public class WriteStateTests : TestBase
             return false;
         }
 
-        protected override int ReadCore(PgReader reader) => reader.ReadInt32();
+        public override int Read(PgReader reader) => reader.ReadInt32();
 
-        protected override void WriteCore(PgWriter writer, int value)
+        public override void Write(PgWriter writer, int value)
         {
             if (writer.Current.WriteState is not null)
                 _tracker.WriteWriteStateReceived = true;
@@ -806,8 +806,8 @@ public class WriteStateTests : TestBase
             return format is DataFormat.Binary;
         }
 
-        protected override int ReadCore(PgReader reader) => reader.ReadInt32();
-        protected override void WriteCore(PgWriter writer, int value) => writer.WriteInt32(value);
+        public override int Read(PgReader reader) => reader.ReadInt32();
+        public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);
     }
 
     sealed class DisposableWriteStateProvider(PgSerializerOptions options, DisposalTracker tracker) : PgConcreteTypeInfoProvider<int>

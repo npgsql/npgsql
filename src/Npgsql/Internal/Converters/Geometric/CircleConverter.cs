@@ -11,10 +11,10 @@ sealed class CircleConverter : PgBufferedConverter<NpgsqlCircle>
         return format is DataFormat.Binary;
     }
 
-    protected override NpgsqlCircle ReadCore(PgReader reader)
+    public override NpgsqlCircle Read(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());
 
-    protected override void WriteCore(PgWriter writer, NpgsqlCircle value)
+    public override void Write(PgWriter writer, NpgsqlCircle value)
     {
         writer.WriteDouble(value.X);
         writer.WriteDouble(value.Y);

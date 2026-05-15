@@ -14,7 +14,7 @@ sealed class DateOnlyDateConverter(bool dateTimeInfinityConversions) : PgBuffere
         return format is DataFormat.Binary;
     }
 
-    protected override DateOnly ReadCore(PgReader reader)
+    public override DateOnly Read(PgReader reader)
         => reader.ReadInt32() switch
         {
             int.MaxValue => dateTimeInfinityConversions
@@ -26,7 +26,7 @@ sealed class DateOnlyDateConverter(bool dateTimeInfinityConversions) : PgBuffere
             var value => BaseValue.AddDays(value)
         };
 
-    protected override void WriteCore(PgWriter writer, DateOnly value)
+    public override void Write(PgWriter writer, DateOnly value)
     {
         if (dateTimeInfinityConversions)
         {
@@ -57,7 +57,7 @@ sealed class DateTimeDateConverter(bool dateTimeInfinityConversions) : PgBuffere
         return format is DataFormat.Binary;
     }
 
-    protected override DateTime ReadCore(PgReader reader)
+    public override DateTime Read(PgReader reader)
         => reader.ReadInt32() switch
         {
             int.MaxValue => dateTimeInfinityConversions
@@ -69,7 +69,7 @@ sealed class DateTimeDateConverter(bool dateTimeInfinityConversions) : PgBuffere
             var value => BaseValue + TimeSpan.FromDays(value)
         };
 
-    protected override void WriteCore(PgWriter writer, DateTime value)
+    public override void Write(PgWriter writer, DateTime value)
     {
         if (dateTimeInfinityConversions)
         {
