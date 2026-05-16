@@ -209,7 +209,7 @@ sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<Get
     }
 
     public override GetChars Read(PgReader reader)
-        => reader.CharsReadActive
+        => reader.GetCharsReadActive
             ? ResumableRead(reader)
             : throw new NotSupportedException();
 
