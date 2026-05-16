@@ -53,7 +53,7 @@ sealed partial class AdoTypeInfoResolverFactory
                             options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                             options.GetCanonicalTypeId(DataTypeNames.TsRange),
                             options.EnableDateTimeInfinityConversions), requiresDataTypeName),
-                    isDefault: true);
+                    pgTypeIdClassified: true, isDefault: true);
             }
             mappings.AddStructType<NpgsqlRange<long>>(DataTypeNames.TsRange,
                 static (options, mapping, _) =>
@@ -78,7 +78,7 @@ sealed partial class AdoTypeInfoResolverFactory
                             options.GetCanonicalTypeId(DataTypeNames.TsTzRange),
                             options.GetCanonicalTypeId(DataTypeNames.TsRange),
                             options.EnableDateTimeInfinityConversions), requiresDataTypeName),
-                    isDefault: true);
+                    pgTypeIdClassified: true, isDefault: true);
                 mappings.AddStructType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange,
                     static (options, mapping, _) => mapping.CreateInfo(options,
                         CreateRangeConverter(new DateTimeOffsetConverter(options.EnableDateTimeInfinityConversions), options)));

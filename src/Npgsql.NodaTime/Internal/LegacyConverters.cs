@@ -14,7 +14,7 @@ sealed class LegacyTimestampTzZonedDateTimeConverter(DateTimeZone dateTimeZone, 
         return format is DataFormat.Binary;
     }
 
-    protected override ZonedDateTime ReadCore(PgReader reader)
+    public override ZonedDateTime Read(PgReader reader)
     {
         var instant = DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions);
         if (dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
@@ -23,7 +23,7 @@ sealed class LegacyTimestampTzZonedDateTimeConverter(DateTimeZone dateTimeZone, 
         return instant.InZone(dateTimeZone);
     }
 
-    protected override void WriteCore(PgWriter writer, ZonedDateTime value)
+    public override void Write(PgWriter writer, ZonedDateTime value)
     {
         var instant = value.ToInstant();
         if (dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
@@ -42,7 +42,7 @@ sealed class LegacyTimestampTzOffsetDateTimeConverter(DateTimeZone dateTimeZone,
         return format is DataFormat.Binary;
     }
 
-    protected override OffsetDateTime ReadCore(PgReader reader)
+    public override OffsetDateTime Read(PgReader reader)
     {
         var instant = DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions);
         if (dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
@@ -51,7 +51,7 @@ sealed class LegacyTimestampTzOffsetDateTimeConverter(DateTimeZone dateTimeZone,
         return instant.InZone(dateTimeZone).ToOffsetDateTime();
     }
 
-    protected override void WriteCore(PgWriter writer, OffsetDateTime value)
+    public override void Write(PgWriter writer, OffsetDateTime value)
     {
         var instant = value.ToInstant();
         if (dateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))

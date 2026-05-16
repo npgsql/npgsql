@@ -13,7 +13,7 @@ sealed class LocalDateConverter(bool dateTimeInfinityConversions) : PgBufferedCo
         return format is DataFormat.Binary;
     }
 
-    protected override LocalDate ReadCore(PgReader reader)
+    public override LocalDate Read(PgReader reader)
         => reader.ReadInt32() switch
         {
             int.MaxValue => dateTimeInfinityConversions
@@ -25,7 +25,7 @@ sealed class LocalDateConverter(bool dateTimeInfinityConversions) : PgBufferedCo
             var value => new LocalDate().PlusDays(value + 730119)
         };
 
-    protected override void WriteCore(PgWriter writer, LocalDate value)
+    public override void Write(PgWriter writer, LocalDate value)
     {
         if (dateTimeInfinityConversions)
         {

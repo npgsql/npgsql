@@ -1,6 +1,5 @@
 using System;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests;
 
@@ -25,7 +24,7 @@ public class PgPassEntryTests
     [TestCase("test:myport:test2:test3:test4")]
     public void Bad_entry_throws(string input)
     {
-        ActualValueDelegate<object> createDelegate = () => PgPassFile.Entry.Parse(input);
+        Func<object> createDelegate = () => PgPassFile.Entry.Parse(input);
         Assert.That(createDelegate, Throws.TypeOf<FormatException>());
     }
 

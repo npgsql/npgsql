@@ -10,7 +10,7 @@ sealed class LegacyDateTimeConverter(bool dateTimeInfinityConversions, bool time
         return format is DataFormat.Binary;
     }
 
-    protected override DateTime ReadCore(PgReader reader)
+    public override DateTime Read(PgReader reader)
     {
         if (timestamp)
         {
@@ -23,7 +23,7 @@ sealed class LegacyDateTimeConverter(bool dateTimeInfinityConversions, bool time
             : dateTime.ToLocalTime();
     }
 
-    protected override void WriteCore(PgWriter writer, DateTime value)
+    public override void Write(PgWriter writer, DateTime value)
     {
         if (!timestamp && value.Kind is DateTimeKind.Local)
             value = value.ToUniversalTime();
@@ -40,7 +40,7 @@ sealed class LegacyDateTimeOffsetConverter(bool dateTimeInfinityConversions) : P
         return format is DataFormat.Binary;
     }
 
-    protected override DateTimeOffset ReadCore(PgReader reader)
+    public override DateTimeOffset Read(PgReader reader)
     {
         var dateTime = PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, dateTimeInfinityConversions);
 
@@ -55,6 +55,6 @@ sealed class LegacyDateTimeOffsetConverter(bool dateTimeInfinityConversions) : P
         return dateTime.ToLocalTime();
     }
 
-    protected override void WriteCore(PgWriter writer, DateTimeOffset value)
+    public override void Write(PgWriter writer, DateTimeOffset value)
         => writer.WriteInt64(PgTimestamp.Encode(value.UtcDateTime, dateTimeInfinityConversions));
 }

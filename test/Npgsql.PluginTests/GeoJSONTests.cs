@@ -163,7 +163,8 @@ public class GeoJSONTests : TestBase
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p", conn);
         cmd.Parameters.AddWithValue("p", data.Geometry);
-        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.ArgumentException);
+        Assert.That(async () => await cmd.ExecuteScalarAsync(),
+            Throws.TypeOf<InvalidCastException>().With.InnerException.TypeOf<ArgumentException>());
     }
 
     [Test]
@@ -216,7 +217,8 @@ public class GeoJSONTests : TestBase
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("ill:formed") });
-        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.TypeOf<FormatException>());
+        Assert.That(async () => await cmd.ExecuteScalarAsync(),
+            Throws.TypeOf<InvalidCastException>().With.InnerException.TypeOf<FormatException>());
     }
 
     [Test]
@@ -225,7 +227,8 @@ public class GeoJSONTests : TestBase
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new LinkedCRS("href") });
-        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.TypeOf<NotSupportedException>());
+        Assert.That(async () => await cmd.ExecuteScalarAsync(),
+            Throws.TypeOf<InvalidCastException>().With.InnerException.TypeOf<NotSupportedException>());
     }
 
     [Test]

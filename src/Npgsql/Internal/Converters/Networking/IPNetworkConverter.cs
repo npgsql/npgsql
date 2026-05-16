@@ -9,16 +9,16 @@ sealed class IPNetworkConverter : PgBufferedConverter<IPNetwork>
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
         => NpgsqlInetConverter.CanConvertImpl(format, out bufferRequirements);
 
-    public override Size GetSize(SizeContext context, IPNetwork value, ref object? writeState)
-        => NpgsqlInetConverter.GetSizeImpl(context, value.BaseAddress, ref writeState);
+    protected override Size BindValue(in BindContext context, IPNetwork value, ref object? writeState)
+        => NpgsqlInetConverter.BindValueImpl(context, value.BaseAddress, ref writeState);
 
-    protected override IPNetwork ReadCore(PgReader reader)
+    public override IPNetwork Read(PgReader reader)
     {
         var (ip, netmask) = NpgsqlInetConverter.ReadImpl(reader, shouldBeCidr: true);
         return new(ip, netmask);
     }
 
-    protected override void WriteCore(PgWriter writer, IPNetwork value)
+    public override void Write(PgWriter writer, IPNetwork value)
         => NpgsqlInetConverter.WriteImpl(
             writer,
             (

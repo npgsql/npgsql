@@ -58,7 +58,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
     {
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
             => type is not null && IsArrayLikeType(type, out var elementType) && IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName)
-                ? base.GetMappings(elementType, elementDataTypeName, options)?.AddArrayMapping(elementType, elementDataTypeName)
+                ? base.GetMappings(elementType, elementDataTypeName, options)?.AddArrayMapping(Nullable.GetUnderlyingType(elementType) ?? elementType, elementDataTypeName)
                 : null;
     }
 
@@ -85,7 +85,8 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
-            subInfo = subInfo.ToNonBoxing();
+            subInfo = subInfo.ToExactTypeInfo();
+            var subConcrete = (PgConcreteTypeInfo)subInfo;
 
             var converterType = typeof(NpgsqlRange<>).MakeGenericType(subInfo.Type);
 
@@ -96,8 +97,8 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type),
                             ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
-                        unboxedType: matchedType is not null && matchedType != converterType ? converterType : null
-                    ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
+                        requestedType: matchedType
+                    ) { PreferredFormat = subConcrete.PreferredFormat, SupportsWriting = subConcrete.SupportsWriting },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }
@@ -114,7 +115,12 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 return null;
 
             var mappings = base.GetMappings(elementType, elementDataTypeName, options);
+
             elementType ??= mappings?.Find(null, elementDataTypeName, options)?.Type; // Try to get the default mapping.
+
+            if (elementType is not null && Nullable.GetUnderlyingType(elementType) is { } underlyingType)
+                elementType = underlyingType;
+
             return elementType is null ? null : mappings?.AddArrayMapping(elementType, elementDataTypeName);
         }
     }
@@ -139,7 +145,8 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (subInfo is not PgConcreteTypeInfo)
                 return null;
 
-            subInfo = subInfo.ToNonBoxing();
+            subInfo = subInfo.ToExactTypeInfo();
+            var subConcrete = (PgConcreteTypeInfo)subInfo;
 
             var converterType = subInfo.Type.MakeArrayType();
 
@@ -150,8 +157,8 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(converterType, subInfo.Type),
                             ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
-                        unboxedType: type is not null && type != converterType ? converterType : null
-                    ) { PreferredFormat = subInfo.PreferredFormat, SupportsWriting = subInfo.SupportsWriting },
+                        requestedType: type
+                    ) { PreferredFormat = subConcrete.PreferredFormat, SupportsWriting = subConcrete.SupportsWriting },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
     }
@@ -168,7 +175,12 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 return null;
 
             var mappings = base.GetMappings(elementType, elementDataTypeName, options);
+
             elementType ??= mappings?.Find(null, elementDataTypeName, options)?.Type; // Try to get the default mapping.
+
+            if (elementType is not null && Nullable.GetUnderlyingType(elementType) is { } underlyingType)
+                elementType = underlyingType;
+
             return elementType is null ? null : mappings?.AddArrayMapping(elementType, elementDataTypeName);
         }
     }

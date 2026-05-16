@@ -8,6 +8,6 @@ sealed class UInt64Converter : PgBufferedConverter<ulong>
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(ulong));
         return format is DataFormat.Binary;
     }
-    protected override ulong ReadCore(PgReader reader) => reader.ReadUInt64();
-    protected override void WriteCore(PgWriter writer, ulong value) => writer.WriteUInt64(value);
+    public override ulong Read(PgReader reader) => reader.ReadUInt64();
+    public override void Write(PgWriter writer, ulong value) => writer.WriteUInt64(value);
 }

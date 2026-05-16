@@ -60,7 +60,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
         static byte ReverseBits(byte b) => (byte)(((b * 0x80200802UL) & 0x0884422110UL) * 0x0101010101UL >> 32);
     }
 
-    public override Size GetSize(SizeContext context, BitArray value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, BitArray value, ref object? writeState)
         => sizeof(int) + GetByteCountFromBitCount(value.Length);
 
     public override void Write(PgWriter writer, BitArray value)
@@ -105,7 +105,7 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
         return format is DataFormat.Binary;
     }
 
-    protected override BitVector32 ReadCore(PgReader reader)
+    public override BitVector32 Read(PgReader reader)
     {
         if (reader.CurrentRemaining > sizeof(int) + sizeof(int))
             throw new InvalidCastException("Can't read a BIT(N) with more than 32 bits to BitVector32, only up to BIT(32).");
@@ -121,7 +121,7 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
         };
     }
 
-    protected override void WriteCore(PgWriter writer, BitVector32 value)
+    public override void Write(PgWriter writer, BitVector32 value)
     {
         writer.WriteInt32(32);
         writer.WriteInt32(value.Data);
@@ -138,7 +138,7 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
         return format is DataFormat.Binary;
     }
 
-    protected override bool ReadCore(PgReader reader)
+    public override bool Read(PgReader reader)
     {
         var bits = reader.ReadInt32();
         return bits switch
@@ -150,8 +150,8 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
         };
     }
 
-    public override Size GetSize(SizeContext context, bool value, ref object? writeState) => MaxSize;
-    protected override void WriteCore(PgWriter writer, bool value)
+    protected override Size BindValue(in BindContext context, bool value, ref object? writeState) => MaxSize;
+    public override void Write(PgWriter writer, bool value)
     {
         writer.WriteInt32(1);
         writer.WriteByte(value ? (byte)128 : (byte)0);
@@ -185,7 +185,7 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
         return sb.ToString();
     }
 
-    public override Size GetSize(SizeContext context, string value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, string value, ref object? writeState)
     {
         if (value.AsSpan().IndexOfAnyExcept('0', '1') is not -1 and var index)
             throw new ArgumentException($"Invalid bitstring character '{value[index]}' at index: {index}", nameof(value));
@@ -230,8 +230,11 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
 /// Otherwise we return a BitArray converter. Polymorphic writing through this provider is not supported.
 sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, PgTypeId bitString) : PgConcreteTypeInfoProvider<object>
 {
-    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString);
-    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString);
+    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString) { SupportsWriting = false };
+    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString) { SupportsWriting = false };
+
+    // Dispatched concretes vary in advertised Type (bool vs BitArray) per field's TypeModifier.
+    internal override bool AllowConcreteVariance => true;
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
         => GetConcreteInfo(field: null);

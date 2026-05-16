@@ -53,7 +53,8 @@ public class ReadArrays
         _stringReader.Read();
     }
 
-    protected void Cleanup()
+    [GlobalCleanup]
+    public void Cleanup()
     {
         _intReader.Dispose();
         _nullableIntReader.Dispose();

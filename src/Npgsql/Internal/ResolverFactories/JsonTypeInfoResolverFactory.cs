@@ -79,6 +79,8 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                     return JsonMetadataServices.CreateValueInfo<JsonArray>(options, JsonMetadataServices.JsonArrayConverter);
                 if (type == typeof(JsonValue))
                     return JsonMetadataServices.CreateValueInfo<JsonValue>(options, JsonMetadataServices.JsonValueConverter);
+                if (type == typeof(JsonNode))
+                    return JsonMetadataServices.CreateValueInfo<JsonNode>(options, JsonMetadataServices.JsonNodeConverter);
                 return null;
             }
         }
@@ -101,6 +103,7 @@ sealed class JsonTypeInfoResolverFactory(JsonSerializerOptions? serializerOption
                 mappings.AddArrayType<JsonObject>(dataTypeName);
                 mappings.AddArrayType<JsonArray>(dataTypeName);
                 mappings.AddArrayType<JsonValue>(dataTypeName);
+                mappings.AddArrayType<JsonNode>(dataTypeName);
             }
 
             return mappings;

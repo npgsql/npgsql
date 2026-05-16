@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace Npgsql.Internal.Composites;
 abstract class CompositeFieldInfo
 {
     protected PgTypeInfo PgTypeInfo { get; }
-    protected PgConverter? Converter { get; }
+    protected PgConcreteTypeInfo? ConcreteTypeInfo { get; }
     protected BufferRequirements _binaryBufferRequirements;
 
     /// <summary>
@@ -29,119 +30,127 @@ abstract class CompositeFieldInfo
         if (typeInfo.PgTypeId is null)
             ThrowHelper.ThrowArgumentException("Type info cannot have an undecided PgTypeId.", nameof(typeInfo));
 
-        PgConcreteTypeInfo concrete;
         if (typeInfo is PgConcreteTypeInfo direct)
         {
-            concrete = direct;
+            if (!direct.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
+            {
+                ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
+                return;
+            }
+            _binaryBufferRequirements = bufferRequirements;
+            ConcreteTypeInfo = direct;
         }
-        else if (typeInfo is PgProviderTypeInfo providerTypeInfo)
+        else if (typeInfo is PgProviderTypeInfo)
         {
-            // Lift the default concrete's buffer requirements and converter so the composite gets an
-            // accurate per-field size even when resolution is deferred. IsProviderBacked still signals that
-            // GetWriteInfo / GetSize must go through BindValue for per-value dispatch at bind time —
-            // that's where provider-backed fields (DateTime kind, late-bound, etc.) surface deterministic
-            // errors. The cached default is reused by GetDefaultWriteInfo on CompositeConverter's Path A,
-            // where per-value resolution has already completed without producing state.
-            concrete = providerTypeInfo.GetDefaultConcreteTypeInfo(null);
+            // Provider-backed fields defer to per-value resolution at bind time via MakeConcreteForValue.
+            // No cached default is materialized here: the cached default's requirements are unsafe to trust
+            // (resolved converter at bind time may differ), and consumers (CompositeConverter aggregation,
+            // GetDefaultWriteInfo) are gated to skip provider-backed fields. ConcreteTypeInfo and
+            // _binaryBufferRequirements stay at their default null/zero values.
             IsProviderBacked = true;
         }
         else
         {
             ThrowHelper.ThrowInvalidOperationException($"Unsupported {nameof(PgTypeInfo)} '{typeInfo.GetType().FullName}' for composite field '{name}'.");
-            return;
         }
-
-        if (concrete.GetBufferRequirements(concrete.Converter, DataFormat.Binary) is not { } bufferRequirements)
-        {
-            ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
-            return;
-        }
-        _binaryBufferRequirements = bufferRequirements;
-        Converter = concrete.Converter;
     }
 
     public PgConverter GetReadInfo(out Size readRequirement)
     {
+        var concreteTypeInfo = ConcreteTypeInfo ?? PgTypeInfo.MakeConcreteForField(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
+        if (!concreteTypeInfo.SupportsReading)
+            AdoSerializerHelpers.ThrowReadingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
+
         if (!IsProviderBacked)
         {
             readRequirement = _binaryBufferRequirements.Read;
-            return Converter!;
+        }
+        else
+        {
+            if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var binding))
+                ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
+            readRequirement = binding.BufferRequirement;
         }
 
-        if (!PgTypeInfo.TryBind(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1), DataFormat.Binary, out var converterInfo))
-            ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
-
-        readRequirement = converterInfo.BufferRequirement;
-        return converterInfo.Converter;
+        return concreteTypeInfo.Converter;
     }
 
-    public PgConverter GetWriteInfo(object instance, out Size writeRequirement, out object? writeState)
+    public PgConverter GetWriteInfo(object instance, in BindContext nestingContext, out BindContext context, out object? writeState)
     {
-        if (IsProviderBacked)
-            return BindValue(instance, out writeRequirement, out writeState);
+        if (nestingContext.Format != DataFormat.Binary)
+            ThrowHelper.ThrowInvalidOperationException("Only binary format is supported for composite fields.");
 
         writeState = null;
-        writeRequirement = _binaryBufferRequirements.Write;
-        return Converter!;
+        try
+        {
+            var concreteTypeInfo = ConcreteTypeInfo ?? MakeConcreteForValue(instance, out writeState);
+            if (!concreteTypeInfo.SupportsWriting)
+                AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
+
+            var ctx = !IsProviderBacked
+                ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional)
+                : BindContext.CreateNested(nestingContext, concreteTypeInfo.Converter);
+
+            // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
+            // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
+            context = ctx with { NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default };
+            return concreteTypeInfo.Converter;
+        }
+        catch
+        {
+            // MakeConcreteForValue can produce a writeState (often IDisposable) before a later step throws
+            // (resolved-but-no-mapping check, BindContext construction). Dispose so the partial state
+            // doesn't leak when GetWriteInfo doesn't return cleanly.
+            (var toDispose, writeState) = (writeState, null);
+            if (toDispose is not null)
+                PgTypeInfo.DisposeWriteState(toDispose);
+            throw;
+        }
     }
 
     /// <summary>
-    /// Returns a deterministic write converter for this field without running per-value dispatch —
-    /// for concrete fields the one-and-only converter, for provider fields the default concrete that
-    /// was resolved at construction. Used by CompositeConverter.Write's Path A, which only runs when
-    /// bind-time GetSize has already completed and produced no per-field state; the default converter
-    /// writes the same bytes as any value-dispatched variant for a decided field id and carries no
-    /// state to dispose.
+    /// Returns the field's cached default converter and its write requirement without running per-value
+    /// dispatch. Only valid for non-provider-backed fields — provider-backed fields have no cached default
+    /// (ConcreteTypeInfo stays null) and must go through MakeConcreteForValue at bind time. Used by
+    /// CompositeConverter.Write on the Exact-sized path where BindValue produced no per-field state
+    /// (either composite IsBindOptional=true skipped BindValue, or fixed-size fields couldn't create state).
+    /// The cached default writes the same bytes a stateful slot would have and carries no state to dispose.
     /// </summary>
     public PgConverter GetDefaultWriteInfo(out Size writeRequirement)
     {
-        Debug.Assert(Converter is not null);
+        Debug.Assert(ConcreteTypeInfo is not null);
         writeRequirement = _binaryBufferRequirements.Write;
-        return Converter;
-    }
-
-    protected ValueTask ReadAsObject(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken)
-    {
-        if (async)
-        {
-            var task = converter.ReadAsObjectAsync(reader, cancellationToken);
-            if (!task.IsCompletedSuccessfully)
-                return Core(builder, task);
-
-            AddValue(builder, task.Result);
-        }
-        else
-            AddValue(builder, converter.ReadAsObject(reader));
-        return new();
-
-        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-        async ValueTask Core(CompositeBuilder builder, ValueTask<object> task)
-        {
-            builder.AddValue(await task.ConfigureAwait(false));
-        }
-    }
-
-    protected ValueTask WriteAsObject(bool async, PgConverter converter, PgWriter writer, object value, CancellationToken cancellationToken)
-    {
-        if (async)
-            return converter.WriteAsObjectAsync(writer, value, cancellationToken);
-
-        converter.WriteAsObject(writer, value);
-        return new();
+        return ConcreteTypeInfo.Converter;
     }
 
     public string Name { get; }
     public PgTypeId PgTypeId { get; }
-    public Size BinaryReadRequirement => _binaryBufferRequirements.Read;
-    public Size BinaryWriteRequirement => _binaryBufferRequirements.Write;
 
     /// True when this field defers converter resolution to bind time via a provider.
+    [MemberNotNullWhen(false, nameof(ConcreteTypeInfo))]
     public bool IsProviderBacked { get; }
 
     public abstract Type Type { get; }
 
-    protected abstract PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState);
-    protected abstract void AddValue(CompositeBuilder builder, object value);
+    /// <summary>
+    /// Per-format binary buffer requirements for this field. A direction the field doesn't support collapses
+    /// to <see cref="Size.Unknown"/> here — the composite tolerates one-directional fields and only fails if
+    /// the unsupported direction is actually exercised at the use site. Provider-backed fields return
+    /// <see cref="BufferRequirements.Streaming"/> because we can't honestly aggregate over the unbounded set of
+    /// concretes the provider may produce.
+    /// </summary>
+    public BufferRequirements GetBinaryRequirements()
+    {
+        if (IsProviderBacked)
+            return BufferRequirements.Streaming;
+
+        var reqs = _binaryBufferRequirements;
+        var readReq = ConcreteTypeInfo.SupportsReading ? reqs.Read : Size.Unknown;
+        var writeReq = ConcreteTypeInfo.SupportsWriting ? reqs.Write : Size.Unknown;
+        return BufferRequirements.Create(readReq, writeReq, optionalBind: reqs.IsBindOptional);
+    }
+
+    protected abstract PgConcreteTypeInfo MakeConcreteForValue(object instance, out object? writeState);
 
     public abstract StrongBox CreateBox();
     public abstract void Set(object instance, StrongBox value);
@@ -151,7 +160,7 @@ abstract class CompositeFieldInfo
     public abstract void ReadDbNull(CompositeBuilder builder);
     public abstract ValueTask Read(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default);
     public abstract bool IsDbNull(PgConverter converter, object instance, object? writeState);
-    public abstract Size? GetSizeOrDbNull(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState);
+    public abstract Size? IsDbNullOrBind(PgConverter converter, object instance, in BindContext context, ref object? writeState);
     public abstract ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken);
 }
 
@@ -159,41 +168,25 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
 {
     readonly Action<object, T>? _setter;
     readonly int _parameterIndex;
-    readonly Func<object, T> _getter;
-    readonly bool _asObject;
-
-    CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter)
+    readonly Func<object?, T> _getter;
+    CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter)
         : base(name, typeInfo, nominalPgTypeId)
     {
         if (typeInfo.Type != typeof(T))
             ThrowHelper.ThrowInvalidOperationException($"PgTypeInfo type '{typeInfo.Type.FullName}' must be equal to field type '{typeof(T)}'.");
 
-        // Converter is populated by the base constructor for both concrete and provider type infos —
-        // for providers it holds the default concrete's converter. _asObject is derived from it and is
-        // used by AsObject's fast path when the runtime converter matches the cached default.
-        if (Converter is not null)
-        {
-            var typeToConvert = Converter.TypeToConvert;
-            _asObject = typeToConvert != typeof(T);
-            if (!typeToConvert.IsAssignableFrom(typeof(T)))
-                ThrowHelper.ThrowInvalidOperationException($"Converter type '{typeToConvert.FullName}' must be assignable from field type '{typeof(T)}'.");
-        }
-
         _getter = getter;
     }
 
     // Accessed through reflection (ReflectionCompositeInfoFactory)
-    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, int parameterIndex)
+    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter, int parameterIndex)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _parameterIndex = parameterIndex;
 
     // Accessed through reflection (ReflectionCompositeInfoFactory)
-    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object, T> getter, Action<object, T> setter)
+    public CompositeFieldInfo(string name, PgTypeInfo typeInfo, PgTypeId nominalPgTypeId, Func<object?, T> getter, Action<object, T> setter)
         : this(name, typeInfo, nominalPgTypeId, getter)
         => _setter = setter;
-
-    bool AsObject(PgConverter converter)
-        => ReferenceEquals(Converter, converter) ? _asObject : converter.TypeToConvert != typeof(T);
 
     public override Type Type => typeof(T);
 
@@ -227,40 +220,21 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         builder.AddValue((T?)default);
     }
 
-    protected override PgConverter BindValue(object instance, out Size writeRequirement, out object? writeState)
-    {
-        var value = _getter(instance);
-        var concreteTypeInfo = PgTypeInfo.IsBoxing
-            ? PgTypeInfo.GetObjectConcreteTypeInfo(value, out writeState)
-            : PgTypeInfo.GetConcreteTypeInfo(value, out writeState);
-        if (concreteTypeInfo.GetBufferRequirements(concreteTypeInfo.Converter, DataFormat.Binary) is not { } bufferRequirements)
-        {
-            ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
-            writeRequirement = default;
-            return default;
-        }
-
-        writeRequirement = bufferRequirements.Write;
-        return concreteTypeInfo.Converter;
-    }
-
-    protected override void AddValue(CompositeBuilder builder, object value) => builder.AddValue((T)value);
+    protected override PgConcreteTypeInfo MakeConcreteForValue(object instance, out object? writeState)
+        => PgTypeInfo.MakeConcreteForValue(_getter(instance), out writeState);
 
     public override ValueTask Read(bool async, PgConverter converter, CompositeBuilder builder, PgReader reader, CancellationToken cancellationToken = default)
     {
-        if (AsObject(converter))
-            return ReadAsObject(async, converter, builder, reader, cancellationToken);
-
         if (async)
         {
-            var task = ((PgConverter<T>)converter).ReadAsync(reader, cancellationToken);
+            var task = converter.ReadAsync<T>(reader, cancellationToken);
             if (!task.IsCompletedSuccessfully)
                 return Core(builder, task);
 
             builder.AddValue(task.Result);
         }
         else
-            builder.AddValue(((PgConverter<T>)converter).Read(reader));
+            builder.AddValue(converter.Read<T>(reader));
         return new();
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
@@ -270,32 +244,24 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         }
     }
 
-    public override bool IsDbNullable => Converter?.IsDbNullable ?? true;
+    public override bool IsDbNullable => ConcreteTypeInfo?.Converter.IsDbNullable ?? true;
 
     public override bool IsDbNull(PgConverter converter, object instance, object? writeState)
+        => converter.IsDbNull(_getter(instance), writeState);
+
+    public override Size? IsDbNullOrBind(PgConverter converter, object instance, in BindContext context, ref object? writeState)
     {
         var value = _getter(instance);
-        return AsObject(converter) ? converter.IsDbNullAsObject(value, writeState) : ((PgConverter<T>)converter).IsDbNull(value, writeState);
+        return converter.IsDbNull(value, writeState) ? null : converter.Bind(context, value!, ref writeState);
     }
 
-    public override Size? GetSizeOrDbNull(PgConverter converter, DataFormat format, Size writeRequirement, object instance, ref object? writeState)
+    public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object? instance, CancellationToken cancellationToken)
     {
         var value = _getter(instance);
-        return AsObject(converter)
-            ? converter.GetSizeOrDbNullAsObject(format, writeRequirement, value, ref writeState)
-            : ((PgConverter<T>)converter).GetSizeOrDbNull(format, writeRequirement, value, ref writeState);
-    }
-
-    public override ValueTask Write(bool async, PgConverter converter, PgWriter writer, object instance, CancellationToken cancellationToken)
-    {
-        var value = _getter(instance);
-        if (AsObject(converter))
-            return WriteAsObject(async, converter, writer, value!, cancellationToken);
-
         if (async)
-            return ((PgConverter<T>)converter).WriteAsync(writer, value!, cancellationToken);
+            return converter.WriteAsync(writer, value, cancellationToken);
 
-        ((PgConverter<T>)converter).Write(writer, value!);
+        converter.Write(writer, value);
         return new();
     }
 }

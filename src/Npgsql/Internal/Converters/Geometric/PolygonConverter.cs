@@ -29,7 +29,7 @@ sealed class PolygonConverter : PgStreamingConverter<NpgsqlPolygon>
         return result;
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlPolygon value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, NpgsqlPolygon value, ref object? writeState)
         => 4 + value.Count * sizeof(double) * 2;
 
     public override void Write(PgWriter writer, NpgsqlPolygon value)

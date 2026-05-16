@@ -8,6 +8,6 @@ sealed class BoolConverter : PgBufferedConverter<bool>
         bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(byte));
         return format is DataFormat.Binary;
     }
-    protected override bool ReadCore(PgReader reader) => reader.ReadByte() is not 0;
-    protected override void WriteCore(PgWriter writer, bool value) => writer.WriteByte((byte)(value ? 1 : 0));
+    public override bool Read(PgReader reader) => reader.ReadByte() is not 0;
+    public override void Write(PgWriter writer, bool value) => writer.WriteByte((byte)(value ? 1 : 0));
 }

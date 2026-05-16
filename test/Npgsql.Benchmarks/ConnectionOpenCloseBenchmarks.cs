@@ -1,6 +1,4 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
 
 // ReSharper disable UnusedMember.Global
@@ -8,7 +6,7 @@ using Microsoft.Data.SqlClient;
 
 namespace Npgsql.Benchmarks;
 
-[Config(typeof(Config))]
+[OperationsPerSecond]
 public class ConnectionOpenCloseBenchmarks
 {
     const string SqlClientConnectionString = @"Data Source=(localdb)\mssqllocaldb";
@@ -163,11 +161,5 @@ public class ConnectionOpenCloseBenchmarks
         for (var i = 0; i < StatementsToSend; i++)
             _nonPooledCmd.ExecuteNonQuery();
         _nonPooledConnection.Close();
-    }
-
-    class Config : ManualConfig
-    {
-        public Config()
-            => AddColumn(StatisticColumn.OperationsPerSecond);
     }
 }

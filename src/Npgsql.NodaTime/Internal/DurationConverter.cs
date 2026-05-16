@@ -13,7 +13,7 @@ sealed class DurationConverter : PgBufferedConverter<Duration>
         return format is DataFormat.Binary;
     }
 
-    protected override Duration ReadCore(PgReader reader)
+    public override Duration Read(PgReader reader)
     {
         var microsecondsInDay = reader.ReadInt64();
         var days = reader.ReadInt32();
@@ -25,7 +25,7 @@ sealed class DurationConverter : PgBufferedConverter<Duration>
         return Duration.FromDays(days) + Duration.FromNanoseconds(microsecondsInDay * 1000);
     }
 
-    protected override void WriteCore(PgWriter writer, Duration value)
+    public override void Write(PgWriter writer, Duration value)
     {
         const long microsecondsPerSecond = 1_000_000;
 

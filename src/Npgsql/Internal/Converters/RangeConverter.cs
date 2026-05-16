@@ -13,10 +13,10 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
     public RangeConverter(PgConverter<TSubtype> subtypeConverter)
     {
-        if (!subtypeConverter.CanConvert(DataFormat.Binary, out var bufferRequirements))
+        if (!subtypeConverter.CanConvert(DataFormat.Binary, out var subtypeReqs))
             throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
-        _subtypeRequirements = bufferRequirements;
         _subtypeConverter = subtypeConverter;
+        _subtypeRequirements = subtypeReqs;
     }
 
     public override NpgsqlRange<TSubtype> Read(PgReader reader)
@@ -95,42 +95,44 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         return new NpgsqlRange<TSubtype>(lowerBound, upperBound, flags);
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
     {
         var totalSize = Size.Create(1);
         if (value.IsEmpty)
             return totalSize; // Just flags.
 
-        WriteState? state = null;
-        if (!value.LowerBoundInfinite)
+        // Lazy allocation: WriteState is only needed to carry per-bound payload sizes. Both-infinite or
+        // both-null ranges skip allocation entirely (Write defaults writeState?.*BoundSize ?? -1, which
+        // null-bound flag rewriting handles correctly). After each successful inner Bind we assign the
+        // wrapper to writeState so a subsequent inner Bind's throw is caught by the framework wrapper
+        // and disposed via WriteState.Dispose, which cascades to any populated bound's inner state.
+        var subtypeContext = BindContext.CreateNested(context, _subtypeRequirements);
+        RangeWriteState? state = null;
+        if (!value.LowerBoundInfinite && !_subtypeConverter.IsDbNull(value.LowerBound!, null))
         {
-            totalSize = totalSize.Combine(sizeof(int));
-            var subTypeState = (object?)null;
-            if (_subtypeConverter.GetSizeOrDbNull(context.Format, _subtypeRequirements.Write, value.LowerBound, ref subTypeState) is { } size)
-            {
-                totalSize = totalSize.Combine(size);
-                (state ??= new WriteState()).LowerBoundSize = size;
-                state.LowerBoundWriteState = subTypeState;
-            }
-            else if (state is not null)
-                state.LowerBoundSize = -1;
+            object? subTypeState = null;
+            var size = _subtypeConverter.Bind(subtypeContext, value.LowerBound!, ref subTypeState);
+            state = new RangeWriteState();
+            writeState = state;
+            state.LowerBoundSize = size;
+            state.LowerBoundWriteState = subTypeState;
+            totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
         }
 
-        if (!value.UpperBoundInfinite)
+        if (!value.UpperBoundInfinite && !_subtypeConverter.IsDbNull(value.UpperBound!, null))
         {
-            totalSize = totalSize.Combine(sizeof(int));
-            var subTypeState = (object?)null;
-            if (_subtypeConverter.GetSizeOrDbNull(context.Format, _subtypeRequirements.Write, value.UpperBound, ref subTypeState) is { } size)
+            object? subTypeState = null;
+            var size = _subtypeConverter.Bind(subtypeContext, value.UpperBound!, ref subTypeState);
+            if (state is null)
             {
-                totalSize = totalSize.Combine(size);
-                (state ??= new WriteState()).UpperBoundSize = size;
-                state.UpperBoundWriteState = subTypeState;
+                state = new RangeWriteState();
+                writeState = state;
             }
-            else if (state is not null)
-                state.UpperBoundSize = -1;
+            state.UpperBoundSize = size;
+            state.UpperBoundWriteState = subTypeState;
+            totalSize = totalSize.Combine(size.Combine(sizeof(int))); // Length + content.
         }
 
-        writeState = state;
         return totalSize;
     }
 
@@ -142,7 +144,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
     async ValueTask Write(bool async, PgWriter writer, NpgsqlRange<TSubtype> value, CancellationToken cancellationToken)
     {
-        var writeState = writer.Current.WriteState as WriteState;
+        var writeState = writer.Current.WriteState as RangeWriteState;
         var lowerBoundSize = writeState?.LowerBoundSize ?? -1;
         var upperBoundSize = writeState?.UpperBoundSize ?? -1;
 
@@ -167,7 +169,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
         // Always need write state from this point.
         if (writeState is null)
-            throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
+            throw new InvalidCastException($"Invalid write state, expected {typeof(RangeWriteState).FullName}.");
 
         if (!lowerBoundInfinite)
         {
@@ -206,11 +208,29 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         }
     }
 
-    sealed class WriteState
+}
+
+file sealed class RangeWriteState : IDisposable
+{
+    // Default to -1 ("treat as infinite/null") so a partially populated WriteState — only one bound
+    // carrying real payload — leaves the unset bound's flag-rewriting in Write working correctly.
+    internal Size LowerBoundSize { get; set; } = -1;
+    internal object? LowerBoundWriteState { get; set; }
+    internal Size UpperBoundSize { get; set; } = -1;
+    internal object? UpperBoundWriteState { get; set; }
+    int _disposed;
+
+    public void Dispose()
     {
-        internal Size LowerBoundSize { get; set; }
-        internal object? LowerBoundWriteState { get; set; }
-        internal Size UpperBoundSize { get; set; }
-        internal object? UpperBoundWriteState { get; set; }
+        // Atomic idempotency guard — bound states may be pool-backed; cascading double-dispose
+        // corrupts downstream pools. Atomic catches concurrent disposal too.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            Debug.Assert(false, $"{nameof(RangeWriteState)} double-dispose detected — caller violated lifecycle contract.");
+            return;
+        }
+
+        (LowerBoundWriteState as IDisposable)?.Dispose();
+        (UpperBoundWriteState as IDisposable)?.Dispose();
     }
 }

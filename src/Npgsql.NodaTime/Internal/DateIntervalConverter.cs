@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
@@ -22,6 +23,9 @@ public class DateIntervalConverter(PgConverter<NpgsqlRange<LocalDate>> rangeConv
             // ReSharper disable once MethodHasAsyncOverloadWithCancellation
             : rangeConverter.Read(reader);
 
+        if (range.IsEmpty)
+            throw new InvalidCastException("Cannot read an empty range as a NodaTime DateInterval.");
+
         var upperBound = range.UpperBound;
 
         if (upperBound != LocalDate.MaxIsoValue || !dateTimeInfinityConversions)
@@ -30,8 +34,8 @@ public class DateIntervalConverter(PgConverter<NpgsqlRange<LocalDate>> rangeConv
         return new(range.LowerBound, upperBound);
     }
 
-    public override Size GetSize(SizeContext context, DateInterval value, ref object? writeState)
-        => rangeConverter.GetSize(context, new NpgsqlRange<LocalDate>(value.Start, value.End), ref writeState);
+    protected override Size BindValue(in BindContext context, DateInterval value, ref object? writeState)
+        => rangeConverter.Bind(context, new NpgsqlRange<LocalDate>(value.Start, value.End), ref writeState);
 
     public override void Write(PgWriter writer, DateInterval value)
         => rangeConverter.Write(writer, new NpgsqlRange<LocalDate>(value.Start, value.End));

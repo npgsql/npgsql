@@ -79,13 +79,14 @@ sealed partial class AdoTypeInfoResolverFactory
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
                             options.EnableDateTimeInfinityConversions), requiresDataTypeName),
-                    isDefault: true);
+                    pgTypeIdClassified: true, isDefault: true);
                 mappings.AddProviderType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsMultirange,
                     static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeTypeInfoProvider.CreateMultirangeProvider<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), requiresDataTypeName));
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName),
+                    pgTypeIdClassified: true);
             }
 
             mappings.AddType<NpgsqlRange<long>[]>(DataTypeNames.TsMultirange,
@@ -131,13 +132,14 @@ sealed partial class AdoTypeInfoResolverFactory
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
                             options.EnableDateTimeInfinityConversions), requiresDataTypeName),
-                    isDefault: true);
+                    pgTypeIdClassified: true, isDefault: true);
                 mappings.AddProviderType<List<NpgsqlRange<DateTime>>>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, requiresDataTypeName) => mapping.CreateInfo(options,
                         DateTimeTypeInfoProvider.CreateMultirangeProvider<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(options,
                             options.GetCanonicalTypeId(DataTypeNames.TsTzMultirange),
                             options.GetCanonicalTypeId(DataTypeNames.TsMultirange),
-                            options.EnableDateTimeInfinityConversions), requiresDataTypeName));
+                            options.EnableDateTimeInfinityConversions), requiresDataTypeName),
+                    pgTypeIdClassified: true);
                 mappings.AddType<NpgsqlRange<DateTimeOffset>[]>(DataTypeNames.TsTzMultirange,
                     static (options, mapping, _) =>
                         mapping.CreateInfo(options, CreateArrayMultirangeConverter(

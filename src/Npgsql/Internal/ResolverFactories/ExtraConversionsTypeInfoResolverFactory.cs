@@ -91,9 +91,9 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
 
             // Bytea
             mappings.AddStructType<ArraySegment<byte>>(DataTypeNames.Bytea,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ArraySegmentByteaConverter()));
+                static (options, mapping, _) => mapping.CreateInfo(options, new ArraySegmentByteaConverter(supportsTextFormat: false)));
             mappings.AddStructType<Memory<byte>>(DataTypeNames.Bytea,
-                static (options, mapping, _) => mapping.CreateInfo(options, new MemoryByteaConverter()));
+                static (options, mapping, _) => mapping.CreateInfo(options, new MemoryByteaConverter(supportsTextFormat: false)));
 
             // Varbit
             mappings.AddType<string>(DataTypeNames.Varbit,

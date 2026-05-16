@@ -19,12 +19,13 @@ sealed class TupledRecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
     {
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
-            if (!(dataTypeName == DataTypeNames.Record && type is { IsConstructedGenericType: true, FullName: not null } && (
-                    type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal)
-                    || type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal))))
+            if (dataTypeName != DataTypeNames.Record || type is null || !IsTypeOrNullableOfType(type,
+                    static type => type is { IsConstructedGenericType: true, FullName: not null } &&
+                        (type.FullName.StartsWith("System.Tuple", StringComparison.Ordinal) ||
+                        type.FullName.StartsWith("System.ValueTuple", StringComparison.Ordinal)), out var matchedType))
                 return null;
 
-            return CreateCollection().AddMapping(type, dataTypeName, (options, mapping, _) =>
+            return CreateCollection().AddMapping(matchedType, dataTypeName, (options, mapping, _) =>
             {
                 var constructors = mapping.Type.GetConstructors();
                 ConstructorInfo? constructor = null;
@@ -68,7 +69,7 @@ sealed class TupledRecordTypeInfoResolverFactory : PgTypeInfoResolverFactory
     {
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
             => type is not null && IsArrayLikeType(type, out var elementType) && IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName)
-                ? base.GetMappings(elementType, elementDataTypeName, options)?.AddArrayMapping(elementType, elementDataTypeName)
+                ? base.GetMappings(elementType, elementDataTypeName, options)?.AddArrayMapping(Nullable.GetUnderlyingType(elementType) ?? elementType, elementDataTypeName)
                 : null;
     }
 }

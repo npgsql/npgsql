@@ -21,10 +21,10 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         return format == DataFormat.Binary;
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlInet value, ref object? writeState)
-        => GetSizeImpl(context, value.Address, ref writeState);
+    protected override Size BindValue(in BindContext context, NpgsqlInet value, ref object? writeState)
+        => BindValueImpl(context, value.Address, ref writeState);
 
-    internal static Size GetSizeImpl(SizeContext context, IPAddress ipAddress, ref object? writeState)
+    internal static Size BindValueImpl(in BindContext context, IPAddress ipAddress, ref object? writeState)
         => ipAddress.AddressFamily switch
         {
             AddressFamily.InterNetwork => 8,
@@ -33,7 +33,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
                 $"Can't handle IPAddress with AddressFamily {ipAddress.AddressFamily}, only InterNetwork or InterNetworkV6!")
         };
 
-    protected override NpgsqlInet ReadCore(PgReader reader)
+    public override NpgsqlInet Read(PgReader reader)
     {
         var (ip, netmask) = ReadImpl(reader, shouldBeCidr: false);
         return new(ip, netmask);
@@ -53,7 +53,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         return (new IPAddress(bytes), mask);
     }
 
-    protected override void WriteCore(PgWriter writer, NpgsqlInet value)
+    public override void Write(PgWriter writer, NpgsqlInet value)
         => WriteImpl(writer, (value.Address, value.Netmask), isCidr: false);
 
     internal static void WriteImpl(PgWriter writer, (IPAddress Address, byte Netmask) value, bool isCidr)

@@ -34,6 +34,13 @@ public class UnixDomainSocket
         _unixCmd.Parameters.AddWithValue("p", new string('x', 10000));
     }
 
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        _tcpipConn.Dispose();
+        _unixConn.Dispose();
+    }
+
     [Benchmark(Baseline = true)]
     public string Tcpip() => (string)_tcpipCmd.ExecuteScalar()!;
 

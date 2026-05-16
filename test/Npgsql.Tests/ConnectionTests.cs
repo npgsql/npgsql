@@ -1536,7 +1536,7 @@ CREATE TABLE record ()");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6427")]
-    [Platform(Include = "Win")] // Hangs on linux and mac when server closes the socket
+    [Platform(Include = "Win")] // Hangs on linux and mac (probably because of missing kerberos token)
     public async Task Gss_encryption_retry_does_not_clear_pool()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -1547,7 +1547,13 @@ CREATE TABLE record ()");
         // Break connection on gss encryption request to force the client to create a new connection and retry again
         // This emulates the behavior of older versions of PostgreSQL or its forks, like Supabase
         await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString, breakOnGssEncryptionRequest: true);
-        await using var dataSource = CreateDataSource(postmaster.ConnectionString);
+        await using var dataSource = CreateDataSource(builder =>
+        {
+            builder.ConnectionStringBuilder.ConnectionString = postmaster.ConnectionString;
+            // We use kerberos by default, which requires specific credentials to work
+            // Change it negotiate so SSPI on windows can use NTLM credentials
+            builder.UseNegotiateOptionsCallback(options => options.Package = "Negotiate");
+        });
 
         PgServerMock server;
 

@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
@@ -21,6 +22,9 @@ sealed class IntervalConverter(PgConverter<NpgsqlRange<Instant>> rangeConverter,
             // ReSharper disable once MethodHasAsyncOverloadWithCancellation
             : rangeConverter.Read(reader);
 
+        if (range.IsEmpty)
+            throw new InvalidCastException("Cannot read an empty range as a NodaTime Interval.");
+
         // NodaTime Interval includes the start instant and excludes the end instant.
         Instant? start = range.LowerBoundInfinite
             ? null
@@ -41,8 +45,8 @@ sealed class IntervalConverter(PgConverter<NpgsqlRange<Instant>> rangeConverter,
         return new(start, end);
     }
 
-    public override Size GetSize(SizeContext context, Interval value, ref object? writeState)
-        => rangeConverter.GetSize(context, IntervalToNpgsqlRange(value), ref writeState);
+    protected override Size BindValue(in BindContext context, Interval value, ref object? writeState)
+        => rangeConverter.Bind(context, IntervalToNpgsqlRange(value), ref writeState);
 
     public override void Write(PgWriter writer, Interval value)
         => rangeConverter.Write(writer, IntervalToNpgsqlRange(value));

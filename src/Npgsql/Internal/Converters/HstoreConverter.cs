@@ -17,15 +17,24 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
     {
         // Number of lengths (count, key length, value length).
         var totalSize = sizeof(int) + value.Count * (sizeof(int) + sizeof(int));
         if (value.Count is 0)
             return totalSize;
 
+        // Pre-assign the wrapper so an encoding/sizing throw mid-loop is caught by the framework wrapper
+        // and disposed via WriteState.Dispose (returns the rented buffer to the pool).
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count * 2);
+        Array.Clear(data, 0, value.Count * 2);
+        writeState = new HstoreWriteState
+        {
+            ArrayPool = arrayPool,
+            Data = new(data, 0, value.Count * 2),
+            AnyWriteState = false
+        };
 
         var i = 0;
         foreach (var kv in value)
@@ -40,12 +49,7 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
             data[i + 1] = (valueSize, null);
             i += 2;
         }
-        writeState = new WriteState
-        {
-            ArrayPool = arrayPool,
-            Data = new(data, 0, value.Count * 2),
-            AnyWriteState = false
-        };
+
         return totalSize;
     }
 
@@ -97,15 +101,15 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        if (writer.Current.WriteState is not WriteState && value.Count is not 0)
-            throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
+        if (writer.Current.WriteState is not HstoreWriteState && value.Count is not 0)
+            throw new InvalidCastException($"Invalid write state, expected {typeof(HstoreWriteState).FullName}.");
 
         // Number of lengths (count, key length, value length).
         if (writer.ShouldFlush(sizeof(int)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
         writer.WriteInt32(value.Count);
 
-        if (value.Count is 0 || writer.Current.WriteState is not WriteState writeState)
+        if (value.Count is 0 || writer.Current.WriteState is not HstoreWriteState writeState)
             return;
 
         var data = writeState.Data;
@@ -146,7 +150,6 @@ sealed class HstoreConverter<T>(Encoding encoding, Func<ICollection<KeyValuePair
         }
     }
 
-    sealed class WriteState : MultiWriteState
-    {
-    }
 }
+
+file sealed class HstoreWriteState : MultiWriteState;

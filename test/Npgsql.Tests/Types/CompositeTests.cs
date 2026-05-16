@@ -423,73 +423,14 @@ CREATE TYPE {compositeType} AS (date_times timestamp[])");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        Assert.ThrowsAsync<ArgumentException>(() => AssertType(
+        var ex = Assert.ThrowsAsync<InvalidCastException>(() => AssertType(
             connection,
             new SomeCompositeWithTypeInfoProviderType { DateTimes = [DateTime.UnixEpoch] }, // UTC DateTime
             """("{""1970-01-01 01:00:00"",""1970-01-02 01:00:00""}")""",
             compositeType,
             dataTypeInference: DataTypeInference.Nothing,
             comparer: (actual, expected) => actual.DateTimes!.SequenceEqual(expected.DateTimes!)));
-    }
-
-    // A composite whose only provider-backed field has a fixed-size default concrete (plain timestamp,
-    // 8 bytes). Exercises the path where the composite's combined write size is exact but gets clamped
-    // externally because a field defers to a provider: GetSize fires for bind-time resolution, observes
-    // that no field produced write state, skips the WriteState allocation, and Write proceeds to call the relevant converter.
-    [Test]
-    public async Task Composite_containing_fixed_size_type_info_provider_field()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var compositeType = await GetTempTypeName(adminConnection);
-
-        await adminConnection.ExecuteNonQueryAsync($@"
-CREATE TYPE {compositeType} AS (id int, created_at timestamp)");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapComposite<SomeCompositeWithFixedSizeTypeInfoProviderField>(compositeType);
-        await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
-
-        await AssertType(
-            connection,
-            new SomeCompositeWithFixedSizeTypeInfoProviderField
-            {
-                Id = 42,
-                CreatedAt = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Unspecified)
-            },
-            """(42,"1970-01-01 00:00:00")""",
-            compositeType,
-            dataTypeInference: DataTypeInference.Nothing,
-            comparer: (actual, expected) => actual.Id == expected.Id && actual.CreatedAt == expected.CreatedAt);
-    }
-
-    // Companion to the above — confirms that deterministic provider-level errors (DateTime kind
-    // mismatch against plain timestamp) still surface when the field is fixed-size, now via the
-    // bind-time GetSize checkpoint instead of the first Write.
-    [Test]
-    public async Task Composite_containing_fixed_size_type_info_provider_field_throws()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var compositeType = await GetTempTypeName(adminConnection);
-
-        await adminConnection.ExecuteNonQueryAsync($@"
-CREATE TYPE {compositeType} AS (id int, created_at timestamp)");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapComposite<SomeCompositeWithFixedSizeTypeInfoProviderField>(compositeType);
-        await using var dataSource = dataSourceBuilder.Build();
-        await using var connection = await dataSource.OpenConnectionAsync();
-
-        Assert.ThrowsAsync<ArgumentException>(() => AssertType(
-            connection,
-            new SomeCompositeWithFixedSizeTypeInfoProviderField
-            {
-                Id = 42,
-                CreatedAt = DateTime.UnixEpoch // UTC — incompatible with plain timestamp
-            },
-            """(42,"1970-01-01 00:00:00")""",
-            compositeType,
-            dataTypeInference: DataTypeInference.Nothing));
+        Assert.That(ex!.InnerException, Is.TypeOf<ArgumentException>());
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
@@ -809,12 +750,6 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     class SomeCompositeWithTypeInfoProviderType
     {
         public DateTime[]? DateTimes { get; set; }
-    }
-
-    class SomeCompositeWithFixedSizeTypeInfoProviderField
-    {
-        public int Id { get; set; }
-        public DateTime CreatedAt { get; set; }
     }
 
     record NameTranslationComposite

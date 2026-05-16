@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -9,15 +8,23 @@ using System.Threading.Tasks;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-abstract class ByteaConverters<T> : PgStreamingConverter<T>
+abstract class ByteaConverters<T>(bool supportsTextFormat) : PgStreamingConverter<T>
 {
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.Streaming;
+        return supportsTextFormat
+            ? format is DataFormat.Binary or DataFormat.Text
+            : format is DataFormat.Binary;
+    }
+
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
         => ConvertTo(value).Length;
 
     public override void Write(PgWriter writer, T value)
@@ -42,7 +49,7 @@ abstract class ByteaConverters<T> : PgStreamingConverter<T>
     protected abstract T ConvertFrom(Memory<byte> value);
 }
 
-sealed class ArraySegmentByteaConverter : ByteaConverters<ArraySegment<byte>>
+sealed class ArraySegmentByteaConverter(bool supportsTextFormat) : ByteaConverters<ArraySegment<byte>>(supportsTextFormat)
 {
     protected override Memory<byte> ConvertTo(ArraySegment<byte> value) => value;
     protected override ArraySegment<byte> ConvertFrom(Memory<byte> value)
@@ -51,8 +58,16 @@ sealed class ArraySegmentByteaConverter : ByteaConverters<ArraySegment<byte>>
             : throw new UnreachableException("Expected array-backed memory");
 }
 
-sealed class ArrayByteaConverter : PgStreamingConverter<byte[]>
+sealed class ArrayByteaConverter(bool supportsTextFormat) : PgStreamingConverter<byte[]>
 {
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.Streaming;
+        return supportsTextFormat
+            ? format is DataFormat.Binary or DataFormat.Text
+            : format is DataFormat.Binary;
+    }
+
     public override byte[] Read(PgReader reader)
     {
         var bytes = new byte[reader.CurrentRemaining];
@@ -67,7 +82,7 @@ sealed class ArrayByteaConverter : PgStreamingConverter<byte[]>
         return bytes;
     }
 
-    public override Size GetSize(SizeContext context, byte[] value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, byte[] value, ref object? writeState)
         => value.Length;
 
     public override void Write(PgWriter writer, byte[] value)
@@ -77,13 +92,13 @@ sealed class ArrayByteaConverter : PgStreamingConverter<byte[]>
         => writer.WriteBytesAsync(value, cancellationToken);
 }
 
-sealed class ReadOnlyMemoryByteaConverter : ByteaConverters<ReadOnlyMemory<byte>>
+sealed class ReadOnlyMemoryByteaConverter(bool supportsTextFormat) : ByteaConverters<ReadOnlyMemory<byte>>(supportsTextFormat)
 {
     protected override Memory<byte> ConvertTo(ReadOnlyMemory<byte> value) => MemoryMarshal.AsMemory(value);
     protected override ReadOnlyMemory<byte> ConvertFrom(Memory<byte> value) => value;
 }
 
-sealed class MemoryByteaConverter : ByteaConverters<Memory<byte>>
+sealed class MemoryByteaConverter(bool supportsTextFormat) : ByteaConverters<Memory<byte>>(supportsTextFormat)
 {
     protected override Memory<byte> ConvertTo(Memory<byte> value) => value;
     protected override Memory<byte> ConvertFrom(Memory<byte> value) => value;

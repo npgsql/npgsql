@@ -1,13 +1,11 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
 
 // ReSharper disable UnusedMember.Global
 
 namespace Npgsql.Benchmarks;
 
-[Config(typeof(Config))]
+[OperationsPerSecond]
 public class ConnectionCreationBenchmarks
 {
     const string NpgsqlConnectionString = "Host=foo;Database=bar;Username=user;Password=password";
@@ -18,10 +16,4 @@ public class ConnectionCreationBenchmarks
 
     [Benchmark]
     public SqlConnection SqlClient() => new(SqlClientConnectionString);
-
-    class Config : ManualConfig
-    {
-        public Config()
-            => AddColumn(StatisticColumn.OperationsPerSecond);
-    }
 }

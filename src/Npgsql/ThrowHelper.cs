@@ -21,6 +21,10 @@ static class ThrowHelper
         => throw new ArgumentOutOfRangeException(paramName, string.Format(message, argument));
 
     [DoesNotReturn]
+    internal static void ThrowUnreachableException(string? message = null)
+        => throw new UnreachableException(message);
+
+    [DoesNotReturn]
     internal static void ThrowUnreachableException(string message, object argument)
         => throw new UnreachableException(string.Format(message, argument));
 
@@ -59,6 +63,10 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowInvalidCastException(string message) =>
         throw new InvalidCastException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowInvalidCastException(string message, Exception innerException) =>
+        throw new InvalidCastException(message, innerException);
 
     [DoesNotReturn]
     internal static void ThrowInvalidCastException_NoValue() =>

@@ -9,7 +9,7 @@ sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Str
 {
     public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferRequirements = BufferRequirements.None;
+        bufferRequirements = BufferRequirements.Streaming;
         return supportsTextFormat
             ? format is DataFormat.Text or DataFormat.Binary
             : format is DataFormat.Binary;
@@ -21,14 +21,14 @@ sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Str
     public override ValueTask<Stream> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => new(reader.GetStream());
 
-    public override Size GetSize(SizeContext context, Stream value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, Stream value, ref object? writeState)
     {
         if (value.CanSeek)
             return checked((int)(value.Length - value.Position));
 
         var memoryStream = new MemoryStream();
-        value.CopyTo(memoryStream);
         writeState = memoryStream;
+        value.CopyTo(memoryStream);
         return checked((int)memoryStream.Length);
     }
 

@@ -16,10 +16,10 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     public MultirangeConverter(PgConverter<TRange> rangeConverter)
     {
-        if (!rangeConverter.CanConvert(DataFormat.Binary, out var bufferRequirements))
+        if (!rangeConverter.CanConvert(DataFormat.Binary, out var rangeReqs))
             throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
-        _rangeRequirements = bufferRequirements;
         _rangeConverter = rangeConverter;
+        _rangeRequirements = rangeReqs;
     }
 
     public override T Read(PgReader reader)
@@ -67,30 +67,37 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         return multirange;
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, T value, ref object? writeState)
     {
+        // Multirange Write needs per-element sizes from the wrapper, so the data array is unconditionally
+        // allocated. Wrapper is assigned to writeState before the per-element loop so a later inner Bind
+        // throw is caught by the framework wrapper and disposed via WriteState.Dispose, cascading to any
+        // populated slot's inner IDisposable state.
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count);
-
-        var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
-        var anyWriteState = false;
-        for (var i = 0; i < value.Count; i++)
-        {
-            object? innerState = null;
-            var rangeSize = _rangeConverter.GetSizeOrDbNull(context.Format, _rangeRequirements.Write, value[i], ref innerState);
-            anyWriteState = anyWriteState || innerState is not null;
-            // Ranges should never be NULL.
-            Debug.Assert(rangeSize.HasValue);
-            data[i] = new(rangeSize.Value, innerState);
-            totalSize = totalSize.Combine(rangeSize.Value);
-        }
-
-        writeState = new WriteState
+        Array.Clear(data, 0, value.Count);
+        var state = new MultirangeWriteState
         {
             ArrayPool = arrayPool,
             Data = new(data, 0, value.Count),
-            AnyWriteState = anyWriteState
+            AnyWriteState = false
         };
+        writeState = state;
+
+        var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
+        var rangeContext = BindContext.CreateNested(context, _rangeRequirements);
+        for (var i = 0; i < value.Count; i++)
+        {
+            // Ranges within a multirange are never db-null on the wire.
+            Debug.Assert(!_rangeConverter.IsDbNull(value[i], null));
+            object? innerState = null;
+            var rangeSize = _rangeConverter.Bind(rangeContext, value[i], ref innerState);
+            if (innerState is not null)
+                state.AnyWriteState = true;
+            data[i] = (rangeSize, innerState);
+            totalSize = totalSize.Combine(rangeSize);
+        }
+
         return totalSize;
     }
 
@@ -102,7 +109,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
-        if (writer.Current.WriteState is not WriteState writeState)
+        if (writer.Current.WriteState is not MultirangeWriteState writeState)
             throw new InvalidCastException($"Invalid state {writer.Current.WriteState?.GetType().FullName}.");
 
         if (writer.ShouldFlush(sizeof(int)))
@@ -133,7 +140,6 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         }
     }
 
-    sealed class WriteState : MultiWriteState
-    {
-    }
 }
+
+file sealed class MultirangeWriteState : MultiWriteState;

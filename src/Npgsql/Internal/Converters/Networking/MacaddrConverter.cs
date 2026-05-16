@@ -13,10 +13,10 @@ sealed class MacaddrConverter(bool macaddr8) : PgBufferedConverter<PhysicalAddre
         return format is DataFormat.Binary;
     }
 
-    public override Size GetSize(SizeContext context, PhysicalAddress value, ref object? writeState)
+    protected override Size BindValue(in BindContext context, PhysicalAddress value, ref object? writeState)
         => value.GetAddressBytes().Length;
 
-    protected override PhysicalAddress ReadCore(PgReader reader)
+    public override PhysicalAddress Read(PgReader reader)
     {
         var len = reader.CurrentRemaining;
         Debug.Assert(len is 6 or 8);
@@ -26,7 +26,7 @@ sealed class MacaddrConverter(bool macaddr8) : PgBufferedConverter<PhysicalAddre
         return new PhysicalAddress(bytes);
     }
 
-    protected override void WriteCore(PgWriter writer, PhysicalAddress value)
+    public override void Write(PgWriter writer, PhysicalAddress value)
     {
         var bytes = value.GetAddressBytes();
         if (!macaddr8 && bytes.Length is not 6)

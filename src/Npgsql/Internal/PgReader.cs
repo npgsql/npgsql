@@ -39,13 +39,7 @@ public class PgReader
     Size _currentBufferRequirement;
     int _currentSize;
 
-    // GetChars Internal state
-    TextReader? _getCharsReader;
-    int _getCharsRead;
-
-    // GetChars User state
-    int? _charsReadOffset;
-    ArraySegment<char>? _charsReadBuffer;
+    GetCharsState? _getCharsState;
 
     bool _requiresCleanup;
 
@@ -417,28 +411,30 @@ public class PgReader
         return new();
     }
 
-    internal int GetCharsRead => _getCharsRead;
-    internal bool CharsReadActive => _charsReadOffset is not null;
+    internal int GetCharsRead => _getCharsState?.CharsRead ?? 0;
+    internal bool GetCharsReadActive => _getCharsState?.ReadOffset is not null;
 
     internal void GetCharsReadInfo(Encoding encoding, out int charsRead, out TextReader reader, out int charsOffset, out ArraySegment<char>? buffer)
     {
-        if (!CharsReadActive)
+        if (!GetCharsReadActive)
             ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
         _requiresCleanup = true;
 
-        charsRead = _getCharsRead;
-        reader = _getCharsReader ??= GetTextReader(async: false, encoding, default, untracked: true).GetAwaiter().GetResult();
-        charsOffset = _charsReadOffset ?? 0;
-        buffer = _charsReadBuffer;
+        var state = _getCharsState!;
+        charsRead = state.CharsRead;
+        reader = state.Reader ??= GetTextReader(async: false, encoding, default, untracked: true).GetAwaiter().GetResult();
+        charsOffset = state.ReadOffset ?? 0;
+        buffer = state.ReadBuffer;
     }
 
     internal void RestartCharsRead()
     {
-        if (!CharsReadActive)
+        if (!GetCharsReadActive)
             ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
-        switch (_getCharsReader)
+        var state = _getCharsState!;
+        switch (state.Reader)
         {
             case PreparedTextReader reader:
                 reader.Restart();
@@ -448,12 +444,12 @@ public class PgReader
                 reader.DiscardBufferedData();
                 break;
         }
-        _getCharsRead = 0;
+        state.CharsRead = 0;
     }
 
     internal void AdvanceCharsRead(int charsRead)
     {
-        _getCharsRead += charsRead;
+        _getCharsState!.CharsRead += charsRead;
     }
 
     internal void StartCharsRead(int dataOffset, ArraySegment<char>? buffer)
@@ -461,8 +457,9 @@ public class PgReader
         if (!Resumable)
             ThrowHelper.ThrowInvalidOperationException("Reader was not initialized as resumable");
 
-        _charsReadOffset = dataOffset;
-        _charsReadBuffer = buffer;
+        var state = _getCharsState ??= new();
+        state.ReadOffset = dataOffset;
+        state.ReadBuffer = buffer;
     }
 
     internal void EndCharsRead()
@@ -470,14 +467,27 @@ public class PgReader
         if (!Resumable)
             ThrowHelper.ThrowInvalidOperationException("Wasn't initialized as resumed");
 
-        if (!CharsReadActive)
+        if (!GetCharsReadActive)
             ThrowHelper.ThrowInvalidOperationException("No active chars read");
 
-        _charsReadOffset = null;
-        _charsReadBuffer = null;
+        var state = _getCharsState!;
+        state.ReadOffset = null;
+        state.ReadBuffer = null;
     }
 
-    internal void Init(int fieldSize, DataFormat fieldFormat, bool resumable = false)
+    // GetChars state — lazily allocated on first use, then reused for the reader's lifetime.
+    sealed class GetCharsState
+    {
+        // Internal state.
+        public TextReader? Reader;
+        public int CharsRead;
+
+        // User state — per active read.
+        public int? ReadOffset;
+        public ArraySegment<char>? ReadBuffer;
+    }
+
+    internal void Init(DataFormat fieldFormat, int fieldSize, bool resumable = false)
     {
         if (Initialized)
             ThrowHelper.ThrowInvalidOperationException("Already initialized");
@@ -485,15 +495,15 @@ public class PgReader
         _fieldStartPos = _buffer.CumulativeReadPosition;
         _fieldEndPos = _fieldStartPos + fieldSize;
         _fieldSize = fieldSize;
-        _fieldFormat = fieldFormat;
         _resumable = resumable;
+        _fieldFormat = fieldFormat;
     }
 
-    internal void StartRead(Size bufferRequirement)
+    internal void StartRead(PgFieldBinding binding)
     {
         Debug.Assert(FieldSize >= 0);
-        _fieldBufferRequirement = bufferRequirement;
-        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(binding.BufferRequirement, FieldSize);
+        _fieldBufferRequirement = binding.BufferRequirement;
         if (ShouldBuffer(byteCount))
             BufferNoInlined(byteCount);
 
@@ -502,11 +512,11 @@ public class PgReader
             => Buffer(byteCount);
     }
 
-    internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
+    internal ValueTask StartReadAsync(PgFieldBinding binding, CancellationToken cancellationToken)
     {
         Debug.Assert(FieldSize >= 0);
-        _fieldBufferRequirement = bufferRequirement;
-        var byteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, FieldSize);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(binding.BufferRequirement, FieldSize);
+        _fieldBufferRequirement = binding.BufferRequirement;
         return ShouldBuffer(byteCount) ? BufferAsync(byteCount, cancellationToken) : new();
     }
 
@@ -645,11 +655,11 @@ public class PgReader
             _pooledArray = null;
         }
 
-        if (_getCharsReader is not null)
+        if (_getCharsState is { Reader: not null } state)
         {
-            _getCharsReader.Dispose();
-            _getCharsReader = null;
-            _getCharsRead = default;
+            state.Reader.Dispose();
+            state.Reader = null;
+            state.CharsRead = default;
         }
 
         if (_preparedTextReader is not null)
@@ -668,6 +678,7 @@ public class PgReader
         _currentSize = UninitializedSentinel;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int Restart(bool resumable)
     {
         if (!Initialized)
