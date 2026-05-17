@@ -27,29 +27,18 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // combined with the cumulative Write Kind it produces the composite's IsBindOptional.
         // Provider-backed fields contribute Streaming via GetBinaryRequirements (their cached default's
         // requirements are unsafe to aggregate against — the resolved concrete at bind time may differ).
-        // The aggregation collapses naturally: Streaming fans into Unknown via TryCombine, IsBindOptional
+        // The aggregation collapses naturally: Streaming fans into Unknown via Combine, IsBindOptional
         // ANDs to false, and the final Write Kind becomes non-Exact for any composite with provider fields.
-        var isBindOptional = true;
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
         foreach (var field in _composite.Fields)
         {
             var fieldReqs = field.GetBinaryRequirements();
-            isBindOptional &= fieldReqs.IsBindOptional;
-
-            var readReq = fieldReqs.Read;
-            var writeReq = fieldReqs.Write;
 
             // If field is nullable we cannot depend on its buffer size being fixed.
             if (field.IsDbNullable)
-            {
-                readReq = readReq.Combine(Size.CreateUpperBound(0));
-                writeReq = writeReq.Combine(Size.CreateUpperBound(0));
-            }
+                fieldReqs = fieldReqs.Combine(BufferRequirements.Create(Size.CreateUpperBound(0)));
 
-            var readSuccess = req.Read.TryCombine(readReq, out readReq);
-            var writeSuccess = req.Write.TryCombine(writeReq, out writeReq);
-            // If we fail to combine due to overflow return unknown.
-            req = BufferRequirements.Create(readSuccess ? readReq : Size.Unknown, writeSuccess ? writeReq : Size.Unknown);
+            req = req.Combine(fieldReqs);
         }
 
         // BindValue can return this directly when Exact (no provider field, no nullable, no overflow).
@@ -60,7 +49,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // (or nullable-shifted) Write means the Bind dispatch can't satisfy the size from the bufreq alone.
         var finalRead = Limit(req.Read);
         var finalWrite = Limit(req.Write);
-        _bufferRequirements = BufferRequirements.Create(finalRead, finalWrite, optionalBind: isBindOptional && finalWrite.Kind is SizeKind.Exact);
+        _bufferRequirements = BufferRequirements.Create(finalRead, finalWrite, optionalBind: req.IsBindOptional && finalWrite.Kind is SizeKind.Exact);
 
         // Return unknown if we hit the limit.
         static Size Limit(Size requirement)
