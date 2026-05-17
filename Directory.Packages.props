@@ -1,16 +1,7 @@
 <Project>
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <LoggingAbstractionsPackageVersion>10.0.8</LoggingAbstractionsPackageVersion>
-    <DependencyInjectionAbstractionsPackageVersion>10.0.8</DependencyInjectionAbstractionsPackageVersion>
-    
-    <!-- For tests only -->
-    <DependencyInjectionPackageVersion>10.0.8</DependencyInjectionPackageVersion>
-    <LoggingPackageVersion>10.0.8</LoggingPackageVersion>
-  </PropertyGroup>
-
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(LoggingAbstractionsPackageVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(DependencyInjectionAbstractionsPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
     <PackageVersion Include="OpenTelemetry.API" Version="1.15.3" />
 
     <!-- Plugin projects -->
@@ -30,9 +21,9 @@
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="4.6.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.13.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(DependencyInjectionPackageVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(LoggingPackageVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(LoggingPackageVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.8" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
