@@ -63,10 +63,16 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     // is gated at Bind entry (until measuring lands and the contract loosens).
     public BufferRequirements Combine(BufferRequirements other)
     {
-        return new BufferRequirements(CombineOrUnknown(_read, other._read), CombineOrUnknown(_write, other._write), _optionalBind && other._optionalBind);
+        var read = CombineOrNull(_read, other._read) ?? Size.Unknown;
+        var write = CombineOrNull(_write, other._write);
+        var optionalBind = _optionalBind && other._optionalBind;
+        // Overflowed
+        if (write is null)
+            optionalBind = false;
 
-        // Combine, degrading Exact-overflow into Unknown instead of throwing.
-        static Size CombineOrUnknown(Size left, Size right)
+        return new BufferRequirements(read, write ?? Size.Unknown, optionalBind);
+
+        static Size? CombineOrNull(Size left, Size right)
         {
             try
             {
@@ -74,7 +80,7 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
             }
             catch (OverflowException)
             {
-                return Size.Unknown;
+                return null;
             }
         }
     }
