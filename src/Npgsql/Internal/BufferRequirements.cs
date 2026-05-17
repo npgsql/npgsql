@@ -59,12 +59,24 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     /// <summary>Custom requirements with explicit <see cref="IsBindOptional"/>; use when the Kind-derived default is wrong (rare).</summary>
     public static BufferRequirements Create(Size read, Size write, bool optionalBind) => new(read, write, optionalBind);
 
+    // Both sides carry explicit IsBindOptional — AND them. The combined write Kind is independent and
+    // is gated at Bind entry (until measuring lands and the contract loosens).
     public BufferRequirements Combine(BufferRequirements other)
     {
-        // Both sides carry explicit IsBindOptional — AND them. The combined write Kind is independent and
-        // is gated at Bind entry (until measuring lands and the contract loosens).
-        var newWrite = _write.Combine(other._write);
-        return new(_read.Combine(other._read), newWrite, _optionalBind && other._optionalBind);
+        return new BufferRequirements(CombineOrUnknown(_read, other._read), CombineOrUnknown(_write, other._write), _optionalBind && other._optionalBind);
+
+        // Combine, degrading Exact-overflow into Unknown instead of throwing.
+        static Size CombineOrUnknown(Size left, Size right)
+        {
+            try
+            {
+                return left.Combine(right);
+            }
+            catch (OverflowException)
+            {
+                return Size.Unknown;
+            }
+        }
     }
 
     public BufferRequirements Combine(int byteCount)
