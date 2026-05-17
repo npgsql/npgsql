@@ -43,3 +43,15 @@
 NpgsqlTypes.NpgsqlRange<T>.LowerBound.get -> T?
 NpgsqlTypes.NpgsqlRange<T>.UpperBound.get -> T?
 NpgsqlTypes.NpgsqlRange<T>.NpgsqlRange(T? lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite, T? upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite) -> void
+Npgsql.PostgresConnectionURIParseOptions
+Npgsql.PostgresConnectionURIParseOptions.ThrowsOnUnsupportedKeys.get -> bool
+Npgsql.PostgresConnectionURIParseOptions.ThrowsOnUnsupportedKeys.init -> void
+Npgsql.PostgresConnectionURIParseOptions.ThrowsOnParameterOverwrite.get -> bool
+Npgsql.PostgresConnectionURIParseOptions.ThrowsOnParameterOverwrite.init -> void
+Npgsql.PostgresConnectionURIParseOptions.ThrowsOnMultiplePorts.get -> bool
+Npgsql.PostgresConnectionURIParseOptions.ThrowsOnMultiplePorts.init -> void
+Npgsql.PostgresConnectionURI
+Npgsql.PostgresConnectionURI.PostgresConnectionURI(string! uri, Npgsql.PostgresConnectionURIParseOptions? options = null) -> void
+Npgsql.PostgresConnectionURI.ParseOptions.get -> Npgsql.PostgresConnectionURIParseOptions!
+override Npgsql.PostgresConnectionURI.ToString() -> string!
+Npgsql.PostgresConnectionURI.ToConnectionStringBuilder() -> Npgsql.NpgsqlConnectionStringBuilder!
