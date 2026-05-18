@@ -89,8 +89,8 @@ public class WriteStateTests : TestBase
     {
         // Verifies write state propagation through a range composition:
         //   RangeConverter<int> -> tracking int subtype (BindValue populates writeState)
-        // The range converter must carry each bound's subtype state into BeginNestedWrite so the subtype's
-        // WriteCore observes the provider-produced sentinel.
+        // The range converter must carry each bound's subtype state into a nested scope
+        // so the subtype's Write observes the provider-produced sentinel.
         var tracker = new WriteStateTracker();
         var options = BuildOptions(b => b.EnableRanges(), new RangeWriteStateTrackingResolverFactory(tracker));
 
@@ -177,7 +177,8 @@ public class WriteStateTests : TestBase
     {
         // Verifies write state propagation through a composite composition:
         //   CompositeConverter<CompositeWithInt> -> tracking int4 field converter
-        // The composite's per-field WriteState storage must carry the subtype's sentinel into BeginNestedWrite.
+        // The composite's per-field WriteState must carry the field's state into a nested scope
+        // so the field converter Write observes the provider-produced sentinel.
         // Uses a real PG CREATE TYPE + MapComposite so the CompositeConverter is constructed by the production path.
         var tracker = new WriteStateTracker();
         await using var adminConnection = await OpenConnectionAsync();
@@ -278,7 +279,7 @@ public class WriteStateTests : TestBase
         param.ResolveTypeInfo(options, dbTypeResolver: null);
         param.Bind(out _, out _);
 
-        var pgWriter = new PgWriter(new ArrayBufferWriter<byte>()).Init(PostgresMinimalDatabaseInfo.DefaultTypeCatalog);
+        var pgWriter = new PgWriter(new ArrayBufferWriter<byte>()).Init(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, 0);
         var task = param.Write(async: false, pgWriter, CancellationToken.None);
         Debug.Assert(task.IsCompletedSuccessfully, "Write should complete synchronously with FlushMode.None");
         task.GetAwaiter().GetResult();

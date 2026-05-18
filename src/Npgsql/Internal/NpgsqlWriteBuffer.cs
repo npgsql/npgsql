@@ -73,7 +73,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
 
     // (Re)init to make sure we'll refetch from the write buffer.
     internal PgWriter GetWriter(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
-        => _pgWriter.Init(typeCatalog, flushMode);
+        => _pgWriter.Init(typeCatalog, 0, flushMode);
 
     internal readonly byte[] Buffer;
     readonly Encoder _textEncoder;
