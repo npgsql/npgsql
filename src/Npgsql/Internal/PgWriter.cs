@@ -149,7 +149,8 @@ public sealed class PgWriter
 
     void Ensure(int count = 1)
     {
-        if (count <= Remaining)
+        // Ensure(0) must still yield a non-empty buffer, so don't early-out on an empty one.
+        if (count <= Remaining && Remaining is not 0)
             return;
 
         Slow(count);
@@ -163,6 +164,22 @@ public sealed class PgWriter
             // GetMemory is expected to throw if count is too large for the remaining space.
             Debug.Assert(count <= Remaining);
         }
+    }
+
+    // Ensures room for `count` bytes: flushes a flushable writer that is low on space, then Ensures —
+    // which grows a FlushMode.None writer (buffered, e.g. a measuring side buffer) that cannot flush.
+    void EnsureWithFlush(int count, bool allowMixedIO = false)
+    {
+        if (ShouldFlush(count))
+            Flush(allowWhenNonBlocking: allowMixedIO);
+        Ensure(count);
+    }
+
+    async ValueTask EnsureWithFlushAsync(int count, bool allowMixedIO, CancellationToken cancellationToken)
+    {
+        if (ShouldFlush(count))
+            await FlushAsync(allowWhenBlocking: allowMixedIO, cancellationToken).ConfigureAwait(false);
+        Ensure(count);
     }
 
     Span<byte> Span => _buffer.AsSpan(_pos, _length - _pos);
@@ -323,8 +340,7 @@ public sealed class PgWriter
                 switch (status)
                 {
                 case OperationStatus.DestinationTooSmall:
-                    Flush();
-                    Ensure(scalarMaxByteCount);
+                    EnsureWithFlush(scalarMaxByteCount);
                     data = data.Slice(charsRead);
                     break;
                 case OperationStatus.InvalidData:
@@ -347,9 +363,7 @@ public sealed class PgWriter
             bool completed;
             do
             {
-                if (ShouldFlush(minBufferSize))
-                    Flush();
-                Ensure(minBufferSize);
+                EnsureWithFlush(minBufferSize);
                 encoder.Convert(data, Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
@@ -393,8 +407,7 @@ public sealed class PgWriter
                 switch (status)
                 {
                 case OperationStatus.DestinationTooSmall:
-                    await FlushAsync(cancellationToken).ConfigureAwait(false);
-                    Ensure(scalarMaxByteCount);
+                    await EnsureWithFlushAsync(scalarMaxByteCount, allowMixedIO: false, cancellationToken).ConfigureAwait(false);
                     data = data.Slice(charsRead);
                     break;
                 case OperationStatus.InvalidData:
@@ -417,9 +430,7 @@ public sealed class PgWriter
             bool completed;
             do
             {
-                if (ShouldFlush(minBufferSize))
-                    await FlushAsync(cancellationToken).ConfigureAwait(false);
-                Ensure(minBufferSize);
+                await EnsureWithFlushAsync(minBufferSize, allowMixedIO: false, cancellationToken).ConfigureAwait(false);
                 encoder.Convert(data.Span, Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
@@ -435,7 +446,7 @@ public sealed class PgWriter
         while (!buffer.IsEmpty)
         {
             if (Remaining is 0)
-                Flush(allowWhenNonBlocking: allowMixedIO);
+                EnsureWithFlush(1, allowMixedIO);
             var write = Math.Min(buffer.Length, Remaining);
             buffer.Slice(0, write).CopyTo(Span);
             Advance(write);
@@ -462,7 +473,7 @@ public sealed class PgWriter
             while (!buffer.IsEmpty)
             {
                 if (Remaining is 0)
-                    await FlushAsync(allowWhenBlocking: allowMixedIO, cancellationToken).ConfigureAwait(false);
+                    await EnsureWithFlushAsync(1, allowMixedIO, cancellationToken).ConfigureAwait(false);
                 var write = Math.Min(buffer.Length, Remaining);
                 buffer.Span.Slice(0, write).CopyTo(Span);
                 Advance(write);
