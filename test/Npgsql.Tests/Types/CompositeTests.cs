@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -383,6 +384,30 @@ CREATE TYPE {compositeType} AS (address inet)");
     }
 
     [Test]
+    public async Task Composite_containing_jsonb()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var compositeType = await GetTempTypeName(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {compositeType} AS (x int, data jsonb, y int)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeWithJson>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeWithJson { X = 8, Data = JsonDocument.Parse("42"), Y = 9 },
+            "(8,42,9)",
+            compositeType,
+            dataTypeInference: DataTypeInference.Nothing,
+            comparer: (actual, expected) =>
+                actual.X == expected.X && actual.Y == expected.Y
+                && actual.Data!.RootElement.GetRawText() == expected.Data!.RootElement.GetRawText());
+    }
+
+    [Test]
     public async Task Composite_containing_type_info_provider_type()
     {
         await using var adminConnection = await OpenConnectionAsync();
@@ -745,6 +770,13 @@ CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
     class SomeCompositeWithIPAddress
     {
         public IPAddress? Address { get; set; }
+    }
+
+    class SomeCompositeWithJson
+    {
+        public int X { get; set; }
+        public JsonDocument? Data { get; set; }
+        public int Y { get; set; }
     }
 
     class SomeCompositeWithTypeInfoProviderType

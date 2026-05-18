@@ -34,6 +34,13 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
             : null;
     }
 
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        // Serializing is the only way to size json and we have no validation per value (optionalBind) and no known capacity hint (Size.Unknown).
+        bufferRequirements = BufferRequirements.Create(read: Size.Unknown, write: Size.Unknown, optionalBind: true);
+        return format is DataFormat.Binary;
+    }
+
     public override T? Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
     public override ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
@@ -80,27 +87,30 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
         return result;
     }
 
-    protected override Size BindValue(in BindContext context, T? value, ref object? writeState)
+    public override void Write(PgWriter writer, T? value)
     {
-        var capacity = 0;
-        if (typeof(T) == typeof(JsonDocument))
-            capacity = ((JsonDocument?)(object?)value)?.RootElement.GetRawText().Length ?? 0;
-        var stream = new MemoryStream(capacity);
+        if (_jsonb)
+            writer.WriteByte(JsonConverter.JsonbProtocolVersion);
+
+        // STJ always emits UTF-8; for any other client encoding, transcode on the way out.
+        var utf8 = _textEncoding.CodePage == Encoding.UTF8.CodePage;
+        using var stream = utf8
+            ? writer.GetStream()
+            : Encoding.CreateTranscodingStream(writer.GetStream(), _textEncoding, Encoding.UTF8, leaveOpen: true);
 
         // Mirroring ASP.NET Core serialization strategy https://github.com/dotnet/aspnetcore/issues/47548
         if (_objectTypeInfo is null)
             JsonSerializer.Serialize(stream, value, (JsonTypeInfo<TBase?>)_jsonTypeInfo);
         else
             JsonSerializer.Serialize(stream, value, _objectTypeInfo);
-
-        return JsonConverter.BindValueCore(_jsonb, stream, _textEncoding, ref writeState);
     }
 
-    public override void Write(PgWriter writer, T? value)
-        => JsonConverter.Write(_jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();
-
     public override ValueTask WriteAsync(PgWriter writer, T? value, CancellationToken cancellationToken = default)
-        => JsonConverter.Write(_jsonb, async: true, writer, cancellationToken);
+    {
+        Debug.Assert(writer.Current.Size == Size.Unknown, "We expected to be measuring, which is safely sync only.");
+        Write(writer, value);
+        return new();
+    }
 }
 
 // Split out to avoid unnecessary code duplication.
@@ -152,50 +162,5 @@ static class JsonConverter
         encoding.GetChars(buffer.Span, chars);
 
         return (new(chars, 0, charCount), rentedBuffer);
-    }
-
-    public static Size BindValueCore(bool jsonb, MemoryStream stream, Encoding encoding, ref object? writeState)
-    {
-        if (encoding.CodePage == Encoding.UTF8.CodePage)
-        {
-            writeState = stream;
-            return (int)stream.Length + (jsonb ? sizeof(byte) : 0);
-        }
-
-        if (!stream.TryGetBuffer(out var buffer))
-            throw new InvalidOperationException();
-
-        var bytes = encoding.GetBytes(Encoding.UTF8.GetChars(buffer.Array!, buffer.Offset, buffer.Count));
-        writeState = bytes;
-        return bytes.Length + (jsonb ? sizeof(byte) : 0);
-    }
-
-    public static async ValueTask Write(bool jsonb, bool async, PgWriter writer, CancellationToken cancellationToken)
-    {
-        if (jsonb)
-        {
-            if (writer.ShouldFlush(sizeof(byte)))
-                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteByte(JsonbProtocolVersion);
-        }
-
-        ArraySegment<byte> buffer;
-        switch (writer.Current.WriteState)
-        {
-        case MemoryStream stream:
-            if (!stream.TryGetBuffer(out buffer))
-                throw new InvalidOperationException();
-            break;
-        case byte[] bytes:
-            buffer = new ArraySegment<byte>(bytes);
-            break;
-        default:
-            throw new InvalidCastException($"Invalid state {writer.Current.WriteState?.GetType().FullName}.");
-        }
-
-        if (async)
-            await writer.WriteBytesAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-        else
-            writer.WriteBytes(buffer.AsSpan());
     }
 }

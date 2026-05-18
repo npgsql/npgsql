@@ -173,15 +173,8 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
         if (!lowerBoundInfinite)
         {
-            Debug.Assert(lowerBoundSize.Value != -1);
-            if (lowerBoundSize.Kind is SizeKind.Unknown)
-                throw new NotImplementedException();
-
-            var byteCount = lowerBoundSize.Value; // Never -1 so it's a byteCount.
-            if (writer.ShouldFlush(sizeof(int))) // Length
-                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteInt32(byteCount);
-            using var _ = await writer.BeginNestedWrite(async, _subtypeRequirements.Write, byteCount,
+            Debug.Assert(lowerBoundSize != -1);
+            using var _ = await writer.BeginLengthPrefixingScope(async, _subtypeRequirements.Write, lowerBoundSize,
                 writeState.LowerBoundWriteState, cancellationToken).ConfigureAwait(false);
             if (async)
                 await _subtypeConverter.WriteAsync(writer, value.LowerBound!, cancellationToken).ConfigureAwait(false);
@@ -191,15 +184,8 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
         if (!upperBoundInfinite)
         {
-            Debug.Assert(upperBoundSize.Value != -1);
-            if (upperBoundSize.Kind is SizeKind.Unknown)
-                throw new NotImplementedException();
-
-            var byteCount = upperBoundSize.Value; // Never -1 so it's a byteCount.
-            if (writer.ShouldFlush(sizeof(int))) // Length
-                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteInt32(byteCount);
-            using var _ = await writer.BeginNestedWrite(async, _subtypeRequirements.Write, byteCount,
+            Debug.Assert(upperBoundSize != -1);
+            using var _ = await writer.BeginLengthPrefixingScope(async, _subtypeRequirements.Write, upperBoundSize,
                 writeState.UpperBoundWriteState, cancellationToken).ConfigureAwait(false);
             if (async)
                 await _subtypeConverter.WriteAsync(writer, value.UpperBound!, cancellationToken).ConfigureAwait(false);

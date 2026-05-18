@@ -181,8 +181,8 @@ partial class NpgsqlConnector
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            param.Bind(out var format, out var size);
-            paramsLength += size.Value > 0 ? size.Value : 0;
+            param.Bind(out var format, out var byteCount);
+            paramsLength += byteCount;
             formatCodesSum += format.ToFormatCode();
         }
 

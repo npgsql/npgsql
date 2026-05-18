@@ -300,15 +300,16 @@ readonly struct ArrayConverterCore(
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
             var elem = elemData?[offset + indices.IndicesSum] ?? default;
-            var length = fixedSizeElements
-                ? ElemTypeDbNullable && IsDbNull(values, indices, elem.WriteState, state.NestedObjectDbNullHandling) ? -1 : binaryRequirements.Write.Value
-                : elem.Size.Value;
-
-            writer.WriteInt32(length);
-            if (length is not -1)
+            var size = fixedSizeElements
+                ? ElemTypeDbNullable && IsDbNull(values, indices, elem.WriteState, state.NestedObjectDbNullHandling) ? -1 : binaryRequirements.Write
+                : elem.Size;
+            if (size == -1)
+                writer.WriteInt32(-1);
+            else
             {
-                using var _ = await writer.BeginNestedWrite(async, binaryRequirements.Write,
-                    length, elem.WriteState, cancellationToken).ConfigureAwait(false);
+                // If size is not exact the scope will backpatch the length prefix placeholder on dispose based on writes done inside.
+                using var _ = await writer.BeginLengthPrefixingScope(async, binaryRequirements.Write,
+                    size, elem.WriteState, cancellationToken).ConfigureAwait(false);
                 await elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
             }
         }
