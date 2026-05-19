@@ -35,7 +35,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 info = GetPgEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
             if (info is null && type is not null && dataTypeName is not null)
                 info = GetStreamTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
-            if (info is null && type is not null && type.IsEnum)
+            if (info is null && type is not null)
                 info = GetEnumTypeInfo(type, dataTypeName, options);
 
             return info;
@@ -50,43 +50,38 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             return PgConcreteTypeInfo.Create(options, binary: converter, text: converter, dataTypeName, supportsWriting: false);
         }
 
-        static PgTypeInfo? GetEnumTypeInfo(Type type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        protected static PgTypeInfo? GetEnumTypeInfo(Type type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
-            Debug.Assert(type.IsEnum);
-
-            var underlyingType = type.GetEnumUnderlyingType();
-
-            // Resolve the underlying type's info just to derive the PgTypeId and validate that the resolver chain
-            // recognizes the underlying mapped to this dataTypeName. The wire format knowledge is baked into
-            // EnumUnderlyingConverter itself (matching the default Ado mappings: byte/sbyte/short → Int2, int → Int4,
-            // long → Int8), so no inner converter reference is needed.
-            var underlyingInfo = options.TypeInfoResolver.GetTypeInfo(underlyingType, dataTypeName, options);
-            if (underlyingInfo?.PgTypeId is not { } pgTypeId)
+            if (!type.IsEnum)
                 return null;
 
-            var wrappedConverter = CreateEnumUnderlyingConverter(type, underlyingType);
-            if (wrappedConverter is null)
-                return null;
-
-            return PgConcreteTypeInfo.Create(options, binary: wrappedConverter, pgTypeId, requestedType: type);
-        }
-
-        static PgConverter? CreateEnumUnderlyingConverter(Type enumType, Type underlyingType)
-            => Type.GetTypeCode(underlyingType) switch
+            // EnumUnderlyingConverter reads/writes the underlying primitive at a fixed PG wire format, so the enum
+            // maps to exactly one canonical PG type: byte/sbyte/short/ushort → int2, int/uint → int4, long/ulong →
+            // int8. (PG has no unsigned types; unsigned .NET underlyings are bit-reinterpreted onto the signed wire
+            // format of the same width.) Deriving the PgTypeId by resolving the underlying through the chain would let
+            // ExtraConversions numeric cross-mappings (e.g. int→int8) through, pairing a mismatched PG type with the
+            // fixed-format converter and corrupting the wire — so the canonical type is paired with the converter here.
+            (PgConverter, DataTypeName)? mapping = Type.GetTypeCode(type) switch
             {
-                // PG has no unsigned integer types; unsigned .NET underlyings ride on the same wire format as their
-                // signed counterparts (ushort → smallint, uint → integer, ulong → bigint) with CreateChecked handling
-                // out-of-range values at read/write time.
-                TypeCode.Int32 => new EnumUnderlyingConverter<int>(enumType),
-                TypeCode.Int64 => new EnumUnderlyingConverter<long>(enumType),
-                TypeCode.Int16 => new EnumUnderlyingConverter<short>(enumType),
-                TypeCode.Byte => new EnumUnderlyingConverter<byte>(enumType),
-                TypeCode.SByte => new EnumUnderlyingConverter<sbyte>(enumType),
-                TypeCode.UInt32 => new EnumUnderlyingConverter<uint>(enumType),
-                TypeCode.UInt64 => new EnumUnderlyingConverter<ulong>(enumType),
-                TypeCode.UInt16 => new EnumUnderlyingConverter<ushort>(enumType),
+                TypeCode.Int16 => (new EnumUnderlyingConverter<short>(type), DataTypeNames.Int2),
+                TypeCode.UInt16 => (new EnumUnderlyingConverter<ushort>(type), DataTypeNames.Int2),
+                TypeCode.Byte => (new EnumUnderlyingConverter<byte>(type), DataTypeNames.Int2),
+                TypeCode.SByte => (new EnumUnderlyingConverter<sbyte>(type), DataTypeNames.Int2),
+                TypeCode.Int32 => (new EnumUnderlyingConverter<int>(type), DataTypeNames.Int4),
+                TypeCode.UInt32 => (new EnumUnderlyingConverter<uint>(type), DataTypeNames.Int4),
+                TypeCode.Int64 => (new EnumUnderlyingConverter<long>(type), DataTypeNames.Int8),
+                TypeCode.UInt64 => (new EnumUnderlyingConverter<ulong>(type), DataTypeNames.Int8),
                 _ => null
             };
+            if (mapping is not ({ } converter, var canonicalDataTypeName))
+                return null;
+
+            // On the read path the column's type must be exactly the enum's canonical PG type; no cross-conversion.
+            if (dataTypeName is { } requested && canonicalDataTypeName != requested)
+                return null;
+
+            return PgConcreteTypeInfo.Create(options, binary: converter, canonicalDataTypeName, requestedType: type);
+        }
 
         static PgTypeInfo? GetPgEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
@@ -731,23 +726,15 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (type is not null && !type.IsArray)
                 return null;
 
-            // Resolve the underlying type's element info through the full chain.
-            var underlyingType = elementType.GetEnumUnderlyingType();
-            var elementDataTypeName = pgElementType.DataTypeName;
-            var elemInfo = options.TypeInfoResolver.GetTypeInfo(underlyingType, elementDataTypeName, options);
-            if (elemInfo is null)
-                return null;
-
-            var concreteElemInfo = elemInfo as PgConcreteTypeInfo ?? elemInfo.MakeConcreteForField(
-                Field.CreateUnspecified(elemInfo.PgTypeId!.Value));
-
-            if (concreteElemInfo.GetConverter(DataFormat.Binary).TypeToConvert != underlyingType)
+            // Resolve the element enum's canonical info (EnumUnderlyingConverter + canonical PG type). Going through
+            // the scalar path also rejects a cross-convertible column type, keeping arrays consistent with scalars.
+            if (GetEnumTypeInfo(elementType, pgElementType.DataTypeName, options) is not PgConcreteTypeInfo concreteElemInfo)
                 return null;
 
             // Build array converter using the underlying type; storage is produced as type (MyEnum[]) via
             // Array.CreateInstanceFromArrayType. IntEnum[] and int[] are layout-identical for value types with
             // the same underlying representation, so Unsafe.As<int?[]> access is bit-safe.
-            var arrayConverter = CreateEnumArrayConverter(underlyingType, concreteElemInfo, type);
+            var arrayConverter = CreateEnumArrayConverter(elementType.GetEnumUnderlyingType(), concreteElemInfo, type);
             if (arrayConverter is null)
                 return null;
 
@@ -763,31 +750,20 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (!arrayType.IsArray)
                 return null;
 
-            // Resolve the underlying type's element info.
-            var underlyingType = elementType.GetEnumUnderlyingType();
-            var elemInfo = options.TypeInfoResolver.GetTypeInfo(underlyingType, null, options);
-            if (elemInfo is null || elemInfo.PgTypeId is null)
+            // Resolve the element enum's canonical info (EnumUnderlyingConverter + canonical PG type).
+            if (GetEnumTypeInfo(elementType, null, options) is not PgConcreteTypeInfo concreteElemInfo)
                 return null;
 
-            var concreteElemInfo = elemInfo as PgConcreteTypeInfo ?? elemInfo.MakeConcreteForField(
-                Field.CreateUnspecified(elemInfo.PgTypeId.Value));
-
-            if (concreteElemInfo.GetConverter(DataFormat.Binary).TypeToConvert != underlyingType)
+            // Find the array PG type for the element's canonical PG type.
+            var elementDataTypeName = options.DatabaseInfo.GetDataTypeName(concreteElemInfo.PgTypeId);
+            if (options.DatabaseInfo.GetPostgresType(elementDataTypeName) is not PostgresBaseType { Array: { } arrayPgType })
                 return null;
 
-            // Find the array PG type for the element's PG type.
-            var elementPgTypeId = concreteElemInfo.PgTypeId;
-            var elementDataTypeName = options.DatabaseInfo.GetDataTypeName(elementPgTypeId);
-            var pgType = options.DatabaseInfo.GetPostgresType(elementDataTypeName);
-            if (pgType is not PostgresBaseType { Array: { } arrayPgType })
-                return null;
-
-            var arrayDataTypeName = arrayPgType.DataTypeName;
-            var arrayConverter = CreateEnumArrayConverter(underlyingType, concreteElemInfo, arrayType);
+            var arrayConverter = CreateEnumArrayConverter(elementType.GetEnumUnderlyingType(), concreteElemInfo, arrayType);
             if (arrayConverter is null)
                 return null;
 
-            return PgConcreteTypeInfo.Create(options, arrayConverter, arrayDataTypeName, requestedType: arrayType, supportsReading: true);
+            return PgConcreteTypeInfo.Create(options, binary: arrayConverter, arrayPgType.DataTypeName, requestedType: arrayType, supportsReading: true);
         }
 
         static PgConverter? CreateEnumArrayConverter(Type underlyingType, PgConcreteTypeInfo elemInfo, Type? arrayType)
