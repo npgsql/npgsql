@@ -797,7 +797,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // We assume that the row's number of columns is identical to the description's
         var numColumns = Buffer.ReadInt16();
         if (ColumnCount != numColumns)
-            ThrowHelper.ThrowArgumentException($"Row's number of columns ({numColumns}) differs from the row description's ({ColumnCount})");
+            ThrowColumnCountMismatch(numColumns);
 
         var readPosition = Buffer.ReadPosition;
         var msgRemainder = dataRow.Length - sizeof(short);
@@ -857,6 +857,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 break;
             }
         }
+
+        // Moved to separate method to avoid 400 bytes of string interpolation code
+        void ThrowColumnCountMismatch(short columnsCount)
+            => ThrowHelper.ThrowArgumentException($"Row's number of columns ({columnsCount}) differs from the row description's ({ColumnCount})");
     }
 
     #endregion
