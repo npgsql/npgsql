@@ -305,7 +305,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? values, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(in ProviderValueContext effectiveContext, T? values, ref object? writeState)
     {
         PgConcreteTypeInfo? concreteTypeInfo = null;
         PgArrayMetadata metadata;
@@ -313,6 +313,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         (Size, object? WriteState)[]? elemData = null;
 
         var index = 0;
+        ProviderValueContext innerContext;
         switch (values)
         {
         case TElement[] array:
@@ -334,7 +335,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        innerContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -363,7 +364,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        innerContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -392,7 +393,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        innerContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -421,7 +422,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        innerContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -529,7 +530,7 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
                 ? PgProviderTypeInfo.GetProvider(_effectiveNullableTypeInfo).GetDefault(pgTypeId)
                 : _effectiveNullableTypeInfo.GetDefault(pgTypeId));
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, TBase? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, TBase? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
     protected override PgConcreteTypeInfo? GetForFieldCore(Field field)

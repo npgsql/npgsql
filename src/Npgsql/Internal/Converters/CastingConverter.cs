@@ -91,7 +91,7 @@ sealed class CastingTypeInfoProvider<T> : PgComposingTypeInfoProvider<T>
             : null;
     }
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(in ProviderValueContext effectiveContext, T? value, ref object? writeState)
         => GetEffectiveForValueAsObject(effectiveContext, value, out writeState);
 }
 

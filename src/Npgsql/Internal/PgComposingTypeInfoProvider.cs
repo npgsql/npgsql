@@ -54,19 +54,19 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             : EffectiveTypeInfo.GetForField(field);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected PgConcreteTypeInfo? GetEffectiveForValue<TInner>(ProviderValueContext context, TInner? value, out object? writeState)
+    protected PgConcreteTypeInfo? GetEffectiveForValue<TInner>(in ProviderValueContext context, TInner? value, out object? writeState)
         => IsCompositionalUnit
             ? ((PgConcreteTypeInfoProvider<TInner>)PgProviderTypeInfo.GetProvider(EffectiveTypeInfo)).GetForValue(context, value, out writeState)
             : EffectiveTypeInfo.GetForValue(context, value, out writeState);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected PgConcreteTypeInfo? GetEffectiveForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
+    protected PgConcreteTypeInfo? GetEffectiveForValueAsObject(in ProviderValueContext context, object? value, out object? writeState)
         => IsCompositionalUnit
             ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForValueAsObject(context, value, out writeState)
             : EffectiveTypeInfo.GetForValueAsObject(context, value, out writeState);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected PgConcreteTypeInfo? GetEffectiveForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
+    protected PgConcreteTypeInfo? GetEffectiveForValueAsNestedObject(in ProviderValueContext context, object? value, out object? writeState)
         => IsCompositionalUnit
             ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForValueAsNestedObject(context, value, out writeState)
             : EffectiveTypeInfo.GetForValueAsNestedObject(context, value, out writeState);
@@ -80,7 +80,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
     protected abstract void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
         out PgConverter<T>? binary, out PgConverter<T>? text, out Type? requestedType);
 
-    protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState);
+    protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(in ProviderValueContext effectiveContext, T? value, ref object? writeState);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
@@ -90,7 +90,7 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return GetOrAdd(concreteTypeInfo, composingPgTypeId);
     }
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, T? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, T? value, ref object? writeState)
     {
         PgTypeId? effectiveTypeId = context.ExpectedPgTypeId is { } id ? GetEffectiveTypeId(id) : null;
         var effectiveContext = context with { ExpectedPgTypeId = effectiveTypeId };

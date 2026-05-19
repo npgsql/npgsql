@@ -139,7 +139,7 @@ public abstract class PgTypeInfo
     /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
     /// using the value and the supplied context to select the appropriate concrete type info.
     /// </remarks>
-    public PgConcreteTypeInfo MakeConcreteForValue<T>(ProviderValueContext context, T? value, out object? writeState)
+    public PgConcreteTypeInfo MakeConcreteForValue<T>(in ProviderValueContext context, T? value, out object? writeState)
     {
         if (this is PgConcreteTypeInfo concrete)
         {
@@ -185,7 +185,7 @@ public abstract class PgTypeInfo
     /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
     /// using the value to select the appropriate concrete type info.
     /// </remarks>
-    public PgConcreteTypeInfo MakeConcreteForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
+    public PgConcreteTypeInfo MakeConcreteForValueAsObject(in ProviderValueContext context, object? value, out object? writeState)
     {
         if (this is PgConcreteTypeInfo concrete)
         {
@@ -273,13 +273,16 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
-    public PgConcreteTypeInfo? GetForValue<T>(ProviderValueContext context, T? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValue<T>(in ProviderValueContext context, T? value, out object? writeState)
     {
+        scoped ref readonly var contextRef = ref context;
+        ProviderValueContext effectiveContext;
         if (PgTypeId is { } pgTypeId)
         {
             if (context.ExpectedPgTypeId is not { } expectedId)
             {
-                context = context with { ExpectedPgTypeId = pgTypeId };
+                effectiveContext = context with { ExpectedPgTypeId = pgTypeId };
+                contextRef = ref effectiveContext;
             }
             else if (pgTypeId != expectedId)
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
@@ -287,7 +290,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         writeState = null;
         var result = _typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
-            ? providerT.GetForValue(context, value, out writeState)
+            ? providerT.GetForValue(contextRef, value, out writeState)
             : ThrowNotSupportedType(typeof(T));
 
         if (result is not null)
@@ -300,31 +303,37 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
                 : $"PgProviderTypeInfo is incompatible with type {type}");
     }
 
-    public PgConcreteTypeInfo? GetForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValueAsObject(in ProviderValueContext context, object? value, out object? writeState)
     {
+        scoped ref readonly var contextRef = ref context;
+        ProviderValueContext effectiveContext;
         if (PgTypeId is { } pgTypeId)
         {
             if (context.ExpectedPgTypeId is not { } expectedId)
             {
-                context = context with { ExpectedPgTypeId = pgTypeId };
+                effectiveContext = context with { ExpectedPgTypeId = pgTypeId };
+                contextRef = ref effectiveContext;
             }
             else if (pgTypeId != expectedId)
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        var result = _typeInfoProvider.GetForValueAsObject(context, value, out writeState);
+        var result = _typeInfoProvider.GetForValueAsObject(contextRef, value, out writeState);
         if (result is not null)
             ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result, ref writeState);
         return result;
     }
 
-    internal PgConcreteTypeInfo? GetForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
+    internal PgConcreteTypeInfo? GetForValueAsNestedObject(in ProviderValueContext context, object? value, out object? writeState)
     {
+        scoped ref readonly var contextRef = ref context;
+        ProviderValueContext effectiveContext;
         if (PgTypeId is { } pgTypeId)
         {
             if (context.ExpectedPgTypeId is not { } expectedId)
             {
-                context = context with { ExpectedPgTypeId = pgTypeId };
+                effectiveContext = context with { ExpectedPgTypeId = pgTypeId };
+                contextRef = ref effectiveContext;
             }
             else if (pgTypeId != expectedId)
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));

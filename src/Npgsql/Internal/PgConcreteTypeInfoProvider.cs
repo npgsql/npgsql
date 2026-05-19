@@ -34,7 +34,7 @@ public abstract class PgConcreteTypeInfoProvider
     /// <summary>
     /// Gets the appropriate type info based on the given value and expected type id.
     /// </summary>
-    public PgConcreteTypeInfo? GetForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValueAsObject(in ProviderValueContext context, object? value, out object? writeState)
     {
         writeState = null;
         try
@@ -104,7 +104,7 @@ public abstract class PgConcreteTypeInfoProvider
     /// </remarks>
     internal bool IsInternalProvider { get; private protected init; }
 
-    private protected abstract PgConcreteTypeInfo? GetForValueAsObjectCore(ProviderValueContext context, object? value, ref object? writeState);
+    private protected abstract PgConcreteTypeInfo? GetForValueAsObjectCore(in ProviderValueContext context, object? value, ref object? writeState);
 
     private protected static void ThrowPgTypeIdMismatch(string methodName)
         => throw new InvalidOperationException(
@@ -121,7 +121,7 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
     /// <summary>
     /// Gets the appropriate type info based on the given value and expected type id.
     /// </summary>
-    public PgConcreteTypeInfo? GetForValue(ProviderValueContext context, T? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValue(in ProviderValueContext context, T? value, out object? writeState)
     {
         writeState = null;
         try
@@ -151,13 +151,13 @@ public abstract class PgConcreteTypeInfoProvider<T> : PgConcreteTypeInfoProvider
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once returned.
     /// Composing providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    protected abstract PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, T? value, ref object? writeState);
+    protected abstract PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, T? value, ref object? writeState);
 
     internal sealed override Type TypeToConvert => typeof(T);
 
     // If null was passed while it is not a valid value for T we directly return null.
     // This allows concrete info to be produced by falling back to GetDefault afterwards.
-    private protected sealed override PgConcreteTypeInfo? GetForValueAsObjectCore(ProviderValueContext context, object? value, ref object? writeState)
+    private protected sealed override PgConcreteTypeInfo? GetForValueAsObjectCore(in ProviderValueContext context, object? value, ref object? writeState)
         => default(T) is null || value is not null ? GetForValueCore(context, (T?)value, ref writeState) : null;
 }
 
@@ -173,7 +173,7 @@ static class PgConcreteTypeInfoProviderExtensions
 {
     extension(PgConcreteTypeInfoProvider provider)
     {
-        internal PgConcreteTypeInfo? GetForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
+        internal PgConcreteTypeInfo? GetForValueAsNestedObject(in ProviderValueContext context, object? value, out object? writeState)
         {
             writeState = null;
             switch (context.NestedObjectDbNullHandling)

@@ -549,7 +549,7 @@ public class WriteStateTests : TestBase
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
-        protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
+        protected override PgConcreteTypeInfo GetForValueCore(in ProviderValueContext context, int value, ref object? writeState)
         {
             writeState = _tracker.NewState();
             return GetOrCreate();
@@ -724,7 +724,7 @@ public class WriteStateTests : TestBase
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
-        protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
+        protected override PgConcreteTypeInfo GetForValueCore(in ProviderValueContext context, int value, ref object? writeState)
         {
             if (produceProviderState)
                 writeState = "provider-state";
@@ -807,7 +807,7 @@ public class WriteStateTests : TestBase
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
-        protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
+        protected override PgConcreteTypeInfo GetForValueCore(in ProviderValueContext context, int value, ref object? writeState)
         {
             writeState = tracker;
             return GetOrCreate();
