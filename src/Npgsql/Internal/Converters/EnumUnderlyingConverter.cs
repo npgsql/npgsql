@@ -17,31 +17,28 @@ interface IEnumUnderlyingConverter
     static bool IsEnumUnderlyingConversion<T>(PgConverter converter)
         => typeof(T).IsEnum && Enum.GetUnderlyingType(typeof(T)) == converter.TypeToConvert && converter is IEnumUnderlyingConverter;
 
-    // Typed enum-underlying helpers. Reached only via the dispatch sites' RuntimeFeature.IsDynamicCodeSupported gate,
-    // which ILC discharges to false under NAOT — the helpers are therefore unreachable under NAOT and don't get
-    // instantiated per-T (no viral bloat). Under JIT, RyuJIT folds the typecode switch per concrete T at codegen
-    // time, leaving only the matching case live, and the (T)(object)v JIT-elides the box+unbox for layout-compatible
-    // enum/underlying — zero alloc per call.
+    // Typed enum-underlying helpers. The enum-typed instantiations are reached only via the dispatch sites'
+    // RuntimeFeature.IsDynamicCodeSupported gate, which ILC discharges to false under NAOT — so they don't get
+    // instantiated per enum-T (no viral bloat). Under JIT, RyuJIT folds the typecode switch per concrete T at
+    // codegen time, leaving only the matching case live. T is the enum or (via the converter's own Read/Write)
+    // its underlying primitive; Unsafe.BitCast reinterprets the layout-identical bits — signed and unsigned
+    // alike — without boxing.
     [MethodImpl(MethodImplOptions.NoInlining)]
     static T ReadAsEnumUnderlying<T>(PgReader reader)
-    {
-        Debug.Assert(typeof(T).IsEnum);
-        return Type.GetTypeCode(typeof(T)) switch
+        => Type.GetTypeCode(typeof(T)) switch
         {
-            TypeCode.Int32 or TypeCode.UInt32 => (T)(object)reader.ReadInt32(),
-            TypeCode.Int64 or TypeCode.UInt64 => (T)(object)reader.ReadInt64(),
-            TypeCode.Int16 or TypeCode.UInt16 => (T)(object)reader.ReadInt16(),
-            TypeCode.Byte or TypeCode.SByte => (T)(object)checked((byte)reader.ReadInt16()),
+            TypeCode.Int32 or TypeCode.UInt32 => Unsafe.BitCast<int, T>(reader.ReadInt32()),
+            TypeCode.Int64 or TypeCode.UInt64 => Unsafe.BitCast<long, T>(reader.ReadInt64()),
+            TypeCode.Int16 or TypeCode.UInt16 => Unsafe.BitCast<short, T>(reader.ReadInt16()),
+            TypeCode.Byte or TypeCode.SByte => Unsafe.BitCast<byte, T>(checked((byte)reader.ReadInt16())),
             _ => throw new NotSupportedException()
         };
-    }
 
     static bool IsDbNullAsEnumUnderlying<T>(T? value, object? writeState) => false;
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     static Size BindAsEnumUnderlying<T>(in BindContext context, T value, ref object? writeState)
     {
-        Debug.Assert(typeof(T).IsEnum);
         if (context.IsBindOptional)
             return context.BufferRequirement;
 
@@ -54,16 +51,16 @@ interface IEnumUnderlyingConverter
         switch (Type.GetTypeCode(typeof(T)))
         {
             case TypeCode.Int32 or TypeCode.UInt32:
-                writer.WriteInt32((int)(object)value!);
+                writer.WriteInt32(Unsafe.BitCast<T, int>(value));
                 break;
             case TypeCode.Int64 or TypeCode.UInt64:
-                writer.WriteInt64((long)(object)value!);
+                writer.WriteInt64(Unsafe.BitCast<T, long>(value));
                 break;
             case TypeCode.Int16 or TypeCode.UInt16:
-                writer.WriteInt16((short)(object)value!);
+                writer.WriteInt16(Unsafe.BitCast<T, short>(value));
                 break;
             case TypeCode.Byte or TypeCode.SByte:
-                writer.WriteInt16((byte)(object)value!);
+                writer.WriteInt16(Unsafe.BitCast<T, byte>(value));
                 break;
             default: throw new NotSupportedException();
         }
@@ -87,7 +84,7 @@ sealed class EnumUnderlyingConverter<T>(Type enumType) : PgBufferedConverter<T>,
 
         // Known PG wire sizes per .NET underlying type — matches the default Ado mappings. byte/sbyte/short/ushort
         // → Int2 (2 bytes), int/uint → Int4 (4 bytes), long/ulong → Int8 (8 bytes). PG has no unsigned types, so
-        // unsigned .NET underlyings ride on the signed wire format with CreateChecked handling range.
+        // unsigned .NET underlyings are bit-reinterpreted onto the signed wire format of the same width.
         static int WireSize()
             => Type.GetTypeCode(typeof(T)) switch
             {
