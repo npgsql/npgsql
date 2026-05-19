@@ -2,6 +2,7 @@ using Npgsql.Internal.Postgres;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -21,81 +22,10 @@ enum FlushMode
     NonBlocking
 }
 
-// A streaming alternative to a System.IO.Stream, instead based on the preferable IBufferWriter.
-interface IStreamingWriter<T> : IBufferWriter<T>
-{
-    void Flush(TimeSpan timeout = default);
-    ValueTask FlushAsync(CancellationToken cancellationToken = default);
-}
-
-sealed class NpgsqlBufferWriter(NpgsqlWriteBuffer buffer) : IStreamingWriter<byte>
-{
-    int? _lastBufferSize;
-
-    public void Advance(int count)
-    {
-        if (_lastBufferSize < count || buffer.WriteSpaceLeft < count)
-            ThrowHelper.ThrowInvalidOperationException("Cannot advance past the end of the current buffer.");
-        _lastBufferSize = null;
-        buffer.WritePosition += count;
-    }
-
-    public Memory<byte> GetMemory(int sizeHint = 0)
-    {
-        var writePosition = buffer.WritePosition;
-        var bufferSize = buffer.Size - writePosition;
-        if (sizeHint > bufferSize)
-            ThrowOutOfMemoryException();
-
-        _lastBufferSize = bufferSize;
-        return buffer.Buffer.AsMemory(writePosition, bufferSize);
-    }
-
-    public Span<byte> GetSpan(int sizeHint = 0)
-    {
-        var writePosition = buffer.WritePosition;
-        var bufferSize = buffer.Size - writePosition;
-        if (sizeHint > bufferSize)
-            ThrowOutOfMemoryException();
-
-        _lastBufferSize = bufferSize;
-        return buffer.Buffer.AsSpan(writePosition, bufferSize);
-    }
-
-    static void ThrowOutOfMemoryException() => throw new OutOfMemoryException("Not enough space left in buffer.");
-
-    public void Flush(TimeSpan timeout = default)
-    {
-        if (timeout == TimeSpan.Zero)
-            buffer.Flush();
-        else
-        {
-            TimeSpan? originalTimeout = null;
-            try
-            {
-                if (timeout != TimeSpan.Zero)
-                {
-                    originalTimeout = buffer.Timeout;
-                    buffer.Timeout = timeout;
-                }
-                buffer.Flush();
-            }
-            finally
-            {
-                if (originalTimeout is { } value)
-                    buffer.Timeout = value;
-            }
-        }
-    }
-
-    public ValueTask FlushAsync(CancellationToken cancellationToken = default)
-        => new(buffer.Flush(async: true, cancellationToken));
-}
-
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public sealed class PgWriter
 {
-    readonly IBufferWriter<byte> _writer;
+    IBufferWriter<byte> _writer;
 
     byte[]? _buffer;
     int _offset;
@@ -107,9 +37,32 @@ public sealed class PgWriter
     ValueMetadata _current;
     NpgsqlDatabaseInfo? _typeCatalog;
 
+    // Per-scope frames for the chained path (variable-length prefix). Each chained scope allocates its own
+    // side buffer because backpatching wouldn't work for variable-length prefixes. The chained path defers
+    // the prefix write until the size is known and the scope is closing.
+    Stack<ChainedFrame>? _chainedFrames;
+
+    struct ChainedFrame
+    {
+        public IBufferWriter<byte> SavedWriter;
+        public byte[]? SavedBuffer;
+        public int SavedOffset;
+        public int SavedPos;
+        public int SavedLength;
+        public int SavedTotalBytesWritten;
+        public ValueMetadata SavedCurrent;
+        public FlushMode SavedFlushMode;
+        public MeasuringSideBufferWriter SideBuffer;
+        public Action<PgWriter, int> PrefixingAction;
+    }
+
     internal PgWriter(IBufferWriter<byte> writer) => _writer = writer;
 
-    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
+    // Cap for the capacityHint. Sits below the LOH threshold (~85KB for byte arrays)
+    // so the underlying storage participates in normal Gen0/Gen1 collection.
+    const int CapacityHintLimit = 64 * 1024;
+
+    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, int capacityHint, FlushMode flushMode = FlushMode.None)
     {
         if (_pos != _offset)
             ThrowHelper.ThrowInvalidOperationException("Invalid concurrent use or PgWriter was not committed properly, PgWriter still has uncommitted bytes.");
@@ -120,7 +73,7 @@ public sealed class PgWriter
 
         FlushMode = flushMode;
         _totalBytesWritten = 0;
-        RequestBuffer(count: 0);
+        RequestBuffer(Math.Min(capacityHint, CapacityHintLimit));
         return this;
     }
 
@@ -149,7 +102,8 @@ public sealed class PgWriter
 
     void Ensure(int count = 1)
     {
-        if (count <= Remaining)
+        // Ensure(0) must still yield a non-empty buffer, so don't early-out on an empty one.
+        if (count <= Remaining && Remaining is not 0)
             return;
 
         Slow(count);
@@ -165,13 +119,29 @@ public sealed class PgWriter
         }
     }
 
+    // Ensures room for `count` bytes: flushes a flushable writer that is low on space, then Ensures —
+    // which grows a FlushMode.None writer (buffered, e.g. a measuring side buffer) that cannot flush.
+    void EnsureWithFlush(int count, bool allowMixedIO = false)
+    {
+        if (ShouldFlush(count))
+            Flush(allowWhenNonBlocking: allowMixedIO);
+        Ensure(count);
+    }
+
+    async ValueTask EnsureWithFlushAsync(int count, bool allowMixedIO, CancellationToken cancellationToken)
+    {
+        if (ShouldFlush(count))
+            await FlushAsync(allowWhenBlocking: allowMixedIO, cancellationToken).ConfigureAwait(false);
+        Ensure(count);
+    }
+
     Span<byte> Span => _buffer.AsSpan(_pos, _length - _pos);
 
     int Remaining => _length - _pos;
 
     void Advance(int count) => _pos += count;
 
-    void Commit()
+    internal void Commit()
     {
         var written = _pos - _offset;
         _totalBytesWritten += written;
@@ -323,8 +293,7 @@ public sealed class PgWriter
                 switch (status)
                 {
                 case OperationStatus.DestinationTooSmall:
-                    Flush();
-                    Ensure(scalarMaxByteCount);
+                    EnsureWithFlush(scalarMaxByteCount);
                     data = data.Slice(charsRead);
                     break;
                 case OperationStatus.InvalidData:
@@ -347,9 +316,7 @@ public sealed class PgWriter
             bool completed;
             do
             {
-                if (ShouldFlush(minBufferSize))
-                    Flush();
-                Ensure(minBufferSize);
+                EnsureWithFlush(minBufferSize);
                 encoder.Convert(data, Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
@@ -393,8 +360,7 @@ public sealed class PgWriter
                 switch (status)
                 {
                 case OperationStatus.DestinationTooSmall:
-                    await FlushAsync(cancellationToken).ConfigureAwait(false);
-                    Ensure(scalarMaxByteCount);
+                    await EnsureWithFlushAsync(scalarMaxByteCount, allowMixedIO: false, cancellationToken).ConfigureAwait(false);
                     data = data.Slice(charsRead);
                     break;
                 case OperationStatus.InvalidData:
@@ -417,9 +383,7 @@ public sealed class PgWriter
             bool completed;
             do
             {
-                if (ShouldFlush(minBufferSize))
-                    await FlushAsync(cancellationToken).ConfigureAwait(false);
-                Ensure(minBufferSize);
+                await EnsureWithFlushAsync(minBufferSize, allowMixedIO: false, cancellationToken).ConfigureAwait(false);
                 encoder.Convert(data.Span, Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
@@ -435,7 +399,7 @@ public sealed class PgWriter
         while (!buffer.IsEmpty)
         {
             if (Remaining is 0)
-                Flush(allowWhenNonBlocking: allowMixedIO);
+                EnsureWithFlush(1, allowMixedIO);
             var write = Math.Min(buffer.Length, Remaining);
             buffer.Slice(0, write).CopyTo(Span);
             Advance(write);
@@ -462,7 +426,7 @@ public sealed class PgWriter
             while (!buffer.IsEmpty)
             {
                 if (Remaining is 0)
-                    await FlushAsync(allowWhenBlocking: allowMixedIO, cancellationToken).ConfigureAwait(false);
+                    await EnsureWithFlushAsync(1, allowMixedIO, cancellationToken).ConfigureAwait(false);
                 var write = Math.Min(buffer.Length, Remaining);
                 buffer.Span.Slice(0, write).CopyTo(Span);
                 Advance(write);
@@ -532,31 +496,249 @@ public sealed class PgWriter
         return new();
     }
 
-    internal ValueTask<NestedWriteScope> BeginNestedWrite(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken)
+    /// Begins a scope framed by an int4 length prefix. In pre-sized mode the prefix is written with the
+    /// known size and the inner content goes directly into the parent buffer. In measuring mode (size is
+    /// <see cref="SizeKind.Unknown"/> or <see cref="SizeKind.UpperBound"/>) a placeholder is written, the writer is forked to a side buffer for the
+    /// inner content, and the scope's disposal splices the side buffer back into the parent and backpatches the
+    /// placeholder with the measured size.
+    internal ValueTask<NestedWriteScope> BeginLengthPrefixingScope(bool async, Size bufferRequirement, Size size, object? state, CancellationToken cancellationToken)
     {
         Debug.Assert(bufferRequirement != -1);
 
+        // Non-Exact sizes: measure into side buffer and backpatch in place.
+        if (size.Kind is SizeKind.Unknown or SizeKind.UpperBound)
+            return BeginMeasuringLengthPrefixingScope(async, bufferRequirement, size, state, cancellationToken);
+
+        // Exact: write the length directly, content goes directly to the wire.
+        var byteCount = size.Value;
         var bufferRequirementByteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, byteCount);
         _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
 
-        if (ShouldFlush(bufferRequirementByteCount))
-            return Core(async, cancellationToken);
+        if (ShouldFlush(sizeof(int) + bufferRequirementByteCount))
+            return Core(async, byteCount, cancellationToken);
 
+        WriteInt32(byteCount);
         return new(new NestedWriteScope());
 
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-        async ValueTask<NestedWriteScope> Core(bool async, CancellationToken cancellationToken)
+        async ValueTask<NestedWriteScope> Core(bool async, int byteCount, CancellationToken cancellationToken)
+        {
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+            WriteInt32(byteCount);
+            return new();
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    ValueTask<NestedWriteScope> BeginMeasuringLengthPrefixingScope(bool async, Size bufferRequirement, Size size, object? state, CancellationToken cancellationToken)
+    {
+        if (_writer is not MeasuringSideBufferWriter writer)
+        {
+            // The outermost caller (parameter or test setup) is responsible for putting the writer into measuring mode — i.e.
+            // pointing _writer at a MeasuringSideBufferWriter — before BeginMeasuringScope is called with an Unknown size.
+            // This follows from Bind's depth-first cascade: any element returning Unknown forces composers conversion to report Unknown
+            // By the time Write runs and reaches BeginMeasuringScope(Unknown), the parameter has already set up the measuring writer.
+            ThrowHelper.ThrowInvalidOperationException($"Scope with {nameof(SizeKind.Unknown)} or {nameof(SizeKind.UpperBound)} requires the writer to be in measuring mode.");
+            return default;
+        }
+
+        // Ensure room for the int4 placeholder in the active side buffer; flush first if needed.
+        if (ShouldFlush(sizeof(int)))
+            return FlushAndCore(async, writer, bufferRequirement, size, state, cancellationToken);
+
+        var placeholderOffset = Core(writer, bufferRequirement, size, state);
+        return new(new NestedWriteScope(this, placeholderOffset));
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+        async ValueTask<NestedWriteScope> FlushAndCore(bool async, MeasuringSideBufferWriter writer,
+            Size bufferRequirement, Size size, object? state, CancellationToken cancellationToken)
+        {
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+            var placeholderOffset = Core(writer, bufferRequirement, size, state);
+            return new(this, placeholderOffset);
+        }
+
+        int Core(MeasuringSideBufferWriter writer, Size bufferRequirement, Size size, object? state)
+        {
+            // Compute the logical offset where the placeholder will land — stable across side-buffer growth because
+            // ArrayBufferWriter preserves logical content on realloc. After WriteInt32, placeholder is at [offset .. offset+4).
+            var placeholderOffset = writer.WrittenCount + (_pos - _offset);
+            WriteInt32(0);
+
+            // Pre-grow the working buffer for the inner write when an UpperBound capacity hint is available;
+            // Ensure routes through Commit + RequestBuffer, so a side-buffer realloc re-establishes _buffer safely.
+            if (size.Kind is SizeKind.UpperBound)
+                Ensure(Math.Min(size.Value, CapacityHintLimit));
+
+            _current = new() { Format = _current.Format, Size = size, BufferRequirement = bufferRequirement, WriteState = state };
+            return placeholderOffset;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal void EndLengthPrefixingScope(int placeholderOffset)
+    {
+        Commit();
+        var writer = (MeasuringSideBufferWriter)_writer;
+        var measuredSize = writer.WrittenCount - placeholderOffset - sizeof(int);
+
+        Span<byte> backpatchBytes = stackalloc byte[sizeof(int)];
+        BinaryPrimitives.WriteInt32BigEndian(backpatchBytes, measuredSize);
+        writer.Backpatch(placeholderOffset, backpatchBytes);
+    }
+
+    [Obsolete($"Use {nameof(BeginPassthroughScope)}.")]
+    public NestedWriteScope BeginNestedWrite(Size bufferRequirement, int byteCount, object? state)
+        => BeginPassthroughScope(bufferRequirement, byteCount, state);
+
+    [Obsolete($"Use {nameof(BeginPassthroughScopeAsync)}.")]
+    public ValueTask<NestedWriteScope> BeginNestedWriteAsync(Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken = default)
+        => BeginPassthroughScopeAsync(bufferRequirement, byteCount, state, cancellationToken);
+
+    // [Obsolete($"Use {nameof(BeginPassthroughScope)}.")]
+    internal ValueTask<NestedWriteScope> BeginNestedWrite(bool async, Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken = default)
+        => BeginPassthroughScope(async, bufferRequirement, byteCount, state, cancellationToken);
+
+    public NestedWriteScope BeginPassthroughScope(Size bufferRequirement, Size size, object? state)
+        => BeginPassthroughScope(async: false, bufferRequirement, size, state, CancellationToken.None).GetAwaiter().GetResult();
+
+    public ValueTask<NestedWriteScope> BeginPassthroughScopeAsync(Size bufferRequirement, Size size, object? state, CancellationToken cancellationToken = default)
+        => BeginPassthroughScope(async: true, bufferRequirement, size, state, cancellationToken);
+
+    internal ValueTask<NestedWriteScope> BeginPassthroughScope(bool async, Size bufferRequirement, Size size, object? state, CancellationToken cancellationToken = default)
+    {
+        Debug.Assert(bufferRequirement != -1);
+
+        // No prefix — re-frame _current for a nested write the caller frames itself, or that needs none.
+        _current = new() { Format = _current.Format, Size = size, BufferRequirement = bufferRequirement, WriteState = state };
+        // GetMinimumBufferByteCount needs a concrete size and asserts an Exact requirement matches it;
+        // a measuring inner (Unknown/UpperBound) has no concrete size, so flush on the bare requirement.
+        var minimumByteCount = size.Kind is SizeKind.Exact
+            ? BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, size.Value)
+            : bufferRequirement.GetValueOrDefault();
+        if (ShouldFlush(minimumByteCount))
+            return FlushThenScope(async, cancellationToken);
+        return new(new NestedWriteScope());
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+        async ValueTask<NestedWriteScope> FlushThenScope(bool async, CancellationToken cancellationToken)
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);
             return new();
         }
     }
 
-    public NestedWriteScope BeginNestedWrite(Size bufferRequirement, int byteCount, object? state)
-        => BeginNestedWrite(async: false, bufferRequirement, byteCount, state, CancellationToken.None).GetAwaiter().GetResult();
+    public NestedWriteScope BeginLengthPrefixingScope(Size bufferRequirement, Size size, object? state)
+        => BeginLengthPrefixingScope(async: false, bufferRequirement, size, state, CancellationToken.None).Result;
 
-    public ValueTask<NestedWriteScope> BeginNestedWriteAsync(Size bufferRequirement, int byteCount, object? state, CancellationToken cancellationToken = default)
-        => BeginNestedWrite(async: true, bufferRequirement, byteCount, state, cancellationToken);
+    public ValueTask<NestedWriteScope> BeginLengthPrefixingScopeAsync(Size bufferRequirement, Size size, object? state, CancellationToken cancellationToken = default)
+        => BeginLengthPrefixingScope(async: true, bufferRequirement, size, state, cancellationToken);
+
+    public NestedWriteScope BeginLengthPrefixingScope(Size bufferRequirement, Size size, object? state, Action<PgWriter, int> prefixingAction)
+        => BeginLengthPrefixingScope(async: true, bufferRequirement, size, state, prefixingAction, CancellationToken.None).Result;
+
+    public ValueTask<NestedWriteScope> BeginLengthPrefixingScopeAsync(Size bufferRequirement, Size size, object? state,
+        Action<PgWriter, int> prefixingAction, CancellationToken cancellationToken = default)
+        => BeginLengthPrefixingScope(async: true, bufferRequirement, size, state, prefixingAction, cancellationToken);
+
+    // prefixingAction is the prefix writer of last resort; when null the framework writes a plain int4 prefix.
+    internal ValueTask<NestedWriteScope> BeginLengthPrefixingScope(bool async, Size bufferRequirement, Size size, object? state, Action<PgWriter, int> prefixingAction, CancellationToken cancellationToken = default)
+    {
+        Debug.Assert(bufferRequirement != -1);
+
+        // Non-Exact sizes: measure into side buffer and backpatch in place.
+        if (size.Kind is SizeKind.Unknown or SizeKind.UpperBound)
+            return BeginVariableLengthPrefixingScope(async, bufferRequirement, size, state, prefixingAction, cancellationToken);
+
+        // Exact: write the length directly, content goes directly to the wire.
+        var byteCount = size.Value;
+        var bufferRequirementByteCount = BufferRequirements.GetMinimumBufferByteCount(bufferRequirement, byteCount);
+        _current = new() { Format = _current.Format, Size = byteCount, BufferRequirement = bufferRequirement, WriteState = state };
+
+        if (ShouldFlush(sizeof(int) + bufferRequirementByteCount))
+            return Core(async, byteCount, prefixingAction, cancellationToken);
+
+        prefixingAction(this, byteCount);
+        return new(new NestedWriteScope());
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+        async ValueTask<NestedWriteScope> Core(bool async, int byteCount, Action<PgWriter, int> prefixingAction, CancellationToken cancellationToken)
+        {
+            await Flush(async, cancellationToken).ConfigureAwait(false);
+            prefixingAction(this, byteCount);
+            return new();
+        }
+
+    }
+
+    ValueTask<NestedWriteScope> BeginVariableLengthPrefixingScope(bool async, Size bufferRequirement, Size size, object? state,
+        Action<PgWriter, int> prefixingAction, CancellationToken cancellationToken = default)
+    {
+        // Allocate a dedicated side buffer for this chained scope.
+        var sideBuffer = new MeasuringSideBufferWriter();
+
+        var frame = new ChainedFrame
+        {
+            SavedWriter = _writer,
+            SavedBuffer = _buffer,
+            SavedOffset = _offset,
+            SavedPos = _pos,
+            SavedLength = _length,
+            SavedTotalBytesWritten = _totalBytesWritten,
+            SavedCurrent = _current,
+            SavedFlushMode = FlushMode,
+            SideBuffer = sideBuffer,
+            PrefixingAction = prefixingAction,
+        };
+
+        (_chainedFrames ??= new Stack<ChainedFrame>()).Push(frame);
+
+        // Fork to the dedicated side buffer.
+        _writer = sideBuffer;
+        _totalBytesWritten = 0;
+        _current = new() { Format = frame.SavedCurrent.Format, Size = Size.Unknown, BufferRequirement = bufferRequirement, WriteState = state };
+        RequestBuffer(0);
+        return new(new NestedWriteScope(this, NestedWriteScope.ChainedScope));
+    }
+
+    // Restores the writer to the parent, emits the prefix via the frame's PrefixingAction, splices the measured
+    // bytes in, and reports the measured size. The dedicated side buffer is per-scope so it's GC'd.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal ValueTask<int> EndVariableLengthPrefixingScope(bool async, CancellationToken cancellationToken)
+    {
+        var frame = _chainedFrames!.Pop();
+
+        // Commit pending writes from the working buffer back to the dedicated side buffer.
+        Commit();
+        var sideBuffer = frame.SideBuffer;
+        var measuredSize = sideBuffer.WrittenCount;
+
+        // Restore parent state.
+        _writer = frame.SavedWriter;
+        _buffer = frame.SavedBuffer;
+        _offset = frame.SavedOffset;
+        _pos = frame.SavedPos;
+        _length = frame.SavedLength;
+        _totalBytesWritten = frame.SavedTotalBytesWritten;
+        _current = frame.SavedCurrent;
+        FlushMode = frame.SavedFlushMode;
+
+        // Emit the length prefix into the restored parent via the caller's prefixingAction.
+        frame.PrefixingAction(this, measuredSize);
+
+        // Splice the dedicated side buffer's accumulated bytes into the parent.
+        if (async)
+            return SpliceAsync(this, sideBuffer, measuredSize, cancellationToken);
+        WriteBytes(sideBuffer.WrittenSpan);
+        return new(measuredSize);
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+        static async ValueTask<int> SpliceAsync(PgWriter writer, MeasuringSideBufferWriter sideBuffer, int measuredSize, CancellationToken cancellationToken)
+        {
+            await writer.WriteBytesAsync(sideBuffer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+            return measuredSize;
+        }
+    }
 
     sealed class PgWriterStream : Stream
     {
@@ -635,11 +817,123 @@ public sealed class PgWriter
     }
 }
 
-// No-op for now.
-[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public struct NestedWriteScope : IDisposable
+sealed class MeasuringSideBufferWriter : IBufferWriter<byte>
 {
+    readonly ArrayBufferWriter<byte> _backing = new();
+    public Memory<byte> GetMemory(int sizeHint = 0) => _backing.GetMemory(sizeHint);
+    public Span<byte> GetSpan(int sizeHint = 0) => _backing.GetSpan(sizeHint);
+    public void Advance(int count) => _backing.Advance(count);
+
+    public ReadOnlySpan<byte> WrittenSpan => _backing.WrittenSpan;
+    public ReadOnlyMemory<byte> WrittenMemory => _backing.WrittenMemory;
+    public int WrittenCount => _backing.WrittenCount;
+
+    internal void Backpatch(int logicalOffset, ReadOnlySpan<byte> bytes)
+    {
+        Debug.Assert(logicalOffset + bytes.Length <= _backing.WrittenCount);
+        var memory = MemoryMarshal.AsMemory(_backing.WrittenMemory);
+        bytes.CopyTo(memory.Span.Slice(logicalOffset, bytes.Length));
+    }
+}
+
+// A streaming alternative to a System.IO.Stream, instead based on the preferable IBufferWriter.
+interface IStreamingWriter<T> : IBufferWriter<T>
+{
+    void Flush(TimeSpan timeout = default);
+    ValueTask FlushAsync(CancellationToken cancellationToken = default);
+}
+
+sealed class NpgsqlBufferWriter(NpgsqlWriteBuffer buffer) : IStreamingWriter<byte>
+{
+    int? _lastBufferSize;
+
+    public void Advance(int count)
+    {
+        if (_lastBufferSize < count || buffer.WriteSpaceLeft < count)
+            ThrowHelper.ThrowInvalidOperationException("Cannot advance past the end of the current buffer.");
+        _lastBufferSize = null;
+        buffer.WritePosition += count;
+    }
+
+    public Memory<byte> GetMemory(int sizeHint = 0)
+    {
+        var writePosition = buffer.WritePosition;
+        var bufferSize = buffer.Size - writePosition;
+        if (sizeHint > bufferSize)
+            ThrowOutOfMemoryException();
+
+        _lastBufferSize = bufferSize;
+        return buffer.Buffer.AsMemory(writePosition, bufferSize);
+    }
+
+    public Span<byte> GetSpan(int sizeHint = 0)
+    {
+        var writePosition = buffer.WritePosition;
+        var bufferSize = buffer.Size - writePosition;
+        if (sizeHint > bufferSize)
+            ThrowOutOfMemoryException();
+
+        _lastBufferSize = bufferSize;
+        return buffer.Buffer.AsSpan(writePosition, bufferSize);
+    }
+
+    static void ThrowOutOfMemoryException() => throw new OutOfMemoryException("Not enough space left in buffer.");
+
+    public void Flush(TimeSpan timeout = default)
+    {
+        if (timeout == TimeSpan.Zero)
+            buffer.Flush();
+        else
+        {
+            TimeSpan? originalTimeout = null;
+            try
+            {
+                if (timeout != TimeSpan.Zero)
+                {
+                    originalTimeout = buffer.Timeout;
+                    buffer.Timeout = timeout;
+                }
+                buffer.Flush();
+            }
+            finally
+            {
+                if (originalTimeout is { } value)
+                    buffer.Timeout = value;
+            }
+        }
+    }
+
+    public ValueTask FlushAsync(CancellationToken cancellationToken = default)
+        => new(buffer.Flush(async: true, cancellationToken));
+}
+
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct NestedWriteScope : IDisposable
+{
+    // _placeholderOffset >= 0 is a side-buffer placeholder offset; sentinels select the other paths.
+    internal const int ChainedScope = -1;
+
+    readonly PgWriter? _writer;
+    readonly int _placeholderOffset;
+
+    internal NestedWriteScope(PgWriter writer, int placeholderOffset)
+    {
+        _writer = writer;
+        _placeholderOffset = placeholderOffset;
+    }
+
     public void Dispose()
     {
+        if (_writer is null)
+            return;
+        switch (_placeholderOffset)
+        {
+        case ChainedScope:
+            _writer.EndVariableLengthPrefixingScope(async: false, CancellationToken.None).GetAwaiter().GetResult();
+            break;
+        default:
+            _writer.EndLengthPrefixingScope(_placeholderOffset);
+            break;
+        }
     }
 }

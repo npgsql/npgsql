@@ -252,11 +252,13 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                     BufferRequirement = writeRequirement,
                 };
             }
-            var length = elementState.Size.Value;
-            writer.WriteInt32(length);
-            if (length is not -1)
+            if (elementState.Size == -1)
+                writer.WriteInt32(-1);
+            else
             {
-                using var _ = await writer.BeginNestedWrite(async, elementState.BufferRequirement, length, elementState.WriteState, cancellationToken).ConfigureAwait(false);
+                // If size is not exact the scope will backpatch the length prefix placeholder on dispose based on writes done inside.
+                using var _ = await writer.BeginLengthPrefixingScope(async, elementState.BufferRequirement,
+                    elementState.Size, elementState.WriteState, cancellationToken).ConfigureAwait(false);
                 await field.Write(async, elementState.Converter, writer, boxedInstance, cancellationToken).ConfigureAwait(false);
             }
         }

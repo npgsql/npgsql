@@ -9,9 +9,7 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
 {
     readonly Size _read;
     readonly Size _write;
-    // True when bind can be skipped — the converter has no per-value bind work AND Write is Exact.
-    // Construction is permissive (loose combinations are admissible to keep room for upcoming measuring
-    // work); the invariant is gated at Bind entry, which throws if IsBindOptional=true with non-Exact Write.
+    // True when bind can be skipped — the converter has no per-value bind work, independent of Write Kind.
     readonly bool _optionalBind;
 
     BufferRequirements(Size read, Size write, bool optionalBind)
@@ -34,7 +32,7 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
 
     /// <summary>
     /// True when bind can be skipped for this format — the converter has no per-value bind work
-    /// (sizing, validation, writeState production). Implies <see cref="IsBindFixedSize"/>.
+    /// (sizing, validation, writeState production).
     /// </summary>
     public bool IsBindOptional => _optionalBind;
 

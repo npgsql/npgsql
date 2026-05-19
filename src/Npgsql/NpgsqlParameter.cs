@@ -53,6 +53,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected PgValueBinding _binding;
     private protected bool _isBound;
 
+    // Set when a measuring parameter materialized its value at Bind — the measured bytes, for Write to replay.
+    private protected MeasuringSideBufferWriter? _materialized;
+
     #endregion
 
     #region Constructors
@@ -743,7 +746,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
-    internal void Bind(out DataFormat format, out Size size, DataFormat? requiredFormat = null)
+    internal bool Bind(out DataFormat format, out int byteCount, DataFormat? requiredFormat = null)
     {
         if (TypeInfo is null || ConcreteTypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
@@ -818,6 +821,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
                 if (requiredFormat is not null && _binding.DataFormat != requiredFormat.GetValueOrDefault())
                     ThrowHelper.ThrowNotSupportedException($"Parameter '{ParameterName}' must be written in {requiredFormat} format, but does not support this format.");
+
+                // A non-Exact bind size means measuring, the actual byte count isn't known until the value is written.
+                if (!_useSubStream && !_binding.IsDbNullBinding && _binding.Size is { Kind: not SizeKind.Exact })
+                    _materialized = Materialize(concrete);
             }
             catch (Exception ex)
             {
@@ -829,7 +836,27 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
 
         format = Format;
-        size = _binding.Size ?? -1;
+        if (_binding.IsDbNullBinding)
+        {
+            byteCount = default;
+            return false;
+        }
+        byteCount = _materialized?.WrittenCount ?? _binding.Size.GetValueOrDefault().Value;
+        return true;
+
+        // Write a parameter's value into a side buffer at Bind time so its actual byte count is known for the Bind protocol message.
+        MeasuringSideBufferWriter Materialize(PgConcreteTypeInfo concrete)
+        {
+            var buffer = new MeasuringSideBufferWriter();
+            var measureWriter = new PgWriter(buffer).Init(concrete.Options.DatabaseInfo, _binding.Size.GetValueOrDefault().GetValueOrDefault());
+            measureWriter.StartWrite(async: false, _binding, CancellationToken.None).GetAwaiter().GetResult();
+            if (StaticValueType == typeof(object))
+                concrete.Converter.WriteAsObject(measureWriter, Value);
+            else
+                WriteTypedValue(async: false, concrete, measureWriter, CancellationToken.None).GetAwaiter().GetResult();
+            measureWriter.Commit();
+            return buffer;
+        }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         PgValueBinding BindSubStream(object? providerWriteState)
@@ -910,36 +937,51 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
-            var size = _binding.Size?.Value ?? -1;
-            writer.WriteInt32(size);
-            writer.CommitAndResetTotal(sizeof(int));
-
-            if (!_binding.IsDbNullBinding)
+            if (_materialized is { } materialized)
             {
-                if (_useSubStream)
-                {
-                    Debug.Assert(_subStream is not null);
-                    if (async)
-                        await _subStream.CopyToAsync(writer.GetStream(), cancellationToken).ConfigureAwait(false);
-                    else
-                        _subStream.CopyTo(writer.GetStream());
-                    writer.CommitAndResetTotal(size);
-                }
+                // Measuring parameter: the value was written into a measure buffer at Bind. Emit the field
+                // length prefix from the measured size and splice the materialized bytes.
+                writer.WriteInt32(materialized.WrittenCount);
+                writer.CommitAndResetTotal(sizeof(int));
+                if (async)
+                    await writer.WriteBytesAsync(materialized.WrittenMemory, cancellationToken).ConfigureAwait(false);
                 else
+                    writer.WriteBytes(materialized.WrittenSpan);
+                writer.EndWrite(materialized.WrittenCount);
+            }
+            else
+            {
+                var size = _binding.Size?.Value ?? -1;
+                writer.WriteInt32(size);
+                writer.CommitAndResetTotal(sizeof(int));
+
+                if (!_binding.IsDbNullBinding)
                 {
-                    await writer.StartWrite(async, _binding, cancellationToken).ConfigureAwait(false);
-                    if (StaticValueType == typeof(object))
+                    if (_useSubStream)
                     {
-                        var value = Value;
-                        Debug.Assert(value is not null);
+                        Debug.Assert(_subStream is not null);
                         if (async)
-                            await concrete.Converter.WriteAsObjectAsync(writer, value, cancellationToken).ConfigureAwait(false);
+                            await _subStream.CopyToAsync(writer.GetStream(), cancellationToken).ConfigureAwait(false);
                         else
-                            concrete.Converter.WriteAsObject(writer, value);
+                            _subStream.CopyTo(writer.GetStream());
+                        writer.CommitAndResetTotal(size);
                     }
                     else
-                        await WriteTypedValue(async, concrete, writer, cancellationToken).ConfigureAwait(false);
-                    writer.EndWrite(size);
+                    {
+                        await writer.StartWrite(async, _binding, cancellationToken).ConfigureAwait(false);
+                        if (StaticValueType == typeof(object))
+                        {
+                            var value = Value;
+                            Debug.Assert(value is not null);
+                            if (async)
+                                await concrete.Converter.WriteAsObjectAsync(writer, value, cancellationToken).ConfigureAwait(false);
+                            else
+                                concrete.Converter.WriteAsObject(writer, value);
+                        }
+                        else
+                            await WriteTypedValue(async, concrete, writer, cancellationToken).ConfigureAwait(false);
+                        writer.EndWrite(size);
+                    }
                 }
             }
         }
@@ -1050,6 +1092,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             // WriteState ref slot for GC.
             _useSubStream = false;
             _subStream = null;
+            _materialized = null;
             _binding = default;
             _isBound = false;
         }

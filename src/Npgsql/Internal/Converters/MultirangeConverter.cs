@@ -123,14 +123,12 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
             var (size, state) = data[i];
-            if (size.Kind is SizeKind.Unknown)
-                throw new NotImplementedException();
-
-            var length = size.Value;
-            writer.WriteInt32(length);
-            if (length != -1)
+            if (size == -1)
+                writer.WriteInt32(-1);
+            else
             {
-                using var _ = await writer.BeginNestedWrite(async, _rangeRequirements.Write, length, state, cancellationToken).ConfigureAwait(false);
+                // If size is not exact the scope will backpatch the length prefix placeholder on dispose based on writes done inside.
+                using var _ = await writer.BeginLengthPrefixingScope(async, _rangeRequirements.Write, size, state, cancellationToken).ConfigureAwait(false);
                 if (async)
                     await _rangeConverter.WriteAsync(writer, value[i], cancellationToken).ConfigureAwait(false);
                 else

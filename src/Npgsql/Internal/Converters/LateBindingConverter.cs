@@ -79,7 +79,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
         var found = concreteTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements);
         Debug.Assert(found);
         var writeRequirement = bufferRequirements.Write;
-        using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
+        using var _ = await writer.BeginPassthroughScope(async, writeRequirement, writer.Current.Size, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
 }
