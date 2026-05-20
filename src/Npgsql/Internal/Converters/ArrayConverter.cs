@@ -533,16 +533,16 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
     protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, TBase? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
+    protected override PgConcreteTypeInfo? GetForFieldCore(in ProviderFieldContext context)
     {
         // When constructed as a same-authoring-unit composition, route directly to inner providers, skipping their
         // wrapping ValidateConcrete on each call.
         var concreteTypeInfo = _isCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(_effectiveTypeInfo).GetForField(field)
-            : _effectiveTypeInfo.GetForField(field);
+            ? PgProviderTypeInfo.GetProvider(_effectiveTypeInfo).GetForField(context)
+            : _effectiveTypeInfo.GetForField(context);
         var concreteNullableTypeInfo = _isCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(_effectiveNullableTypeInfo).GetForField(field)
-            : _effectiveNullableTypeInfo.GetForField(field);
+            ? PgProviderTypeInfo.GetProvider(_effectiveNullableTypeInfo).GetForField(context)
+            : _effectiveNullableTypeInfo.GetForField(context);
 
         return concreteTypeInfo is not null && concreteNullableTypeInfo is not null
             ? GetOrAdd(concreteTypeInfo, concreteNullableTypeInfo)

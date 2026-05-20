@@ -371,7 +371,8 @@ public sealed class FieldDescription
                 // for any column type. Every pg_catalog.text mapping we own declares text-format support, so a converter that
                 // can't bind to text here throws and surfaces as a missing mapping rather than getting silently reinterpreted.
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(string), _serializerOptions.TextPgTypeId, _serializerOptions);
-                var concreteTypeInfo = typeInfo.MakeConcreteForField(Field);
+                var concreteTypeInfo = typeInfo.MakeConcreteForField(
+                    new ProviderFieldContext { Name = Field.Name, TypeModifier = Field.TypeModifier });
                 if (!concreteTypeInfo.SupportsReading)
                     AdoSerializerHelpers.ThrowReadingNotSupported(type, _serializerOptions, _serializerOptions.TextPgTypeId, resolved: true);
 
@@ -382,7 +383,8 @@ public sealed class FieldDescription
             case DataFormat.Binary or DataFormat.Text:
             {
                 var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type ?? typeof(object), _serializerOptions.ToCanonicalTypeId(PostgresType), _serializerOptions);
-                var concreteTypeInfo = typeInfo.MakeConcreteForField(Field);
+                var concreteTypeInfo = typeInfo.MakeConcreteForField(
+                    new ProviderFieldContext { Name = Field.Name, TypeModifier = Field.TypeModifier });
                 if (!concreteTypeInfo.SupportsReading)
                     AdoSerializerHelpers.ThrowReadingNotSupported(type, _serializerOptions, _serializerOptions.ToCanonicalTypeId(PostgresType), resolved: true);
 

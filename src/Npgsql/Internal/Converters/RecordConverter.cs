@@ -44,7 +44,7 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
                            ?? throw new NotSupportedException(
                                $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
 
-            var concreteTypeInfo = typeInfo.MakeConcreteForField(Field.CreateUnspecified(pgTypeId));
+            var concreteTypeInfo = typeInfo.MakeConcreteForField();
             if (!concreteTypeInfo.SupportsReading)
                 AdoSerializerHelpers.ThrowReadingNotSupported(IsObjectArrayRecord ? typeof(object) : null, options, pgTypeId, resolved: true);
             var binding = concreteTypeInfo.BindField(DataFormat.Binary);

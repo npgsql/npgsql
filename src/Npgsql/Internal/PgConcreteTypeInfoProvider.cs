@@ -21,15 +21,9 @@ public abstract class PgConcreteTypeInfoProvider
     }
 
     /// <summary>
-    /// Gets the appropriate type info based on the given field info.
+    /// Gets the appropriate type info based on the given field context.
     /// </summary>
-    public PgConcreteTypeInfo? GetForField(Field field)
-    {
-        var result = GetForFieldCore(field);
-        if (result is not null && result.PgTypeId != field.PgTypeId)
-            ThrowPgTypeIdMismatch(nameof(GetForFieldCore));
-        return result;
-    }
+    public PgConcreteTypeInfo? GetForField(in ProviderFieldContext context) => GetForFieldCore(context);
 
     /// <summary>
     /// Gets the appropriate type info based on the given value and expected type id.
@@ -74,13 +68,13 @@ public abstract class PgConcreteTypeInfoProvider
     protected abstract PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId);
 
     /// <summary>
-    /// Gets the concrete type info for a given field.
+    /// Gets the concrete type info for a given field context.
     /// </summary>
     /// <remarks>
     /// Implementations should not return new instances of the possible infos that can be returned, instead its expected these are cached once returned.
     /// Composing providers depend on this to cache their own infos - wrapping the element info - with the cache key being the element info reference.
     /// </remarks>
-    protected virtual PgConcreteTypeInfo? GetForFieldCore(Field field) => null;
+    protected virtual PgConcreteTypeInfo? GetForFieldCore(in ProviderFieldContext context) => null;
 
     internal abstract Type TypeToConvert { get; }
 
@@ -166,6 +160,20 @@ public readonly struct ProviderValueContext
 {
     public PgTypeId? ExpectedPgTypeId { get; init; }
     public NestedObjectDbNullHandling NestedObjectDbNullHandling { get; init; }
+}
+
+/// <summary>
+/// The field metadata a provider dispatches on when resolving a concrete type info for a read. The expected
+/// PG type id is not carried here — read-side resolution always yields a decided info that knows its own id,
+/// so a context copy would be redundant. Providers that need the id at dispatch time read their own posted id.
+/// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct ProviderFieldContext
+{
+    public ProviderFieldContext() { }
+
+    public string? Name { get; init; }
+    public int TypeModifier { get; init; } = -1;
 }
 
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]

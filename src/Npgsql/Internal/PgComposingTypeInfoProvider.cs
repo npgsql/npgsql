@@ -48,10 +48,10 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             : EffectiveTypeInfo.GetDefault(pgTypeId);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected PgConcreteTypeInfo? GetEffectiveForField(Field field)
+    protected PgConcreteTypeInfo? GetEffectiveForField(in ProviderFieldContext context)
         => IsCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForField(field)
-            : EffectiveTypeInfo.GetForField(field);
+            ? PgProviderTypeInfo.GetProvider(EffectiveTypeInfo).GetForField(context)
+            : EffectiveTypeInfo.GetForField(context);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected PgConcreteTypeInfo? GetEffectiveForValue<TInner>(in ProviderValueContext context, TInner? value, out object? writeState)
@@ -100,10 +100,11 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return null;
     }
 
-    protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
+    protected override PgConcreteTypeInfo? GetForFieldCore(in ProviderFieldContext context)
     {
-        var effectiveField = field with { PgTypeId = GetEffectivePgTypeId(field.PgTypeId) };
-        if (GetEffectiveForField(effectiveField) is not { } concreteTypeInfo)
+        // No outer→inner id restamp needed: read-side EffectiveTypeInfo is decided and dispatches off its own
+        // posted id. The context just carries Name/TypeModifier through unchanged.
+        if (GetEffectiveForField(context) is not { } concreteTypeInfo)
             return null;
 
         var composingPgTypeId = _pgTypeId ?? GetPgTypeId(concreteTypeInfo.PgTypeId);

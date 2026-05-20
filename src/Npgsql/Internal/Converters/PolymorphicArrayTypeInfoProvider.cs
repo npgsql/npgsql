@@ -41,13 +41,13 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
     protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, object? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
+    protected override PgConcreteTypeInfo? GetForFieldCore(in ProviderFieldContext context)
     {
         // When constructed as a same-authoring-unit composition, route directly to the inner provider, skipping the
-        // inner's wrapping ValidateConcrete on each call.
+        // inner's wrapping ValidateConcrete on each call. No id restamp: _elementTypeInfo is decided on the read path.
         var elementConcreteTypeInfo = _isCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(_elementTypeInfo).GetForField(field with { PgTypeId = _elementPgTypeId })
-            : _elementTypeInfo.GetForField(field with { PgTypeId = _elementPgTypeId });
+            ? PgProviderTypeInfo.GetProvider(_elementTypeInfo).GetForField(context)
+            : _elementTypeInfo.GetForField(context);
         return elementConcreteTypeInfo is not null ? GetOrAdd(elementConcreteTypeInfo) : null;
     }
 
