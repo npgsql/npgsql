@@ -46,8 +46,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                     }
 
                     return mapping.CreateInfo(options, (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
-                        enumToLabel, labelToEnum,
-                        options.TextEncoding)!);
+                        enumToLabel, labelToEnum)!);
                 });
         }
     }

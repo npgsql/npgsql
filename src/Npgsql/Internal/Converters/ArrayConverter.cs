@@ -17,8 +17,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     // Compositional boundary: outward BufferRequirements is always Streaming (doesn't expose the element's
     // requirements), so this converter's outward descriptor is always Invariant. _elementIsInvariant is
     // only consulted internally — when false, the cached element BufferRequirements in ArrayConverterCore
-    // would be stale and the runtime per-element paths need to re-resolve via the element converter once
-    // PgConversionContext flows through PgReader/PgWriter/BindContext. Today every element is invariant.
+    // would be stale and the runtime per-element paths re-resolve via the element converter using the
+    // PgConversionContext supplied by the carrier (reader/writer/BindContext).
     readonly bool _elementIsInvariant;
 
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)

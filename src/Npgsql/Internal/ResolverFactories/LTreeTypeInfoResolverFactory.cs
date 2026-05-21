@@ -32,7 +32,7 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<string>("ltree",
                 static (options, mapping, _) =>
                 {
-                    var text = TextConverter.CreateStringConverter(options.TextEncoding);
+                    var text = TextConverter.CreateStringConverter();
                     var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },
@@ -40,7 +40,7 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<string>("lquery",
                 static (options, mapping, _) =>
                 {
-                    var text = TextConverter.CreateStringConverter(options.TextEncoding);
+                    var text = TextConverter.CreateStringConverter();
                     var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },
@@ -48,7 +48,7 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<string>("ltxtquery",
                 static (options, mapping, _) =>
                 {
-                    var text = TextConverter.CreateStringConverter(options.TextEncoding);
+                    var text = TextConverter.CreateStringConverter();
                     var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },

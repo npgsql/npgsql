@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using Newtonsoft.Json;
 using Npgsql.Internal;
 using Npgsql.Internal.Postgres;
@@ -47,7 +46,7 @@ sealed class JsonNetPocoTypeInfoResolverFactory(
                 {
                     dynamicMappings.AddMapping(jsonType, dataTypeName,
                         factory: (options, mapping, _) => mapping.CreateInfo(options,
-                            CreateConverter(mapping.Type, jsonb, options.TextEncoding, serializerSettings)));
+                            CreateConverter(mapping.Type, jsonb, serializerSettings)));
                 }
                 mappings.AddRange(dynamicMappings.ToTypeInfoMappingCollection());
             }
@@ -69,15 +68,14 @@ sealed class JsonNetPocoTypeInfoResolverFactory(
             {
                 var jsonb = dataTypeName == JsonbDataTypeName;
                 return mapping.CreateInfo(options,
-                    CreateConverter(mapping.Type, jsonb, options.TextEncoding, _serializerSettings));
+                    CreateConverter(mapping.Type, jsonb, _serializerSettings));
             });
         }
 
-        static PgConverter CreateConverter(Type valueType, bool jsonb, Encoding textEncoding, JsonSerializerSettings settings)
+        static PgConverter CreateConverter(Type valueType, bool jsonb, JsonSerializerSettings settings)
             => (PgConverter)Activator.CreateInstance(
                 typeof(JsonNetJsonConverter<>).MakeGenericType(valueType),
                 jsonb,
-                textEncoding,
                 settings
             )!;
     }

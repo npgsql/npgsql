@@ -267,7 +267,7 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
 
         internal override void AddMapping(TypeInfoMappingCollection mappings)
             => mappings.AddStructType<TEnum>(PgTypeName, (options, mapping, _) =>
-                mapping.CreateInfo(options, new EnumConverter<TEnum>(_enumToLabel, _labelToEnum, options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                mapping.CreateInfo(options, new EnumConverter<TEnum>(_enumToLabel, _labelToEnum), preferredFormat: DataFormat.Text), isDefault: true);
 
         internal override void AddArrayMapping(TypeInfoMappingCollection mappings) => mappings.AddStructArrayType<TEnum>(PgTypeName);
     }

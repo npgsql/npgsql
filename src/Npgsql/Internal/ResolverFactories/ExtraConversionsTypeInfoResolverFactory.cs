@@ -108,19 +108,19 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<char[]>(DataTypeNames.Text,
                 static (options, mapping, _) =>
                 {
-                    var converter = new CharArrayTextConverter(options.TextEncoding);
+                    var converter = new CharArrayTextConverter();
                     return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
                 });
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
                 static (options, mapping, _) =>
                 {
-                    var converter = TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding);
+                    var converter = TextConverter.CreateReadOnlyMemoryConverter();
                     return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
                 });
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
                 static (options, mapping, _) =>
                 {
-                    var converter = new CharArraySegmentTextConverter(options.TextEncoding);
+                    var converter = new CharArraySegmentTextConverter();
                     return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
                 });
 
@@ -132,19 +132,19 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
                 mappings.AddType<char[]>(dataTypeName,
                     static (options, mapping, _) =>
                     {
-                        var converter = new CharArrayTextConverter(options.TextEncoding);
+                        var converter = new CharArrayTextConverter();
                         return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
                     });
                 mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
                     static (options, mapping, _) =>
                     {
-                        var converter = TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding);
+                        var converter = TextConverter.CreateReadOnlyMemoryConverter();
                         return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
                     });
                 mappings.AddStructType<ArraySegment<char>>(dataTypeName,
                     static (options, mapping, _) =>
                     {
-                        var converter = new CharArraySegmentTextConverter(options.TextEncoding);
+                        var converter = new CharArraySegmentTextConverter();
                         return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
                     });
             }
@@ -154,28 +154,28 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<char[]>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
-                    var text = new CharArrayTextConverter(options.TextEncoding);
+                    var text = new CharArrayTextConverter();
                     var binary = new VersionPrefixedTextConverter<char[]>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 });
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
-                    var text = TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding);
+                    var text = TextConverter.CreateReadOnlyMemoryConverter();
                     var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 });
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
-                    var text = new CharArraySegmentTextConverter(options.TextEncoding);
+                    var text = new CharArraySegmentTextConverter();
                     var binary = new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 });
 
             // Hstore
             mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
-                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding, result => result.ToImmutableDictionary())));
+                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(result => result.ToImmutableDictionary())));
 
             return mappings;
         }

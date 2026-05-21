@@ -657,7 +657,12 @@ public sealed class PgConversionContext
     /// <summary>An empty context, suitable for inner probes that don't read any session state.</summary>
     public static PgConversionContext Empty { get; } = new();
 
-    public Encoding? TextEncoding { get; init; }
+    /// <summary>
+    /// The text encoding for this context. Defaults to UTF-8 — the substrate's default and the only
+    /// encoding for which no fallback semantics are needed. Always set; converters can read it
+    /// unconditionally without null-checking.
+    /// </summary>
+    public Encoding TextEncoding { get; init; } = PgSerializerOptions.DefaultUtf8Encoding;
 }
 
 /// <summary>
