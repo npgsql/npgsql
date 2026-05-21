@@ -15,6 +15,10 @@ abstract class CompositeFieldInfo
     protected PgConcreteTypeInfo? ConcreteTypeInfo { get; }
     protected BufferRequirements _binaryBufferRequirements;
 
+    /// <summary>True iff the field's concrete converter returned an invariant descriptor at probe time.</summary>
+    /// <remarks>Provider-backed fields stay <c>false</c> (re-resolved at bind time).</remarks>
+    public bool IsInvariant { get; private set; }
+
     /// <summary>
     /// CompositeFieldInfo constructor.
     /// </summary>
@@ -32,7 +36,9 @@ abstract class CompositeFieldInfo
 
         if (typeInfo is PgConcreteTypeInfo direct)
         {
-            _binaryBufferRequirements = direct.Converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
+            var fieldDescriptor = direct.Converter.GetDescriptor(new DescriptorContext { ConversionContext = PgConversionContext.Empty });
+            _binaryBufferRequirements = fieldDescriptor.BufferRequirements;
+            IsInvariant = fieldDescriptor.IsInvariant;
             ConcreteTypeInfo = direct;
         }
         else if (typeInfo is PgProviderTypeInfo)

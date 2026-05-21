@@ -16,7 +16,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         => GetDescriptorImpl(context);
 
     internal static ConverterDescriptor GetDescriptorImpl(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(20)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(20)) };
 
     protected override Size BindValue(in BindContext context, NpgsqlInet value, ref object? writeState)
         => BindValueImpl(context, value.Address, ref writeState);

@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 sealed class PgLsnConverter : PgBufferedConverter<NpgsqlLogSequenceNumber>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(ulong)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(ulong)) };
     public override NpgsqlLogSequenceNumber Read(PgReader reader) => new(reader.ReadUInt64());
     public override void Write(PgWriter writer, NpgsqlLogSequenceNumber value) => writer.WriteUInt64((ulong)value);
 }

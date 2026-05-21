@@ -247,7 +247,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
         sealed class GuidTextConverter(Encoding encoding) : PgStreamingConverter<Guid>
         {
             public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-                => new() { BufferRequirements = BufferRequirements.Streaming };
+                => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
             public override Guid Read(PgReader reader)
                 => Guid.Parse(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining)));

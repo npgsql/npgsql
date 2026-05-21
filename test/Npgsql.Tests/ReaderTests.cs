@@ -2709,7 +2709,7 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
         => throw new NotSupportedException();
 
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.Value };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Value };
 
     public override void Write(PgWriter writer, int value)
         => throw new NotSupportedException();

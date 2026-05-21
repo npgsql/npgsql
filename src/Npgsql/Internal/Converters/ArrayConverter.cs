@@ -14,15 +14,21 @@ namespace Npgsql.Internal.Converters;
 abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly ArrayConverterCore _arrayConverterCore;
-
-    protected PgConcreteTypeInfo ElementTypeInfo { get; }
+    // Compositional boundary: outward BufferRequirements is always Streaming (doesn't expose the element's
+    // requirements), so this converter's outward descriptor is always Invariant. _elementIsInvariant is
+    // only consulted internally — when false, the cached element BufferRequirements in ArrayConverterCore
+    // would be stale and the runtime per-element paths need to re-resolve via the element converter once
+    // PgConversionContext flows through PgReader/PgWriter/BindContext. Today every element is invariant.
+    readonly bool _elementIsInvariant;
 
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
-        ElementTypeInfo = elementTypeInfo;
-        var bufferRequirements = elementTypeInfo.Converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
-        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo, elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
-            bufferRequirements, elementTypeInfo.PgTypeId, pgLowerBound);
+        var conversionContext = elementTypeInfo.Options.ConversionContext;
+        var elementDescriptor = elementTypeInfo.Converter.GetDescriptor(new DescriptorContext { ConversionContext = conversionContext });
+        _elementIsInvariant = elementDescriptor.IsInvariant;
+        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo.Converter, conversionContext,
+            elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
+            _elementIsInvariant ? elementDescriptor.BufferRequirements : null, elementTypeInfo.PgTypeId, pgLowerBound);
     }
 
     public override T Read(PgReader reader) => (T)_arrayConverterCore.Read(async: false, reader).Result;
@@ -457,7 +463,7 @@ sealed class PolymorphicArrayConverter<TBase>(
     : PgStreamingConverter<TBase>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(sizeof(int) + sizeof(int)), write: Size.Unknown) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(sizeof(int) + sizeof(int)), write: Size.Unknown) };
 
     public override TBase Read(PgReader reader)
     {

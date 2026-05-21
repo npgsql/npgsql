@@ -13,7 +13,7 @@ abstract class ByteaConverters<T>(bool supportsTextFormat) : PgStreamingConverte
 #pragma warning restore CS9113
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.Streaming };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
@@ -60,7 +60,7 @@ sealed class ArrayByteaConverter(bool supportsTextFormat) : PgStreamingConverter
 #pragma warning restore CS9113
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.Streaming };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override byte[] Read(PgReader reader)
     {

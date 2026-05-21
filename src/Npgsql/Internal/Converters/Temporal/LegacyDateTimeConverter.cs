@@ -5,7 +5,7 @@ namespace Npgsql.Internal.Converters;
 sealed class LegacyDateTimeConverter(bool dateTimeInfinityConversions, bool timestamp) : PgBufferedConverter<DateTime>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override DateTime Read(PgReader reader)
     {
@@ -32,7 +32,7 @@ sealed class LegacyDateTimeConverter(bool dateTimeInfinityConversions, bool time
 sealed class LegacyDateTimeOffsetConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<DateTimeOffset>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override DateTimeOffset Read(PgReader reader)
     {

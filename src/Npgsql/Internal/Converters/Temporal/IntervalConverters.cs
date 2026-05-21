@@ -7,7 +7,7 @@ namespace Npgsql.Internal.Converters;
 sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int)) };
 
     public override TimeSpan Read(PgReader reader)
     {
@@ -33,7 +33,7 @@ sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>
 sealed class NpgsqlIntervalConverter : PgBufferedConverter<NpgsqlInterval>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int)) };
 
     public override NpgsqlInterval Read(PgReader reader)
     {

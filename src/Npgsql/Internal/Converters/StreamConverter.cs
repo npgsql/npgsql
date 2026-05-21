@@ -10,7 +10,7 @@ sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Str
 #pragma warning restore CS9113
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.Streaming };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override Stream Read(PgReader reader)
         => reader.GetStream();

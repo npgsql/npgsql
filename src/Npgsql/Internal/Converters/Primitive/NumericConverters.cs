@@ -93,7 +93,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumb
 
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         // This upper bound would already cause an overflow exception in the builder, no need to do + 1.
-        => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(NumericConverter.DecimalBasedMaxByteCount)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(NumericConverter.DecimalBasedMaxByteCount)) };
 
     public override T Read(PgReader reader)
     {

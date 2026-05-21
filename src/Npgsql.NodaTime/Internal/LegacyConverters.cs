@@ -9,7 +9,7 @@ sealed class LegacyTimestampTzZonedDateTimeConverter(DateTimeZone dateTimeZone, 
     : PgBufferedConverter<ZonedDateTime>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override ZonedDateTime Read(PgReader reader)
     {
@@ -34,7 +34,7 @@ sealed class LegacyTimestampTzOffsetDateTimeConverter(DateTimeZone dateTimeZone,
     : PgBufferedConverter<OffsetDateTime>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override OffsetDateTime Read(PgReader reader)
     {

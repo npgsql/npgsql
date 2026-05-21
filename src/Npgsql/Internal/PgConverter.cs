@@ -44,7 +44,7 @@ public abstract class PgConverter
     /// Computes the converter's descriptor under the supplied descriptor context. The framework calls this
     /// only for formats it knows the converter is registered for; the returned descriptor describes the
     /// converter's terms for that context (today: buffer requirements; future: dispatch shape, cache keys).
-    /// Text-format converters must read <see cref="ConversionContext.TextEncoding"/> via
+    /// Text-format converters must read <see cref="PgConversionContext.TextEncoding"/> via
     /// <see cref="DescriptorContext.ConversionContext"/> for any encoding-dependent sizing rather than
     /// reaching into <c>PgSerializerOptions</c> directly — that keeps converters insulated from any future
     /// dynamic-encoding flow.
@@ -532,7 +532,7 @@ public readonly struct BindContext
     /// </summary>
     public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
     {
-        var bufferRequirements = converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
+        var bufferRequirements = converter.GetDescriptor(new DescriptorContext { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
         return CreateNested(nestingContext, bufferRequirements);
     }
 
@@ -642,24 +642,24 @@ class MultiWriteState : IDisposable
 /// per-call allocation.
 /// </summary>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public sealed class ConversionContext
+public sealed class PgConversionContext
 {
     /// <summary>An empty context, suitable for inner probes that don't read any session state.</summary>
-    public static ConversionContext Empty { get; } = new();
+    public static PgConversionContext Empty { get; } = new();
 
     public Encoding? TextEncoding { get; init; }
 }
 
 /// <summary>
-/// Per-call wrapper around a <see cref="ConversionContext"/> that <see cref="PgConverter.GetDescriptor"/>
-/// receives. Hosts call-scoped state that doesn't belong on the long-lived <see cref="ConversionContext"/>
+/// Per-call wrapper around a <see cref="PgConversionContext"/> that <see cref="PgConverter.GetDescriptor"/>
+/// receives. Hosts call-scoped state that doesn't belong on the long-lived <see cref="PgConversionContext"/>
 /// (today: just the context reference; future: sizing budget hints, composition depth, descriptor cache-key
-/// contributions). Always passed <c>in</c>; consumers read <see cref="ConversionContext"/> for session state.
+/// contributions). Always passed <c>in</c>; consumers read <see cref="PgConversionContext"/> for session state.
 /// </summary>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct DescriptorContext
 {
-    public ConversionContext ConversionContext { get; init; }
+    public PgConversionContext ConversionContext { get; init; }
 }
 
 /// <summary>
@@ -672,5 +672,26 @@ public readonly struct DescriptorContext
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct ConverterDescriptor
 {
+    /// <summary>
+    /// Template for a descriptor whose content does not depend on the <see cref="DescriptorContext"/>.
+    /// Composers may cache descriptors built from this template at construction.
+    /// </summary>
+    /// <remarks>
+    /// Use only when your <see cref="PgConverter.GetDescriptor"/> implementation does not read any field
+    /// from the <see cref="DescriptorContext"/> (or its <see cref="PgConversionContext"/>) and returns the
+    /// same descriptor on every call. If any branch of your implementation would return a context-dependent
+    /// descriptor, return a plain <c>new ConverterDescriptor { BufferRequirements = ... }</c> instead — the
+    /// invariant template must apply to all returns from the override, not just some of them.
+    /// </remarks>
+    public static ConverterDescriptor Invariant { get; } = new() { IsInvariant = true };
+
     public BufferRequirements BufferRequirements { get; init; }
+
+    /// <summary>
+    /// True when this descriptor was constructed from <see cref="Invariant"/>. Composers may cache such
+    /// descriptors at construction; otherwise composers must re-resolve per call. The flag is structurally
+    /// gated — the only way to land in the invariant state is via the named template, so a plain
+    /// <c>new ConverterDescriptor { ... }</c> always lands in the safe-by-default (non-invariant) state.
+    /// </summary>
+    public bool IsInvariant { get; private init; }
 }

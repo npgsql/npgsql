@@ -155,21 +155,21 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = new CharArrayTextConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<char[]>(jsonbVersion, text);
+                    var binary = new VersionPrefixedTextConverter<char[]>(jsonbVersion, text, options.ConversionContext);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 });
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
                     var text = TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, text);
+                    var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, text, options.ConversionContext);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 });
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
                     var text = new CharArraySegmentTextConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, text);
+                    var binary = new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, text, options.ConversionContext);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 });
 

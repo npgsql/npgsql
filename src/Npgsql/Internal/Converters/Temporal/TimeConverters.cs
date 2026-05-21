@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
     public override TimeOnly Read(PgReader reader) => new(reader.ReadInt64() * 10);
     public override void Write(PgWriter writer, TimeOnly value) => writer.WriteInt64(value.Ticks / 10);
 }
@@ -14,7 +14,7 @@ sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
 sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
     public override TimeSpan Read(PgReader reader) => new(reader.ReadInt64() * 10);
     public override void Write(PgWriter writer, TimeSpan value) => writer.WriteInt64(value.Ticks / 10);
 }
@@ -23,7 +23,7 @@ sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
 {
     // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int)) };
 
     public override DateTimeOffset Read(PgReader reader)
     {

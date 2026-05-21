@@ -510,7 +510,7 @@ public class WriteStateTests : TestBase
 
         public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
             // UpperBound + HandleDbNull → IsBindOptional=false, ensuring BindValue + IsDbNullValue run.
-            => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
+            => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
         protected override bool IsDbNullValue(int value, object? writeState)
         {
@@ -654,7 +654,7 @@ public class WriteStateTests : TestBase
             }
 
             public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-                => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
+                => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
             public override int Read(PgReader reader) => reader.ReadInt32();
             public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);
@@ -686,7 +686,7 @@ public class WriteStateTests : TestBase
         }
 
         public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-            => new() { BufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
+            => ConverterDescriptor.Invariant with { BufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
         protected override bool IsDbNullValue(int value, object? writeState)
         {
@@ -792,7 +792,7 @@ public class WriteStateTests : TestBase
     sealed class DisposableWriteStateConverter : PgBufferedConverter<int>
     {
         public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-            => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
+            => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
 
         public override int Read(PgReader reader) => reader.ReadInt32();
         public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);

@@ -19,7 +19,7 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
 
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         // optionalBind=false opts the fixed-size requirement out of the bind-skip optimization so kind validation fires.
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
 
     protected override Size BindValue(in BindContext context, DateTime value, ref object? writeState)
     {
@@ -59,7 +59,7 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
 
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         // optionalBind=false opts the fixed-size requirement out of the bind-skip optimization so offset validation fires.
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
 
     protected override Size BindValue(in BindContext context, DateTimeOffset value, ref object? writeState)
     {

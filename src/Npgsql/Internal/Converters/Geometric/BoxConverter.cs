@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 sealed class BoxConverter : PgBufferedConverter<NpgsqlBox>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 4) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 4) };
 
     public override NpgsqlBox Read(PgReader reader)
         => new(

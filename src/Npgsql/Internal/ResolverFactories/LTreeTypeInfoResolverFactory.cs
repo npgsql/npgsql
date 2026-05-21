@@ -33,7 +33,7 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = TextConverter.CreateStringConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
+                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text, options.ConversionContext);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },
                 MatchRequirement.DataTypeName);
@@ -41,7 +41,7 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = TextConverter.CreateStringConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
+                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text, options.ConversionContext);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },
                 MatchRequirement.DataTypeName);
@@ -49,7 +49,7 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = TextConverter.CreateStringConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text);
+                    var binary = new VersionPrefixedTextConverter<string>(LTreeVersion, text, options.ConversionContext);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },
                 MatchRequirement.DataTypeName);

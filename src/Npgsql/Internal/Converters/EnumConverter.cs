@@ -34,7 +34,7 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
     }
 
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.Value };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Value };
 
     protected override Size BindValue(in BindContext context, TEnum value, ref object? writeState)
     {

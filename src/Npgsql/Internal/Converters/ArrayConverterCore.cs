@@ -25,10 +25,13 @@ interface IElementOperations
 
 readonly struct ArrayConverterCore(
     IElementOperations elemOps,
-    PgConcreteTypeInfo elementTypeInfo,
+    PgConverter elementConverter,
+    PgConversionContext conversionContext,
     bool elemTypeDbNullable,
     int? expectedDimensions,
-    BufferRequirements binaryRequirements,
+    // Null when the element converter's descriptor is not invariant — the cached requirements would be
+    // stale across contexts, so resolution is deferred to per-operation entry via ResolveElementRequirements.
+    BufferRequirements? binaryRequirements,
     PgTypeId elemTypeId,
     int pgLowerBound = 1)
 {
@@ -36,15 +39,23 @@ readonly struct ArrayConverterCore(
     internal const string ReadNonNullableCollectionWithNullsExceptionMessage =
         "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable collection type instead.";
 
-    PgConcreteTypeInfo ElementTypeInfo { get; } = elementTypeInfo;
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
-    bool IsDbNull(object values, IterationIndices arrayIndices, object? writeState, NestedObjectDbNullHandling handling)
+    // Resolves the element's binary BufferRequirements for the current operation. Returns the cached value
+    // when the element is invariant; otherwise re-probes the element converter against the bound
+    // PgConversionContext (will switch to PgReader/PgWriter's runtime PgConversionContext once that surface
+    // lands). Call once per operation entry, then thread the result through the per-element loop locally so
+    // any per-operation snapshot stays consistent.
+    BufferRequirements ResolveElementRequirements()
+        => binaryRequirements ?? elementConverter.GetDescriptor(
+            new DescriptorContext { ConversionContext = conversionContext }).BufferRequirements;
+
+    bool IsDbNull(object values, IterationIndices arrayIndices, object? writeState, NestedObjectDbNullHandling handling, BufferRequirements reqs)
     {
         // This call will only skip BindValue if we are dealing with fixed size elements, otherwise we'll repeat sizing costs.
         // Fixed-size element converters cannot produce per-value write state, so IsDbNullOrBind must
         // leave writeState alone — any mutation is a contract violation in the element converter.
-        Debug.Assert(binaryRequirements.Write.Kind is SizeKind.Exact);
+        Debug.Assert(reqs.Write.Kind is SizeKind.Exact);
         var originalWriteState = writeState;
         var isDbNull = elemOps.IsDbNullOrBind(default, values, arrayIndices, ref writeState, nullCheckHandling: handling) is null;
         Debug.Assert(ReferenceEquals(writeState, originalWriteState), "Element converter mutated writeState during a null probe.");
@@ -88,6 +99,9 @@ readonly struct ArrayConverterCore(
             result = providerState;
             metadata = result.Metadata;
             indices = result.IterationIndices;
+            // Provider phase doesn't know the dispatched element converter's requirements; stamp them here
+            // now that we're inside the concrete array converter's BindValue.
+            result.ElementRequirements = ResolveElementRequirements();
             Debug.Assert(metadata.TotalElements > 0, "Provider phase doesn't construct write state for empty arrays.");
         }
         else
@@ -106,12 +120,14 @@ readonly struct ArrayConverterCore(
                 Metadata = metadata,
                 IterationIndices = indices,
                 NestedObjectDbNullHandling = context.NestedObjectDbNullHandling,
+                ElementRequirements = ResolveElementRequirements(),
             };
         }
         writeState = result;
 
+        var elementReqs = result.ElementRequirements;
         var size = Size.Create(metadata.BinaryPreambleByteCount + sizeof(int) * metadata.TotalElements);
-        var elemContext = BindContext.CreateNested(context, binaryRequirements);
+        var elemContext = BindContext.CreateNested(context, elementReqs);
 
         if (elemContext.IsBindFixedSize)
         {
@@ -233,6 +249,7 @@ readonly struct ArrayConverterCore(
                 + $"Call GetValue or a version of GetFieldValue<TElement[,,,]> with the commas matching the expected amount of dimensions.");
 
         var indices = IterationIndices.Create(dimensions);
+        var elementReqsRead = ResolveElementRequirements().Read;
         do
         {
             if (reader.ShouldBuffer(sizeof(int)))
@@ -241,7 +258,7 @@ readonly struct ArrayConverterCore(
             var length = reader.ReadInt32();
             if (length is not -1)
             {
-                var scope = await reader.BeginNestedRead(async, length, binaryRequirements.Read, cancellationToken).ConfigureAwait(false);
+                var scope = await reader.BeginNestedRead(async, length, elementReqsRead, cancellationToken).ConfigureAwait(false);
                 try
                 {
                     await elemOps.Read(async, reader, isDbNull: false, collection, indices, cancellationToken).ConfigureAwait(false);
@@ -294,6 +311,9 @@ readonly struct ArrayConverterCore(
         var lastCount = metadata.LastDimension;
         var offset = state.Data.Offset;
         var fixedSizeElements = state.FixedSizeElements;
+        // Use the snapshot captured at BindValue time so the per-element size assumptions stay consistent
+        // across the BindValue → Write pair, regardless of whether the element converter is invariant.
+        var elementReqs = state.ElementRequirements;
         do
         {
             if (writer.ShouldFlush(sizeof(int)))
@@ -301,13 +321,13 @@ readonly struct ArrayConverterCore(
 
             var elem = elemData?[offset + indices.IndicesSum] ?? default;
             var length = fixedSizeElements
-                ? ElemTypeDbNullable && IsDbNull(values, indices, elem.WriteState, state.NestedObjectDbNullHandling) ? -1 : binaryRequirements.Write.Value
+                ? ElemTypeDbNullable && IsDbNull(values, indices, elem.WriteState, state.NestedObjectDbNullHandling, elementReqs) ? -1 : elementReqs.Write.Value
                 : elem.Size.Value;
 
             writer.WriteInt32(length);
             if (length is not -1)
             {
-                using var _ = await writer.BeginNestedWrite(async, binaryRequirements.Write,
+                using var _ = await writer.BeginNestedWrite(async, elementReqs.Write,
                     length, elem.WriteState, cancellationToken).ConfigureAwait(false);
                 await elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
             }
@@ -371,6 +391,12 @@ sealed class ArrayConverterWriteState : MultiWriteState
     public required PgArrayMetadata Metadata { get; set; }
     public required IterationIndices IterationIndices { get; set; }
     public required NestedObjectDbNullHandling NestedObjectDbNullHandling { get; set; }
+
+    /// Element BufferRequirements snapshot stamped by BindValue (either at state-creation or when the
+    /// polymorphic provider-phase state is reused). Write reuses this snapshot so the per-element size
+    /// assumptions established by BindValue stay consistent regardless of element invariance. The
+    /// polymorphic provider path may leave this defaulted; BindValue overwrites it before Write sees state.
+    public BufferRequirements ElementRequirements { get; set; }
 
     /// When true, all non-null elements have a fixed binary size and Data is not populated with per-element sizes.
     public bool FixedSizeElements { get; set; }

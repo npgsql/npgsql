@@ -8,7 +8,7 @@ namespace Npgsql.NodaTime.Internal;
 sealed class InstantConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<Instant>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override Instant Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions);
@@ -20,7 +20,7 @@ sealed class InstantConverter(bool dateTimeInfinityConversions) : PgBufferedConv
 sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<ZonedDateTime>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
 
     public override ZonedDateTime Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).InUtc();
@@ -45,7 +45,7 @@ sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
 sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<OffsetDateTime>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
 
     public override OffsetDateTime Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).WithOffset(Offset.Zero);
@@ -70,7 +70,7 @@ sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffe
 sealed class LocalDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<LocalDateTime>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override LocalDateTime Read(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), dateTimeInfinityConversions).InUtc().LocalDateTime;

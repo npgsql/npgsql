@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters.Internal;
 sealed class VoidConverter : PgBufferedConverter<object?>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(0) };
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(0) };
 
     public override object? Read(PgReader reader) => null;
     public override void Write(PgWriter writer, object? value) => throw new NotSupportedException();

@@ -9,13 +9,28 @@ namespace Npgsql.Internal.Converters;
 sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtype>>
 {
     readonly PgConverter<TSubtype> _subtypeConverter;
-    readonly BufferRequirements _subtypeRequirements;
+    readonly PgConversionContext _conversionContext;
+    // Null when the subtype's descriptor is not invariant — cached requirements would be stale across
+    // contexts, so resolution is deferred to per-operation entry via ResolveSubtypeRequirements.
+    readonly BufferRequirements? _subtypeRequirements;
+    // Compositional boundary: outward BufferRequirements is always Streaming (inherited default), so the
+    // outward descriptor is always Invariant regardless of the subtype.
 
-    public RangeConverter(PgConverter<TSubtype> subtypeConverter)
+    public RangeConverter(PgConverter<TSubtype> subtypeConverter, PgConversionContext conversionContext)
     {
         _subtypeConverter = subtypeConverter;
-        _subtypeRequirements = subtypeConverter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
+        _conversionContext = conversionContext;
+        var subtypeDescriptor = subtypeConverter.GetDescriptor(new DescriptorContext { ConversionContext = conversionContext });
+        if (subtypeDescriptor.IsInvariant)
+            _subtypeRequirements = subtypeDescriptor.BufferRequirements;
     }
+
+    // Resolves the subtype's BufferRequirements for the current operation. Cached when invariant; otherwise
+    // re-probed against the stored PgConversionContext (will switch to PgReader/PgWriter's PgConversionContext
+    // once that surface lands). Call once per operation entry.
+    BufferRequirements ResolveSubtypeRequirements()
+        => _subtypeRequirements ?? _subtypeConverter.GetDescriptor(
+            new DescriptorContext { ConversionContext = _conversionContext }).BufferRequirements;
 
     public override NpgsqlRange<TSubtype> Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -36,6 +51,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         var upperBound = default(TSubtype);
 
         var converter = _subtypeConverter;
+        var subtypeReqsRead = ResolveSubtypeRequirements().Read;
         if ((flags & RangeFlags.LowerBoundInfinite) == 0)
         {
             if (reader.ShouldBuffer(sizeof(int)))
@@ -45,7 +61,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             // Note that we leave the CLR default for nulls
             if (length != -1)
             {
-                var scope = await reader.BeginNestedRead(async, length, _subtypeRequirements.Read, cancellationToken).ConfigureAwait(false);
+                var scope = await reader.BeginNestedRead(async, length, subtypeReqsRead, cancellationToken).ConfigureAwait(false);
                 try
                 {
                     lowerBound = async
@@ -72,7 +88,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             // Note that we leave the CLR default for nulls
             if (length != -1)
             {
-                var scope = await reader.BeginNestedRead(async, length, _subtypeRequirements.Read, cancellationToken).ConfigureAwait(false);
+                var scope = await reader.BeginNestedRead(async, length, subtypeReqsRead, cancellationToken).ConfigureAwait(false);
                 try
                 {
                     upperBound = async
@@ -104,13 +120,14 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         // null-bound flag rewriting handles correctly). After each successful inner Bind we assign the
         // wrapper to writeState so a subsequent inner Bind's throw is caught by the framework wrapper
         // and disposed via WriteState.Dispose, which cascades to any populated bound's inner state.
-        var subtypeContext = BindContext.CreateNested(context, _subtypeRequirements);
+        var subtypeReqs = ResolveSubtypeRequirements();
+        var subtypeContext = BindContext.CreateNested(context, subtypeReqs);
         RangeWriteState? state = null;
         if (!value.LowerBoundInfinite && !_subtypeConverter.IsDbNull(value.LowerBound!, null))
         {
             object? subTypeState = null;
             var size = _subtypeConverter.Bind(subtypeContext, value.LowerBound!, ref subTypeState);
-            state = new RangeWriteState();
+            state = new RangeWriteState { SubtypeRequirements = subtypeReqs };
             writeState = state;
             state.LowerBoundSize = size;
             state.LowerBoundWriteState = subTypeState;
@@ -123,7 +140,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             var size = _subtypeConverter.Bind(subtypeContext, value.UpperBound!, ref subTypeState);
             if (state is null)
             {
-                state = new RangeWriteState();
+                state = new RangeWriteState { SubtypeRequirements = subtypeReqs };
                 writeState = state;
             }
             state.UpperBoundSize = size;
@@ -179,7 +196,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             if (writer.ShouldFlush(sizeof(int))) // Length
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
             writer.WriteInt32(byteCount);
-            using var _ = await writer.BeginNestedWrite(async, _subtypeRequirements.Write, byteCount,
+            using var _ = await writer.BeginNestedWrite(async, writeState.SubtypeRequirements.Write, byteCount,
                 writeState.LowerBoundWriteState, cancellationToken).ConfigureAwait(false);
             if (async)
                 await _subtypeConverter.WriteAsync(writer, value.LowerBound!, cancellationToken).ConfigureAwait(false);
@@ -197,7 +214,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             if (writer.ShouldFlush(sizeof(int))) // Length
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
             writer.WriteInt32(byteCount);
-            using var _ = await writer.BeginNestedWrite(async, _subtypeRequirements.Write, byteCount,
+            using var _ = await writer.BeginNestedWrite(async, writeState.SubtypeRequirements.Write, byteCount,
                 writeState.UpperBoundWriteState, cancellationToken).ConfigureAwait(false);
             if (async)
                 await _subtypeConverter.WriteAsync(writer, value.UpperBound!, cancellationToken).ConfigureAwait(false);
@@ -210,6 +227,9 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
 file sealed class RangeWriteState : IDisposable
 {
+    // Subtype BufferRequirements snapshot stamped by BindValue; Write reuses to keep per-bound size
+    // assumptions consistent across BindValue → Write regardless of subtype invariance.
+    internal required BufferRequirements SubtypeRequirements { get; init; }
     // Default to -1 ("treat as infinite/null") so a partially populated WriteState — only one bound
     // carrying real payload — leaves the unset bound's flag-rewriting in Write working correctly.
     internal Size LowerBoundSize { get; set; } = -1;

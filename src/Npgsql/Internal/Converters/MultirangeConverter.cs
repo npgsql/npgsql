@@ -12,13 +12,25 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     where TRange : notnull
 {
     readonly PgConverter<TRange> _rangeConverter;
-    readonly BufferRequirements _rangeRequirements;
+    readonly PgConversionContext _conversionContext;
+    // Null when the range's descriptor is not invariant — cached requirements would be stale across
+    // contexts, so resolution is deferred to per-operation entry via ResolveRangeRequirements.
+    readonly BufferRequirements? _rangeRequirements;
+    // Compositional boundary: outward BufferRequirements is always Streaming (inherited default), so the
+    // outward descriptor is always Invariant regardless of the range converter.
 
-    public MultirangeConverter(PgConverter<TRange> rangeConverter)
+    public MultirangeConverter(PgConverter<TRange> rangeConverter, PgConversionContext conversionContext)
     {
         _rangeConverter = rangeConverter;
-        _rangeRequirements = rangeConverter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
+        _conversionContext = conversionContext;
+        var rangeDescriptor = rangeConverter.GetDescriptor(new DescriptorContext { ConversionContext = conversionContext });
+        if (rangeDescriptor.IsInvariant)
+            _rangeRequirements = rangeDescriptor.BufferRequirements;
     }
+
+    BufferRequirements ResolveRangeRequirements()
+        => _rangeRequirements ?? _rangeConverter.GetDescriptor(
+            new DescriptorContext { ConversionContext = _conversionContext }).BufferRequirements;
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -32,6 +44,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var numRanges = reader.ReadInt32();
         var multirange = (T)(object)(typeof(T).IsArray ? new TRange[numRanges] : new List<TRange>(numRanges));
+        var rangeReqsRead = ResolveRangeRequirements().Read;
 
         for (var i = 0; i < numRanges; i++)
         {
@@ -40,7 +53,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             var length = reader.ReadInt32();
             Debug.Assert(length != -1);
 
-            var scope = await reader.BeginNestedRead(async, length, _rangeRequirements.Read, cancellationToken).ConfigureAwait(false);
+            var scope = await reader.BeginNestedRead(async, length, rangeReqsRead, cancellationToken).ConfigureAwait(false);
             try
             {
                 var range = async
@@ -74,16 +87,18 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count);
         Array.Clear(data, 0, value.Count);
+        var rangeReqs = ResolveRangeRequirements();
         var state = new MultirangeWriteState
         {
             ArrayPool = arrayPool,
             Data = new(data, 0, value.Count),
-            AnyWriteState = false
+            AnyWriteState = false,
+            RangeRequirements = rangeReqs,
         };
         writeState = state;
 
         var totalSize = Size.Create(sizeof(int) + sizeof(int) * value.Count);
-        var rangeContext = BindContext.CreateNested(context, _rangeRequirements);
+        var rangeContext = BindContext.CreateNested(context, rangeReqs);
         for (var i = 0; i < value.Count; i++)
         {
             // Ranges within a multirange are never db-null on the wire.
@@ -128,7 +143,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             writer.WriteInt32(length);
             if (length != -1)
             {
-                using var _ = await writer.BeginNestedWrite(async, _rangeRequirements.Write, length, state, cancellationToken).ConfigureAwait(false);
+                using var _ = await writer.BeginNestedWrite(async, writeState.RangeRequirements.Write, length, state, cancellationToken).ConfigureAwait(false);
                 if (async)
                     await _rangeConverter.WriteAsync(writer, value[i], cancellationToken).ConfigureAwait(false);
                 else
@@ -140,4 +155,9 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
 }
 
-file sealed class MultirangeWriteState : MultiWriteState;
+file sealed class MultirangeWriteState : MultiWriteState
+{
+    // Range BufferRequirements snapshot stamped by BindValue; Write reuses to keep per-range size assumptions
+    // consistent across BindValue → Write regardless of range converter invariance.
+    public BufferRequirements RangeRequirements { get; set; }
+}
