@@ -14,7 +14,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
     public RangeConverter(PgConverter<TSubtype> subtypeConverter)
     {
         _subtypeConverter = subtypeConverter;
-        _subtypeRequirements = subtypeConverter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
+        _subtypeRequirements = subtypeConverter.GetDescriptor(new ConversionContext()).BufferRequirements;
     }
 
     public override NpgsqlRange<TSubtype> Read(PgReader reader)

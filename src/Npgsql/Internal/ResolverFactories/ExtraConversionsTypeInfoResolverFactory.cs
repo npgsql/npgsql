@@ -154,20 +154,23 @@ sealed class ExtraConversionResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<char[]>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
-                    var converter = new VersionPrefixedTextConverter<char[]>(jsonbVersion, new CharArrayTextConverter(options.TextEncoding));
-                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                    var text = new CharArrayTextConverter(options.TextEncoding);
+                    var binary = new VersionPrefixedTextConverter<char[]>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
                 });
             mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
-                    var converter = new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding));
-                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                    var text = TextConverter.CreateReadOnlyMemoryConverter(options.TextEncoding);
+                    var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<char>>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
                 });
             mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
-                    var converter = new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, new CharArraySegmentTextConverter(options.TextEncoding));
-                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                    var text = new CharArraySegmentTextConverter(options.TextEncoding);
+                    var binary = new VersionPrefixedTextConverter<ArraySegment<char>>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
                 });
 
             // Hstore

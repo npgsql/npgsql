@@ -55,14 +55,15 @@ public abstract class PgConverter
     public virtual ConverterDescriptor GetDescriptor(in ConversionContext context)
     {
         // Backward-compat bridge: forward to CanConvert for converters that only override the legacy surface.
-        // The framework only calls GetDescriptor for formats the converter is registered for, so a `false`
-        // here is a registration/lookup bug we surface loudly rather than handing back a default descriptor.
+        // The bridge asks about binary because every concrete info supports binary by design; legacy plugins
+        // that returned format-divergent requirements (rare) must override GetDescriptor and stop relying on
+        // CanConvert. The framework only calls GetDescriptor for formats the converter is registered for, so
+        // a `false` here is a registration/lookup bug we surface loudly rather than handing back a default.
 #pragma warning disable CS0618
-        if (!CanConvert(context.Format, out var bufferRequirements))
+        if (!CanConvert(DataFormat.Binary, out var bufferRequirements))
 #pragma warning restore CS0618
             ThrowHelper.ThrowInvalidOperationException(
-                $"Converter '{GetType().FullName}' does not support format '{context.Format}'. " +
-                "GetDescriptor must only be called for formats the converter is registered for.");
+                $"Converter '{GetType().FullName}' does not support binary format; legacy converters must override GetDescriptor.");
         return new ConverterDescriptor { BufferRequirements = bufferRequirements };
     }
 
@@ -530,8 +531,7 @@ public readonly struct BindContext
     /// </summary>
     public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
     {
-        var format = nestingContext.Format;
-        var bufferRequirements = converter.GetDescriptor(new ConversionContext { Format = format }).BufferRequirements;
+        var bufferRequirements = converter.GetDescriptor(new ConversionContext()).BufferRequirements;
         return CreateNested(nestingContext, bufferRequirements);
     }
 
@@ -635,14 +635,14 @@ class MultiWriteState : IDisposable
 
 /// <summary>
 /// Scope under which a converter is being asked to describe itself. The framework synthesizes one per
-/// format the converter is being registered for, and threads in any format-specific session state the
-/// converter may need (today: <see cref="TextEncoding"/> for text-format converters). Grows as new
-/// session state becomes relevant without revving the converter ecosystem.
+/// slot the converter is registered for and threads in any session state the converter may need
+/// (today: <see cref="TextEncoding"/> for text-format converters). The wire format is implicit in the
+/// slot the framework is querying, so it's not part of the context — converters that need to act per
+/// format are expected to be different instances per slot.
 /// </summary>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct ConversionContext
 {
-    public DataFormat Format { get; init; }
     public Encoding? TextEncoding { get; init; }
 }
 

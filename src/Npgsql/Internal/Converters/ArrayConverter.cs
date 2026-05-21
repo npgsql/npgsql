@@ -20,7 +20,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
         ElementTypeInfo = elementTypeInfo;
-        var bufferRequirements = elementTypeInfo.Converter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
+        var bufferRequirements = elementTypeInfo.Converter.GetDescriptor(new ConversionContext()).BufferRequirements;
         _arrayConverterCore = new((IElementOperations)this, elementTypeInfo, elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
             bufferRequirements, elementTypeInfo.PgTypeId, pgLowerBound);
     }

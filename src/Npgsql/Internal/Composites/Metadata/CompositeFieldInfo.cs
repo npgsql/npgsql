@@ -32,7 +32,7 @@ abstract class CompositeFieldInfo
 
         if (typeInfo is PgConcreteTypeInfo direct)
         {
-            _binaryBufferRequirements = direct.Converter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
+            _binaryBufferRequirements = direct.Converter.GetDescriptor(new ConversionContext()).BufferRequirements;
             ConcreteTypeInfo = direct;
         }
         else if (typeInfo is PgProviderTypeInfo)
