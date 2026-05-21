@@ -366,11 +366,11 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         Converter = binary;
         BinaryConverter = binary;
-        binary.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
+        _binaryBufferRequirements = binary.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
         if (text is not null)
         {
             TextConverter = text;
-            text.CanConvert(DataFormat.Text, out _textBufferRequirements);
+            _textBufferRequirements = text.GetDescriptor(new ConversionContext { Format = DataFormat.Text, TextEncoding = options.TextEncoding }).BufferRequirements;
         }
 
         _supportsReading = GetDefaultSupportsReading(binary.TypeToConvert, requestedType);

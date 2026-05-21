@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
@@ -47,6 +48,28 @@ public abstract class PgConverter
     /// <returns>Returns true if the given data format is supported.</returns>
     /// <remarks>The buffer requirements should not cover database NULL reads or writes, these are handled by the caller.</remarks>
     public abstract bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
+
+    /// <summary>
+    /// Computes the converter's descriptor under the supplied conversion context. The framework calls this
+    /// only for formats it knows the converter is registered for; the returned descriptor describes the
+    /// converter's terms for that context (today: buffer requirements; future: dispatch shape, cache keys).
+    /// Text-format converters must read <see cref="ConversionContext.TextEncoding"/> for any
+    /// encoding-dependent sizing rather than reaching into <c>PgSerializerOptions</c> directly — that keeps
+    /// converters insulated from any future dynamic-encoding flow.
+    /// </summary>
+    public virtual ConverterDescriptor GetDescriptor(in ConversionContext context)
+    {
+        // Default impl forwards to CanConvert for compat during the per-format migration. Once converters
+        // adopt the explicit per-format split, they override GetDescriptor and stop overriding CanConvert.
+        // The framework's contract is that GetDescriptor is only called for formats the converter is
+        // registered for — if CanConvert says "no", a registration / lookup bug got the contract wrong
+        // and we surface it loudly rather than silently handing back a default descriptor.
+        if (!CanConvert(context.Format, out var bufferRequirements))
+            ThrowHelper.ThrowInvalidOperationException(
+                $"Converter '{GetType().FullName}' does not support format '{context.Format}'. " +
+                "GetDescriptor must only be called for formats the converter is registered for.");
+        return new ConverterDescriptor { BufferRequirements = bufferRequirements };
+    }
 
     internal Type TypeToConvert { get; }
 
@@ -600,4 +623,30 @@ class MultiWriteState : IDisposable
 
         ArrayPool?.Return(Data.Array);
     }
+}
+
+/// <summary>
+/// Scope under which a converter is being asked to describe itself. The framework synthesizes one per
+/// format the converter is being registered for, and threads in any format-specific session state the
+/// converter may need (today: <see cref="TextEncoding"/> for text-format converters). Grows as new
+/// session state becomes relevant without revving the converter ecosystem.
+/// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct ConversionContext
+{
+    public DataFormat Format { get; init; }
+    public Encoding? TextEncoding { get; init; }
+}
+
+/// <summary>
+/// A converter's description of itself for a given <see cref="ConversionContext"/>. Today carries
+/// <see cref="BufferRequirements"/>; grows as future converter-static facts (dispatch shape, cache keys,
+/// fallback hints) become useful. No <c>IsSupported</c> flag — format support is registration-time, the
+/// framework only calls <see cref="PgConverter.GetDescriptor"/> for formats it knows the converter is
+/// registered for, so every call returns a meaningful descriptor.
+/// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct ConverterDescriptor
+{
+    public BufferRequirements BufferRequirements { get; init; }
 }
