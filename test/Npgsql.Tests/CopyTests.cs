@@ -949,6 +949,22 @@ INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'000000
         Assert.Throws<InvalidOperationException>(() => writer.WriteRow("Hello", 8, "I should not be here"));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6583")]
+    public async Task Write_column_out_of_bounds_exception_message()
+    {
+        using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "foo INT, bar TEXT");
+
+        using var writer = conn.BeginBinaryImport($"COPY {table} (foo, bar) FROM STDIN BINARY");
+
+        writer.StartRow();
+        writer.Write(1);
+        
+        var ex = Assert.Throws<InvalidOperationException>(() => writer.StartRow());
+        Assert.That(ex!.Message, Does.Contain("2 column(s)"));
+        Assert.That(ex!.Message, Does.Contain("1 value(s)"));
+    }
+
     [Test]
     public async Task Cancel_raw_binary_export_when_not_consumed_and_then_Dispose()
     {
