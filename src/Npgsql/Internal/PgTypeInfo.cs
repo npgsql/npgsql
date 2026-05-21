@@ -216,11 +216,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
     readonly PgConcreteTypeInfoProvider _typeInfoProvider;
     readonly PgConcreteTypeInfo? _defaultConcrete;
 
-    public PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId)
-        : this(options, typeInfoProvider, pgTypeId, requestedType: null)
-    {}
-
-    internal PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? requestedType)
+    private PgProviderTypeInfo(PgSerializerOptions options, PgConcreteTypeInfoProvider typeInfoProvider, PgTypeId? pgTypeId, Type? requestedType = null)
         : base(options, typeInfoProvider.TypeToConvert, pgTypeId, requestedType)
     {
         _typeInfoProvider = typeInfoProvider;
@@ -239,6 +235,10 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetDefault), result, ref writeState);
         _defaultConcrete = result;
     }
+
+    /// <summary>Creates a provider-backed type info.</summary>
+    public static PgProviderTypeInfo Create(PgSerializerOptions options, PgConcreteTypeInfoProvider provider, PgTypeId? pgTypeId, Type? requestedType = null)
+        => new(options, provider, pgTypeId, requestedType);
 
     public PgConcreteTypeInfo GetDefault(PgTypeId? pgTypeId)
     {
@@ -353,29 +353,101 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     readonly bool _supportsReading;
     readonly bool _supportsWriting;
 
-    readonly bool _canBinaryConvert;
     readonly BufferRequirements _binaryBufferRequirements;
-
-    readonly bool _canTextConvert;
     readonly BufferRequirements _textBufferRequirements;
 
-    public PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId)
-        : this(options, converter, pgTypeId, requestedType: null)
-    {}
-
-    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? requestedType)
-        : base(options, converter, pgTypeId, requestedType)
+    // <paramref name="binary"/> fills the binary slot, <paramref name="text"/> fills the text slot.
+    // Both slots may carry the same instance (multi-format converter) or different instances (single-format per slot).
+    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter binary, PgConverter? text, PgTypeId pgTypeId, Type? requestedType = null)
+        : base(options, binary, pgTypeId, requestedType)
     {
-        Converter = converter;
-        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
-        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
+        if (text is not null && binary.TypeToConvert != text.TypeToConvert)
+            throw new ArgumentException($"Binary converter type {binary.TypeToConvert} and text converter type {text.TypeToConvert} must match.", nameof(text));
 
-        // Set fields directly to bypass init guards on default values; init props enforce directional widen-to-true.
-        _supportsReading = GetDefaultSupportsReading(converter.TypeToConvert, requestedType);
-        _supportsWriting = GetDefaultSupportsWriting(converter.TypeToConvert, requestedType);
+        Converter = binary;
+        BinaryConverter = binary;
+        binary.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
+        if (text is not null)
+        {
+            TextConverter = text;
+            text.CanConvert(DataFormat.Text, out _textBufferRequirements);
+        }
+
+        _supportsReading = GetDefaultSupportsReading(binary.TypeToConvert, requestedType);
+        _supportsWriting = GetDefaultSupportsWriting(binary.TypeToConvert, requestedType);
+    }
+
+    /// <summary>
+    /// Creates a concrete type info with a binary-only converter. Use the dual overload for
+    /// converters that also handle the text wire format.
+    /// </summary>
+    public static PgConcreteTypeInfo Create(
+        PgSerializerOptions options,
+        PgConverter binary,
+        PgTypeId pgTypeId,
+        Type? requestedType = null,
+        DataFormat? preferredFormat = null,
+        bool? supportsReading = null,
+        bool? supportsWriting = null)
+        => new(options, binary, null, pgTypeId, requestedType)
+        {
+            PreferredFormat = preferredFormat,
+            SupportsReading = supportsReading ?? GetDefaultSupportsReading(binary.TypeToConvert, requestedType),
+            SupportsWriting = supportsWriting ?? GetDefaultSupportsWriting(binary.TypeToConvert, requestedType),
+        };
+
+    /// <summary>
+    /// Creates a concrete type info with explicit dual converters: <paramref name="binary"/> fills
+    /// the binary wire-format slot, <paramref name="text"/> fills the text wire-format slot.
+    /// </summary>
+    public static PgConcreteTypeInfo Create(
+        PgSerializerOptions options,
+        PgConverter binary,
+        PgConverter text,
+        PgTypeId pgTypeId,
+        Type? requestedType = null,
+        DataFormat? preferredFormat = null,
+        bool? supportsReading = null,
+        bool? supportsWriting = null)
+        => new(options, binary, text, pgTypeId, requestedType)
+        {
+            PreferredFormat = preferredFormat,
+            SupportsReading = supportsReading ?? GetDefaultSupportsReading(binary.TypeToConvert, requestedType),
+            SupportsWriting = supportsWriting ?? GetDefaultSupportsWriting(binary.TypeToConvert, requestedType),
+        };
+
+    /// <summary>
+    /// Creates a wrapping concrete type info with explicit dual converters, AND-propagating
+    /// <see cref="SupportsReading"/> and <see cref="SupportsWriting"/> from this info into the wrapper.
+    /// </summary>
+    public PgConcreteTypeInfo CreateComposition(
+        PgConverter binary,
+        PgConverter? text,
+        PgTypeId pgTypeId,
+        Type? requestedType = null,
+        bool? supportsReadingOverride = null,
+        bool? supportsWritingOverride = null,
+        DataFormat? preferredFormat = null)
+    {
+        var readingSupported = SupportsReading
+                               && (supportsReadingOverride ?? GetDefaultSupportsReading(binary.TypeToConvert, requestedType));
+        var writingSupported = SupportsWriting
+                               && (supportsWritingOverride ?? GetDefaultSupportsWriting(binary.TypeToConvert, requestedType));
+        return new PgConcreteTypeInfo(Options, binary, text, pgTypeId, requestedType)
+        {
+            PreferredFormat = preferredFormat,
+            SupportsReading = readingSupported,
+            SupportsWriting = writingSupported
+        };
     }
 
     public PgConverter Converter { get; }
+
+    /// <summary>The converter that handles the binary wire format, or null when binary is unsupported.</summary>
+    public PgConverter? BinaryConverter { get; }
+
+    /// <summary>The converter that handles the text wire format, or null when text is unsupported.</summary>
+    public PgConverter? TextConverter { get; }
 
     // Author widen-to-true is only meaningful in the under-reporting direction (Type narrower than the converter's
     // type): the converter actually returns instances assignable to Type at runtime via author contract.
@@ -451,10 +523,10 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     {
         switch (format)
         {
-        case DataFormat.Binary when _canBinaryConvert:
+        case DataFormat.Binary when BinaryConverter is not null:
             binding = new(format, _binaryBufferRequirements.Read);
             return true;
-        case DataFormat.Text when _canTextConvert:
+        case DataFormat.Text when TextConverter is not null:
             binding = new(format, _textBufferRequirements.Read);
             return true;
         default:
@@ -561,21 +633,21 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         // First try to check for preferred support.
         switch (formatPreference)
         {
-        case DataFormat.Binary when _canBinaryConvert:
+        case DataFormat.Binary when BinaryConverter is not null:
             bufferRequirements = _binaryBufferRequirements;
             return DataFormat.Binary;
-        case DataFormat.Text when _canTextConvert:
+        case DataFormat.Text when TextConverter is not null:
             bufferRequirements = _textBufferRequirements;
             return DataFormat.Text;
         default:
             // The common case, no preference given (or no match) means we default to binary if supported.
-            if (_canBinaryConvert)
+            if (BinaryConverter is not null)
             {
                 bufferRequirements = _binaryBufferRequirements;
                 return DataFormat.Binary;
             }
 
-            if (_canTextConvert)
+            if (TextConverter is not null)
             {
                 bufferRequirements = _textBufferRequirements;
                 return DataFormat.Text;

@@ -122,14 +122,12 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         return _concreteInfoCache.GetOrAdd(
             concreteTypeInfo,
             static (_, state)
-                => new(state.ConcreteTypeInfo.Options,
+                => state.ConcreteTypeInfo.CreateComposition(
                     state.Instance.CreateConverter(state.ConcreteTypeInfo, out var requestedType),
+                    null,
                     state.PgTypeId,
-                    requestedType: requestedType)
-                {
-                    SupportsReading = state.ConcreteTypeInfo.SupportsReading,
-                    SupportsWriting = state.ConcreteTypeInfo.SupportsWriting
-                },
+                    requestedType: requestedType
+                ),
             state);
     }
 }

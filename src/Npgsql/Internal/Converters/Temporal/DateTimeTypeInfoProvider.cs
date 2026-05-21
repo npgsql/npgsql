@@ -27,8 +27,8 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         _timestampTz = timestampTz;
         _timestamp = timestamp;
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        _timestampTzConcreteTypeInfo = new(options, factory(timestampTz), timestampTz);
-        _timestampConcreteTypeInfo = new(options, factory(timestamp), timestamp);
+        _timestampTzConcreteTypeInfo = PgConcreteTypeInfo.Create(options, factory(timestampTz), timestampTz);
+        _timestampConcreteTypeInfo = PgConcreteTypeInfo.Create(options, factory(timestamp), timestamp);
     }
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)

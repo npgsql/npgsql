@@ -56,7 +56,7 @@ sealed class PolymorphicArrayTypeInfoProvider : PgConcreteTypeInfoProvider<objec
         (PolymorphicArrayTypeInfoProvider Instance, PgConcreteTypeInfo ConcreteInfo) state = (this, elementConcreteTypeInfo);
         return _concreteInfoCache.GetOrAdd(elementConcreteTypeInfo,
             static (_, state) =>
-                new(state.ConcreteInfo.Options, state.Instance._elementToArrayConverterFactory(state.ConcreteInfo), state.Instance._pgTypeId),
+                new(state.ConcreteInfo.Options, state.Instance._elementToArrayConverterFactory(state.ConcreteInfo), null, state.Instance._pgTypeId),
             state);
     }
 }

@@ -30,16 +30,25 @@ sealed class LTreeTypeInfoResolverFactory : PgTypeInfoResolverFactory
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
         {
             mappings.AddType<string>("ltree",
-                static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
+                static (options, mapping, _) =>
+                {
+                    var converter = new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding));
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddType<string>("lquery",
-                static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
+                static (options, mapping, _) =>
+                {
+                    var converter = new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding));
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddType<string>("ltxtquery",
-                static (options, mapping, _) => mapping.CreateInfo(options,
-                    new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding))),
+                static (options, mapping, _) =>
+                {
+                    var converter = new VersionPrefixedTextConverter<string>(LTreeVersion, TextConverter.CreateStringConverter(options.TextEncoding));
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                },
                 MatchRequirement.DataTypeName);
 
             return mappings;

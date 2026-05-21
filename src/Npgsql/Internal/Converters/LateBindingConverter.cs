@@ -88,7 +88,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
 // At that point we don't need the LateBindingConverter any longer.
 sealed class LateBindingTypeInfoProvider(PgSerializerOptions options, PgTypeId typeId) : PgConcreteTypeInfoProvider<object>
 {
-    readonly PgConcreteTypeInfo _defaultConcreteTypeInfo = new(options, new LateBindingConverter(), typeId);
+    readonly PgConcreteTypeInfo _defaultConcreteTypeInfo = PgConcreteTypeInfo.Create(options, new LateBindingConverter(), typeId);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {

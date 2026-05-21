@@ -99,12 +99,12 @@ static class CastingTypeInfoExtensions
 
         var type = typeInfo.Type;
         if (typeInfo is PgProviderTypeInfo providerTypeInfo)
-            return new PgProviderTypeInfo(typeInfo.Options,
+            return PgProviderTypeInfo.Create(typeInfo.Options,
                 (PgConcreteTypeInfoProvider)Activator.CreateInstance(typeof(CastingTypeInfoProvider<>).MakeGenericType(type),
                     providerTypeInfo)!, typeInfo.PgTypeId);
 
         var concreteTypeInfo = (PgConcreteTypeInfo)typeInfo;
-        return new PgConcreteTypeInfo(typeInfo.Options,
+        return PgConcreteTypeInfo.Create(typeInfo.Options,
             (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), concreteTypeInfo.Converter)!, concreteTypeInfo.PgTypeId);
     }
 }

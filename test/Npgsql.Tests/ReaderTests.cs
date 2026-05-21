@@ -2645,7 +2645,7 @@ sealed class ExplodingTypeHandlerResolverFactory(bool safe) : PgTypeInfoResolver
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
             if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                return new PgConcreteTypeInfo(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
+                return PgConcreteTypeInfo.Create(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
 
             return null;
         }
@@ -2666,12 +2666,10 @@ sealed class CustomStreamResolverFactory : PgTypeInfoResolverFactory
         // a Stream query.
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => type == typeof(CustomStream) && dataTypeName == DataTypeNames.Bytea
-                ? new PgConcreteTypeInfo(options, new CustomStreamConverter(), DataTypeNames.Bytea, requestedType: typeof(CustomStream))
-                {
+                ? PgConcreteTypeInfo.Create(options, new CustomStreamConverter(), DataTypeNames.Bytea, requestedType: typeof(CustomStream),
                     // Under-reporting: converter produces Stream values that are actually CustomStream instances.
-                    SupportsReading = true,
-                    SupportsWriting = false,
-                }
+                    supportsReading: true,
+                    supportsWriting: false)
                 : null;
     }
 }

@@ -206,18 +206,14 @@ public sealed class TypeInfoMappingCollection
 
             var innerConcrete = (PgConcreteTypeInfo)innerMapping.Factory(options, resolvedInnerMapping, requiresDataTypeName);
             var converter = mapper(mapping, innerConcrete);
-            var preferredFormat = copyPreferredFormat ? innerConcrete.PreferredFormat : null;
-            var readingSupported = innerConcrete.SupportsReading
-                                   && (supportsReading ?? PgConcreteTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, requestedType: mapping.Type));
-            var writingSupported = innerConcrete.SupportsWriting
-                                   && (supportsWriting ?? PgConcreteTypeInfo.GetDefaultSupportsWriting(converter.TypeToConvert, requestedType: mapping.Type));
-
-            return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), requestedType: mapping.Type)
-            {
-                PreferredFormat = preferredFormat,
-                SupportsReading = readingSupported,
-                SupportsWriting = writingSupported
-            };
+            return innerConcrete.CreateComposition(
+                converter,
+                null,
+                options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)),
+                requestedType: mapping.Type,
+                supportsReadingOverride: supportsReading,
+                supportsWritingOverride: supportsWriting,
+                preferredFormat: copyPreferredFormat ? innerConcrete.PreferredFormat : null);
         };
 
     // Dual-mapper composer: the inner factory may return either PgConcreteTypeInfo (if the inner
@@ -239,16 +235,14 @@ public sealed class TypeInfoMappingCollection
             if (innerInfo is PgConcreteTypeInfo innerConcrete)
             {
                 var converter = concreteMapper(mapping, innerConcrete);
-                var readingSupported = innerConcrete.SupportsReading
-                                       && (supportsReading ?? PgConcreteTypeInfo.GetDefaultSupportsReading(converter.TypeToConvert, requestedType: mapping.Type));
-                var writingSupported = innerConcrete.SupportsWriting
-                                       && (supportsWriting ?? PgConcreteTypeInfo.GetDefaultSupportsWriting(converter.TypeToConvert, requestedType: mapping.Type));
-                return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), requestedType: mapping.Type)
-                {
-                    PreferredFormat = copyPreferredFormat ? innerConcrete.PreferredFormat : null,
-                    SupportsReading = readingSupported,
-                    SupportsWriting = writingSupported
-                };
+                return innerConcrete.CreateComposition(
+                    converter,
+                    null,
+                    options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)),
+                    requestedType: mapping.Type,
+                    supportsReadingOverride: supportsReading,
+                    supportsWritingOverride: supportsWriting,
+                    preferredFormat: copyPreferredFormat ? innerConcrete.PreferredFormat : null);
             }
 
             var providerInfo = (PgProviderTypeInfo)innerInfo;
@@ -258,7 +252,7 @@ public sealed class TypeInfoMappingCollection
             PgTypeId? pgTypeId = providerInfo.PgTypeId is not null
                 ? options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName))
                 : null;
-            return new PgProviderTypeInfo(options, typeInfoProvider, pgTypeId, requestedType: mapping.Type);
+            return PgProviderTypeInfo.Create(options, typeInfoProvider, pgTypeId, requestedType: mapping.Type);
         };
 
     // Wraps a leaf provider factory so that, when the produced PgProviderTypeInfo carries a decided
@@ -549,8 +543,8 @@ public sealed class TypeInfoMappingCollection
                     (PgConverter<Array>)((PgConcreteTypeInfo)innerInfo).Converter,
                     (PgConverter<Array>)((PgConcreteTypeInfo)nullableInnerInfo).Converter);
 
-            return new PgConcreteTypeInfo(innerInfo.Options, converter,
-                innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object)) { SupportsWriting = false };
+            return PgConcreteTypeInfo.Create(innerInfo.Options, converter,
+                innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object), supportsWriting: false);
         }
     }
 
@@ -687,15 +681,15 @@ public sealed class TypeInfoMappingCollection
                 {
                     var concreteConverter = new PolymorphicArrayConverter<Array>(
                         (PgConverter<Array>)innerConcrete.Converter, (PgConverter<Array>)nullableInnerConcrete.Converter);
-                    return new PgConcreteTypeInfo(innerInfo.Options, concreteConverter,
-                        innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object)) { SupportsWriting = false };
+                    return PgConcreteTypeInfo.Create(innerInfo.Options, concreteConverter,
+                        innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object), supportsWriting: false);
                 }
 
                 var provider =
                     new PolymorphicArrayTypeInfoProvider<Array>((PgProviderTypeInfo)innerInfo,
                         (PgProviderTypeInfo)nullableInnerInfo, isCompositionalUnit: true);
 
-                return new PgProviderTypeInfo(innerInfo.Options, provider,
+                return PgProviderTypeInfo.Create(innerInfo.Options, provider,
                     innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object));
             }
         }
@@ -839,11 +833,7 @@ public static class TypeInfoMappingHelpers
     /// <param name="converter">The converter to create a PgTypeInfo for.</param>
     /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter)
-        => new PgConcreteTypeInfo(options, converter, new DataTypeName(mapping.DataTypeName))
-        {
-            PreferredFormat = null,
-            SupportsWriting = true
-        };
+        => PgConcreteTypeInfo.Create(options, converter, new DataTypeName(mapping.DataTypeName));
 
     /// <summary>
     /// Creates a PgTypeInfo from a mapping, options, and a converter.
@@ -855,11 +845,34 @@ public static class TypeInfoMappingHelpers
     /// <param name="supportsWriting">Whether the converters returned from the given provider support writing.</param>
     /// <returns>The created info instance.</returns>
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
-        => new PgConcreteTypeInfo(options, converter, new DataTypeName(mapping.DataTypeName))
-        {
-            PreferredFormat = preferredFormat,
-            SupportsWriting = supportsWriting
-        };
+        => PgConcreteTypeInfo.Create(options, converter, new DataTypeName(mapping.DataTypeName),
+            preferredFormat: preferredFormat, supportsWriting: supportsWriting);
+
+    // NOTE: This method exists since 11.0 to be able to deprecate the method below that has optional arguments in 12.0 (potentially removing it directly or in 13.0).
+    /// <summary>
+    /// Creates a PgTypeInfo from a mapping, options, and explicit per-format converters.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="binary">The converter handling the binary wire format.</param>
+    /// <param name="text">The converter handling the text wire format.</param>
+    /// <returns>The created info instance.</returns>
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter binary, PgConverter text)
+        => PgConcreteTypeInfo.Create(options, binary, text, new DataTypeName(mapping.DataTypeName));
+
+    /// <summary>
+    /// Creates a PgTypeInfo from a mapping, options, and explicit per-format converters.
+    /// </summary>
+    /// <param name="mapping">The mapping to create an info for.</param>
+    /// <param name="options">The options to use.</param>
+    /// <param name="binary">The converter handling the binary wire format.</param>
+    /// <param name="text">The converter handling the text wire format.</param>
+    /// <param name="preferredFormat">Whether to prefer a specific data format for this info, when null it defaults to the most suitable format.</param>
+    /// <param name="supportsWriting">Whether the converters returned from the given provider support writing.</param>
+    /// <returns>The created info instance.</returns>
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter binary, PgConverter text, DataFormat? preferredFormat = null, bool supportsWriting = true)
+        => PgConcreteTypeInfo.Create(options, binary, text, new DataTypeName(mapping.DataTypeName),
+            preferredFormat: preferredFormat, supportsWriting: supportsWriting);
 
     // NOTE: This method exists since 9.0 to be able to deprecate the method below that has optional arguments in 10.0 (potentially removing it directly or in 11.0).
     // It reduces how binary breaking that change will be if this method would not be there to be picked for the most common invocations.
@@ -874,6 +887,6 @@ public static class TypeInfoMappingHelpers
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConcreteTypeInfoProvider provider, bool includeDataTypeName)
     {
         PgTypeId? pgTypeId = includeDataTypeName ? new PgTypeId(new DataTypeName(mapping.DataTypeName)) : null;
-        return new PgProviderTypeInfo(options, provider, pgTypeId);
+        return PgProviderTypeInfo.Create(options, provider, pgTypeId);
     }
 }

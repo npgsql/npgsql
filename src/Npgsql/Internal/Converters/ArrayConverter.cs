@@ -545,9 +545,10 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
         (PgConcreteTypeInfo ConcreteInfo, PgConcreteTypeInfo ConcreteNullableInfo) state = (concreteTypeInfo, concreteNullableTypeInfo);
         return _concreteInfoCache.GetOrAdd(concreteTypeInfo,
             static (_, state) =>
-                new(state.ConcreteInfo.Options,
+                PgConcreteTypeInfo.Create(state.ConcreteInfo.Options,
                     new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.ConcreteInfo.Converter, (PgConverter<TBase>)state.ConcreteNullableInfo.Converter),
-                    state.ConcreteInfo.PgTypeId) { SupportsWriting = false },
+                    state.ConcreteInfo.PgTypeId,
+                    supportsWriting: false),
             state);
     }
 }
