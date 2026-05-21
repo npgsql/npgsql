@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class GuidUuidConverter : PgBufferedConverter<Guid>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(16 * sizeof(byte)) };
 
     public override Guid Read(PgReader reader)

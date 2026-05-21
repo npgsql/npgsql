@@ -9,7 +9,7 @@ namespace Npgsql.Internal.Converters;
 sealed class StreamConverter(bool supportsTextFormat) : PgStreamingConverter<Stream>
 #pragma warning restore CS9113
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Streaming };
 
     public override Stream Read(PgReader reader)

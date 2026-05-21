@@ -17,7 +17,7 @@ public abstract class PgStreamingConverter<T> : PgConverter<T>
     [Obsolete("Call the parameterless constructor and set HandleDbNull directly.")]
     protected PgStreamingConverter(bool customDbNullPredicate) => HandleDbNull = customDbNullPredicate;
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Streaming };
 
     // Workaround for trimming https://github.com/dotnet/runtime/issues/92850#issuecomment-1744521361

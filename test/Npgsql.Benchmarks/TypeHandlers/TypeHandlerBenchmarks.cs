@@ -55,7 +55,7 @@ public abstract class TypeHandlerBenchmarks<T>
         _writeBuffer = new NpgsqlWriteBuffer(null, stream, null, NpgsqlWriteBuffer.DefaultSize, NpgsqlWriteBuffer.UTF8Encoding) { MessageLengthValidation = false };
         _reader = new PgReader(_readBuffer);
         _writer = _writeBuffer.GetWriter(new PostgresMinimalDatabaseInfo(), FlushMode.Blocking);
-        _binaryRequirements = _converter.GetDescriptor(new ConversionContext()).BufferRequirements;
+        _binaryRequirements = _converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
     }
 
     public IEnumerable<T?> Values() => ValuesOverride();

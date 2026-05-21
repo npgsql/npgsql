@@ -17,7 +17,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     public MultirangeConverter(PgConverter<TRange> rangeConverter)
     {
         _rangeConverter = rangeConverter;
-        _rangeRequirements = rangeConverter.GetDescriptor(new ConversionContext()).BufferRequirements;
+        _rangeRequirements = rangeConverter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
     }
 
     public override T Read(PgReader reader)

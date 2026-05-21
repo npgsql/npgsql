@@ -59,7 +59,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         }
     }
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = _bufferRequirements };
 
     public override T Read(PgReader reader)

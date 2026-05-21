@@ -12,10 +12,10 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
     const byte IPv4 = 2;
     const byte IPv6 = 3;
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => GetDescriptorImpl(context);
 
-    internal static ConverterDescriptor GetDescriptorImpl(in ConversionContext context)
+    internal static ConverterDescriptor GetDescriptorImpl(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(20)) };
 
     protected override Size BindValue(in BindContext context, NpgsqlInet value, ref object? writeState)

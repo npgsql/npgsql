@@ -508,7 +508,7 @@ public class WriteStateTests : TestBase
             HandleDbNull = true;
         }
 
-        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
             // UpperBound + HandleDbNull → IsBindOptional=false, ensuring BindValue + IsDbNullValue run.
             => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
@@ -653,7 +653,7 @@ public class WriteStateTests : TestBase
                 _throwInBindValueAt = throwInBindValueAt;
             }
 
-            public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+            public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
                 => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
             public override int Read(PgReader reader) => reader.ReadInt32();
@@ -685,7 +685,7 @@ public class WriteStateTests : TestBase
             HandleDbNull = true;
         }
 
-        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
             => new() { BufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
         protected override bool IsDbNullValue(int value, object? writeState)
@@ -791,7 +791,7 @@ public class WriteStateTests : TestBase
 
     sealed class DisposableWriteStateConverter : PgBufferedConverter<int>
     {
-        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
             => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
 
         public override int Read(PgReader reader) => reader.ReadInt32();

@@ -2708,7 +2708,7 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
     protected override Size BindValue(in BindContext context, int value, ref object? writeState)
         => throw new NotSupportedException();
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Value };
 
     public override void Write(PgWriter writer, int value)

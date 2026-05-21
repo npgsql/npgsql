@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class IPAddressConverter : PgBufferedConverter<IPAddress>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => NpgsqlInetConverter.GetDescriptorImpl(context);
 
     protected override Size BindValue(in BindContext context, IPAddress value, ref object? writeState)

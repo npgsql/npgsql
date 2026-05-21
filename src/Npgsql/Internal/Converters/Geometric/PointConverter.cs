@@ -5,7 +5,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class PointConverter : PgBufferedConverter<NpgsqlPoint>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 2) };
 
     public override NpgsqlPoint Read(PgReader reader)

@@ -12,7 +12,7 @@ namespace Npgsql.Internal.Converters;
 abstract class ByteaConverters<T>(bool supportsTextFormat) : PgStreamingConverter<T>
 #pragma warning restore CS9113
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Streaming };
 
     public override T Read(PgReader reader)
@@ -59,7 +59,7 @@ sealed class ArraySegmentByteaConverter(bool supportsTextFormat) : ByteaConverte
 sealed class ArrayByteaConverter(bool supportsTextFormat) : PgStreamingConverter<byte[]>
 #pragma warning restore CS9113
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Streaming };
 
     public override byte[] Read(PgReader reader)

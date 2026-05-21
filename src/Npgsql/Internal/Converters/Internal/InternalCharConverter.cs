@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class InternalCharConverter<T> : PgBufferedConverter<T> where T : INumberBase<T>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(byte)) };
 
     public override T Read(PgReader reader) => T.CreateChecked(reader.ReadByte());

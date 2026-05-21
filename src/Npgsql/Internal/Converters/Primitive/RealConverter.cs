@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class RealConverter<T> : PgBufferedConverter<T> where T : INumberBase<T>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(float)) };
 
     public override T Read(PgReader reader) => T.CreateChecked(reader.ReadFloat());

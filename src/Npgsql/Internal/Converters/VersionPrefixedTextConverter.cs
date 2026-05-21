@@ -18,12 +18,12 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
         _versionPrefix = versionPrefix;
         _textConverter = textConverter;
         HandleDbNull = textConverter.HandleDbNull;
-        _innerRequirements = textConverter.GetDescriptor(new ConversionContext()).BufferRequirements;
+        _innerRequirements = textConverter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
     }
 
     protected override bool IsDbNullValue(T? value, object? writeState) => _textConverter.IsDbNull(value, writeState);
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = _innerRequirements.Combine(sizeof(byte)) };
 
     public override T Read(PgReader reader)

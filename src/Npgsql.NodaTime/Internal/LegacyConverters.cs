@@ -8,7 +8,7 @@ namespace Npgsql.NodaTime.Internal;
 sealed class LegacyTimestampTzZonedDateTimeConverter(DateTimeZone dateTimeZone, bool dateTimeInfinityConversions)
     : PgBufferedConverter<ZonedDateTime>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override ZonedDateTime Read(PgReader reader)
@@ -33,7 +33,7 @@ sealed class LegacyTimestampTzZonedDateTimeConverter(DateTimeZone dateTimeZone, 
 sealed class LegacyTimestampTzOffsetDateTimeConverter(DateTimeZone dateTimeZone, bool dateTimeInfinityConversions)
     : PgBufferedConverter<OffsetDateTime>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override OffsetDateTime Read(PgReader reader)

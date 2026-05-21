@@ -5,7 +5,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class MoneyConverter<T> : PgBufferedConverter<T> where T : INumberBase<T>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override T Read(PgReader reader) => ConvertTo(new PgMoney(reader.ReadInt64()));

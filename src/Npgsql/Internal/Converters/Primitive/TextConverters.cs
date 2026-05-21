@@ -22,7 +22,7 @@ static class TextConverter
     sealed class StringBasedTextConverter<T, TConv>(Encoding encoding) : PgStreamingConverter<T>
         where TConv : struct, IStringConversion<T>
     {
-        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
             => new() { BufferRequirements = BufferRequirements.Streaming };
 
         public override T Read(PgReader reader)
@@ -89,7 +89,7 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => writer.WriteCharsAsync(ConvertTo(value), encoding, cancellationToken);
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Streaming };
 
     protected abstract ArraySegment<char> ConvertTo(T value);
@@ -135,7 +135,7 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
 {
     readonly Size _oneCharMaxByteCount = Size.CreateUpperBound(encoding.GetMaxByteCount(1));
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Create(_oneCharMaxByteCount) };
 
     public override char Read(PgReader reader)
@@ -168,7 +168,7 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
 
 sealed class TextReaderTextConverter(Encoding encoding) : PgStreamingConverter<TextReader>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Streaming };
 
     public override TextReader Read(PgReader reader)
@@ -190,7 +190,7 @@ readonly struct GetChars(int read)
 
 sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<GetChars>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Streaming };
 
     public override GetChars Read(PgReader reader)

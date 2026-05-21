@@ -34,7 +34,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new ConversionContext()).BufferRequirements;
+        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
 
         // Null the wrapper's EffectiveState before handoff. Inner BindAsObject's framework safety net
         // disposes via our local ref on throw and nulls the local; the wrapper would otherwise hold a
@@ -72,7 +72,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new ConversionContext()).BufferRequirements;
+        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
         var writeRequirement = bufferRequirements.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);

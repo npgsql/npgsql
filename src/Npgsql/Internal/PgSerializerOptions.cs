@@ -53,6 +53,15 @@ public sealed class PgSerializerOptions
 
     public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
     public Encoding TextEncoding { get; init; } = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
+
+    ConversionContext? _conversionContext;
+    /// <summary>
+    /// Shared conversion context for this options instance. Carries connection/options-scoped state that
+    /// converters read at descriptor query / read / write / bind time. One instance is reused across all
+    /// converters in this options; lifetime moves to the connection once mid-session state (ParameterStatus
+    /// updates etc.) needs to be threaded.
+    /// </summary>
+    public ConversionContext ConversionContext => _conversionContext ??= new ConversionContext { TextEncoding = TextEncoding };
     public IPgTypeInfoResolver TypeInfoResolver
     {
         get => _typeInfoResolver ??= new ChainTypeInfoResolver(_resolverChain);

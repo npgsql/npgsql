@@ -7,7 +7,7 @@ namespace Npgsql.NodaTime.Internal;
 
 sealed class InstantConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<Instant>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override Instant Read(PgReader reader)
@@ -19,7 +19,7 @@ sealed class InstantConverter(bool dateTimeInfinityConversions) : PgBufferedConv
 
 sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<ZonedDateTime>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
 
     public override ZonedDateTime Read(PgReader reader)
@@ -44,7 +44,7 @@ sealed class ZonedDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffer
 
 sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<OffsetDateTime>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long), optionalBind: false) };
 
     public override OffsetDateTime Read(PgReader reader)
@@ -69,7 +69,7 @@ sealed class OffsetDateTimeConverter(bool dateTimeInfinityConversions) : PgBuffe
 
 sealed class LocalDateTimeConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<LocalDateTime>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     public override LocalDateTime Read(PgReader reader)

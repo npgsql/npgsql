@@ -91,7 +91,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T> where T : INumb
 {
     const int StackAllocByteThreshold = 64 * sizeof(uint);
 
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         // This upper bound would already cause an overflow exception in the builder, no need to do + 1.
         => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(NumericConverter.DecimalBasedMaxByteCount)) };
 

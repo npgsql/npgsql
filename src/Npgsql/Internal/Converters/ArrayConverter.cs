@@ -20,7 +20,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
         ElementTypeInfo = elementTypeInfo;
-        var bufferRequirements = elementTypeInfo.Converter.GetDescriptor(new ConversionContext()).BufferRequirements;
+        var bufferRequirements = elementTypeInfo.Converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
         _arrayConverterCore = new((IElementOperations)this, elementTypeInfo, elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
             bufferRequirements, elementTypeInfo.PgTypeId, pgLowerBound);
     }
@@ -456,7 +456,7 @@ sealed class PolymorphicArrayConverter<TBase>(
     PgConverter<TBase> nullableElementCollectionConverter)
     : PgStreamingConverter<TBase>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(sizeof(int) + sizeof(int)), write: Size.Unknown) };
 
     public override TBase Read(PgReader reader)

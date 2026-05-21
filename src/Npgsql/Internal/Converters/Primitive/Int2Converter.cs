@@ -6,7 +6,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class Int2Converter<T> : PgBufferedConverter<T> where T : INumberBase<T>
 {
-    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
         => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(short)) };
 
     public override T Read(PgReader reader) => T.CreateChecked(reader.ReadInt16());

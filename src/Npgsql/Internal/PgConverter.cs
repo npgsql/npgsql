@@ -41,18 +41,19 @@ public abstract class PgConverter
     protected internal bool HandleDbNull { get; init; }
 
     /// <summary>
-    /// Computes the converter's descriptor under the supplied conversion context. The framework calls this
+    /// Computes the converter's descriptor under the supplied descriptor context. The framework calls this
     /// only for formats it knows the converter is registered for; the returned descriptor describes the
     /// converter's terms for that context (today: buffer requirements; future: dispatch shape, cache keys).
-    /// Text-format converters must read <see cref="ConversionContext.TextEncoding"/> for any
-    /// encoding-dependent sizing rather than reaching into <c>PgSerializerOptions</c> directly — that keeps
-    /// converters insulated from any future dynamic-encoding flow.
+    /// Text-format converters must read <see cref="ConversionContext.TextEncoding"/> via
+    /// <see cref="DescriptorContext.ConversionContext"/> for any encoding-dependent sizing rather than
+    /// reaching into <c>PgSerializerOptions</c> directly — that keeps converters insulated from any future
+    /// dynamic-encoding flow.
     /// </summary>
     /// <remarks>
     /// The virtual default forwards to the legacy (obsolete) <see cref="CanConvert"/> so existing converters
     /// compiled against the older surface keep working. New converters override this directly.
     /// </remarks>
-    public virtual ConverterDescriptor GetDescriptor(in ConversionContext context)
+    public virtual ConverterDescriptor GetDescriptor(in DescriptorContext context)
     {
         // Backward-compat bridge: forward to CanConvert for converters that only override the legacy surface.
         // The bridge asks about binary because every concrete info supports binary by design; legacy plugins
@@ -531,7 +532,7 @@ public readonly struct BindContext
     /// </summary>
     public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
     {
-        var bufferRequirements = converter.GetDescriptor(new ConversionContext()).BufferRequirements;
+        var bufferRequirements = converter.GetDescriptor(new DescriptorContext { ConversionContext = ConversionContext.Empty }).BufferRequirements;
         return CreateNested(nestingContext, bufferRequirements);
     }
 
@@ -634,20 +635,35 @@ class MultiWriteState : IDisposable
 }
 
 /// <summary>
-/// Scope under which a converter is being asked to describe itself. The framework synthesizes one per
-/// slot the converter is registered for and threads in any session state the converter may need
-/// (today: <see cref="TextEncoding"/> for text-format converters). The wire format is implicit in the
-/// slot the framework is querying, so it's not part of the context — converters that need to act per
-/// format are expected to be different instances per slot.
+/// Connection/options-scoped state that flows into a converter across operations (descriptor query,
+/// read, write, bind). Carries session state the converter may need (today: <see cref="TextEncoding"/>
+/// for text-format converters; future: dynamic per-connection state). One instance is shared across all
+/// callers within the same scope, so consumers must treat it as a read-through reference and avoid
+/// per-call allocation.
 /// </summary>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
-public readonly struct ConversionContext
+public sealed class ConversionContext
 {
+    /// <summary>An empty context, suitable for inner probes that don't read any session state.</summary>
+    public static ConversionContext Empty { get; } = new();
+
     public Encoding? TextEncoding { get; init; }
 }
 
 /// <summary>
-/// A converter's description of itself for a given <see cref="ConversionContext"/>. Today carries
+/// Per-call wrapper around a <see cref="ConversionContext"/> that <see cref="PgConverter.GetDescriptor"/>
+/// receives. Hosts call-scoped state that doesn't belong on the long-lived <see cref="ConversionContext"/>
+/// (today: just the context reference; future: sizing budget hints, composition depth, descriptor cache-key
+/// contributions). Always passed <c>in</c>; consumers read <see cref="ConversionContext"/> for session state.
+/// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct DescriptorContext
+{
+    public ConversionContext ConversionContext { get; init; }
+}
+
+/// <summary>
+/// A converter's description of itself for a given <see cref="DescriptorContext"/>. Today carries
 /// <see cref="BufferRequirements"/>; grows as future converter-static facts (dispatch shape, cache keys,
 /// fallback hints) become useful. No <c>IsSupported</c> flag — format support is registration-time, the
 /// framework only calls <see cref="PgConverter.GetDescriptor"/> for formats it knows the converter is
