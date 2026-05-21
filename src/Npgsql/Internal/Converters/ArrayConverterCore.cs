@@ -26,11 +26,11 @@ interface IElementOperations
 readonly struct ArrayConverterCore(
     IElementOperations elemOps,
     PgConverter elementConverter,
-    PgConversionContext conversionContext,
     bool elemTypeDbNullable,
     int? expectedDimensions,
     // Null when the element converter's descriptor is not invariant — the cached requirements would be
-    // stale across contexts, so resolution is deferred to per-operation entry via ResolveElementRequirements.
+    // stale across contexts, so resolution is deferred to per-operation entry via ResolveElementRequirements
+    // with the runtime PgConversionContext supplied by the carrier (reader/writer/BindContext).
     BufferRequirements? binaryRequirements,
     PgTypeId elemTypeId,
     int pgLowerBound = 1)
@@ -41,14 +41,9 @@ readonly struct ArrayConverterCore(
 
     bool ElemTypeDbNullable { get; } = elemTypeDbNullable;
 
-    // Resolves the element's binary BufferRequirements for the current operation. Returns the cached value
-    // when the element is invariant; otherwise re-probes the element converter against the bound
-    // PgConversionContext (will switch to PgReader/PgWriter's runtime PgConversionContext once that surface
-    // lands). Call once per operation entry, then thread the result through the per-element loop locally so
-    // any per-operation snapshot stays consistent.
-    BufferRequirements ResolveElementRequirements()
+    BufferRequirements ResolveElementRequirements(PgConversionContext context)
         => binaryRequirements ?? elementConverter.GetDescriptor(
-            new DescriptorContext { ConversionContext = conversionContext }).BufferRequirements;
+            new() { ConversionContext = context }).BufferRequirements;
 
     bool IsDbNull(object values, IterationIndices arrayIndices, object? writeState, NestedObjectDbNullHandling handling, BufferRequirements reqs)
     {
@@ -101,7 +96,7 @@ readonly struct ArrayConverterCore(
             indices = result.IterationIndices;
             // Provider phase doesn't know the dispatched element converter's requirements; stamp them here
             // now that we're inside the concrete array converter's BindValue.
-            result.ElementRequirements = ResolveElementRequirements();
+            result.ElementRequirements = ResolveElementRequirements(context.ConversionContext);
             Debug.Assert(metadata.TotalElements > 0, "Provider phase doesn't construct write state for empty arrays.");
         }
         else
@@ -120,7 +115,7 @@ readonly struct ArrayConverterCore(
                 Metadata = metadata,
                 IterationIndices = indices,
                 NestedObjectDbNullHandling = context.NestedObjectDbNullHandling,
-                ElementRequirements = ResolveElementRequirements(),
+                ElementRequirements = ResolveElementRequirements(context.ConversionContext),
             };
         }
         writeState = result;
@@ -249,7 +244,7 @@ readonly struct ArrayConverterCore(
                 + $"Call GetValue or a version of GetFieldValue<TElement[,,,]> with the commas matching the expected amount of dimensions.");
 
         var indices = IterationIndices.Create(dimensions);
-        var elementReqsRead = ResolveElementRequirements().Read;
+        var elementReqsRead = ResolveElementRequirements(reader.ConversionContext).Read;
         do
         {
             if (reader.ShouldBuffer(sizeof(int)))

@@ -36,7 +36,7 @@ abstract class CompositeFieldInfo
 
         if (typeInfo is PgConcreteTypeInfo direct)
         {
-            var fieldDescriptor = direct.Converter.GetDescriptor(new DescriptorContext { ConversionContext = PgConversionContext.Empty });
+            var fieldDescriptor = direct.Converter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
             _binaryBufferRequirements = fieldDescriptor.BufferRequirements;
             IsInvariant = fieldDescriptor.IsInvariant;
             ConcreteTypeInfo = direct;
@@ -89,7 +89,7 @@ abstract class CompositeFieldInfo
                 AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
 
             var ctx = !IsProviderBacked
-                ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional)
+                ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional, nestingContext.ConversionContext)
                 : BindContext.CreateNested(nestingContext, concreteTypeInfo.Converter);
 
             // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter

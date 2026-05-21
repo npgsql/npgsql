@@ -366,11 +366,11 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
 
         Converter = binary;
         BinaryConverter = binary;
-        _binaryBufferRequirements = binary.GetDescriptor(new DescriptorContext { ConversionContext = options.ConversionContext }).BufferRequirements;
+        _binaryBufferRequirements = binary.GetDescriptor(new() { ConversionContext = options.ConversionContext }).BufferRequirements;
         if (text is not null)
         {
             TextConverter = text;
-            _textBufferRequirements = text.GetDescriptor(new DescriptorContext { ConversionContext = options.ConversionContext }).BufferRequirements;
+            _textBufferRequirements = text.GetDescriptor(new() { ConversionContext = options.ConversionContext }).BufferRequirements;
         }
 
         _supportsReading = GetDefaultSupportsReading(binary.TypeToConvert, requestedType);
@@ -560,7 +560,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
                 return new(DataFormat.Binary, Size.Zero, null, writeState);
 
             var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-            var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional)
+            var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional, Options.ConversionContext)
                 with { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
             var size = Unsafe.As<PgConverter<T>>(Converter).Bind(context, value!, ref writeState);
             return new(format, bufferRequirements.Write, size, writeState);
@@ -612,7 +612,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
                 return new(DataFormat.Binary, Size.Zero, null, writeState);
 
             var format = ResolveFormat(out var bufferRequirements, formatPreference ?? PreferredFormat);
-            var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional)
+            var context = BindContext.CreateUnchecked(format, bufferRequirements.Write, bufferRequirements.IsBindOptional, Options.ConversionContext)
                 with { NestedObjectDbNullHandling = nestedObjectDbNullHandling };
             var size = Converter.BindAsObject(context, value, ref writeState);
             return new(format, bufferRequirements.Write, size, writeState);

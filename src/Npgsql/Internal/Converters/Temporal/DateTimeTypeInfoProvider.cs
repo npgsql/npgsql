@@ -104,9 +104,9 @@ sealed class DateTimeTypeInfoProvider
         }, pgTypeId =>
         {
             if (pgTypeId == timestampTz)
-                return new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc), options.ConversionContext);
+                return new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc));
             if (pgTypeId == timestamp)
-                return new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Unspecified), options.ConversionContext);
+                return new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Unspecified));
 
             throw new NotSupportedException();
         }, timestampTz, timestamp, dateTimeInfinityConversions);
@@ -151,12 +151,10 @@ sealed class DateTimeTypeInfoProvider
         {
             if (pgTypeId == timestampTz)
                 return new MultirangeConverter<T, TElement>(
-                    (PgConverter<TElement>)(object)new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc), options.ConversionContext),
-                    options.ConversionContext);
+                    (PgConverter<TElement>)(object)new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc)));
             if (pgTypeId == timestamp)
                 return new MultirangeConverter<T, TElement>(
-                    (PgConverter<TElement>)(object)new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Unspecified), options.ConversionContext),
-                    options.ConversionContext);
+                    (PgConverter<TElement>)(object)new RangeConverter<DateTime>(new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Unspecified)));
 
             throw new NotSupportedException();
         }, timestampTz, timestamp, dateTimeInfinityConversions);

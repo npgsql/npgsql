@@ -198,21 +198,21 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = TextConverter.CreateStringConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<string>(jsonbVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<string>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 }, isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
                     var text = new CharTextConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<char>(jsonbVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<char>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 });
             mappings.AddType<byte[]>(DataTypeNames.Jsonb,
                 static (options, mapping, _) =>
                 {
                     var text = new ArrayByteaConverter(supportsTextFormat: true);
-                    var binary = new VersionPrefixedTextConverter<byte[]>(jsonbVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<byte[]>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },
                 MatchRequirement.DataTypeName);
@@ -220,7 +220,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = new ReadOnlyMemoryByteaConverter(supportsTextFormat: true);
-                    var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 },
                 MatchRequirement.DataTypeName);
@@ -228,7 +228,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = new StreamConverter(supportsTextFormat: true);
-                    var binary = new VersionPrefixedTextConverter<Stream>(jsonbVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<Stream>(jsonbVersion, text);
                     return PgConcreteTypeInfo.Create(options, binary: binary, text: text, new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type);
                 },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
@@ -237,7 +237,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = new TextReaderTextConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<TextReader>(jsonbVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<TextReader>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
                 },
                 MatchRequirement.DataTypeName);
@@ -245,7 +245,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = new GetCharsTextConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<GetChars>(jsonbVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<GetChars>(jsonbVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
                 },
                 MatchRequirement.DataTypeName);
@@ -256,7 +256,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = TextConverter.CreateStringConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<string>(jsonpathVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<string>(jsonpathVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text);
                 }, isDefault: true);
             //Special mappings, these have no corresponding array mapping.
@@ -264,7 +264,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = new TextReaderTextConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<TextReader>(jsonpathVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<TextReader>(jsonpathVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
                 },
                 MatchRequirement.DataTypeName);
@@ -272,7 +272,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) =>
                 {
                     var text = new GetCharsTextConverter(options.TextEncoding);
-                    var binary = new VersionPrefixedTextConverter<GetChars>(jsonpathVersion, text, options.ConversionContext);
+                    var binary = new VersionPrefixedTextConverter<GetChars>(jsonpathVersion, text);
                     return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
                 },
                 MatchRequirement.DataTypeName);

@@ -23,10 +23,11 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
-        var conversionContext = elementTypeInfo.Options.ConversionContext;
-        var elementDescriptor = elementTypeInfo.Converter.GetDescriptor(new DescriptorContext { ConversionContext = conversionContext });
+        // Invariance is context-independent by contract; probe with Empty. The cached BufferRequirements
+        // is only valid when invariant — non-invariant elements re-resolve at runtime via the carrier.
+        var elementDescriptor = elementTypeInfo.Converter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
         _elementIsInvariant = elementDescriptor.IsInvariant;
-        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo.Converter, conversionContext,
+        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo.Converter,
             elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
             _elementIsInvariant ? elementDescriptor.BufferRequirements : null, elementTypeInfo.PgTypeId, pgLowerBound);
     }

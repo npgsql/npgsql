@@ -9,28 +9,26 @@ namespace Npgsql.Internal.Converters;
 sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtype>>
 {
     readonly PgConverter<TSubtype> _subtypeConverter;
-    readonly PgConversionContext _conversionContext;
     // Null when the subtype's descriptor is not invariant — cached requirements would be stale across
-    // contexts, so resolution is deferred to per-operation entry via ResolveSubtypeRequirements.
+    // contexts, so resolution is deferred to per-operation entry via ResolveSubtypeRequirements with the
+    // runtime PgConversionContext supplied by the carrier (reader/writer/BindContext).
     readonly BufferRequirements? _subtypeRequirements;
     // Compositional boundary: outward BufferRequirements is always Streaming (inherited default), so the
     // outward descriptor is always Invariant regardless of the subtype.
 
-    public RangeConverter(PgConverter<TSubtype> subtypeConverter, PgConversionContext conversionContext)
+    public RangeConverter(PgConverter<TSubtype> subtypeConverter)
     {
         _subtypeConverter = subtypeConverter;
-        _conversionContext = conversionContext;
-        var subtypeDescriptor = subtypeConverter.GetDescriptor(new DescriptorContext { ConversionContext = conversionContext });
+        // Invariance is context-independent by contract; probing with Empty gives the same answer as any
+        // real context. We only keep the cached BufferRequirements when invariant.
+        var subtypeDescriptor = subtypeConverter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
         if (subtypeDescriptor.IsInvariant)
             _subtypeRequirements = subtypeDescriptor.BufferRequirements;
     }
 
-    // Resolves the subtype's BufferRequirements for the current operation. Cached when invariant; otherwise
-    // re-probed against the stored PgConversionContext (will switch to PgReader/PgWriter's PgConversionContext
-    // once that surface lands). Call once per operation entry.
-    BufferRequirements ResolveSubtypeRequirements()
+    BufferRequirements ResolveSubtypeRequirements(PgConversionContext context)
         => _subtypeRequirements ?? _subtypeConverter.GetDescriptor(
-            new DescriptorContext { ConversionContext = _conversionContext }).BufferRequirements;
+            new() { ConversionContext = context }).BufferRequirements;
 
     public override NpgsqlRange<TSubtype> Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -51,7 +49,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         var upperBound = default(TSubtype);
 
         var converter = _subtypeConverter;
-        var subtypeReqsRead = ResolveSubtypeRequirements().Read;
+        var subtypeReqsRead = ResolveSubtypeRequirements(reader.ConversionContext).Read;
         if ((flags & RangeFlags.LowerBoundInfinite) == 0)
         {
             if (reader.ShouldBuffer(sizeof(int)))
@@ -120,7 +118,7 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         // null-bound flag rewriting handles correctly). After each successful inner Bind we assign the
         // wrapper to writeState so a subsequent inner Bind's throw is caught by the framework wrapper
         // and disposed via WriteState.Dispose, which cascades to any populated bound's inner state.
-        var subtypeReqs = ResolveSubtypeRequirements();
+        var subtypeReqs = ResolveSubtypeRequirements(context.ConversionContext);
         var subtypeContext = BindContext.CreateNested(context, subtypeReqs);
         RangeWriteState? state = null;
         if (!value.LowerBoundInfinite && !_subtypeConverter.IsDbNull(value.LowerBound!, null))

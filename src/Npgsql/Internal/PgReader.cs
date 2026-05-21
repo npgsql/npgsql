@@ -50,6 +50,14 @@ public class PgReader
         _currentSize = UninitializedSentinel;
     }
 
+    /// <summary>
+    /// The conversion context for this reader's connection. Stable across the connection's lifetime
+    /// (today via <see cref="PgSerializerOptions.ConversionContext"/>); converters needing
+    /// encoding-aware or session-relative state read it here at runtime instead of capturing at
+    /// construction.
+    /// </summary>
+    public PgConversionContext ConversionContext => _buffer.Connector.SerializerOptions.ConversionContext;
+
     internal bool Initialized => _fieldStartPos is not UninitializedSentinel;
     int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
     int FieldSize => _fieldSize;

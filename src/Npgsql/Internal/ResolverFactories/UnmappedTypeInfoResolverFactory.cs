@@ -95,7 +95,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                     PgConcreteTypeInfo.Create(
                         options,
                         (PgConverter)Activator.CreateInstance(typeof(RangeConverter<>).MakeGenericType(subInfo.Type),
-                            ((PgConcreteTypeInfo)subInfo).Converter, options.ConversionContext)!,
+                            ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
                         requestedType: matchedType,
                         preferredFormat: subConcrete.PreferredFormat,
@@ -156,7 +156,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                     PgConcreteTypeInfo.Create(
                         options,
                         (PgConverter)Activator.CreateInstance(typeof(MultirangeConverter<,>).MakeGenericType(converterType, subInfo.Type),
-                            ((PgConcreteTypeInfo)subInfo).Converter, options.ConversionContext)!,
+                            ((PgConcreteTypeInfo)subInfo).Converter)!,
                         new DataTypeName(mapping.DataTypeName),
                         requestedType: type,
                         preferredFormat: subConcrete.PreferredFormat,

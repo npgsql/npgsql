@@ -499,6 +499,13 @@ public readonly struct BindContext
     public DataFormat Format { get; private init; }
 
     /// <summary>
+    /// The conversion context active for this bind. Forwarded through nested binds; populated from
+    /// the writer at the outermost bind so composing converters can resolve context-dependent inner
+    /// descriptors against the same context the eventual Write operation will see.
+    /// </summary>
+    public PgConversionContext ConversionContext { get; private init; }
+
+    /// <summary>
     /// The size requirement for writing values with <see cref="Format"/>.
     /// Sourced from the format-specific <see cref="BufferRequirements.Write"/> returned by <see cref="PgConverter.CanConvert"/>.
     /// </summary>
@@ -532,7 +539,8 @@ public readonly struct BindContext
     /// </summary>
     public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
     {
-        var bufferRequirements = converter.GetDescriptor(new DescriptorContext { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
+        var bufferRequirements = converter.GetDescriptor(
+            new() { ConversionContext = nestingContext.ConversionContext }).BufferRequirements;
         return CreateNested(nestingContext, bufferRequirements);
     }
 
@@ -547,7 +555,8 @@ public readonly struct BindContext
             Format = nestingContext.Format,
             BufferRequirement = requirements.Write,
             IsBindOptional = requirements.IsBindOptional,
-            NestedObjectDbNullHandling = nestingContext.NestedObjectDbNullHandling
+            NestedObjectDbNullHandling = nestingContext.NestedObjectDbNullHandling,
+            ConversionContext = nestingContext.ConversionContext,
         };
 
     /// <summary>
@@ -556,12 +565,13 @@ public readonly struct BindContext
     /// cached requirements. Callers must ensure these values are consistent with the converter that
     /// will receive this context.
     /// </summary>
-    public static BindContext CreateUnchecked(DataFormat format, Size bufferRequirement, bool isBindOptional)
+    public static BindContext CreateUnchecked(DataFormat format, Size bufferRequirement, bool isBindOptional, PgConversionContext? conversionContext = null)
         => new()
         {
             Format = format,
             BufferRequirement = bufferRequirement,
-            IsBindOptional = isBindOptional
+            IsBindOptional = isBindOptional,
+            ConversionContext = conversionContext ?? PgConversionContext.Empty,
         };
 }
 

@@ -39,13 +39,13 @@ public enum MatchRequirement
 public static class PgConverterFactory
 {
     public static PgConverter<T[]> CreateArrayMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
-        => new MultirangeConverter<T[], T>(rangeConverter, options.ConversionContext);
+        => new MultirangeConverter<T[], T>(rangeConverter);
 
     public static PgConverter<List<T>> CreateListMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
-        => new MultirangeConverter<List<T>, T>(rangeConverter, options.ConversionContext);
+        => new MultirangeConverter<List<T>, T>(rangeConverter);
 
     public static PgConverter<NpgsqlRange<T>> CreateRangeConverter<T>(PgConverter<T> subTypeConverter, PgSerializerOptions options)
-        => new RangeConverter<T>(subTypeConverter, options.ConversionContext);
+        => new RangeConverter<T>(subTypeConverter);
 
     public static PgConverter<TBase> CreatePolymorphicArrayConverter<TBase>(Func<PgConverter<TBase>> arrayConverterFactory, Func<PgConverter<TBase>> nullableArrayConverterFactory, PgSerializerOptions options)
         => options.ArrayNullabilityMode switch

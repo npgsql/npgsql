@@ -12,25 +12,24 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     where TRange : notnull
 {
     readonly PgConverter<TRange> _rangeConverter;
-    readonly PgConversionContext _conversionContext;
     // Null when the range's descriptor is not invariant — cached requirements would be stale across
-    // contexts, so resolution is deferred to per-operation entry via ResolveRangeRequirements.
+    // contexts, so resolution is deferred to per-operation entry via ResolveRangeRequirements with the
+    // runtime PgConversionContext supplied by the carrier (reader/writer/BindContext).
     readonly BufferRequirements? _rangeRequirements;
     // Compositional boundary: outward BufferRequirements is always Streaming (inherited default), so the
     // outward descriptor is always Invariant regardless of the range converter.
 
-    public MultirangeConverter(PgConverter<TRange> rangeConverter, PgConversionContext conversionContext)
+    public MultirangeConverter(PgConverter<TRange> rangeConverter)
     {
         _rangeConverter = rangeConverter;
-        _conversionContext = conversionContext;
-        var rangeDescriptor = rangeConverter.GetDescriptor(new DescriptorContext { ConversionContext = conversionContext });
+        var rangeDescriptor = rangeConverter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
         if (rangeDescriptor.IsInvariant)
             _rangeRequirements = rangeDescriptor.BufferRequirements;
     }
 
-    BufferRequirements ResolveRangeRequirements()
+    BufferRequirements ResolveRangeRequirements(PgConversionContext context)
         => _rangeRequirements ?? _rangeConverter.GetDescriptor(
-            new DescriptorContext { ConversionContext = _conversionContext }).BufferRequirements;
+            new() { ConversionContext = context }).BufferRequirements;
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
@@ -44,7 +43,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             await reader.Buffer(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var numRanges = reader.ReadInt32();
         var multirange = (T)(object)(typeof(T).IsArray ? new TRange[numRanges] : new List<TRange>(numRanges));
-        var rangeReqsRead = ResolveRangeRequirements().Read;
+        var rangeReqsRead = ResolveRangeRequirements(reader.ConversionContext).Read;
 
         for (var i = 0; i < numRanges; i++)
         {
@@ -87,7 +86,7 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         var arrayPool = ArrayPool<(Size Size, object? WriteState)>.Shared;
         var data = arrayPool.Rent(value.Count);
         Array.Clear(data, 0, value.Count);
-        var rangeReqs = ResolveRangeRequirements();
+        var rangeReqs = ResolveRangeRequirements(context.ConversionContext);
         var state = new MultirangeWriteState
         {
             ArrayPool = arrayPool,

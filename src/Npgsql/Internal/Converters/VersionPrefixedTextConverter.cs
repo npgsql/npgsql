@@ -11,33 +11,32 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
 {
     readonly byte _versionPrefix;
     readonly PgConverter<T> _textConverter;
-    readonly PgConversionContext _conversionContext;
     // Null when the inner's descriptor is not invariant — cached requirements would be stale across
-    // contexts, so resolution is deferred to per-operation entry via ResolveInnerRequirements.
+    // contexts, so resolution is deferred to per-operation entry via ResolveInnerRequirements with the
+    // runtime PgConversionContext supplied by the carrier (reader/writer/BindContext/DescriptorContext).
     readonly BufferRequirements? _innerRequirements;
 
-    public VersionPrefixedTextConverter(byte versionPrefix, PgConverter<T> textConverter, PgConversionContext conversionContext)
+    public VersionPrefixedTextConverter(byte versionPrefix, PgConverter<T> textConverter)
     {
         _versionPrefix = versionPrefix;
         _textConverter = textConverter;
-        _conversionContext = conversionContext;
         HandleDbNull = textConverter.HandleDbNull;
-        var innerDescriptor = textConverter.GetDescriptor(new DescriptorContext { ConversionContext = conversionContext });
+        var innerDescriptor = textConverter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
         if (innerDescriptor.IsInvariant)
             _innerRequirements = innerDescriptor.BufferRequirements;
     }
 
     bool InnerIsInvariant => _innerRequirements is not null;
 
-    BufferRequirements ResolveInnerRequirements()
+    BufferRequirements ResolveInnerRequirements(PgConversionContext context)
         => _innerRequirements ?? _textConverter.GetDescriptor(
-            new DescriptorContext { ConversionContext = _conversionContext }).BufferRequirements;
+            new() { ConversionContext = context }).BufferRequirements;
 
     protected override bool IsDbNullValue(T? value, object? writeState) => _textConverter.IsDbNull(value, writeState);
 
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
     {
-        var innerReqs = ResolveInnerRequirements();
+        var innerReqs = ResolveInnerRequirements(context.ConversionContext);
         var combined = innerReqs.Combine(sizeof(byte));
         return InnerIsInvariant
             ? ConverterDescriptor.Invariant with { BufferRequirements = combined }
@@ -52,7 +51,7 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
 
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
     {
-        var innerContext = BindContext.CreateNested(context, ResolveInnerRequirements());
+        var innerContext = BindContext.CreateNested(context, ResolveInnerRequirements(context.ConversionContext));
         return _textConverter.Bind(innerContext, value, ref writeState).Combine(sizeof(byte));
     }
 
@@ -74,7 +73,7 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
                 throw new InvalidCastException($"Unknown wire format version: {actualVersion}");
         }
 
-        var byteCount = BufferRequirements.GetMinimumBufferByteCount(ResolveInnerRequirements().Read, reader.CurrentRemaining);
+        var byteCount = BufferRequirements.GetMinimumBufferByteCount(ResolveInnerRequirements(reader.ConversionContext).Read, reader.CurrentRemaining);
         if (reader.ShouldBuffer(byteCount))
             await reader.Buffer(async, byteCount, cancellationToken).ConfigureAwait(false);
 
