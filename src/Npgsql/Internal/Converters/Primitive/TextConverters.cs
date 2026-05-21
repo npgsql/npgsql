@@ -22,11 +22,8 @@ static class TextConverter
     sealed class StringBasedTextConverter<T, TConv>(Encoding encoding) : PgStreamingConverter<T>
         where TConv : struct, IStringConversion<T>
     {
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
-            bufferRequirements = BufferRequirements.Streaming;
-            return format is DataFormat.Binary or DataFormat.Text;
-        }
+        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+            => new() { BufferRequirements = BufferRequirements.Streaming };
 
         public override T Read(PgReader reader)
         {
@@ -92,11 +89,8 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => writer.WriteCharsAsync(ConvertTo(value), encoding, cancellationToken);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Streaming };
 
     protected abstract ArraySegment<char> ConvertTo(T value);
     protected abstract T ConvertFrom(ArraySegment<char> value);
@@ -141,11 +135,8 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
 {
     readonly Size _oneCharMaxByteCount = Size.CreateUpperBound(encoding.GetMaxByteCount(1));
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Create(_oneCharMaxByteCount);
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Create(_oneCharMaxByteCount) };
 
     public override char Read(PgReader reader)
     {
@@ -177,11 +168,8 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
 
 sealed class TextReaderTextConverter(Encoding encoding) : PgStreamingConverter<TextReader>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Streaming };
 
     public override TextReader Read(PgReader reader)
         => reader.GetTextReader(encoding);
@@ -202,11 +190,8 @@ readonly struct GetChars(int read)
 
 sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<GetChars>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Streaming };
 
     public override GetChars Read(PgReader reader)
         => reader.GetCharsReadActive

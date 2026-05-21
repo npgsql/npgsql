@@ -5,11 +5,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class LineConverter : PgBufferedConverter<NpgsqlLine>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 3);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 3) };
 
     public override NpgsqlLine Read(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());

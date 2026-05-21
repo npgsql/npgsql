@@ -34,11 +34,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        if (!concreteTypeInfo.Converter.CanConvert(context.Format, out var bufferRequirements))
-        {
-            ThrowHelper.ThrowNotSupportedException($"Resolved converter '{concreteTypeInfo.Converter.GetType()}' has to support the {context.Format} format to be compatible.");
-            return default;
-        }
+        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new ConversionContext { Format = context.Format }).BufferRequirements;
 
         // Null the wrapper's EffectiveState before handoff. Inner BindAsObject's framework safety net
         // disposes via our local ref on throw and nulls the local; the wrapper would otherwise hold a
@@ -76,8 +72,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var found = concreteTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements);
-        Debug.Assert(found);
+        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
         var writeRequirement = bufferRequirements.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
         await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);

@@ -59,11 +59,8 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         }
     }
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = _bufferRequirements;
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = _bufferRequirements };
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();

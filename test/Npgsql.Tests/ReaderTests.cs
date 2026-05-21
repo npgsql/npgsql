@@ -2708,11 +2708,8 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
     protected override Size BindValue(in BindContext context, int value, ref object? writeState)
         => throw new NotSupportedException();
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Value;
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Value };
 
     public override void Write(PgWriter writer, int value)
         => throw new NotSupportedException();

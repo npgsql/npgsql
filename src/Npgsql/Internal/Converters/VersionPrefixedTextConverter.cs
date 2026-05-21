@@ -8,19 +8,29 @@ sealed class VersionPrefixedTextConverter<T> : PgStreamingConverter<T>
 {
     readonly byte _versionPrefix;
     readonly PgConverter<T> _textConverter;
-    BufferRequirements _innerRequirements;
+    readonly BufferRequirements _innerRequirements;
 
     public VersionPrefixedTextConverter(byte versionPrefix, PgConverter<T> textConverter)
     {
         _versionPrefix = versionPrefix;
         _textConverter = textConverter;
         HandleDbNull = textConverter.HandleDbNull;
+        // Inner has identical requirements for both formats today; capture once at construction
+        // for use in Read/BindValue (the framework calls GetDescriptor per format, but the cached
+        // inner requirement is format-agnostic).
+        _innerRequirements = textConverter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
     }
 
     protected override bool IsDbNullValue(T? value, object? writeState) => _textConverter.IsDbNull(value, writeState);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => VersionPrefixedTextConverter.CanConvert(_textConverter, format, out _innerRequirements, out bufferRequirements);
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new()
+        {
+            // Binary wire prepends a single version byte to the inner text-converter payload; text passes through.
+            BufferRequirements = context.Format is DataFormat.Binary
+                ? _innerRequirements.Combine(sizeof(byte))
+                : _innerRequirements
+        };
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
@@ -93,19 +103,4 @@ static class VersionPrefixedTextConverter
             await reader.Buffer(async, byteCount, cancellationToken).ConfigureAwait(false);
     }
 
-    public static bool CanConvert(PgConverter textConverter, DataFormat format, out BufferRequirements textConverterRequirements, out BufferRequirements bufferRequirements)
-    {
-        var success = textConverter.CanConvert(format, out textConverterRequirements);
-        if (!success)
-        {
-            bufferRequirements = default;
-            return false;
-        }
-        if (textConverter.CanConvert(format is DataFormat.Binary ? DataFormat.Text : DataFormat.Binary, out var otherRequirements) && otherRequirements != textConverterRequirements)
-            throw new InvalidOperationException("Text converter should have identical requirements for text and binary formats.");
-
-        bufferRequirements = format is DataFormat.Binary ? textConverterRequirements.Combine(sizeof(byte)) : textConverterRequirements;
-
-        return success;
-    }
 }

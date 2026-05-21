@@ -7,11 +7,8 @@ namespace Npgsql.NodaTime.Internal;
 
 sealed class LocalDateConverter(bool dateTimeInfinityConversions) : PgBufferedConverter<LocalDate>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
 
     public override LocalDate Read(PgReader reader)
         => reader.ReadInt32() switch

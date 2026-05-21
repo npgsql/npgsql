@@ -16,10 +16,8 @@ sealed class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     public MultirangeConverter(PgConverter<TRange> rangeConverter)
     {
-        if (!rangeConverter.CanConvert(DataFormat.Binary, out var rangeReqs))
-            throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
         _rangeConverter = rangeConverter;
-        _rangeRequirements = rangeReqs;
+        _rangeRequirements = rangeConverter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
     }
 
     public override T Read(PgReader reader)

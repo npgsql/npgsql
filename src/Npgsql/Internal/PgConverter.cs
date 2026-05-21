@@ -41,15 +41,6 @@ public abstract class PgConverter
     protected internal bool HandleDbNull { get; init; }
 
     /// <summary>
-    /// Whether this converter can handle the given format and with which buffer requirements.
-    /// </summary>
-    /// <param name="format">The data format.</param>
-    /// <param name="bufferRequirements">Returns the buffer requirements.</param>
-    /// <returns>Returns true if the given data format is supported.</returns>
-    /// <remarks>The buffer requirements should not cover database NULL reads or writes, these are handled by the caller.</remarks>
-    public abstract bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
-
-    /// <summary>
     /// Computes the converter's descriptor under the supplied conversion context. The framework calls this
     /// only for formats it knows the converter is registered for; the returned descriptor describes the
     /// converter's terms for that context (today: buffer requirements; future: dispatch shape, cache keys).
@@ -57,18 +48,36 @@ public abstract class PgConverter
     /// encoding-dependent sizing rather than reaching into <c>PgSerializerOptions</c> directly — that keeps
     /// converters insulated from any future dynamic-encoding flow.
     /// </summary>
+    /// <remarks>
+    /// The virtual default forwards to the legacy (obsolete) <see cref="CanConvert"/> so existing converters
+    /// compiled against the older surface keep working. New converters override this directly.
+    /// </remarks>
     public virtual ConverterDescriptor GetDescriptor(in ConversionContext context)
     {
-        // Default impl forwards to CanConvert for compat during the per-format migration. Once converters
-        // adopt the explicit per-format split, they override GetDescriptor and stop overriding CanConvert.
-        // The framework's contract is that GetDescriptor is only called for formats the converter is
-        // registered for — if CanConvert says "no", a registration / lookup bug got the contract wrong
-        // and we surface it loudly rather than silently handing back a default descriptor.
+        // Backward-compat bridge: forward to CanConvert for converters that only override the legacy surface.
+        // The framework only calls GetDescriptor for formats the converter is registered for, so a `false`
+        // here is a registration/lookup bug we surface loudly rather than handing back a default descriptor.
+#pragma warning disable CS0618
         if (!CanConvert(context.Format, out var bufferRequirements))
+#pragma warning restore CS0618
             ThrowHelper.ThrowInvalidOperationException(
                 $"Converter '{GetType().FullName}' does not support format '{context.Format}'. " +
                 "GetDescriptor must only be called for formats the converter is registered for.");
         return new ConverterDescriptor { BufferRequirements = bufferRequirements };
+    }
+
+    /// <summary>
+    /// Whether this converter can handle the given format and with which buffer requirements.
+    /// </summary>
+    /// <remarks>The buffer requirements should not cover database NULL reads or writes, these are handled by the caller.</remarks>
+    [Obsolete("Override GetDescriptor instead. Format support is registration-time; the framework only calls GetDescriptor for formats the converter is registered for.")]
+    protected virtual bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        // Safe default: streaming, binary only. Terminates the GetDescriptor→CanConvert bridge cleanly
+        // for converters that override neither, and matches the conservative shape an uninformed streaming
+        // converter would advertise.
+        bufferRequirements = BufferRequirements.Streaming;
+        return format is DataFormat.Binary;
     }
 
     internal Type TypeToConvert { get; }
@@ -522,15 +531,14 @@ public readonly struct BindContext
     public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
     {
         var format = nestingContext.Format;
-        if (!converter.CanConvert(format, out var bufferRequirements))
-            ThrowHelper.ThrowInvalidOperationException($"Converter '{converter.GetType().FullName}' does not support data format '{format}'.");
+        var bufferRequirements = converter.GetDescriptor(new ConversionContext { Format = format }).BufferRequirements;
         return CreateNested(nestingContext, bufferRequirements);
     }
 
     /// <summary>
     /// Variant of <see cref="CreateNested(in BindContext, PgConverter)"/> for callers that already
     /// hold the inner converter's <see cref="BufferRequirements"/> (e.g. composing converters that
-    /// captured them in their constructor). Skips the per-call <c>CanConvert</c> roundtrip.
+    /// captured them in their constructor). Skips the per-call <see cref="PgConverter.GetDescriptor"/> roundtrip.
     /// </summary>
     public static BindContext CreateNested(in BindContext nestingContext, BufferRequirements requirements)
         => new()

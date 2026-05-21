@@ -13,10 +13,8 @@ sealed class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
 
     public RangeConverter(PgConverter<TSubtype> subtypeConverter)
     {
-        if (!subtypeConverter.CanConvert(DataFormat.Binary, out var subtypeReqs))
-            throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
         _subtypeConverter = subtypeConverter;
-        _subtypeRequirements = subtypeReqs;
+        _subtypeRequirements = subtypeConverter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
     }
 
     public override NpgsqlRange<TSubtype> Read(PgReader reader)

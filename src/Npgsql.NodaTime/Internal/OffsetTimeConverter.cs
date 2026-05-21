@@ -5,11 +5,8 @@ namespace Npgsql.NodaTime.Internal;
 
 sealed class OffsetTimeConverter : PgBufferedConverter<OffsetTime>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int));
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int)) };
 
     // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
     public override OffsetTime Read(PgReader reader)

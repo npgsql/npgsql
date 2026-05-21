@@ -7,11 +7,8 @@ namespace Npgsql.NodaTime.Internal;
 
 sealed class DurationConverter : PgBufferedConverter<Duration>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int));
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int)) };
 
     public override Duration Read(PgReader reader)
     {

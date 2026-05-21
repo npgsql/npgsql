@@ -21,8 +21,8 @@ sealed class NullableConverter<T> : PgConverter<T?>
     protected override bool IsDbNullValue(T? value, object? writeState)
         => value is null || _effectiveConverter.IsDbNull(value.GetValueOrDefault(), writeState);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => _effectiveConverter.CanConvert(format, out bufferRequirements);
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => _effectiveConverter.GetDescriptor(context);
 
     public override T? Read(PgReader reader)
         => _effectiveConverter.Read(reader);

@@ -20,9 +20,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
         ElementTypeInfo = elementTypeInfo;
-        if (!elementTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
-            throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
-
+        var bufferRequirements = elementTypeInfo.Converter.GetDescriptor(new ConversionContext { Format = DataFormat.Binary }).BufferRequirements;
         _arrayConverterCore = new((IElementOperations)this, elementTypeInfo, elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
             bufferRequirements, elementTypeInfo.PgTypeId, pgLowerBound);
     }
@@ -458,11 +456,8 @@ sealed class PolymorphicArrayConverter<TBase>(
     PgConverter<TBase> nullableElementCollectionConverter)
     : PgStreamingConverter<TBase>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(sizeof(int) + sizeof(int)), write: Size.Unknown);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(sizeof(int) + sizeof(int)), write: Size.Unknown) };
 
     public override TBase Read(PgReader reader)
     {

@@ -5,11 +5,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class PointConverter : PgBufferedConverter<NpgsqlPoint>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 2);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 2) };
 
     public override NpgsqlPoint Read(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble());

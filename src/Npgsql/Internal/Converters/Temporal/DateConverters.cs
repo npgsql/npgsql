@@ -8,11 +8,8 @@ sealed class DateOnlyDateConverter(bool dateTimeInfinityConversions) : PgBuffere
 {
     static readonly DateOnly BaseValue = new(2000, 1, 1);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
 
     public override DateOnly Read(PgReader reader)
         => reader.ReadInt32() switch
@@ -51,11 +48,8 @@ sealed class DateTimeDateConverter(bool dateTimeInfinityConversions) : PgBuffere
 {
     static readonly DateTime BaseValue = new(2000, 1, 1, 0, 0, 0);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
 
     public override DateTime Read(PgReader reader)
         => reader.ReadInt32() switch

@@ -12,14 +12,11 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
     const byte IPv4 = 2;
     const byte IPv6 = 3;
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => CanConvertImpl(format, out bufferRequirements);
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => GetDescriptorImpl(context);
 
-    internal static bool CanConvertImpl(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(20));
-        return format == DataFormat.Binary;
-    }
+    internal static ConverterDescriptor GetDescriptorImpl(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(20)) };
 
     protected override Size BindValue(in BindContext context, NpgsqlInet value, ref object? writeState)
         => BindValueImpl(context, value.Address, ref writeState);

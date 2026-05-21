@@ -508,12 +508,9 @@ public class WriteStateTests : TestBase
             HandleDbNull = true;
         }
 
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
+        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
             // UpperBound + HandleDbNull → IsBindOptional=false, ensuring BindValue + IsDbNullValue run.
-            bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
-            return format is DataFormat.Binary;
-        }
+            => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
         protected override bool IsDbNullValue(int value, object? writeState)
         {
@@ -656,11 +653,8 @@ public class WriteStateTests : TestBase
                 _throwInBindValueAt = throwInBindValueAt;
             }
 
-            public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-            {
-                bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
-                return format is DataFormat.Binary;
-            }
+            public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+                => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
             public override int Read(PgReader reader) => reader.ReadInt32();
             public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);
@@ -691,11 +685,8 @@ public class WriteStateTests : TestBase
             HandleDbNull = true;
         }
 
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
-            bufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
-            return format is DataFormat.Binary;
-        }
+        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+            => new() { BufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
         protected override bool IsDbNullValue(int value, object? writeState)
         {
@@ -800,11 +791,8 @@ public class WriteStateTests : TestBase
 
     sealed class DisposableWriteStateConverter : PgBufferedConverter<int>
     {
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
-            bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
-            return format is DataFormat.Binary;
-        }
+        public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+            => new() { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
 
         public override int Read(PgReader reader) => reader.ReadInt32();
         public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);

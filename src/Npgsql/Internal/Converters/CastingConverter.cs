@@ -30,8 +30,8 @@ public sealed class CastingConverter<T> : PgConverter<T>
 
     protected override bool IsDbNullValue(T? value, object? writeState) => _effectiveConverter.IsDbNullAsObject(value, writeState);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => _effectiveConverter.CanConvert(format, out bufferRequirements);
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => _effectiveConverter.GetDescriptor(context);
 
     public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader)!;
 

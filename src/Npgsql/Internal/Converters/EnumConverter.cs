@@ -33,11 +33,8 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
         _encoding = encoding;
     }
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Value;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in ConversionContext context)
+        => new() { BufferRequirements = BufferRequirements.Value };
 
     protected override Size BindValue(in BindContext context, TEnum value, ref object? writeState)
     {
