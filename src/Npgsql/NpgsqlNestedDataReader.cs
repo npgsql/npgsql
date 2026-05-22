@@ -498,15 +498,16 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             return lastInfo;
 
         var objectInfo = (TypeInfo: nestedColumn.ObjectTypeInfo, Binding: nestedColumn.ObjectBinding);
+        var conversionContext = _outermostReader.Connector.ConversionContext;
         if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
-            return new(objectInfo.TypeInfo, objectInfo.Binding);
+            return new(objectInfo.TypeInfo, objectInfo.Binding, conversionContext);
 
         var typeId = SerializerOptions.ToCanonicalTypeId(nestedColumn.PostgresType);
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type, typeId, SerializerOptions);
         var concreteTypeInfo = typeInfo.MakeConcreteForField(nestedColumn.FieldContext);
         if (!concreteTypeInfo.SupportsReading)
             AdoSerializerHelpers.ThrowReadingNotSupported(type, SerializerOptions, typeId, resolved: true);
-        var columnInfo = new ReadConversionContext(concreteTypeInfo, concreteTypeInfo.BindField(_outermostReader.Connector.ConversionContext, DataFormat));
+        var columnInfo = new ReadConversionContext(concreteTypeInfo, concreteTypeInfo.BindField(conversionContext, DataFormat), conversionContext);
         _columns[ordinal] = nestedColumn with { LastInfo = columnInfo };
         return columnInfo;
     }
