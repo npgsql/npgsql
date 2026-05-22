@@ -1372,6 +1372,94 @@ CREATE TABLE record ()");
     }
 
     [Test]
+    public async Task Mid_session_SET_TIME_ZONE_updates_connector_timezone()
+    {
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var original = conn.Connector!.Timezone;
+        // Pick a different zone than whatever we started with so the SET produces a real change.
+        var target = string.Equals(original, "UTC", StringComparison.OrdinalIgnoreCase) ? "Europe/Amsterdam" : "UTC";
+
+        await conn.ExecuteNonQueryAsync($"SET TIME ZONE '{target}'");
+
+        Assert.That(conn.Connector.Timezone, Is.EqualTo(target));
+    }
+
+    [Test]
+    public async Task Mid_session_SET_client_encoding_updates_connector_text_encoding()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        Assert.That(conn.Connector!.TextEncoding.WebName, Is.EqualTo("utf-8"));
+
+        await conn.ExecuteNonQueryAsync("SET CLIENT_ENCODING TO 'WIN1252'");
+        Assert.That(conn.Connector.TextEncoding.WebName, Is.EqualTo("windows-1252"));
+
+        // Roundtrip non-ascii text through the rotated encoding to confirm the new encoding is wired
+        // end-to-end (not just the connector property).
+        const string text = "éàç";
+        var result = await conn.ExecuteScalarAsync($"SELECT '{text}'");
+        Assert.That(result, Is.EqualTo(text));
+    }
+
+    [Test]
+    public async Task SET_client_encoding_to_SQL_ASCII_rotates_back_to_settings_encoding()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var settingsEncoding = conn.Connector!.TextEncoding;
+        Assert.That(settingsEncoding.WebName, Is.EqualTo("utf-8"));
+
+        // Move TextEncoding to something other than Settings.Encoding via a normal SET.
+        await conn.ExecuteNonQueryAsync("SET CLIENT_ENCODING TO 'WIN1252'");
+        Assert.That(conn.Connector.TextEncoding.WebName, Is.EqualTo("windows-1252"));
+
+        // SQL_ASCII semantically means "no PG-side encoding"; the .NET side rotates back to
+        // Settings.Encoding so the caller's interpretation choice resumes.
+        await conn.ExecuteNonQueryAsync("SET CLIENT_ENCODING TO 'SQL_ASCII'");
+        Assert.That(conn.Connector.TextEncoding.WebName, Is.EqualTo(settingsEncoding.WebName));
+    }
+
+    [Test]
+    public async Task Mid_session_client_encoding_change_invalidates_cached_bindings()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        // Prime the per-reader ConversionContextCache with a typed read so the cache has entries
+        // resolved against the original (UTF-8) ConversionContext.
+        await using (var cmd = new NpgsqlCommand("SELECT 'hello'::text", conn))
+        await using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            Assert.That(await reader.ReadAsync());
+            Assert.That(reader.GetString(0), Is.EqualTo("hello"));
+        }
+
+        // Rotate the connector context.
+        await conn.ExecuteNonQueryAsync("SET CLIENT_ENCODING TO 'WIN1252'");
+
+        // After rotation, a subsequent read with non-ascii data should still produce correct values —
+        // the cached bindings in any reused RowDescription / ConversionContextCache must invalidate so
+        // the new context flows into the next read's binding.
+        const string nonAscii = "éàç";
+        await using (var cmd = new NpgsqlCommand($"SELECT '{nonAscii}'::text", conn))
+        await using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            Assert.That(await reader.ReadAsync());
+            Assert.That(reader.GetString(0), Is.EqualTo(nonAscii));
+        }
+    }
+
+    [Test]
     public async Task Oversize_buffer()
     {
         await using var dataSource = CreateDataSource();
