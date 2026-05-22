@@ -840,7 +840,13 @@ public sealed partial class NpgsqlConnector
 
         var timezone = Settings.Timezone ?? PostgresEnvironment.TimeZone;
         if (timezone != null)
+        {
             startupParams["TimeZone"] = timezone;
+            // Seed the connector's TimeZone with the explicit request so we have an authoritative value
+            // before the server's startup ParameterStatus echo arrives — that echo gets skipped under a
+            // multiplexing pooler since the pooled server connection's state may not reflect the request.
+            Timezone = timezone;
+        }
 
         var options = Settings.Options ?? PostgresEnvironment.Options;
         if (options?.Length > 0)
@@ -2958,9 +2964,14 @@ public sealed partial class NpgsqlConnector
     internal bool UseConformingStrings { get; private set; }
 
     /// <summary>
-    /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
+    /// The session's TimeZone in IANA/Olson form. Defaults to <c>UTC</c>; seeded by
+    /// <see cref="WriteStartupMessage"/> from <c>Settings.Timezone</c> or <c>PGTZ</c> when either is set,
+    /// and otherwise overwritten by the first ParameterStatus echo from the server. Subsequent mid-session
+    /// <c>SET TIME ZONE</c> updates flow in via the ParameterStatus handler. The UTC default keeps
+    /// timestamp-with-tz converters working under pathological poolers that swallow the startup PS — UTC
+    /// is the safest unambiguous fallback when we have no other authoritative source.
     /// </summary>
-    internal string Timezone { get; private set; } = default!;
+    internal string Timezone { get; private set; } = "UTC";
 
     bool? _isTransactionReadOnly;
 
@@ -3048,19 +3059,36 @@ public sealed partial class NpgsqlConnector
             return;
 
         case "TimeZone":
+            // Skip the startup-phase ParameterStatus when the caller had an explicit request — a
+            // multiplexing pooler (PgBouncer transaction/statement mode, etc.) may report a stale value
+            // from the pooled server connection rather than what we asked for. WriteStartupMessage already
+            // seeded the connector's TimeZone with the requested value, so the .NET side stays correct.
+            // Mid-session SET TimeZone (arriving once State is Ready) is honored.
+            if (State == ConnectorState.Connecting && (Settings.Timezone is not null || PostgresEnvironment.TimeZone is not null))
+                return;
             Timezone = value;
             _conversionContext = null;
             return;
 
         case "client_encoding":
-            // Server reports a new client_encoding (typically from SET CLIENT_ENCODING). Map the PG name
-            // to a .NET / IANA name (per src/common/encnames.c) and refresh TextEncoding/RelaxedTextEncoding.
-            // SQL_ASCII is special: it explicitly means "no encoding conversion on the wire," so the .NET
-            // side keeps whatever Settings.Encoding the caller chose to interpret the raw bytes.
-            // Other PG names without a .NET equivalent (MULE_INTERNAL, EUC_JIS_2004, LATIN10, WIN874) are
-            // real encodings .NET can't decode — let Encoding.GetEncoding throw and break the connection.
-            if (value == "SQL_ASCII")
+            // Skip the startup-phase ParameterStatus: multiplexing poolers (PgBouncer transaction/statement
+            // mode, etc.) hand the client a pre-pooled server connection without forwarding the client's
+            // startup params, so the value here reflects the pooled server's state, not the caller's
+            // request. Trusting it would silently clobber Settings.Encoding.
+            // Mid-session SET CLIENT_ENCODING (arriving once State is Ready) is honored.
+            if (State == ConnectorState.Connecting)
                 return;
+
+            // SQL_ASCII means "no encoding conversion on the wire," so the .NET side rotates back to
+            // Settings.Encoding — the caller's chosen interpreter for raw bytes. Substituting the value
+            // here flows through the same mapping/GetEncoding path used for every other rotation; the
+            // Settings.Encoding string ("UTF8" / "WIN1252" / etc.) parses against the same PG-name table.
+            // Names without any .NET mapping (MULE_INTERNAL, EUC_JIS_2004, LATIN10, WIN874) fall through
+            // to Encoding.GetEncoding and break the connection — silently using a stale encoding would be
+            // worse than failing loudly, and the user can register a custom EncodingProvider if they need
+            // one of those.
+            if (value == "SQL_ASCII")
+                value = Settings.Encoding;
 
             var mappedEncoding = value switch
             {

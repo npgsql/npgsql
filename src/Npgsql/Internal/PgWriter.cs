@@ -117,6 +117,11 @@ public sealed class PgWriter
 
     internal PgWriter(IBufferWriter<byte> writer) => _writer = writer;
 
+    // The captured _conversionContext is per-Init, not per-write. Init runs once at the start of each
+    // command/copy operation, so the context reflects the connector's state at that point. PG protocol
+    // delivers ParameterStatus messages between commands (not mid-data), so by the time a context-rotating
+    // PS arrives, the in-flight write has completed and the next GetWriter→Init picks up the new context.
+    // Callers must not retain a PgWriter across a ReadyForQuery boundary.
     internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, PgConversionContext? conversionContext = null, FlushMode flushMode = FlushMode.None)
     {
         if (_pos != _offset)
