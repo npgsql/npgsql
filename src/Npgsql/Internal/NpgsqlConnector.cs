@@ -3083,8 +3083,8 @@ public sealed partial class NpgsqlConnector
             // Settings.Encoding — the caller's chosen interpreter for raw bytes. Substituting the value
             // here flows through the same mapping/GetEncoding path used for every other rotation; the
             // Settings.Encoding string ("UTF8" / "WIN1252" / etc.) parses against the same PG-name table.
-            // Names without any .NET mapping (MULE_INTERNAL, EUC_JIS_2004, LATIN10, WIN874) fall through
-            // to Encoding.GetEncoding and break the connection — silently using a stale encoding would be
+            // Names without any .NET mapping (MULE_INTERNAL, EUC_JIS_2004) fall through to
+            // Encoding.GetEncoding and break the connection — silently using a stale encoding would be
             // worse than failing loudly, and the user can register a custom EncodingProvider if they need
             // one of those.
             if (value == "SQL_ASCII")
@@ -3106,9 +3106,11 @@ public sealed partial class NpgsqlConnector
                 "LATIN7" => "ISO-8859-13",
                 "LATIN8" => "ISO-8859-14",
                 "LATIN9" => "ISO-8859-15",
+                "LATIN10" => "ISO-8859-16",
                 "WIN1256" => "CP1256",
                 "WIN1258" => "CP1258",
                 "WIN866" => "CP866",
+                "WIN874" => "windows-874",
                 "KOI8R" => "KOI8-R",
                 "WIN1251" => "CP1251",
                 "WIN1252" => "CP1252",
