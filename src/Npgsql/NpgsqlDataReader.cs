@@ -2035,8 +2035,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     ReadConversionContext GetConversionContext(int ordinal, Type? type)
     {
-        var conversionContext = Connector.ConversionContext;
-
         ReadConversionContext context;
         if (type is not null)
         {
@@ -2048,19 +2046,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             Debug.Assert(contextRef.IsDefault || ReferenceEquals(Connector.SerializerOptions, contextRef.TypeInfo.Options), "Cache is bleeding over");
 
-            // Cache hit requires: entry present + can read the requested type + bound against the live
-            // PgConversionContext. The SourceContext gate catches entries preloaded by LoadColumnInfoCache
-            // (prepared statements) or carried over from a prior reader execution that ran under a rotated
-            // context, forcing a rebind through GetConversionContext before reuse.
+            // Cache hit requires: entry present + can read the requested type + either invariant binding
+            // (SourceContext null, never goes stale) or SourceContext matches the live PgConversionContext.
+            // The SourceContext-null short-circuit means we don't touch Connector.ConversionContext at
+            // all for invariant cache hits (the common case). The SourceContext gate catches non-invariant
+            // entries preloaded by LoadColumnInfoCache (prepared statements) or carried over from a prior
+            // reader execution that ran under a rotated context, forcing a rebind before reuse.
             if (contextRef.TypeInfo is not { } typeInfo || !typeInfo.CanReadTo(type)
-                || !ReferenceEquals(contextRef.SourceContext, conversionContext))
-                RowDescription!.GetConversionContext(ordinal, conversionContext, type, ref contextRef);
+                || (contextRef.SourceContext is not null && !ReferenceEquals(contextRef.SourceContext, Connector.ConversionContext)))
+                RowDescription!.GetConversionContext(ordinal, Connector.ConversionContext, type, ref contextRef);
 
             context = contextRef;
         }
         else
         {
-            context = RowDescription![ordinal].GetObjectConversionContext(conversionContext);
+            context = RowDescription![ordinal].GetObjectConversionContext(Connector.ConversionContext);
         }
 
         return context;

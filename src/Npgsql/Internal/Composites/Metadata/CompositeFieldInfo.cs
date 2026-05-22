@@ -20,7 +20,7 @@ abstract class CompositeFieldInfo
 
     /// <summary>True iff the field's concrete converter returned an invariant descriptor at probe time.</summary>
     /// <remarks>Provider-backed fields stay <c>false</c> (re-resolved at bind time).</remarks>
-    public bool IsInvariant { get; private set; }
+    public bool IsDescriptorInvariant { get; private set; }
 
     /// <summary>
     /// CompositeFieldInfo constructor.
@@ -48,11 +48,11 @@ abstract class CompositeFieldInfo
                     nameof(typeInfo));
 
             var fieldDescriptor = binaryConverter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
-            IsInvariant = fieldDescriptor.IsInvariant;
+            IsDescriptorInvariant = fieldDescriptor.IsInvariant;
             // Only cache requirements when the descriptor is invariant; otherwise the probed value is stale
             // relative to any context the inner converter may read, and GetReadInfo / GetWriteInfo re-resolve
             // via the converter directly against the live context.
-            if (IsInvariant)
+            if (IsDescriptorInvariant)
                 _binaryBufferRequirements = fieldDescriptor.BufferRequirements;
             ConcreteTypeInfo = direct;
             _concreteBinaryConverter = binaryConverter;
@@ -86,7 +86,7 @@ abstract class CompositeFieldInfo
 
         if (!IsProviderBacked)
         {
-            readRequirement = IsInvariant
+            readRequirement = IsDescriptorInvariant
                 ? _binaryBufferRequirements.Read
                 : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = conversionContext }).BufferRequirements.Read;
             return _concreteBinaryConverter;
@@ -116,7 +116,7 @@ abstract class CompositeFieldInfo
                 if (!ConcreteTypeInfo.SupportsWriting)
                     AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, ConcreteTypeInfo.PgTypeId, resolved: true);
                 converter = _concreteBinaryConverter;
-                var reqs = IsInvariant
+                var reqs = IsDescriptorInvariant
                     ? _binaryBufferRequirements
                     : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = nestingContext.ConversionContext }).BufferRequirements;
                 ctx = BindContext.CreateUnchecked(DataFormat.Binary, reqs.Write, reqs.IsBindOptional, nestingContext.ConversionContext);
@@ -167,7 +167,7 @@ abstract class CompositeFieldInfo
         // GetDefaultWriteInfo only runs on the Exact-sized composite fast path; non-invariant fields
         // contribute Streaming via GetBinaryRequirements, which prevents Exact, so we never get here
         // with a non-invariant field.
-        Debug.Assert(IsInvariant, "GetDefaultWriteInfo invoked on a non-invariant field; the Exact-sized composite path should have excluded it.");
+        Debug.Assert(IsDescriptorInvariant, "GetDefaultWriteInfo invoked on a non-invariant field; the Exact-sized composite path should have excluded it.");
         writeRequirement = _binaryBufferRequirements.Write;
         return _concreteBinaryConverter;
     }
@@ -193,7 +193,7 @@ abstract class CompositeFieldInfo
         // Non-invariant fields contribute Streaming — same shape as provider-backed. We're called at
         // composite construction with no live ConversionContext, so we can't honestly probe; the composite
         // accommodates with Streaming and the per-call paths re-resolve via GetReadInfo.
-        if (IsProviderBacked || !IsInvariant)
+        if (IsProviderBacked || !IsDescriptorInvariant)
             return BufferRequirements.Streaming;
 
         var reqs = _binaryBufferRequirements;

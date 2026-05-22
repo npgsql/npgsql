@@ -355,7 +355,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             if (!concreteTypeInfo.SupportsReading)
                 AdoSerializerHelpers.ThrowReadingNotSupported(type, options, concreteTypeInfo.PgTypeId, resolved: true);
             var conversionContext = _connector.ConversionContext;
-            return new(concreteTypeInfo, concreteTypeInfo.BindField(conversionContext, DataFormat.Binary), conversionContext);
+            var binding = concreteTypeInfo.BindField(conversionContext, DataFormat.Binary);
+            return new(concreteTypeInfo, binding, binding.IsBindingInvariant ? null : conversionContext);
 
             PgTypeId GetRepresentationalOrDefault(string dataTypeName)
             {

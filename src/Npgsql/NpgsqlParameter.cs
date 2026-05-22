@@ -52,6 +52,13 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     object? _providerWriteState;
     private protected PgValueBinding _binding;
     private protected bool _isBound;
+    // The PgConversionContext the cached _binding was resolved against, or null when the binding is
+    // IsBindingInvariant (descriptor-invariant + IsBindOptional — Bind didn't run, so nothing in the
+    // cached Size or WriteState could have consulted context). Reused parameters across commands must
+    // rebind when the connector rotates its context (client_encoding / TimeZone) on non-invariant
+    // bindings: Bind may have used context-dependent inputs (e.g. TextEncoding for strings), so the
+    // cached Size / WriteState would be stale and the next Bind message would corrupt protocol framing.
+    PgConversionContext? _sourceContext;
 
     #endregion
 
@@ -748,6 +755,15 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (TypeInfo is null || ConcreteTypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
 
+        // Invalidate a cached binding produced against a now-rotated PgConversionContext. The binding is
+        // IsBindingInvariant only when descriptor-invariant + IsBindOptional (Bind never ran, nothing
+        // context-dependent could have entered Size or WriteState); those leave _sourceContext null and
+        // short-circuit. For everything else, Bind may have consumed context (e.g. TextEncoding for
+        // string sizing), so reusing the cached Size after rotation would emit a wrongly-sized Bind
+        // message and corrupt protocol framing.
+        if (_isBound && _sourceContext is not null && !ReferenceEquals(_sourceContext, conversionContext))
+            DisposeBindingState();
+
         // Invalidate a cached binding whose format no longer matches what the caller requires —
         // the type info may still support the required format, just not the format the cached
         // binding chose. Re-running Bind with the new preference can produce a satisfying binding.
@@ -814,6 +830,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     _binding = concrete.BindParameterValueAsNestedObject(conversionContext, Value, pws, ParameterDbNullHandling, requiredFormat);
                 else
                     _binding = BindTypedValue(conversionContext, concrete, pws, requiredFormat);
+                // IsBindingInvariant (descriptor-invariant + IsBindOptional) is the right gate: descriptor
+                // invariance alone isn't enough because Bind itself can read context for size/state work
+                // (e.g. TextEncoding for string byte counts). IsBindOptional means Bind doesn't run at
+                // all, so nothing context-dependent could have entered the cached Size or WriteState.
+                // Everything else gets a SourceContext stamp and is invalidated on rotation.
+                _sourceContext = _binding.IsBindingInvariant ? null : conversionContext;
                 _isBound = true;
 
                 if (requiredFormat is not null && _binding.DataFormat != requiredFormat.GetValueOrDefault())
@@ -858,8 +880,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 _subStream = new MemoryStream(buffer, 0, subSize);
             }
             // Substream bypasses the converter (writer streams bytes directly), but the binding carries the
-            // concrete's binary converter for shape consistency with the other binding paths.
-            return new(DataFormat.Binary, 0, subSize, null, ConcreteTypeInfo!.GetConverter(DataFormat.Binary));
+            // concrete's binary converter for shape consistency with the other binding paths. Marked invariant
+            // because the byte-stream sizing is decided here from _size/stream length, not from any
+            // context-sensitive converter computation.
+            return new(DataFormat.Binary, 0, subSize, null, ConcreteTypeInfo!.GetConverter(DataFormat.Binary), isBindingInvariant: true);
         }
 
         // Handle Size truncate behavior for a predetermined set of types and pg types.
@@ -1054,6 +1078,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             _useSubStream = false;
             _subStream = null;
             _binding = default;
+            _sourceContext = null;
             _isBound = false;
         }
     }

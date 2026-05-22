@@ -42,8 +42,8 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 
             req = req.Combine(fieldReqs);
             // Provider-backed fields are inherently non-invariant (resolved per value at bind time); non-provider
-            // fields propagate their probe-time IsInvariant. AND across all fields gives the composite's claim.
-            allFieldsInvariant &= field.IsInvariant && !field.IsProviderBacked;
+            // fields propagate their probe-time IsDescriptorInvariant. AND across all fields gives the composite's claim.
+            allFieldsInvariant &= field.IsDescriptorInvariant && !field.IsProviderBacked;
         }
         _allFieldsInvariant = allFieldsInvariant;
 

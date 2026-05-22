@@ -11,15 +11,16 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.BackendMessages;
 
-readonly struct ReadConversionContext(PgConcreteTypeInfo typeInfo, PgFieldBinding binding, PgConversionContext sourceContext)
+readonly struct ReadConversionContext(PgConcreteTypeInfo typeInfo, PgFieldBinding binding, PgConversionContext? sourceContext)
 {
     public bool IsDefault => TypeInfo is null;
     public PgConcreteTypeInfo TypeInfo { get; } = typeInfo;
     public PgFieldBinding Binding { get; } = binding;
-    /// <summary>The PgConversionContext this entry's binding was resolved against. Callers that cache
+    /// <summary>The PgConversionContext this entry's binding was resolved against — or null when the
+    /// binding is context-invariant (BufferRequirement stable across rotations). Callers that cache
     /// ReadConversionContext across calls compare this against the current connector context and re-bind
-    /// when it differs — the binding's BufferRequirement is context-dependent for non-invariant converters.</summary>
-    public PgConversionContext SourceContext { get; } = sourceContext;
+    /// only when non-null and mismatching; invariant bindings stay valid indefinitely.</summary>
+    public PgConversionContext? SourceContext { get; } = sourceContext;
 }
 
 /// <summary>
@@ -326,7 +327,11 @@ public sealed class FieldDescription
     // have context-dependent BufferRequirement.
     internal ReadConversionContext GetObjectConversionContext(PgConversionContext conversionContext)
     {
-        if (!_objectConversionContext.IsDefault && ReferenceEquals(_objectConversionContext.SourceContext, conversionContext))
+        // Cache hit when entry is present AND either the cached binding is invariant (SourceContext null,
+        // never goes stale) or the SourceContext matches the live connector context.
+        if (!_objectConversionContext.IsDefault
+            && (_objectConversionContext.SourceContext is null
+                || ReferenceEquals(_objectConversionContext.SourceContext, conversionContext)))
             return _objectConversionContext;
 
         _objectConversionContext = default;
@@ -352,21 +357,23 @@ public sealed class FieldDescription
                 result.TypeInfo.PgTypeId == _serializerOptions.ToCanonicalTypeId(PostgresType))
             ), "Cache is bleeding over");
 
-        // Cache hit requires source-context match too — non-invariant converters' BufferRequirement is
-        // context-dependent, so reusing a binding resolved against a stale PgConversionContext can give
-        // wrong sizing after ParameterStatus rotation (client_encoding / TimeZone).
+        // Cache hit requires source-context match — except for invariant bindings (SourceContext null),
+        // which stay valid across rotations. Non-invariant converters' BufferRequirement is
+        // context-dependent, so reusing a stale binding would give wrong sizing after rotation.
         if (result is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type
-            && ReferenceEquals(result.SourceContext, conversionContext))
+            && (result.SourceContext is null || ReferenceEquals(result.SourceContext, conversionContext)))
             return;
 
         // Text + typed case routes through GetObjectConversionContext (which validates SourceContext).
-        // For the direct-read fast path, gate reuse on the cached binding's SourceContext matching the
-        // live context — otherwise a binding bound under a rotated context could be reused with stale
-        // BufferRequirements.
+        // For the direct-read fast path, accept the cached binding when invariant (SourceContext null) or
+        // when its SourceContext matches the live one — otherwise a binding bound under a rotated context
+        // could be reused with stale BufferRequirements.
         ReadConversionContext objectInfo;
         if (DataFormat is DataFormat.Text && type is not null)
             objectInfo = GetObjectConversionContext(conversionContext);
-        else if (!_objectConversionContext.IsDefault && ReferenceEquals(_objectConversionContext.SourceContext, conversionContext))
+        else if (!_objectConversionContext.IsDefault
+                 && (_objectConversionContext.SourceContext is null
+                     || ReferenceEquals(_objectConversionContext.SourceContext, conversionContext)))
             objectInfo = _objectConversionContext;
         else
             objectInfo = default;
@@ -400,7 +407,7 @@ public sealed class FieldDescription
                     AdoSerializerHelpers.ThrowReadingNotSupported(type, _serializerOptions, _serializerOptions.TextPgTypeId, resolved: true);
 
                 binding = concreteTypeInfo.BindField(conversionContext, DataFormat.Text);
-                lastReadConversionContext = new(concreteTypeInfo, binding, conversionContext);
+                lastReadConversionContext = new(concreteTypeInfo, binding, binding.IsBindingInvariant ? null : conversionContext);
                 break;
             }
             case DataFormat.Binary or DataFormat.Text:
@@ -413,7 +420,7 @@ public sealed class FieldDescription
 
                 // If we don't support the DataFormat we'll just throw.
                 binding = concreteTypeInfo.BindField(conversionContext, DataFormat);
-                lastReadConversionContext = new(concreteTypeInfo, binding, conversionContext);
+                lastReadConversionContext = new(concreteTypeInfo, binding, binding.IsBindingInvariant ? null : conversionContext);
                 break;
             }
             default:
