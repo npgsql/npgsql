@@ -51,10 +51,9 @@ public class PgReader
     }
 
     /// <summary>
-    /// The conversion context for this reader's connection. Stable across the connection's lifetime
-    /// (today via <see cref="PgSerializerOptions.ConversionContext"/>); converters needing
-    /// encoding-aware or session-relative state read it here at runtime instead of capturing at
-    /// construction.
+    /// The conversion context for this reader's connection. Carries connection-scoped session state
+    /// (text encoding today; future ParameterStatus-driven values). Converters needing encoding-aware
+    /// or session-relative state read it here at runtime rather than capturing at construction.
     /// </summary>
     public PgConversionContext ConversionContext => _buffer.Connector.SerializerOptions.ConversionContext;
 

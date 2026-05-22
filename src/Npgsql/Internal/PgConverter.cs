@@ -50,8 +50,9 @@ public abstract class PgConverter
     /// dynamic-encoding flow.
     /// </summary>
     /// <remarks>
-    /// The virtual default forwards to the legacy (obsolete) <see cref="CanConvert"/> so existing converters
-    /// compiled against the older surface keep working. New converters override this directly.
+    /// The virtual default returns <see cref="BufferRequirements.Streaming"/> — the conservative shape an
+    /// uninformed streaming converter would advertise. Override to declare a tighter shape (fixed-size,
+    /// upper-bound, invariant).
     /// </remarks>
     public virtual ConverterDescriptor GetDescriptor(in DescriptorContext context)
     {
@@ -507,14 +508,14 @@ public readonly struct BindContext
 
     /// <summary>
     /// The size requirement for writing values with <see cref="Format"/>.
-    /// Sourced from the format-specific <see cref="BufferRequirements.Write"/> returned by <see cref="PgConverter.CanConvert"/>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.Write"/> returned by <see cref="PgConverter.GetDescriptor"/>.
     /// </summary>
     public Size BufferRequirement { get; private init; }
 
     /// <summary>
     /// When true, composing converters may use <see cref="BufferRequirement"/> directly and skip the nested <c>Bind</c> call entirely.
     /// <c>Bind</c> can be called anyway at which point it just short-circuits, without invoking <c>BindValue</c>. Implies <see cref="IsBindFixedSize"/>.
-    /// Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/> returned by <see cref="PgConverter.CanConvert"/>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/> returned by <see cref="PgConverter.GetDescriptor"/>.
     /// </summary>
     public bool IsBindOptional { get; private init; }
 
@@ -668,8 +669,7 @@ public sealed class PgConversionContext
 /// <summary>
 /// Per-call wrapper around a <see cref="PgConversionContext"/> that <see cref="PgConverter.GetDescriptor"/>
 /// receives. Hosts call-scoped state that doesn't belong on the long-lived <see cref="PgConversionContext"/>
-/// (today: just the context reference; future: sizing budget hints, composition depth, descriptor cache-key
-/// contributions). Always passed <c>in</c>; consumers read <see cref="PgConversionContext"/> for session state.
+/// Consumers read <see cref="PgConversionContext"/> for session state.
 /// </summary>
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct DescriptorContext

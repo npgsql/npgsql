@@ -109,10 +109,9 @@ public sealed class PgWriter
     PgConversionContext _conversionContext = PgConversionContext.Empty;
 
     /// <summary>
-    /// The conversion context for this writer's connection. Stable across the connection's lifetime
-    /// (today via <see cref="PgSerializerOptions.ConversionContext"/>); converters needing
-    /// encoding-aware or session-relative state read it here at runtime instead of capturing at
-    /// construction.
+    /// The conversion context for this writer's connection. Carries connection-scoped session state
+    /// (text encoding today; future ParameterStatus-driven values). Converters needing encoding-aware
+    /// or session-relative state read it here at runtime rather than capturing at construction.
     /// </summary>
     public PgConversionContext ConversionContext => _conversionContext;
 
