@@ -38,21 +38,21 @@ public enum MatchRequirement
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public static class PgConverterFactory
 {
-    public static PgConverter<T[]> CreateArrayMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
-        => new MultirangeConverter<T[], T>(rangeConverter);
+    public static PgConverter<T[]> CreateArrayMultirangeConverter<T>(PgConverter<T> binaryRange, PgSerializerOptions options) where T : notnull
+        => new MultirangeConverter<T[], T>(binaryRange);
 
-    public static PgConverter<List<T>> CreateListMultirangeConverter<T>(PgConverter<T> rangeConverter, PgSerializerOptions options) where T : notnull
-        => new MultirangeConverter<List<T>, T>(rangeConverter);
+    public static PgConverter<List<T>> CreateListMultirangeConverter<T>(PgConverter<T> binaryRange, PgSerializerOptions options) where T : notnull
+        => new MultirangeConverter<List<T>, T>(binaryRange);
 
-    public static PgConverter<NpgsqlRange<T>> CreateRangeConverter<T>(PgConverter<T> subTypeConverter, PgSerializerOptions options)
-        => new RangeConverter<T>(subTypeConverter);
+    public static PgConverter<NpgsqlRange<T>> CreateRangeConverter<T>(PgConverter<T> binarySubType, PgSerializerOptions options)
+        => new RangeConverter<T>(binarySubType);
 
-    public static PgConverter<TBase> CreatePolymorphicArrayConverter<TBase>(Func<PgConverter<TBase>> arrayConverterFactory, Func<PgConverter<TBase>> nullableArrayConverterFactory, PgSerializerOptions options)
+    public static PgConverter<TBase> CreatePolymorphicArrayConverter<TBase>(Func<PgConverter<TBase>> binaryArrayFactory, Func<PgConverter<TBase>> binaryNullableArrayFactory, PgSerializerOptions options)
         => options.ArrayNullabilityMode switch
         {
-            ArrayNullabilityMode.Never => arrayConverterFactory(),
-            ArrayNullabilityMode.Always => nullableArrayConverterFactory(),
-            ArrayNullabilityMode.PerInstance => new PolymorphicArrayConverter<TBase>(arrayConverterFactory(), nullableArrayConverterFactory()),
+            ArrayNullabilityMode.Never => binaryArrayFactory(),
+            ArrayNullabilityMode.Always => binaryNullableArrayFactory(),
+            ArrayNullabilityMode.PerInstance => new PolymorphicArrayConverter<TBase>(binaryArrayFactory(), binaryNullableArrayFactory()),
             _ => throw new ArgumentOutOfRangeException()
         };
 }
