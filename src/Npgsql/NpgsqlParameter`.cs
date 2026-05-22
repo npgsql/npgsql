@@ -87,12 +87,12 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     private protected override PgValueBinding BindTypedValue(PgConcreteTypeInfo concrete, object? providerWriteState, DataFormat? formatPreference)
         => concrete.BindParameterValue(TypedValue, providerWriteState, ParameterDbNullHandling, formatPreference);
 
-    private protected override ValueTask WriteTypedValue(bool async, PgConcreteTypeInfo concrete, PgWriter writer, CancellationToken cancellationToken)
+    private protected override ValueTask WriteTypedValue(bool async, PgConverter converter, PgWriter writer, CancellationToken cancellationToken)
     {
         Debug.Assert(TypedValue is not null);
         if (async)
-            return concrete.Converter.WriteAsync(writer, TypedValue, cancellationToken);
-        concrete.Converter.Write(writer, TypedValue);
+            return converter.WriteAsync(writer, TypedValue, cancellationToken);
+        converter.Write(writer, TypedValue);
         return new ValueTask();
     }
 

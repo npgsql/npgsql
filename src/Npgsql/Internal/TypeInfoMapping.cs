@@ -305,7 +305,7 @@ public sealed class TypeInfoMappingCollection
         _items.Add(mapping);
         if (typeof(T) != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(typeof(T), mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
+                CreateComposedFactory(typeof(T), mapping, static (_, info) => ((PgConcreteTypeInfo)info).GetConverter(DataFormat.Binary), copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -339,7 +339,7 @@ public sealed class TypeInfoMappingCollection
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
                 CreateComposedFactory(typeof(T), mapping,
                     static (_, info) => PgProviderTypeInfo.GetProvider(info),
-                    static (_, info) => info.Converter,
+                    static (_, info) => info.GetConverter(DataFormat.Binary),
                     copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
@@ -433,15 +433,15 @@ public sealed class TypeInfoMappingCollection
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).Converter), GetDefaultConfigure(isDefault));
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).GetConverter(DataFormat.Binary)), GetDefaultConfigure(isDefault));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).Converter), GetDefaultConfigure(matchRequirement));
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).GetConverter(DataFormat.Binary)), GetDefaultConfigure(matchRequirement));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).Converter), configure);
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)((PgConcreteTypeInfo)innerInfo).GetConverter(DataFormat.Binary)), configure);
 
     // Lives outside to prevent capture of T.
     void AddStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
@@ -452,7 +452,7 @@ public sealed class TypeInfoMappingCollection
         _items.Add(mapping);
         if (type != typeof(object) && mapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single && !TryGetMapping(typeof(object), mapping.DataTypeName, out _))
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
-                CreateComposedFactory(type, mapping, static (_, info) => ((PgConcreteTypeInfo)info).Converter, copyPreferredFormat: true))
+                CreateComposedFactory(type, mapping, static (_, info) => ((PgConcreteTypeInfo)info).GetConverter(DataFormat.Binary), copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
             });
@@ -540,8 +540,8 @@ public sealed class TypeInfoMappingCollection
         {
             var converter =
                 new PolymorphicArrayConverter<Array>(
-                    (PgConverter<Array>)((PgConcreteTypeInfo)innerInfo).Converter,
-                    (PgConverter<Array>)((PgConcreteTypeInfo)nullableInnerInfo).Converter);
+                    (PgConverter<Array>)((PgConcreteTypeInfo)innerInfo).GetConverter(DataFormat.Binary),
+                    (PgConverter<Array>)((PgConcreteTypeInfo)nullableInnerInfo).GetConverter(DataFormat.Binary));
 
             return PgConcreteTypeInfo.Create(innerInfo.Options, converter,
                 innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object), supportsWriting: false);
@@ -567,7 +567,7 @@ public sealed class TypeInfoMappingCollection
     internal void AddProviderStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool pgTypeIdClassified, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
         => AddProviderStructType(typeof(T), typeof(T?), dataTypeName, createInfo, pgTypeIdClassified,
             static (_, innerInfo) => new NullableTypeInfoProvider<T>(innerInfo),
-            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.Converter),
+            static (_, innerInfo) => new NullableConverter<T>((PgConverter<T>)innerInfo.GetConverter(DataFormat.Binary)),
             configure);
 
     // Lives outside to prevent capture of T.
@@ -583,7 +583,7 @@ public sealed class TypeInfoMappingCollection
             _items.Add(new TypeInfoMapping(typeof(object), dataTypeName,
                 CreateComposedFactory(type, mapping,
                     static (_, info) => PgProviderTypeInfo.GetProvider(info),
-                    static (_, info) => info.Converter,
+                    static (_, info) => info.GetConverter(DataFormat.Binary),
                     copyPreferredFormat: true))
             {
                 MatchRequirement = mapping.MatchRequirement
@@ -680,7 +680,7 @@ public sealed class TypeInfoMappingCollection
                 if (innerInfo is PgConcreteTypeInfo innerConcrete && nullableInnerInfo is PgConcreteTypeInfo nullableInnerConcrete)
                 {
                     var concreteConverter = new PolymorphicArrayConverter<Array>(
-                        (PgConverter<Array>)innerConcrete.Converter, (PgConverter<Array>)nullableInnerConcrete.Converter);
+                        (PgConverter<Array>)innerConcrete.GetConverter(DataFormat.Binary), (PgConverter<Array>)nullableInnerConcrete.GetConverter(DataFormat.Binary));
                     return PgConcreteTypeInfo.Create(innerInfo.Options, concreteConverter,
                         innerInfo.Options.GetCanonicalTypeId(new DataTypeName(dataTypeName)), requestedType: typeof(object), supportsWriting: false);
                 }

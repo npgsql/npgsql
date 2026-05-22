@@ -541,12 +541,12 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Varbit
             // Object mapping first.
-            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Varbit, static options => concreteTypeInfo => concreteTypeInfo.Converter switch
+            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Varbit, static options => concreteTypeInfo => concreteTypeInfo.GetConverter(DataFormat.Binary) switch
             {
                 BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
                     () => ArrayConverter<Array>.CreateArrayBased<bool>(concreteTypeInfo, typeof(Array)),
                     () => ArrayConverter<Array>.CreateArrayBased<bool?>(PgConcreteTypeInfo.Create(options,
-                        new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.BinaryConverter!),
+                        new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.GetConverter(DataFormat.Binary)),
                         concreteTypeInfo.PgTypeId), typeof(Array)),
                     options),
                 BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(concreteTypeInfo, typeof(Array)),
@@ -558,12 +558,12 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Bit
             // Object mapping first.
-            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Bit, static options => concreteTypeInfo => concreteTypeInfo.Converter switch
+            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Bit, static options => concreteTypeInfo => concreteTypeInfo.GetConverter(DataFormat.Binary) switch
             {
                 BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
                     () => ArrayConverter<Array>.CreateArrayBased<bool>(concreteTypeInfo, typeof(Array)),
                     () => ArrayConverter<Array>.CreateArrayBased<bool?>(PgConcreteTypeInfo.Create(options,
-                        new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.BinaryConverter!),
+                        new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.GetConverter(DataFormat.Binary)),
                         concreteTypeInfo.PgTypeId), typeof(Array)),
                     options),
                 BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(concreteTypeInfo, typeof(Array)),

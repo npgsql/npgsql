@@ -53,10 +53,18 @@ sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T?> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType)
+    protected override void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
+        out PgConverter<T?>? binary, out PgConverter<T?>? text, out Type? requestedType)
     {
         requestedType = null;
-        return new NullableConverter<T>((PgConverter<T>)effectiveConcreteTypeInfo.Converter);
+        // Nullable wrapping mirrors inner slot fill — wrap each slot independently so a binary-only or
+        // text-only inner produces a same-shaped Nullable wrapper.
+        binary = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Binary, out var innerBinary)
+            ? new NullableConverter<T>((PgConverter<T>)innerBinary)
+            : null;
+        text = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Text, out var innerText)
+            ? new NullableConverter<T>((PgConverter<T>)innerText)
+            : null;
     }
 
     protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)

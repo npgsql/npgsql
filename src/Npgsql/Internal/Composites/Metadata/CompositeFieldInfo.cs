@@ -13,6 +13,9 @@ abstract class CompositeFieldInfo
 {
     protected PgTypeInfo PgTypeInfo { get; }
     protected PgConcreteTypeInfo? ConcreteTypeInfo { get; }
+    // Cached non-null reference to the concrete's binary converter, set alongside ConcreteTypeInfo after the
+    // ctor validates binary is filled. Provider-backed fields leave this null and resolve per call.
+    protected PgConverter? _concreteBinaryConverter;
     protected BufferRequirements _binaryBufferRequirements;
 
     /// <summary>True iff the field's concrete converter returned an invariant descriptor at probe time.</summary>
@@ -36,10 +39,19 @@ abstract class CompositeFieldInfo
 
         if (typeInfo is PgConcreteTypeInfo direct)
         {
-            var fieldDescriptor = direct.Converter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
+            // Composite fields are binary-only by contract — every per-field read/write goes through the binary
+            // slot. Reject concretes that don't fill it up front so the user sees the failure at composite
+            // construction with a usable message, not as a downstream NRE when the binary slot is dereferenced.
+            if (!direct.TryGetConverter(DataFormat.Binary, out var binaryConverter))
+                ThrowHelper.ThrowArgumentException(
+                    $"Composite field '{name}' resolved to a type info without a binary converter; composite fields require binary-format support.",
+                    nameof(typeInfo));
+
+            var fieldDescriptor = binaryConverter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
             _binaryBufferRequirements = fieldDescriptor.BufferRequirements;
             IsInvariant = fieldDescriptor.IsInvariant;
             ConcreteTypeInfo = direct;
+            _concreteBinaryConverter = binaryConverter;
         }
         else if (typeInfo is PgProviderTypeInfo)
         {
@@ -47,7 +59,8 @@ abstract class CompositeFieldInfo
             // No cached default is materialized here: the cached default's requirements are unsafe to trust
             // (resolved converter at bind time may differ), and consumers (CompositeConverter aggregation,
             // GetDefaultWriteInfo) are gated to skip provider-backed fields. ConcreteTypeInfo and
-            // _binaryBufferRequirements stay at their default null/zero values.
+            // _binaryBufferRequirements stay at their default null/zero values. Per-call binary-slot
+            // validation happens in GetReadInfo / GetWriteInfo against the resolved concrete.
             IsProviderBacked = true;
         }
         else
@@ -55,6 +68,11 @@ abstract class CompositeFieldInfo
             ThrowHelper.ThrowInvalidOperationException($"Unsupported {nameof(PgTypeInfo)} '{typeInfo.GetType().FullName}' for composite field '{name}'.");
         }
     }
+
+    [DoesNotReturn]
+    static void ThrowMissingBinarySlot(string fieldName)
+        => ThrowHelper.ThrowInvalidOperationException(
+            $"Composite field '{fieldName}' resolved to a concrete type info without a binary converter; composite fields require binary-format support.");
 
     public PgConverter GetReadInfo(out Size readRequirement)
     {
@@ -65,15 +83,15 @@ abstract class CompositeFieldInfo
         if (!IsProviderBacked)
         {
             readRequirement = _binaryBufferRequirements.Read;
-        }
-        else
-        {
-            if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var binding))
-                ThrowHelper.ThrowInvalidOperationException("Converter must support binary format to participate in composite types.");
-            readRequirement = binding.BufferRequirement;
+            return _concreteBinaryConverter;
         }
 
-        return concreteTypeInfo.Converter;
+        // Provider-resolved concrete: validate the binary slot is filled. TryBindField gates on slot presence
+        // and surfaces the binding's converter so we don't have to redo the slot pick.
+        if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var binding))
+            ThrowMissingBinarySlot(Name);
+        readRequirement = binding.BufferRequirement;
+        return binding.Converter;
     }
 
     public PgConverter GetWriteInfo(object instance, in BindContext nestingContext, out BindContext context, out object? writeState)
@@ -84,18 +102,31 @@ abstract class CompositeFieldInfo
         writeState = null;
         try
         {
-            var concreteTypeInfo = ConcreteTypeInfo ?? MakeConcreteForValue(instance, out writeState);
-            if (!concreteTypeInfo.SupportsWriting)
-                AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
-
-            var ctx = !IsProviderBacked
-                ? BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional, nestingContext.ConversionContext)
-                : BindContext.CreateNested(nestingContext, concreteTypeInfo.Converter);
+            PgConverter converter;
+            BindContext ctx;
+            if (!IsProviderBacked)
+            {
+                // Non-provider-backed: ctor validated binary slot, cached converter is non-null by typing.
+                if (!ConcreteTypeInfo.SupportsWriting)
+                    AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, ConcreteTypeInfo.PgTypeId, resolved: true);
+                converter = _concreteBinaryConverter;
+                ctx = BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional, nestingContext.ConversionContext);
+            }
+            else
+            {
+                // Provider-resolved concrete: GetConverter throws if the binary slot isn't filled, so
+                // misbehaving providers surface at the boundary not as a downstream NRE.
+                var concreteTypeInfo = MakeConcreteForValue(instance, out writeState);
+                if (!concreteTypeInfo.SupportsWriting)
+                    AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
+                converter = concreteTypeInfo.GetConverter(DataFormat.Binary);
+                ctx = BindContext.CreateNested(nestingContext, converter);
+            }
 
             // Composite fields cross the POCO boundary: ADO sentinel vocabulary does not flow in, so the field's converter
             // is invoked under Default regardless of how the composite itself was reached (e.g. an Extended parameter).
             context = ctx with { NestedObjectDbNullHandling = NestedObjectDbNullHandling.Default };
-            return concreteTypeInfo.Converter;
+            return converter;
         }
         catch
         {
@@ -119,16 +150,20 @@ abstract class CompositeFieldInfo
     /// </summary>
     public PgConverter GetDefaultWriteInfo(out Size writeRequirement)
     {
-        Debug.Assert(ConcreteTypeInfo is not null);
+        // Only called for non-provider-backed fields per the docstring; the cached binary converter is
+        // non-null in that case. The early-bind through MemberNotNullWhen on IsProviderBacked gives the
+        // compiler what it needs to drop the null-forgiving.
         writeRequirement = _binaryBufferRequirements.Write;
-        return ConcreteTypeInfo.Converter;
+        if (IsProviderBacked)
+            ThrowHelper.ThrowInvalidOperationException("GetDefaultWriteInfo is not supported for provider-backed fields.");
+        return _concreteBinaryConverter;
     }
 
     public string Name { get; }
     public PgTypeId PgTypeId { get; }
 
     /// True when this field defers converter resolution to bind time via a provider.
-    [MemberNotNullWhen(false, nameof(ConcreteTypeInfo))]
+    [MemberNotNullWhen(false, nameof(ConcreteTypeInfo), nameof(_concreteBinaryConverter))]
     public bool IsProviderBacked { get; }
 
     public abstract Type Type { get; }
@@ -245,7 +280,7 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         }
     }
 
-    public override bool IsDbNullable => ConcreteTypeInfo?.Converter.IsDbNullable ?? true;
+    public override bool IsDbNullable => _concreteBinaryConverter?.IsDbNullable ?? true;
 
     public override bool IsDbNull(PgConverter converter, object instance, object? writeState)
         => converter.IsDbNull(_getter(instance), writeState);

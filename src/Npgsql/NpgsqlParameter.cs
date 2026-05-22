@@ -857,7 +857,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 subSize = Math.Min(_size, read);
                 _subStream = new MemoryStream(buffer, 0, subSize);
             }
-            return new(DataFormat.Binary, 0, subSize, null);
+            // Substream bypasses the converter (writer streams bytes directly), but the binding carries the
+            // concrete's binary converter for shape consistency with the other binding paths.
+            return new(DataFormat.Binary, 0, subSize, null, ConcreteTypeInfo!.GetConverter(DataFormat.Binary));
         }
 
         // Handle Size truncate behavior for a predetermined set of types and pg types.
@@ -932,13 +934,14 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     {
                         var value = Value;
                         Debug.Assert(value is not null);
+                        // The binding carries the format-correct converter resolved at Bind time.
                         if (async)
-                            await concrete.Converter.WriteAsObjectAsync(writer, value, cancellationToken).ConfigureAwait(false);
+                            await _binding.Converter.WriteAsObjectAsync(writer, value, cancellationToken).ConfigureAwait(false);
                         else
-                            concrete.Converter.WriteAsObject(writer, value);
+                            _binding.Converter.WriteAsObject(writer, value);
                     }
                     else
-                        await WriteTypedValue(async, concrete, writer, cancellationToken).ConfigureAwait(false);
+                        await WriteTypedValue(async, _binding.Converter, writer, cancellationToken).ConfigureAwait(false);
                     writer.EndWrite(size);
                 }
             }
@@ -957,7 +960,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected virtual PgValueBinding BindTypedValue(PgConcreteTypeInfo concrete, object? providerWriteState, DataFormat? formatPreference)
         => throw new NotSupportedException();
 
-    private protected virtual ValueTask WriteTypedValue(bool async, PgConcreteTypeInfo concrete, PgWriter writer, CancellationToken cancellationToken)
+    private protected virtual ValueTask WriteTypedValue(bool async, PgConverter converter, PgWriter writer, CancellationToken cancellationToken)
         => throw new NotSupportedException();
 
     private protected virtual void SetOutputTypedValue(NpgsqlDataReader reader, int ordinal)

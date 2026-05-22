@@ -2103,10 +2103,13 @@ LANGUAGE plpgsql VOLATILE";
         buffer.AddBytesToRead(columnLength);
         var reader = buffer.PgReader;
         reader.Init(DataFormat.Binary, columnLength, resumable: false);
+        // The test exercises PgReader buffering/cleanup independently of the converter, but PgFieldBinding
+        // now carries the converter; pull any built-in via the data source's options as a stand-in (never invoked here).
+        var converter = conn.Connector.SerializerOptions.GetDefaultTypeInfo(typeof(int))!.MakeConcreteForField(default).GetConverter(DataFormat.Binary);
         if (async)
-            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown), CancellationToken.None);
+            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown, converter), CancellationToken.None);
         else
-            reader.StartRead(new(DataFormat.Binary, Size.Unknown));
+            reader.StartRead(new(DataFormat.Binary, Size.Unknown, converter));
 
         await using (var _ = reader.GetStream())
         {

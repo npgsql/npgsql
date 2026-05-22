@@ -19,7 +19,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("writeState cannot be null, LateBindingTypeInfoProvider is expected to pre-populate it with concrete type info.")
         };
 
-        return concreteTypeInfo.Converter.IsDbNullAsObject(value, effectiveState);
+        return concreteTypeInfo.GetConverter(DataFormat.Binary).IsDbNullAsObject(value, effectiveState);
     }
 
     public override object Read(PgReader reader) => throw new NotSupportedException();
@@ -34,7 +34,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
+        var bufferRequirements = concreteTypeInfo.GetConverter(DataFormat.Binary).GetDescriptor(new() { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
 
         // Null the wrapper's EffectiveState before handoff. Inner BindAsObject's framework safety net
         // disposes via our local ref on throw and nulls the local; the wrapper would otherwise hold a
@@ -42,7 +42,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
         if (writeState is LateBindingWriteState before)
             before.EffectiveState = null;
 
-        var result = concreteTypeInfo.Converter.BindAsObject(
+        var result = concreteTypeInfo.GetConverter(DataFormat.Binary).BindAsObject(
             BindContext.CreateNested(context, bufferRequirements),
             value,
             ref effectiveState);
@@ -72,10 +72,10 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var bufferRequirements = concreteTypeInfo.Converter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
+        var bufferRequirements = concreteTypeInfo.GetConverter(DataFormat.Binary).GetDescriptor(new() { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
         var writeRequirement = bufferRequirements.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
-        await concreteTypeInfo.Converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
+        await concreteTypeInfo.GetConverter(DataFormat.Binary).WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
 }
 
