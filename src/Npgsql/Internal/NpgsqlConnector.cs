@@ -141,12 +141,13 @@ public sealed partial class NpgsqlConnector
     internal IDbTypeResolver? DbTypeResolver => ReloadableState.DbTypeResolver;
 
     /// <summary>
-    /// Per-connection conversion context. Carries session state (text encoding today, timezone provider /
-    /// ParameterStatus-driven values in the future) that converters read at runtime via the reader/writer.
-    /// Future ParameterStatus updates mutate this connection-scoped instance without affecting other connectors.
+    /// Per-connection conversion context. Carries session state (text encoding, timezone, future
+    /// ParameterStatus-driven values) that converters read at runtime via the reader/writer. The field
+    /// is invalidated (re-built on next access) when contributing session state mutates — see
+    /// <see cref="ReadParameterStatus"/>.
     /// </summary>
     internal PgConversionContext ConversionContext
-        => _conversionContext ??= new() { TextEncoding = TextEncoding, TextEncoder = _textEncoder };
+        => _conversionContext ??= new() { TextEncoding = TextEncoding, TextEncoder = _textEncoder, TimeZone = Timezone };
     PgConversionContext? _conversionContext;
 
     /// <summary>
@@ -3048,6 +3049,7 @@ public sealed partial class NpgsqlConnector
 
         case "TimeZone":
             Timezone = value;
+            _conversionContext = null;
             return;
 
         case "client_encoding":

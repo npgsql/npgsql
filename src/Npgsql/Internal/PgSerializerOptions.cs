@@ -21,15 +21,13 @@ public sealed class PgSerializerOptions
     internal static bool IntrospectionCaller { get; set; }
 
     readonly PgTypeInfoResolverChain _resolverChain;
-    readonly Func<string>? _timeZoneProvider;
     IPgTypeInfoResolver? _typeInfoResolver;
     TypeInfoCache<Oid>? _oidCache;
     TypeInfoCache<DataTypeName>? _dataTypeNameCache;
 
-    internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, PgTypeInfoResolverChain? resolverChain = null, Func<string>? timeZoneProvider = null)
+    internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, PgTypeInfoResolverChain? resolverChain = null)
     {
         _resolverChain = resolverChain ?? new();
-        _timeZoneProvider = timeZoneProvider;
         DatabaseInfo = databaseInfo;
         UnspecifiedDBNullTypeInfo = PgConcreteTypeInfo.Create(this, new Converters.Internal.VoidConverter(), DataTypeName.Unspecified, requestedType: typeof(DBNull));
     }
@@ -50,8 +48,6 @@ public sealed class PgSerializerOptions
     /// Whether options should return a portable identifier (data type name) to prevent any generated id (oid) confusion across backends, this comes with a perf penalty.
     internal bool PortableTypeIds { get; init; }
     internal NpgsqlDatabaseInfo DatabaseInfo { get; }
-
-    public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
 
     public IPgTypeInfoResolver TypeInfoResolver
     {

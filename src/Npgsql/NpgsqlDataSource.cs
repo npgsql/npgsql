@@ -316,7 +316,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
                 databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async).ConfigureAwait(false);
 
-            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone))
+            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain)
             {
                 ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                 EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
@@ -339,17 +339,6 @@ public abstract class NpgsqlDataSource : DbDataSource
             _setupMappingsSemaphore.Release();
         }
 
-        // Func in a static function to make sure we don't capture state that might not stay around, like a connector.
-        static Func<string> CreateTimeZoneProvider(string postgresTimeZone)
-            => () =>
-            {
-                if (string.Equals(postgresTimeZone, "localtime", StringComparison.OrdinalIgnoreCase))
-                    throw new TimeZoneNotFoundException(
-                        "The special PostgreSQL timezone 'localtime' is not supported when reading values of type 'timestamp with time zone'. " +
-                        "Please specify a real timezone in 'postgresql.conf' on the server, or set the 'PGTZ' environment variable on the client.");
-
-                return postgresTimeZone;
-            };
     }
 
     #region Password management

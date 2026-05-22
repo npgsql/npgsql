@@ -47,12 +47,10 @@ sealed partial class NodaTimeTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         mapping.CreateInfo(options, new InstantConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
                 mappings.AddStructType<ZonedDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(
-                            DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
+                        mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(options.EnableDateTimeInfinityConversions)));
                 mappings.AddStructType<OffsetDateTime>(TimestampTzDataTypeName,
                     static (options, mapping, _) =>
-                        mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(
-                            DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions)));
+                        mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)));
             }
             else
             {

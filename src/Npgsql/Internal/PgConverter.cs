@@ -685,6 +685,15 @@ public sealed class PgConversionContext
         }
         init;
     }
+
+    /// <summary>
+    /// The session's PostgreSQL TimeZone setting (IANA/Olson name), as last reported by the server's
+    /// <c>ParameterStatus</c> stream. Null when no connection is in scope (e.g. probes against
+    /// <see cref="Empty"/>) — converters that depend on it must throw a meaningful error in that case
+    /// rather than fall back silently. The connector replaces its <see cref="PgConversionContext"/>
+    /// instance when this changes, so converters can read it without staleness concerns.
+    /// </summary>
+    public string? TimeZone { get; init; }
 }
 
 /// <summary>
