@@ -3065,7 +3065,12 @@ public sealed partial class NpgsqlConnector
             // seeded the connector's TimeZone with the requested value, so the .NET side stays correct.
             // Mid-session SET TimeZone (arriving once State is Ready) is honored.
             if (State == ConnectorState.Connecting && (Settings.Timezone is not null || PostgresEnvironment.TimeZone is not null))
+            {
+                // Overwrite the dictionary entry set before the switch — keep PostgresParameters
+                // consistent with the effective session state instead of the proxy-reported value.
+                PostgresParameters[name] = Timezone;
                 return;
+            }
             Timezone = value;
             _conversionContext = null;
             return;
@@ -3077,7 +3082,13 @@ public sealed partial class NpgsqlConnector
             // request. Trusting it would silently clobber Settings.Encoding.
             // Mid-session SET CLIENT_ENCODING (arriving once State is Ready) is honored.
             if (State == ConnectorState.Connecting)
+            {
+                // Overwrite the dictionary entry set before the switch — keep PostgresParameters
+                // consistent with what the connector effectively negotiated in the startup packet rather
+                // than the proxy-reported value.
+                PostgresParameters[name] = Settings.ClientEncoding ?? PostgresEnvironment.ClientEncoding ?? "UTF8";
                 return;
+            }
 
             // SQL_ASCII means "no encoding conversion on the wire," so the .NET side rotates back to
             // Settings.Encoding — the caller's chosen interpreter for raw bytes. Substituting the value
