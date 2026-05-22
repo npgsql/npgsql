@@ -1704,7 +1704,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         Justification = "Members are only dynamically accessed by Npgsql via GetFieldType by GetSchema, and only in certain cases. " +
                         "Holding PublicFields and PublicProperties metadata on all our mapped types just for that case is the wrong tradeoff.")]
     public override Type GetFieldType(int ordinal)
-        => GetField(ordinal).FieldType;
+        => GetField(ordinal).GetFieldType(Connector.ConversionContext);
 
     /// <summary>
     /// Returns an <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.
@@ -2043,13 +2043,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             Debug.Assert(contextRef.IsDefault || ReferenceEquals(Connector.SerializerOptions, contextRef.TypeInfo.Options), "Cache is bleeding over");
 
             if (contextRef.TypeInfo is not { } typeInfo || !typeInfo.CanReadTo(type))
-                RowDescription!.GetConversionContext(ordinal, type, ref contextRef);
+                RowDescription!.GetConversionContext(ordinal, Connector.ConversionContext, type, ref contextRef);
 
             context = contextRef;
         }
         else
         {
-            context = RowDescription![ordinal].ObjectConversionContext;
+            context = RowDescription![ordinal].GetObjectConversionContext(Connector.ConversionContext);
         }
 
         return context;

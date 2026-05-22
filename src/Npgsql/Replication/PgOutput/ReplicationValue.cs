@@ -74,7 +74,7 @@ public class ReplicationValue
     /// Gets the data type of the specified column.
     /// </summary>
     /// <returns>The data type of the specified column.</returns>
-    public Type GetFieldType() => _fieldDescription.FieldType;
+    public Type GetFieldType() => _fieldDescription.GetFieldType(_readBuffer.Connector.ConversionContext);
 
     /// <summary>
     /// Gets the name of the specified column.
@@ -129,7 +129,7 @@ public class ReplicationValue
     {
         ThrowIfInitialized();
 
-        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
+        _fieldDescription.GetConversionContext(_readBuffer.Connector.ConversionContext, typeof(T), ref _lastConversionContext);
         var conversionContext = _lastConversionContext;
 
         switch (Kind)
@@ -151,7 +151,7 @@ public class ReplicationValue
     {
         ThrowIfInitialized();
 
-        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
+        _fieldDescription.GetConversionContext(_readBuffer.Connector.ConversionContext, typeof(T), ref _lastConversionContext);
         var conversionContext = _lastConversionContext;
 
         switch (Kind)

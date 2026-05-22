@@ -352,7 +352,11 @@ public sealed class PgWriter
 
         void Core(ReadOnlySpan<char> data, Encoding encoding)
         {
-            var encoder = encoding.GetEncoder();
+            // Use the connector-cached Encoder when the encoding matches the session's; getter resets it.
+            // Other encodings fall back to a fresh per-call encoder.
+            var encoder = encoding == _conversionContext.TextEncoding && _conversionContext.TextEncoder is { } cached
+                ? cached
+                : encoding.GetEncoder();
             var minBufferSize = encoding.GetMaxByteCount(1);
 
             bool completed;
@@ -422,7 +426,11 @@ public sealed class PgWriter
 
         async ValueTask Core(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken)
         {
-            var encoder = encoding.GetEncoder();
+            // Use the connector-cached Encoder when the encoding matches the session's; getter resets it.
+            // Other encodings fall back to a fresh per-call encoder.
+            var encoder = encoding == _conversionContext.TextEncoding && _conversionContext.TextEncoder is { } cached
+                ? cached
+                : encoding.GetEncoder();
             var minBufferSize = encoding.GetMaxByteCount(1);
 
             bool completed;

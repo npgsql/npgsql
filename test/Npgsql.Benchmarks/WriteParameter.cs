@@ -102,7 +102,7 @@ public class WriteParameter
     {
         param.TypedValue = value;
         param.ResolveTypeInfo(_connector.SerializerOptions, _connector.DbTypeResolver);
-        param.Bind(out _, out _, requiredFormat: DataFormat.Binary);
+        param.Bind(_connector.ConversionContext, out _, out _, requiredFormat: DataFormat.Binary);
         param.Write(async: false, _pgWriter, default).GetAwaiter().GetResult();
         _connector.WriteBuffer.Clear();
     }

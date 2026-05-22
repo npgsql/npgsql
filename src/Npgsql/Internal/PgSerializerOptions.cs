@@ -26,13 +26,11 @@ public sealed class PgSerializerOptions
     TypeInfoCache<Oid>? _oidCache;
     TypeInfoCache<DataTypeName>? _dataTypeNameCache;
 
-    internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, PgTypeInfoResolverChain? resolverChain = null, Func<string>? timeZoneProvider = null, Encoding? textEncoding = null)
+    internal PgSerializerOptions(NpgsqlDatabaseInfo databaseInfo, PgTypeInfoResolverChain? resolverChain = null, Func<string>? timeZoneProvider = null)
     {
         _resolverChain = resolverChain ?? new();
         _timeZoneProvider = timeZoneProvider;
         DatabaseInfo = databaseInfo;
-        // ConversionContext must be in place before any PgConcreteTypeInfo construction probes via options.ConversionContext.
-        ConversionContext = new PgConversionContext { TextEncoding = textEncoding ?? NpgsqlWriteBuffer.RelaxedUTF8Encoding };
         UnspecifiedDBNullTypeInfo = PgConcreteTypeInfo.Create(this, new Converters.Internal.VoidConverter(), DataTypeName.Unspecified, requestedType: typeof(DBNull));
     }
 
@@ -55,13 +53,6 @@ public sealed class PgSerializerOptions
 
     public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
 
-    /// <summary>
-    /// Shared conversion context for this options instance. Carries connection/options-scoped state that
-    /// converters read at descriptor query / read / write / bind time. One instance is reused across all
-    /// converters in this options; lifetime moves to the connection once mid-session state (ParameterStatus
-    /// updates etc.) needs to be threaded.
-    /// </summary>
-    public PgConversionContext ConversionContext { get; }
     public IPgTypeInfoResolver TypeInfoResolver
     {
         get => _typeInfoResolver ??= new ChainTypeInfoResolver(_resolverChain);

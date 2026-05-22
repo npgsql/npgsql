@@ -78,7 +78,7 @@ abstract class CompositeFieldInfo
         => ThrowHelper.ThrowInvalidOperationException(
             $"Composite field '{fieldName}' resolved to a concrete type info without a binary converter; composite fields require binary-format support.");
 
-    public PgConverter GetReadInfo(out Size readRequirement)
+    public PgConverter GetReadInfo(PgConversionContext conversionContext, out Size readRequirement)
     {
         var concreteTypeInfo = ConcreteTypeInfo ?? PgTypeInfo.MakeConcreteForField(new ProviderFieldContext { Name = Name });
         if (!concreteTypeInfo.SupportsReading)
@@ -88,13 +88,13 @@ abstract class CompositeFieldInfo
         {
             readRequirement = IsInvariant
                 ? _binaryBufferRequirements.Read
-                : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements.Read;
+                : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = conversionContext }).BufferRequirements.Read;
             return _concreteBinaryConverter;
         }
 
         // Provider-resolved concrete: validate the binary slot is filled. TryBindField gates on slot presence
         // and surfaces the binding's converter so we don't have to redo the slot pick.
-        if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var binding))
+        if (!concreteTypeInfo.TryBindField(conversionContext, DataFormat.Binary, out var binding))
             ThrowMissingBinarySlot(Name);
         readRequirement = binding.BufferRequirement;
         return binding.Converter;
@@ -164,9 +164,11 @@ abstract class CompositeFieldInfo
         // compiler what it needs to drop the null-forgiving.
         if (IsProviderBacked)
             ThrowHelper.ThrowInvalidOperationException("GetDefaultWriteInfo is not supported for provider-backed fields.");
-        writeRequirement = IsInvariant
-            ? _binaryBufferRequirements.Write
-            : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements.Write;
+        // GetDefaultWriteInfo only runs on the Exact-sized composite fast path; non-invariant fields
+        // contribute Streaming via GetBinaryRequirements, which prevents Exact, so we never get here
+        // with a non-invariant field.
+        Debug.Assert(IsInvariant, "GetDefaultWriteInfo invoked on a non-invariant field; the Exact-sized composite path should have excluded it.");
+        writeRequirement = _binaryBufferRequirements.Write;
         return _concreteBinaryConverter;
     }
 
@@ -188,12 +190,13 @@ abstract class CompositeFieldInfo
     /// </summary>
     public BufferRequirements GetBinaryRequirements()
     {
-        if (IsProviderBacked)
+        // Non-invariant fields contribute Streaming — same shape as provider-backed. We're called at
+        // composite construction with no live ConversionContext, so we can't honestly probe; the composite
+        // accommodates with Streaming and the per-call paths re-resolve via GetReadInfo.
+        if (IsProviderBacked || !IsInvariant)
             return BufferRequirements.Streaming;
 
-        var reqs = IsInvariant
-            ? _binaryBufferRequirements
-            : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements;
+        var reqs = _binaryBufferRequirements;
         var readReq = ConcreteTypeInfo.SupportsReading ? reqs.Read : Size.Unknown;
         var writeReq = ConcreteTypeInfo.SupportsWriting ? reqs.Write : Size.Unknown;
         return BufferRequirements.Create(readReq, writeReq, optionalBind: reqs.IsBindOptional);

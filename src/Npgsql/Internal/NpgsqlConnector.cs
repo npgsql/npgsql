@@ -73,6 +73,21 @@ public sealed partial class NpgsqlConnector
     internal Encoding RelaxedTextEncoding { get; private set; } = default!;
 
     /// <summary>
+    /// Cached <see cref="Encoder"/> over <see cref="TextEncoding"/>. Shared across send-side text writes;
+    /// the getter calls <see cref="Encoder.Reset"/> before returning so callers always observe a clean
+    /// encoder. Replaced when <c>client_encoding</c> rotates the underlying <see cref="TextEncoding"/>.
+    /// </summary>
+    internal Encoder TextEncoder
+    {
+        get
+        {
+            _textEncoder.Reset();
+            return _textEncoder;
+        }
+    }
+    Encoder _textEncoder = default!;
+
+    /// <summary>
     /// Buffer used for reading data.
     /// </summary>
     internal NpgsqlReadBuffer ReadBuffer { get; private set; } = default!;
@@ -124,6 +139,15 @@ public sealed partial class NpgsqlConnector
     public NpgsqlDatabaseInfo DatabaseInfo => ReloadableState.DatabaseInfo;
     internal PgSerializerOptions SerializerOptions => ReloadableState.SerializerOptions;
     internal IDbTypeResolver? DbTypeResolver => ReloadableState.DbTypeResolver;
+
+    /// <summary>
+    /// Per-connection conversion context. Carries session state (text encoding today, timezone provider /
+    /// ParameterStatus-driven values in the future) that converters read at runtime via the reader/writer.
+    /// Future ParameterStatus updates mutate this connection-scoped instance without affecting other connectors.
+    /// </summary>
+    internal PgConversionContext ConversionContext
+        => _conversionContext ??= new() { TextEncoding = TextEncoding, TextEncoder = _textEncoder };
+    PgConversionContext? _conversionContext;
 
     /// <summary>
     /// The current transaction status for this connector.
@@ -901,6 +925,7 @@ public sealed partial class NpgsqlConnector
                 TextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
                 RelaxedTextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
             }
+            _textEncoder = TextEncoding.GetEncoder();
 
             ReadBuffer = new NpgsqlReadBuffer(this, _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
             WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
@@ -3023,6 +3048,64 @@ public sealed partial class NpgsqlConnector
 
         case "TimeZone":
             Timezone = value;
+            return;
+
+        case "client_encoding":
+            // Server reports a new client_encoding (typically from SET CLIENT_ENCODING). Map the PG name
+            // to a .NET / IANA name (per src/common/encnames.c) and refresh TextEncoding/RelaxedTextEncoding.
+            // SQL_ASCII is special: it explicitly means "no encoding conversion on the wire," so the .NET
+            // side keeps whatever Settings.Encoding the caller chose to interpret the raw bytes.
+            // Other PG names without a .NET equivalent (MULE_INTERNAL, EUC_JIS_2004, LATIN10, WIN874) are
+            // real encodings .NET can't decode — let Encoding.GetEncoding throw and break the connection.
+            if (value == "SQL_ASCII")
+                return;
+
+            var mappedEncoding = value switch
+            {
+                "EUC_JP" => "EUC-JP",
+                "EUC_CN" => "EUC-CN",
+                "EUC_KR" => "EUC-KR",
+                "EUC_TW" => "EUC-TW",
+                "UTF8" => "UTF-8",
+                "LATIN1" => "ISO-8859-1",
+                "LATIN2" => "ISO-8859-2",
+                "LATIN3" => "ISO-8859-3",
+                "LATIN4" => "ISO-8859-4",
+                "LATIN5" => "ISO-8859-9",
+                "LATIN6" => "ISO-8859-10",
+                "LATIN7" => "ISO-8859-13",
+                "LATIN8" => "ISO-8859-14",
+                "LATIN9" => "ISO-8859-15",
+                "WIN1256" => "CP1256",
+                "WIN1258" => "CP1258",
+                "WIN866" => "CP866",
+                "KOI8R" => "KOI8-R",
+                "WIN1251" => "CP1251",
+                "WIN1252" => "CP1252",
+                "ISO_8859_5" => "ISO-8859-5",
+                "ISO_8859_6" => "ISO-8859-6",
+                "ISO_8859_7" => "ISO-8859-7",
+                "ISO_8859_8" => "ISO-8859-8",
+                "WIN1250" => "CP1250",
+                "WIN1253" => "CP1253",
+                "WIN1254" => "CP1254",
+                "WIN1255" => "CP1255",
+                "WIN1257" => "CP1257",
+                "KOI8U" => "KOI8-U",
+                _ => value
+            };
+            if (mappedEncoding == "UTF-8")
+            {
+                TextEncoding = NpgsqlWriteBuffer.UTF8Encoding;
+                RelaxedTextEncoding = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
+            }
+            else
+            {
+                TextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                RelaxedTextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+            }
+            _textEncoder = TextEncoding.GetEncoder();
+            _conversionContext = null;
             return;
 
         case "default_transaction_read_only":

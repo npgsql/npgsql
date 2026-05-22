@@ -136,8 +136,8 @@ sealed class RowDescriptionMessage : IBackendMessage
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    internal void GetConversionContext(int ordinal, Type type, ref ReadConversionContext result)
-        => this[ordinal].GetConversionContext(type, ref result);
+    internal void GetConversionContext(int ordinal, PgConversionContext conversionContext, Type type, ref ReadConversionContext result)
+        => this[ordinal].GetConversionContext(conversionContext, type, ref result);
 
     internal void SetColumnInfoCache(ReadOnlySpan<ReadConversionContext> values)
     {
@@ -311,19 +311,20 @@ public sealed class FieldDescription
 
     internal PostgresType PostgresType { get; private set; }
 
-    internal Type FieldType => ObjectConversionContext.TypeInfo.Type;
+    internal Type GetFieldType(PgConversionContext conversionContext) => GetObjectConversionContext(conversionContext).TypeInfo.Type;
 
     ReadConversionContext _objectConversionContext;
-    internal ReadConversionContext ObjectConversionContext
+    // Returns the cached object-typed binding, lazy-initializing via the supplied <paramref name="conversionContext"/>
+    // on first access. Threaded rather than stashed because the per-connector context reference may rotate over the
+    // FieldDescription's lifetime (ParameterStatus updates) and the FieldDescription itself may persist long enough
+    // for that to matter.
+    internal ReadConversionContext GetObjectConversionContext(PgConversionContext conversionContext)
     {
-        get
-        {
-            if (!_objectConversionContext.IsDefault)
-                return _objectConversionContext;
-
-            GetInfoAndBind(null, ref _objectConversionContext);
+        if (!_objectConversionContext.IsDefault)
             return _objectConversionContext;
-        }
+
+        GetInfoAndBind(conversionContext, null, ref _objectConversionContext);
+        return _objectConversionContext;
     }
 
     internal PgSerializerOptions _serializerOptions;
@@ -334,8 +335,8 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal void GetConversionContext(Type type, ref ReadConversionContext result) => GetInfoAndBind(type, ref result);
-    void GetInfoAndBind(Type? type, ref ReadConversionContext result)
+    internal void GetConversionContext(PgConversionContext conversionContext, Type type, ref ReadConversionContext result) => GetInfoAndBind(conversionContext, type, ref result);
+    void GetInfoAndBind(PgConversionContext conversionContext, Type? type, ref ReadConversionContext result)
     {
         Debug.Assert(result.IsDefault || (
             ReferenceEquals(_serializerOptions, result.TypeInfo.Options) && (
@@ -347,7 +348,7 @@ public sealed class FieldDescription
         if (result is { IsDefault: false, TypeInfo.Type: var typeToConvert } && typeToConvert == type)
             return;
 
-        var objectInfo = DataFormat is DataFormat.Text && type is not null ? ObjectConversionContext : _objectConversionContext;
+        var objectInfo = DataFormat is DataFormat.Text && type is not null ? GetObjectConversionContext(conversionContext) : _objectConversionContext;
         if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
         {
             result = objectInfo;
@@ -376,7 +377,7 @@ public sealed class FieldDescription
                 if (!concreteTypeInfo.SupportsReading)
                     AdoSerializerHelpers.ThrowReadingNotSupported(type, _serializerOptions, _serializerOptions.TextPgTypeId, resolved: true);
 
-                binding = concreteTypeInfo.BindField(DataFormat.Text);
+                binding = concreteTypeInfo.BindField(conversionContext, DataFormat.Text);
                 lastReadConversionContext = new(concreteTypeInfo, binding);
                 break;
             }
@@ -389,7 +390,7 @@ public sealed class FieldDescription
                     AdoSerializerHelpers.ThrowReadingNotSupported(type, _serializerOptions, _serializerOptions.ToCanonicalTypeId(PostgresType), resolved: true);
 
                 // If we don't support the DataFormat we'll just throw.
-                binding = concreteTypeInfo.BindField(DataFormat);
+                binding = concreteTypeInfo.BindField(conversionContext, DataFormat);
                 lastReadConversionContext = new(concreteTypeInfo, binding);
                 break;
             }
@@ -402,7 +403,7 @@ public sealed class FieldDescription
             // We delay initializing ObjectOrDefaultInfo until after the first lookup (unless it is itself the first lookup).
             // When passed in an unsupported type it allows the error to be more specific, instead of just having object/null to deal with.
             if (_objectConversionContext.TypeInfo is null && type is not null)
-                _ = ObjectConversionContext;
+                _ = GetObjectConversionContext(conversionContext);
         }
     }
 

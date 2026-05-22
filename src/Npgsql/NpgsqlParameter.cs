@@ -743,7 +743,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     }
 
     /// Bind the current value to the type info, truncate (if applicable), take its size, and do any final validation before writing.
-    internal void Bind(out DataFormat format, out Size size, DataFormat? requiredFormat = null)
+    internal void Bind(PgConversionContext conversionContext, out DataFormat format, out Size size, DataFormat? requiredFormat = null)
     {
         if (TypeInfo is null || ConcreteTypeInfo is null)
             ThrowHelper.ThrowInvalidOperationException($"Missing type info, {nameof(ResolveTypeInfo)} needs to be called before {nameof(Bind)}.");
@@ -811,9 +811,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 if (_useSubStream)
                     _binding = BindSubStream(pws);
                 else if (staticValueType == typeof(object))
-                    _binding = concrete.BindParameterValueAsNestedObject(Value, pws, ParameterDbNullHandling, requiredFormat);
+                    _binding = concrete.BindParameterValueAsNestedObject(conversionContext, Value, pws, ParameterDbNullHandling, requiredFormat);
                 else
-                    _binding = BindTypedValue(concrete, pws, requiredFormat);
+                    _binding = BindTypedValue(conversionContext, concrete, pws, requiredFormat);
                 _isBound = true;
 
                 if (requiredFormat is not null && _binding.DataFormat != requiredFormat.GetValueOrDefault())
@@ -957,7 +957,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected virtual PgConcreteTypeInfo MakeConcreteForTypedValue(PgTypeInfo typeInfo, out object? providerWriteState)
         => throw new NotSupportedException();
 
-    private protected virtual PgValueBinding BindTypedValue(PgConcreteTypeInfo concrete, object? providerWriteState, DataFormat? formatPreference)
+    private protected virtual PgValueBinding BindTypedValue(PgConversionContext conversionContext, PgConcreteTypeInfo concrete, object? providerWriteState, DataFormat? formatPreference)
         => throw new NotSupportedException();
 
     private protected virtual ValueTask WriteTypedValue(bool async, PgConverter converter, PgWriter writer, CancellationToken cancellationToken)

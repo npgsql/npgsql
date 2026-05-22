@@ -108,7 +108,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
                 field.ReadDbNull(builder);
             else
             {
-                var converter = field.GetReadInfo(out var readRequirement);
+                var converter = field.GetReadInfo(reader.ConversionContext, out var readRequirement);
                 var scope = await reader.BeginNestedRead(async, length, readRequirement, cancellationToken).ConfigureAwait(false);
                 try
                 {

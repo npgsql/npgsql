@@ -47,7 +47,7 @@ sealed class RecordConverter<T>(PgSerializerOptions options, Func<object[], T>? 
             var concreteTypeInfo = typeInfo.MakeConcreteForField();
             if (!concreteTypeInfo.SupportsReading)
                 AdoSerializerHelpers.ThrowReadingNotSupported(IsObjectArrayRecord ? typeof(object) : null, options, pgTypeId, resolved: true);
-            var binding = concreteTypeInfo.BindField(DataFormat.Binary);
+            var binding = concreteTypeInfo.BindField(reader.ConversionContext, DataFormat.Binary);
             var scope = await reader.BeginNestedRead(async, length, binding.BufferRequirement, cancellationToken).ConfigureAwait(false);
             try
             {
