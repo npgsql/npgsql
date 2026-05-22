@@ -48,8 +48,12 @@ abstract class CompositeFieldInfo
                     nameof(typeInfo));
 
             var fieldDescriptor = binaryConverter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
-            _binaryBufferRequirements = fieldDescriptor.BufferRequirements;
             IsInvariant = fieldDescriptor.IsInvariant;
+            // Only cache requirements when the descriptor is invariant; otherwise the probed value is stale
+            // relative to any context the inner converter may read, and GetReadInfo / GetWriteInfo re-resolve
+            // via the converter directly against the live context.
+            if (IsInvariant)
+                _binaryBufferRequirements = fieldDescriptor.BufferRequirements;
             ConcreteTypeInfo = direct;
             _concreteBinaryConverter = binaryConverter;
         }
@@ -82,7 +86,9 @@ abstract class CompositeFieldInfo
 
         if (!IsProviderBacked)
         {
-            readRequirement = _binaryBufferRequirements.Read;
+            readRequirement = IsInvariant
+                ? _binaryBufferRequirements.Read
+                : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements.Read;
             return _concreteBinaryConverter;
         }
 
@@ -110,7 +116,10 @@ abstract class CompositeFieldInfo
                 if (!ConcreteTypeInfo.SupportsWriting)
                     AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, ConcreteTypeInfo.PgTypeId, resolved: true);
                 converter = _concreteBinaryConverter;
-                ctx = BindContext.CreateUnchecked(DataFormat.Binary, _binaryBufferRequirements.Write, _binaryBufferRequirements.IsBindOptional, nestingContext.ConversionContext);
+                var reqs = IsInvariant
+                    ? _binaryBufferRequirements
+                    : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = nestingContext.ConversionContext }).BufferRequirements;
+                ctx = BindContext.CreateUnchecked(DataFormat.Binary, reqs.Write, reqs.IsBindOptional, nestingContext.ConversionContext);
             }
             else
             {
@@ -153,9 +162,11 @@ abstract class CompositeFieldInfo
         // Only called for non-provider-backed fields per the docstring; the cached binary converter is
         // non-null in that case. The early-bind through MemberNotNullWhen on IsProviderBacked gives the
         // compiler what it needs to drop the null-forgiving.
-        writeRequirement = _binaryBufferRequirements.Write;
         if (IsProviderBacked)
             ThrowHelper.ThrowInvalidOperationException("GetDefaultWriteInfo is not supported for provider-backed fields.");
+        writeRequirement = IsInvariant
+            ? _binaryBufferRequirements.Write
+            : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements.Write;
         return _concreteBinaryConverter;
     }
 
@@ -180,7 +191,9 @@ abstract class CompositeFieldInfo
         if (IsProviderBacked)
             return BufferRequirements.Streaming;
 
-        var reqs = _binaryBufferRequirements;
+        var reqs = IsInvariant
+            ? _binaryBufferRequirements
+            : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements;
         var readReq = ConcreteTypeInfo.SupportsReading ? reqs.Read : Size.Unknown;
         var writeReq = ConcreteTypeInfo.SupportsWriting ? reqs.Write : Size.Unknown;
         return BufferRequirements.Create(readReq, writeReq, optionalBind: reqs.IsBindOptional);

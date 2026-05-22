@@ -45,8 +45,11 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         labelToEnum[enumName] = enumValue;
                     }
 
-                    return mapping.CreateInfo(options, (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
-                        enumToLabel, labelToEnum)!);
+                    // EnumConverter is format-agnostic — register the same instance for both binary and
+                    // text so historical text-format binding paths continue to work.
+                    var converter = (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
+                        enumToLabel, labelToEnum)!;
+                    return mapping.CreateInfo(options, converter, converter);
                 });
         }
     }

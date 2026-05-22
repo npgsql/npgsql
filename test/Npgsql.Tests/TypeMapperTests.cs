@@ -194,7 +194,8 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             {
                 if (type == typeof(string) || dataTypeName?.UnqualifiedName == "citext")
                     if (options.DatabaseInfo.TryGetPostgresTypeByName("citext", out var pgType))
-                        return PgConcreteTypeInfo.Create(options, TextConverter.CreateStringConverter(), options.ToCanonicalTypeId(pgType));
+                        return PgConcreteTypeInfo.Create(options, TextConverter.CreateStringConverter(),
+                            TextConverter.CreateStringConverter(), options.ToCanonicalTypeId(pgType));
 
                 return null;
             }
@@ -237,13 +238,13 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             {
                 if (type == typeof(Guid) || dataTypeName?.UnqualifiedName == typeName)
                     if (options.DatabaseInfo.TryGetPostgresTypeByName(typeName, out var pgType))
-                        return PgConcreteTypeInfo.Create(options, new GuidTextConverter(), options.ToCanonicalTypeId(pgType));
+                        return PgConcreteTypeInfo.Create(options, new GuidTextConverter(), new GuidTextConverter(), options.ToCanonicalTypeId(pgType));
 
                 return null;
             }
         }
 
-        sealed class GuidTextConverter() : PgStreamingConverter<Guid>
+        sealed class GuidTextConverter : PgStreamingConverter<Guid>
         {
             public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
                 => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
