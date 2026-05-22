@@ -14,17 +14,22 @@ namespace Npgsql.Internal.Converters;
 abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly ArrayConverterCore _arrayConverterCore;
-
-    protected PgConcreteTypeInfo ElementTypeInfo { get; }
+    // Compositional boundary: outward BufferRequirements is always Streaming (doesn't expose the element's
+    // requirements), so this converter's outward descriptor is always Invariant. _elementIsInvariant is
+    // only consulted internally — when false, the cached element BufferRequirements in ArrayConverterCore
+    // would be stale and the runtime per-element paths re-resolve via the element converter using the
+    // PgConversionContext supplied by the carrier (reader/writer/BindContext).
+    readonly bool _elementIsInvariant;
 
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
-        ElementTypeInfo = elementTypeInfo;
-        if (!elementTypeInfo.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
-            throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
-
-        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo, elementTypeInfo.Converter.IsDbNullable, expectedDimensions,
-            bufferRequirements, elementTypeInfo.PgTypeId, pgLowerBound);
+        // Invariance is context-independent by contract; probe with Empty. The cached BufferRequirements
+        // is only valid when invariant — non-invariant elements re-resolve at runtime via the carrier.
+        var elementDescriptor = elementTypeInfo.GetConverter(DataFormat.Binary).GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
+        _elementIsInvariant = elementDescriptor.IsInvariant;
+        _arrayConverterCore = new((IElementOperations)this, elementTypeInfo.GetConverter(DataFormat.Binary),
+            elementTypeInfo.GetConverter(DataFormat.Binary).IsDbNullable, expectedDimensions,
+            _elementIsInvariant ? elementDescriptor.BufferRequirements : null, elementTypeInfo.PgTypeId, pgLowerBound);
     }
 
     public override T Read(PgReader reader) => (T)_arrayConverterCore.Read(async: false, reader).Result;
@@ -75,7 +80,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
         : ArrayConverter<T>(expectedDimensions: effectiveType is null ? 1 : effectiveType.IsArray ? effectiveType.GetArrayRank() : null,
         elementTypeInfo, pgLowerBound), IElementOperations
     {
-        readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.Converter;
+        readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.GetConverter(DataFormat.Binary);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static TElement? GetValue(object collection, IterationIndices indices)
@@ -189,7 +194,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     sealed class ListBased<TElement>(PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
         : ArrayConverter<T>(expectedDimensions: 1, elementTypeInfo, pgLowerBound), IElementOperations
     {
-        readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.Converter;
+        readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.GetConverter(DataFormat.Binary);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static TElement? GetValue(object collection, int index)
@@ -277,18 +282,24 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
 
-    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType)
+    protected override void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
+        out PgConverter<T>? binary, out PgConverter<T>? text, out Type? requestedType)
     {
+        // Arrays are binary-only on the PG wire. We never produce a text-format array converter; the binary
+        // slot mirrors the inner element's binary slot, which `CreateArrayBased`/`CreateListBased` validate.
+        text = null;
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
         {
             requestedType = requestedMappingType;
-            return ArrayConverter<T>.CreateArrayBased<TElement>(effectiveConcreteTypeInfo, requestedType);
+            binary = ArrayConverter<T>.CreateArrayBased<TElement>(effectiveConcreteTypeInfo, requestedType);
+            return;
         }
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
         {
             requestedType = requestedMappingType;
-            return ArrayConverter<T>.CreateListBased<TElement>(effectiveConcreteTypeInfo);
+            binary = ArrayConverter<T>.CreateListBased<TElement>(effectiveConcreteTypeInfo);
+            return;
         }
 
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
@@ -458,11 +469,8 @@ sealed class PolymorphicArrayConverter<TBase>(
     PgConverter<TBase> nullableElementCollectionConverter)
     : PgStreamingConverter<TBase>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(sizeof(int) + sizeof(int)), write: Size.Unknown);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(sizeof(int) + sizeof(int)), write: Size.Unknown) };
 
     public override TBase Read(PgReader reader)
     {
@@ -545,9 +553,10 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
         (PgConcreteTypeInfo ConcreteInfo, PgConcreteTypeInfo ConcreteNullableInfo) state = (concreteTypeInfo, concreteNullableTypeInfo);
         return _concreteInfoCache.GetOrAdd(concreteTypeInfo,
             static (_, state) =>
-                new(state.ConcreteInfo.Options,
-                    new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.ConcreteInfo.Converter, (PgConverter<TBase>)state.ConcreteNullableInfo.Converter),
-                    state.ConcreteInfo.PgTypeId) { SupportsWriting = false },
+                PgConcreteTypeInfo.Create(state.ConcreteInfo.Options,
+                    new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.ConcreteInfo.GetConverter(DataFormat.Binary), (PgConverter<TBase>)state.ConcreteNullableInfo.GetConverter(DataFormat.Binary)),
+                    state.ConcreteInfo.PgTypeId,
+                    supportsWriting: false),
             state);
     }
 }

@@ -304,7 +304,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             return DBNull.Value;
 
         using var _ = PgReader.BeginNestedRead(columnLength, column.ObjectBinding.BufferRequirement);
-        return column.ObjectTypeInfo.Converter.ReadAsObject(PgReader)!;
+        return column.ObjectBinding.Converter.ReadAsObject(PgReader)!;
     }
 
     /// <inheritdoc />
@@ -339,7 +339,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             return DbNullOrThrow<T>();
 
         using var _ = PgReader.BeginNestedRead(columnLength, info.Binding.BufferRequirement);
-        return info.TypeInfo.Converter.Read<T>(PgReader);
+        return info.Binding.Converter.Read<T>(PgReader);
     }
 
     static T DbNullOrThrow<T>()

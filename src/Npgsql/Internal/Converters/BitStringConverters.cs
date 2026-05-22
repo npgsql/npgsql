@@ -99,11 +99,8 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
 {
     static int MaxSize => sizeof(int) + sizeof(int);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(MaxSize), write: MaxSize);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(MaxSize), write: MaxSize) };
 
     public override BitVector32 Read(PgReader reader)
     {
@@ -132,11 +129,8 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
 {
     static int MaxSize => sizeof(int) + sizeof(byte);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(MaxSize), write: MaxSize);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(read: Size.CreateUpperBound(MaxSize), write: MaxSize) };
 
     public override bool Read(PgReader reader)
     {
@@ -230,8 +224,8 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
 /// Otherwise we return a BitArray converter. Polymorphic writing through this provider is not supported.
 sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, PgTypeId bitString) : PgConcreteTypeInfoProvider<object>
 {
-    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = new(options, new BoolBitStringConverter(), bitString) { SupportsWriting = false };
-    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = new(options, new BitArrayBitStringConverter(), bitString) { SupportsWriting = false };
+    readonly PgConcreteTypeInfo _boolConcreteTypeInfo = PgConcreteTypeInfo.Create(options, new BoolBitStringConverter(), bitString, supportsWriting: false);
+    readonly PgConcreteTypeInfo _bitArrayConcreteTypeInfo = PgConcreteTypeInfo.Create(options, new BitArrayBitStringConverter(), bitString, supportsWriting: false);
 
     // Dispatched concretes vary in advertised Type (bool vs BitArray) per field's TypeModifier.
     internal override bool AllowConcreteVariance => true;

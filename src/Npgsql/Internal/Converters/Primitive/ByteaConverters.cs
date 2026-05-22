@@ -8,15 +8,12 @@ using System.Threading.Tasks;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
+#pragma warning disable CS9113 // supportsTextFormat is no longer consulted by the converter — format registration is handled externally. Parameter retained for caller-source stability pending registration cleanup.
 abstract class ByteaConverters<T>(bool supportsTextFormat) : PgStreamingConverter<T>
+#pragma warning restore CS9113
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return supportsTextFormat
-            ? format is DataFormat.Binary or DataFormat.Text
-            : format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).Result;
@@ -58,15 +55,12 @@ sealed class ArraySegmentByteaConverter(bool supportsTextFormat) : ByteaConverte
             : throw new UnreachableException("Expected array-backed memory");
 }
 
+#pragma warning disable CS9113 // supportsTextFormat is no longer consulted by the converter — format registration is handled externally. Parameter retained for caller-source stability pending registration cleanup.
 sealed class ArrayByteaConverter(bool supportsTextFormat) : PgStreamingConverter<byte[]>
+#pragma warning restore CS9113
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return supportsTextFormat
-            ? format is DataFormat.Binary or DataFormat.Text
-            : format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override byte[] Read(PgReader reader)
     {

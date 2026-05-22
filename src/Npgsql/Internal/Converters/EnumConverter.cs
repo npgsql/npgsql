@@ -10,10 +10,9 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
 {
     readonly Dictionary<TEnum, string> _enumToLabel;
     readonly Dictionary<string, TEnum> _labelToEnum;
-    readonly Encoding _encoding;
 
     // Unmapped enums
-    public EnumConverter(Dictionary<Enum, string> enumToLabel, Dictionary<string, Enum> labelToEnum, Encoding encoding)
+    public EnumConverter(Dictionary<Enum, string> enumToLabel, Dictionary<string, Enum> labelToEnum)
     {
         _enumToLabel = new(enumToLabel.Count);
         foreach (var kv in enumToLabel)
@@ -22,34 +21,29 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
         _labelToEnum = new(labelToEnum.Count);
         foreach (var kv in labelToEnum)
             _labelToEnum.Add(kv.Key, (TEnum)kv.Value);
-
-        _encoding = encoding;
     }
 
-    public EnumConverter(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum, Encoding encoding)
+    public EnumConverter(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
     {
         _enumToLabel = enumToLabel;
         _labelToEnum = labelToEnum;
-        _encoding = encoding;
     }
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Value;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Value };
 
     protected override Size BindValue(in BindContext context, TEnum value, ref object? writeState)
     {
         if (!_enumToLabel.TryGetValue(value, out var str))
             throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
 
-        return _encoding.GetByteCount(str);
+        return context.ConversionContext.TextEncoding.GetByteCount(str);
     }
 
     public override TEnum Read(PgReader reader)
     {
-        var str = _encoding.GetString(reader.ReadBytes(reader.CurrentRemaining));
+        var encoding = reader.ConversionContext.TextEncoding;
+        var str = encoding.GetString(reader.ReadBytes(reader.CurrentRemaining));
         var success = _labelToEnum.TryGetValue(str, out var value);
 
         if (!success)
@@ -63,6 +57,6 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
         if (!_enumToLabel.TryGetValue(value, out var str))
             throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
 
-        writer.WriteBytes(new ReadOnlySpan<byte>(_encoding.GetBytes(str)));
+        writer.WriteBytes(new ReadOnlySpan<byte>(writer.ConversionContext.TextEncoding.GetBytes(str)));
     }
 }

@@ -30,8 +30,8 @@ public sealed class CastingConverter<T> : PgConverter<T>
 
     protected override bool IsDbNullValue(T? value, object? writeState) => _effectiveConverter.IsDbNullAsObject(value, writeState);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => _effectiveConverter.CanConvert(format, out bufferRequirements);
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => _effectiveConverter.GetDescriptor(context);
 
     public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader)!;
 
@@ -79,10 +79,16 @@ sealed class CastingTypeInfoProvider<T> : PgComposingTypeInfoProvider<T>
     protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
 
-    protected override PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType)
+    protected override void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
+        out PgConverter<T>? binary, out PgConverter<T>? text, out Type? requestedType)
     {
         requestedType = null;
-        return new CastingConverter<T>(effectiveConcreteTypeInfo.Converter);
+        binary = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Binary, out var innerBinary)
+            ? new CastingConverter<T>(innerBinary)
+            : null;
+        text = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Text, out var innerText)
+            ? new CastingConverter<T>(innerText)
+            : null;
     }
 
     protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
@@ -99,12 +105,12 @@ static class CastingTypeInfoExtensions
 
         var type = typeInfo.Type;
         if (typeInfo is PgProviderTypeInfo providerTypeInfo)
-            return new PgProviderTypeInfo(typeInfo.Options,
+            return PgProviderTypeInfo.Create(typeInfo.Options,
                 (PgConcreteTypeInfoProvider)Activator.CreateInstance(typeof(CastingTypeInfoProvider<>).MakeGenericType(type),
                     providerTypeInfo)!, typeInfo.PgTypeId);
 
         var concreteTypeInfo = (PgConcreteTypeInfo)typeInfo;
-        return new PgConcreteTypeInfo(typeInfo.Options,
-            (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), concreteTypeInfo.Converter)!, concreteTypeInfo.PgTypeId);
+        return PgConcreteTypeInfo.Create(typeInfo.Options,
+            (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(type), concreteTypeInfo.GetConverter(DataFormat.Binary))!, concreteTypeInfo.PgTypeId);
     }
 }

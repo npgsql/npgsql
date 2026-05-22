@@ -43,7 +43,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (type != typeof(Stream))
                 return null;
 
-            return new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), dataTypeName) { SupportsWriting = false };
+            var converter = new StreamConverter(supportsTextFormat: true);
+            return PgConcreteTypeInfo.Create(options, binary: converter, text: converter, dataTypeName, supportsWriting: false);
         }
 
         static PgTypeInfo? GetEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
@@ -52,7 +53,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 || options.DatabaseInfo.GetPostgresType(dataTypeName) is not PostgresEnumType)
                 return null;
 
-            return new PgConcreteTypeInfo(options, TextConverter.CreateStringConverter(options.TextEncoding), dataTypeName, requestedType: type);
+            var converter = TextConverter.CreateStringConverter();
+            return PgConcreteTypeInfo.Create(options, binary: converter, text: converter, dataTypeName, requestedType: type);
         }
 
         static TypeInfoMappingCollection AddMappings(TypeInfoMappingCollection mappings)
@@ -85,25 +87,53 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // Text
             // Update PgSerializerOptions.IsWellKnownTextType(Type) after any changes to this list.
             mappings.AddType<string>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateStringConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                static (options, mapping, _) =>
+                {
+                    var converter = TextConverter.CreateStringConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                }, isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) =>
+                {
+                    var converter = new CharTextConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                });
             // Uses the bytea converters, as neither type has a header.
             mappings.AddType<byte[]>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter(supportsTextFormat: true)),
+                static (options, mapping, _) =>
+                {
+                    var converter = new ArrayByteaConverter(supportsTextFormat: true);
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter(supportsTextFormat: true)),
+                static (options, mapping, _) =>
+                {
+                    var converter = new ReadOnlyMemoryByteaConverter(supportsTextFormat: true);
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Text,
-                static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
+                static (options, mapping, _) =>
+                {
+                    var converter = new StreamConverter(supportsTextFormat: true);
+                    return PgConcreteTypeInfo.Create(options, binary: converter, text: converter, new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type);
+                },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text, supportsWriting: false),
+                static (options, mapping, _) =>
+                {
+                    var converter = new TextReaderTextConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text, supportsWriting: false);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<GetChars>(DataTypeNames.Text,
-                static (options, mapping, _) => mapping.CreateInfo(options, new GetCharsTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text, supportsWriting: false),
+                static (options, mapping, _) =>
+                {
+                    var converter = new GetCharsTextConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text, supportsWriting: false);
+                },
                 MatchRequirement.DataTypeName);
 
             // Alternative text types
@@ -112,61 +142,139 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         DataTypeNames.Xml, DataTypeNames.Name, DataTypeNames.RefCursor })
             {
                 mappings.AddType<string>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateStringConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                    static (options, mapping, _) =>
+                    {
+                        var converter = TextConverter.CreateStringConverter();
+                        return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                    }, isDefault: true);
                 mappings.AddStructType<char>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new CharTextConverter();
+                        return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                    });
                 // Uses the bytea converters, as neither type has a header.
                 mappings.AddType<byte[]>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter(supportsTextFormat: true)),
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new ArrayByteaConverter(supportsTextFormat: true);
+                        return mapping.CreateInfo(options, binary: converter, text: converter);
+                    },
                     MatchRequirement.DataTypeName);
                 mappings.AddStructType<ReadOnlyMemory<byte>>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter(supportsTextFormat: true)),
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new ReadOnlyMemoryByteaConverter(supportsTextFormat: true);
+                        return mapping.CreateInfo(options, binary: converter, text: converter);
+                    },
                     MatchRequirement.DataTypeName);
                 mappings.AddType<Stream>(dataTypeName,
-                    static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: true), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new StreamConverter(supportsTextFormat: true);
+                        return PgConcreteTypeInfo.Create(options, binary: converter, text: converter, new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type);
+                    },
                     mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
                 //Special mappings, these have no corresponding array mapping.
                 mappings.AddType<TextReader>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text, supportsWriting: false),
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new TextReaderTextConverter();
+                        return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text, supportsWriting: false);
+                    },
                     MatchRequirement.DataTypeName);
                 mappings.AddStructType<GetChars>(dataTypeName,
-                    static (options, mapping, _) => mapping.CreateInfo(options, new GetCharsTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text, supportsWriting: false),
+                    static (options, mapping, _) =>
+                    {
+                        var converter = new GetCharsTextConverter();
+                        return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text, supportsWriting: false);
+                    },
                     MatchRequirement.DataTypeName);
             }
 
             // Jsonb
             const byte jsonbVersion = 1;
             mappings.AddType<string>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonbVersion, TextConverter.CreateStringConverter(options.TextEncoding))), isDefault: true);
+                static (options, mapping, _) =>
+                {
+                    var text = TextConverter.CreateStringConverter();
+                    var binary = new VersionPrefixedTextConverter<string>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                }, isDefault: true);
             mappings.AddStructType<char>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<char>(jsonbVersion, new CharTextConverter(options.TextEncoding))));
+                static (options, mapping, _) =>
+                {
+                    var text = new CharTextConverter();
+                    var binary = new VersionPrefixedTextConverter<char>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                });
             mappings.AddType<byte[]>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<byte[]>(jsonbVersion, new ArrayByteaConverter(supportsTextFormat: true))),
+                static (options, mapping, _) =>
+                {
+                    var text = new ArrayByteaConverter(supportsTextFormat: true);
+                    var binary = new VersionPrefixedTextConverter<byte[]>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, new ReadOnlyMemoryByteaConverter(supportsTextFormat: true))),
+                static (options, mapping, _) =>
+                {
+                    var text = new ReadOnlyMemoryByteaConverter(supportsTextFormat: true);
+                    var binary = new VersionPrefixedTextConverter<ReadOnlyMemory<byte>>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddType<Stream>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => new PgConcreteTypeInfo(options, new VersionPrefixedTextConverter<Stream>(jsonbVersion, new StreamConverter(supportsTextFormat: true)), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
+                static (options, mapping, _) =>
+                {
+                    var text = new StreamConverter(supportsTextFormat: true);
+                    var binary = new VersionPrefixedTextConverter<Stream>(jsonbVersion, text);
+                    return PgConcreteTypeInfo.Create(options, binary: binary, text: text, new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type);
+                },
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName, TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<TextReader>(jsonbVersion, new TextReaderTextConverter(options.TextEncoding)), preferredFormat: DataFormat.Text, supportsWriting: false),
+                static (options, mapping, _) =>
+                {
+                    var text = new TextReaderTextConverter();
+                    var binary = new VersionPrefixedTextConverter<TextReader>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<GetChars>(DataTypeNames.Jsonb,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<GetChars>(jsonbVersion, new GetCharsTextConverter(options.TextEncoding)), preferredFormat: DataFormat.Text, supportsWriting: false),
+                static (options, mapping, _) =>
+                {
+                    var text = new GetCharsTextConverter();
+                    var binary = new VersionPrefixedTextConverter<GetChars>(jsonbVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
+                },
                 MatchRequirement.DataTypeName);
 
             // Jsonpath
             const byte jsonpathVersion = 1;
             mappings.AddType<string>(DataTypeNames.Jsonpath,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<string>(jsonpathVersion, TextConverter.CreateStringConverter(options.TextEncoding))), isDefault: true);
+                static (options, mapping, _) =>
+                {
+                    var text = TextConverter.CreateStringConverter();
+                    var binary = new VersionPrefixedTextConverter<string>(jsonpathVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text);
+                }, isDefault: true);
             //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(DataTypeNames.Jsonpath,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<TextReader>(jsonpathVersion, new TextReaderTextConverter(options.TextEncoding)), preferredFormat: DataFormat.Text, supportsWriting: false),
+                static (options, mapping, _) =>
+                {
+                    var text = new TextReaderTextConverter();
+                    var binary = new VersionPrefixedTextConverter<TextReader>(jsonpathVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
+                },
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<GetChars>(DataTypeNames.Jsonpath,
-                static (options, mapping, _) => mapping.CreateInfo(options, new VersionPrefixedTextConverter<GetChars>(jsonpathVersion, new GetCharsTextConverter(options.TextEncoding)), preferredFormat: DataFormat.Text, supportsWriting: false),
+                static (options, mapping, _) =>
+                {
+                    var text = new GetCharsTextConverter();
+                    var binary = new VersionPrefixedTextConverter<GetChars>(jsonpathVersion, text);
+                    return mapping.CreateInfo(options, binary: binary, text: text, preferredFormat: DataFormat.Text, supportsWriting: false);
+                },
                 MatchRequirement.DataTypeName);
 
             // Bytea
@@ -176,7 +284,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter(supportsTextFormat: false)));
             mappings.AddType<Stream>(DataTypeNames.Bytea,
                 // TODO handling bytea textually would require conversions to hex strings, so currently we don't support it.
-                static (options, mapping, _) => new PgConcreteTypeInfo(options, new StreamConverter(supportsTextFormat: false), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
+                static (options, mapping, _) => PgConcreteTypeInfo.Create(options, new StreamConverter(supportsTextFormat: false), new DataTypeName(mapping.DataTypeName), requestedType: mapping.Type),
                 mapping => mapping with { TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
 
             // Varbit
@@ -275,13 +383,17 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Hstore
             mappings.AddType<Dictionary<string, string?>>("hstore",
-                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<Dictionary<string, string?>>(options.TextEncoding)), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<Dictionary<string, string?>>()), isDefault: true);
             mappings.AddType<IDictionary<string, string?>>("hstore",
-                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<IDictionary<string, string?>>(options.TextEncoding)));
+                static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<IDictionary<string, string?>>()));
 
             // Unknown
             mappings.AddType<string>(DataTypeNames.Unknown,
-                static (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateStringConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
+                static (options, mapping, _) =>
+                {
+                    var converter = TextConverter.CreateStringConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter, preferredFormat: DataFormat.Text);
+                },
                 MatchRequirement.DataTypeName);
 
             // Void
@@ -330,14 +442,14 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             mappings.AddType<uint[]>(
                 DataTypeNames.OidVector,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    ArrayConverter<uint[]>.CreateArrayBased<uint>(new(options, new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
+                    ArrayConverter<uint[]>.CreateArrayBased<uint>(PgConcreteTypeInfo.Create(options, new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
                 MatchRequirement.DataTypeName);
 
             // Int2vector
             mappings.AddType<short[]>(
                 DataTypeNames.Int2Vector,
                 static (options, mapping, _) => mapping.CreateInfo(options,
-                    ArrayConverter<short[]>.CreateArrayBased<short>(new(options, new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
+                    ArrayConverter<short[]>.CreateArrayBased<short>(PgConcreteTypeInfo.Create(options, new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
                 MatchRequirement.DataTypeName);
 
             // Tid
@@ -429,11 +541,13 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Varbit
             // Object mapping first.
-            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Varbit, static options => concreteTypeInfo => concreteTypeInfo.Converter switch
+            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Varbit, static options => concreteTypeInfo => concreteTypeInfo.GetConverter(DataFormat.Binary) switch
             {
                 BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
                     () => ArrayConverter<Array>.CreateArrayBased<bool>(concreteTypeInfo, typeof(Array)),
-                    () => ArrayConverter<Array>.CreateArrayBased<bool?>(new(options, new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.Converter), concreteTypeInfo.PgTypeId), typeof(Array)),
+                    () => ArrayConverter<Array>.CreateArrayBased<bool?>(PgConcreteTypeInfo.Create(options,
+                        new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.GetConverter(DataFormat.Binary)),
+                        concreteTypeInfo.PgTypeId), typeof(Array)),
                     options),
                 BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(concreteTypeInfo, typeof(Array)),
                 _ => throw new NotSupportedException()
@@ -444,11 +558,13 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Bit
             // Object mapping first.
-            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Bit, static options => concreteTypeInfo => concreteTypeInfo.Converter switch
+            mappings.AddPolymorphicProviderArrayType(DataTypeNames.Bit, static options => concreteTypeInfo => concreteTypeInfo.GetConverter(DataFormat.Binary) switch
             {
                 BoolBitStringConverter => PgConverterFactory.CreatePolymorphicArrayConverter(
                     () => ArrayConverter<Array>.CreateArrayBased<bool>(concreteTypeInfo, typeof(Array)),
-                    () => ArrayConverter<Array>.CreateArrayBased<bool?>(new(options, new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.Converter), concreteTypeInfo.PgTypeId), typeof(Array)),
+                    () => ArrayConverter<Array>.CreateArrayBased<bool?>(PgConcreteTypeInfo.Create(options,
+                        new NullableConverter<bool>((PgConverter<bool>)concreteTypeInfo.GetConverter(DataFormat.Binary)),
+                        concreteTypeInfo.PgTypeId), typeof(Array)),
                     options),
                 BitArrayBitStringConverter => ArrayConverter<Array>.CreateArrayBased<BitArray>(concreteTypeInfo, typeof(Array)),
                 _ => throw new NotSupportedException()
@@ -559,7 +675,11 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             var mappings = new TypeInfoMappingCollection();
             mappings.AddType<string>(enumType.DataTypeName,
-                (options, mapping, _) => mapping.CreateInfo(options, TextConverter.CreateStringConverter(options.TextEncoding)), MatchRequirement.DataTypeName);
+                (options, mapping, _) =>
+                {
+                    var converter = TextConverter.CreateStringConverter();
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
+                }, MatchRequirement.DataTypeName);
             mappings.AddArrayType<string>(enumType.DataTypeName);
             return mappings.Find(type, dataTypeName, options);
         }

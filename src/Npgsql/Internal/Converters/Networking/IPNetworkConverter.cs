@@ -6,8 +6,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class IPNetworkConverter : PgBufferedConverter<IPNetwork>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => NpgsqlInetConverter.CanConvertImpl(format, out bufferRequirements);
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => NpgsqlInetConverter.GetDescriptorImpl(context);
 
     protected override Size BindValue(in BindContext context, IPNetwork value, ref object? writeState)
         => NpgsqlInetConverter.BindValueImpl(context, value.BaseAddress, ref writeState);

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
@@ -40,13 +41,47 @@ public abstract class PgConverter
     protected internal bool HandleDbNull { get; init; }
 
     /// <summary>
+    /// Computes the converter's descriptor under the supplied descriptor context. The framework calls this
+    /// only for formats it knows the converter is registered for; the returned descriptor describes the
+    /// converter's terms for that context (today: buffer requirements; future: dispatch shape, cache keys).
+    /// Text-format converters must read <see cref="PgConversionContext.TextEncoding"/> via
+    /// <see cref="DescriptorContext.ConversionContext"/> for any encoding-dependent sizing rather than
+    /// reaching into <c>PgSerializerOptions</c> directly — that keeps converters insulated from any future
+    /// dynamic-encoding flow.
+    /// </summary>
+    /// <remarks>
+    /// The virtual default returns <see cref="BufferRequirements.Streaming"/> — the conservative shape an
+    /// uninformed streaming converter would advertise. Override to declare a tighter shape (fixed-size,
+    /// upper-bound, invariant).
+    /// </remarks>
+    public virtual ConverterDescriptor GetDescriptor(in DescriptorContext context)
+    {
+        // Backward-compat bridge: forward to CanConvert for converters that only override the legacy surface.
+        // The bridge asks about binary because every concrete info supports binary by design; legacy plugins
+        // that returned format-divergent requirements (rare) must override GetDescriptor and stop relying on
+        // CanConvert. The framework only calls GetDescriptor for formats the converter is registered for, so
+        // a `false` here is a registration/lookup bug we surface loudly rather than handing back a default.
+#pragma warning disable CS0618
+        if (!CanConvert(DataFormat.Binary, out var bufferRequirements))
+#pragma warning restore CS0618
+            ThrowHelper.ThrowInvalidOperationException(
+                $"Converter '{GetType().FullName}' does not support binary format; legacy converters must override GetDescriptor.");
+        return new ConverterDescriptor { BufferRequirements = bufferRequirements };
+    }
+
+    /// <summary>
     /// Whether this converter can handle the given format and with which buffer requirements.
     /// </summary>
-    /// <param name="format">The data format.</param>
-    /// <param name="bufferRequirements">Returns the buffer requirements.</param>
-    /// <returns>Returns true if the given data format is supported.</returns>
     /// <remarks>The buffer requirements should not cover database NULL reads or writes, these are handled by the caller.</remarks>
-    public abstract bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
+    [Obsolete("Override GetDescriptor instead. Format support is registration-time; the framework only calls GetDescriptor for formats the converter is registered for.")]
+    protected virtual bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        // Safe default: streaming, binary only. Terminates the GetDescriptor→CanConvert bridge cleanly
+        // for converters that override neither, and matches the conservative shape an uninformed streaming
+        // converter would advertise.
+        bufferRequirements = BufferRequirements.Streaming;
+        return format is DataFormat.Binary;
+    }
 
     internal Type TypeToConvert { get; }
 
@@ -465,15 +500,22 @@ public readonly struct BindContext
     public DataFormat Format { get; private init; }
 
     /// <summary>
+    /// The conversion context active for this bind. Forwarded through nested binds; populated from
+    /// the writer at the outermost bind so composing converters can resolve context-dependent inner
+    /// descriptors against the same context the eventual Write operation will see.
+    /// </summary>
+    public PgConversionContext ConversionContext { get; private init; }
+
+    /// <summary>
     /// The size requirement for writing values with <see cref="Format"/>.
-    /// Sourced from the format-specific <see cref="BufferRequirements.Write"/> returned by <see cref="PgConverter.CanConvert"/>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.Write"/> returned by <see cref="PgConverter.GetDescriptor"/>.
     /// </summary>
     public Size BufferRequirement { get; private init; }
 
     /// <summary>
     /// When true, composing converters may use <see cref="BufferRequirement"/> directly and skip the nested <c>Bind</c> call entirely.
     /// <c>Bind</c> can be called anyway at which point it just short-circuits, without invoking <c>BindValue</c>. Implies <see cref="IsBindFixedSize"/>.
-    /// Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/> returned by <see cref="PgConverter.CanConvert"/>.
+    /// Sourced from the format-specific <see cref="BufferRequirements.IsBindOptional"/> returned by <see cref="PgConverter.GetDescriptor"/>.
     /// </summary>
     public bool IsBindOptional { get; private init; }
 
@@ -498,16 +540,15 @@ public readonly struct BindContext
     /// </summary>
     public static BindContext CreateNested(in BindContext nestingContext, PgConverter converter)
     {
-        var format = nestingContext.Format;
-        if (!converter.CanConvert(format, out var bufferRequirements))
-            ThrowHelper.ThrowInvalidOperationException($"Converter '{converter.GetType().FullName}' does not support data format '{format}'.");
+        var bufferRequirements = converter.GetDescriptor(
+            new() { ConversionContext = nestingContext.ConversionContext }).BufferRequirements;
         return CreateNested(nestingContext, bufferRequirements);
     }
 
     /// <summary>
     /// Variant of <see cref="CreateNested(in BindContext, PgConverter)"/> for callers that already
     /// hold the inner converter's <see cref="BufferRequirements"/> (e.g. composing converters that
-    /// captured them in their constructor). Skips the per-call <c>CanConvert</c> roundtrip.
+    /// captured them in their constructor). Skips the per-call <see cref="PgConverter.GetDescriptor"/> roundtrip.
     /// </summary>
     public static BindContext CreateNested(in BindContext nestingContext, BufferRequirements requirements)
         => new()
@@ -515,7 +556,8 @@ public readonly struct BindContext
             Format = nestingContext.Format,
             BufferRequirement = requirements.Write,
             IsBindOptional = requirements.IsBindOptional,
-            NestedObjectDbNullHandling = nestingContext.NestedObjectDbNullHandling
+            NestedObjectDbNullHandling = nestingContext.NestedObjectDbNullHandling,
+            ConversionContext = nestingContext.ConversionContext,
         };
 
     /// <summary>
@@ -524,12 +566,13 @@ public readonly struct BindContext
     /// cached requirements. Callers must ensure these values are consistent with the converter that
     /// will receive this context.
     /// </summary>
-    public static BindContext CreateUnchecked(DataFormat format, Size bufferRequirement, bool isBindOptional)
+    public static BindContext CreateUnchecked(DataFormat format, Size bufferRequirement, bool isBindOptional, PgConversionContext? conversionContext = null)
         => new()
         {
             Format = format,
             BufferRequirement = bufferRequirement,
-            IsBindOptional = isBindOptional
+            IsBindOptional = isBindOptional,
+            ConversionContext = conversionContext ?? PgConversionContext.Empty,
         };
 }
 
@@ -600,4 +643,70 @@ class MultiWriteState : IDisposable
 
         ArrayPool?.Return(Data.Array);
     }
+}
+
+/// <summary>
+/// Connection/options-scoped state that flows into a converter across operations (descriptor query,
+/// read, write, bind). Carries session state the converter may need (today: <see cref="TextEncoding"/>
+/// for text-format converters; future: dynamic per-connection state). One instance is shared across all
+/// callers within the same scope, so consumers must treat it as a read-through reference and avoid
+/// per-call allocation.
+/// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public sealed class PgConversionContext
+{
+    /// <summary>An empty context, suitable for inner probes that don't read any session state.</summary>
+    public static PgConversionContext Empty { get; } = new();
+
+    /// <summary>
+    /// The text encoding for this context. Defaults to UTF-8 — the substrate's default and the only
+    /// encoding for which no fallback semantics are needed. Always set; converters can read it
+    /// unconditionally without null-checking.
+    /// </summary>
+    public Encoding TextEncoding { get; init; } = PgSerializerOptions.DefaultUtf8Encoding;
+}
+
+/// <summary>
+/// Per-call wrapper around a <see cref="PgConversionContext"/> that <see cref="PgConverter.GetDescriptor"/>
+/// receives. Hosts call-scoped state that doesn't belong on the long-lived <see cref="PgConversionContext"/>
+/// Consumers read <see cref="PgConversionContext"/> for session state.
+/// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct DescriptorContext
+{
+    public PgConversionContext ConversionContext { get; init; }
+}
+
+/// <summary>
+/// A converter's description of itself for a given <see cref="DescriptorContext"/>. Today carries
+/// <see cref="BufferRequirements"/>; grows as future converter-static facts (dispatch shape, cache keys,
+/// fallback hints) become useful. No <c>IsSupported</c> flag — format support is registration-time, the
+/// framework only calls <see cref="PgConverter.GetDescriptor"/> for formats it knows the converter is
+/// registered for, so every call returns a meaningful descriptor.
+/// </summary>
+[Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
+public readonly struct ConverterDescriptor
+{
+    /// <summary>
+    /// Template for a descriptor whose content does not depend on the <see cref="DescriptorContext"/>.
+    /// Composers may cache descriptors built from this template at construction.
+    /// </summary>
+    /// <remarks>
+    /// Use only when your <see cref="PgConverter.GetDescriptor"/> implementation does not read any field
+    /// from the <see cref="DescriptorContext"/> (or its <see cref="PgConversionContext"/>) and returns the
+    /// same descriptor on every call. If any branch of your implementation would return a context-dependent
+    /// descriptor, return a plain <c>new ConverterDescriptor { BufferRequirements = ... }</c> instead — the
+    /// invariant template must apply to all returns from the override, not just some of them.
+    /// </remarks>
+    public static ConverterDescriptor Invariant { get; } = new() { IsInvariant = true };
+
+    public BufferRequirements BufferRequirements { get; init; }
+
+    /// <summary>
+    /// True when this descriptor was constructed from <see cref="Invariant"/>. Composers may cache such
+    /// descriptors at construction; otherwise composers must re-resolve per call. The flag is structurally
+    /// gated — the only way to land in the invariant state is via the named template, so a plain
+    /// <c>new ConverterDescriptor { ... }</c> always lands in the safe-by-default (non-invariant) state.
+    /// </summary>
+    public bool IsInvariant { get; private init; }
 }

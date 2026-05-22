@@ -73,7 +73,13 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
-    protected abstract PgConverter<T> CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo, out Type? requestedType);
+
+    /// Produces the per-format converter pair for a composed `PgConcreteTypeInfo`. Either slot may be null
+    /// when the composition doesn't support that format, but at least one must be set — the framework
+    /// validates this when wrapping the result.
+    protected abstract void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
+        out PgConverter<T>? binary, out PgConverter<T>? text, out Type? requestedType);
+
     protected abstract PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState);
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
@@ -121,15 +127,11 @@ abstract class PgComposingTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
             state = (this, concreteTypeInfo, pgTypeId);
         return _concreteInfoCache.GetOrAdd(
             concreteTypeInfo,
-            static (_, state)
-                => new(state.ConcreteTypeInfo.Options,
-                    state.Instance.CreateConverter(state.ConcreteTypeInfo, out var requestedType),
-                    state.PgTypeId,
-                    requestedType: requestedType)
-                {
-                    SupportsReading = state.ConcreteTypeInfo.SupportsReading,
-                    SupportsWriting = state.ConcreteTypeInfo.SupportsWriting
-                },
+            static (_, state) =>
+            {
+                state.Instance.CreateConverter(state.ConcreteTypeInfo, out var binary, out var text, out var requestedType);
+                return state.ConcreteTypeInfo.CreateComposition(binary, text, state.PgTypeId, requestedType: requestedType);
+            },
             state);
     }
 }

@@ -2,7 +2,6 @@ using Npgsql.Internal;
 using NUnit.Framework;
 using System;
 using System.Data;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -195,7 +194,8 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             {
                 if (type == typeof(string) || dataTypeName?.UnqualifiedName == "citext")
                     if (options.DatabaseInfo.TryGetPostgresTypeByName("citext", out var pgType))
-                        return new PgConcreteTypeInfo(options, TextConverter.CreateStringConverter(options.TextEncoding), options.ToCanonicalTypeId(pgType));
+                        return PgConcreteTypeInfo.Create(options, TextConverter.CreateStringConverter(),
+                            TextConverter.CreateStringConverter(), options.ToCanonicalTypeId(pgType));
 
                 return null;
             }
@@ -238,34 +238,31 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             {
                 if (type == typeof(Guid) || dataTypeName?.UnqualifiedName == typeName)
                     if (options.DatabaseInfo.TryGetPostgresTypeByName(typeName, out var pgType))
-                        return new PgConcreteTypeInfo(options, new GuidTextConverter(options.TextEncoding), options.ToCanonicalTypeId(pgType));
+                        return PgConcreteTypeInfo.Create(options, new GuidTextConverter(), new GuidTextConverter(), options.ToCanonicalTypeId(pgType));
 
                 return null;
             }
         }
 
-        sealed class GuidTextConverter(Encoding encoding) : PgStreamingConverter<Guid>
+        sealed class GuidTextConverter : PgStreamingConverter<Guid>
         {
-            public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-            {
-                bufferRequirements = BufferRequirements.Streaming;
-                return format is DataFormat.Binary or DataFormat.Text;
-            }
+            public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+                => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
             public override Guid Read(PgReader reader)
-                => Guid.Parse(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining)));
+                => Guid.Parse(reader.ConversionContext.TextEncoding.GetString(reader.ReadBytes(reader.CurrentRemaining)));
 
             public override async ValueTask<Guid> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-                => Guid.Parse(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
+                => Guid.Parse(reader.ConversionContext.TextEncoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
 
             protected override Size BindValue(in BindContext context, Guid value, ref object? writeState)
-                => TextConverterHelpers.BindValue(context, value.ToString().AsMemory(), encoding);
+                => TextConverterHelpers.BindValue(context, value.ToString().AsMemory(), context.ConversionContext.TextEncoding);
 
             public override void Write(PgWriter writer, Guid value)
-                => writer.WriteChars(value.ToString().AsSpan(), encoding);
+                => writer.WriteChars(value.ToString().AsSpan(), writer.ConversionContext.TextEncoding);
 
             public override ValueTask WriteAsync(PgWriter writer, Guid value, CancellationToken cancellationToken = default)
-                => writer.WriteCharsAsync(value.ToString().AsMemory(), encoding, cancellationToken);
+                => writer.WriteCharsAsync(value.ToString().AsMemory(), writer.ConversionContext.TextEncoding, cancellationToken);
         }
     }
 

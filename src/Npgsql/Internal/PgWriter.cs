@@ -106,10 +106,18 @@ public sealed class PgWriter
 
     ValueMetadata _current;
     NpgsqlDatabaseInfo? _typeCatalog;
+    PgConversionContext _conversionContext = PgConversionContext.Empty;
+
+    /// <summary>
+    /// The conversion context for this writer's connection. Carries connection-scoped session state
+    /// (text encoding today; future ParameterStatus-driven values). Converters needing encoding-aware
+    /// or session-relative state read it here at runtime rather than capturing at construction.
+    /// </summary>
+    public PgConversionContext ConversionContext => _conversionContext;
 
     internal PgWriter(IBufferWriter<byte> writer) => _writer = writer;
 
-    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
+    internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, PgConversionContext? conversionContext = null, FlushMode flushMode = FlushMode.None)
     {
         if (_pos != _offset)
             ThrowHelper.ThrowInvalidOperationException("Invalid concurrent use or PgWriter was not committed properly, PgWriter still has uncommitted bytes.");
@@ -117,6 +125,9 @@ public sealed class PgWriter
         // Elide write barrier if we can.
         if (!ReferenceEquals(_typeCatalog, typeCatalog))
             _typeCatalog = typeCatalog;
+        var newConversionContext = conversionContext ?? PgConversionContext.Empty;
+        if (!ReferenceEquals(_conversionContext, newConversionContext))
+            _conversionContext = newConversionContext;
 
         FlushMode = flushMode;
         _totalBytesWritten = 0;

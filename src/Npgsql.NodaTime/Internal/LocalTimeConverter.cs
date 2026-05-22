@@ -5,11 +5,8 @@ namespace Npgsql.NodaTime.Internal;
 
 sealed class LocalTimeConverter : PgBufferedConverter<LocalTime>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long)) };
 
     // PostgreSQL time resolution == 1 microsecond == 10 ticks
     public override LocalTime Read(PgReader reader)

@@ -6,8 +6,8 @@ namespace Npgsql.Internal.Converters;
 #pragma warning disable CS0618 // NpgsqlCidr is obsolete
 sealed class NpgsqlCidrConverter : PgBufferedConverter<NpgsqlCidr>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        => NpgsqlInetConverter.CanConvertImpl(format, out bufferRequirements);
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => NpgsqlInetConverter.GetDescriptorImpl(context);
 
     protected override Size BindValue(in BindContext context, NpgsqlCidr value, ref object? writeState)
         => NpgsqlInetConverter.BindValueImpl(context, value.Address, ref writeState);
