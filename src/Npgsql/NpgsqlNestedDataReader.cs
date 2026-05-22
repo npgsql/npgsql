@@ -494,7 +494,13 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     ReadConversionContext GetOrAddConverterInfo(Type type, NestedColumnInfo nestedColumn, int ordinal)
     {
-        if (nestedColumn.LastInfo is { IsDefault: false } lastInfo && lastInfo.TypeInfo.Type == type)
+        // Cache hit requires the cached binding to still be valid for the current connector context —
+        // SourceContext null (invariant) or matching the live reference. Without this gate a non-invariant
+        // binding cached under an earlier PgConversionContext could be reused after a mid-session
+        // client_encoding/TimeZone rotation, returning stale BufferRequirement.
+        if (nestedColumn.LastInfo is { IsDefault: false } lastInfo && lastInfo.TypeInfo.Type == type
+            && (lastInfo.SourceContext is null
+                || ReferenceEquals(lastInfo.SourceContext, _outermostReader.Connector.ConversionContext)))
             return lastInfo;
 
         var objectInfo = (TypeInfo: nestedColumn.ObjectTypeInfo, Binding: nestedColumn.ObjectBinding);
