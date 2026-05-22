@@ -109,11 +109,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     int ColumnCount => RowDescription!.Count;
 
     /// <summary>
-    /// Stores the last converter info resolved by column, to speed up repeated reading.
+    /// Stores the last converter info resolved by column, to speed up repeated reading. Per-entry
+    /// context validation lives on <see cref="ReadConversionContext.SourceContext"/>; the cache-hit
+    /// check in <see cref="GetConversionContext"/> compares it against the live connector context, so
+    /// entries built (or preloaded by <see cref="RowDescriptionMessage.LoadColumnInfoCache"/>) under a
+    /// rotated PgConversionContext rebind lazily on next access without a bulk wipe.
     /// </summary>
     ReadConversionContext[]? ConversionContextCache { get; set; }
-
-    PgConversionContext? _conversionContextCacheSource;
 
     ulong? _recordsAffected;
 
@@ -2035,17 +2037,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         var conversionContext = Connector.ConversionContext;
 
-        // If the connector rotated its ConversionContext (ParameterStatus client_encoding / TimeZone) since
-        // the last access, entries in ConversionContextCache may hold BufferRequirements resolved against
-        // the prior context. Skip Array.Clear when _conversionContextCacheSource is null — that's the first
-        // access against a freshly rented/cleared cache, so there's nothing stale to scrub.
-        if (ConversionContextCache is { } cache && !ReferenceEquals(_conversionContextCacheSource, conversionContext))
-        {
-            if (_conversionContextCacheSource is not null)
-                Array.Clear(cache, 0, ColumnCount);
-            _conversionContextCacheSource = conversionContext;
-        }
-
         ReadConversionContext context;
         if (type is not null)
         {
@@ -2057,7 +2048,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             Debug.Assert(contextRef.IsDefault || ReferenceEquals(Connector.SerializerOptions, contextRef.TypeInfo.Options), "Cache is bleeding over");
 
-            if (contextRef.TypeInfo is not { } typeInfo || !typeInfo.CanReadTo(type))
+            // Cache hit requires: entry present + can read the requested type + bound against the live
+            // PgConversionContext. The SourceContext gate catches entries preloaded by LoadColumnInfoCache
+            // (prepared statements) or carried over from a prior reader execution that ran under a rotated
+            // context, forcing a rebind through GetConversionContext before reuse.
+            if (contextRef.TypeInfo is not { } typeInfo || !typeInfo.CanReadTo(type)
+                || !ReferenceEquals(contextRef.SourceContext, conversionContext))
                 RowDescription!.GetConversionContext(ordinal, conversionContext, type, ref contextRef);
 
             context = contextRef;

@@ -359,7 +359,18 @@ public sealed class FieldDescription
             && ReferenceEquals(result.SourceContext, conversionContext))
             return;
 
-        var objectInfo = DataFormat is DataFormat.Text && type is not null ? GetObjectConversionContext(conversionContext) : _objectConversionContext;
+        // Text + typed case routes through GetObjectConversionContext (which validates SourceContext).
+        // For the direct-read fast path, gate reuse on the cached binding's SourceContext matching the
+        // live context — otherwise a binding bound under a rotated context could be reused with stale
+        // BufferRequirements.
+        ReadConversionContext objectInfo;
+        if (DataFormat is DataFormat.Text && type is not null)
+            objectInfo = GetObjectConversionContext(conversionContext);
+        else if (!_objectConversionContext.IsDefault && ReferenceEquals(_objectConversionContext.SourceContext, conversionContext))
+            objectInfo = _objectConversionContext;
+        else
+            objectInfo = default;
+
         if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
         {
             result = objectInfo;
