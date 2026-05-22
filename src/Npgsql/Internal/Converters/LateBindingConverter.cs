@@ -8,7 +8,13 @@ namespace Npgsql.Internal;
 
 sealed class LateBindingConverter : PgStreamingConverter<object>
 {
-    public LateBindingConverter() => HandleDbNull = true;
+    readonly DataFormat _format;
+
+    public LateBindingConverter(DataFormat format)
+    {
+        _format = format;
+        HandleDbNull = true;
+    }
 
     protected override bool IsDbNullValue(object? value, object? writeState)
     {
@@ -19,7 +25,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("writeState cannot be null, LateBindingTypeInfoProvider is expected to pre-populate it with concrete type info.")
         };
 
-        return concreteTypeInfo.GetConverter(DataFormat.Binary).IsDbNullAsObject(value, effectiveState);
+        return concreteTypeInfo.GetConverter(_format).IsDbNullAsObject(value, effectiveState);
     }
 
     public override object Read(PgReader reader) => throw new NotSupportedException();
@@ -34,7 +40,10 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var bufferRequirements = concreteTypeInfo.GetConverter(DataFormat.Binary).GetDescriptor(new() { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
+        // Resolve requirements against the runtime ConversionContext so context-dependent descriptors
+        // (e.g. text-encoded) see the live session state rather than the probe-time Empty default.
+        var converter = concreteTypeInfo.GetConverter(_format);
+        var bufferRequirements = converter.GetDescriptor(new() { ConversionContext = context.ConversionContext }).BufferRequirements;
 
         // Null the wrapper's EffectiveState before handoff. Inner BindAsObject's framework safety net
         // disposes via our local ref on throw and nulls the local; the wrapper would otherwise hold a
@@ -42,7 +51,7 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
         if (writeState is LateBindingWriteState before)
             before.EffectiveState = null;
 
-        var result = concreteTypeInfo.GetConverter(DataFormat.Binary).BindAsObject(
+        var result = converter.BindAsObject(
             BindContext.CreateNested(context, bufferRequirements),
             value,
             ref effectiveState);
@@ -72,18 +81,45 @@ sealed class LateBindingConverter : PgStreamingConverter<object>
             _ => throw new InvalidOperationException("Invalid state")
         };
 
-        var bufferRequirements = concreteTypeInfo.GetConverter(DataFormat.Binary).GetDescriptor(new() { ConversionContext = PgConversionContext.Empty }).BufferRequirements;
+        var converter = concreteTypeInfo.GetConverter(_format);
+        var bufferRequirements = converter.GetDescriptor(new() { ConversionContext = writer.ConversionContext }).BufferRequirements;
         var writeRequirement = bufferRequirements.Write;
         using var _ = await writer.BeginNestedWrite(async, writeRequirement, writer.Current.Size.Value, effectiveState, cancellationToken).ConfigureAwait(false);
-        await concreteTypeInfo.GetConverter(DataFormat.Binary).WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
+        await converter.WriteAsObject(async, writer, value, cancellationToken).ConfigureAwait(false);
     }
 }
 
 // TODO the goal is to allow this provider to return the underlying converter type info, but we're not there yet.
 // At that point we don't need the LateBindingConverter any longer.
-sealed class LateBindingTypeInfoProvider(PgSerializerOptions options, PgTypeId typeId) : PgConcreteTypeInfoProvider<object>
+sealed class LateBindingTypeInfoProvider : PgConcreteTypeInfoProvider<object>
 {
-    readonly PgConcreteTypeInfo _defaultConcreteTypeInfo = PgConcreteTypeInfo.Create(options, new LateBindingConverter(), typeId);
+    readonly PgSerializerOptions options;
+    readonly PgTypeId typeId;
+    // Two shapes the per-call outer can take; cached so GetForValueCore picks rather than allocates.
+    readonly PgConcreteTypeInfo _binaryOnly;
+    readonly PgConcreteTypeInfo _binaryAndText;
+    // Default-path outer (DBNull / no-value): mirrors the canonical (non-late-bound) mapping's format
+    // support for this PgTypeId. Per-value calls pick directly off the resolved concrete instead.
+    readonly PgConcreteTypeInfo _defaultConcreteTypeInfo;
+
+    public LateBindingTypeInfoProvider(PgSerializerOptions options, PgTypeId typeId)
+    {
+        this.options = options;
+        this.typeId = typeId;
+        _binaryOnly = PgConcreteTypeInfo.Create(options, new LateBindingConverter(DataFormat.Binary), typeId);
+        _binaryAndText = PgConcreteTypeInfo.Create(options, new LateBindingConverter(DataFormat.Binary), new LateBindingConverter(DataFormat.Text), typeId);
+
+        var canonical = options.GetTypeInfoInternal(null, typeId);
+        var canonicalConcrete = canonical switch
+        {
+            PgConcreteTypeInfo c => c,
+            PgProviderTypeInfo p => p.GetDefault(null),
+            _ => null
+        };
+        _defaultConcreteTypeInfo = canonicalConcrete is not null && canonicalConcrete.TryGetConverter(DataFormat.Text, out _)
+            ? _binaryAndText
+            : _binaryOnly;
+    }
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
     {
@@ -105,17 +141,18 @@ sealed class LateBindingTypeInfoProvider(PgSerializerOptions options, PgTypeId t
         var valueType = value.GetType();
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForWriting(valueType, context.ExpectedPgTypeId ?? typeId, options);
         var concreteTypeInfo = typeInfo.MakeConcreteForValueAsObject(value, out var effectiveState);
-        // Stash into writeState before the SupportsWriting check so the framework safety net around
-        // this Core call can reach the produced state if the check throws. The wrapper's Dispose
-        // cascades to EffectiveState; PgConcreteTypeInfo (non-IDisposable) is a long-lived cached
-        // instance so the no-wrapper branch is naturally safe.
+        // The element converter pinned on a polymorphic array is THIS provider's LateBindingConverter,
+        // and per-element variance has to flow through writeState that LateBindingConverter can unwrap —
+        // anything else hands an opaque inner state to a converter that can't read it.
         writeState = effectiveState is not null
             ? new LateBindingWriteState { ConcreteTypeInfo = concreteTypeInfo, EffectiveState = effectiveState }
             : concreteTypeInfo;
         if (!concreteTypeInfo.SupportsWriting)
             AdoSerializerHelpers.ThrowWritingNotSupported(valueType, options, concreteTypeInfo.PgTypeId, resolved: true);
 
-        return GetDefault(context.ExpectedPgTypeId);
+        // Pick the outer wrapper to match the per-value inner's format support — that's the format-based
+        // info the user pointed at; GetDefault would give us the canonical-mapping snapshot instead.
+        return concreteTypeInfo.TryGetConverter(DataFormat.Text, out _) ? _binaryAndText : _binaryOnly;
     }
 }
 
