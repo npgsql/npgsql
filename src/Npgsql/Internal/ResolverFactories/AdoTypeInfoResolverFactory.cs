@@ -52,7 +52,11 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
         protected static PgTypeInfo? GetEnumTypeInfo(Type type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
-            if (!type.IsEnum)
+            // Only resolve the underlying-mapping when the caller has named the PG type explicitly — without a
+            // dataTypeName the resolver would silently route arbitrary enums to int2/int4/int8, masking the
+            // common case of a missing PgEnum/EnumMapping registration. Requiring the explicit ask makes the
+            // underlying-type fallback an opt-in path rather than a default.
+            if (!type.IsEnum || dataTypeName is not { } requested)
                 return null;
 
             // EnumUnderlyingConverter reads/writes the underlying primitive at a fixed PG wire format, so the enum
@@ -76,8 +80,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (mapping is not ({ } converter, var canonicalDataTypeName))
                 return null;
 
-            // On the read path the column's type must be exactly the enum's canonical PG type; no cross-conversion.
-            if (dataTypeName is { } requested && canonicalDataTypeName != requested)
+            // The requested PG type must be exactly the enum's canonical match; no cross-conversion.
+            if (canonicalDataTypeName != requested)
                 return null;
 
             return PgConcreteTypeInfo.Create(options, binary: converter, canonicalDataTypeName, requestedType: type);
@@ -520,16 +524,8 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
                 && (type is null || type == typeof(object) || TypeInfoMappingCollection.IsArrayLikeType(type, out elementType)))
             {
                 info = GetPgEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
-                       GetEnumArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options) ??
+                       GetEnumArrayTypeInfo(elementType, type, dataTypeName.GetValueOrDefault(), options) ??
                        GetObjectArrayTypeInfo(elementType, pgElementType, type, dataTypeName.GetValueOrDefault(), options);
-            }
-
-            // CLR enum array write path: type is known (e.g. IntEnum[]) but no dataTypeName.
-            if (info is null && type is not null && dataTypeName is null
-                && TypeInfoMappingCollection.IsArrayLikeType(type, out elementType)
-                && elementType.IsEnum)
-            {
-                info = GetEnumArrayTypeInfoForWrite(elementType, type, options);
             }
 
             return info;
@@ -713,7 +709,11 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             return mappings.Find(type, dataTypeName, options);
         }
 
-        static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, PostgresType pgElementType, Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+        // Array mirror of GetEnumTypeInfo: requires an explicit array DataTypeName (same opt-in rule as the
+        // scalar case) and delegates the element-canonical-match check to GetEnumTypeInfo. Decomposes the
+        // array PG type into its element to feed the scalar path; rejection there (cross-conversion or
+        // unsupported underlying) propagates up here too.
+        static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, Type? type, DataTypeName arrayDataTypeName, PgSerializerOptions options)
         {
             if (elementType is null || !elementType.IsEnum)
                 return null;
@@ -726,44 +726,22 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (type is not null && !type.IsArray)
                 return null;
 
-            // Resolve the element enum's canonical info (EnumUnderlyingConverter + canonical PG type). Going through
-            // the scalar path also rejects a cross-convertible column type, keeping arrays consistent with scalars.
-            if (GetEnumTypeInfo(elementType, pgElementType.DataTypeName, options) is not PgConcreteTypeInfo concreteElemInfo)
+            if (options.DatabaseInfo.GetPostgresType(arrayDataTypeName) is not PostgresArrayType { Element: var pgElement })
                 return null;
 
-            // Build array converter using the underlying type; storage is produced as type (MyEnum[]) via
-            // Array.CreateInstanceFromArrayType. IntEnum[] and int[] are layout-identical for value types with
-            // the same underlying representation, so Unsafe.As<int?[]> access is bit-safe.
+            // Delegate the canonical-match check to the scalar path — if the requested element type isn't the
+            // enum's canonical PG type, GetEnumTypeInfo returns null and we propagate.
+            if (GetEnumTypeInfo(elementType, pgElement.DataTypeName, options) is not PgConcreteTypeInfo concreteElemInfo)
+                return null;
+
+            // Storage is produced as type (MyEnum[]) via Array.CreateInstanceFromArrayType. IntEnum[] and int[]
+            // are layout-identical for value types with the same underlying representation, so the inner
+            // converter's Unsafe.As<int?[]> access is bit-safe.
             var arrayConverter = CreateEnumArrayConverter(elementType.GetEnumUnderlyingType(), concreteElemInfo, type);
             if (arrayConverter is null)
                 return null;
 
-            return PgConcreteTypeInfo.Create(options, binary: arrayConverter, dataTypeName, requestedType: type, supportsReading: true);
-        }
-
-        static PgTypeInfo? GetEnumArrayTypeInfoForWrite(Type elementType, Type arrayType, PgSerializerOptions options)
-        {
-            Debug.Assert(elementType.IsEnum);
-
-            // Same restriction as the read path: only actual array types are supported for enum underlying-type
-            // collections. See the matching comment on GetEnumArrayTypeInfo and dotnet/runtime#127249.
-            if (!arrayType.IsArray)
-                return null;
-
-            // Resolve the element enum's canonical info (EnumUnderlyingConverter + canonical PG type).
-            if (GetEnumTypeInfo(elementType, null, options) is not PgConcreteTypeInfo concreteElemInfo)
-                return null;
-
-            // Find the array PG type for the element's canonical PG type.
-            var elementDataTypeName = options.DatabaseInfo.GetDataTypeName(concreteElemInfo.PgTypeId);
-            if (options.DatabaseInfo.GetPostgresType(elementDataTypeName) is not PostgresBaseType { Array: { } arrayPgType })
-                return null;
-
-            var arrayConverter = CreateEnumArrayConverter(elementType.GetEnumUnderlyingType(), concreteElemInfo, arrayType);
-            if (arrayConverter is null)
-                return null;
-
-            return PgConcreteTypeInfo.Create(options, binary: arrayConverter, arrayPgType.DataTypeName, requestedType: arrayType, supportsReading: true);
+            return PgConcreteTypeInfo.Create(options, binary: arrayConverter, arrayDataTypeName, requestedType: type, supportsReading: true);
         }
 
         static PgConverter? CreateEnumArrayConverter(Type underlyingType, PgConcreteTypeInfo elemInfo, Type? arrayType)

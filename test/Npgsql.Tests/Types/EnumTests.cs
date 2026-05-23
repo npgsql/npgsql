@@ -21,35 +21,43 @@ public class EnumTests : TestBase
 
     [Test]
     public Task Int_enum()
-        => AssertType(IntEnum.FortyTwo, "42", "integer", dbType: DbType.Int32, valueTypeEqualsFieldType: false);
+        => AssertType(IntEnum.FortyTwo, "42", "integer", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int32, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Short_enum()
-        => AssertType(ShortEnum.B, "2", "smallint", dbType: DbType.Int16, valueTypeEqualsFieldType: false);
+        => AssertType(ShortEnum.B, "2", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Long_enum()
-        => AssertType(LongEnum.Big, "100000000000", "bigint", dbType: DbType.Int64, valueTypeEqualsFieldType: false);
+        => AssertType(LongEnum.Big, "100000000000", "bigint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Byte_enum()
-        => AssertType(ByteEnum.X, "255", "smallint", dbType: DbType.Int16, valueTypeEqualsFieldType: false);
+        => AssertType(ByteEnum.X, "255", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task SByte_enum()
-        => AssertType(SByteEnum.B, "100", "smallint", dbType: DbType.Int16, valueTypeEqualsFieldType: false);
+        => AssertType(SByteEnum.B, "100", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task UShort_enum()
-        => AssertType(UShortEnum.B, "30000", "smallint", dbType: DbType.Int16, valueTypeEqualsFieldType: false);
+        => AssertType(UShortEnum.B, "30000", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task UInt_enum()
-        => AssertType(UIntEnum.B, "100000", "integer", dbType: DbType.Int32, valueTypeEqualsFieldType: false);
+        => AssertType(UIntEnum.B, "100000", "integer", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int32, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task ULong_enum()
-        => AssertType(ULongEnum.Big, "100000000000", "bigint", dbType: DbType.Int64, valueTypeEqualsFieldType: false);
+        => AssertType(ULongEnum.Big, "100000000000", "bigint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
     public Task Enum_rejects_non_canonical_column()
