@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.IO;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;

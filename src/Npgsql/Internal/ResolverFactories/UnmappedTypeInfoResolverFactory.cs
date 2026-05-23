@@ -47,8 +47,9 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
                     // PgEnumConverter is format-agnostic — register the same instance for both binary and
                     // text so historical text-format binding paths continue to work.
-                    return mapping.CreateInfo(options, (PgConverter)Activator.CreateInstance(typeof(PgEnumConverter<>).MakeGenericType(mapping.Type),
-                        enumToLabel, labelToEnum)!);
+                    var converter = (PgConverter)Activator.CreateInstance(typeof(PgEnumConverter<>).MakeGenericType(mapping.Type),
+                        enumToLabel, labelToEnum)!;
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
                 });
         }
     }
