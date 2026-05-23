@@ -46,29 +46,29 @@ sealed class NullableConverter<T> : PgConverter<T?>
         => _effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
 }
 
-sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo effectiveTypeInfo)
-    : PgComposingTypeInfoProvider<T?>(effectiveTypeInfo.PgTypeId, effectiveTypeInfo)
+sealed class NullableTypeInfoProvider<T>(PgProviderTypeInfo innerTypeInfo)
+    : PgComposingTypeInfoProvider<T?>(innerTypeInfo.PgTypeId, innerTypeInfo)
     where T : struct
 {
-    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
-    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
+    protected override PgTypeId GetInnerPgTypeId(PgTypeId pgTypeId) => pgTypeId;
+    protected override PgTypeId GetPgTypeId(PgTypeId innerPgTypeId) => innerPgTypeId;
 
-    protected override void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
+    protected override void CreateConverter(PgConcreteTypeInfo innerConcreteTypeInfo,
         out PgConverter<T?>? binary, out PgConverter<T?>? text, out Type? requestedType)
     {
         requestedType = null;
         // Nullable wrapping mirrors inner slot fill — wrap each slot independently so a binary-only or
         // text-only inner produces a same-shaped Nullable wrapper.
-        binary = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Binary, out var innerBinary)
+        binary = innerConcreteTypeInfo.TryGetConverter(DataFormat.Binary, out var innerBinary)
             ? new NullableConverter<T>((PgConverter<T>)innerBinary)
             : null;
-        text = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Text, out var innerText)
+        text = innerConcreteTypeInfo.TryGetConverter(DataFormat.Text, out var innerText)
             ? new NullableConverter<T>((PgConverter<T>)innerText)
             : null;
     }
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetInnerTypeInfo(in ProviderValueContext innerContext, T? value, ref object? writeState)
         => value is not null
-            ? GetEffectiveForValue(effectiveContext, value.GetValueOrDefault(), out writeState)
+            ? GetInnerForValue(innerContext, value.GetValueOrDefault(), out writeState)
             : null;
 }

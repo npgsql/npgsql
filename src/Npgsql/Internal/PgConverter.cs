@@ -41,18 +41,15 @@ public abstract class PgConverter
     protected internal bool HandleDbNull { get; init; }
 
     /// <summary>
-    /// Computes the converter's descriptor under the supplied descriptor context. The framework calls this
-    /// only for formats it knows the converter is registered for; the returned descriptor describes the
-    /// converter's terms for that context (today: buffer requirements; future: dispatch shape, cache keys).
-    /// Text-format converters must read <see cref="PgConversionContext.TextEncoding"/> via
-    /// <see cref="DescriptorContext.ConversionContext"/> for any encoding-dependent sizing rather than
-    /// reaching into <c>PgSerializerOptions</c> directly — that keeps converters insulated from any future
-    /// dynamic-encoding flow.
+    /// Computes the converter's descriptor under the supplied descriptor context.
+    /// The framework calls this in the context of the format this converter is registered for.
+    /// The returned descriptor describes the converter's attributes for that context.
+    /// Encoding dependent text-format converters can read <see cref="PgConversionContext.TextEncoding"/> via
+    /// <see cref="DescriptorContext.ConversionContext"/>.
     /// </summary>
     /// <remarks>
-    /// The virtual default returns <see cref="BufferRequirements.Streaming"/> — the conservative shape an
-    /// uninformed streaming converter would advertise. Override to declare a tighter shape (fixed-size,
-    /// upper-bound, invariant).
+    /// The default implementation returns <see cref="BufferRequirements.Streaming"/>.
+    /// Override to declare a tighter shape (fixed-size, upper-bound, invariant).
     /// </remarks>
     public virtual ConverterDescriptor GetDescriptor(in DescriptorContext context)
     {
@@ -677,13 +674,7 @@ public readonly struct DescriptorContext
     public PgConversionContext ConversionContext { get; init; }
 }
 
-/// <summary>
-/// A converter's description of itself for a given <see cref="DescriptorContext"/>. Today carries
-/// <see cref="BufferRequirements"/>; grows as future converter-static facts (dispatch shape, cache keys,
-/// fallback hints) become useful. No <c>IsSupported</c> flag — format support is registration-time, the
-/// framework only calls <see cref="PgConverter.GetDescriptor"/> for formats it knows the converter is
-/// registered for, so every call returns a meaningful descriptor.
-/// </summary>
+/// A converter's description of itself for a given <see cref="DescriptorContext"/> (or invariant).
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct ConverterDescriptor
 {
@@ -695,7 +686,7 @@ public readonly struct ConverterDescriptor
     /// Use only when your <see cref="PgConverter.GetDescriptor"/> implementation does not read any field
     /// from the <see cref="DescriptorContext"/> (or its <see cref="PgConversionContext"/>) and returns the
     /// same descriptor on every call. If any branch of your implementation would return a context-dependent
-    /// descriptor, return a plain <c>new ConverterDescriptor { BufferRequirements = ... }</c> instead — the
+    /// descriptor, return a plain <c>new ConverterDescriptor { BufferRequirements = ... }</c> instead. The
     /// invariant template must apply to all returns from the override, not just some of them.
     /// </remarks>
     public static ConverterDescriptor Invariant { get; } = new() { IsInvariant = true };
@@ -704,9 +695,7 @@ public readonly struct ConverterDescriptor
 
     /// <summary>
     /// True when this descriptor was constructed from <see cref="Invariant"/>. Composers may cache such
-    /// descriptors at construction; otherwise composers must re-resolve per call. The flag is structurally
-    /// gated — the only way to land in the invariant state is via the named template, so a plain
-    /// <c>new ConverterDescriptor { ... }</c> always lands in the safe-by-default (non-invariant) state.
+    /// descriptors at construction, otherwise composers must re-resolve per call.
     /// </summary>
     public bool IsInvariant { get; private init; }
 }

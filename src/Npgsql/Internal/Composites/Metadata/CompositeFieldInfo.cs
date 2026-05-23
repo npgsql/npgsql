@@ -80,7 +80,7 @@ abstract class CompositeFieldInfo
 
     public PgConverter GetReadInfo(out Size readRequirement)
     {
-        var concreteTypeInfo = ConcreteTypeInfo ?? PgTypeInfo.MakeConcreteForField(new Field(Name, PgTypeInfo.PgTypeId.GetValueOrDefault(), -1));
+        var concreteTypeInfo = ConcreteTypeInfo ?? PgTypeInfo.MakeConcreteForField(new ProviderFieldContext { Name = Name });
         if (!concreteTypeInfo.SupportsReading)
             AdoSerializerHelpers.ThrowReadingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, concreteTypeInfo.PgTypeId, resolved: true);
 

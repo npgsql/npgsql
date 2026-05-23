@@ -94,24 +94,30 @@ public abstract class PgTypeInfo
     }
 
     /// <summary>
-    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given field.
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for a field with no metadata hints — equivalent to passing
+    /// an empty <see cref="ProviderFieldContext"/>. Used by call sites that have no name or type modifier
+    /// to thread (nested readers, record fields, binary export).
     /// </summary>
-    /// <param name="field">The field whose metadata drives the concrete type info selection.</param>
+    public PgConcreteTypeInfo MakeConcreteForField() => MakeConcreteForField(new ProviderFieldContext());
+
+    /// <summary>
+    /// Makes a <see cref="PgConcreteTypeInfo"/> for the given field context.
+    /// </summary>
+    /// <param name="context">The field metadata that drives the concrete type info selection.</param>
     /// <returns>The <see cref="PgConcreteTypeInfo"/> to use for the field.</returns>
     /// <remarks>
     /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
-    /// using the field's metadata (e.g. <see cref="Field.PgTypeId"/>) to select the appropriate concrete type info.
+    /// using the field metadata to select the appropriate concrete type info. The provider is assumed to be decided
+    /// (carry a non-null <see cref="PgTypeInfo.PgTypeId"/>) — read-side resolution always produces decided infos.
     /// </remarks>
-    public PgConcreteTypeInfo MakeConcreteForField(Field field)
+    public PgConcreteTypeInfo MakeConcreteForField(in ProviderFieldContext context)
     {
         if (this is PgConcreteTypeInfo concrete)
             return concrete;
 
-        // Decided providers skip GetDefault's validation. The prior GetForField call already validated
-        // the id. Undecided providers thread it so GetDefaultCore can dispatch on it.
+        // The provider's own PgTypeId is the only id input — null to GetDefault uses it.
         var providerTypeInfo = (PgProviderTypeInfo)this;
-        return providerTypeInfo.GetForField(field)
-               ?? providerTypeInfo.GetDefault(providerTypeInfo.PgTypeId is null ? field.PgTypeId : null);
+        return providerTypeInfo.GetForField(context) ?? providerTypeInfo.GetDefault(null);
     }
 
     /// <summary>
@@ -139,7 +145,7 @@ public abstract class PgTypeInfo
     /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
     /// using the value and the supplied context to select the appropriate concrete type info.
     /// </remarks>
-    public PgConcreteTypeInfo MakeConcreteForValue<T>(ProviderValueContext context, T? value, out object? writeState)
+    public PgConcreteTypeInfo MakeConcreteForValue<T>(in ProviderValueContext context, T? value, out object? writeState)
     {
         if (this is PgConcreteTypeInfo concrete)
         {
@@ -185,7 +191,7 @@ public abstract class PgTypeInfo
     /// When this instance is already concrete it is returned directly; otherwise the underlying provider is consulted
     /// using the value to select the appropriate concrete type info.
     /// </remarks>
-    public PgConcreteTypeInfo MakeConcreteForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
+    public PgConcreteTypeInfo MakeConcreteForValueAsObject(in ProviderValueContext context, object? value, out object? writeState)
     {
         if (this is PgConcreteTypeInfo concrete)
         {
@@ -259,12 +265,11 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return _defaultConcrete;
     }
 
-    public PgConcreteTypeInfo? GetForField(Field field)
+    public PgConcreteTypeInfo? GetForField(in ProviderFieldContext context)
     {
-        if (PgTypeId is { } decidedId && field.PgTypeId != decidedId)
-            ThrowUnexpectedPgTypeId(nameof(field));
-
-        var result = _typeInfoProvider.GetForField(field);
+        var result = _typeInfoProvider.GetForField(context);
+        if (result is not null && PgTypeId is { } decidedId && result.PgTypeId != decidedId)
+            ThrowUnexpectedPgTypeId(nameof(result));
         if (result is not null)
         {
             object? writeState = null;
@@ -273,13 +278,16 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
         return result;
     }
 
-    public PgConcreteTypeInfo? GetForValue<T>(ProviderValueContext context, T? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValue<T>(in ProviderValueContext context, T? value, out object? writeState)
     {
+        scoped ref readonly var contextRef = ref context;
+        ProviderValueContext effectiveContext;
         if (PgTypeId is { } pgTypeId)
         {
             if (context.ExpectedPgTypeId is not { } expectedId)
             {
-                context = context with { ExpectedPgTypeId = pgTypeId };
+                effectiveContext = context with { ExpectedPgTypeId = pgTypeId };
+                contextRef = ref effectiveContext;
             }
             else if (pgTypeId != expectedId)
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
@@ -287,7 +295,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
 
         writeState = null;
         var result = _typeInfoProvider is PgConcreteTypeInfoProvider<T> providerT
-            ? providerT.GetForValue(context, value, out writeState)
+            ? providerT.GetForValue(contextRef, value, out writeState)
             : ThrowNotSupportedType(typeof(T));
 
         if (result is not null)
@@ -300,37 +308,43 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
                 : $"PgProviderTypeInfo is incompatible with type {type}");
     }
 
-    public PgConcreteTypeInfo? GetForValueAsObject(ProviderValueContext context, object? value, out object? writeState)
+    public PgConcreteTypeInfo? GetForValueAsObject(in ProviderValueContext context, object? value, out object? writeState)
     {
+        scoped ref readonly var contextRef = ref context;
+        ProviderValueContext effectiveContext;
         if (PgTypeId is { } pgTypeId)
         {
             if (context.ExpectedPgTypeId is not { } expectedId)
             {
-                context = context with { ExpectedPgTypeId = pgTypeId };
+                effectiveContext = context with { ExpectedPgTypeId = pgTypeId };
+                contextRef = ref effectiveContext;
             }
             else if (pgTypeId != expectedId)
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        var result = _typeInfoProvider.GetForValueAsObject(context, value, out writeState);
+        var result = _typeInfoProvider.GetForValueAsObject(contextRef, value, out writeState);
         if (result is not null)
             ValidateConcrete(nameof(PgConcreteTypeInfoProvider.GetForValueAsObject), result, ref writeState);
         return result;
     }
 
-    internal PgConcreteTypeInfo? GetForValueAsNestedObject(ProviderValueContext context, object? value, out object? writeState)
+    internal PgConcreteTypeInfo? GetForValueAsNestedObject(in ProviderValueContext context, object? value, out object? writeState)
     {
+        scoped ref readonly var contextRef = ref context;
+        ProviderValueContext effectiveContext;
         if (PgTypeId is { } pgTypeId)
         {
             if (context.ExpectedPgTypeId is not { } expectedId)
             {
-                context = context with { ExpectedPgTypeId = pgTypeId };
+                effectiveContext = context with { ExpectedPgTypeId = pgTypeId };
+                contextRef = ref effectiveContext;
             }
             else if (pgTypeId != expectedId)
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        return _typeInfoProvider.GetForValueAsNestedObject(context, value, out writeState);
+        return _typeInfoProvider.GetForValueAsNestedObject(contextRef, value, out writeState);
     }
 
     public static PgConcreteTypeInfoProvider GetProvider(PgProviderTypeInfo instance) => instance._typeInfoProvider;

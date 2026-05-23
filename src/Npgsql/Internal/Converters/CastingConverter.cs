@@ -66,33 +66,33 @@ public sealed class CastingConverter<T> : PgConverter<T>
 // Given there aren't many instantiations of providers (and it's fairly involved to write a fast one) we use the composing base class.
 sealed class CastingTypeInfoProvider<T> : PgComposingTypeInfoProvider<T>
 {
-    public CastingTypeInfoProvider(PgProviderTypeInfo effectiveProviderTypeInfo)
-        : base(effectiveProviderTypeInfo.PgTypeId, effectiveProviderTypeInfo)
+    public CastingTypeInfoProvider(PgProviderTypeInfo innerProviderTypeInfo)
+        : base(innerProviderTypeInfo.PgTypeId, innerProviderTypeInfo)
     {
-        Debug.Assert(!effectiveProviderTypeInfo.HasExactType, "CastingTypeInfoProvider is for wrapping non-exact providers; an exact provider doesn't need the cast.");
+        Debug.Assert(!innerProviderTypeInfo.HasExactType, "CastingTypeInfoProvider is for wrapping non-exact providers; an exact provider doesn't need the cast.");
     }
 
     // Wraps a dynamically-obtained inner — not a same-authoring-unit composition. The inner's contract must still be
     // verified per dispatch.
     protected override bool IsCompositionalUnit => false;
 
-    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
-    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
+    protected override PgTypeId GetInnerPgTypeId(PgTypeId pgTypeId) => pgTypeId;
+    protected override PgTypeId GetPgTypeId(PgTypeId innerPgTypeId) => innerPgTypeId;
 
-    protected override void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
+    protected override void CreateConverter(PgConcreteTypeInfo innerConcreteTypeInfo,
         out PgConverter<T>? binary, out PgConverter<T>? text, out Type? requestedType)
     {
         requestedType = null;
-        binary = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Binary, out var innerBinary)
+        binary = innerConcreteTypeInfo.TryGetConverter(DataFormat.Binary, out var innerBinary)
             ? new CastingConverter<T>(innerBinary)
             : null;
-        text = effectiveConcreteTypeInfo.TryGetConverter(DataFormat.Text, out var innerText)
+        text = innerConcreteTypeInfo.TryGetConverter(DataFormat.Text, out var innerText)
             ? new CastingConverter<T>(innerText)
             : null;
     }
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? value, ref object? writeState)
-        => GetEffectiveForValueAsObject(effectiveContext, value, out writeState);
+    protected override PgConcreteTypeInfo? GetInnerTypeInfo(in ProviderValueContext innerContext, T? value, ref object? writeState)
+        => GetInnerForValueAsObject(innerContext, value, out writeState);
 }
 
 static class CastingTypeInfoExtensions

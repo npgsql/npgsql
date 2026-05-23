@@ -130,7 +130,7 @@ sealed class LateBindingTypeInfoProvider : PgConcreteTypeInfoProvider<object>
         return _defaultConcreteTypeInfo;
     }
 
-    protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
+    protected override PgConcreteTypeInfo GetForValueCore(in ProviderValueContext context, object? value, ref object? writeState)
     {
         if (value is null or DBNull)
         {

@@ -14,22 +14,15 @@ namespace Npgsql.Internal.Converters;
 abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly ArrayConverterCore _arrayConverterCore;
-    // Compositional boundary: outward BufferRequirements is always Streaming (doesn't expose the element's
-    // requirements), so this converter's outward descriptor is always Invariant. _elementIsInvariant is
-    // only consulted internally — when false, the cached element BufferRequirements in ArrayConverterCore
-    // would be stale and the runtime per-element paths re-resolve via the element converter using the
-    // PgConversionContext supplied by the carrier (reader/writer/BindContext).
-    readonly bool _elementIsInvariant;
 
     private protected ArrayConverter(int? expectedDimensions, PgConcreteTypeInfo elementTypeInfo, int pgLowerBound = 1)
     {
         // Invariance is context-independent by contract; probe with Empty. The cached BufferRequirements
         // is only valid when invariant — non-invariant elements re-resolve at runtime via the carrier.
         var elementDescriptor = elementTypeInfo.GetConverter(DataFormat.Binary).GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
-        _elementIsInvariant = elementDescriptor.IsInvariant;
         _arrayConverterCore = new((IElementOperations)this, elementTypeInfo.GetConverter(DataFormat.Binary),
             elementTypeInfo.GetConverter(DataFormat.Binary).IsDbNullable, expectedDimensions,
-            _elementIsInvariant ? elementDescriptor.BufferRequirements : null, elementTypeInfo.PgTypeId, pgLowerBound);
+            elementDescriptor.IsInvariant ? elementDescriptor.BufferRequirements : null, elementTypeInfo.PgTypeId, pgLowerBound);
     }
 
     public override T Read(PgReader reader) => (T)_arrayConverterCore.Read(async: false, reader).Result;
@@ -277,12 +270,12 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         elementTypeInfo)
     where T : notnull
 {
-    PgSerializerOptions Options => EffectiveTypeInfo.Options;
+    PgSerializerOptions Options => InnerTypeInfo.Options;
 
-    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
-    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetArrayTypeId(effectivePgTypeId);
+    protected override PgTypeId GetInnerPgTypeId(PgTypeId pgTypeId) => Options.GetArrayElementTypeId(pgTypeId);
+    protected override PgTypeId GetPgTypeId(PgTypeId innerPgTypeId) => Options.GetArrayTypeId(innerPgTypeId);
 
-    protected override void CreateConverter(PgConcreteTypeInfo effectiveConcreteTypeInfo,
+    protected override void CreateConverter(PgConcreteTypeInfo innerConcreteTypeInfo,
         out PgConverter<T>? binary, out PgConverter<T>? text, out Type? requestedType)
     {
         // Arrays are binary-only on the PG wire. We never produce a text-format array converter; the binary
@@ -291,21 +284,21 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         if (typeof(T) == typeof(Array) || typeof(T).IsArray)
         {
             requestedType = requestedMappingType;
-            binary = ArrayConverter<T>.CreateArrayBased<TElement>(effectiveConcreteTypeInfo, requestedType);
+            binary = ArrayConverter<T>.CreateArrayBased<TElement>(innerConcreteTypeInfo, requestedType);
             return;
         }
 
         if (typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IList<>))
         {
             requestedType = requestedMappingType;
-            binary = ArrayConverter<T>.CreateListBased<TElement>(effectiveConcreteTypeInfo);
+            binary = ArrayConverter<T>.CreateListBased<TElement>(innerConcreteTypeInfo);
             return;
         }
 
         throw new NotSupportedException($"Unknown type T: {typeof(T).FullName}");
     }
 
-    protected override PgConcreteTypeInfo? GetEffectiveTypeInfo(ProviderValueContext effectiveContext, T? values, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetInnerTypeInfo(in ProviderValueContext innerContext, T? values, ref object? writeState)
     {
         PgConcreteTypeInfo? concreteTypeInfo = null;
         PgArrayMetadata metadata;
@@ -313,6 +306,8 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         (Size, object? WriteState)[]? elemData = null;
 
         var index = 0;
+        ProviderValueContext inferredContext;
+        scoped ref readonly var contextRef = ref innerContext;
         switch (values)
         {
         case TElement[] array:
@@ -320,10 +315,10 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in array)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
-                    : GetEffectiveForValue(effectiveContext, value, out state);
+                    ? GetInnerForValueAsNestedObject(contextRef, value, out var state)
+                    : GetInnerForValue(contextRef, value, out state);
                 if (state is not null && elemData is null)
-                    writeState = AllocateElementBuffer(effectiveContext, metadata, out elemData, out elemDataArrayPool);
+                    writeState = AllocateElementBuffer(contextRef, metadata, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -334,7 +329,8 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        inferredContext = innerContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        contextRef = ref inferredContext;
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -349,10 +345,10 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in list)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
-                    : GetEffectiveForValue(effectiveContext, value, out state);
+                    ? GetInnerForValueAsNestedObject(contextRef, value, out var state)
+                    : GetInnerForValue(contextRef, value, out state);
                 if (state is not null && elemData is null)
-                    writeState = AllocateElementBuffer(effectiveContext, metadata, out elemData, out elemDataArrayPool);
+                    writeState = AllocateElementBuffer(contextRef, metadata, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -363,7 +359,8 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        inferredContext = innerContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        contextRef = ref inferredContext;
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -378,10 +375,10 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in list)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
-                    : GetEffectiveForValue(effectiveContext, value, out state);
+                    ? GetInnerForValueAsNestedObject(contextRef, value, out var state)
+                    : GetInnerForValue(contextRef, value, out state);
                 if (state is not null && elemData is null)
-                    writeState = AllocateElementBuffer(effectiveContext, metadata, out elemData, out elemDataArrayPool);
+                    writeState = AllocateElementBuffer(contextRef, metadata, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -392,7 +389,8 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        inferredContext = innerContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        contextRef = ref inferredContext;
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -407,10 +405,10 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
             foreach (var value in array)
             {
                 var result = typeof(TElement) == typeof(object)
-                    ? GetEffectiveForValueAsNestedObject(effectiveContext, value, out var state)
-                    : GetEffectiveForValueAsObject(effectiveContext, value, out state);
+                    ? GetInnerForValueAsNestedObject(contextRef, value, out var state)
+                    : GetInnerForValueAsObject(contextRef, value, out state);
                 if (state is not null && elemData is null)
-                    writeState = AllocateElementBuffer(effectiveContext, metadata, out elemData, out elemDataArrayPool);
+                    writeState = AllocateElementBuffer(contextRef, metadata, out elemData, out elemDataArrayPool);
 
                 // Always assign when elemData is allocated to avoid stale pooled array entries.
                 if (elemData is not null)
@@ -421,7 +419,8 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
                     if (concreteTypeInfo is null)
                     {
                         concreteTypeInfo = result;
-                        effectiveContext = effectiveContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        inferredContext = innerContext with { ExpectedPgTypeId = concreteTypeInfo.PgTypeId };
+                        contextRef = ref inferredContext;
                     }
                     else if (result != concreteTypeInfo)
                         ThrowHelper.ThrowInvalidOperationException("Array elements resolved to inconsistent concrete type infos. All elements must resolve to the same type info.");
@@ -445,7 +444,7 @@ sealed class ArrayTypeInfoProvider<T, TElement>(PgProviderTypeInfo elementTypeIn
         // happens after Dispose is incidental to the wrapper's disposal contract, not the motivation —
         // it's the inner-state cleanup we're after.
         static ArrayConverterWriteState AllocateElementBuffer(
-            ProviderValueContext effectiveContext, PgArrayMetadata metadata,
+            in ProviderValueContext effectiveContext, PgArrayMetadata metadata,
             out (Size, object? WriteState)[]? elemData, out ArrayPool<(Size, object?)>? elemDataArrayPool)
         {
             var state = new ArrayConverterWriteState
@@ -529,19 +528,19 @@ sealed class PolymorphicArrayTypeInfoProvider<TBase> : PgConcreteTypeInfoProvide
                 ? PgProviderTypeInfo.GetProvider(_effectiveNullableTypeInfo).GetDefault(pgTypeId)
                 : _effectiveNullableTypeInfo.GetDefault(pgTypeId));
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, TBase? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, TBase? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    protected override PgConcreteTypeInfo? GetForFieldCore(Field field)
+    protected override PgConcreteTypeInfo? GetForFieldCore(in ProviderFieldContext context)
     {
         // When constructed as a same-authoring-unit composition, route directly to inner providers, skipping their
         // wrapping ValidateConcrete on each call.
         var concreteTypeInfo = _isCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(_effectiveTypeInfo).GetForField(field)
-            : _effectiveTypeInfo.GetForField(field);
+            ? PgProviderTypeInfo.GetProvider(_effectiveTypeInfo).GetForField(context)
+            : _effectiveTypeInfo.GetForField(context);
         var concreteNullableTypeInfo = _isCompositionalUnit
-            ? PgProviderTypeInfo.GetProvider(_effectiveNullableTypeInfo).GetForField(field)
-            : _effectiveNullableTypeInfo.GetForField(field);
+            ? PgProviderTypeInfo.GetProvider(_effectiveNullableTypeInfo).GetForField(context)
+            : _effectiveNullableTypeInfo.GetForField(context);
 
         return concreteTypeInfo is not null && concreteNullableTypeInfo is not null
             ? GetOrAdd(concreteTypeInfo, concreteNullableTypeInfo)

@@ -231,14 +231,14 @@ sealed class PolymorphicBitStringTypeInfoProvider(PgSerializerOptions options, P
     internal override bool AllowConcreteVariance => true;
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
-        => GetConcreteInfo(field: null);
+        => GetConcreteInfo(typeModifier: -1);
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, object? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, object? value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported.");
 
-    protected override PgConcreteTypeInfo GetForFieldCore(Field field)
-        => GetConcreteInfo(field);
+    protected override PgConcreteTypeInfo GetForFieldCore(in ProviderFieldContext context)
+        => GetConcreteInfo(context.TypeModifier);
 
-    PgConcreteTypeInfo GetConcreteInfo(Field? field)
-        => field?.TypeModifier is 1 ? _boolConcreteTypeInfo : _bitArrayConcreteTypeInfo;
+    PgConcreteTypeInfo GetConcreteInfo(int typeModifier)
+        => typeModifier is 1 ? _boolConcreteTypeInfo : _bitArrayConcreteTypeInfo;
 }
