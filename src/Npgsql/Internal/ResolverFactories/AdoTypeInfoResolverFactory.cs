@@ -727,13 +727,22 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
         // Array mirror of GetEnumTypeInfo: requires an explicit array DataTypeName (same opt-in rule as the
         // scalar case) and delegates the element-canonical-match check to GetEnumTypeInfo. Decomposes the
         // array PG type into its element to feed the scalar path; rejection there (cross-conversion or
-        // unsupported underlying) propagates up here too. Nullable<TEnum>[] elements aren't supported here —
-        // even though Nullable<TEnum>[] is layout-identical to Nullable<TUnderlying>[], the CLR's enum-array
-        // covariance only covers bare enum arrays, so ArrayConverter's exact-type reinterpret would fail.
+        // unsupported underlying) propagates up here too. Supports both MyEnum[] (CLR enum-array covariance
+        // handles IntEnum[]↔int[] at the array level) and MyEnum?[] of any rank — for the nullable case we
+        // route the sibling converter EnumUnderlyingNullableConverter<T> through CreateArrayBased<T?>, and
+        // per-element access in ArrayBased uses a ref-byte-cast indexed by the row-major flat index, which
+        // is sound across all dimensions because sizeof(Nullable<T>) matches the user's Nullable<TEnum>
+        // slot stride (no per-enum generic codegen; closed generic stays one-per-underlying primitive).
         static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, Type? type, DataTypeName arrayDataTypeName, PgSerializerOptions options)
         {
-            if (elementType is null || !elementType.IsEnum)
+            if (elementType is null)
                 return null;
+            var enumElementType = elementType.IsEnum
+                ? elementType
+                : Nullable.GetUnderlyingType(elementType) is { IsEnum: true } nullableEnum ? nullableEnum : null;
+            if (enumElementType is null)
+                return null;
+            var isNullable = enumElementType != elementType;
 
             // Enum underlying-type support is limited to actual array types (T[], T[,]). The runtime doesn't root T[]
             // when only generic interfaces arrays implement (IList<T>, etc.) reach metadata, and there's no
@@ -746,36 +755,45 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             if (options.DatabaseInfo.GetPostgresType(arrayDataTypeName) is not PostgresArrayType { Element: var pgElement })
                 return null;
 
-            // Delegate the canonical-match check to the scalar path — if the requested element type isn't the
-            // enum's canonical PG type, GetEnumTypeInfo returns null and we propagate.
+            // Delegate the canonical-match check to the scalar path. For the nullable case we pass the user's
+            // Nullable<TEnum> element type so GetEnumTypeInfo returns the nullable sibling
+            // EnumUnderlyingNullableConverter<TUnderlying> — that's what ArrayBased<Nullable<TUnderlying>>
+            // expects, and its element-slot size matches the actual Nullable<TEnum>[] slot stride.
             if (GetEnumTypeInfo(elementType, pgElement.DataTypeName, options) is not PgConcreteTypeInfo concreteElemInfo)
                 return null;
 
-            // Storage is produced as type (MyEnum[]) via Array.CreateInstanceFromArrayType. IntEnum[] and int[]
-            // are layout-identical for value types with the same underlying representation, so the inner
-            // converter's Unsafe.As<int[]> access is bit-safe.
-            var arrayConverter = CreateEnumArrayConverter(elementType.GetEnumUnderlyingType(), concreteElemInfo, type);
+            var arrayConverter = CreateEnumArrayConverter(enumElementType.GetEnumUnderlyingType(), isNullable, concreteElemInfo, type);
             if (arrayConverter is null)
                 return null;
 
             return PgConcreteTypeInfo.Create(options, binary: arrayConverter, arrayDataTypeName, requestedType: type, supportsReading: true);
         }
 
-        static PgConverter? CreateEnumArrayConverter(Type underlyingType, PgConcreteTypeInfo elemInfo, Type? arrayType)
-            // TElement is the underlying primitive; effectiveType (arrayType) is e.g. IntEnum[] which drives
-            // Array.CreateInstanceFromArrayType to produce the correctly-typed array. The API's contract is
-            // MethodTable-only, so any metadata-reachable array Type works without IL3050 suppression or DAM
-            // annotations.
-            => Type.GetTypeCode(underlyingType) switch
+        // TElement is the underlying primitive (or its Nullable<> form for nullable arrays); effectiveType
+        // (arrayType) is the user's array type, e.g. IntEnum[] or IntEnum?[,,]. Bare arrays use CLR enum-
+        // array covariance for the IntEnum[]↔int[] identity. Nullable arrays of any rank go through the
+        // ref-byte slot cast in ArrayBased — sizeof(Nullable<T>) matches the actual slot stride, so the
+        // per-element ref read/write lands on slot boundaries. No per-(TEnum) generic codegen — closed
+        // generic stays one-per-underlying primitive, NAOT-stable.
+        static PgConverter? CreateEnumArrayConverter(Type underlyingType, bool nullable, PgConcreteTypeInfo elemInfo, Type? arrayType)
+            => (Type.GetTypeCode(underlyingType), nullable) switch
             {
-                TypeCode.Int32 => ArrayConverter<Array>.CreateArrayBased<int>(elemInfo, arrayType),
-                TypeCode.Int64 => ArrayConverter<Array>.CreateArrayBased<long>(elemInfo, arrayType),
-                TypeCode.Int16 => ArrayConverter<Array>.CreateArrayBased<short>(elemInfo, arrayType),
-                TypeCode.Byte => ArrayConverter<Array>.CreateArrayBased<byte>(elemInfo, arrayType),
-                TypeCode.SByte => ArrayConverter<Array>.CreateArrayBased<sbyte>(elemInfo, arrayType),
-                TypeCode.UInt32 => ArrayConverter<Array>.CreateArrayBased<uint>(elemInfo, arrayType),
-                TypeCode.UInt64 => ArrayConverter<Array>.CreateArrayBased<ulong>(elemInfo, arrayType),
-                TypeCode.UInt16 => ArrayConverter<Array>.CreateArrayBased<ushort>(elemInfo, arrayType),
+                (TypeCode.Int32, false) => ArrayConverter<Array>.CreateArrayBased<int>(elemInfo, arrayType),
+                (TypeCode.Int64, false) => ArrayConverter<Array>.CreateArrayBased<long>(elemInfo, arrayType),
+                (TypeCode.Int16, false) => ArrayConverter<Array>.CreateArrayBased<short>(elemInfo, arrayType),
+                (TypeCode.Byte, false) => ArrayConverter<Array>.CreateArrayBased<byte>(elemInfo, arrayType),
+                (TypeCode.SByte, false) => ArrayConverter<Array>.CreateArrayBased<sbyte>(elemInfo, arrayType),
+                (TypeCode.UInt32, false) => ArrayConverter<Array>.CreateArrayBased<uint>(elemInfo, arrayType),
+                (TypeCode.UInt64, false) => ArrayConverter<Array>.CreateArrayBased<ulong>(elemInfo, arrayType),
+                (TypeCode.UInt16, false) => ArrayConverter<Array>.CreateArrayBased<ushort>(elemInfo, arrayType),
+                (TypeCode.Int32, true) => ArrayConverter<Array>.CreateArrayBased<int?>(elemInfo, arrayType),
+                (TypeCode.Int64, true) => ArrayConverter<Array>.CreateArrayBased<long?>(elemInfo, arrayType),
+                (TypeCode.Int16, true) => ArrayConverter<Array>.CreateArrayBased<short?>(elemInfo, arrayType),
+                (TypeCode.Byte, true) => ArrayConverter<Array>.CreateArrayBased<byte?>(elemInfo, arrayType),
+                (TypeCode.SByte, true) => ArrayConverter<Array>.CreateArrayBased<sbyte?>(elemInfo, arrayType),
+                (TypeCode.UInt32, true) => ArrayConverter<Array>.CreateArrayBased<uint?>(elemInfo, arrayType),
+                (TypeCode.UInt64, true) => ArrayConverter<Array>.CreateArrayBased<ulong?>(elemInfo, arrayType),
+                (TypeCode.UInt16, true) => ArrayConverter<Array>.CreateArrayBased<ushort?>(elemInfo, arrayType),
                 _ => null
             };
 
