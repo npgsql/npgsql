@@ -344,7 +344,7 @@ public sealed class PgProviderTypeInfo : PgTypeInfo
                 ThrowUnexpectedPgTypeId(nameof(context.ExpectedPgTypeId));
         }
 
-        return _typeInfoProvider.GetForValueAsNestedObject(context, value, out writeState);
+        return _typeInfoProvider.GetForValueAsNestedObject(contextRef, value, out writeState);
     }
 
     public static PgConcreteTypeInfoProvider GetProvider(PgProviderTypeInfo instance) => instance._typeInfoProvider;

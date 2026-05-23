@@ -674,7 +674,7 @@ public readonly struct DescriptorContext
     public PgConversionContext ConversionContext { get; init; }
 }
 
-/// A converter's description of itself for a given <see cref="DescriptorContext"/>. An invariant descriptor otherwise.
+/// A converter's description of itself for a given <see cref="DescriptorContext"/> (or invariant).
 [Experimental(NpgsqlDiagnostics.ConvertersExperimental)]
 public readonly struct ConverterDescriptor
 {
