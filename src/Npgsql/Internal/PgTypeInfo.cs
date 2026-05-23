@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
+using static Npgsql.Internal.Converters.IEnumUnderlyingConverter;
 
 namespace Npgsql.Internal;
 
@@ -580,11 +581,15 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     {
         await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
-        // Inline copy of converter.ReadAsync<T> to keep everything in one async frame.
+        // Inline copy of converter.ReadAsync<T> to keep everything in one async frame. The enum-underlying branch
+        // mirrors PgConverter.ReadAsync<T>'s fast path so async reads don't fall through to the boxing
+        // ReadAsObjectAsync route on CoreCLR. The helper is synchronous because EnumUnderlyingConverter is buffered.
         var converter = binding.Converter;
         var result = typeof(T) == converter.TypeToConvert
             ? await Unsafe.As<PgConverter<T>>(converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false)
-            : (T)(await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!;
+            : IsEnumUnderlyingConversion<T>(converter) && RuntimeFeature.IsDynamicCodeSupported
+                ? ReadAsEnumUnderlying<T>(reader)
+                : (T)(await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!;
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
