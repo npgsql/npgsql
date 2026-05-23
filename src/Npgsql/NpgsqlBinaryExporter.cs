@@ -328,7 +328,14 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     PgConcreteTypeInfo GetConversionContext(Type type, NpgsqlDbType? npgsqlDbType, out PgFieldBinding binding)
     {
         ref var contextRef = ref _conversionContextCache[_column];
-        var context = contextRef.IsDefault ? contextRef = GetInfoAndBind(type, npgsqlDbType) : contextRef;
+        // Cache hit when entry is present AND either the binding is invariant (SourceContext null, no
+        // possible staleness) or SourceContext still matches the live connector context. A non-invariant
+        // binding cached under an earlier PgConversionContext gets re-bound after a mid-session
+        // client_encoding/TimeZone rotation — same gate the data-reader paths use.
+        var hit = !contextRef.IsDefault
+                  && (contextRef.SourceContext is null
+                      || ReferenceEquals(contextRef.SourceContext, _connector.ConversionContext));
+        var context = hit ? contextRef : (contextRef = GetInfoAndBind(type, npgsqlDbType));
         binding = context.Binding;
         return context.TypeInfo;
 
