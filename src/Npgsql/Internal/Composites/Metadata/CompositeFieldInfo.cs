@@ -165,9 +165,13 @@ abstract class CompositeFieldInfo
         if (IsProviderBacked)
             ThrowHelper.ThrowInvalidOperationException("GetDefaultWriteInfo is not supported for provider-backed fields.");
         // GetDefaultWriteInfo only runs on the Exact-sized composite fast path; non-invariant fields
-        // contribute Streaming via GetBinaryRequirements, which prevents Exact, so we never get here
-        // with a non-invariant field.
-        Debug.Assert(IsDescriptorInvariant, "GetDefaultWriteInfo invoked on a non-invariant field; the Exact-sized composite path should have excluded it.");
+        // contribute Streaming via GetBinaryRequirements, which prevents Exact, so we should never get
+        // here with a non-invariant field. Promote to a runtime throw rather than Debug.Assert — if the
+        // upstream invariant ever breaks, _binaryBufferRequirements.Write would default to zero and we'd
+        // silently emit a zero-sized write that corrupts protocol framing.
+        if (!IsDescriptorInvariant)
+            ThrowHelper.ThrowInvalidOperationException(
+                "GetDefaultWriteInfo invoked on a non-invariant field; the Exact-sized composite path should have excluded it.");
         writeRequirement = _binaryBufferRequirements.Write;
         return _concreteBinaryConverter;
     }
