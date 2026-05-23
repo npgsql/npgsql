@@ -3144,8 +3144,21 @@ public sealed partial class NpgsqlConnector
             }
             else
             {
-                TextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-                RelaxedTextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+                try
+                {
+                    TextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                    RelaxedTextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+                }
+                catch (ArgumentException ex)
+                {
+                    // .NET doesn't know the mapped encoding name. The most common cause is that the
+                    // CodePagesEncodingProvider hasn't been registered — point the user at the fix.
+                    throw new NpgsqlException(
+                        $"PostgreSQL reported a session client_encoding of '{value}' (mapped to .NET name '{mappedEncoding}'), " +
+                        $"but no .NET Encoding is registered for it. Call " +
+                        $"Encoding.RegisterProvider(CodePagesEncodingProvider.Instance) at application startup if you need " +
+                        $"code-page encodings (windows-*, ISO-8859-*, etc.).", ex);
+                }
             }
             _textEncoder = TextEncoding.GetEncoder();
             _conversionContext = null;
