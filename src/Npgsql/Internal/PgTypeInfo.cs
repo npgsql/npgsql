@@ -34,12 +34,33 @@ public abstract class PgTypeInfo
             return requestedType;
         if (type.IsAssignableTo(requestedType))
             return type;
-        // Enum and underlying type are representation-identical: accept the enum requestedType as a narrower report.
-        if (requestedType.IsEnum && requestedType.GetEnumUnderlyingType() == type)
+        // Enum and underlying type (both their bare and Nullable<> forms) are representation-identical:
+        // accept the enum requestedType as a narrower report.
+        if (IsEnumUnderlyingPair(requestedType, type))
             return requestedType;
         throw new ArgumentException(
             $"The requested type {requestedType} is not in a subtype relationship with the converter's type {type}.",
             nameof(requestedType));
+    }
+
+    // True when (requestedType, converterType) is an enum-over-its-underlying-primitive pair (or the parallel
+    // Nullable<> forms). Used by ResolveType to accept the narrower enum report and by PgConcreteTypeInfo's
+    // ctor to gate the SupportsReading/SupportsWriting special-case for IEnumUnderlyingConverter.
+    private protected static bool IsEnumUnderlyingPair(Type? requestedType, Type converterType)
+    {
+        if (requestedType is null)
+            return false;
+
+        var requestedNullable = Nullable.GetUnderlyingType(requestedType);
+        var converterNullable = Nullable.GetUnderlyingType(converterType);
+        // Both sides must agree on the nullable wrapper — mixing bare and Nullable<> would mean different
+        // value-shape contracts on the typed dispatch path.
+        if ((requestedNullable is null) != (converterNullable is null))
+            return false;
+
+        var requestedEnum = requestedNullable ?? requestedType;
+        var converterPrimitive = converterNullable ?? converterType;
+        return requestedEnum.IsEnum && requestedEnum.GetEnumUnderlyingType() == converterPrimitive;
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? requestedType = null)
@@ -387,10 +408,10 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         // Enum-over-underlying is representation-identical via IEnumUnderlyingConverter's reinterpret;
         // surface that internally without touching the general GetDefault* helpers (which would let
         // arbitrary external converters claim the same compatibility unsafely). Callers can still
-        // override either direction via the explicit args.
+        // override either direction via the explicit args. Both bare-enum (Underlying) and Nullable<TEnum>
+        // (Nullable<Underlying>) pairs qualify — see IsEnumUnderlyingPair.
         var enumUnderlying = canonical is IEnumUnderlyingConverter
-            && requestedType is { IsEnum: true }
-            && requestedType.GetEnumUnderlyingType() == canonical.TypeToConvert;
+            && IsEnumUnderlyingPair(requestedType, canonical.TypeToConvert);
 
         // Set fields directly to bypass init guards on default values; init props enforce directional widen-to-true.
         _supportsReading = supportsReading

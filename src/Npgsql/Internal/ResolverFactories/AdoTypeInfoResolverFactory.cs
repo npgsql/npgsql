@@ -56,8 +56,15 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // dataTypeName the resolver would silently route arbitrary enums to int2/int4/int8, masking the
             // common case of a missing PgEnum/EnumMapping registration. Requiring the explicit ask makes the
             // underlying-type fallback an opt-in path rather than a default.
-            if (!type.IsEnum || dataTypeName is not { } requested)
+            if (dataTypeName is not { } requested)
                 return null;
+
+            // Recognize both the bare enum and Nullable<TEnum> as the same shape; the nullable variant just
+            // routes through the parallel converter (PgConverter<T?> sibling).
+            var enumType = type.IsEnum ? type : Nullable.GetUnderlyingType(type) is { IsEnum: true } nullableEnum ? nullableEnum : null;
+            if (enumType is null)
+                return null;
+            var isNullable = enumType != type;
 
             // EnumUnderlyingConverter reads/writes the underlying primitive at a fixed PG wire format, so the enum
             // maps to exactly one canonical PG type: byte/sbyte/short/ushort → int2, int/uint → int4, long/ulong →
@@ -65,16 +72,24 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
             // format of the same width.) Deriving the PgTypeId by resolving the underlying through the chain would let
             // ExtraConversions numeric cross-mappings (e.g. int→int8) through, pairing a mismatched PG type with the
             // fixed-format converter and corrupting the wire — so the canonical type is paired with the converter here.
-            (PgConverter, DataTypeName)? mapping = Type.GetTypeCode(type) switch
+            (PgConverter, DataTypeName)? mapping = (Type.GetTypeCode(enumType), isNullable) switch
             {
-                TypeCode.Int16 => (new EnumUnderlyingConverter<short>(type), DataTypeNames.Int2),
-                TypeCode.UInt16 => (new EnumUnderlyingConverter<ushort>(type), DataTypeNames.Int2),
-                TypeCode.Byte => (new EnumUnderlyingConverter<byte>(type), DataTypeNames.Int2),
-                TypeCode.SByte => (new EnumUnderlyingConverter<sbyte>(type), DataTypeNames.Int2),
-                TypeCode.Int32 => (new EnumUnderlyingConverter<int>(type), DataTypeNames.Int4),
-                TypeCode.UInt32 => (new EnumUnderlyingConverter<uint>(type), DataTypeNames.Int4),
-                TypeCode.Int64 => (new EnumUnderlyingConverter<long>(type), DataTypeNames.Int8),
-                TypeCode.UInt64 => (new EnumUnderlyingConverter<ulong>(type), DataTypeNames.Int8),
+                (TypeCode.Int16, false) => (new EnumUnderlyingConverter<short>(enumType), DataTypeNames.Int2),
+                (TypeCode.UInt16, false) => (new EnumUnderlyingConverter<ushort>(enumType), DataTypeNames.Int2),
+                (TypeCode.Byte, false) => (new EnumUnderlyingConverter<byte>(enumType), DataTypeNames.Int2),
+                (TypeCode.SByte, false) => (new EnumUnderlyingConverter<sbyte>(enumType), DataTypeNames.Int2),
+                (TypeCode.Int32, false) => (new EnumUnderlyingConverter<int>(enumType), DataTypeNames.Int4),
+                (TypeCode.UInt32, false) => (new EnumUnderlyingConverter<uint>(enumType), DataTypeNames.Int4),
+                (TypeCode.Int64, false) => (new EnumUnderlyingConverter<long>(enumType), DataTypeNames.Int8),
+                (TypeCode.UInt64, false) => (new EnumUnderlyingConverter<ulong>(enumType), DataTypeNames.Int8),
+                (TypeCode.Int16, true) => (new EnumUnderlyingNullableConverter<short>(enumType), DataTypeNames.Int2),
+                (TypeCode.UInt16, true) => (new EnumUnderlyingNullableConverter<ushort>(enumType), DataTypeNames.Int2),
+                (TypeCode.Byte, true) => (new EnumUnderlyingNullableConverter<byte>(enumType), DataTypeNames.Int2),
+                (TypeCode.SByte, true) => (new EnumUnderlyingNullableConverter<sbyte>(enumType), DataTypeNames.Int2),
+                (TypeCode.Int32, true) => (new EnumUnderlyingNullableConverter<int>(enumType), DataTypeNames.Int4),
+                (TypeCode.UInt32, true) => (new EnumUnderlyingNullableConverter<uint>(enumType), DataTypeNames.Int4),
+                (TypeCode.Int64, true) => (new EnumUnderlyingNullableConverter<long>(enumType), DataTypeNames.Int8),
+                (TypeCode.UInt64, true) => (new EnumUnderlyingNullableConverter<ulong>(enumType), DataTypeNames.Int8),
                 _ => null
             };
             if (mapping is not ({ } converter, var canonicalDataTypeName))
@@ -712,7 +727,9 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
         // Array mirror of GetEnumTypeInfo: requires an explicit array DataTypeName (same opt-in rule as the
         // scalar case) and delegates the element-canonical-match check to GetEnumTypeInfo. Decomposes the
         // array PG type into its element to feed the scalar path; rejection there (cross-conversion or
-        // unsupported underlying) propagates up here too.
+        // unsupported underlying) propagates up here too. Nullable<TEnum>[] elements aren't supported here —
+        // even though Nullable<TEnum>[] is layout-identical to Nullable<TUnderlying>[], the CLR's enum-array
+        // covariance only covers bare enum arrays, so ArrayConverter's exact-type reinterpret would fail.
         static PgTypeInfo? GetEnumArrayTypeInfo(Type? elementType, Type? type, DataTypeName arrayDataTypeName, PgSerializerOptions options)
         {
             if (elementType is null || !elementType.IsEnum)
@@ -736,7 +753,7 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
             // Storage is produced as type (MyEnum[]) via Array.CreateInstanceFromArrayType. IntEnum[] and int[]
             // are layout-identical for value types with the same underlying representation, so the inner
-            // converter's Unsafe.As<int?[]> access is bit-safe.
+            // converter's Unsafe.As<int[]> access is bit-safe.
             var arrayConverter = CreateEnumArrayConverter(elementType.GetEnumUnderlyingType(), concreteElemInfo, type);
             if (arrayConverter is null)
                 return null;
@@ -745,12 +762,12 @@ sealed partial class AdoTypeInfoResolverFactory : PgTypeInfoResolverFactory
         }
 
         static PgConverter? CreateEnumArrayConverter(Type underlyingType, PgConcreteTypeInfo elemInfo, Type? arrayType)
+            // TElement is the underlying primitive; effectiveType (arrayType) is e.g. IntEnum[] which drives
+            // Array.CreateInstanceFromArrayType to produce the correctly-typed array. The API's contract is
+            // MethodTable-only, so any metadata-reachable array Type works without IL3050 suppression or DAM
+            // annotations.
             => Type.GetTypeCode(underlyingType) switch
             {
-                // TElement is the underlying type; effectiveType (arrayType) is e.g. IntEnum[] which drives
-                // Array.CreateInstanceFromArrayType to produce the correctly-typed array. The API's contract
-                // is MethodTable-only, so any metadata-reachable array Type works without IL3050 suppression
-                // or DAM annotations.
                 TypeCode.Int32 => ArrayConverter<Array>.CreateArrayBased<int>(elemInfo, arrayType),
                 TypeCode.Int64 => ArrayConverter<Array>.CreateArrayBased<long>(elemInfo, arrayType),
                 TypeCode.Int16 => ArrayConverter<Array>.CreateArrayBased<short>(elemInfo, arrayType),

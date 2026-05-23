@@ -59,6 +59,30 @@ public class EnumTests : TestBase
         => AssertType(ULongEnum.Big, "100000000000", "bigint", dataTypeInference: DataTypeInference.Nothing,
             dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false);
 
+    // Nullable scalar tests skip the auto-derived array check: Nullable<TEnum>[] is layout-identical to
+    // Nullable<TUnderlying>[] but the CLR's enum-array covariance doesn't extend to Nullable<>[], so the
+    // ArrayConverter's exact-type assertion can't reinterpret IntEnum?[] as int?[] at runtime. The scalar
+    // path is what's contracted here; nullable-enum-array support is a separate generalization.
+    [Test]
+    public Task Nullable_int_enum()
+        => AssertType<IntEnum?>(IntEnum.FortyTwo, "42", "integer", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int32, DbType.Object), valueTypeEqualsFieldType: false, skipArrayCheck: true);
+
+    [Test]
+    public Task Nullable_short_enum()
+        => AssertType<ShortEnum?>(ShortEnum.B, "2", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false, skipArrayCheck: true);
+
+    [Test]
+    public Task Nullable_long_enum()
+        => AssertType<LongEnum?>(LongEnum.Big, "100000000000", "bigint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false, skipArrayCheck: true);
+
+    [Test]
+    public Task Nullable_byte_enum()
+        => AssertType<ByteEnum?>(ByteEnum.X, "255", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false, skipArrayCheck: true);
+
     [Test]
     public Task Enum_rejects_non_canonical_column()
         // The converter is fixed to the underlying's canonical wire format (int → integer); cross-converting to a
