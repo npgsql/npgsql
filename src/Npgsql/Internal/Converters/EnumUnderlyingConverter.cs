@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -65,6 +64,31 @@ interface IEnumUnderlyingConverter
             default: throw new NotSupportedException();
         }
     }
+
+    // Known PG wire sizes per .NET underlying type — matches the default Ado mappings. byte/sbyte/short/ushort
+    // → Int2 (2 bytes), int/uint → Int4 (4 bytes), long/ulong → Int8 (8 bytes). PG has no unsigned types, so
+    // unsigned .NET underlyings are bit-reinterpreted onto the signed wire format of the same width.
+    static int WireSize<T>()
+        => Type.GetTypeCode(typeof(T)) switch
+        {
+            TypeCode.Int32 or TypeCode.UInt32 => sizeof(int),
+            TypeCode.Int64 or TypeCode.UInt64 => sizeof(long),
+            TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Byte or TypeCode.SByte => sizeof(short),
+            _ => throw new NotSupportedException()
+        };
+
+    // Typed Enum.ToObject overload — one allocation (the boxed enum), no intermediate boxed underlying.
+    // Used by both the value and nullable converter's AsObject paths.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static object ReadAsBoxedEnum<T>(PgReader reader, Type enumType)
+        => Type.GetTypeCode(typeof(T)) switch
+        {
+            TypeCode.Int32 or TypeCode.UInt32 => Enum.ToObject(enumType, reader.ReadInt32()),
+            TypeCode.Int64 or TypeCode.UInt64 => Enum.ToObject(enumType, reader.ReadInt64()),
+            TypeCode.Int16 or TypeCode.UInt16 => Enum.ToObject(enumType, reader.ReadInt16()),
+            TypeCode.Byte or TypeCode.SByte => Enum.ToObject(enumType, checked((byte)reader.ReadInt16())),
+            _ => throw new NotSupportedException()
+        };
 }
 
 /// <summary>
@@ -79,21 +103,7 @@ sealed class EnumUnderlyingConverter<T>(Type enumType) : PgBufferedConverter<T>,
     where T : unmanaged, IBinaryInteger<T>
 {
     public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
-    {
-        return ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(WireSize()) };
-
-        // Known PG wire sizes per .NET underlying type — matches the default Ado mappings. byte/sbyte/short/ushort
-        // → Int2 (2 bytes), int/uint → Int4 (4 bytes), long/ulong → Int8 (8 bytes). PG has no unsigned types, so
-        // unsigned .NET underlyings are bit-reinterpreted onto the signed wire format of the same width.
-        static int WireSize()
-            => Type.GetTypeCode(typeof(T)) switch
-            {
-                TypeCode.Int32 or TypeCode.UInt32 => sizeof(int),
-                TypeCode.Int64 or TypeCode.UInt64 => sizeof(long),
-                TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Byte or TypeCode.SByte => sizeof(short),
-                _ => throw new NotSupportedException()
-            };
-    }
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(IEnumUnderlyingConverter.WireSize<T>()) };
 
     public override T Read(PgReader reader)
         => IEnumUnderlyingConverter.ReadAsEnumUnderlying<T>(reader);
@@ -104,12 +114,27 @@ sealed class EnumUnderlyingConverter<T>(Type enumType) : PgBufferedConverter<T>,
     // Typed Enum.ToObject overload — exactly one allocation per call (the boxed enum), no intermediate boxed
     // underlying. No async machinery: reads are buffered, result is synchronously available.
     internal override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
-        => Type.GetTypeCode(typeof(T)) switch
-        {
-            TypeCode.Int32 or TypeCode.UInt32 => new(Enum.ToObject(enumType, reader.ReadInt32())),
-            TypeCode.Int64 or TypeCode.UInt64 => new(Enum.ToObject(enumType, reader.ReadInt64())),
-            TypeCode.Int16 or TypeCode.UInt16 => new(Enum.ToObject(enumType, reader.ReadInt16())),
-            TypeCode.Byte or TypeCode.SByte => new(Enum.ToObject(enumType, checked((byte)reader.ReadInt16()))),
-            _ => throw new NotSupportedException()
-        };
+        => new(IEnumUnderlyingConverter.ReadAsBoxedEnum<T>(reader, enumType));
+}
+
+/// <summary>
+/// Nullable sibling of <see cref="EnumUnderlyingConverter{T}"/>. Same wire format, same boxing behavior on the
+/// AsObject path (boxed <see cref="Nullable{T}"/> strips the wrapper, so a boxed enum unboxes to TEnum? at the
+/// caller). Read/Write delegate to the shared <see cref="IEnumUnderlyingConverter"/> helpers; the framework's
+/// null-handling stops at the wire-length check, so Read/Write only see non-null values here.
+/// </summary>
+sealed class EnumUnderlyingNullableConverter<T>(Type enumType) : PgBufferedConverter<T?>, IEnumUnderlyingConverter
+    where T : unmanaged, IBinaryInteger<T>
+{
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(IEnumUnderlyingConverter.WireSize<T>()) };
+
+    public override T? Read(PgReader reader)
+        => IEnumUnderlyingConverter.ReadAsEnumUnderlying<T>(reader);
+
+    public override void Write(PgWriter writer, T? value)
+        => IEnumUnderlyingConverter.WriteAsEnumUnderlying(writer, value.GetValueOrDefault());
+
+    internal override ValueTask<object?> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+        => new(IEnumUnderlyingConverter.ReadAsBoxedEnum<T>(reader, enumType));
 }
