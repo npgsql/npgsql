@@ -1139,13 +1139,39 @@ public class MultipleHostsTests : TestBase
     {
         var builder = new NpgsqlDataSourceBuilder(ConnectionString);
         await using var dataSource = builder.BuildMultiHost();
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        var cancellationToken = new CancellationToken(true);
         var ex = Assert.ThrowsAsync<OperationCanceledException>(async () =>
         {
-            await using var connection = await dataSource.OpenConnectionAsync(cts.Token);
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         });
-        Assert.That(ex.CancellationToken, Is.EqualTo(cts.Token));
+        Assert.That(ex.CancellationToken, Is.EqualTo(cancellationToken));
+    }
+
+    [Test]
+    public async Task OpenConnection_when_canceled_during_TryGet_throws_OperationCanceledException()
+    {
+        await using var primary1 = PgPostmasterMock.Start(state: Primary);
+        await using var primary2 = PgPostmasterMock.Start(state: Primary);
+
+        var connectionString = new NpgsqlConnectionStringBuilder($"Host={primary1.Host}:{primary1.Port},{primary2.Host}:{primary2.Port}")
+            {
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 1
+            }.ToString();
+        await using var dataSource = new NpgsqlDataSourceBuilder(connectionString).BuildMultiHost();
+
+        // Exhaust the pool so that TryGetIdleOrNew returns null and we fall through to TryGet
+        await using var conn1 = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+        await using var conn2 = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+
+        var cancellationToken = new CancellationToken(true);
+
+        var ex = Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        {
+            await using var conn3 = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary, cancellationToken);
+        });
+
+        Assert.That(ex.CancellationToken, Is.EqualTo(cancellationToken));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4181")]
