@@ -373,6 +373,9 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'push' && startsWith(github.repository, 'npgsql/') && needs.build.outputs.is_release == 'true'
     environment: nuget.org
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout
@@ -392,6 +395,12 @@ jobs:
 
       # TODO: Create a release
 
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: Npgsql
+
       - name: Publish to nuget.org
-        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_ORG_API_KEY }} --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push "*.nupkg" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
         working-directory: nupkgs
