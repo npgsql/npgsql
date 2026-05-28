@@ -57,7 +57,7 @@ This allows you to:
 
 ## Using `AsyncLocal` to pass arbitrary information to your callbacks
 
-The callbacks available via <xref:Npgsql.NpgsqlDataSourceBuilder.ConfigureTracing*?displayProperty=nameWithType> only accept the <xref:Npgsql.NpgsqlCommand> or <xref:Npgsql.NpgsqlBatch> as their parameters; this makes it difficult to e.g. assign arbitrary names to your commands, so that show up as the span names in your tracing monitor. You can use .NET [`AsyncLocal`](https://learn.microsoft.com/dotnet/api/system.threading.asynclocal-1) to flow arbitrary information from the command call site (where you execute the command) to your tracing callbacks to achieve this.
+The callbacks available via <xref:Npgsql.NpgsqlDataSourceBuilder.ConfigureTracing*?displayProperty=nameWithType> only accept the <xref:Npgsql.NpgsqlCommand> or <xref:Npgsql.NpgsqlBatch> as their parameters. This limitation makes it difficult to inject contextual data; such as assigning arbitrary names to your commands so they appear as the span names in your tracing monitor. You can solve this by using .NET [`AsyncLocal`](https://learn.microsoft.com/dotnet/api/system.threading.asynclocal-1) to flow arbitrary information from the command call site (where you execute the command) to your tracing callbacks.
 
 For example, the following adds an `ExecuteReaderWithSpanNameAsync` extension method to <xref:Npgsql.NpgsqlCommand>:
 
@@ -69,7 +69,7 @@ internal static class DbCommandExtensions
     public static async Task<NpgsqlDataReader> ExecuteReaderWithSpanNameAsync(this NpgsqlCommand command, string spanName)
     {
         var previousValue = CommandName.Value;
-        CommandName.Value = "FetchAllUsers";
+        CommandName.Value = spanName;
 
         try
         {
