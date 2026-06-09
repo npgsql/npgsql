@@ -22,7 +22,10 @@ public class GeoJSONTests : TestBase
         public string CommandText;
     }
 
-    public static readonly TestData[] Tests =
+    /// <summary>The Z coordinate applied to every position when deriving the 3D variants of <see cref="TwoDimensionalTests"/>.</summary>
+    const double Z = 5d;
+
+    static readonly TestData[] TwoDimensionalTests =
     [
         new()
         {
@@ -106,6 +109,41 @@ public class GeoJSONTests : TestBase
             CommandText = "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)]))))"
         }
     ];
+
+    public static readonly TestData[] Tests =
+    [
+        ..TwoDimensionalTests,
+        ..TwoDimensionalTests.Select(static t => new TestData
+        {
+            Geometry = WithZ(t.Geometry),
+            CommandText = $"st_force3d({t.CommandText}, {Z})"
+        })
+    ];
+
+    // Derives a 3D copy of a geometry by adding the Z altitude to every position, leaving the originals untouched.
+    static GeoJSONObject WithZ(GeoJSONObject geometry)
+    {
+        static Position AddZ(IPosition p) => new(latitude: p.Latitude, longitude: p.Longitude, altitude: Z);
+        static LineString Line(LineString line) => new(line.Coordinates.Select(AddZ));
+
+        GeoJSONObject result = geometry switch
+        {
+            Point point                   => new Point(AddZ(point.Coordinates)),
+            LineString line               => Line(line),
+            Polygon polygon               => new Polygon(polygon.Coordinates.Select(Line)),
+            MultiPoint multiPoint         => new MultiPoint(multiPoint.Coordinates.Select(pt => new Point(AddZ(pt.Coordinates)))),
+            MultiLineString multiLine     => new MultiLineString(multiLine.Coordinates.Select(Line)),
+            MultiPolygon multiPolygon     => new MultiPolygon(multiPolygon.Coordinates.Select(p => new Polygon(p.Coordinates.Select(Line)))),
+            GeometryCollection collection => new GeometryCollection(collection.Geometries.Select(g => (IGeometryObject)WithZ((GeoJSONObject)g))),
+            _ => throw new NotSupportedException($"Unexpected geometry type {geometry.Type}")
+        };
+
+        // A 2D bounding box [minX, minY, maxX, maxY] becomes the 3D form [minX, minY, minZ, maxX, maxY, maxZ].
+        if (geometry.BoundingBoxes is { } bbox)
+            result.BoundingBoxes = [bbox[0], bbox[1], Z, bbox[2], bbox[3], Z];
+
+        return result;
+    }
 
     [Test, TestCaseSource(nameof(Tests))]
     public async Task Read(TestData data)
