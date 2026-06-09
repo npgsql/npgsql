@@ -413,27 +413,27 @@ static class GeoJSONConverter
     public static ValueTask Write(bool async, PgWriter writer, IGeoJSONObject value, CancellationToken cancellationToken = default)
         => value.Type switch
         {
-            GeoJSONObjectType.Point => Write(async, writer, (Point)value, cancellationToken),
-            GeoJSONObjectType.LineString => Write(async, writer, (LineString)value, cancellationToken),
-            GeoJSONObjectType.Polygon => Write(async, writer, (Polygon)value, cancellationToken),
-            GeoJSONObjectType.MultiPoint => Write(async, writer, (MultiPoint)value, cancellationToken),
-            GeoJSONObjectType.MultiLineString => Write(async, writer, (MultiLineString)value, cancellationToken),
-            GeoJSONObjectType.MultiPolygon => Write(async, writer, (MultiPolygon)value, cancellationToken),
+            GeoJSONObjectType.Point              => Write(async, writer, (Point)value, cancellationToken),
+            GeoJSONObjectType.LineString         => Write(async, writer, (LineString)value, cancellationToken),
+            GeoJSONObjectType.Polygon            => Write(async, writer, (Polygon)value, cancellationToken),
+            GeoJSONObjectType.MultiPoint         => Write(async, writer, (MultiPoint)value, cancellationToken),
+            GeoJSONObjectType.MultiLineString    => Write(async, writer, (MultiLineString)value, cancellationToken),
+            GeoJSONObjectType.MultiPolygon       => Write(async, writer, (MultiPolygon)value, cancellationToken),
             GeoJSONObjectType.GeometryCollection => Write(async, writer, (GeometryCollection)value, cancellationToken),
-            _ => throw UnknownPostGisType()
+            _                                    => throw UnknownPostGisType()
         };
 
     static bool FirstCoordinateHasZ(IGeoJSONObject value)
         => value switch
         {
-            Point p => p.Coordinates.Altitude.HasValue,
-            LineString ls => ls.Coordinates is [var c, ..] && c.Altitude.HasValue,
-            Polygon poly => poly.Coordinates is [var ring, ..] && ring.Coordinates is [var c, ..] && c.Altitude.HasValue,
-            MultiPoint mp => mp.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
-            MultiLineString mls => mls.Coordinates is [var l, ..] && FirstCoordinateHasZ(l),
-            MultiPolygon mpoly => mpoly.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
+            Point p              => p.Coordinates.Altitude.HasValue,
+            LineString ls        => ls.Coordinates is [var c, ..] && c.Altitude.HasValue,
+            Polygon poly         => poly.Coordinates is [var ring, ..] && ring.Coordinates is [var c, ..] && c.Altitude.HasValue,
+            MultiPoint mp        => mp.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
+            MultiLineString mls  => mls.Coordinates is [var l, ..] && FirstCoordinateHasZ(l),
+            MultiPolygon mpoly   => mpoly.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
             GeometryCollection c => c.Geometries is [var g, ..] && FirstCoordinateHasZ((IGeoJSONObject)g),
-            _ => throw UnknownPostGisType()
+            _                    => throw UnknownPostGisType()
         };
 
     static async ValueTask Write(bool async, PgWriter writer, Point value, CancellationToken cancellationToken)
@@ -571,7 +571,7 @@ static class GeoJSONConverter
 
     static async ValueTask Write(bool async, PgWriter writer, MultiLineString value, CancellationToken cancellationToken)
     {
-        var type = EwkbGeometryType.MultiLineString;;
+        var type = EwkbGeometryType.MultiLineString;
         var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
