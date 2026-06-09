@@ -508,12 +508,9 @@ public class WriteStateTests : TestBase
             HandleDbNull = true;
         }
 
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
             // UpperBound + HandleDbNull → IsBindOptional=false, ensuring BindValue + IsDbNullValue run.
-            bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
-            return format is DataFormat.Binary;
-        }
+            => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
         protected override bool IsDbNullValue(int value, object? writeState)
         {
@@ -548,11 +545,11 @@ public class WriteStateTests : TestBase
         }
 
         PgConcreteTypeInfo GetOrCreate()
-            => _info ??= new(_options, _converter, _options.GetCanonicalTypeId(DataTypeNames.Int4));
+            => _info ??= PgConcreteTypeInfo.Create(_options, _converter, _options.GetCanonicalTypeId(DataTypeNames.Int4));
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
-        protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
+        protected override PgConcreteTypeInfo GetForValueCore(in ProviderValueContext context, int value, ref object? writeState)
         {
             writeState = _tracker.NewState();
             return GetOrCreate();
@@ -583,7 +580,7 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
                 {
                     var converter = new ThrowingDisposalConverter(throwInBindValueAt, throwInIsDbNullValueAt);
-                    return new PgProviderTypeInfo(options,
+                    return PgProviderTypeInfo.Create(options,
                         new ThrowingDisposalProvider(options, tracker, converter),
                         DataTypeNames.Int4);
                 }
@@ -602,7 +599,7 @@ public class WriteStateTests : TestBase
                 if (elementInfo is not PgProviderTypeInfo providerTypeInfo)
                     return null;
 
-                return new PgProviderTypeInfo(options,
+                return PgProviderTypeInfo.Create(options,
                     new ArrayTypeInfoProvider<int[], int>(providerTypeInfo, typeof(int[])),
                     dataTypeName);
             }
@@ -639,7 +636,7 @@ public class WriteStateTests : TestBase
                     // RangeConverter wraps each bound's subtype state into its own WriteState wrapper.
                     var subtype = new StateProducingSubtypeConverter(tracker, throwInBindValueAt);
                     var range = PgConverterFactory.CreateRangeConverter(subtype, options);
-                    return new PgConcreteTypeInfo(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
+                    return PgConcreteTypeInfo.Create(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
                 }
                 return null;
             }
@@ -656,11 +653,8 @@ public class WriteStateTests : TestBase
                 _throwInBindValueAt = throwInBindValueAt;
             }
 
-            public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-            {
-                bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
-                return format is DataFormat.Binary;
-            }
+            public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+                => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
             public override int Read(PgReader reader) => reader.ReadInt32();
             public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);
@@ -691,11 +685,8 @@ public class WriteStateTests : TestBase
             HandleDbNull = true;
         }
 
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
-            bufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int)));
-            return format is DataFormat.Binary;
-        }
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+            => ConverterDescriptor.Invariant with { BufferRequirements = _fixedSize ? BufferRequirements.CreateFixedSize(sizeof(int)) : BufferRequirements.Create(Size.CreateUpperBound(sizeof(int))) };
 
         protected override bool IsDbNullValue(int value, object? writeState)
         {
@@ -729,11 +720,11 @@ public class WriteStateTests : TestBase
         PgConcreteTypeInfo? _concreteTypeInfo;
 
         PgConcreteTypeInfo GetOrCreate()
-            => _concreteTypeInfo ??= new(options, new WriteStateTrackingConverter(fixedSize, tracker, generatesWriteStateAtBind), options.GetCanonicalTypeId(DataTypeNames.Int4));
+            => _concreteTypeInfo ??= PgConcreteTypeInfo.Create(options, new WriteStateTrackingConverter(fixedSize, tracker, generatesWriteStateAtBind), options.GetCanonicalTypeId(DataTypeNames.Int4));
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
-        protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
+        protected override PgConcreteTypeInfo GetForValueCore(in ProviderValueContext context, int value, ref object? writeState)
         {
             if (produceProviderState)
                 writeState = "provider-state";
@@ -751,12 +742,12 @@ public class WriteStateTests : TestBase
             public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             {
                 if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                    return new PgProviderTypeInfo(options, new WriteStateTrackingProvider(options, fixedSize, tracker, produceProviderState, generatesWriteStateAtBind), DataTypeNames.Int4);
+                    return PgProviderTypeInfo.Create(options, new WriteStateTrackingProvider(options, fixedSize, tracker, produceProviderState, generatesWriteStateAtBind), DataTypeNames.Int4);
 
                 // object->int4 goes through LateBindingTypeInfoProvider which delegates back to the int resolver above,
                 // letting us exercise write-state propagation across the object (late-bound) element layer.
                 if (dataTypeName == DataTypeNames.Int4 && type == typeof(object))
-                    return new PgProviderTypeInfo(options, new LateBindingTypeInfoProvider(options, options.GetCanonicalTypeId(DataTypeNames.Int4)), DataTypeNames.Int4);
+                    return PgProviderTypeInfo.Create(options, new LateBindingTypeInfoProvider(options, options.GetCanonicalTypeId(DataTypeNames.Int4)), DataTypeNames.Int4);
 
                 return null;
             }
@@ -775,7 +766,7 @@ public class WriteStateTests : TestBase
                     if (objectElementInfo is not PgProviderTypeInfo objectElementProviderTypeInfo)
                         return null;
 
-                    return new PgProviderTypeInfo(options,
+                    return PgProviderTypeInfo.Create(options,
                         new ArrayTypeInfoProvider<object[], object>(objectElementProviderTypeInfo, typeof(object[])),
                         dataTypeName);
                 }
@@ -784,7 +775,7 @@ public class WriteStateTests : TestBase
                 if (elementInfo is not PgProviderTypeInfo providerTypeInfo)
                     return null;
 
-                return new PgProviderTypeInfo(options,
+                return PgProviderTypeInfo.Create(options,
                     new ArrayTypeInfoProvider<int[], int>(providerTypeInfo, typeof(int[])),
                     dataTypeName);
             }
@@ -800,11 +791,8 @@ public class WriteStateTests : TestBase
 
     sealed class DisposableWriteStateConverter : PgBufferedConverter<int>
     {
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
-            bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
-            return format is DataFormat.Binary;
-        }
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+            => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int)) };
 
         public override int Read(PgReader reader) => reader.ReadInt32();
         public override void Write(PgWriter writer, int value) => writer.WriteInt32(value);
@@ -815,11 +803,11 @@ public class WriteStateTests : TestBase
         PgConcreteTypeInfo? _concreteTypeInfo;
 
         PgConcreteTypeInfo GetOrCreate()
-            => _concreteTypeInfo ??= new(options, new DisposableWriteStateConverter(), options.GetCanonicalTypeId(DataTypeNames.Int4));
+            => _concreteTypeInfo ??= PgConcreteTypeInfo.Create(options, new DisposableWriteStateConverter(), options.GetCanonicalTypeId(DataTypeNames.Int4));
 
         protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId) => GetOrCreate();
 
-        protected override PgConcreteTypeInfo GetForValueCore(ProviderValueContext context, int value, ref object? writeState)
+        protected override PgConcreteTypeInfo GetForValueCore(in ProviderValueContext context, int value, ref object? writeState)
         {
             writeState = tracker;
             return GetOrCreate();
@@ -836,7 +824,7 @@ public class WriteStateTests : TestBase
             public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             {
                 if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                    return new PgProviderTypeInfo(options, new DisposableWriteStateProvider(options, tracker), DataTypeNames.Int4);
+                    return PgProviderTypeInfo.Create(options, new DisposableWriteStateProvider(options, tracker), DataTypeNames.Int4);
 
                 return null;
             }
@@ -866,7 +854,7 @@ public class WriteStateTests : TestBase
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
                     var range = PgConverterFactory.CreateRangeConverter(subtype, options);
-                    return new PgConcreteTypeInfo(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
+                    return PgConcreteTypeInfo.Create(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
                 }
                 return null;
             }
@@ -880,9 +868,9 @@ public class WriteStateTests : TestBase
                 {
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
                     var range = PgConverterFactory.CreateRangeConverter(subtype, options);
-                    var rangeInfo = new PgConcreteTypeInfo(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
+                    var rangeInfo = PgConcreteTypeInfo.Create(options, range, options.GetCanonicalTypeId(DataTypeNames.Int4Range));
                     var arrayConverter = ArrayConverter<NpgsqlRange<int>[]>.CreateArrayBased<NpgsqlRange<int>>(rangeInfo, typeof(NpgsqlRange<int>[]));
-                    return new PgConcreteTypeInfo(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Range.ToArrayName()));
+                    return PgConcreteTypeInfo.Create(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Range.ToArrayName()));
                 }
                 return null;
             }
@@ -897,7 +885,7 @@ public class WriteStateTests : TestBase
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
                     var range = PgConverterFactory.CreateRangeConverter(subtype, options);
                     var multirange = PgConverterFactory.CreateArrayMultirangeConverter(range, options);
-                    return new PgConcreteTypeInfo(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
+                    return PgConcreteTypeInfo.Create(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
                 }
                 return null;
             }
@@ -912,9 +900,9 @@ public class WriteStateTests : TestBase
                     var subtype = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
                     var range = PgConverterFactory.CreateRangeConverter(subtype, options);
                     var multirange = PgConverterFactory.CreateArrayMultirangeConverter(range, options);
-                    var multirangeInfo = new PgConcreteTypeInfo(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
+                    var multirangeInfo = PgConcreteTypeInfo.Create(options, multirange, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange));
                     var arrayConverter = ArrayConverter<NpgsqlRange<int>[][]>.CreateArrayBased<NpgsqlRange<int>[]>(multirangeInfo, typeof(NpgsqlRange<int>[][]));
-                    return new PgConcreteTypeInfo(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange.ToArrayName()));
+                    return PgConcreteTypeInfo.Create(options, arrayConverter, options.GetCanonicalTypeId(DataTypeNames.Int4Multirange.ToArrayName()));
                 }
                 return null;
             }
@@ -938,7 +926,7 @@ public class WriteStateTests : TestBase
                 if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
                 {
                     var converter = new WriteStateTrackingConverter(fixedSize: false, tracker, generatesWriteState: true);
-                    return new PgConcreteTypeInfo(options, converter, options.GetCanonicalTypeId(DataTypeNames.Int4));
+                    return PgConcreteTypeInfo.Create(options, converter, options.GetCanonicalTypeId(DataTypeNames.Int4));
                 }
                 return null;
             }

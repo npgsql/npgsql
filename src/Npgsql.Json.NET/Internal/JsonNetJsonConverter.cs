@@ -10,15 +10,15 @@ using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Npgsql.Json.NET.Internal;
 
-sealed class JsonNetJsonConverter<T>(bool jsonb, Encoding textEncoding, JsonSerializerSettings settings) : PgStreamingConverter<T?>
+sealed class JsonNetJsonConverter<T>(bool jsonb, JsonSerializerSettings settings) : PgStreamingConverter<T?>
 {
     public override T? Read(PgReader reader)
-        => (T?)JsonNetJsonConverter.Read(async: false, jsonb, reader, typeof(T), settings, textEncoding, CancellationToken.None).GetAwaiter().GetResult();
+        => (T?)JsonNetJsonConverter.Read(async: false, jsonb, reader, typeof(T), settings, reader.ConversionContext.TextEncoding, CancellationToken.None).GetAwaiter().GetResult();
     public override async ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => (T?)await JsonNetJsonConverter.Read(async: true, jsonb, reader, typeof(T), settings, textEncoding, cancellationToken).ConfigureAwait(false);
+        => (T?)await JsonNetJsonConverter.Read(async: true, jsonb, reader, typeof(T), settings, reader.ConversionContext.TextEncoding, cancellationToken).ConfigureAwait(false);
 
     protected override Size BindValue(in BindContext context, T? value, ref object? writeState)
-        => JsonNetJsonConverter.BindValue(jsonb, context, typeof(T), settings, textEncoding, value, ref writeState);
+        => JsonNetJsonConverter.BindValue(jsonb, context, typeof(T), settings, context.ConversionContext.TextEncoding, value, ref writeState);
 
     public override void Write(PgWriter writer, T? value)
         => JsonNetJsonConverter.Write(jsonb, async: false, writer, CancellationToken.None).GetAwaiter().GetResult();

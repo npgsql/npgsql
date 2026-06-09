@@ -14,17 +14,15 @@ namespace Npgsql.Internal.Converters;
 sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
 {
     readonly bool _jsonb;
-    readonly Encoding _textEncoding;
     readonly JsonTypeInfo _jsonTypeInfo;
     readonly JsonTypeInfo<object?>? _objectTypeInfo;
 
-    public JsonConverter(bool jsonb, Encoding textEncoding, JsonSerializerOptions serializerOptions)
+    public JsonConverter(bool jsonb, JsonSerializerOptions serializerOptions)
     {
         if (serializerOptions.TypeInfoResolver is null)
             throw new InvalidOperationException("System.Text.Json serialization requires a type info resolver, make sure to set-it up beforehand.");
 
         _jsonb = jsonb;
-        _textEncoding = textEncoding;
         _jsonTypeInfo = typeof(TBase) != typeof(object) && typeof(T) != typeof(TBase)
             ? (JsonTypeInfo<TBase>)serializerOptions.GetTypeInfo(typeof(TBase))
             : (JsonTypeInfo<T>)serializerOptions.GetTypeInfo(typeof(T));
@@ -41,11 +39,12 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
 
     async ValueTask<T?> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
+        var textEncoding = reader.ConversionContext.TextEncoding;
         if (_jsonb && reader.ShouldBuffer(sizeof(byte)))
             await reader.Buffer(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
         // We always fall back to buffers on older targets due to the absence of transcoding stream.
-        if (JsonConverter.TryReadStream(_jsonb, _textEncoding, reader, out var byteCount, out var stream))
+        if (JsonConverter.TryReadStream(_jsonb, textEncoding, reader, out var byteCount, out var stream))
         {
             using var _ = stream;
             return _jsonTypeInfo switch
@@ -65,7 +64,7 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
             };
         }
 
-        var (rentedChars, rentedBytes) = await JsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
+        var (rentedChars, rentedBytes) = await JsonConverter.ReadRentedBuffer(async, textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
         var result = _jsonTypeInfo switch
         {
             JsonTypeInfo<JsonDocument> => (T)(object)JsonDocument.Parse(rentedChars.AsMemory()),
@@ -82,6 +81,7 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
 
     protected override Size BindValue(in BindContext context, T? value, ref object? writeState)
     {
+        var textEncoding = context.ConversionContext.TextEncoding;
         var capacity = 0;
         if (typeof(T) == typeof(JsonDocument))
             capacity = ((JsonDocument?)(object?)value)?.RootElement.GetRawText().Length ?? 0;
@@ -93,7 +93,7 @@ sealed class JsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
         else
             JsonSerializer.Serialize(stream, value, _objectTypeInfo);
 
-        return JsonConverter.BindValueCore(_jsonb, stream, _textEncoding, ref writeState);
+        return JsonConverter.BindValueCore(_jsonb, stream, textEncoding, ref writeState);
     }
 
     public override void Write(PgWriter writer, T? value)

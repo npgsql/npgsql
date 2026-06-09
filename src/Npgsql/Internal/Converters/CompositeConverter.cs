@@ -11,6 +11,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
 {
     readonly CompositeInfo<T> _composite;
     readonly BufferRequirements _bufferRequirements;
+    readonly bool _allFieldsInvariant;
     // Precomputed write size from the constructor's combine pass, taken before the upper-bound Limit.
     // When Exact, BindValue can return this directly without per-field sizing — the per-field loop still
     // runs for bind-time validation side effects, but size is already known. Exact requires all fields
@@ -27,30 +28,24 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // combined with the cumulative Write Kind it produces the composite's IsBindOptional.
         // Provider-backed fields contribute Streaming via GetBinaryRequirements (their cached default's
         // requirements are unsafe to aggregate against — the resolved concrete at bind time may differ).
-        // The aggregation collapses naturally: Streaming fans into Unknown via TryCombine, IsBindOptional
+        // The aggregation collapses naturally: Streaming fans into Unknown via Combine, IsBindOptional
         // ANDs to false, and the final Write Kind becomes non-Exact for any composite with provider fields.
-        var isBindOptional = true;
         var req = BufferRequirements.CreateFixedSize(sizeof(int) + _composite.Fields.Count * (sizeof(uint) + sizeof(int)));
+        var allFieldsInvariant = true;
         foreach (var field in _composite.Fields)
         {
             var fieldReqs = field.GetBinaryRequirements();
-            isBindOptional &= fieldReqs.IsBindOptional;
-
-            var readReq = fieldReqs.Read;
-            var writeReq = fieldReqs.Write;
 
             // If field is nullable we cannot depend on its buffer size being fixed.
             if (field.IsDbNullable)
-            {
-                readReq = readReq.Combine(Size.CreateUpperBound(0));
-                writeReq = writeReq.Combine(Size.CreateUpperBound(0));
-            }
+                fieldReqs = fieldReqs.Combine(BufferRequirements.Create(Size.CreateUpperBound(0)));
 
-            var readSuccess = req.Read.TryCombine(readReq, out readReq);
-            var writeSuccess = req.Write.TryCombine(writeReq, out writeReq);
-            // If we fail to combine due to overflow return unknown.
-            req = BufferRequirements.Create(readSuccess ? readReq : Size.Unknown, writeSuccess ? writeReq : Size.Unknown);
+            req = req.Combine(fieldReqs);
+            // Provider-backed fields are inherently non-invariant (resolved per value at bind time); non-provider
+            // fields propagate their probe-time IsInvariant. AND across all fields gives the composite's claim.
+            allFieldsInvariant &= field.IsInvariant && !field.IsProviderBacked;
         }
+        _allFieldsInvariant = allFieldsInvariant;
 
         // BindValue can return this directly when Exact (no provider field, no nullable, no overflow).
         _writeSizePrecomputed = req.Write;
@@ -60,7 +55,7 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         // (or nullable-shifted) Write means the Bind dispatch can't satisfy the size from the bufreq alone.
         var finalRead = Limit(req.Read);
         var finalWrite = Limit(req.Write);
-        _bufferRequirements = BufferRequirements.Create(finalRead, finalWrite, optionalBind: isBindOptional && finalWrite.Kind is SizeKind.Exact);
+        _bufferRequirements = BufferRequirements.Create(finalRead, finalWrite, optionalBind: req.IsBindOptional && finalWrite.Kind is SizeKind.Exact);
 
         // Return unknown if we hit the limit.
         static Size Limit(Size requirement)
@@ -70,11 +65,10 @@ sealed class CompositeConverter<T> : PgStreamingConverter<T> where T : notnull
         }
     }
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = _bufferRequirements;
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => _allFieldsInvariant
+            ? ConverterDescriptor.Invariant with { BufferRequirements = _bufferRequirements }
+            : new ConverterDescriptor { BufferRequirements = _bufferRequirements };
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();

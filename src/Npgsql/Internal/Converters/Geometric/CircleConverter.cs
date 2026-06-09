@@ -5,11 +5,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class CircleConverter : PgBufferedConverter<NpgsqlCircle>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 3);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 3) };
 
     public override NpgsqlCircle Read(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());

@@ -43,23 +43,23 @@ sealed class FullTextSearchTypeInfoResolverFactory : PgTypeInfoResolverFactory
         {
             // tsvector
             mappings.AddType<NpgsqlTsVector>(DataTypeNames.TsVector,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsVectorConverter(options.TextEncoding)), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsVectorConverter()), isDefault: true);
 
             // tsquery
             mappings.AddType<NpgsqlTsQuery>(DataTypeNames.TsQuery,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQuery>(options.TextEncoding)), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQuery>()), isDefault: true);
             mappings.AddType<NpgsqlTsQueryEmpty>(DataTypeNames.TsQuery,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryEmpty>(options.TextEncoding)));
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryEmpty>()));
             mappings.AddType<NpgsqlTsQueryLexeme>(DataTypeNames.TsQuery,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryLexeme>(options.TextEncoding)));
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryLexeme>()));
             mappings.AddType<NpgsqlTsQueryNot>(DataTypeNames.TsQuery,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryNot>(options.TextEncoding)));
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryNot>()));
             mappings.AddType<NpgsqlTsQueryAnd>(DataTypeNames.TsQuery,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryAnd>(options.TextEncoding)));
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryAnd>()));
             mappings.AddType<NpgsqlTsQueryOr>(DataTypeNames.TsQuery,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryOr>(options.TextEncoding)));
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryOr>()));
             mappings.AddType<NpgsqlTsQueryFollowedBy>(DataTypeNames.TsQuery,
-                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryFollowedBy>(options.TextEncoding)));
+                static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryFollowedBy>()));
 
             return mappings;
         }

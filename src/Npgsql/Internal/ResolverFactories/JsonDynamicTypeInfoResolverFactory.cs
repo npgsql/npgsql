@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Npgsql.Internal.Converters;
@@ -69,7 +68,7 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                     var jsonTypeInfo = serializerOptions.GetTypeInfo(jsonType);
                     dynamicMappings.AddMapping(jsonTypeInfo.Type, dataTypeName,
                         factory: (options, mapping, _) => mapping.CreateInfo(options,
-                            CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, serializerOptions, jsonType)));
+                            CreateSystemTextJsonConverter(mapping.Type, jsonb, serializerOptions, jsonType)));
 
                     if (!jsonType.IsValueType && jsonTypeInfo.PolymorphismOptions is not null)
                     {
@@ -81,7 +80,7 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                             var baseType = jsonb && !serializerOptions.AllowOutOfOrderMetadataProperties ? derived.DerivedType : jsonType;
                             dynamicMappings.AddMapping(derived.DerivedType, dataTypeName,
                                 factory: (options, mapping, _) => mapping.CreateInfo(options,
-                                    CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, serializerOptions, baseType)));
+                                    CreateSystemTextJsonConverter(mapping.Type, jsonb, serializerOptions, baseType)));
                         }
                     }
                 }
@@ -110,15 +109,14 @@ sealed class JsonDynamicTypeInfoResolverFactory(
                 var baseType = jsonb && !SerializerOptions.AllowOutOfOrderMetadataProperties ? mapping.Type : typeof(object);
 
                 return mapping.CreateInfo(options,
-                    CreateSystemTextJsonConverter(mapping.Type, jsonb, options.TextEncoding, SerializerOptions, baseType));
+                    CreateSystemTextJsonConverter(mapping.Type, jsonb, SerializerOptions, baseType));
             });
         }
 
-        static PgConverter CreateSystemTextJsonConverter(Type valueType, bool jsonb, Encoding textEncoding, JsonSerializerOptions serializerOptions, Type baseType)
+        static PgConverter CreateSystemTextJsonConverter(Type valueType, bool jsonb, JsonSerializerOptions serializerOptions, Type baseType)
             => (PgConverter)Activator.CreateInstance(
                     typeof(JsonConverter<,>).MakeGenericType(valueType, baseType),
                     jsonb,
-                    textEncoding,
                     serializerOptions)!;
     }
 

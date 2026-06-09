@@ -27,8 +27,8 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         _timestampTz = timestampTz;
         _timestamp = timestamp;
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
-        _timestampTzConcreteTypeInfo = new(options, factory(timestampTz), timestampTz);
-        _timestampConcreteTypeInfo = new(options, factory(timestamp), timestamp);
+        _timestampTzConcreteTypeInfo = PgConcreteTypeInfo.Create(options, factory(timestampTz), timestampTz);
+        _timestampConcreteTypeInfo = PgConcreteTypeInfo.Create(options, factory(timestamp), timestamp);
     }
 
     protected override PgConcreteTypeInfo GetDefaultCore(PgTypeId? pgTypeId)
@@ -41,10 +41,10 @@ sealed class DateTimeTypeInfoProvider<T> : PgConcreteTypeInfoProvider<T>
         throw new ArgumentOutOfRangeException(nameof(pgTypeId), pgTypeId, "Unsupported PgTypeId.");
     }
 
-    protected override PgConcreteTypeInfo? GetForValueCore(ProviderValueContext context, T? value, ref object? writeState)
+    protected override PgConcreteTypeInfo? GetForValueCore(in ProviderValueContext context, T? value, ref object? writeState)
         => _provider(this, context, value, ref writeState);
 
-    public PgConcreteTypeInfo? Get(ProviderValueContext context, DateTime value, bool validateOnly = false)
+    public PgConcreteTypeInfo? Get(in ProviderValueContext context, DateTime value, bool validateOnly = false)
     {
         Debug.Assert(!validateOnly || context.ExpectedPgTypeId is not null);
         if (value.Kind is DateTimeKind.Utc)

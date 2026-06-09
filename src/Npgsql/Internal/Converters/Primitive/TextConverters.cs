@@ -13,23 +13,21 @@ namespace Npgsql.Internal.Converters;
 
 static class TextConverter
 {
-    public static PgConverter<string> CreateStringConverter(Encoding encoding)
-        => new StringBasedTextConverter<string, StringConversion>(encoding);
+    public static PgConverter<string> CreateStringConverter()
+        => new StringBasedTextConverter<string, StringConversion>();
 
-    public static PgConverter<ReadOnlyMemory<char>> CreateReadOnlyMemoryConverter(Encoding encoding)
-        => new StringBasedTextConverter<ReadOnlyMemory<char>, ReadOnlyMemoryConversion>(encoding);
+    public static PgConverter<ReadOnlyMemory<char>> CreateReadOnlyMemoryConverter()
+        => new StringBasedTextConverter<ReadOnlyMemory<char>, ReadOnlyMemoryConversion>();
 
-    sealed class StringBasedTextConverter<T, TConv>(Encoding encoding) : PgStreamingConverter<T>
+    sealed class StringBasedTextConverter<T, TConv> : PgStreamingConverter<T>
         where TConv : struct, IStringConversion<T>
     {
-        public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-        {
-            bufferRequirements = BufferRequirements.Streaming;
-            return format is DataFormat.Binary or DataFormat.Text;
-        }
+        public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+            => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
         public override T Read(PgReader reader)
         {
+            var encoding = reader.ConversionContext.TextEncoding;
             var bytes = reader.ReadBytes(reader.CurrentRemaining);
             return TConv.ConvertFrom(
                 ReferenceEquals(encoding, PgSerializerOptions.DefaultUtf8Encoding)
@@ -40,6 +38,7 @@ static class TextConverter
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
         public override async ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         {
+            var encoding = reader.ConversionContext.TextEncoding;
             var bytes = await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false);
             return TConv.ConvertFrom(
                 ReferenceEquals(encoding, PgSerializerOptions.DefaultUtf8Encoding)
@@ -48,13 +47,13 @@ static class TextConverter
         }
 
         protected override Size BindValue(in BindContext context, T value, ref object? writeState)
-            => TextConverterHelpers.BindValue(context, TConv.ConvertTo(value), encoding);
+            => TextConverterHelpers.BindValue(context, TConv.ConvertTo(value), context.ConversionContext.TextEncoding);
 
         public override void Write(PgWriter writer, T value)
-            => writer.WriteChars(TConv.ConvertTo(value).Span, encoding);
+            => writer.WriteChars(TConv.ConvertTo(value).Span, writer.ConversionContext.TextEncoding);
 
         public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-            => writer.WriteCharsAsync(TConv.ConvertTo(value), encoding, cancellationToken);
+            => writer.WriteCharsAsync(TConv.ConvertTo(value), writer.ConversionContext.TextEncoding, cancellationToken);
     }
 
     interface IStringConversion<T>
@@ -76,27 +75,24 @@ static class TextConverter
     }
 }
 
-abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConverter<T>
+abstract class ArrayBasedTextConverter<T> : PgStreamingConverter<T>
 {
     public override T Read(PgReader reader)
-        => Read(async: false, reader, encoding).GetAwaiter().GetResult();
+        => Read(async: false, reader, reader.ConversionContext.TextEncoding).GetAwaiter().GetResult();
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => Read(async: true, reader, encoding);
+        => Read(async: true, reader, reader.ConversionContext.TextEncoding);
 
     protected override Size BindValue(in BindContext context, T value, ref object? writeState)
-        => TextConverterHelpers.BindValue(context, ConvertTo(value), encoding);
+        => TextConverterHelpers.BindValue(context, ConvertTo(value), context.ConversionContext.TextEncoding);
 
     public override void Write(PgWriter writer, T value)
-        => writer.WriteChars(ConvertTo(value).AsSpan(), encoding);
+        => writer.WriteChars(ConvertTo(value).AsSpan(), writer.ConversionContext.TextEncoding);
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => writer.WriteCharsAsync(ConvertTo(value), encoding, cancellationToken);
+        => writer.WriteCharsAsync(ConvertTo(value), writer.ConversionContext.TextEncoding, cancellationToken);
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     protected abstract ArraySegment<char> ConvertTo(T value);
     protected abstract T ConvertFrom(ArraySegment<char> value);
@@ -117,13 +113,13 @@ abstract class ArrayBasedTextConverter<T>(Encoding encoding) : PgStreamingConver
     }
 }
 
-sealed class CharArraySegmentTextConverter(Encoding encoding) : ArrayBasedTextConverter<ArraySegment<char>>(encoding)
+sealed class CharArraySegmentTextConverter : ArrayBasedTextConverter<ArraySegment<char>>
 {
     protected override ArraySegment<char> ConvertTo(ArraySegment<char> value) => value;
     protected override ArraySegment<char> ConvertFrom(ArraySegment<char> value) => value;
 }
 
-sealed class CharArrayTextConverter(Encoding encoding) : ArrayBasedTextConverter<char[]>(encoding)
+sealed class CharArrayTextConverter : ArrayBasedTextConverter<char[]>
 {
     protected override ArraySegment<char> ConvertTo(char[] value) => new(value, 0, value.Length);
     protected override char[] ConvertFrom(ArraySegment<char> value)
@@ -137,19 +133,16 @@ sealed class CharArrayTextConverter(Encoding encoding) : ArrayBasedTextConverter
     }
 }
 
-sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
+sealed class CharTextConverter : PgBufferedConverter<char>
 {
-    readonly Size _oneCharMaxByteCount = Size.CreateUpperBound(encoding.GetMaxByteCount(1));
-
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Create(_oneCharMaxByteCount);
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => new() { BufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(context.ConversionContext.TextEncoding.GetMaxByteCount(1))) };
 
     public override char Read(PgReader reader)
     {
-        var byteSeq = reader.ReadBytes(Math.Min(_oneCharMaxByteCount.Value, reader.CurrentRemaining));
+        var encoding = reader.ConversionContext.TextEncoding;
+        var maxByteCount = encoding.GetMaxByteCount(1);
+        var byteSeq = reader.ReadBytes(Math.Min(maxByteCount, reader.CurrentRemaining));
         Debug.Assert(byteSeq.IsSingleSegment);
         var bytes = byteSeq.FirstSpan;
 
@@ -165,29 +158,26 @@ sealed class CharTextConverter(Encoding encoding) : PgBufferedConverter<char>
     protected override Size BindValue(in BindContext context, char value, ref object? writeState)
     {
         Span<char> spanValue = [value];
-        return encoding.GetByteCount(spanValue);
+        return context.ConversionContext.TextEncoding.GetByteCount(spanValue);
     }
 
     public override void Write(PgWriter writer, char value)
     {
         Span<char> spanValue = [value];
-        writer.WriteChars(spanValue, encoding);
+        writer.WriteChars(spanValue, writer.ConversionContext.TextEncoding);
     }
 }
 
-sealed class TextReaderTextConverter(Encoding encoding) : PgStreamingConverter<TextReader>
+sealed class TextReaderTextConverter : PgStreamingConverter<TextReader>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override TextReader Read(PgReader reader)
-        => reader.GetTextReader(encoding);
+        => reader.GetTextReader(reader.ConversionContext.TextEncoding);
 
     public override ValueTask<TextReader> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => reader.GetTextReaderAsync(encoding, cancellationToken);
+        => reader.GetTextReaderAsync(reader.ConversionContext.TextEncoding, cancellationToken);
 
     protected override Size BindValue(in BindContext context, TextReader value, ref object? writeState) => throw new NotImplementedException();
     public override void Write(PgWriter writer, TextReader value) => throw new NotImplementedException();
@@ -200,13 +190,10 @@ readonly struct GetChars(int read)
     public int Read { get; } = read;
 }
 
-sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<GetChars>
+sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Streaming;
-        return format is DataFormat.Binary or DataFormat.Text;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Streaming };
 
     public override GetChars Read(PgReader reader)
         => reader.GetCharsReadActive
@@ -222,7 +209,7 @@ sealed class GetCharsTextConverter(Encoding encoding) : PgStreamingConverter<Get
 
     GetChars ResumableRead(PgReader reader)
     {
-        reader.GetCharsReadInfo(encoding, out var charsRead, out var textReader, out var charsOffset, out var buffer);
+        reader.GetCharsReadInfo(reader.ConversionContext.TextEncoding, out var charsRead, out var textReader, out var charsOffset, out var buffer);
 
         // With variable length encodings, moving backwards based on bytes means we have to start over.
         if (charsRead > charsOffset)

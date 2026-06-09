@@ -305,9 +305,8 @@ public abstract class NpgsqlDataSource : DbDataSource
             // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
             connector.ReloadableState = new(
                 databaseInfo: PostgresMinimalDatabaseInfo.DefaultTypeCatalog,
-                serializerOptions: new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
+                serializerOptions: new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, textEncoding: connector.TextEncoding)
                 {
-                    TextEncoding = connector.TextEncoding,
                     TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver(),
                 },
                 dbTypeResolver: null);
@@ -317,11 +316,10 @@ public abstract class NpgsqlDataSource : DbDataSource
             using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
                 databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async).ConfigureAwait(false);
 
-            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone))
+            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone), textEncoding: connector.TextEncoding)
             {
                 ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                 EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
-                TextEncoding = connector.TextEncoding,
                 DefaultNameTranslator = _defaultNameTranslator
             };
 

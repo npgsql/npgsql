@@ -7,11 +7,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class MacaddrConverter(bool macaddr8) : PgBufferedConverter<PhysicalAddress>
 {
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = macaddr8 ? BufferRequirements.Create(Size.CreateUpperBound(8)) : BufferRequirements.CreateFixedSize(6);
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = macaddr8 ? BufferRequirements.Create(Size.CreateUpperBound(8)) : BufferRequirements.CreateFixedSize(6) };
 
     protected override Size BindValue(in BindContext context, PhysicalAddress value, ref object? writeState)
         => value.GetAddressBytes().Length;

@@ -2103,10 +2103,13 @@ LANGUAGE plpgsql VOLATILE";
         buffer.AddBytesToRead(columnLength);
         var reader = buffer.PgReader;
         reader.Init(DataFormat.Binary, columnLength, resumable: false);
+        // The test exercises PgReader buffering/cleanup independently of the converter, but PgFieldBinding
+        // now carries the converter; pull any built-in via the data source's options as a stand-in (never invoked here).
+        var converter = conn.Connector.SerializerOptions.GetDefaultTypeInfo(typeof(int))!.MakeConcreteForField(default).GetConverter(DataFormat.Binary);
         if (async)
-            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown), CancellationToken.None);
+            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown, converter), CancellationToken.None);
         else
-            reader.StartRead(new(DataFormat.Binary, Size.Unknown));
+            reader.StartRead(new(DataFormat.Binary, Size.Unknown, converter));
 
         await using (var _ = reader.GetStream())
         {
@@ -2645,7 +2648,7 @@ sealed class ExplodingTypeHandlerResolverFactory(bool safe) : PgTypeInfoResolver
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
             if (dataTypeName == DataTypeNames.Int4 && (type == typeof(int) || type is null))
-                return new PgConcreteTypeInfo(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
+                return PgConcreteTypeInfo.Create(options, new ExplodingTypeHandler(safe), DataTypeNames.Int4);
 
             return null;
         }
@@ -2666,12 +2669,10 @@ sealed class CustomStreamResolverFactory : PgTypeInfoResolverFactory
         // a Stream query.
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
             => type == typeof(CustomStream) && dataTypeName == DataTypeNames.Bytea
-                ? new PgConcreteTypeInfo(options, new CustomStreamConverter(), DataTypeNames.Bytea, requestedType: typeof(CustomStream))
-                {
+                ? PgConcreteTypeInfo.Create(options, new CustomStreamConverter(), DataTypeNames.Bytea, requestedType: typeof(CustomStream),
                     // Under-reporting: converter produces Stream values that are actually CustomStream instances.
-                    SupportsReading = true,
-                    SupportsWriting = false,
-                }
+                    supportsReading: true,
+                    supportsWriting: false)
                 : null;
     }
 }
@@ -2710,11 +2711,8 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
     protected override Size BindValue(in BindContext context, int value, ref object? writeState)
         => throw new NotSupportedException();
 
-    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.Value;
-        return format is DataFormat.Binary;
-    }
+    public override ConverterDescriptor GetDescriptor(in DescriptorContext context)
+        => ConverterDescriptor.Invariant with { BufferRequirements = BufferRequirements.Value };
 
     public override void Write(PgWriter writer, int value)
         => throw new NotSupportedException();
