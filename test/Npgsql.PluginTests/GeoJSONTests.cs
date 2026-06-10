@@ -192,6 +192,15 @@ public class GeoJSONTests : TestBase
                 new Position(3d, 3d),
                 new Position(4d, 4d)
             ])
+        },
+        new()
+        {
+            Geometry =  new LineString([
+                new Position(1d, 1d),
+                new Position(2d, 2d),
+                new Position(3d, 3d, 10d),
+                new Position(4d, 4d)
+            ])
         }
     ];
 

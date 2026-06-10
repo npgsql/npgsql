@@ -426,9 +426,9 @@ static class GeoJSONConverter
     static bool FirstCoordinateHasZ(IGeoJSONObject value)
         => value switch
         {
-            Point p              => p.Coordinates.Altitude.HasValue,
+            Point p              => HasZ(p.Coordinates),
             LineString ls        => ls.Coordinates is [var c, ..] && c.Altitude.HasValue,
-            Polygon poly         => poly.Coordinates is [var ring, ..] && ring.Coordinates is [var c, ..] && c.Altitude.HasValue,
+            Polygon poly         => poly.Coordinates is [var ring, ..] && ring.Coordinates is [var c, ..] && HasZ(c),
             MultiPoint mp        => mp.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
             MultiLineString mls  => mls.Coordinates is [var l, ..] && FirstCoordinateHasZ(l),
             MultiPolygon mpoly   => mpoly.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
@@ -439,17 +439,16 @@ static class GeoJSONConverter
     static async ValueTask Write(bool async, PgWriter writer, Point value, CancellationToken cancellationToken)
     {
         var type = EwkbGeometryType.Point;
-        var hasZ = false;
         var size = SizeOfHeader;
         var srid = GetSrid(value.CRS);
+        var hasZ = FirstCoordinateHasZ(value);
         if (srid != 0)
         {
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
         }
-        if (FirstCoordinateHasZ(value))
+        if (hasZ)
         {
-            hasZ = true;
             type |= EwkbGeometryType.HasZ;
         }
 
@@ -468,17 +467,16 @@ static class GeoJSONConverter
     static async ValueTask Write(bool async, PgWriter writer, LineString value, CancellationToken cancellationToken)
     {
         var type = EwkbGeometryType.LineString;
-        var hasZ = false;
         var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
+        var hasZ = FirstCoordinateHasZ(value);
         if (srid != 0)
         {
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
         }
-        if (FirstCoordinateHasZ(value))
+        if (hasZ)
         {
-            hasZ = true;
             type |= EwkbGeometryType.HasZ;
         }
 
@@ -501,17 +499,16 @@ static class GeoJSONConverter
     static async ValueTask Write(bool async, PgWriter writer, Polygon value, CancellationToken cancellationToken)
     {
         var type = EwkbGeometryType.Polygon;
-        var hasZ = false;
         var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
+        var hasZ = FirstCoordinateHasZ(value);
         if (srid != 0)
         {
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
         }
-        if (FirstCoordinateHasZ(value))
+        if (hasZ)
         {
-            hasZ = true;
             type |= EwkbGeometryType.HasZ;
         }
 
