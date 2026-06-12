@@ -335,7 +335,7 @@ jobs:
 
   publish-ci:
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.event_name == 'push' && github.repository == 'npgsql/npgsql'
     environment: myget
 
@@ -375,7 +375,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.event_name == 'push' && startsWith(github.repository, 'npgsql/') && needs.build.outputs.is_release == 'true'
     environment: nuget.org
     permissions:
