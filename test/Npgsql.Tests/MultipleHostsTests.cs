@@ -241,7 +241,7 @@ public class MultipleHostsTests : TestBase
             _ = await postmasters[i].WaitForServerConnection();
     }
 
-    [Test, Platform(Exclude = "MacOsX", Reason = "#3786")]
+    [Test, Platform(Exclude = PlatformNames.MacOSX, Reason = "#3786")]
     public void All_hosts_are_down()
     {
         var endpoint = new IPEndPoint(IPAddress.Loopback, 0);

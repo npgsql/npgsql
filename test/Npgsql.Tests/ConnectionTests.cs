@@ -526,7 +526,7 @@ public class ConnectionTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Fails only on mac, needs to be investigated")]
     public async Task Unix_abstract_domain_socket()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
