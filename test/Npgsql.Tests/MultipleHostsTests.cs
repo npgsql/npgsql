@@ -241,7 +241,7 @@ public class MultipleHostsTests : TestBase
             _ = await postmasters[i].WaitForServerConnection();
     }
 
-    [Test, Platform(Exclude = PlatformNames.MacOSX, Reason = "#3786")]
+    [Test, Platform(Exclude = PlatformNames.MacOSX, Reason = "https://github.com/npgsql/npgsql/issues/3786")]
     public void All_hosts_are_down()
     {
         var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
