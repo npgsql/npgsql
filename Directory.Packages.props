@@ -2,7 +2,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.16.0" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
@@ -30,8 +30,8 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.4" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="OpenTelemetry" Version="1.15.3" />
-    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.16.0" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
