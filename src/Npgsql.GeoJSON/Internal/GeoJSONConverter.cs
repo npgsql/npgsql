@@ -273,7 +273,7 @@ static class GeoJSONConverter
             var position = new Position(
                 longitude: ReadDouble(littleEndian),
                 latitude: ReadDouble(littleEndian),
-                altitude: HasZ(type) ? reader.ReadDouble() : null);
+                altitude: HasZ(type) ? ReadDouble(littleEndian) : null);
             if (HasM(type)) ReadDouble(littleEndian);
             return position;
 
@@ -423,15 +423,33 @@ static class GeoJSONConverter
             _                                    => throw UnknownPostGisType()
         };
 
+    static bool FirstCoordinateHasZ(IGeoJSONObject value)
+        => value switch
+        {
+            Point p              => HasZ(p.Coordinates),
+            LineString ls        => ls.Coordinates is [var c, ..] && c.Altitude.HasValue,
+            Polygon poly         => poly.Coordinates is [var ring, ..] && ring.Coordinates is [var c, ..] && HasZ(c),
+            MultiPoint mp        => mp.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
+            MultiLineString mls  => mls.Coordinates is [var l, ..] && FirstCoordinateHasZ(l),
+            MultiPolygon mpoly   => mpoly.Coordinates is [var p, ..] && FirstCoordinateHasZ(p),
+            GeometryCollection c => c.Geometries is [var g, ..] && FirstCoordinateHasZ((IGeoJSONObject)g),
+            _                    => throw UnknownPostGisType()
+        };
+
     static async ValueTask Write(bool async, PgWriter writer, Point value, CancellationToken cancellationToken)
     {
         var type = EwkbGeometryType.Point;
         var size = SizeOfHeader;
         var srid = GetSrid(value.CRS);
+        var hasZ = FirstCoordinateHasZ(value);
         if (srid != 0)
         {
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
+        }
+        if (hasZ)
+        {
+            type |= EwkbGeometryType.HasZ;
         }
 
         if (writer.ShouldFlush(size))
@@ -443,7 +461,7 @@ static class GeoJSONConverter
         if (srid != 0)
             writer.WriteInt32(srid);
 
-        await WritePosition(async, writer, value.Coordinates, cancellationToken).ConfigureAwait(false);
+        await WritePosition(async, writer, value.Coordinates, hasZ, cancellationToken).ConfigureAwait(false);
     }
 
     static async ValueTask Write(bool async, PgWriter writer, LineString value, CancellationToken cancellationToken)
@@ -451,10 +469,15 @@ static class GeoJSONConverter
         var type = EwkbGeometryType.LineString;
         var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
+        var hasZ = FirstCoordinateHasZ(value);
         if (srid != 0)
         {
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
+        }
+        if (hasZ)
+        {
+            type |= EwkbGeometryType.HasZ;
         }
 
         if (writer.ShouldFlush(size))
@@ -470,7 +493,7 @@ static class GeoJSONConverter
             writer.WriteInt32(srid);
 
         foreach (var t in coordinates)
-            await WritePosition(async, writer, t, cancellationToken).ConfigureAwait(false);
+            await WritePosition(async, writer, t, hasZ, cancellationToken).ConfigureAwait(false);
     }
 
     static async ValueTask Write(bool async, PgWriter writer, Polygon value, CancellationToken cancellationToken)
@@ -478,10 +501,15 @@ static class GeoJSONConverter
         var type = EwkbGeometryType.Polygon;
         var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
+        var hasZ = FirstCoordinateHasZ(value);
         if (srid != 0)
         {
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
+        }
+        if (hasZ)
+        {
+            type |= EwkbGeometryType.HasZ;
         }
 
         if (writer.ShouldFlush(size))
@@ -503,7 +531,7 @@ static class GeoJSONConverter
             var coordinates = t.Coordinates;
             writer.WriteInt32(coordinates.Count);
             foreach (var t1 in coordinates)
-                await WritePosition(async, writer, t1, cancellationToken).ConfigureAwait(false);
+                await WritePosition(async, writer, t1, hasZ, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -516,6 +544,10 @@ static class GeoJSONConverter
         {
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
+        }
+        if (FirstCoordinateHasZ(value))
+        {
+            type |= EwkbGeometryType.HasZ;
         }
 
         if (writer.ShouldFlush(size))
@@ -544,6 +576,10 @@ static class GeoJSONConverter
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
         }
+        if (FirstCoordinateHasZ(value))
+        {
+            type |= EwkbGeometryType.HasZ;
+        }
 
         if (writer.ShouldFlush(size))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -571,6 +607,10 @@ static class GeoJSONConverter
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
         }
+        if (FirstCoordinateHasZ(value))
+        {
+            type |= EwkbGeometryType.HasZ;
+        }
 
         if (writer.ShouldFlush(size))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -597,6 +637,10 @@ static class GeoJSONConverter
             size += sizeof(int);
             type |= EwkbGeometryType.HasSrid;
         }
+        if (FirstCoordinateHasZ(value))
+        {
+            type |= EwkbGeometryType.HasZ;
+        }
 
         if (writer.ShouldFlush(size))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
@@ -614,7 +658,7 @@ static class GeoJSONConverter
             await Write(async, writer, (IGeoJSONObject)t, cancellationToken).ConfigureAwait(false);
     }
 
-    static async ValueTask WritePosition(bool async, PgWriter writer, IPosition coordinate, CancellationToken cancellationToken)
+    static async ValueTask WritePosition(bool async, PgWriter writer, IPosition coordinate, bool hasZ, CancellationToken cancellationToken)
     {
         var altitude = coordinate.Altitude;
         if (SizeOfPoint(altitude.HasValue) is var size && writer.ShouldFlush(size))
@@ -624,6 +668,8 @@ static class GeoJSONConverter
         writer.WriteDouble(coordinate.Latitude);
         if (altitude.HasValue)
             writer.WriteDouble(altitude.Value);
+        else if (hasZ)
+            writer.WriteDouble(0d);
     }
 
     static ValueTask BufferData(this PgReader reader, bool async, int byteCount, CancellationToken cancellationToken)
