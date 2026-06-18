@@ -254,7 +254,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "Win", Reason = "Postgresql doesn't close connection correctly on windows which might result in missing error message")]
+    [Platform(Exclude = PlatformNames.Win, Reason = "PostgreSQL doesn't close connection correctly on Windows which might result in missing error message")]
     public async Task Connect_with_only_non_ssl_allowed_user([Values] bool keepAlive)
     {
         try
@@ -513,7 +513,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
     public async Task Connect_with_verify_and_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         if (!IsOnBuildServer)
@@ -529,7 +529,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
     public async Task Connect_with_verify_check_host([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         if (!IsOnBuildServer)
@@ -554,7 +554,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Platform(Exclude = "MacOsX", Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
+    [Platform(Exclude = PlatformNames.MacOSX, Reason = "Mac requires explicit opt-in to receive CA certificate in TLS handshake")]
     public async Task Connect_with_verify_and_multiple_ca_cert([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode, [Values] bool realCaFirst)
     {
         if (!IsOnBuildServer)
