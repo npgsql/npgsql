@@ -589,6 +589,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         return this;
     }
 
+
     /// <summary>
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>

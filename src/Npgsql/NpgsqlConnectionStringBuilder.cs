@@ -213,6 +213,32 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     #region Properties - Connection
 
     /// <summary>
+    /// DNS SRV cluster domain for service discovery. When set, the driver looks up
+    /// <c>_postgresql._tcp.&lt;SrvHost&gt;</c> SRV records at <see cref="NpgsqlDataSource"/> build
+    /// time and uses the returned host/port pairs — sorted by priority then weight per RFC 2782 —
+    /// as the list of hosts to connect to.
+    /// <para>
+    /// Can be set via the <c>SrvHost=cluster.example.com</c> connection property.
+    /// Mutually exclusive with an explicit <see cref="Host"/> value.
+    /// </para>
+    /// </summary>
+    [Category("Connection")]
+    [Description("DNS SRV domain for PostgreSQL service discovery (_postgresql._tcp.<SrvHost>).")]
+    [DisplayName("SrvHost")]
+    [NpgsqlConnectionStringProperty]
+    public string? SrvHost
+    {
+        get => _srvHost;
+        set
+        {
+            _srvHost = value;
+            SetValue(nameof(SrvHost), value);
+            _dataSourceCached = null;
+        }
+    }
+    string? _srvHost;
+
+    /// <summary>
     /// The hostname or IP address of the PostgreSQL server to connect to.
     /// </summary>
     [Category("Connection")]
@@ -1455,9 +1481,19 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     internal void PostProcessAndValidate()
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(Host);
+        if (!string.IsNullOrWhiteSpace(SrvHost) && !string.IsNullOrWhiteSpace(Host))
+            throw new ArgumentException(
+                "SrvHost and Host are mutually exclusive. Use SrvHost for DNS SRV discovery or Host for direct connections, not both.");
+
+        // When SrvHost is set, Host will be populated by SRV resolution in the DataSource builder.
+        if (string.IsNullOrWhiteSpace(SrvHost))
+            ArgumentException.ThrowIfNullOrWhiteSpace(Host);
+
         if (SslNegotiation == SslNegotiation.Direct && SslMode is not SslMode.Require and not SslMode.VerifyCA and not SslMode.VerifyFull)
             throw new ArgumentException("SSL Mode has to be Require or higher to be used with direct SSL Negotiation");
+
+        if (string.IsNullOrWhiteSpace(Host))
+            return; // SRV resolution not done yet, skip host-based checks
 
         if (!Host.Contains(','))
         {
