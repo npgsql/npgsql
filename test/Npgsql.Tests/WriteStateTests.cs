@@ -244,7 +244,7 @@ public class WriteStateTests : TestBase
 
         var param = new NpgsqlParameter<int> { ParameterName = "p", TypedValue = 42, DataTypeName = "integer" };
         param.ResolveTypeInfo(options, dbTypeResolver: null);
-        param.Bind(out _, out _);
+        param.Bind(PgConversionContext.Empty, out _, out _);
         // Trigger DisposeBindingState by invalidating the binding (Size setter is the cleanest no-op invalidator).
         param.Size = 0;
 
@@ -276,7 +276,7 @@ public class WriteStateTests : TestBase
     static void BindAndWriteToMemory(NpgsqlParameter param, PgSerializerOptions options)
     {
         param.ResolveTypeInfo(options, dbTypeResolver: null);
-        param.Bind(out _, out _);
+        param.Bind(PgConversionContext.Empty, out _, out _);
 
         var pgWriter = new PgWriter(new ArrayBufferWriter<byte>()).Init(PostgresMinimalDatabaseInfo.DefaultTypeCatalog);
         var task = param.Write(async: false, pgWriter, CancellationToken.None);
@@ -295,7 +295,7 @@ public class WriteStateTests : TestBase
 
         var param = new NpgsqlParameter<int> { ParameterName = "p", TypedValue = 42, DataTypeName = "integer" };
         param.ResolveTypeInfo(options, dbTypeResolver: null);
-        Assert.Throws<InvalidCastException>(() => param.Bind(out _, out _));
+        Assert.Throws<InvalidCastException>(() => param.Bind(PgConversionContext.Empty, out _, out _));
 
         var states = tracker.Snapshot();
         Assert.That(states, Has.Count.EqualTo(1), "provider should have produced one writeState");
@@ -313,7 +313,7 @@ public class WriteStateTests : TestBase
 
         var param = new NpgsqlParameter<int> { ParameterName = "p", TypedValue = 42, DataTypeName = "integer" };
         param.ResolveTypeInfo(options, dbTypeResolver: null);
-        Assert.Throws<InvalidCastException>(() => param.Bind(out _, out _));
+        Assert.Throws<InvalidCastException>(() => param.Bind(PgConversionContext.Empty, out _, out _));
 
         var states = tracker.Snapshot();
         Assert.That(states, Has.Count.EqualTo(1), "provider should have produced one writeState");
@@ -335,7 +335,7 @@ public class WriteStateTests : TestBase
         var param = new NpgsqlParameter<int[]>
             { ParameterName = "p", TypedValue = new[] { 1, 2, 3 }, DataTypeName = "integer[]" };
         param.ResolveTypeInfo(options, dbTypeResolver: null);
-        Assert.Throws<InvalidCastException>(() => param.Bind(out _, out _));
+        Assert.Throws<InvalidCastException>(() => param.Bind(PgConversionContext.Empty, out _, out _));
 
         var states = tracker.Snapshot();
         Assert.That(states, Has.Count.GreaterThanOrEqualTo(1), "provider should have produced per-element writeStates");
@@ -358,7 +358,7 @@ public class WriteStateTests : TestBase
         var param = new NpgsqlParameter<int[]>
             { ParameterName = "p", TypedValue = new[] { 1, 2, 3 }, DataTypeName = "integer[]" };
         param.ResolveTypeInfo(options, dbTypeResolver: null);
-        Assert.Throws<InvalidCastException>(() => param.Bind(out _, out _));
+        Assert.Throws<InvalidCastException>(() => param.Bind(PgConversionContext.Empty, out _, out _));
 
         var states = tracker.Snapshot();
         Assert.That(states, Has.Count.GreaterThanOrEqualTo(1), "provider should have produced per-element writeStates");
@@ -453,7 +453,7 @@ public class WriteStateTests : TestBase
         var param = new NpgsqlParameter<NpgsqlRange<int>>
             { ParameterName = "p", TypedValue = new NpgsqlRange<int>(1, 10), DataTypeName = "int4range" };
         param.ResolveTypeInfo(options, dbTypeResolver: null);
-        Assert.Throws<InvalidCastException>(() => param.Bind(out _, out _));
+        Assert.Throws<InvalidCastException>(() => param.Bind(PgConversionContext.Empty, out _, out _));
 
         var states = tracker.Snapshot();
         Assert.That(states, Has.Count.GreaterThanOrEqualTo(1), "subtype should have produced bound writeStates");

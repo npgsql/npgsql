@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Npgsql.Internal;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -703,7 +704,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         }
     }
 
-    internal void ProcessParameters(NpgsqlDataSource.ReloadableState reloadableState, bool validateValues, CommandType commandType)
+    internal void ProcessParameters(NpgsqlDataSource.ReloadableState reloadableState, PgConversionContext conversionContext, bool validateValues, CommandType commandType)
     {
         HasOutputParameters = false;
         PlaceholderType = PlaceholderType.NoParameters;
@@ -762,7 +763,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             p.ResolveTypeInfo(reloadableState.SerializerOptions, reloadableState.DbTypeResolver, willBind: validateValues);
             if (validateValues)
-                p.Bind(out _, out _);
+                p.Bind(conversionContext, out _, out _);
         }
     }
 
