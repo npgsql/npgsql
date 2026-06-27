@@ -76,23 +76,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: NuGet Cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v5.3.0
-
-      - name: Build
-        run: dotnet build -c ${{ matrix.config }}
-        shell: bash
-
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
+        id: setup-postgresql-linux
         if: startsWith(matrix.os, 'ubuntu')
+        background: true
         run: |
           # First uninstall any PostgreSQL installed on the image
           dpkg-query -W --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg -P postgresql
@@ -161,7 +148,9 @@ jobs:
       #  uses: mxschmitt/action-tmate@v3
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
+        id: setup-postgresql-windows
         if: startsWith(matrix.os, 'windows')
+        background: true
         shell: bash
         run: |
           # Find EnterpriseDB version number
@@ -231,7 +220,9 @@ jobs:
           echo "host replication all all md5" >> pgsql/PGDATA/pg_hba.conf
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (MacOS)
+        id: setup-postgresql-macos
         if: startsWith(matrix.os, 'macos')
+        background: true
         run: |
             brew update
             brew install postgresql@${{ matrix.pg_major }}
@@ -307,8 +298,26 @@ jobs:
             done
             psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'" postgres
 
+      - name: NuGet Cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v5.3.0
+
+      - name: Build
+        run: dotnet build -c ${{ matrix.config }}
+        shell: bash
+
+      - name: Wait for PostgreSQL setup
+        wait-all: true
+
       - name: Test
-        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --logger "GitHubActions;report-warnings=false" --blame-crash --blame-hang-timeout 30s
+        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} --no-build --logger "GitHubActions;report-warnings=false" --blame-crash --blame-hang-timeout 30s
         shell: bash
 
       - name: Upload Test Hang Dumps
