@@ -249,6 +249,10 @@ public sealed partial class NpgsqlConnector
 
     static readonly SslApplicationProtocol _alpnProtocol = new("postgresql");
 
+    // By default, consider that we do have kerberos library installed
+    // It'll be set to false the first time we hit TypeInitializationException
+    static bool hasKerberosLibrary = true;
+
 #pragma warning disable CA1859
     // We're casting to IDisposable to not explicitly reference X509Certificate2 for NativeAOT
     // TODO: probably pointless now, needs to be rechecked
@@ -603,6 +607,15 @@ public sealed partial class NpgsqlConnector
 
     internal async ValueTask<GssEncryptionResult> GSSEncrypt(bool async, bool isRequired, CancellationToken cancellationToken)
     {
+        // There's no kerberos library installed, so no point in going further
+        if (!hasKerberosLibrary)
+        {
+            if (isRequired)
+                throw new NpgsqlException("Unable to load native library to negotiate GSS encryption");
+
+            return GssEncryptionResult.GetCredentialFailure;
+        }
+
         ConnectionLogger.LogTrace("Negotiating GSS encryption");
 
         var targetName = $"{KerberosServiceName}/{Host}";
@@ -632,6 +645,9 @@ public sealed partial class NpgsqlConnector
             }
             catch (TypeInitializationException)
             {
+                // No kerberos library, make sure others do not even attempt to request it
+                hasKerberosLibrary = false;
+
                 // On UNIX .NET throws TypeInitializationException if it's unable to load the native library
                 if (isRequired)
                     throw new NpgsqlException("Unable to load native library to negotiate GSS encryption");
