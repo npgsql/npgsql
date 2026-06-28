@@ -187,12 +187,15 @@ public static class TestUtil
 
     static int _counter;
 
+    internal static string GenerateTempTableName()
+        => $"temp_table{Environment.ProcessId}_{Interlocked.Increment(ref _tempTableCounter)}";
+
     /// <summary>
     /// Creates a table with a unique name, usable for a single test.
     /// </summary>
     internal static async Task<string> CreateTempTable(NpgsqlConnection conn, string columns)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
 
         await conn.ExecuteNonQueryAsync(@$"
 START TRANSACTION;
@@ -210,7 +213,7 @@ CREATE TABLE {tableName} ({columns});");
     /// </summary>
     internal static async Task<string> GetTempTableName(NpgsqlConnection conn)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
         await conn.ExecuteNonQueryAsync(@$"
 START TRANSACTION;
 SELECT pg_advisory_xact_lock(0);
@@ -225,7 +228,7 @@ COMMIT");
     /// </summary>
     internal static async Task<string> CreateTempTable(NpgsqlDataSource dataSource, string columns)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
         await dataSource.ExecuteNonQueryAsync(@$"
 START TRANSACTION;
 SELECT pg_advisory_xact_lock(0);

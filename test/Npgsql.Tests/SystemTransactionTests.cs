@@ -1,6 +1,5 @@
 using System;
 using System.Data;
-using System.Threading;
 using System.Transactions;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -487,7 +486,7 @@ public class SystemTransactionTests : TestBase
 
     internal static string CreateTempTable(NpgsqlDataSource dataSource, string columns)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
         dataSource.ExecuteNonQuery(@$"
 START TRANSACTION; SELECT pg_advisory_xact_lock(0);
 DROP TABLE IF EXISTS {tableName} CASCADE;

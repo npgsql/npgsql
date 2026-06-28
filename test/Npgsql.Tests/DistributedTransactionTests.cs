@@ -620,7 +620,7 @@ Start formatting event queue, going to sleep a bit for late events
 
     internal static string CreateTempTable(NpgsqlConnection conn, string columns)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
         conn.ExecuteNonQuery(@$"
 START TRANSACTION; SELECT pg_advisory_xact_lock(0);
 DROP TABLE IF EXISTS {tableName} CASCADE;
