@@ -13,8 +13,8 @@ namespace Npgsql.Internal.ResolverFactories;
 [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
 sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 {
-    public override IPgTypeInfoResolver CreateResolver() => new EnumResolver();
-    public override IPgTypeInfoResolver CreateArrayResolver() => new EnumArrayResolver();
+    public override IPgTypeInfoResolver CreateResolver() => new PgEnumResolver();
+    public override IPgTypeInfoResolver CreateArrayResolver() => new PgEnumArrayResolver();
 
     public override IPgTypeInfoResolver CreateRangeResolver() => new RangeResolver();
     public override IPgTypeInfoResolver CreateRangeArrayResolver() => new RangeArrayResolver();
@@ -24,7 +24,7 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
 
     [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
     [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
-    class EnumResolver : DynamicTypeInfoResolver
+    class PgEnumResolver : DynamicTypeInfoResolver
     {
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
         {
@@ -45,18 +45,18 @@ sealed class UnmappedTypeInfoResolverFactory : PgTypeInfoResolverFactory
                         labelToEnum[enumName] = enumValue;
                     }
 
-                    // EnumConverter is format-agnostic — register the same instance for both binary and
+                    // PgEnumConverter is format-agnostic — register the same instance for both binary and
                     // text so historical text-format binding paths continue to work.
-                    var converter = (PgConverter)Activator.CreateInstance(typeof(EnumConverter<>).MakeGenericType(mapping.Type),
+                    var converter = (PgConverter)Activator.CreateInstance(typeof(PgEnumConverter<>).MakeGenericType(mapping.Type),
                         enumToLabel, labelToEnum)!;
-                    return mapping.CreateInfo(options, converter, converter);
+                    return mapping.CreateInfo(options, binary: converter, text: converter);
                 });
         }
     }
 
     [RequiresUnreferencedCode("The use of unmapped enums, ranges or multiranges requires reflection usage which is incompatible with trimming.")]
     [RequiresDynamicCode("The use of unmapped enums, ranges or multiranges requires dynamic code usage which is incompatible with NativeAOT.")]
-    sealed class EnumArrayResolver : EnumResolver
+    sealed class PgEnumArrayResolver : PgEnumResolver
     {
         protected override DynamicMappingCollection? GetMappings(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
             => type is not null && IsArrayLikeType(type, out var elementType) && IsArrayDataTypeName(dataTypeName, options, out var elementDataTypeName)
