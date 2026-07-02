@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -92,6 +94,13 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     readonly INpgsqlNameTranslator _defaultNameTranslator;
     readonly IDisposable? _eventSourceEvents;
+
+    /// <summary>
+    /// A cache of loaded certificates that is used in case e.g. the "PGSSLROOTCERT" environment variable is set.
+    /// Although we don't expect the value of that variable to differ between data sources, we want to make sure
+    /// that data sources don't inherit cached data from other data sources.
+    /// </summary>
+    internal ConcurrentDictionary<(string, DateTime), X509Certificate2Collection> CustomRootCertificateCache { get; } = new();
 
     internal NpgsqlDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig, bool reportMetrics)
     {
