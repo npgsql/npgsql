@@ -2,7 +2,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.7.0" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.16.0" />
 
     <!-- Compatibility -->
     <PackageVersion Include="System.Text.Json" Version="8.0.5" />
