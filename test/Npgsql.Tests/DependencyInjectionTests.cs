@@ -4,11 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Npgsql.Tests;
 using Npgsql.Tests.Support;
 using NUnit.Framework;
 
-namespace Npgsql.DependencyInjection.Tests;
+namespace Npgsql.Tests;
 
 [TestFixture(DataSourceMode.Standard)]
 [TestFixture(DataSourceMode.Slim)]
