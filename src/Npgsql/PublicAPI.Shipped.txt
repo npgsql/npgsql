@@ -29,7 +29,9 @@ Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.NpgsqlSnakeCaseNameTranslat
 Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.TranslateMemberName(string! clrName) -> string!
 Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.TranslateTypeName(string! clrName) -> string!
 Npgsql.NoticeEventHandler
+virtual Npgsql.NoticeEventHandler.Invoke(object! sender, Npgsql.NpgsqlNoticeEventArgs! e) -> void
 Npgsql.NotificationEventHandler
+virtual Npgsql.NotificationEventHandler.Invoke(object! sender, Npgsql.NpgsqlNotificationEventArgs! e) -> void
 Npgsql.NpgsqlBatch
 Npgsql.NpgsqlBatch.BatchCommands.get -> Npgsql.NpgsqlBatchCommandCollection!
 Npgsql.NpgsqlBatch.Connection.get -> Npgsql.NpgsqlConnection?
@@ -358,7 +360,7 @@ Npgsql.NpgsqlDataSource.Password.set -> void
 Npgsql.NpgsqlDataSource.ReloadTypes() -> void
 Npgsql.NpgsqlDataSource.ReloadTypesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlDataSourceBuilder
-Npgsql.NpgsqlDataSourceBuilder.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
+[NPG9001]Npgsql.NpgsqlDataSourceBuilder.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
 Npgsql.NpgsqlDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
 Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
 Npgsql.NpgsqlDataSourceBuilder.ConfigureJsonOptions(System.Text.Json.JsonSerializerOptions! serializerOptions) -> Npgsql.NpgsqlDataSourceBuilder!
@@ -509,11 +511,13 @@ Npgsql.NpgsqlRawCopyStream.CancelAsync() -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlRowUpdatedEventArgs
 Npgsql.NpgsqlRowUpdatedEventArgs.NpgsqlRowUpdatedEventArgs(System.Data.DataRow! dataRow, System.Data.IDbCommand? command, System.Data.StatementType statementType, System.Data.Common.DataTableMapping! tableMapping) -> void
 Npgsql.NpgsqlRowUpdatedEventHandler
+virtual Npgsql.NpgsqlRowUpdatedEventHandler.Invoke(object! sender, Npgsql.NpgsqlRowUpdatedEventArgs! e) -> void
 Npgsql.NpgsqlRowUpdatingEventArgs
 Npgsql.NpgsqlRowUpdatingEventArgs.NpgsqlRowUpdatingEventArgs(System.Data.DataRow! dataRow, System.Data.IDbCommand? command, System.Data.StatementType statementType, System.Data.Common.DataTableMapping! tableMapping) -> void
 Npgsql.NpgsqlRowUpdatingEventHandler
+virtual Npgsql.NpgsqlRowUpdatingEventHandler.Invoke(object! sender, Npgsql.NpgsqlRowUpdatingEventArgs! e) -> void
 Npgsql.NpgsqlSlimDataSourceBuilder
-Npgsql.NpgsqlSlimDataSourceBuilder.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
+[NPG9001]Npgsql.NpgsqlSlimDataSourceBuilder.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
 Npgsql.NpgsqlSlimDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
 Npgsql.NpgsqlSlimDataSourceBuilder.ConfigureJsonOptions(System.Text.Json.JsonSerializerOptions! serializerOptions) -> Npgsql.NpgsqlSlimDataSourceBuilder!
@@ -677,7 +681,9 @@ Npgsql.PostgresTypes.PostgresType.OID.get -> uint
 Npgsql.PostgresTypes.PostgresType.Range.get -> Npgsql.PostgresTypes.PostgresRangeType?
 Npgsql.PostgresTypes.UnknownBackendType
 Npgsql.ProvideClientCertificatesCallback
+virtual Npgsql.ProvideClientCertificatesCallback.Invoke(System.Security.Cryptography.X509Certificates.X509CertificateCollection! certificates) -> void
 Npgsql.ProvidePasswordCallback
+virtual Npgsql.ProvidePasswordCallback.Invoke(string! host, int port, string! database, string! username) -> string!
 Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions
 Npgsql.Replication.Internal.LogicalReplicationSlot
 Npgsql.Replication.Internal.LogicalReplicationSlot.ConsistentPoint.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
@@ -1018,8 +1024,8 @@ Npgsql.StatementType.Select = 1 -> Npgsql.StatementType
 Npgsql.StatementType.Unknown = 0 -> Npgsql.StatementType
 Npgsql.StatementType.Update = 4 -> Npgsql.StatementType
 Npgsql.TypeMapping.INpgsqlTypeMapper
-Npgsql.TypeMapping.INpgsqlTypeMapper.AddDbTypeResolverFactory(Npgsql.Internal.DbTypeResolverFactory! factory) -> void
-Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
+[NPG9003]Npgsql.TypeMapping.INpgsqlTypeMapper.AddDbTypeResolverFactory(Npgsql.Internal.DbTypeResolverFactory! factory) -> void
+[NPG9001]Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeInfoResolverFactory(Npgsql.Internal.PgTypeInfoResolverFactory! factory) -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.ConfigureJsonOptions(System.Text.Json.JsonSerializerOptions! serializerOptions) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.set -> void
@@ -1062,6 +1068,7 @@ NpgsqlTypes.NpgsqlBox.Width.get -> double
 NpgsqlTypes.NpgsqlCidr
 NpgsqlTypes.NpgsqlCidr.Address.get -> System.Net.IPAddress!
 NpgsqlTypes.NpgsqlCidr.Deconstruct(out System.Net.IPAddress! address, out byte netmask) -> void
+NpgsqlTypes.NpgsqlCidr.Equals(NpgsqlTypes.NpgsqlCidr other) -> bool
 NpgsqlTypes.NpgsqlCidr.Netmask.get -> byte
 NpgsqlTypes.NpgsqlCidr.NpgsqlCidr() -> void
 NpgsqlTypes.NpgsqlCidr.NpgsqlCidr(System.Net.IPAddress! address, byte netmask) -> void
@@ -1175,6 +1182,7 @@ NpgsqlTypes.NpgsqlDbType.Xml = 28 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlInet
 NpgsqlTypes.NpgsqlInet.Address.get -> System.Net.IPAddress!
 NpgsqlTypes.NpgsqlInet.Deconstruct(out System.Net.IPAddress! address, out byte netmask) -> void
+NpgsqlTypes.NpgsqlInet.Equals(NpgsqlTypes.NpgsqlInet other) -> bool
 NpgsqlTypes.NpgsqlInet.Netmask.get -> byte
 NpgsqlTypes.NpgsqlInet.NpgsqlInet() -> void
 NpgsqlTypes.NpgsqlInet.NpgsqlInet(System.Net.IPAddress! address) -> void
@@ -1892,6 +1900,8 @@ override Npgsql.Schema.NpgsqlDbColumn.this[string! propertyName].get -> object?
 override NpgsqlTypes.NpgsqlBox.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlBox.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlBox.ToString() -> string!
+~override NpgsqlTypes.NpgsqlCidr.Equals(object obj) -> bool
+override NpgsqlTypes.NpgsqlCidr.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlCidr.ToString() -> string!
 override NpgsqlTypes.NpgsqlCircle.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlCircle.GetHashCode() -> int
@@ -1899,6 +1909,8 @@ override NpgsqlTypes.NpgsqlCircle.ToString() -> string!
 override NpgsqlTypes.NpgsqlCube.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlCube.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlCube.ToString() -> string!
+~override NpgsqlTypes.NpgsqlInet.Equals(object obj) -> bool
+override NpgsqlTypes.NpgsqlInet.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlInet.ToString() -> string!
 override NpgsqlTypes.NpgsqlInterval.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlInterval.GetHashCode() -> int
@@ -1988,6 +2000,8 @@ static NpgsqlTypes.NpgsqlBox.operator !=(NpgsqlTypes.NpgsqlBox x, NpgsqlTypes.Np
 static NpgsqlTypes.NpgsqlBox.operator ==(NpgsqlTypes.NpgsqlBox x, NpgsqlTypes.NpgsqlBox y) -> bool
 static NpgsqlTypes.NpgsqlCidr.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlCidr cidr) -> System.Net.IPAddress!
 static NpgsqlTypes.NpgsqlCidr.implicit operator NpgsqlTypes.NpgsqlInet(NpgsqlTypes.NpgsqlCidr cidr) -> NpgsqlTypes.NpgsqlInet
+static NpgsqlTypes.NpgsqlCidr.operator !=(NpgsqlTypes.NpgsqlCidr left, NpgsqlTypes.NpgsqlCidr right) -> bool
+static NpgsqlTypes.NpgsqlCidr.operator ==(NpgsqlTypes.NpgsqlCidr left, NpgsqlTypes.NpgsqlCidr right) -> bool
 static NpgsqlTypes.NpgsqlCircle.operator !=(NpgsqlTypes.NpgsqlCircle x, NpgsqlTypes.NpgsqlCircle y) -> bool
 static NpgsqlTypes.NpgsqlCircle.operator ==(NpgsqlTypes.NpgsqlCircle x, NpgsqlTypes.NpgsqlCircle y) -> bool
 static NpgsqlTypes.NpgsqlCube.operator !=(NpgsqlTypes.NpgsqlCube x, NpgsqlTypes.NpgsqlCube y) -> bool
@@ -1995,6 +2009,8 @@ static NpgsqlTypes.NpgsqlCube.operator ==(NpgsqlTypes.NpgsqlCube x, NpgsqlTypes.
 static NpgsqlTypes.NpgsqlInet.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlInet inet) -> System.Net.IPAddress!
 static NpgsqlTypes.NpgsqlInet.implicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPAddress! ip) -> NpgsqlTypes.NpgsqlInet
 static NpgsqlTypes.NpgsqlInet.implicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPNetwork cidr) -> NpgsqlTypes.NpgsqlInet
+static NpgsqlTypes.NpgsqlInet.operator !=(NpgsqlTypes.NpgsqlInet left, NpgsqlTypes.NpgsqlInet right) -> bool
+static NpgsqlTypes.NpgsqlInet.operator ==(NpgsqlTypes.NpgsqlInet left, NpgsqlTypes.NpgsqlInet right) -> bool
 static NpgsqlTypes.NpgsqlLSeg.operator !=(NpgsqlTypes.NpgsqlLSeg x, NpgsqlTypes.NpgsqlLSeg y) -> bool
 static NpgsqlTypes.NpgsqlLSeg.operator ==(NpgsqlTypes.NpgsqlLSeg x, NpgsqlTypes.NpgsqlLSeg y) -> bool
 static NpgsqlTypes.NpgsqlLine.operator !=(NpgsqlTypes.NpgsqlLine x, NpgsqlTypes.NpgsqlLine y) -> bool
