@@ -5,6 +5,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../Shared/TestDatabase.cs" Link="Shared/TestDatabase.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AdoNet.Specification.Tests" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />

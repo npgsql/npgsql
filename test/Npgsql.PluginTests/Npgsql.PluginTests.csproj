@@ -20,4 +20,7 @@
     <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
     <ProjectReference Include="../../src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/AssemblySetUp.cs" Link="Shared/AssemblySetUp.cs" />
+  </ItemGroup>
 </Project>

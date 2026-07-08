@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,18 +17,30 @@ namespace Npgsql.Tests;
 public static class TestUtil
 {
     /// <summary>
-    /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
-    /// test database.
+    /// Base connection string for the test database, used when the NPGSQL_TEST_DB environment variable is not defined.
+    /// The database name can be overridden by <see cref="TestDatabaseAttribute"/> on a test assembly.
     /// </summary>
     public const string DefaultConnectionString =
         "Host=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0;SSL Mode=Disable";
 
     /// <summary>
     /// The connection string that will be used when opening the connection to the tests database.
+    /// The database name can be overridden by <see cref="TestDatabaseAttribute"/> on a test assembly.
     /// May be overridden in fixtures, e.g. to set special connection parameters
     /// </summary>
-    public static string ConnectionString { get; }
-        = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
+    public static string ConnectionString => GetConnectionString(typeof(TestUtil).Assembly);
+
+    static readonly ConcurrentDictionary<Assembly, string> ConnectionStrings = new();
+
+    public static string GetConnectionString(Assembly testAssembly)
+        => ConnectionStrings.GetOrAdd(testAssembly, static assembly =>
+            TestDatabase.CreateConnectionString(DefaultConnectionString, assembly));
+
+    public static void EnsureTestDatabase()
+        => EnsureTestDatabase(typeof(TestUtil).Assembly);
+
+    public static void EnsureTestDatabase(Assembly testAssembly)
+        => TestDatabase.EnsureTestDatabase(GetConnectionString(testAssembly));
 
     public static bool IsOnBuildServer =>
         Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != null ||
@@ -187,12 +201,15 @@ public static class TestUtil
 
     static int _counter;
 
+    internal static string GenerateTempTableName()
+        => "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+
     /// <summary>
     /// Creates a table with a unique name, usable for a single test.
     /// </summary>
     internal static async Task<string> CreateTempTable(NpgsqlConnection conn, string columns)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
 
         await conn.ExecuteNonQueryAsync(@$"
 START TRANSACTION;
@@ -210,7 +227,7 @@ CREATE TABLE {tableName} ({columns});");
     /// </summary>
     internal static async Task<string> GetTempTableName(NpgsqlConnection conn)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
         await conn.ExecuteNonQueryAsync(@$"
 START TRANSACTION;
 SELECT pg_advisory_xact_lock(0);
@@ -225,7 +242,7 @@ COMMIT");
     /// </summary>
     internal static async Task<string> CreateTempTable(NpgsqlDataSource dataSource, string columns)
     {
-        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = GenerateTempTableName();
         await dataSource.ExecuteNonQueryAsync(@$"
 START TRANSACTION;
 SELECT pg_advisory_xact_lock(0);
@@ -317,7 +334,7 @@ CREATE TABLE {tableName} ({columns});");
         return typeName;
     }
 
-    internal static volatile int _tempTableCounter;
+    static volatile int _tempTableCounter;
     static volatile int _tempViewCounter;
     static volatile int _tempFunctionCounter;
     static volatile int _tempProcedureCounter;

@@ -16,6 +16,10 @@
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../Shared/AssemblySetUp.cs" Link="Shared/AssemblySetUp.cs" />
+    <Compile Include="../Shared/TestDatabase.cs" Link="Shared/TestDatabase.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="..\..\.build\ca.crt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

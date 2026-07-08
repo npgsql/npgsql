@@ -21,7 +21,7 @@ public abstract class TestBase
     /// The connection string that will be used when opening the connection to the tests database.
     /// May be overridden in fixtures, e.g. to set special connection parameters
     /// </summary>
-    public virtual string ConnectionString => TestUtil.ConnectionString;
+    public virtual string ConnectionString => TestUtil.GetConnectionString(GetType().Assembly);
 
     static readonly SemaphoreSlim DatabaseCreationLock = new(1);
 
@@ -807,7 +807,7 @@ public abstract class TestBase
                     }
 
                     // Database does not exist and we have the lock, proceed to creation
-                    var builder = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString)
+                    var builder = new NpgsqlConnectionStringBuilder(conn.ConnectionString)
                     {
                         Pooling = false,
                         Database = "postgres"
@@ -815,7 +815,7 @@ public abstract class TestBase
 
                     using var adminConn = new NpgsqlConnection(builder.ConnectionString);
                     adminConn.Open();
-                    adminConn.ExecuteNonQuery("CREATE DATABASE " + conn.Database);
+                    adminConn.ExecuteNonQuery($"CREATE DATABASE {new NpgsqlCommandBuilder().QuoteIdentifier(conn.Database)}");
                     adminConn.Close();
                     Thread.Sleep(1000);
 
