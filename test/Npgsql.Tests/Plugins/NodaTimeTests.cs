@@ -3,7 +3,6 @@ using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.NodaTime.Properties;
-using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -11,7 +10,7 @@ using static Npgsql.Tests.TestUtil;
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable AccessToDisposedClosure
 
-namespace Npgsql.PluginTests;
+namespace Npgsql.Tests.Plugins;
 
 public class NodaTimeTests : TestBase, IDisposable
 {

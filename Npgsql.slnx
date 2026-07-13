@@ -27,7 +27,6 @@
     <File Path="test/Directory.Build.props" />
     <Project Path="test/Npgsql.Benchmarks/Npgsql.Benchmarks.csproj" />
     <Project Path="test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj" />
-    <Project Path="test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" />
     <Project Path="test/Npgsql.Specification.Tests/Npgsql.Specification.Tests.csproj" />
     <Project Path="test/Npgsql.Tests/Npgsql.Tests.csproj" />
   </Folder>
