@@ -2,19 +2,18 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
-using Npgsql.Tests;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 
-namespace Npgsql.PluginTests;
+namespace Npgsql.Tests.Plugins;
 
 [TestFixture(false)]
 #if DEBUG
 [TestFixture(true)]
 [NonParallelizable] // Since this test suite manipulates an AppContext switch
 #endif
-public class NodaTimeInfinityTests : TestBase, IDisposable
+public class NodaTimeInfinityTests : TestBase
 {
     [Test] // #4715
     public async Task DateRange_with_upper_bound_infinity()
@@ -377,14 +376,20 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         }
     }
 
-    protected override NpgsqlDataSource DataSource { get; }
+    readonly bool _disableDateTimeInfinityConversions;
+    NpgsqlDataSource _dataSource = null!;
+    protected override NpgsqlDataSource DataSource => _dataSource;
 
     public NodaTimeInfinityTests(bool disableDateTimeInfinityConversions)
+        => _disableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
+
+    [OneTimeSetUp]
+    public void Setup()
     {
 #if DEBUG
-        Statics.DisableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
+        Statics.DisableDateTimeInfinityConversions = _disableDateTimeInfinityConversions;
 #else
-        if (disableDateTimeInfinityConversions)
+        if (_disableDateTimeInfinityConversions)
         {
             Assert.Ignore(
                 "NodaTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
@@ -394,15 +399,16 @@ public class NodaTimeInfinityTests : TestBase, IDisposable
         var builder = CreateDataSourceBuilder();
         builder.UseNodaTime();
         builder.ConnectionStringBuilder.Options = "-c TimeZone=Europe/Berlin";
-        DataSource = builder.Build();
+        _dataSource = builder.Build();
     }
 
-    public void Dispose()
+    [OneTimeTearDown]
+    public void Teardown()
     {
 #if DEBUG
         Statics.DisableDateTimeInfinityConversions = false;
 #endif
 
-        DataSource.Dispose();
+        _dataSource.Dispose();
     }
 }

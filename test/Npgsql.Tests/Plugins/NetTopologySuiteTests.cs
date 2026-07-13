@@ -4,12 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Implementation;
-using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
-namespace Npgsql.PluginTests;
+namespace Npgsql.Tests.Plugins;
 
 public class NetTopologySuiteTests : TestBase
 {

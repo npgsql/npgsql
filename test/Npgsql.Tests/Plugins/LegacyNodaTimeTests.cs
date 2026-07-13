@@ -3,13 +3,12 @@ using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.NodaTime.Internal;
-using Npgsql.Tests;
 using NUnit.Framework;
 
-namespace Npgsql.PluginTests;
+namespace Npgsql.Tests.Plugins;
 
 [NonParallelizable] // Since this test suite manipulates an AppContext switch
-public class LegacyNodaTimeTests : TestBase, IDisposable
+public class LegacyNodaTimeTests : TestBase
 {
     const string TimeZone = "Europe/Berlin";
 
@@ -61,9 +60,11 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
 
     #region Support
 
-    protected override NpgsqlDataSource DataSource { get; }
+    NpgsqlDataSource _dataSource = null!;
+    protected override NpgsqlDataSource DataSource => _dataSource;
 
-    public LegacyNodaTimeTests()
+    [OneTimeSetUp]
+    public void Setup()
     {
 #if DEBUG
         NodaTimeUtils.LegacyTimestampBehavior = true;
@@ -72,22 +73,25 @@ public class LegacyNodaTimeTests : TestBase, IDisposable
         var builder = CreateDataSourceBuilder();
         builder.UseNodaTime();
         builder.ConnectionStringBuilder.Timezone = TimeZone;
-        DataSource = builder.Build();
+        _dataSource = builder.Build();
+        NpgsqlDataSourceBuilder.ResetGlobalMappings(overwrite: true);
 #else
         Assert.Ignore(
             "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
 #endif
     }
 
-    public void Dispose()
-    {
 #if DEBUG
+    [OneTimeTearDown]
+    public void Teardown()
+    {
         NodaTimeUtils.LegacyTimestampBehavior = false;
         Util.Statics.LegacyTimestampBehavior = false;
 
-        DataSource.Dispose();
-#endif
+        _dataSource.Dispose();
+        NpgsqlDataSourceBuilder.ResetGlobalMappings(overwrite: true);
     }
+#endif
 
     #endregion Support
 }
