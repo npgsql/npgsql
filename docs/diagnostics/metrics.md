@@ -10,7 +10,7 @@ Npgsql supports reporting aggregated metrics which provide snapshots on its stat
 Metrics are usually collected and processed via tools such as [Prometheus](https://prometheus.io), and plotted on dashboards via tools such as [Grafana](https://grafana.com). Configuring .NET to emit metrics to these tools is beyond the scope of this documentation, but you can use the command-line tool `dotnet-counters` to quickly test Npgsql's support. To collect metrics via `dotnet-counters`, [install the `dotnet-counters` tool](https://docs.microsoft.com/dotnet/core/diagnostics/dotnet-counters). Then, find out your process PID, and run it as follows:
 
 ```output
-dotnet counters monitor Npgsql -p <PID>
+dotnet counters monitor --counters Npgsql -p <PID>
 ```
 
 `dotnet-counters` will now attach to your running process and start reporting continuous counter data:
