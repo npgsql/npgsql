@@ -268,10 +268,10 @@ sealed class UserTypeMapper : PgTypeInfoResolverFactory
         internal override void AddMapping(TypeInfoMappingCollection mappings)
             => mappings.AddStructType<TEnum>(PgTypeName, (options, mapping, _) =>
             {
-                // EnumConverter is format-agnostic (encodes the label via TextEncoding for both wire formats);
+                // PgEnumConverter is format-agnostic (encodes the label via TextEncoding for both wire formats);
                 // expose it on both slots so text-format binds/reads work, and prefer text since the wire
                 // representation of enum values is the label string.
-                var converter = new EnumConverter<TEnum>(_enumToLabel, _labelToEnum);
+                var converter = new PgEnumConverter<TEnum>(_enumToLabel, _labelToEnum);
                 return mapping.CreateInfo(options, converter, converter, preferredFormat: DataFormat.Text);
             }, isDefault: true);
 
