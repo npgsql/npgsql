@@ -109,7 +109,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     int ColumnCount => RowDescription!.Count;
 
     /// <summary>
-    /// Stores the last converter info resolved by column, to speed up repeated reading.
+    /// Stores the last converter info resolved by column, to speed up repeated reading. Per-entry
+    /// context validation lives on <see cref="ReadConversionContext.SourceContext"/>; the cache-hit
+    /// check in <see cref="GetConversionContext"/> compares it against the live connector context, so
+    /// entries built (or preloaded by <see cref="RowDescriptionMessage.LoadColumnInfoCache"/>) under a
+    /// rotated PgConversionContext rebind lazily on next access without a bulk wipe.
     /// </summary>
     ReadConversionContext[]? ConversionContextCache { get; set; }
 
@@ -1704,7 +1708,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         Justification = "Members are only dynamically accessed by Npgsql via GetFieldType by GetSchema, and only in certain cases. " +
                         "Holding PublicFields and PublicProperties metadata on all our mapped types just for that case is the wrong tradeoff.")]
     public override Type GetFieldType(int ordinal)
-        => GetField(ordinal).FieldType;
+        => GetField(ordinal).GetFieldType(Connector.ConversionContext);
 
     /// <summary>
     /// Returns an <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.
@@ -2042,14 +2046,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             Debug.Assert(contextRef.IsDefault || ReferenceEquals(Connector.SerializerOptions, contextRef.TypeInfo.Options), "Cache is bleeding over");
 
-            if (contextRef.TypeInfo is not { } typeInfo || !typeInfo.CanReadTo(type))
-                RowDescription!.GetConversionContext(ordinal, type, ref contextRef);
+            // Cache hit requires: entry present + can read the requested type + either invariant binding
+            // (SourceContext null, never goes stale) or SourceContext matches the live PgConversionContext.
+            // The SourceContext-null short-circuit means we don't touch Connector.ConversionContext at
+            // all for invariant cache hits (the common case). The SourceContext gate catches non-invariant
+            // entries preloaded by LoadColumnInfoCache (prepared statements) or carried over from a prior
+            // reader execution that ran under a rotated context, forcing a rebind before reuse.
+            if (contextRef.TypeInfo is not { } typeInfo || !typeInfo.CanReadTo(type)
+                || (contextRef.SourceContext is not null && !ReferenceEquals(contextRef.SourceContext, Connector.ConversionContext)))
+                RowDescription!.GetConversionContext(ordinal, Connector.ConversionContext, type, ref contextRef);
 
             context = contextRef;
         }
         else
         {
-            context = RowDescription![ordinal].ObjectConversionContext;
+            context = RowDescription![ordinal].GetObjectConversionContext(Connector.ConversionContext);
         }
 
         return context;

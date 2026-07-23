@@ -117,6 +117,11 @@ public sealed class PgWriter
 
     internal PgWriter(IBufferWriter<byte> writer) => _writer = writer;
 
+    // The captured _conversionContext is per-Init, not per-write. Init runs once at the start of each
+    // command/copy operation, so the context reflects the connector's state at that point. PG protocol
+    // delivers ParameterStatus messages between commands (not mid-data), so by the time a context-rotating
+    // PS arrives, the in-flight write has completed and the next GetWriter→Init picks up the new context.
+    // Callers must not retain a PgWriter across a ReadyForQuery boundary.
     internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog, PgConversionContext? conversionContext = null, FlushMode flushMode = FlushMode.None)
     {
         if (_pos != _offset)
@@ -352,7 +357,11 @@ public sealed class PgWriter
 
         void Core(ReadOnlySpan<char> data, Encoding encoding)
         {
-            var encoder = encoding.GetEncoder();
+            // Use the connector-cached Encoder when the encoding matches the session's; getter resets it.
+            // Other encodings fall back to a fresh per-call encoder.
+            var encoder = encoding == _conversionContext.TextEncoding && _conversionContext.TextEncoder is { } cached
+                ? cached
+                : encoding.GetEncoder();
             var minBufferSize = encoding.GetMaxByteCount(1);
 
             bool completed;
@@ -422,7 +431,11 @@ public sealed class PgWriter
 
         async ValueTask Core(ReadOnlyMemory<char> data, Encoding encoding, CancellationToken cancellationToken)
         {
-            var encoder = encoding.GetEncoder();
+            // Use the connector-cached Encoder when the encoding matches the session's; getter resets it.
+            // Other encodings fall back to a fresh per-call encoder.
+            var encoder = encoding == _conversionContext.TextEncoding && _conversionContext.TextEncoder is { } cached
+                ? cached
+                : encoding.GetEncoder();
             var minBufferSize = encoding.GetMaxByteCount(1);
 
             bool completed;

@@ -20,7 +20,7 @@ abstract class CompositeFieldInfo
 
     /// <summary>True iff the field's concrete converter returned an invariant descriptor at probe time.</summary>
     /// <remarks>Provider-backed fields stay <c>false</c> (re-resolved at bind time).</remarks>
-    public bool IsInvariant { get; private set; }
+    public bool IsDescriptorInvariant { get; private set; }
 
     /// <summary>
     /// CompositeFieldInfo constructor.
@@ -48,11 +48,11 @@ abstract class CompositeFieldInfo
                     nameof(typeInfo));
 
             var fieldDescriptor = binaryConverter.GetDescriptor(new() { ConversionContext = PgConversionContext.Empty });
-            IsInvariant = fieldDescriptor.IsInvariant;
+            IsDescriptorInvariant = fieldDescriptor.IsInvariant;
             // Only cache requirements when the descriptor is invariant; otherwise the probed value is stale
             // relative to any context the inner converter may read, and GetReadInfo / GetWriteInfo re-resolve
             // via the converter directly against the live context.
-            if (IsInvariant)
+            if (IsDescriptorInvariant)
                 _binaryBufferRequirements = fieldDescriptor.BufferRequirements;
             ConcreteTypeInfo = direct;
             _concreteBinaryConverter = binaryConverter;
@@ -78,7 +78,7 @@ abstract class CompositeFieldInfo
         => ThrowHelper.ThrowInvalidOperationException(
             $"Composite field '{fieldName}' resolved to a concrete type info without a binary converter; composite fields require binary-format support.");
 
-    public PgConverter GetReadInfo(out Size readRequirement)
+    public PgConverter GetReadInfo(PgConversionContext conversionContext, out Size readRequirement)
     {
         var concreteTypeInfo = ConcreteTypeInfo ?? PgTypeInfo.MakeConcreteForField(new ProviderFieldContext { Name = Name });
         if (!concreteTypeInfo.SupportsReading)
@@ -86,15 +86,15 @@ abstract class CompositeFieldInfo
 
         if (!IsProviderBacked)
         {
-            readRequirement = IsInvariant
+            readRequirement = IsDescriptorInvariant
                 ? _binaryBufferRequirements.Read
-                : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements.Read;
+                : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = conversionContext }).BufferRequirements.Read;
             return _concreteBinaryConverter;
         }
 
         // Provider-resolved concrete: validate the binary slot is filled. TryBindField gates on slot presence
         // and surfaces the binding's converter so we don't have to redo the slot pick.
-        if (!concreteTypeInfo.TryBindField(DataFormat.Binary, out var binding))
+        if (!concreteTypeInfo.TryBindField(conversionContext, DataFormat.Binary, out var binding))
             ThrowMissingBinarySlot(Name);
         readRequirement = binding.BufferRequirement;
         return binding.Converter;
@@ -116,7 +116,7 @@ abstract class CompositeFieldInfo
                 if (!ConcreteTypeInfo.SupportsWriting)
                     AdoSerializerHelpers.ThrowWritingNotSupported(PgTypeInfo.Type, PgTypeInfo.Options, ConcreteTypeInfo.PgTypeId, resolved: true);
                 converter = _concreteBinaryConverter;
-                var reqs = IsInvariant
+                var reqs = IsDescriptorInvariant
                     ? _binaryBufferRequirements
                     : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = nestingContext.ConversionContext }).BufferRequirements;
                 ctx = BindContext.CreateUnchecked(DataFormat.Binary, reqs.Write, reqs.IsBindOptional, nestingContext.ConversionContext);
@@ -164,9 +164,15 @@ abstract class CompositeFieldInfo
         // compiler what it needs to drop the null-forgiving.
         if (IsProviderBacked)
             ThrowHelper.ThrowInvalidOperationException("GetDefaultWriteInfo is not supported for provider-backed fields.");
-        writeRequirement = IsInvariant
-            ? _binaryBufferRequirements.Write
-            : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements.Write;
+        // GetDefaultWriteInfo only runs on the Exact-sized composite fast path; non-invariant fields
+        // contribute Streaming via GetBinaryRequirements, which prevents Exact, so we should never get
+        // here with a non-invariant field. Promote to a runtime throw rather than Debug.Assert — if the
+        // upstream invariant ever breaks, _binaryBufferRequirements.Write would default to zero and we'd
+        // silently emit a zero-sized write that corrupts protocol framing.
+        if (!IsDescriptorInvariant)
+            ThrowHelper.ThrowInvalidOperationException(
+                "GetDefaultWriteInfo invoked on a non-invariant field; the Exact-sized composite path should have excluded it.");
+        writeRequirement = _binaryBufferRequirements.Write;
         return _concreteBinaryConverter;
     }
 
@@ -188,12 +194,13 @@ abstract class CompositeFieldInfo
     /// </summary>
     public BufferRequirements GetBinaryRequirements()
     {
-        if (IsProviderBacked)
+        // Non-invariant fields contribute Streaming — same shape as provider-backed. We're called at
+        // composite construction with no live ConversionContext, so we can't honestly probe; the composite
+        // accommodates with Streaming and the per-call paths re-resolve via GetReadInfo.
+        if (IsProviderBacked || !IsDescriptorInvariant)
             return BufferRequirements.Streaming;
 
-        var reqs = IsInvariant
-            ? _binaryBufferRequirements
-            : _concreteBinaryConverter.GetDescriptor(new() { ConversionContext = PgTypeInfo.Options.ConversionContext }).BufferRequirements;
+        var reqs = _binaryBufferRequirements;
         var readReq = ConcreteTypeInfo.SupportsReading ? reqs.Read : Size.Unknown;
         var writeReq = ConcreteTypeInfo.SupportsWriting ? reqs.Write : Size.Unknown;
         return BufferRequirements.Create(readReq, writeReq, optionalBind: reqs.IsBindOptional);

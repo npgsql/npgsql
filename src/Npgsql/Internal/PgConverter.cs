@@ -661,6 +661,39 @@ public sealed class PgConversionContext
     /// unconditionally without null-checking.
     /// </summary>
     public Encoding TextEncoding { get; init; } = PgSerializerOptions.DefaultUtf8Encoding;
+
+    /// <summary>
+    /// Connector-cached <see cref="Encoder"/> over <see cref="TextEncoding"/>, surfaced for framework-internal
+    /// callers (PgWriter slow paths) that would otherwise allocate fresh encoders per call. Getter calls
+    /// <see cref="Encoder.Reset"/> before returning so each caller observes clean state. Null when no
+    /// connection is in scope (e.g. probes against <see cref="Empty"/>); callers fall back to a fresh
+    /// <see cref="Encoding.GetEncoder"/> in that case.
+    /// </summary>
+    /// <remarks>
+    /// Intentionally <c>internal</c>: sharing a stateful encoder across the public converter surface is a
+    /// composition hazard when conversions can suspend mid-encode. Framework call sites acquire-and-finish
+    /// within a single method (no nested converter dispatch between acquisition and final
+    /// <c>Encoder.Convert</c>), so the reset-on-getter pattern is safe there.
+    /// </remarks>
+    internal Encoder? TextEncoder
+    {
+        get
+        {
+            if (field is null) return null;
+            field.Reset();
+            return field;
+        }
+        init;
+    }
+
+    /// <summary>
+    /// The session's PostgreSQL TimeZone setting (IANA/Olson name), as last reported by the server's
+    /// <c>ParameterStatus</c> stream. Null when no connection is in scope (e.g. probes against
+    /// <see cref="Empty"/>) — converters that depend on it must throw a meaningful error in that case
+    /// rather than fall back silently. The connector replaces its <see cref="PgConversionContext"/>
+    /// instance when this changes, so converters can read it without staleness concerns.
+    /// </summary>
+    public string? TimeZone { get; init; }
 }
 
 /// <summary>

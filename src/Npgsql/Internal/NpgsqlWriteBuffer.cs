@@ -67,16 +67,25 @@ sealed class NpgsqlWriteBuffer : IDisposable
     internal int Size { get; private set; }
 
     bool _copyMode;
-    internal Encoding TextEncoding { get; }
+    // Sourced from the connector each access so client_encoding ParameterStatus updates are observed
+    // mid-connection. Falls back to the fallback context's TextEncoding for connector-less buffers
+    // (PregeneratedMessages, benchmarks/tests).
+    internal Encoding TextEncoding => Connector?.TextEncoding ?? FallbackConversionContext.TextEncoding;
 
     public int WriteSpaceLeft => Size - WritePosition;
 
-    // (Re)init to make sure we'll refetch from the write buffer.
+    // Fallback conversion context for connector-less buffers. Built eagerly from the ctor's textEncoding
+    // so converters reading writer.ConversionContext.TextEncoding observe the buffer's actual encoding
+    // instead of the Empty default.
+    internal PgConversionContext FallbackConversionContext { get; }
+
+    // (Re)init to make sure we'll refetch from the write buffer. ConversionContext is connection-scoped now,
+    // so we source from the connector directly; the previous PgSerializerOptions.ConversionContext path
+    // returned the DataSource-level template that doesn't carry per-connection ParameterStatus / encoding updates.
     internal PgWriter GetWriter(NpgsqlDatabaseInfo typeCatalog, FlushMode flushMode = FlushMode.None)
-        => _pgWriter.Init(typeCatalog, Connector?.SerializerOptions.ConversionContext ?? PgConversionContext.Empty, flushMode);
+        => _pgWriter.Init(typeCatalog, Connector?.ConversionContext ?? FallbackConversionContext, flushMode);
 
     internal readonly byte[] Buffer;
-    readonly Encoder _textEncoder;
 
     internal int WritePosition;
 
@@ -115,8 +124,7 @@ sealed class NpgsqlWriteBuffer : IDisposable
         Buffer = new byte[size];
         Size = size;
 
-        TextEncoding = textEncoding;
-        _textEncoder = TextEncoding.GetEncoder();
+        FallbackConversionContext = new PgConversionContext { TextEncoding = textEncoding };
         _pgWriter = new PgWriter(new NpgsqlBufferWriter(this));
     }
 
@@ -353,10 +361,12 @@ sealed class NpgsqlWriteBuffer : IDisposable
             }
             else
             {
-                var encoder = buffer._textEncoder;
-                encoder.Reset();
+                // Connector caches Encoder and rotates it on client_encoding ParameterStatus;
+                // its getter resets before returning, so we receive a clean encoder.
+                var textEncoding = buffer.TextEncoding;
+                var encoder = buffer.Connector?.TextEncoder ?? textEncoding.GetEncoder();
                 var data = s.AsMemory();
-                var minBufferSize = buffer.TextEncoding.GetMaxByteCount(1);
+                var minBufferSize = textEncoding.GetMaxByteCount(1);
 
                 bool completed;
                 do

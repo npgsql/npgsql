@@ -53,14 +53,24 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// </summary>
     internal int Size { get; }
 
-    internal Encoding TextEncoding { get; }
+    // Sourced from the connector each access so client_encoding ParameterStatus updates are observed
+    // mid-connection. Falls back to the fallback context's TextEncoding when no connector is in scope
+    // (benchmarks/tests, pooled-temp buffer constructed from another buffer's snapshot).
+    internal Encoding TextEncoding => Connector?.TextEncoding ?? FallbackConversionContext.TextEncoding;
 
     /// <summary>
     /// Same as <see cref="TextEncoding"/>, except that it does not throw an exception if an invalid char is
     /// encountered (exception fallback), but rather replaces it with a question mark character (replacement
     /// fallback).
     /// </summary>
-    internal Encoding RelaxedTextEncoding { get; }
+    internal Encoding RelaxedTextEncoding => Connector?.RelaxedTextEncoding ?? _startupRelaxedTextEncoding;
+
+    // Fallback conversion context for connector-less buffers (benchmarks/tests). Built eagerly from the
+    // ctor's textEncoding so converters reading reader.ConversionContext.TextEncoding observe what the
+    // buffer was constructed with instead of the Empty default.
+    internal PgConversionContext FallbackConversionContext { get; }
+
+    readonly Encoding _startupRelaxedTextEncoding;
 
     internal int ReadBytesLeft { get; private set; }
     internal int ReadPosition
@@ -114,8 +124,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         Size = Buffer.Length;
         _usePool = usePool;
 
-        TextEncoding = textEncoding;
-        RelaxedTextEncoding = relaxedTextEncoding;
+        FallbackConversionContext = new PgConversionContext { TextEncoding = textEncoding };
+        _startupRelaxedTextEncoding = relaxedTextEncoding;
         PgReader = new PgReader(this);
     }
 
