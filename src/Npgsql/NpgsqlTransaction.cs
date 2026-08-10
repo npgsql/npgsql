@@ -77,12 +77,12 @@ public sealed class NpgsqlTransaction : DbTransaction
         _transactionLogger = connector.TransactionLogger;
     }
 
-    internal void Init(IsolationLevel isolationLevel = DefaultIsolationLevel, NpgsqlTransactionOptions options = NpgsqlTransactionOptions.None)
+    internal Task Init(bool async, IsolationLevel isolationLevel, NpgsqlTransactionOptions options, CancellationToken cancellationToken = default)
     {
         Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
         if (!_connector.DatabaseInfo.SupportsTransactions)
-            return;
+            return Task.CompletedTask;
 
         if (isolationLevel == IsolationLevel.Unspecified)
             isolationLevel = DefaultIsolationLevel;
@@ -110,8 +110,14 @@ public sealed class NpgsqlTransaction : DbTransaction
             default:
                 throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
             }
+
+            FinishInit(isolationLevel);
+            return Task.CompletedTask;
         }
-        else
+
+        return InitWithOptions(async, isolationLevel, options, cancellationToken);
+
+        async Task InitWithOptions(bool async, IsolationLevel isolationLevel, NpgsqlTransactionOptions options, CancellationToken cancellationToken)
         {
             var isolationLevelText = isolationLevel switch
             {
@@ -131,10 +137,15 @@ public sealed class NpgsqlTransaction : DbTransaction
 
             // Unlike the isolation levels above, these options can be combined in many ways, making it impractical to pregenerate
             // messages for all combinations; the BEGIN statement is written out and sent like a regular (prepended) query instead.
-            _connector.WriteQuery(sb.ToString(), async: false).GetAwaiter().GetResult();
+            await _connector.WriteQuery(sb.ToString(), async, cancellationToken).ConfigureAwait(false);
             _connector.PendingPrependedResponses += 2;
-        }
 
+            FinishInit(isolationLevel);
+        }
+    }
+
+    void FinishInit(IsolationLevel isolationLevel)
+    {
         _connector.TransactionStatus = TransactionStatus.Pending;
         _isolationLevel = isolationLevel;
         IsDisposed = false;
@@ -143,6 +154,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     }
 
     #endregion
+
 
     #region Commit
 
