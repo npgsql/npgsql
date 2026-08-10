@@ -560,9 +560,28 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <returns>A <see cref="NpgsqlTransaction"/> object representing the new transaction.</returns>
     /// <remarks>Nested transactions are not supported.</remarks>
     public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
-        => BeginTransaction(async: false, level, CancellationToken.None).GetAwaiter().GetResult();
+        => BeginTransaction(level, NpgsqlTransactionOptions.None);
 
-    async ValueTask<NpgsqlTransaction> BeginTransaction(bool async, IsolationLevel level, CancellationToken cancellationToken)
+    /// <summary>
+    /// Begins a database transaction with the specified options.
+    /// </summary>
+    /// <param name="options">Npgsql-specific options under which the transaction should run, e.g. read-only or deferrable.</param>
+    /// <returns>A <see cref="NpgsqlTransaction"/> object representing the new transaction.</returns>
+    /// <remarks>Nested transactions are not supported.</remarks>
+    public NpgsqlTransaction BeginTransaction(NpgsqlTransactionOptions options)
+        => BeginTransaction(IsolationLevel.Unspecified, options);
+
+    /// <summary>
+    /// Begins a database transaction with the specified isolation level and options.
+    /// </summary>
+    /// <param name="level">The isolation level under which the transaction should run.</param>
+    /// <param name="options">Npgsql-specific options under which the transaction should run, e.g. read-only or deferrable.</param>
+    /// <returns>A <see cref="NpgsqlTransaction"/> object representing the new transaction.</returns>
+    /// <remarks>Nested transactions are not supported.</remarks>
+    public NpgsqlTransaction BeginTransaction(IsolationLevel level, NpgsqlTransactionOptions options)
+        => BeginTransaction(async: false, level, options, CancellationToken.None).GetAwaiter().GetResult();
+
+    async ValueTask<NpgsqlTransaction> BeginTransaction(bool async, IsolationLevel level, NpgsqlTransactionOptions options, CancellationToken cancellationToken)
     {
         if (level == IsolationLevel.Chaos)
             ThrowHelper.ThrowNotSupportedException($"Unsupported IsolationLevel: {nameof(IsolationLevel.Chaos)}");
@@ -581,7 +600,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         using var _ = connector.StartUserAction(cancellationToken);
 
         connector.Transaction ??= new NpgsqlTransaction(connector);
-        connector.Transaction.Init(level);
+        connector.Transaction.Init(level, options);
         return connector.Transaction;
     }
 
@@ -625,7 +644,32 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Nested transactions are not supported.
     /// </remarks>
     public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
-        => BeginTransaction(async: true, level, cancellationToken);
+        => BeginTransactionAsync(level, NpgsqlTransactionOptions.None, cancellationToken);
+
+    /// <summary>
+    /// Asynchronously begins a database transaction with the specified options.
+    /// </summary>
+    /// <param name="options">Npgsql-specific options under which the transaction should run, e.g. read-only or deferrable.</param>
+    /// <param name="cancellationToken">
+    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+    /// </param>
+    /// <returns>A task whose <see cref="ValueTask{T}.Result"/> property is an object representing the new transaction.</returns>
+    /// <remarks>Nested transactions are not supported.</remarks>
+    public ValueTask<NpgsqlTransaction> BeginTransactionAsync(NpgsqlTransactionOptions options, CancellationToken cancellationToken = default)
+        => BeginTransactionAsync(IsolationLevel.Unspecified, options, cancellationToken);
+
+    /// <summary>
+    /// Asynchronously begins a database transaction with the specified isolation level and options.
+    /// </summary>
+    /// <param name="level">The isolation level under which the transaction should run.</param>
+    /// <param name="options">Npgsql-specific options under which the transaction should run, e.g. read-only or deferrable.</param>
+    /// <param name="cancellationToken">
+    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+    /// </param>
+    /// <returns>A task whose <see cref="ValueTask{T}.Result"/> property is an object representing the new transaction.</returns>
+    /// <remarks>Nested transactions are not supported.</remarks>
+    public ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, NpgsqlTransactionOptions options, CancellationToken cancellationToken = default)
+        => BeginTransaction(async: true, level, options, cancellationToken);
 
     /// <summary>
     /// Enlist transaction.

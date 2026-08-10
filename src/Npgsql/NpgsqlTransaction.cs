@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -76,35 +77,62 @@ public sealed class NpgsqlTransaction : DbTransaction
         _transactionLogger = connector.TransactionLogger;
     }
 
-    internal void Init(IsolationLevel isolationLevel = DefaultIsolationLevel)
+    internal void Init(IsolationLevel isolationLevel = DefaultIsolationLevel, NpgsqlTransactionOptions options = NpgsqlTransactionOptions.None)
     {
         Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
         if (!_connector.DatabaseInfo.SupportsTransactions)
             return;
 
-        switch (isolationLevel)
-        {
-        case IsolationLevel.RepeatableRead:
-        case IsolationLevel.Snapshot:
-            _connector.PrependInternalMessage(PregeneratedMessages.BeginTransRepeatableRead, 2);
-            break;
-        case IsolationLevel.Serializable:
-            _connector.PrependInternalMessage(PregeneratedMessages.BeginTransSerializable, 2);
-            break;
-        case IsolationLevel.ReadUncommitted:
-            // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
-            // send as if.
-            _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadUncommitted, 2);
-            break;
-        case IsolationLevel.ReadCommitted:
-            _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadCommitted, 2);
-            break;
-        case IsolationLevel.Unspecified:
+        if (isolationLevel == IsolationLevel.Unspecified)
             isolationLevel = DefaultIsolationLevel;
-            goto case DefaultIsolationLevel;
-        default:
-            throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
+
+        if (options == NpgsqlTransactionOptions.None)
+        {
+            // Fast path: no Npgsql-specific options were requested, so we can use a pregenerated BEGIN message, avoiding any allocations.
+            switch (isolationLevel)
+            {
+            case IsolationLevel.RepeatableRead:
+            case IsolationLevel.Snapshot:
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransRepeatableRead, 2);
+                break;
+            case IsolationLevel.Serializable:
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransSerializable, 2);
+                break;
+            case IsolationLevel.ReadUncommitted:
+                // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
+                // send as if.
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadUncommitted, 2);
+                break;
+            case IsolationLevel.ReadCommitted:
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadCommitted, 2);
+                break;
+            default:
+                throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
+            }
+        }
+        else
+        {
+            var isolationLevelText = isolationLevel switch
+            {
+                IsolationLevel.RepeatableRead or IsolationLevel.Snapshot => "REPEATABLE READ",
+                IsolationLevel.Serializable => "SERIALIZABLE",
+                // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still send as if.
+                IsolationLevel.ReadUncommitted => "READ UNCOMMITTED",
+                IsolationLevel.ReadCommitted => "READ COMMITTED",
+                _ => throw new NotSupportedException("Isolation level not supported: " + isolationLevel)
+            };
+
+            var sb = new StringBuilder("BEGIN TRANSACTION ISOLATION LEVEL ").Append(isolationLevelText);
+            if ((options & NpgsqlTransactionOptions.ReadOnly) != 0)
+                sb.Append(" READ ONLY");
+            if ((options & NpgsqlTransactionOptions.Deferrable) != 0)
+                sb.Append(" DEFERRABLE");
+
+            // Unlike the isolation levels above, these options can be combined in many ways, making it impractical to pregenerate
+            // messages for all combinations; the BEGIN statement is written out and sent like a regular (prepended) query instead.
+            _connector.WriteQuery(sb.ToString(), async: false).GetAwaiter().GetResult();
+            _connector.PendingPrependedResponses += 2;
         }
 
         _connector.TransactionStatus = TransactionStatus.Pending;

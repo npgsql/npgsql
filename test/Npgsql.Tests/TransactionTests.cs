@@ -202,6 +202,35 @@ public class TransactionTests : TestBase
         Assert.That(() => conn.BeginTransaction(IsolationLevel.Chaos), Throws.Exception.TypeOf<NotSupportedException>());
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/867")]
+    public async Task ReadOnly_option()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using (var tx = conn.BeginTransaction(NpgsqlTransactionOptions.ReadOnly))
+        {
+            Assert.That(conn.ExecuteScalar("SHOW transaction_read_only"), Is.EqualTo("on"));
+            Assert.That(() => conn.ExecuteNonQuery("CREATE TABLE not_allowed ()"),
+                Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.ReadOnlySqlTransaction));
+            await tx.RollbackAsync();
+        }
+
+        await using (var tx = conn.BeginTransaction(NpgsqlTransactionOptions.None))
+            Assert.That(conn.ExecuteScalar("SHOW transaction_read_only"), Is.EqualTo("off"));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/867")]
+    public async Task ReadOnly_and_Deferrable_options_with_isolation_level()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var tx = conn.BeginTransaction(
+            IsolationLevel.Serializable, NpgsqlTransactionOptions.ReadOnly | NpgsqlTransactionOptions.Deferrable);
+
+        Assert.That(conn.ExecuteScalar("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo("serializable"));
+        Assert.That(conn.ExecuteScalar("SHOW transaction_read_only"), Is.EqualTo("on"));
+        Assert.That(conn.ExecuteScalar("SHOW transaction_deferrable"), Is.EqualTo("on"));
+    }
+
     [Test, Description("Rollback of an already rolled back transaction")]
     public async Task Rollback_twice()
     {
