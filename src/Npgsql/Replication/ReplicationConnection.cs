@@ -587,10 +587,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         // TODO: If the user accidentally does concurrent usage of the connection, the following is vulnerable to race conditions.
         // However, we generally aren't safe for this in Npgsql, leaving as-is for now.
-        if (Connector.State != ConnectorState.Replication)
+        // The connector is null when the connection broke concurrently; report that as "not streaming"
+        // rather than throwing NullReferenceException.
+        if (_npgsqlConnection.Connector is not { State: ConnectorState.Replication } connector)
             throw new InvalidOperationException("Status update can only be sent during replication");
 
-        LogMessages.SendingReplicationStandbyStatusUpdate(ReplicationLogger, nameof(SendStatusUpdate) + "was called", Connector.Id);
+        LogMessages.SendingReplicationStandbyStatusUpdate(ReplicationLogger, nameof(SendStatusUpdate) + "was called", connector.Id);
         await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -644,15 +646,29 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     Connector.Id);
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Surface the caller's cancellation (e.g. from SendStatusUpdate) instead of swallowing it below.
+            throw;
+        }
         catch (Exception e)
         {
             LogMessages.ReplicationFeedbackMessageSendingFailed(ReplicationLogger, _npgsqlConnection?.Connector?.Id, e);
         }
         finally
         {
-            _sendFeedbackTimer!.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
-            if (requestReply)
-                _requestFeedbackTimer!.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+            // Replication may terminate concurrently with an in-flight feedback message (the enumeration
+            // gets cancelled while SendStatusUpdate is being awaited), in which case StartReplicationInternal's
+            // teardown disposes and nulls the timers. Change on a timer disposed after the null check throws ObjectDisposedException.
+            try
+            {
+                _sendFeedbackTimer?.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
+                if (requestReply)
+                    _requestFeedbackTimer?.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
             _feedbackSemaphore.Release();
         }
     }
