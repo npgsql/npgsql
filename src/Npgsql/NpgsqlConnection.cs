@@ -595,7 +595,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         using var _ = connector.StartUserAction(cancellationToken);
 
         connector.Transaction ??= new NpgsqlTransaction(connector);
-        await connector.Transaction.Init(async, level, options, cancellationToken).ConfigureAwait(false);
+        connector.Transaction.Init(level, options);
         return connector.Transaction;
     }
 
