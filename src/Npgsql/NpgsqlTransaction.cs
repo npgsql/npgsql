@@ -146,7 +146,6 @@ public sealed class NpgsqlTransaction : DbTransaction
 
     #endregion
 
-
     #region Commit
 
     /// <summary>
