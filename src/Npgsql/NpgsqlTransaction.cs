@@ -130,10 +130,8 @@ public sealed class NpgsqlTransaction : DbTransaction
                 sb.Append(" DEFERRABLE");
 
             // Unlike the isolation levels above, these options can be combined in many ways, making it impractical to pregenerate
-            // messages for all combinations. As with PrependInternalMessage above, the (short) BEGIN statement is assumed to
-            // always fit in the write buffer, so this completes synchronously.
-            var writeTask = _connector.WriteQuery(sb.ToString(), async: false);
-            Debug.Assert(writeTask.IsCompleted, "Could not fully write BEGIN message into the buffer");
+            // messages for all combinations; the BEGIN statement is written out and sent like a regular (prepended) query instead.
+            _connector.WriteQuery(sb.ToString(), async: false).GetAwaiter().GetResult();
             _connector.PendingPrependedResponses += 2;
         }
 
