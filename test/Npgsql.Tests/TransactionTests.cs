@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Tests.Support;
@@ -633,10 +634,10 @@ public class TransactionTests : TestBase
 
     class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
             var db = new NoTransactionDatabaseInfo(conn);
-            await db.LoadPostgresInfo(conn, timeout, async);
+            await db.LoadPostgresInfo(conn, timeout, async, cancellationToken);
             return db;
         }
     }

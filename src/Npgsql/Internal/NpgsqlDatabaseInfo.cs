@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
@@ -321,11 +322,11 @@ public abstract class NpgsqlDatabaseInfo
         Factories = factories;
     }
 
-    internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+    internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         foreach (var factory in Factories)
         {
-            var dbInfo = await factory.Load(conn, timeout, async).ConfigureAwait(false);
+            var dbInfo = await factory.Load(conn, timeout, async, cancellationToken).ConfigureAwait(false);
             if (dbInfo != null)
             {
                 dbInfo.ProcessTypes();
