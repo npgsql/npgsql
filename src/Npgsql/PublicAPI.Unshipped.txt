@@ -48,6 +48,8 @@ static Microsoft.Extensions.DependencyInjection.NpgsqlServiceCollectionExtension
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.Position.get -> long
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.Position.set -> void
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.Read(byte[]! buffer, int offset, int count) -> int
+Npgsql.NpgsqlConnection.BeginTransaction(System.Data.IsolationLevel level, Npgsql.NpgsqlTransactionOptions options) -> Npgsql.NpgsqlTransaction!
+Npgsql.NpgsqlConnection.BeginTransactionAsync(System.Data.IsolationLevel level, Npgsql.NpgsqlTransactionOptions options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlTransaction!>
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.ReadAsync(byte[]! buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.Seek(long offset, System.IO.SeekOrigin origin) -> long
 *REMOVED*override Npgsql.NpgsqlLargeObjectStream.SetLength(long value) -> void
