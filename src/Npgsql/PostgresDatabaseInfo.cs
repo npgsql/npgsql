@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,10 +25,10 @@ namespace Npgsql;
 sealed class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
     /// <inheritdoc />
-    public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+    public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
     {
         var db = new PostgresDatabaseInfo(conn);
-        await db.LoadPostgresInfo(conn, timeout, async).ConfigureAwait(false);
+        await db.LoadPostgresInfo(conn, timeout, async, cancellationToken).ConfigureAwait(false);
         Debug.Assert(db.LongVersion != null);
         return db;
     }
@@ -80,7 +81,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     public virtual bool HasTypeCategory => Version.IsGreaterOrEqual(8, 4);
 
     internal PostgresDatabaseInfo(NpgsqlConnector conn)
-        : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
+        : base(conn.Host, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
         => _connectionLogger = conn.LoggingConfiguration.ConnectionLogger;
 
     private protected PostgresDatabaseInfo(string host, int port, string databaseName, string serverVersion)
@@ -93,16 +94,20 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     /// <param name="conn">The database connection.</param>
     /// <param name="timeout">The timeout while loading types from the backend.</param>
     /// <param name="async">True to load types asynchronously.</param>
+    /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.</param>
     /// <returns>
     /// A task representing the asynchronous operation.
     /// </returns>
-    internal async Task LoadPostgresInfo(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+    internal async Task LoadPostgresInfo(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        HasIntegerDateTimes =
-            conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
-            intDateTimes == "on";
+        using (conn.StartUserAction(ConnectorState.Executing, cancellationToken))
+        {
+            HasIntegerDateTimes =
+                conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
+                intDateTimes == "on";
 
-        _types = await LoadBackendTypes(conn, timeout, async).ConfigureAwait(false);
+            _types = await LoadBackendTypes(conn, timeout, async).ConfigureAwait(false);
+        }
     }
 
     const string BuiltinSchemaListSqlFragment = "'pg_catalog', 'information_schema', 'pg_toast'";
@@ -205,7 +210,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
     /// </returns>
     /// <exception cref="TimeoutException" />
     /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
-    internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+    async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
         var versionQuery = "SELECT version();";
         var typeLoading = conn.DataSource.Configuration.TypeLoading;

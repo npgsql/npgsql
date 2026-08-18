@@ -1902,8 +1902,52 @@ CREATE TABLE record ()");
 
     class BreakingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
             => throw conn.Break(new IOException());
+    }
+
+    [Test]
+    [NonParallelizable] // Modifies global database info factories
+    [IssueLink("https://github.com/npgsql/npgsql/issues/6633")]
+    public async Task Allow_to_query_while_loading_database_info([Values] bool async)
+    {
+        await using var dataSource = CreateDataSource();
+
+        var factory = new QueryingDatabaseInfoFactory();
+        NpgsqlDatabaseInfo.RegisterFactory(factory);
+        try
+        {
+            await using var _ = async
+                ? await dataSource.OpenConnectionAsync()
+                : dataSource.OpenConnection();
+            Assert.That(factory.QueryExecuted, Is.True);
+        }
+        finally
+        {
+            NpgsqlDatabaseInfo.ResetFactories();
+        }
+    }
+
+    class QueryingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+    {
+        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async,
+            CancellationToken cancellationToken = default)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+
+            var result = async
+                ? await cmd.ExecuteScalarAsync(cancellationToken)
+                : cmd.ExecuteScalar();
+
+            Assert.That(result, Is.EqualTo(1));
+
+            QueryExecuted = true;
+
+            return null;
+        }
+
+        public bool QueryExecuted { get; private set; }
     }
 
     #region Logging tests
