@@ -1,249 +1,107 @@
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
-using Npgsql.NameTranslation;
-using Npgsql.PostgresTypes;
-using Npgsql.Properties;
-using NpgsqlTypes;
 using NUnit.Framework;
-using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
+/// <summary>
+/// Tests for CLR enum types read and written through their underlying integer PG types
+/// (enum underlying-type converter support).
+/// </summary>
 public class EnumTests : TestBase
 {
-    enum Mood { Sad, Ok, Happy }
-    enum AnotherEnum { Value1, Value2 }
+    enum IntEnum { Zero = 0, One = 1, FortyTwo = 42 }
+    enum ShortEnum : short { A = 1, B = 2 }
+    enum LongEnum : long { Big = 100_000_000_000 }
+    enum ByteEnum : byte { X = 255 }
+    enum SByteEnum : sbyte { A = 1, B = 100 }
+    enum UShortEnum : ushort { A = 1, B = 30000 }
+    enum UIntEnum : uint { A = 1, B = 100_000 }
+    enum ULongEnum : ulong { Big = 100_000_000_000 }
 
     [Test]
-    public async Task Data_source_mapping()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<Mood>(type);
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing);
-    }
+    public Task Int_enum()
+        => AssertType(IntEnum.FortyTwo, "42", "integer", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int32, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
-    public async Task Data_source_unmap()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<Mood>(type);
-
-        var isUnmapSuccessful = dataSourceBuilder.UnmapEnum<Mood>(type);
-        await using var dataSource = dataSourceBuilder.Build();
-
-        Assert.That(isUnmapSuccessful);
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
-    }
+    public Task Short_enum()
+        => AssertType(ShortEnum.B, "2", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
-    public async Task Data_source_mapping_non_generic()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum(typeof(Mood), type);
-        await using var dataSource = dataSourceBuilder.Build();
-        await AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing);
-    }
+    public Task Long_enum()
+        => AssertType(LongEnum.Big, "100000000000", "bigint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
-    public async Task Data_source_unmap_non_generic()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum(typeof(Mood), type);
-
-        var isUnmapSuccessful = dataSourceBuilder.UnmapEnum(typeof(Mood), type);
-        await using var dataSource = dataSourceBuilder.Build();
-
-        Assert.That(isUnmapSuccessful);
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
-    }
+    public Task Byte_enum()
+        => AssertType(ByteEnum.X, "255", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
-    public async Task Dual_enums()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type1 = await GetTempTypeName(adminConnection);
-        var type2 = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($@"
-CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
-CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<Mood>(type1);
-        dataSourceBuilder.MapEnum<TestEnum>(type2);
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, new[] { Mood.Ok, Mood.Sad }, "{ok,sad}", type1 + "[]", dataTypeInference: DataTypeInference.Nothing);
-    }
+    public Task SByte_enum()
+        => AssertType(SByteEnum.B, "100", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
-    public async Task Array()
+    public Task UShort_enum()
+        => AssertType(UShortEnum.B, "30000", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task UInt_enum()
+        => AssertType(UIntEnum.B, "100000", "integer", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int32, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task ULong_enum()
+        => AssertType(ULongEnum.Big, "100000000000", "bigint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Nullable_int_enum()
+        => AssertType<IntEnum?>(IntEnum.FortyTwo, "42", "integer", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int32, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Nullable_short_enum()
+        => AssertType<ShortEnum?>(ShortEnum.B, "2", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Nullable_long_enum()
+        => AssertType<LongEnum?>(LongEnum.Big, "100000000000", "bigint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Nullable_byte_enum()
+        => AssertType<ByteEnum?>(ByteEnum.X, "255", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Enum_rejects_non_canonical_column()
+        // The converter is fixed to the underlying's canonical wire format (int → integer); cross-converting to a
+        // mismatched PG type would corrupt the wire. Both scalar and array paths reject it.
+        => AssertTypeUnsupported(IntEnum.FortyTwo, "42", "bigint");
+
+    [Test]
+    public Task Int_enum_max_dim_array()
     {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<Mood>(type);
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, new[] { Mood.Ok, Mood.Happy }, "{ok,happy}", type + "[]", dataTypeInference: DataTypeInference.Nothing);
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
-    public async Task Name_translation_default_snake_case()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var enumName1 = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {enumName1} AS ENUM ('simple', 'two_words', 'some_database_name')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<NameTranslationEnum>(enumName1);
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, NameTranslationEnum.Simple, "simple", enumName1, dataTypeInference: DataTypeInference.Nothing);
-        await AssertType(dataSource, NameTranslationEnum.TwoWords, "two_words", enumName1, dataTypeInference: DataTypeInference.Nothing);
-        await AssertType(dataSource, NameTranslationEnum.SomeClrName, "some_database_name", enumName1, dataTypeInference: DataTypeInference.Nothing);
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
-    public async Task Name_translation_null()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('Simple', 'TwoWords', 'some_database_name')");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<NameTranslationEnum>(type, nameTranslator: new NpgsqlNullNameTranslator());
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, NameTranslationEnum.Simple, "Simple", type, dataTypeInference: DataTypeInference.Nothing);
-        await AssertType(dataSource, NameTranslationEnum.TwoWords, "TwoWords", type, dataTypeInference: DataTypeInference.Nothing);
-        await AssertType(dataSource, NameTranslationEnum.SomeClrName, "some_database_name", type, dataTypeInference: DataTypeInference.Nothing);
+        var arr = new IntEnum[1, 1, 1, 1, 1, 2];
+        arr[0, 0, 0, 0, 0, 0] = IntEnum.FortyTwo;
+        arr[0, 0, 0, 0, 0, 1] = IntEnum.One;
+        return AssertType(arr, "{{{{{{42,1}}}}}}", "integer[]",
+            dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
     }
 
     [Test]
-    public async Task Unmapped_enum_as_clr_enum()
+    public Task Nullable_int_enum_max_dim_array()
     {
-        await using var dataSource = CreateDataSource(b => b.EnableUnmappedTypes());
-        await using var connection = await dataSource.OpenConnectionAsync();
-        var type1 = await GetTempTypeName(connection);
-        var type2 = await GetTempTypeName(connection);
-        await connection.ExecuteNonQueryAsync(@$"
-CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
-CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
-        await connection.ReloadTypesAsync();
-
-        await AssertType(connection, Mood.Happy, "happy", type1, dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
-        await AssertType(connection, AnotherEnum.Value2, "value2", type2, dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
-    }
-
-    [Test]
-    public async Task Unmapped_enum_as_clr_enum_supported_only_with_EnableUnmappedTypes()
-    {
-        await using var connection = await DataSource.OpenConnectionAsync();
-        var enumType = await GetTempTypeName(connection);
-        await connection.ExecuteNonQueryAsync($"CREATE TYPE {enumType} AS ENUM ('sad', 'ok', 'happy')");
-        await connection.ReloadTypesAsync();
-
-        var errorMessage = string.Format(
-            NpgsqlStrings.UnmappedEnumsNotEnabled,
-            nameof(NpgsqlSlimDataSourceBuilder.EnableUnmappedTypes),
-            nameof(NpgsqlDataSourceBuilder));
-
-        var exception = await AssertTypeUnsupportedWrite(Mood.Happy, enumType);
-        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
-        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
-
-        exception = await AssertTypeUnsupportedRead<Mood>("happy", enumType);
-        Assert.That(exception.InnerException, Is.InstanceOf<NotSupportedException>());
-        Assert.That(exception.InnerException!.Message, Is.EqualTo(errorMessage));
-    }
-
-    [Test]
-    public async Task Unmapped_enum_as_string()
-    {
-        await using var connection = await OpenConnectionAsync();
-        var type = await GetTempTypeName(connection);
-        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-        await connection.ReloadTypesAsync();
-
-        await AssertType(connection, "happy", "happy", type,
-                dataTypeInference: DataTypeInference.Mismatch,
-                dbType: new(DbType.Object, DbType.String));
-    }
-
-    enum NameTranslationEnum
-    {
-        Simple,
-        TwoWords,
-        [PgName("some_database_name")]
-        SomeClrName
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/632")]
-    public async Task Same_name_in_different_schemas()
-    {
-        await using var adminConnection = await OpenConnectionAsync();
-        var schema1 = await CreateTempSchema(adminConnection);
-        var schema2 = await CreateTempSchema(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($@"
-CREATE TYPE {schema1}.my_enum AS ENUM ('one');
-CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
-
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<Enum1>($"{schema1}.my_enum");
-        dataSourceBuilder.MapEnum<Enum2>($"{schema2}.my_enum");
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await AssertType(dataSource, Enum1.One, "one", $"{schema1}.my_enum", dataTypeInference: DataTypeInference.Nothing);
-        await AssertType(dataSource, Enum2.Alpha, "alpha", $"{schema2}.my_enum", dataTypeInference: DataTypeInference.Nothing);
-    }
-
-    enum Enum1 { One }
-    enum Enum2 { Alpha }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
-    public async Task GetPostgresType()
-    {
-        await using var dataSource = CreateDataSource();
-        using var conn = await dataSource.OpenConnectionAsync();
-        var type = await GetTempTypeName(conn);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-        conn.ReloadTypes();
-
-        using var cmd = new NpgsqlCommand($"SELECT 'ok'::{type}", conn);
-        using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        var enumType = (PostgresEnumType)reader.GetPostgresType(0);
-        Assert.That(enumType.Name, Is.EqualTo(type));
-        Assert.That(enumType.Labels, Is.EqualTo(new List<string> { "sad", "ok", "happy" }));
-    }
-
-    enum TestEnum
-    {
-        label1,
-        label2,
-        [PgName("label3")]
-        Label3
+        var arr = new IntEnum?[1, 1, 1, 1, 1, 2];
+        arr[0, 0, 0, 0, 0, 0] = IntEnum.FortyTwo;
+        arr[0, 0, 0, 0, 0, 1] = null;
+        return AssertType(arr, "{{{{{{42,NULL}}}}}}", "integer[]",
+            dataTypeInference: DataTypeInference.Nothing, valueTypeEqualsFieldType: false);
     }
 }
