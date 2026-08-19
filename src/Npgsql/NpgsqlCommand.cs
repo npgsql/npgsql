@@ -685,7 +685,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                batchCommand._parameters?.ProcessParameters(connector.ReloadableState, validateValues: false, batchCommand.CommandType);
+                batchCommand._parameters?.ProcessParameters(connector.ReloadableState, connector.ConversionContext, validateValues: false, batchCommand.CommandType);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
@@ -703,7 +703,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
         else
         {
-            _parameters?.ProcessParameters(connector.ReloadableState, validateValues: false, CommandType);
+            _parameters?.ProcessParameters(connector.ReloadableState, connector.ConversionContext, validateValues: false, CommandType);
             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
             foreach (var batchCommand in InternalBatchCommands)
@@ -1435,7 +1435,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 goto case false;
                             }
 
-                            batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
+                            batchCommand._parameters?.ProcessParameters(reloadableState, connector.ConversionContext, validateParameterValues, batchCommand.CommandType);
                         }
                     }
                     else
@@ -1446,7 +1446,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             ResetPreparation();
                             goto case false;
                         }
-                        _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
+                        _parameters?.ProcessParameters(reloadableState, connector.ConversionContext, validateParameterValues, CommandType);
                     }
 
                     NpgsqlEventSource.Log.CommandStartPrepared();
@@ -1463,7 +1463,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             var batchCommand = InternalBatchCommands[i];
 
-                            batchCommand._parameters?.ProcessParameters(reloadableState, validateParameterValues, batchCommand.CommandType);
+                            batchCommand._parameters?.ProcessParameters(reloadableState, connector.ConversionContext, validateParameterValues, batchCommand.CommandType);
                             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                             if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1475,7 +1475,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                     else
                     {
-                        _parameters?.ProcessParameters(reloadableState, validateParameterValues, CommandType);
+                        _parameters?.ProcessParameters(reloadableState, connector.ConversionContext, validateParameterValues, CommandType);
                         ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
                         if (connector.Settings.MaxAutoPrepare > 0)
