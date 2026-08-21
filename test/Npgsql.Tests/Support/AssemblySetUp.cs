@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNet.Testcontainers.Images;
+using Npgsql.Tests.Support;
 using Testcontainers.PostgreSql;
 
 [SetUpFixture]
@@ -43,6 +44,7 @@ public class AssemblySetUp
             // Connection to the default connection string failed, use Docker to run PostgreSQL
             _postgreSqlContainer = new PostgreSqlBuilder(ContainerImage).WithName(ContainerName).Build();
             await _postgreSqlContainer.StartAsync();
+            await _postgreSqlContainer.EnableSslAsync();
 
             TestUtil.ConnectionString = _postgreSqlContainer.GetConnectionString();
             CheckConnection();
