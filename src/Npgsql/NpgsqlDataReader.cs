@@ -472,50 +472,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 if ((Command.WrappingBatch is not null || StatementIndex is 0) && Command.InternalBatchCommands[StatementIndex] is { HasOutputParameters: true } command)
                 {
-                    // If output parameters are present and this is the first row of the resultset,
-                    // we must always read it in non-sequential mode because it will be traversed twice (once
-                    // here for the parameters, then as a regular row).
-                    msg = await Connector.ReadMessage(async, dataRowLoadingMode: DataRowLoadingMode.NonSequential).ConfigureAwait(false);
-                    ProcessMessage(msg);
-                    if (msg.Code == BackendMessageCode.DataRow)
-                    {
-                        Debug.Assert(RowDescription != null);
-                        Debug.Assert(State == ReaderState.BeforeResult);
-
-                        try
-                        {
-                            // Temporarily set our state to InResult and non-sequential to allow us to read the values, and in any order.
-                            var isSequential = _isSequential;
-                            var currentPosition = Buffer.ReadPosition;
-                            State = ReaderState.InResult;
-                            _isSequential = false;
-                            try
-                            {
-                                command.PopulateOutputParameters(this, _commandLogger);
-
-                                // On success we want to revert any row and column state for the user to be able to read the same row again.
-                                if (async)
-                                    await PgReader.CommitAsync().ConfigureAwait(false);
-                                else
-                                    PgReader.Commit();
-
-                                State = ReaderState.BeforeResult; // Set the state back
-                                Buffer.ReadPosition = currentPosition; // Restore position
-                                _column = -1;
-                            }
-                            finally
-                            {
-                                // To be on the safe side we always revert this CommandBehavior state change, including on failure.
-                                _isSequential = isSequential;
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            // TODO: ideally we should flow down to global exception filter and consume there
-                            await Consume(async, firstException: e).ConfigureAwait(false);
-                            throw;
-                        }
-                    }
+                    msg = await ReadMessageWithOutputParameters(async, command).ConfigureAwait(false);
                 }
                 else
                 {
@@ -645,6 +602,56 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 break;
             }
         }
+    }
+
+    async ValueTask<IBackendMessage> ReadMessageWithOutputParameters(bool async, NpgsqlBatchCommand command)
+    {
+        // If output parameters are present and this is the first row of the resultset,
+        // we must always read it in non-sequential mode because it will be traversed twice (once
+        // here for the parameters, then as a regular row).
+        var msg = await Connector.ReadMessage(async, dataRowLoadingMode: DataRowLoadingMode.NonSequential).ConfigureAwait(false);
+        ProcessMessage(msg);
+        if (msg.Code == BackendMessageCode.DataRow)
+        {
+            Debug.Assert(RowDescription != null);
+            Debug.Assert(State == ReaderState.BeforeResult);
+
+            try
+            {
+                // Temporarily set our state to InResult and non-sequential to allow us to read the values, and in any order.
+                var isSequential = _isSequential;
+                var currentPosition = Buffer.ReadPosition;
+                State = ReaderState.InResult;
+                _isSequential = false;
+                try
+                {
+                    command.PopulateOutputParameters(this, _commandLogger);
+
+                    // On success we want to revert any row and column state for the user to be able to read the same row again.
+                    if (async)
+                        await PgReader.CommitAsync().ConfigureAwait(false);
+                    else
+                        PgReader.Commit();
+
+                    State = ReaderState.BeforeResult; // Set the state back
+                    Buffer.ReadPosition = currentPosition; // Restore position
+                    _column = -1;
+                }
+                finally
+                {
+                    // To be on the safe side we always revert this CommandBehavior state change, including on failure.
+                    _isSequential = isSequential;
+                }
+            }
+            catch (Exception e)
+            {
+                // TODO: ideally we should flow down to global exception filter and consume there
+                await Consume(async, firstException: e).ConfigureAwait(false);
+                throw;
+            }
+        }
+
+        return msg;
     }
 
     /// <summary>
@@ -971,7 +978,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Consumes all result sets for this reader, leaving the connector ready for sending and processing further
     /// queries
     /// </summary>
-    async Task Consume(bool async, Exception? firstException = null)
+    async ValueTask Consume(bool async, Exception? firstException = null)
     {
         var exceptions = firstException is null ? null : new List<Exception> { firstException };
 
