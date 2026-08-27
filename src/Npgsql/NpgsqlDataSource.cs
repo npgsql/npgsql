@@ -311,10 +311,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 },
                 dbTypeResolver: null);
 
-            NpgsqlDatabaseInfo databaseInfo;
-
-            using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
-                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async).ConfigureAwait(false);
+            var databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async, cancellationToken).ConfigureAwait(false);
 
             var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone), textEncoding: connector.TextEncoding)
             {
