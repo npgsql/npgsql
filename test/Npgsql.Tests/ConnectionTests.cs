@@ -1902,7 +1902,7 @@ CREATE TABLE record ()");
 
     class BreakingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
+        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
             => throw conn.Break(new IOException());
     }
 
@@ -1931,7 +1931,7 @@ CREATE TABLE record ()");
     class QueryingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
         public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 1";

@@ -25,7 +25,7 @@ namespace Npgsql;
 sealed class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
     /// <inheritdoc />
-    public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
+    public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         var db = new PostgresDatabaseInfo(conn);
         await db.LoadPostgresInfo(conn, timeout, async, cancellationToken).ConfigureAwait(false);

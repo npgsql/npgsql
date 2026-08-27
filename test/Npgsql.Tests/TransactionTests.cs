@@ -634,7 +634,7 @@ public class TransactionTests : TestBase
 
     class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
+        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var db = new NoTransactionDatabaseInfo(conn);
             await db.LoadPostgresInfo(conn, timeout, async, cancellationToken);

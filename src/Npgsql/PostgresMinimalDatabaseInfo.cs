@@ -10,7 +10,7 @@ namespace Npgsql;
 
 sealed class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
-    public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
+    public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         => Task.FromResult(
             !conn.DataSource.Configuration.TypeLoading.LoadTypes
                 ? (NpgsqlDatabaseInfo)new PostgresMinimalDatabaseInfo(conn)
