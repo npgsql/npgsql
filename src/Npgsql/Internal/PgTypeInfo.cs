@@ -4,7 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
+using static Npgsql.Internal.Converters.IEnumUnderlyingConverter;
 
 namespace Npgsql.Internal;
 
@@ -22,7 +24,8 @@ public abstract class PgTypeInfo
     /// Resolves the type the info should advertise. <paramref name="requestedType"/> must be on the same subtype
     /// chain as <paramref name="type"/>: when narrower (or equal) it is returned as-is (the under-reporting case);
     /// when wider <paramref name="type"/> is returned (the polymorphic-alias case, the info advertises the
-    /// converter's type back to a wider query). Throws when the two types are not in any subtype relationship.
+    /// converter's type back to a wider query). An enum requestedType over its underlying-type converter is also
+    /// accepted (representation-identical); throws when the types share none of these relationships.
     /// </summary>
     private protected static Type ResolveType(Type type, Type? requestedType)
     {
@@ -32,9 +35,33 @@ public abstract class PgTypeInfo
             return requestedType;
         if (type.IsAssignableTo(requestedType))
             return type;
+        // Enum and underlying type (both their bare and Nullable<> forms) are representation-identical:
+        // accept the enum requestedType as a narrower report.
+        if (IsEnumUnderlyingPair(requestedType, type))
+            return requestedType;
         throw new ArgumentException(
             $"The requested type {requestedType} is not in a subtype relationship with the converter's type {type}.",
             nameof(requestedType));
+    }
+
+    // True when (requestedType, converterType) is an enum-over-its-underlying-primitive pair (or the parallel
+    // Nullable<> forms). Used by ResolveType to accept the narrower enum report and by PgConcreteTypeInfo's
+    // ctor to gate the SupportsReading/SupportsWriting special-case for IEnumUnderlyingConverter.
+    private protected static bool IsEnumUnderlyingPair(Type? requestedType, Type converterType)
+    {
+        if (requestedType is null)
+            return false;
+
+        var requestedNullable = Nullable.GetUnderlyingType(requestedType);
+        var converterNullable = Nullable.GetUnderlyingType(converterType);
+        // Both sides must agree on the nullable wrapper — mixing bare and Nullable<> would mean different
+        // value-shape contracts on the typed dispatch path.
+        if ((requestedNullable is null) != (converterNullable is null))
+            return false;
+
+        var requestedEnum = requestedNullable ?? requestedType;
+        var converterPrimitive = converterNullable ?? converterType;
+        return requestedEnum.IsEnum && requestedEnum.GetEnumUnderlyingType() == converterPrimitive;
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgTypeId? pgTypeId, Type? requestedType = null)
@@ -373,7 +400,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     // <paramref name="binary"/> fills the binary slot, <paramref name="text"/> fills the text slot.
     // Both slots may carry the same instance (multi-format converter), different instances (single-format per
     // slot), or — only one of them may be null when the format isn't supported. At least one slot must be filled.
-    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter? binary, PgConverter? text, PgTypeId pgTypeId, Type? requestedType = null)
+    internal PgConcreteTypeInfo(PgSerializerOptions options, PgConverter? binary, PgConverter? text, PgTypeId pgTypeId, Type? requestedType = null, bool? supportsReading = null, bool? supportsWriting = null)
         : base(options, (binary ?? text ?? ThrowNoSlot()).TypeToConvert, pgTypeId, requestedType)
     {
         if (binary is not null && text is not null && binary.TypeToConvert != text.TypeToConvert)
@@ -392,8 +419,20 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         }
 
         var canonical = binary ?? text!;
-        _supportsReading = GetDefaultSupportsReading(canonical.TypeToConvert, requestedType);
-        _supportsWriting = GetDefaultSupportsWriting(canonical.TypeToConvert, requestedType);
+
+        // Enum-over-underlying is representation-identical via IEnumUnderlyingConverter's reinterpret;
+        // surface that internally without touching the general GetDefault* helpers (which would let
+        // arbitrary external converters claim the same compatibility unsafely). Callers can still
+        // override either direction via the explicit args. Both bare-enum (Underlying) and Nullable<TEnum>
+        // (Nullable<Underlying>) pairs qualify — see IsEnumUnderlyingPair.
+        var enumUnderlying = canonical is IEnumUnderlyingConverter
+            && IsEnumUnderlyingPair(requestedType, canonical.TypeToConvert);
+
+        // Set fields directly to bypass init guards on default values; init props enforce directional widen-to-true.
+        _supportsReading = supportsReading
+            ?? (enumUnderlying ? true : GetDefaultSupportsReading(canonical.TypeToConvert, requestedType));
+        _supportsWriting = supportsWriting
+            ?? (enumUnderlying ? true : GetDefaultSupportsWriting(canonical.TypeToConvert, requestedType));
     }
 
     [DoesNotReturn]
@@ -412,11 +451,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         DataFormat? preferredFormat = null,
         bool? supportsReading = null,
         bool? supportsWriting = null)
-        => new(options, binary, null, pgTypeId, requestedType)
+        => new(options, binary, null, pgTypeId, requestedType, supportsReading, supportsWriting)
         {
             PreferredFormat = preferredFormat,
-            SupportsReading = supportsReading ?? GetDefaultSupportsReading(binary.TypeToConvert, requestedType),
-            SupportsWriting = supportsWriting ?? GetDefaultSupportsWriting(binary.TypeToConvert, requestedType),
         };
 
     /// <summary>
@@ -432,11 +469,9 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         DataFormat? preferredFormat = null,
         bool? supportsReading = null,
         bool? supportsWriting = null)
-        => new(options, binary, text, pgTypeId, requestedType)
+        => new(options, binary, text, pgTypeId, requestedType, supportsReading, supportsWriting)
         {
             PreferredFormat = preferredFormat,
-            SupportsReading = supportsReading ?? GetDefaultSupportsReading(binary.TypeToConvert, requestedType),
-            SupportsWriting = supportsWriting ?? GetDefaultSupportsWriting(binary.TypeToConvert, requestedType),
         };
 
     /// <summary>
@@ -560,11 +595,15 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
     {
         await reader.StartReadAsync(binding, cancellationToken).ConfigureAwait(false);
 
-        // Inline copy of converter.ReadAsync<T> to keep everything in one async frame.
+        // Inline copy of converter.ReadAsync<T> to keep everything in one async frame. The enum-underlying branch
+        // mirrors PgConverter.ReadAsync<T>'s fast path so async reads don't fall through to the boxing
+        // ReadAsObjectAsync route on CoreCLR. The helper is synchronous because EnumUnderlyingConverter is buffered.
         var converter = binding.Converter;
         var result = typeof(T) == converter.TypeToConvert
             ? await Unsafe.As<PgConverter<T>>(converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false)
-            : (T)(await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!;
+            : IsEnumUnderlyingConversion<T>(converter) && RuntimeFeature.IsDynamicCodeSupported
+                ? ReadAsEnumUnderlying<T>(reader)
+                : (T)(await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!;
 
         await reader.EndReadAsync().ConfigureAwait(false);
         return result;
