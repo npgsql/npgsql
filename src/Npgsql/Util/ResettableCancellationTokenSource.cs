@@ -25,7 +25,7 @@ sealed class ResettableCancellationTokenSource(TimeSpan timeout) : IDisposable
     /// <summary>
     /// Used, so we wouldn't concurrently use the cts for the cancellation, while it's being disposed
     /// </summary>
-    readonly object lockObject = new();
+    readonly Lock lockObject = new();
 
 #if DEBUG
     bool _isRunning;
