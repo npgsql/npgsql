@@ -305,7 +305,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
             connector.ReloadableState = new(
                 databaseInfo: PostgresMinimalDatabaseInfo.DefaultTypeCatalog,
-                serializerOptions: new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog, textEncoding: connector.TextEncoding)
+                serializerOptions: new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     TypeInfoResolver = AdoTypeInfoResolverFactory.Instance.CreateResolver(),
                 },
@@ -313,7 +313,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             var databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async, cancellationToken).ConfigureAwait(false);
 
-            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain, CreateTimeZoneProvider(connector.Timezone), textEncoding: connector.TextEncoding)
+            var serializerOptions = new PgSerializerOptions(databaseInfo, _resolverChain)
             {
                 ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                 EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
@@ -336,17 +336,6 @@ public abstract class NpgsqlDataSource : DbDataSource
             _setupMappingsSemaphore.Release();
         }
 
-        // Func in a static function to make sure we don't capture state that might not stay around, like a connector.
-        static Func<string> CreateTimeZoneProvider(string postgresTimeZone)
-            => () =>
-            {
-                if (string.Equals(postgresTimeZone, "localtime", StringComparison.OrdinalIgnoreCase))
-                    throw new TimeZoneNotFoundException(
-                        "The special PostgreSQL timezone 'localtime' is not supported when reading values of type 'timestamp with time zone'. " +
-                        "Please specify a real timezone in 'postgresql.conf' on the server, or set the 'PGTZ' environment variable on the client.");
-
-                return postgresTimeZone;
-            };
     }
 
     #region Password management

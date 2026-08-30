@@ -73,6 +73,21 @@ public sealed partial class NpgsqlConnector
     internal Encoding RelaxedTextEncoding { get; private set; } = default!;
 
     /// <summary>
+    /// Cached <see cref="Encoder"/> over <see cref="TextEncoding"/>. Shared across send-side text writes;
+    /// the getter calls <see cref="Encoder.Reset"/> before returning so callers always observe a clean
+    /// encoder. Replaced when <c>client_encoding</c> rotates the underlying <see cref="TextEncoding"/>.
+    /// </summary>
+    internal Encoder TextEncoder
+    {
+        get
+        {
+            _textEncoder.Reset();
+            return _textEncoder;
+        }
+    }
+    Encoder _textEncoder = default!;
+
+    /// <summary>
     /// Buffer used for reading data.
     /// </summary>
     internal NpgsqlReadBuffer ReadBuffer { get; private set; } = default!;
@@ -124,6 +139,16 @@ public sealed partial class NpgsqlConnector
     public NpgsqlDatabaseInfo DatabaseInfo => ReloadableState.DatabaseInfo;
     internal PgSerializerOptions SerializerOptions => ReloadableState.SerializerOptions;
     internal IDbTypeResolver? DbTypeResolver => ReloadableState.DbTypeResolver;
+
+    /// <summary>
+    /// Per-connection conversion context. Carries session state (text encoding, timezone, future
+    /// ParameterStatus-driven values) that converters read at runtime via the reader/writer. The field
+    /// is invalidated (re-built on next access) when contributing session state mutates — see
+    /// <see cref="ReadParameterStatus"/>.
+    /// </summary>
+    internal PgConversionContext ConversionContext
+        => _conversionContext ??= new() { TextEncoding = TextEncoding, TextEncoder = _textEncoder, TimeZone = Timezone };
+    PgConversionContext? _conversionContext;
 
     /// <summary>
     /// The current transaction status for this connector.
@@ -815,7 +840,13 @@ public sealed partial class NpgsqlConnector
 
         var timezone = Settings.Timezone ?? PostgresEnvironment.TimeZone;
         if (timezone != null)
+        {
             startupParams["TimeZone"] = timezone;
+            // Seed the connector's TimeZone with the explicit request so we have an authoritative value
+            // before the server's startup ParameterStatus echo arrives — that echo gets skipped under a
+            // multiplexing pooler since the pooled server connection's state may not reflect the request.
+            Timezone = timezone;
+        }
 
         var options = Settings.Options ?? PostgresEnvironment.Options;
         if (options?.Length > 0)
@@ -901,6 +932,7 @@ public sealed partial class NpgsqlConnector
                 TextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
                 RelaxedTextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
             }
+            _textEncoder = TextEncoding.GetEncoder();
 
             ReadBuffer = new NpgsqlReadBuffer(this, _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
             WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
@@ -2932,9 +2964,14 @@ public sealed partial class NpgsqlConnector
     internal bool UseConformingStrings { get; private set; }
 
     /// <summary>
-    /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
+    /// The session's TimeZone in IANA/Olson form. Defaults to <c>UTC</c>; seeded by
+    /// <see cref="WriteStartupMessage"/> from <c>Settings.Timezone</c> or <c>PGTZ</c> when either is set,
+    /// and otherwise overwritten by the first ParameterStatus echo from the server. Subsequent mid-session
+    /// <c>SET TIME ZONE</c> updates flow in via the ParameterStatus handler. The UTC default keeps
+    /// timestamp-with-tz converters working under pathological poolers that swallow the startup PS — UTC
+    /// is the safest unambiguous fallback when we have no other authoritative source.
     /// </summary>
-    internal string Timezone { get; private set; } = default!;
+    internal string Timezone { get; private set; } = "UTC";
 
     bool? _isTransactionReadOnly;
 
@@ -3022,7 +3059,109 @@ public sealed partial class NpgsqlConnector
             return;
 
         case "TimeZone":
+            // Skip the startup-phase ParameterStatus when the caller had an explicit request — a
+            // multiplexing pooler (PgBouncer transaction/statement mode, etc.) may report a stale value
+            // from the pooled server connection rather than what we asked for. WriteStartupMessage already
+            // seeded the connector's TimeZone with the requested value, so the .NET side stays correct.
+            // Mid-session SET TimeZone (arriving once State is Ready) is honored.
+            if (State == ConnectorState.Connecting && (Settings.Timezone is not null || PostgresEnvironment.TimeZone is not null))
+            {
+                // Overwrite the dictionary entry set before the switch — keep PostgresParameters
+                // consistent with the effective session state instead of the proxy-reported value.
+                PostgresParameters[name] = Timezone;
+                return;
+            }
             Timezone = value;
+            _conversionContext = null;
+            return;
+
+        case "client_encoding":
+            // Skip the startup-phase ParameterStatus: multiplexing poolers (PgBouncer transaction/statement
+            // mode, etc.) hand the client a pre-pooled server connection without forwarding the client's
+            // startup params, so the value here reflects the pooled server's state, not the caller's
+            // request. Trusting it would silently clobber Settings.Encoding.
+            // Mid-session SET CLIENT_ENCODING (arriving once State is Ready) is honored.
+            if (State == ConnectorState.Connecting)
+            {
+                // Overwrite the dictionary entry set before the switch — keep PostgresParameters
+                // consistent with what the connector effectively negotiated in the startup packet rather
+                // than the proxy-reported value.
+                PostgresParameters[name] = Settings.ClientEncoding ?? PostgresEnvironment.ClientEncoding ?? "UTF8";
+                return;
+            }
+
+            // SQL_ASCII means "no encoding conversion on the wire," so the .NET side rotates back to
+            // Settings.Encoding — the caller's chosen interpreter for raw bytes. Substituting the value
+            // here flows through the same mapping/GetEncoding path used for every other rotation; the
+            // Settings.Encoding string ("UTF8" / "WIN1252" / etc.) parses against the same PG-name table.
+            // Names without any .NET mapping (MULE_INTERNAL, EUC_JIS_2004) fall through to
+            // Encoding.GetEncoding and break the connection — silently using a stale encoding would be
+            // worse than failing loudly, and the user can register a custom EncodingProvider if they need
+            // one of those.
+            if (value == "SQL_ASCII")
+                value = Settings.Encoding;
+
+            var mappedEncoding = value switch
+            {
+                "EUC_JP" => "EUC-JP",
+                "EUC_CN" => "EUC-CN",
+                "EUC_KR" => "EUC-KR",
+                "EUC_TW" => "EUC-TW",
+                "UTF8" => "UTF-8",
+                "LATIN1" => "ISO-8859-1",
+                "LATIN2" => "ISO-8859-2",
+                "LATIN3" => "ISO-8859-3",
+                "LATIN4" => "ISO-8859-4",
+                "LATIN5" => "ISO-8859-9",
+                "LATIN6" => "ISO-8859-10",
+                "LATIN7" => "ISO-8859-13",
+                "LATIN8" => "ISO-8859-14",
+                "LATIN9" => "ISO-8859-15",
+                "LATIN10" => "ISO-8859-16",
+                "WIN1256" => "CP1256",
+                "WIN1258" => "CP1258",
+                "WIN866" => "CP866",
+                "WIN874" => "windows-874",
+                "KOI8R" => "KOI8-R",
+                "WIN1251" => "CP1251",
+                "WIN1252" => "CP1252",
+                "ISO_8859_5" => "ISO-8859-5",
+                "ISO_8859_6" => "ISO-8859-6",
+                "ISO_8859_7" => "ISO-8859-7",
+                "ISO_8859_8" => "ISO-8859-8",
+                "WIN1250" => "CP1250",
+                "WIN1253" => "CP1253",
+                "WIN1254" => "CP1254",
+                "WIN1255" => "CP1255",
+                "WIN1257" => "CP1257",
+                "KOI8U" => "KOI8-U",
+                _ => value
+            };
+            if (mappedEncoding == "UTF-8")
+            {
+                TextEncoding = NpgsqlWriteBuffer.UTF8Encoding;
+                RelaxedTextEncoding = NpgsqlWriteBuffer.RelaxedUTF8Encoding;
+            }
+            else
+            {
+                try
+                {
+                    TextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                    RelaxedTextEncoding = Encoding.GetEncoding(mappedEncoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+                }
+                catch (ArgumentException ex)
+                {
+                    // .NET doesn't know the mapped encoding name. The most common cause is that the
+                    // CodePagesEncodingProvider hasn't been registered — point the user at the fix.
+                    throw new NpgsqlException(
+                        $"PostgreSQL reported a session client_encoding of '{value}' (mapped to .NET name '{mappedEncoding}'), " +
+                        $"but no .NET Encoding is registered for it. Call " +
+                        $"Encoding.RegisterProvider(CodePagesEncodingProvider.Instance) at application startup if you need " +
+                        $"code-page encodings (windows-*, ISO-8859-*, etc.).", ex);
+                }
+            }
+            _textEncoder = TextEncoding.GetEncoder();
+            _conversionContext = null;
             return;
 
         case "default_transaction_read_only":
