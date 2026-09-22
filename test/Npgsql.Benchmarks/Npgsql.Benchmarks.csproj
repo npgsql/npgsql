@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.Extensions.Logging" VersionOverride="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
