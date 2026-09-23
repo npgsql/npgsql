@@ -13,6 +13,11 @@ public readonly struct NpgsqlTimeout
 
     internal static readonly NpgsqlTimeout Infinite = new(TimeSpan.Zero);
 
+    // A lot of .NET API's don't accept anything less than a millisecond (like Socket.ReceiveTimeout)
+    // In addition, it's very unlikely we'll actually succeed in less than 1 millisecond
+    // So we might as well just consider as if timeout did trigger
+    static readonly TimeSpan MinimalTimeout = TimeSpan.FromMilliseconds(1);
+
     internal NpgsqlTimeout(TimeSpan expiration)
         => _expiration = expiration > TimeSpan.Zero
             ? DateTime.UtcNow + expiration
@@ -20,11 +25,7 @@ public readonly struct NpgsqlTimeout
                 ? DateTime.MaxValue
                 : DateTime.MinValue;
 
-    internal void Check()
-    {
-        if (HasExpired)
-            ThrowHelper.ThrowNpgsqlExceptionWithInnerTimeoutException("The operation has timed out");
-    }
+    static void ThrowTimeoutException() => ThrowHelper.ThrowNpgsqlExceptionWithInnerTimeoutException("The operation has timed out");
 
     internal void CheckAndApply(NpgsqlConnector connector)
     {
@@ -38,15 +39,15 @@ public readonly struct NpgsqlTimeout
 
     internal bool IsSet => _expiration != DateTime.MaxValue;
 
-    internal bool HasExpired => DateTime.UtcNow >= _expiration;
+    internal bool HasExpired => _expiration - DateTime.UtcNow <= MinimalTimeout;
 
     internal TimeSpan CheckAndGetTimeLeft()
     {
         if (!IsSet)
             return Timeout.InfiniteTimeSpan;
         var timeLeft = _expiration - DateTime.UtcNow;
-        if (timeLeft <= TimeSpan.Zero)
-            Check();
+        if (timeLeft <= MinimalTimeout)
+            ThrowTimeoutException();
         return timeLeft;
     }
 }

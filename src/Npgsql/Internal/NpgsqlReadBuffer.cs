@@ -41,6 +41,8 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             if (Cts.Timeout != value)
             {
                 Debug.Assert(_underlyingSocket != null);
+                // Timeout should never be between 0 and 1 milliseconds because casting it to int will make it infinite
+                Debug.Assert(value.TotalMilliseconds is <= 0 or >= 1);
 
                 _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
                 Cts.Timeout = value;
