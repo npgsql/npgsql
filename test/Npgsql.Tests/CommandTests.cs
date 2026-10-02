@@ -407,6 +407,46 @@ public class CommandTests : TestBase
         Assert.That(cancellationRequestTask.IsCompleted, Is.False);
     }
 
+    [Test, Description("Cancel() while the server stalls in the middle of a prepended query's response breaks the connection after Cancellation Timeout, not Command Timeout")]
+    public async Task Cancel_sync_with_prepended_query_server_unresponsive([Values(1000, -1)] int cancellationTimeout)
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        var csb = new NpgsqlConnectionStringBuilder(postmasterMock.ConnectionString)
+        {
+            NoResetOnClose = false,
+            CommandTimeout = 30,
+            CancellationTimeout = cancellationTimeout
+        };
+        await using var dataSource = CreateDataSource(csb.ConnectionString);
+        await using var conn = dataSource.OpenConnection();
+        // Reopen the connection so DISCARD ALL is prepended to the next query
+        conn.Close();
+        conn.Open();
+
+        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        var queryTask = Task.Run(() => cmd.ExecuteNonQuery());
+
+        var server = await postmasterMock.WaitForServerConnection();
+        await server.ExpectSimpleQuery("DISCARD ALL");
+        await server.ExpectExtendedQuery();
+        cmd.WaitUntilCommandIsInProgress();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        cmd.Cancel();
+        // A synchronous read already in progress isn't interrupted (#5070); the server sends part of the DISCARD ALL
+        // response to end it, and then never answers again, so the next read is the one bounded by Cancellation Timeout
+        await server.WriteCommandComplete().FlushAsync();
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await queryTask);
+        Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(10)));
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+
+        // No cancel request may be sent while a prepended query is outstanding (#4906)
+        var cancellationRequestTask = postmasterMock.WaitForCancellationRequest().AsTask();
+        await Task.Delay(500);
+        Assert.That(cancellationRequestTask.IsCompleted, Is.False);
+    }
+
     [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]
     public async Task Cancel_async_hard()
     {

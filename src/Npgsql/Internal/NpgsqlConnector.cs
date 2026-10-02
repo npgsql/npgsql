@@ -1947,16 +1947,14 @@ public sealed partial class NpgsqlConnector
                 // block until the prepended responses arrive (#5032). PerformDelayedUserCancellation runs once they
                 // have been read; until then, bound the wait by the cancellation timeout, so a server that never
                 // answers doesn't leave the user's token without effect until Command Timeout.
+                // A synchronous read already in progress isn't interrupted (#5070), but the reads after it are bounded.
+                // For -1 we still use a positive timeout, since a zero Socket.ReceiveTimeout means no timeout at all.
                 var cancellationTimeout = Settings.CancellationTimeout;
-                if (cancellationTimeout > 0)
+                if (cancellationTimeout != 0)
                 {
-                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-                    ReadBuffer.Cts.CancelAfter(cancellationTimeout);
-                }
-                else if (cancellationTimeout < 0)
-                {
-                    ReadBuffer.Timeout = _cancelImmediatelyTimeout;
-                    ReadBuffer.Cts.Cancel();
+                    var timeout = Math.Max(cancellationTimeout, 1);
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(timeout);
+                    ReadBuffer.Cts.CancelAfter(timeout);
                 }
                 return;
             }
