@@ -337,7 +337,8 @@ partial class NpgsqlConnector
         {
             TargetName = targetName,
             // For kerberos, libpq requires mutual authentication
-            // If it's not kerberos, then it's sspi, which doesn't support mutual auth and libpq also doesn't require it
+            // If it's not kerberos, then it's sspi, and with it windows might decide to use NTLM, which doesn't support mutual auth
+            // libpq also doesn't require it for sspi so disable it
             RequireMutualAuthentication = isKerberos
         };
         // If postgres requests GSS, we explicitly ask for Kerberos
