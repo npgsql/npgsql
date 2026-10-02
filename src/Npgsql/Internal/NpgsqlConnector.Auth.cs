@@ -336,7 +336,9 @@ partial class NpgsqlConnector
         var clientOptions = new NegotiateAuthenticationClientOptions
         {
             TargetName = targetName,
-            RequireMutualAuthentication = true
+            // For kerberos, libpq requires mutual authentication
+            // If it's not kerberos, then it's sspi, which doesn't support mutual auth and libpq also doesn't require it
+            RequireMutualAuthentication = isKerberos
         };
         // If postgres requests GSS, we explicitly ask for Kerberos
         // Instead of relying on SSPI on windows to pick the correct protocol (Kerberos instead of NTLM)
