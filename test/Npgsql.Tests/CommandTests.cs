@@ -370,6 +370,43 @@ public class CommandTests : TestBase
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
     }
 
+    [Test, Description("Cancellation requested while the server never answers a prepended query breaks the connection after Cancellation Timeout, not Command Timeout")]
+    public async Task Cancel_async_with_prepended_query_server_unresponsive()
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        var csb = new NpgsqlConnectionStringBuilder(postmasterMock.ConnectionString)
+        {
+            NoResetOnClose = false,
+            CommandTimeout = 30,
+            CancellationTimeout = 1000
+        };
+        await using var dataSource = CreateDataSource(csb.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        // Reopen the connection so DISCARD ALL is prepended to the next query
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        using var cts = new CancellationTokenSource();
+        var queryTask = conn.ExecuteNonQueryAsync("SELECT 1", cancellationToken: cts.Token);
+
+        var server = await postmasterMock.WaitForServerConnection();
+        await server.ExpectSimpleQuery("DISCARD ALL");
+        await server.ExpectExtendedQuery();
+
+        // The server never answers
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        cts.Cancel();
+        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await queryTask)!;
+        Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(10)));
+        Assert.That(exception.CancellationToken, Is.EqualTo(cts.Token));
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+
+        // No cancel request may be sent while a prepended query is outstanding (#4906)
+        var cancellationRequestTask = postmasterMock.WaitForCancellationRequest().AsTask();
+        await Task.Delay(500);
+        Assert.That(cancellationRequestTask.IsCompleted, Is.False);
+    }
+
     [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]
     public async Task Cancel_async_hard()
     {

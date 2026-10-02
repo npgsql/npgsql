@@ -245,6 +245,15 @@ public sealed partial class NpgsqlConnector
     internal bool UserCancellationRequested => _userCancellationRequested;
     internal CancellationToken UserCancellationToken { get; set; }
     internal bool AttemptPostgresCancellation { get; private set; }
+
+    /// <summary>
+    /// Whether a read that has just timed out should send a PostgreSQL cancel request: not when one was already sent,
+    /// and not when the user's cancellation was deferred because prepended responses are still outstanding - then the
+    /// read deadline is the hard-cancellation deadline set by <see cref="PerformImmediateUserCancellation" />.
+    /// </summary>
+    internal bool ShouldAttemptPostgresCancellation
+        => AttemptPostgresCancellation && !PostgresCancellationPerformed
+           && !(UserCancellationRequested && !ReadingPrependedMessagesMRE.IsSet);
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.Zero;
 
     static readonly SslApplicationProtocol _alpnProtocol = new("postgresql");
@@ -1933,7 +1942,24 @@ public sealed partial class NpgsqlConnector
             // We don't wait indefinitely to avoid deadlocks from synchronous CancellationToken.Register
             // See #5032
             if (!ReadingPrependedMessagesMRE.Wait(0))
+            {
+                // We can neither send a PostgreSQL cancellation now (it could cancel a prepended query, #4906) nor
+                // block until the prepended responses arrive (#5032). PerformDelayedUserCancellation runs once they
+                // have been read; until then, bound the wait by the cancellation timeout, so a server that never
+                // answers doesn't leave the user's token without effect until Command Timeout.
+                var cancellationTimeout = Settings.CancellationTimeout;
+                if (cancellationTimeout > 0)
+                {
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                    ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                }
+                else if (cancellationTimeout < 0)
+                {
+                    ReadBuffer.Timeout = _cancelImmediatelyTimeout;
+                    ReadBuffer.Cts.Cancel();
+                }
                 return;
+            }
 
             PerformUserCancellationUnsynchronized();
         }
