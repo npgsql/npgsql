@@ -185,4 +185,17 @@ static class NpgsqlActivitySource
         => typeof(NpgsqlDataSource).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion ?? "UNKNOWN";
+
+    internal static string AppendSqlCommenterTraceContext(string commandText, Activity activity)
+    {
+        if (activity is null)
+            return commandText;
+
+        var traceparent = $"00-{activity.TraceId}-{activity.SpanId}-{(activity.Recorded ? "01" : "00")}";
+        var comment = $"/*traceparent='{traceparent}'*/";
+
+        return commandText.EndsWith(";")
+            ? commandText.Substring(0, commandText.Length - 1) + " " + comment + ";"
+            : commandText + " " + comment;
+    }
 }

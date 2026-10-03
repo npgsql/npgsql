@@ -1686,6 +1686,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     CommandType,
                     prepared,
                     spanName);
+
+                if (tracingOptions.EnableSqlCommenterTracePropagation && CurrentActivity is not null && InternalBatchCommands is not null)
+                {
+                    foreach (var cmd in InternalBatchCommands)
+                    {
+                        if (cmd.FinalCommandText is not null)
+                        {
+                            cmd.FinalCommandText = NpgsqlActivitySource.AppendSqlCommenterTraceContext(cmd.FinalCommandText, CurrentActivity);
+                        }
+                    }
+                }
             }
         }
     }

@@ -58,3 +58,4 @@ Npgsql.NpgsqlConnection.BeginTransactionAsync(System.Data.IsolationLevel level, 
 NpgsqlTypes.NpgsqlRange<T>.LowerBound.get -> T?
 NpgsqlTypes.NpgsqlRange<T>.UpperBound.get -> T?
 NpgsqlTypes.NpgsqlRange<T>.NpgsqlRange(T? lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite, T? upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite) -> void
+Npgsql.NpgsqlTracingOptionsBuilder.EnableSqlCommenterTracePropagation(bool enable = true) -> Npgsql.NpgsqlTracingOptionsBuilder!
