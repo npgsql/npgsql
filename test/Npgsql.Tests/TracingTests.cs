@@ -852,4 +852,25 @@ public class TracingTests(bool async) : TestBase
                 return command.ExecuteScalar();
         }
     }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation()
+    {
+        using var activityListener = StartListener(out var activities);
+        await using var dataSource = CreateDataSource(builder => builder.ConfigureTracing(options => options.EnableSqlCommenterTracePropagation()));
+        await using var connection = async
+            ? await dataSource.OpenConnectionAsync()
+            : dataSource.OpenConnection();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1";
+        if (async)
+            await command.ExecuteScalarAsync();
+        else
+            command.ExecuteScalar();
+
+        Assert.That(activities, Has.Count.EqualTo(1));
+        var activity = activities[0];
+        Assert.That(activity.TraceId.ToString(), Is.Not.Null.And.Not.Empty);
+    }
 }

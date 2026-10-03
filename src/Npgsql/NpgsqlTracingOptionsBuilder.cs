@@ -20,6 +20,7 @@ public sealed class NpgsqlTracingOptionsBuilder
     Func<string, bool>? _copyOperationFilter;
     Action<Activity, string>? _copyOperationEnrichmentCallback;
     Func<string, string?>? _copyOperationSpanNameProvider;
+    bool _enableSqlCommenterTracePropagation;
 
     internal NpgsqlTracingOptionsBuilder()
     {
@@ -132,6 +133,16 @@ public sealed class NpgsqlTracingOptionsBuilder
         return this;
     }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether to append W3C trace context (<c>traceparent</c>) as a SQL comment to queries.
+    /// Default is false for explicit opt-in.
+    /// </summary>
+    public NpgsqlTracingOptionsBuilder EnableSqlCommenterTracePropagation(bool enable = true)
+    {
+        _enableSqlCommenterTracePropagation = enable;
+        return this;
+    }
+
     internal NpgsqlTracingOptions Build() => new()
     {
         CommandFilter = _commandFilter,
@@ -144,7 +155,8 @@ public sealed class NpgsqlTracingOptionsBuilder
         EnablePhysicalOpenTracing = _enablePhysicalOpenTracing,
         CopyOperationFilter = _copyOperationFilter,
         CopyOperationEnrichmentCallback = _copyOperationEnrichmentCallback,
-        CopyOperationSpanNameProvider = _copyOperationSpanNameProvider
+        CopyOperationSpanNameProvider = _copyOperationSpanNameProvider,
+        EnableSqlCommenterTracePropagation = _enableSqlCommenterTracePropagation
     };
 }
 
@@ -161,4 +173,5 @@ sealed class NpgsqlTracingOptions
     internal Func<string, bool>? CopyOperationFilter { get; init; }
     internal Action<Activity, string>? CopyOperationEnrichmentCallback { get; init; }
     internal Func<string, string?>? CopyOperationSpanNameProvider { get; init; }
+    internal bool EnableSqlCommenterTracePropagation { get; init; }
 }
