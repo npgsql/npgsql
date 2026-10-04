@@ -194,8 +194,8 @@ static class NpgsqlActivitySource
         var traceparent = $"00-{activity.TraceId}-{activity.SpanId}-{(activity.Recorded ? "01" : "00")}";
         var comment = $"/*traceparent='{traceparent}'*/";
 
-        return commandText.EndsWith(";")
-            ? commandText.Substring(0, commandText.Length - 1) + " " + comment + ";"
+        return commandText.EndsWith(';')
+            ? $"{commandText.AsSpan(0, commandText.Length - 1)} {comment};"
             : commandText + " " + comment;
     }
 }
