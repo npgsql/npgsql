@@ -604,7 +604,7 @@ public sealed class PgConcreteTypeInfo : PgTypeInfo
         var converter = binding.Converter;
         var result = typeof(T) == converter.TypeToConvert
             ? await Unsafe.As<PgConverter<T>>(converter).ReadAsync(reader, cancellationToken).ConfigureAwait(false)
-            : IsEnumUnderlyingConversion<T>(converter) && RuntimeFeature.IsDynamicCodeSupported
+            : RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(converter)
                 ? ReadAsEnumUnderlying<T>(reader)
                 : (T)(await converter.ReadAsObjectAsync(reader, cancellationToken).ConfigureAwait(false))!;
 

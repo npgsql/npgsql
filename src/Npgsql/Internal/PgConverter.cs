@@ -105,7 +105,7 @@ public abstract class PgConverter
     Read<T>(PgReader reader)
         => typeof(T) == TypeToConvert
             ? UnsafeAs<T>().Read(reader)
-            : IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported
+            : RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this)
                 ? ReadAsEnumUnderlying<T>(reader)
                 : (T)ReadAsObject(reader)!;
 
@@ -121,7 +121,7 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
 
-        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
             return new(ReadAsEnumUnderlying<T>(reader));
 
         var task = ReadAsObjectAsync(reader, cancellationToken);
@@ -140,7 +140,7 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().IsDbNull(value, writeState);
 
-        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
             return IsDbNullAsEnumUnderlying(value, writeState);
 
         return IsDbNullAsObject(value, writeState);
@@ -154,7 +154,7 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().Bind(context, value, ref writeState);
 
-        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
             return BindAsEnumUnderlying(context, value, ref writeState);
 
         return BindAsObject(context, value, ref writeState);
@@ -171,11 +171,15 @@ public abstract class PgConverter
             return;
         }
 
-        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
         {
             WriteAsEnumUnderlying(writer, value);
             return;
         }
+
+        if (RuntimeFeature.IsDynamicCodeSupported && typeof(T).IsValueType && default(T) is null &&
+            this is Converters.IEnumUnderlyingConverter && TryWriteAsNullableEnumUnderlying(writer, value))
+            return;
 
         WriteAsObject(writer, value);
     }
@@ -188,13 +192,47 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
 
-        if (IsEnumUnderlyingConversion<T>(this) && RuntimeFeature.IsDynamicCodeSupported)
+        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
         {
             WriteAsEnumUnderlying(writer, value);
             return new();
         }
 
+        if (RuntimeFeature.IsDynamicCodeSupported && typeof(T).IsValueType && default(T) is null &&
+            this is Converters.IEnumUnderlyingConverter && TryWriteAsNullableEnumUnderlying(writer, value))
+            return new();
+
         return WriteAsObjectAsync(writer, value, cancellationToken);
+    }
+
+    // Keep both the source and underlying types visible before calling the typed converter.
+    // The casts enforce compatibility without reflecting over the source enum type. Enum
+    // converters are buffered, so this path also serves asynchronous writes synchronously.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    bool TryWriteAsNullableEnumUnderlying<T>(PgWriter writer, T value)
+    {
+        Debug.Assert(this is Converters.IEnumUnderlyingConverter);
+
+        if (TypeToConvert == typeof(int?))
+            UnsafeAs<int?>().Write(writer, value is null ? null : (int)(object)value);
+        else if (TypeToConvert == typeof(long?))
+            UnsafeAs<long?>().Write(writer, value is null ? null : (long)(object)value);
+        else if (TypeToConvert == typeof(short?))
+            UnsafeAs<short?>().Write(writer, value is null ? null : (short)(object)value);
+        else if (TypeToConvert == typeof(byte?))
+            UnsafeAs<byte?>().Write(writer, value is null ? null : (byte)(object)value);
+        else if (TypeToConvert == typeof(sbyte?))
+            UnsafeAs<sbyte?>().Write(writer, value is null ? null : (sbyte)(object)value);
+        else if (TypeToConvert == typeof(ushort?))
+            UnsafeAs<ushort?>().Write(writer, value is null ? null : (ushort)(object)value);
+        else if (TypeToConvert == typeof(uint?))
+            UnsafeAs<uint?>().Write(writer, value is null ? null : (uint)(object)value);
+        else if (TypeToConvert == typeof(ulong?))
+            UnsafeAs<ulong?>().Write(writer, value is null ? null : (ulong)(object)value);
+        else
+            return false;
+
+        return true;
     }
 
     /// Checks whether <paramref name="value"/> is considered a database null by this converter.
