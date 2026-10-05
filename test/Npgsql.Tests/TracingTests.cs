@@ -980,5 +980,27 @@ public class TracingTests(bool async) : TestBase
         Assert.That(results[2], Is.EqualTo("SELECT current_query()"));
     }
 
+    [Test]
+    public async Task SqlCommenterTracePropagation_unsampled_trace_uses_not_sampled_flag()
+    {
+        await using var dataSource = CreateSqlCommenterDataSource();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        // AllData (not AllDataAndRecorded) creates the Activity but leaves Activity.Recorded false,
+        // exercising the "00" branch of the traceparent sampled-flag ternary.
+        var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => Assert.That(activity.Recorded, Is.False)
+        };
+        using var _ = activityListener;
+        ActivitySource.AddActivityListener(activityListener);
+
+        var sentSql = (string?)await ExecuteScalar(connection, async, isBatch: false, "SELECT current_query()");
+
+        Assert.That(sentSql, Does.Match(@"^SELECT current_query\(\) /\*traceparent='00-[0-9a-f]{32}-[0-9a-f]{16}-00'\*/$"));
+    }
+
     #endregion SQLCommenter trace propagation
 }
