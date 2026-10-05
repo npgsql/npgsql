@@ -898,6 +898,30 @@ public class TracingTests(bool async) : TestBase
     }
 
     [Test]
+    public async Task SqlCommenterTracePropagation_multiple_statements()
+    {
+        await using var dataSource = CreateSqlCommenterDataSource();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        using var activityListener = StartListener(out var activities);
+
+        string first, second;
+        await using (var command = new NpgsqlCommand("SELECT current_query(); SELECT current_query()", connection))
+        await using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+        {
+            Assert.That(await reader.ReadAsync(), Is.True);
+            first = reader.GetString(0);
+            Assert.That(await reader.NextResultAsync(), Is.True);
+            Assert.That(await reader.ReadAsync(), Is.True);
+            second = reader.GetString(0);
+        }
+        // The activity is only stopped once the reader has been disposed
+        var activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        var comment = ExpectedTraceComment(activity);
+        Assert.That(first, Is.EqualTo($"SELECT current_query() {comment}"));
+        Assert.That(second, Is.EqualTo($"SELECT current_query() {comment}"));
+    }
+
+    [Test]
     public async Task SqlCommenterTracePropagation_disabled_by_default()
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
