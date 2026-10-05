@@ -1,4 +1,6 @@
+using System;
 using System.Data;
+using System.Globalization;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
@@ -39,9 +41,12 @@ public class EnumTests : TestBase
         => AssertType(ByteEnum.X, "255", "smallint", dataTypeInference: DataTypeInference.Nothing,
             dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
-    [Test]
-    public Task SByte_enum()
-        => AssertType(SByteEnum.B, "100", "smallint", dataTypeInference: DataTypeInference.Nothing,
+    [TestCase(-128)]
+    [TestCase(-1)]
+    [TestCase(100)]
+    [TestCase(127)]
+    public Task SByte_enum(sbyte value)
+        => AssertType((SByteEnum)value, value.ToString(CultureInfo.InvariantCulture), "smallint", dataTypeInference: DataTypeInference.Nothing,
             dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
 
     [Test]
@@ -78,6 +83,35 @@ public class EnumTests : TestBase
     public Task Nullable_byte_enum()
         => AssertType<ByteEnum?>(ByteEnum.X, "255", "smallint", dataTypeInference: DataTypeInference.Nothing,
             dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [TestCase(-128)]
+    [TestCase(-1)]
+    [TestCase(127)]
+    public Task Nullable_sbyte_enum(sbyte value)
+        => AssertType<SByteEnum?>((SByteEnum)value, value.ToString(CultureInfo.InvariantCulture), "smallint",
+            dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Nullable_ushort_enum()
+        => AssertType<UShortEnum?>((UShortEnum)ushort.MaxValue, "-1", "smallint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int16, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Nullable_uint_enum()
+        => AssertType<UIntEnum?>((UIntEnum)uint.MaxValue, "-1", "integer", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int32, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Nullable_ulong_enum()
+        => AssertType<ULongEnum?>((ULongEnum)ulong.MaxValue, "-1", "bigint", dataTypeInference: DataTypeInference.Nothing,
+            dbType: new DbTypes(DbType.Int64, DbType.Object), valueTypeEqualsFieldType: false);
+
+    [Test]
+    public Task Sbyte_enum_rejects_out_of_range_values([Values(-129, 128, 255)] short value, [Values] bool nullable)
+        => nullable
+            ? AssertTypeUnsupportedRead<SByteEnum?, OverflowException>(value.ToString(CultureInfo.InvariantCulture), "smallint")
+            : AssertTypeUnsupportedRead<SByteEnum, OverflowException>(value.ToString(CultureInfo.InvariantCulture), "smallint");
 
     [Test]
     public Task Enum_rejects_non_canonical_column()
