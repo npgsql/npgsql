@@ -20,6 +20,7 @@ public sealed class NpgsqlTracingOptionsBuilder
     Func<string, bool>? _copyOperationFilter;
     Action<Activity, string>? _copyOperationEnrichmentCallback;
     Func<string, string?>? _copyOperationSpanNameProvider;
+    bool _enableSqlCommenterTracePropagation;
 
     internal NpgsqlTracingOptionsBuilder()
     {
@@ -132,6 +133,28 @@ public sealed class NpgsqlTracingOptionsBuilder
         return this;
     }
 
+    /// <summary>
+    /// Enables appending the W3C trace context (<c>traceparent</c>) as a SQL comment (SQLCommenter style) to queries,
+    /// allowing server-side telemetry to be correlated with the client span. Default is <see langword="false"/> (explicit opt-in).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Since the <c>traceparent</c> value changes on every execution, the SQL text sent to PostgreSQL is different each time.
+    /// This is fundamentally incompatible with server-side statement caching, so the comment is only added to statements which are
+    /// sent unprepared. Statements which are (auto-)prepared, or are being prepared, are never modified and do not carry the trace
+    /// context; this includes frequently-executed queries when <c>Max Auto Prepare</c> is enabled.
+    /// </para>
+    /// <para>
+    /// This feature is experimental, as the OpenTelemetry database semantic conventions for context propagation are still evolving.
+    /// </para>
+    /// </remarks>
+    /// <param name="enable">Whether to enable trace context propagation via SQL comments.</param>
+    public NpgsqlTracingOptionsBuilder EnableSqlCommenterTracePropagation(bool enable = true)
+    {
+        _enableSqlCommenterTracePropagation = enable;
+        return this;
+    }
+
     internal NpgsqlTracingOptions Build() => new()
     {
         CommandFilter = _commandFilter,
@@ -144,7 +167,8 @@ public sealed class NpgsqlTracingOptionsBuilder
         EnablePhysicalOpenTracing = _enablePhysicalOpenTracing,
         CopyOperationFilter = _copyOperationFilter,
         CopyOperationEnrichmentCallback = _copyOperationEnrichmentCallback,
-        CopyOperationSpanNameProvider = _copyOperationSpanNameProvider
+        CopyOperationSpanNameProvider = _copyOperationSpanNameProvider,
+        EnableSqlCommenterTracePropagation = _enableSqlCommenterTracePropagation
     };
 }
 
@@ -161,4 +185,5 @@ sealed class NpgsqlTracingOptions
     internal Func<string, bool>? CopyOperationFilter { get; init; }
     internal Action<Activity, string>? CopyOperationEnrichmentCallback { get; init; }
     internal Func<string, string?>? CopyOperationSpanNameProvider { get; init; }
+    internal bool EnableSqlCommenterTracePropagation { get; init; }
 }

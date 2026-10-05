@@ -852,4 +852,155 @@ public class TracingTests(bool async) : TestBase
                 return command.ExecuteScalar();
         }
     }
+
+    #region SQLCommenter trace propagation
+
+    static string ExpectedTraceComment(Activity activity)
+        => $"/*traceparent='00-{activity.TraceId}-{activity.SpanId}-01'*/";
+
+    NpgsqlDataSource CreateSqlCommenterDataSource(bool enable = true, int maxAutoPrepare = 0, int autoPrepareMinUsages = 5)
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.MaxAutoPrepare = maxAutoPrepare;
+        dataSourceBuilder.ConnectionStringBuilder.AutoPrepareMinUsages = autoPrepareMinUsages;
+        dataSourceBuilder.ConfigureTracing(o => o
+            .EnablePhysicalOpenTracing(false)
+            .EnableSqlCommenterTracePropagation(enable));
+        return dataSourceBuilder.Build();
+    }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation([Values] bool isBatch)
+    {
+        await using var dataSource = CreateSqlCommenterDataSource();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        using var activityListener = StartListener(out var activities);
+
+        // current_query() returns the exact SQL text received by the server
+        var sentSql = (string?)await ExecuteScalar(connection, async, isBatch, "SELECT current_query()");
+
+        var activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        Assert.That(sentSql, Is.EqualTo($"SELECT current_query() {ExpectedTraceComment(activity)}"));
+    }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation_trailing_semicolon()
+    {
+        await using var dataSource = CreateSqlCommenterDataSource();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        using var activityListener = StartListener(out var activities);
+
+        // Batch commands are sent as-is (no SQL rewriting), so the trailing semicolon reaches the server
+        var sentSql = (string?)await ExecuteScalar(connection, async, isBatch: true, "SELECT current_query();");
+
+        var activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        Assert.That(sentSql, Is.EqualTo($"SELECT current_query() {ExpectedTraceComment(activity)};"));
+    }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation_multiple_statements()
+    {
+        await using var dataSource = CreateSqlCommenterDataSource();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        using var activityListener = StartListener(out var activities);
+
+        string first, second;
+        await using (var command = new NpgsqlCommand("SELECT current_query(); SELECT current_query()", connection))
+        await using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+        {
+            Assert.That(await reader.ReadAsync(), Is.True);
+            first = reader.GetString(0);
+            Assert.That(await reader.NextResultAsync(), Is.True);
+            Assert.That(await reader.ReadAsync(), Is.True);
+            second = reader.GetString(0);
+        }
+        // The activity is only stopped once the reader has been disposed
+        var activity = GetSingleActivity(activities, "postgresql", "postgresql");
+        var comment = ExpectedTraceComment(activity);
+        Assert.That(first, Is.EqualTo($"SELECT current_query() {comment}"));
+        Assert.That(second, Is.EqualTo($"SELECT current_query() {comment}"));
+    }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation_disabled_by_default()
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConfigureTracing(o => o.EnablePhysicalOpenTracing(false));
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        using var activityListener = StartListener(out var activities);
+
+        var sentSql = (string?)await ExecuteScalar(connection, async, isBatch: false, "SELECT current_query()");
+
+        Assert.That(activities, Has.Count.EqualTo(1));
+        Assert.That(sentSql, Is.EqualTo("SELECT current_query()"));
+    }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation_explicitly_prepared_does_not_accumulate()
+    {
+        await using var dataSource = CreateSqlCommenterDataSource();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await using var command = new NpgsqlCommand("SELECT current_query()", connection);
+        if (async)
+            await command.PrepareAsync();
+        else
+            command.Prepare();
+
+        using var activityListener = StartListener(out var activities);
+
+        for (var i = 0; i < 3; i++)
+        {
+            var sentSql = async ? await command.ExecuteScalarAsync() : command.ExecuteScalar();
+            // Prepared statements only send Bind, so the server sees the original (uncommented) statement text
+            Assert.That(sentSql, Is.EqualTo("SELECT current_query()"));
+            Assert.That(command.InternalBatchCommands[0].FinalCommandText, Is.EqualTo("SELECT current_query()"),
+                "The traceparent comment must not accumulate on the prepared statement's command text");
+        }
+
+        Assert.That(activities, Has.Count.EqualTo(3));
+    }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation_auto_prepared_does_not_bake_stale_traceparent()
+    {
+        await using var dataSource = CreateSqlCommenterDataSource(maxAutoPrepare: 10, autoPrepareMinUsages: 2);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        using var activityListener = StartListener(out var activities);
+
+        var results = new List<string?>();
+        for (var i = 0; i < 3; i++)
+            results.Add((string?)await ExecuteScalar(connection, async, isBatch: false, "SELECT current_query()"));
+
+        Assert.That(activities, Has.Count.EqualTo(3));
+        // 1st execution is unprepared: the comment is propagated
+        Assert.That(results[0], Is.EqualTo($"SELECT current_query() {ExpectedTraceComment(activities[0])}"));
+        // 2nd execution auto-prepares the statement and 3rd reuses it: no traceparent may be baked into the server-side statement
+        Assert.That(results[1], Is.EqualTo("SELECT current_query()"));
+        Assert.That(results[2], Is.EqualTo("SELECT current_query()"));
+    }
+
+    [Test]
+    public async Task SqlCommenterTracePropagation_unsampled_trace_uses_not_sampled_flag()
+    {
+        await using var dataSource = CreateSqlCommenterDataSource();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        // AllData (not AllDataAndRecorded) creates the Activity but leaves Activity.Recorded false,
+        // exercising the "00" branch of the traceparent sampled-flag ternary.
+        var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => Assert.That(activity.Recorded, Is.False)
+        };
+        using var _ = activityListener;
+        ActivitySource.AddActivityListener(activityListener);
+
+        var sentSql = (string?)await ExecuteScalar(connection, async, isBatch: false, "SELECT current_query()");
+
+        Assert.That(sentSql, Does.Match(@"^SELECT current_query\(\) /\*traceparent='00-[0-9a-f]{32}-[0-9a-f]{16}-00'\*/$"));
+    }
+
+    #endregion SQLCommenter trace propagation
 }

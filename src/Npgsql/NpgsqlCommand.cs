@@ -1686,6 +1686,20 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     CommandType,
                     prepared,
                     spanName);
+
+                if (tracingOptions.EnableSqlCommenterTracePropagation && CurrentActivity is not null && InternalBatchCommands is not null)
+                {
+                    foreach (var cmd in InternalBatchCommands)
+                    {
+                        // Only unprepared statements: their FinalCommandText is regenerated on every execution and sent via Parse.
+                        // Prepared statements only send Bind (the comment would never reach the server and would accumulate in
+                        // FinalCommandText), and statements being prepared would bake a stale traceparent into the server-side statement.
+                        if (cmd.FinalCommandText is not null && cmd.PreparedStatement is null)
+                        {
+                            cmd.FinalCommandText = NpgsqlActivitySource.AppendSqlCommenterTraceContext(cmd.FinalCommandText, CurrentActivity);
+                        }
+                    }
+                }
             }
         }
     }
