@@ -46,7 +46,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         // TypeModifier isn't threaded yet — PostgresCompositeType.Field doesn't load attypmod.
         public ProviderFieldContext FieldContext { get; }
 
-        public NestedColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectTypeInfo, DataFormat format, string? fieldName)
+        public NestedColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectTypeInfo, PgConversionContext conversionContext, DataFormat format, string? fieldName)
         {
             PostgresType = postgresType;
             BufferPos = bufferPos;
@@ -54,7 +54,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             ObjectTypeInfo = objectTypeInfo.MakeConcreteForField(FieldContext);
             if (!ObjectTypeInfo.SupportsReading)
                 AdoSerializerHelpers.ThrowReadingNotSupported(typeof(object), objectTypeInfo.Options, ObjectTypeInfo.PgTypeId, resolved: true);
-            ObjectBinding = ObjectTypeInfo.BindField(format);
+            ObjectBinding = ObjectTypeInfo.BindField(conversionContext, format);
         }
     }
 
@@ -382,7 +382,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
                 var pgType = SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
                 var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
                 _columns.Add(new NestedColumnInfo(pgType, bufferPos,
-                    AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), DataFormat, fieldName));
+                    AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), _outermostReader.Connector.ConversionContext, DataFormat, fieldName));
             }
             else
             {
@@ -391,7 +391,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
                     : SerializerOptions.DatabaseInfo.GetPostgresType(typeOid);
                 var pgTypeId = SerializerOptions.ToCanonicalTypeId(pgType);
                 _columns[i] = new NestedColumnInfo(pgType, bufferPos,
-                    AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), DataFormat, fieldName);
+                    AdoSerializerHelpers.GetTypeInfoForReading(typeof(object), pgTypeId, SerializerOptions), _outermostReader.Connector.ConversionContext, DataFormat, fieldName);
             }
 
             var columnLen = PgReader.ReadInt32();
@@ -494,19 +494,27 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     ReadConversionContext GetOrAddConverterInfo(Type type, NestedColumnInfo nestedColumn, int ordinal)
     {
-        if (nestedColumn.LastInfo is { IsDefault: false } lastInfo && lastInfo.TypeInfo.Type == type)
+        // Cache hit requires the cached binding to still be valid for the current connector context —
+        // SourceContext null (invariant) or matching the live reference. Without this gate a non-invariant
+        // binding cached under an earlier PgConversionContext could be reused after a mid-session
+        // client_encoding/TimeZone rotation, returning stale BufferRequirement.
+        if (nestedColumn.LastInfo is { IsDefault: false } lastInfo && lastInfo.TypeInfo.Type == type
+            && (lastInfo.SourceContext is null
+                || ReferenceEquals(lastInfo.SourceContext, _outermostReader.Connector.ConversionContext)))
             return lastInfo;
 
         var objectInfo = (TypeInfo: nestedColumn.ObjectTypeInfo, Binding: nestedColumn.ObjectBinding);
+        var conversionContext = _outermostReader.Connector.ConversionContext;
         if (objectInfo.TypeInfo is not null && (typeof(object) == type || objectInfo.TypeInfo.Type == type))
-            return new(objectInfo.TypeInfo, objectInfo.Binding);
+            return new(objectInfo.TypeInfo, objectInfo.Binding, objectInfo.Binding.IsBindingInvariant ? null : conversionContext);
 
         var typeId = SerializerOptions.ToCanonicalTypeId(nestedColumn.PostgresType);
         var typeInfo = AdoSerializerHelpers.GetTypeInfoForReading(type, typeId, SerializerOptions);
         var concreteTypeInfo = typeInfo.MakeConcreteForField(nestedColumn.FieldContext);
         if (!concreteTypeInfo.SupportsReading)
             AdoSerializerHelpers.ThrowReadingNotSupported(type, SerializerOptions, typeId, resolved: true);
-        var columnInfo = new ReadConversionContext(concreteTypeInfo, concreteTypeInfo.BindField(DataFormat));
+        var binding = concreteTypeInfo.BindField(conversionContext, DataFormat);
+        var columnInfo = new ReadConversionContext(concreteTypeInfo, binding, binding.IsBindingInvariant ? null : conversionContext);
         _columns[ordinal] = nestedColumn with { LastInfo = columnInfo };
         return columnInfo;
     }

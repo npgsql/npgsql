@@ -313,7 +313,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             if (newParam)
                 _params[_column] = param;
 
-            param.Bind(out _, out _, requiredFormat: DataFormat.Binary);
+            param.Bind(_connector.ConversionContext, out _, out _, requiredFormat: DataFormat.Binary);
 
             try
             {
