@@ -606,7 +606,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     #endregion Enums
 
     void ThrowColumnMismatch()
-        => throw new InvalidOperationException($"The binary import operation was started with {NumColumns} column(s), but {_column + 1} value(s) were provided.");
+        => throw new InvalidOperationException($"The binary import operation was started with {NumColumns} column(s), but {_column} value(s) were provided.");
 
     #region Tracing
 
