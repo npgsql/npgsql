@@ -594,7 +594,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // But we start a user action to check the cancellation token and generate exceptions
         using var _ = connector.StartUserAction(cancellationToken);
 
-        connector.Transaction ??= new NpgsqlTransaction(connector);
+        // A disposed transaction stays disposed. Reusing it would make a later Dispose roll back
+        // whatever transaction now occupies that object (#6665).
+        if (connector.Transaction is null || connector.Transaction.IsDisposed)
+            connector.Transaction = new NpgsqlTransaction(connector);
+
         connector.Transaction.Init(level, options);
         return connector.Transaction;
     }
