@@ -14,25 +14,28 @@ interface IEnumUnderlyingConverter
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static bool IsEnumUnderlyingConversion<T>(PgConverter converter)
-        => typeof(T).IsEnum && Enum.GetUnderlyingType(typeof(T)) == converter.TypeToConvert && converter is IEnumUnderlyingConverter;
+        => typeof(T).IsEnum && typeof(T).GetEnumUnderlyingType() == converter.TypeToConvert && converter is IEnumUnderlyingConverter;
 
-    // Typed enum-underlying helpers. The enum-typed instantiations are reached only via the dispatch sites'
-    // RuntimeFeature.IsDynamicCodeSupported gate, which ILC discharges to false under NAOT — so they don't get
-    // instantiated per enum-T (no viral bloat). Under JIT, RyuJIT folds the typecode switch per concrete T at
-    // codegen time, leaving only the matching case live. T is the enum or (via the converter's own Read/Write)
-    // its underlying primitive; Unsafe.BitCast reinterprets the layout-identical bits — signed and unsigned
-    // alike — without boxing.
+    // Keep IsEnum directly at dispatch sites too: the NativeAOT scanner doesn't inline the predicate
+    // above, so hiding the guard there would retain these helpers for non-enum callers.
+    // T is either an enum or its underlying primitive. Direct underlying-type comparisons fold on
+    // both CoreCLR and NativeAOT; Type.GetTypeCode can retain runtime enum checks under NativeAOT.
     [MethodImpl(MethodImplOptions.NoInlining)]
     static T ReadAsEnumUnderlying<T>(PgReader reader)
-        => Type.GetTypeCode(typeof(T)) switch
-        {
-            TypeCode.Int32 or TypeCode.UInt32 => Unsafe.BitCast<int, T>(reader.ReadInt32()),
-            TypeCode.Int64 or TypeCode.UInt64 => Unsafe.BitCast<long, T>(reader.ReadInt64()),
-            TypeCode.Int16 or TypeCode.UInt16 => Unsafe.BitCast<short, T>(reader.ReadInt16()),
-            TypeCode.Byte => Unsafe.BitCast<byte, T>(checked((byte)reader.ReadInt16())),
-            TypeCode.SByte => Unsafe.BitCast<sbyte, T>(checked((sbyte)reader.ReadInt16())),
-            _ => throw new NotSupportedException()
-        };
+    {
+        var type = typeof(T).IsEnum ? typeof(T).GetEnumUnderlyingType() : typeof(T);
+        if (type == typeof(int) || type == typeof(uint))
+            return Unsafe.BitCast<int, T>(reader.ReadInt32());
+        if (type == typeof(long) || type == typeof(ulong))
+            return Unsafe.BitCast<long, T>(reader.ReadInt64());
+        if (type == typeof(short) || type == typeof(ushort))
+            return Unsafe.BitCast<short, T>(reader.ReadInt16());
+        if (type == typeof(byte))
+            return Unsafe.BitCast<byte, T>(checked((byte)reader.ReadInt16()));
+        if (type == typeof(sbyte))
+            return Unsafe.BitCast<sbyte, T>(checked((sbyte)reader.ReadInt16()));
+        throw new NotSupportedException();
+    }
 
     static bool IsDbNullAsEnumUnderlying<T>(T? value, object? writeState) => false;
 
@@ -48,52 +51,53 @@ interface IEnumUnderlyingConverter
     [MethodImpl(MethodImplOptions.NoInlining)]
     static void WriteAsEnumUnderlying<T>(PgWriter writer, T value)
     {
-        switch (Type.GetTypeCode(typeof(T)))
-        {
-            case TypeCode.Int32 or TypeCode.UInt32:
-                writer.WriteInt32(Unsafe.BitCast<T, int>(value));
-                break;
-            case TypeCode.Int64 or TypeCode.UInt64:
-                writer.WriteInt64(Unsafe.BitCast<T, long>(value));
-                break;
-            case TypeCode.Int16 or TypeCode.UInt16:
-                writer.WriteInt16(Unsafe.BitCast<T, short>(value));
-                break;
-            case TypeCode.Byte:
-                writer.WriteInt16(Unsafe.BitCast<T, byte>(value));
-                break;
-            case TypeCode.SByte:
-                writer.WriteInt16(Unsafe.BitCast<T, sbyte>(value));
-                break;
-            default: throw new NotSupportedException();
-        }
+        var type = typeof(T).IsEnum ? typeof(T).GetEnumUnderlyingType() : typeof(T);
+        if (type == typeof(int) || type == typeof(uint))
+            writer.WriteInt32(Unsafe.BitCast<T, int>(value));
+        else if (type == typeof(long) || type == typeof(ulong))
+            writer.WriteInt64(Unsafe.BitCast<T, long>(value));
+        else if (type == typeof(short) || type == typeof(ushort))
+            writer.WriteInt16(Unsafe.BitCast<T, short>(value));
+        else if (type == typeof(byte))
+            writer.WriteInt16(Unsafe.BitCast<T, byte>(value));
+        else if (type == typeof(sbyte))
+            writer.WriteInt16(Unsafe.BitCast<T, sbyte>(value));
+        else
+            throw new NotSupportedException();
     }
 
     // Known PG wire sizes per .NET underlying type — matches the default Ado mappings. byte/sbyte/short/ushort
     // → Int2 (2 bytes), int/uint → Int4 (4 bytes), long/ulong → Int8 (8 bytes). PG has no unsigned types, so
     // unsigned .NET underlyings are bit-reinterpreted onto the signed wire format of the same width.
     static int WireSize<T>()
-        => Type.GetTypeCode(typeof(T)) switch
-        {
-            TypeCode.Int32 or TypeCode.UInt32 => sizeof(int),
-            TypeCode.Int64 or TypeCode.UInt64 => sizeof(long),
-            TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Byte or TypeCode.SByte => sizeof(short),
-            _ => throw new NotSupportedException()
-        };
+    {
+        if (typeof(T) == typeof(int) || typeof(T) == typeof(uint))
+            return sizeof(int);
+        if (typeof(T) == typeof(long) || typeof(T) == typeof(ulong))
+            return sizeof(long);
+        if (typeof(T) == typeof(short) || typeof(T) == typeof(ushort)
+            || typeof(T) == typeof(byte) || typeof(T) == typeof(sbyte))
+            return sizeof(short);
+        throw new NotSupportedException();
+    }
 
     // Typed Enum.ToObject overload — one allocation (the boxed enum), no intermediate boxed underlying.
     // Used by both the value and nullable converter's AsObject paths.
     [MethodImpl(MethodImplOptions.NoInlining)]
     static object ReadAsBoxedEnum<T>(PgReader reader, Type enumType)
-        => Type.GetTypeCode(typeof(T)) switch
-        {
-            TypeCode.Int32 or TypeCode.UInt32 => Enum.ToObject(enumType, reader.ReadInt32()),
-            TypeCode.Int64 or TypeCode.UInt64 => Enum.ToObject(enumType, reader.ReadInt64()),
-            TypeCode.Int16 or TypeCode.UInt16 => Enum.ToObject(enumType, reader.ReadInt16()),
-            TypeCode.Byte => Enum.ToObject(enumType, checked((byte)reader.ReadInt16())),
-            TypeCode.SByte => Enum.ToObject(enumType, checked((sbyte)reader.ReadInt16())),
-            _ => throw new NotSupportedException()
-        };
+    {
+        if (typeof(T) == typeof(int) || typeof(T) == typeof(uint))
+            return Enum.ToObject(enumType, reader.ReadInt32());
+        if (typeof(T) == typeof(long) || typeof(T) == typeof(ulong))
+            return Enum.ToObject(enumType, reader.ReadInt64());
+        if (typeof(T) == typeof(short) || typeof(T) == typeof(ushort))
+            return Enum.ToObject(enumType, reader.ReadInt16());
+        if (typeof(T) == typeof(byte))
+            return Enum.ToObject(enumType, checked((byte)reader.ReadInt16()));
+        if (typeof(T) == typeof(sbyte))
+            return Enum.ToObject(enumType, checked((sbyte)reader.ReadInt16()));
+        throw new NotSupportedException();
+    }
 }
 
 /// <summary>

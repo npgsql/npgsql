@@ -105,7 +105,7 @@ public abstract class PgConverter
     Read<T>(PgReader reader)
         => typeof(T) == TypeToConvert
             ? UnsafeAs<T>().Read(reader)
-            : RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this)
+            : typeof(T).IsEnum && IsEnumUnderlyingConversion<T>(this)
                 ? ReadAsEnumUnderlying<T>(reader)
                 : (T)ReadAsObject(reader)!;
 
@@ -121,7 +121,7 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().ReadAsync(reader, cancellationToken);
 
-        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
+        if (typeof(T).IsEnum && IsEnumUnderlyingConversion<T>(this))
             return new(ReadAsEnumUnderlying<T>(reader));
 
         var task = ReadAsObjectAsync(reader, cancellationToken);
@@ -140,7 +140,7 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().IsDbNull(value, writeState);
 
-        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
+        if (typeof(T).IsEnum && IsEnumUnderlyingConversion<T>(this))
             return IsDbNullAsEnumUnderlying(value, writeState);
 
         return IsDbNullAsObject(value, writeState);
@@ -154,7 +154,7 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().Bind(context, value, ref writeState);
 
-        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
+        if (typeof(T).IsEnum && IsEnumUnderlyingConversion<T>(this))
             return BindAsEnumUnderlying(context, value, ref writeState);
 
         return BindAsObject(context, value, ref writeState);
@@ -171,7 +171,7 @@ public abstract class PgConverter
             return;
         }
 
-        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
+        if (typeof(T).IsEnum && IsEnumUnderlyingConversion<T>(this))
         {
             WriteAsEnumUnderlying(writer, value);
             return;
@@ -192,7 +192,7 @@ public abstract class PgConverter
         if (typeof(T) == TypeToConvert)
             return UnsafeAs<T>().WriteAsync(writer, value, cancellationToken);
 
-        if (RuntimeFeature.IsDynamicCodeSupported && IsEnumUnderlyingConversion<T>(this))
+        if (typeof(T).IsEnum && IsEnumUnderlyingConversion<T>(this))
         {
             WriteAsEnumUnderlying(writer, value);
             return new();
