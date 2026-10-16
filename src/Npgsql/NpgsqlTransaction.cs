@@ -137,7 +137,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 
         _connector.TransactionStatus = TransactionStatus.Pending;
         _isolationLevel = isolationLevel;
-        IsDisposed = false;
+        Debug.Assert(!IsDisposed);
 
         LogMessages.StartedTransaction(_transactionLogger, isolationLevel, _connector.Id);
     }
@@ -355,7 +355,7 @@ public sealed class NpgsqlTransaction : DbTransaction
                 }
             }
 
-            IsDisposed = true;
+            MarkDisposed();
         }
     }
 
@@ -371,7 +371,7 @@ public sealed class NpgsqlTransaction : DbTransaction
                 return DisposeAsyncInternal();
             }
 
-            IsDisposed = true;
+            MarkDisposed();
         }
 
         return default;
@@ -390,7 +390,7 @@ public sealed class NpgsqlTransaction : DbTransaction
                 LogMessages.ExceptionDuringTransactionDispose(_transactionLogger, _connector.Id, ex);
             }
 
-            IsDisposed = true;
+            MarkDisposed();
         }
     }
 
@@ -400,8 +400,17 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// </summary>
     internal void DisposeImmediately(Exception? disposeReason)
     {
-        IsDisposed = true;
         _disposeReason = disposeReason;
+        MarkDisposed();
+    }
+
+    // Drop the connector's reference so the next BeginTransaction allocates a new transaction
+    // instead of resurrecting this one.
+    void MarkDisposed()
+    {
+        IsDisposed = true;
+        if (_connector is not null && ReferenceEquals(_connector.Transaction, this))
+            _connector.Transaction = null;
     }
 
     #endregion
@@ -451,15 +460,7 @@ public sealed class NpgsqlTransaction : DbTransaction
         // See #3306
         if (!IsDisposed)
         {
-            if (_connector.UnboundTransaction is { IsDisposed: true } previousTransaction)
-            {
-                previousTransaction._connector = _connector;
-                _connector.Transaction = previousTransaction;
-            }
-            else
-                _connector.Transaction = null;
-
-            _connector.UnboundTransaction = this;
+            _connector.Transaction = null;
             _connector = null!;
         }
     }

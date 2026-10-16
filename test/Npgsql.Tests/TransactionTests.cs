@@ -181,6 +181,32 @@ public class TransactionTests : TestBase
         }
     }
 
+    [Test, Description("Disposing a transaction twice does not roll back a later transaction on the same pooled connector")]
+    public async Task Second_dispose_does_not_affect_a_later_transaction()
+    {
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+
+        NpgsqlTransaction first;
+        await using (var conn = await dataSource.OpenConnectionAsync())
+        {
+            first = await conn.BeginTransactionAsync();
+            await first.CommitAsync();
+            await first.DisposeAsync();
+        }
+
+        await using (var conn = await dataSource.OpenConnectionAsync())
+        {
+            var second = await conn.BeginTransactionAsync();
+            Assert.That(second, Is.Not.SameAs(first));
+
+            await first.DisposeAsync();
+            first.Dispose();
+
+            Assert.That(second.IsCompleted, Is.False);
+            await second.CommitAsync();
+        }
+    }
+
     [Test, Description("Tests that the isolation levels are properly supported")]
     [TestCase(IsolationLevel.ReadCommitted,   "read committed")]
     [TestCase(IsolationLevel.ReadUncommitted, "read uncommitted")]
@@ -651,7 +677,8 @@ public class TransactionTests : TestBase
         var tx3 = conn3.BeginTransaction();
         await using (var ___ = tx3)
         {
-            Assert.That(tx3, Is.SameAs(tx1));
+            // A disposed transaction is not recycled onto the next begin (#6665).
+            Assert.That(tx3, Is.Not.SameAs(tx1));
             using var cmd3 = conn3.CreateCommand();
             cmd3.CommandText = $"INSERT INTO {table} (name) VALUES ('Z'); SELECT 3";
             await using (var reader3 = await cmd3.ExecuteReaderAsync())
