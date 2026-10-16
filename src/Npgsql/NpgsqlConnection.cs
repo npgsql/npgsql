@@ -666,7 +666,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             try
             {
                 if (EnlistedTransaction.TransactionInformation.Status == System.Transactions.TransactionStatus.Active)
-                    throw new InvalidOperationException($"Already enlisted to transaction (localid={EnlistedTransaction.TransactionInformation.LocalIdentifier})");
+                    ThrowHelper.ThrowInvalidOperationException($"Already enlisted to transaction (localid={EnlistedTransaction.TransactionInformation.LocalIdentifier})");
             }
             catch (ObjectDisposedException)
             {
@@ -1112,7 +1112,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         ArgumentNullException.ThrowIfNull(copyFromCommand);
         if (!IsValidCopyCommand(copyFromCommand))
-            throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
+            ThrowHelper.ThrowArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
         CheckReady();
         var connector = Connector!;
@@ -1171,7 +1171,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         ArgumentNullException.ThrowIfNull(copyToCommand);
         if (!IsValidCopyCommand(copyToCommand))
-            throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
+            ThrowHelper.ThrowArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
         CheckReady();
         var connector = Connector!;
@@ -1236,7 +1236,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         ArgumentNullException.ThrowIfNull(copyFromCommand);
         if (!IsValidCopyCommand(copyFromCommand))
-            throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
+            ThrowHelper.ThrowArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
         CheckReady();
         var connector = Connector!;
@@ -1302,7 +1302,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         ArgumentNullException.ThrowIfNull(copyToCommand);
         if (!IsValidCopyCommand(copyToCommand))
-            throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
+            ThrowHelper.ThrowArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
         CheckReady();
         var connector = Connector!;
@@ -1368,7 +1368,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         ArgumentNullException.ThrowIfNull(copyCommand);
         if (!IsValidCopyCommand(copyCommand))
-            throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
+            ThrowHelper.ThrowArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
 
         CheckReady();
         var connector = Connector!;
@@ -1426,7 +1426,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public bool Wait(int timeout)
     {
         if (timeout != -1 && timeout < 0)
-            throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
+            ThrowHelper.ThrowArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
 
         CheckReady();
 
