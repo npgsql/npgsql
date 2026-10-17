@@ -1173,7 +1173,8 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         await using var adminConnection = await OpenConnectionAsync();
         var type = await GetTempTypeName(adminConnection);
         var func = await GetTempFunctionName(adminConnection);
-        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} as (x int, some_text text, test int)");
+        // The TestEnum field is 'point' on the pg side, far from any plausible future enum fallback mapping.
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} as (x int, some_text text, test point)");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<SomeComposite>(type);
@@ -1185,8 +1186,8 @@ CREATE OR REPLACE FUNCTION {func}(id int, out comp1 {type}, OUT comp2 {type}[])
 LANGUAGE plpgsql AS
 $$
 BEGIN
-    comp1 = ROW(9, 'bar', 1)::{type};
-    comp2 = ARRAY[ROW(9, 'bar', 1)::{type}];
+    comp1 = ROW(9, 'bar', '(0,0)'::point)::{type};
+    comp2 = ARRAY[ROW(9, 'bar', '(0,0)'::point)::{type}];
 END;
 $$;");
 
