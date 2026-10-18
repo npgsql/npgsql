@@ -255,6 +255,16 @@ SELECT onedim, twodim FROM (VALUES
     public async Task Write_empty_multidimensional_array()
         => await AssertTypeWrite(new int[0, 0], "{}", "integer[]", NpgsqlDbType.Integer | NpgsqlDbType.Array);
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6675")]
+    public async Task Generics_read_empty_multidim_array()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("select ARRAY[[], []]::integer[]", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+        Assert.That(reader.GetFieldValue<int[,]>(0).Length, Is.Zero);
+    }
+
     [Test]
     public async Task Generic_List()
         => await AssertType(
