@@ -174,6 +174,12 @@ readonly struct PgArrayConverter(
             dimLengths[i] = lastDimLength;
         }
 
+        if (dimensions is 0 && expectedDimensions is not null)
+        {
+            dimensions = expectedDimensions.Value;
+            dimLengths.Slice(0, dimensions).Clear();
+        }
+
         var collection = elemOps.CreateCollection(dimLengths.Slice(0, dimensions));
         Debug.Assert(dimensions <= 1 || collection is Array a && a.Rank == dimensions);
         return collection;
