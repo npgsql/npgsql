@@ -644,6 +644,7 @@ public class CommandTests : TestBase
     {
         await using var dataSource = CreateDataSource();
         await using var conn = await dataSource.OpenConnectionAsync();
+        TestUtil.MaximumPgVersionExclusive(conn, "19.0", "PostgreSQL 19 requires standard_conforming_strings to be on");
 
         await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off");
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));

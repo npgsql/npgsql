@@ -56,11 +56,11 @@ jobs:
 #            test_tfm: net8.0
 
            # PG prerelease build
-#          - os: ubuntu-26.04
-#            pg_major: 19
-#            config: Release
-#            test_tfm: net10.0
-#            pg_prerelease: 'PG Prerelease'
+          - os: ubuntu-26.04
+            pg_major: 19
+            config: Release
+            test_tfm: net10.0
+            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
