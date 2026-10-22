@@ -204,6 +204,31 @@ CREATE DOMAIN {domainType} AS TEXT");
         Assert.That(domainRow["IsBestMatch"], Is.False);
     }
 
+    // DbMetaDataColumnNames.CreateFormat: "Format string that represents how to add this column to a data definition
+    // statement, such as CREATE TABLE". PostgreSQL's internal one-byte "char" type (OID 18) must be quoted: unquoted,
+    // CHAR(n) is character(n), a different type.
+    [Test]
+    public async Task DataTypes_CreateFormat_of_internal_char_creates_that_type()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
+
+        var row = dataTypes.Rows.Cast<DataRow>().Single(r => r["OID"].Equals(18u));
+        Assert.That(row["CreateFormat"], Is.EqualTo("\"char\""));
+        Assert.That(row["CreateParameters"], Is.Empty);
+
+        var table = await CreateTempTable(conn, $"c {row["CreateFormat"]}");
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT atttypid FROM pg_attribute WHERE attrelid = '{table}'::regclass AND attname = 'c'"),
+            Is.EqualTo(18u));
+
+        await using var cmd = new NpgsqlCommand($"SELECT c FROM {table}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.That(reader.GetFieldType(0).FullName, Is.EqualTo(row["DataType"]));
+
+        var arrayRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("\"char\"[]") || r["OID"].Equals(1002u));
+        Assert.That(arrayRow["CreateFormat"], Is.EqualTo("\"char\"[]"));
+    }
+
     enum TestEnum { A, B };
 
     class TestComposite { public int A { get; set; } }
