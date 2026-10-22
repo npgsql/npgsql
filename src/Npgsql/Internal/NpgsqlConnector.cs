@@ -132,12 +132,11 @@ public sealed partial class NpgsqlConnector
 
     /// <summary>
     /// A transaction object for this connector. Since only one transaction can be in progress at any given time,
-    /// this instance is recycled. To check whether a transaction is currently in progress on this connector,
-    /// see <see cref="TransactionStatus"/>.
+    /// a transaction that has not been disposed can be reused. A disposed transaction is not reused, so a later
+    /// dispose of the old reference cannot roll back a new transaction. To check whether a transaction is
+    /// currently in progress on this connector, see <see cref="TransactionStatus"/>.
     /// </summary>
     internal NpgsqlTransaction? Transaction { get; set; }
-
-    internal NpgsqlTransaction? UnboundTransaction { get; set; }
 
     /// <summary>
     /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
