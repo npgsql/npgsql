@@ -273,6 +273,19 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 // Cancellation/termination occurred
             }
         }
+        else if (_currentEnumerator is not null)
+        {
+            // The connection broke while the replication enumerator was suspended (e.g. because a plugin found malformed data),
+            // so the enumerator didn't get to clean up after itself
+            try
+            {
+                await _currentEnumerator.DisposeAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // The connection is broken anyway
+            }
+        }
 
         Debug.Assert(_sendFeedbackTimer is null, "Send feedback timer isn't null at replication shutdown");
         Debug.Assert(_requestFeedbackTimer is null, "Request feedback timer isn't null at replication shutdown");
