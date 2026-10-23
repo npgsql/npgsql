@@ -35,7 +35,8 @@ sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
 
     public async IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
-        cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token;
+        using var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken);
+        cancellationToken = cancellationTokenSource.Token;
 
         var stream = _connection.StartLogicalReplication(
             _slot, cancellationToken, _walLocation, _options.GetOptionPairs());
