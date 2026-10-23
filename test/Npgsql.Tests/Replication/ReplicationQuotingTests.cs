@@ -117,6 +117,20 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
 [NonParallelizable]
 public class LogicalReplicationOptionTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
+    [Test, Description("pgoutput crashes the walsender when these options are sent without a value")]
+    public async Task Pgoutput_options_without_required_value_are_rejected([Values("proto_version", "publication_names")] string optionName)
+    {
+        await using var rc = await OpenReplicationConnectionAsync();
+        var enumerator = rc.StartLogicalReplication(
+            new PgOutputReplicationSlot("unused"), CancellationToken.None, options: [new(optionName, null)]).GetAsyncEnumerator();
+        Assert.That(async () => await enumerator.MoveNextAsync(),
+            Throws.ArgumentException.With.Property(nameof(ArgumentException.ParamName)).EqualTo("options"));
+        await enumerator.DisposeAsync();
+
+        // Nothing was sent, so the connection is still usable
+        await rc.IdentifySystem();
+    }
+
     [Test]
     public async Task Null_option_names_are_rejected()
     {

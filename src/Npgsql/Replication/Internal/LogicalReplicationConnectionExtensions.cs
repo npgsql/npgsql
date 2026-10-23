@@ -157,6 +157,7 @@ public static class LogicalReplicationConnectionExtensions
                 .Append(walLocation ?? slot.ConsistentPoint);
 
             var opts = new List<KeyValuePair<string, string?>>(options ?? Array.Empty<KeyValuePair<string, string?>>());
+            var isPgOutput = string.Equals(slot.OutputPlugin, "pgoutput", StringComparison.OrdinalIgnoreCase);
             if (opts.Count > 0)
             {
                 builder.Append(" (");
@@ -166,6 +167,12 @@ public static class LogicalReplicationConnectionExtensions
                     var kv = opts[i];
                     if (kv.Key is null)
                         throw new ArgumentException("Option names can't be null.", nameof(options));
+
+                    // pgoutput reads the values of these options without checking whether there is one (strVal(NULL)),
+                    // so sending one of them without a value crashes the walsender, which makes the postmaster terminate
+                    // all sessions.
+                    if (kv.Value is null && isPgOutput && kv.Key is "proto_version" or "publication_names")
+                        throw new ArgumentException($"The pgoutput option '{kv.Key}' requires a value.", nameof(options));
 
                     stringOptions[i] = ReplicationCommandBuilder.QuoteIdentifier(kv.Key) +
                                        (kv.Value is null ? "" : " " + ReplicationCommandBuilder.QuoteLiteral(kv.Value));
