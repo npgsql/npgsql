@@ -380,7 +380,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
     internal async Task<PhysicalReplicationSlot?> ReadReplicationSlotInternal(string slotName, CancellationToken cancellationToken = default)
     {
-        var result = await ReadSingleRow($"READ_REPLICATION_SLOT {slotName}", cancellationToken).ConfigureAwait(false);
+        var result = await ReadSingleRow(
+            $"READ_REPLICATION_SLOT {ReplicationCommandBuilder.QuoteName(slotName)}", cancellationToken).ConfigureAwait(false);
         var slotType = (string?)result[0];
 
         // Currently (2021-12-30) slot_type is always 'physical' for existing slots or null for slot names that don't exist but that
@@ -719,7 +720,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
         {
             using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
 
-            var command = "DROP_REPLICATION_SLOT " + slotName;
+            var command = "DROP_REPLICATION_SLOT " + ReplicationCommandBuilder.QuoteName(slotName);
             if (wait)
                 command += " WAIT";
 

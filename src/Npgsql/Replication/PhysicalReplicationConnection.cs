@@ -54,8 +54,9 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
         string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
     {
         CheckDisposed();
+        ArgumentNullException.ThrowIfNull(slotName);
 
-        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
+        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").AppendName(slotName);
         if (isTemporary)
             builder.Append(" TEMPORARY");
         builder.Append(" PHYSICAL");
@@ -86,7 +87,11 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <returns>A <see cref="Task{T}"/> representing a <see cref="PhysicalReplicationSlot"/> or <see langword="null"/>
     /// if the replication slot does not exist.</returns>
     public Task<PhysicalReplicationSlot?> ReadReplicationSlot(string slotName, CancellationToken cancellationToken = default)
-        => ReadReplicationSlotInternal(slotName, cancellationToken);
+    {
+        ArgumentNullException.ThrowIfNull(slotName);
+
+        return ReadReplicationSlotInternal(slotName, cancellationToken);
+    }
 
     /// <summary>
     /// Instructs the server to start streaming the WAL for physical replication, starting at WAL location
@@ -122,7 +127,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
         {
             var builder = new StringBuilder("START_REPLICATION");
             if (slot != null)
-                builder.Append(" SLOT ").Append(slot.Name);
+                builder.Append(" SLOT ").AppendName(slot.Name);
             builder.Append(" PHYSICAL ").Append(walLocation);
             if (timeline != default)
                 builder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
