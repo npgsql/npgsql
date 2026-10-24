@@ -93,6 +93,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
             var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
+            // An oversize message (e.g. a big notice) makes the connector switch to a bigger buffer
+            _readBuf = _connector.ReadBuffer;
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -297,6 +299,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             switch (msg.Code)
             {
             case BackendMessageCode.CopyData:
+                // An oversize message (e.g. a big notice) makes the connector switch to a bigger buffer
+                _readBuf = _connector.ReadBuffer;
                 _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                 break;
             case BackendMessageCode.CopyDone:
