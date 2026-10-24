@@ -12,7 +12,8 @@ namespace Npgsql.Replication.PgOutput;
 /// </summary>
 public class ReplicationTuple : IAsyncEnumerable<ReplicationValue>
 {
-    private protected readonly NpgsqlReadBuffer ReadBuffer;
+    readonly NpgsqlConnector _connector;
+    private protected NpgsqlReadBuffer ReadBuffer = null!;
     readonly TupleEnumerator _tupleEnumerator;
 
     internal RowState State;
@@ -25,10 +26,13 @@ public class ReplicationTuple : IAsyncEnumerable<ReplicationValue>
     RowDescriptionMessage _rowDescription = null!;
 
     internal ReplicationTuple(NpgsqlConnector connector)
-        => (ReadBuffer, _tupleEnumerator) = (connector.ReadBuffer, new(this, connector));
+        => (_connector, _tupleEnumerator) = (connector, new(this));
 
     internal void Reset(ushort numColumns, RowDescriptionMessage rowDescription)
     {
+        // The connector switches to a bigger buffer after an oversize message (e.g. a big notice). We take the buffer of the
+        // current message here and pass it on, since the connector no longer has one once it's broken.
+        ReadBuffer = _connector.ReadBuffer;
         State = RowState.NotRead;
         (NumColumns, _rowDescription) = (numColumns, rowDescription);
     }
@@ -39,7 +43,7 @@ public class ReplicationTuple : IAsyncEnumerable<ReplicationValue>
         switch (State)
         {
         case RowState.NotRead:
-            _tupleEnumerator.Reset(NumColumns, _rowDescription, cancellationToken);
+            _tupleEnumerator.Reset(NumColumns, _rowDescription, ReadBuffer, cancellationToken);
             State = RowState.Reading;
             return _tupleEnumerator;
         case RowState.Reading:
@@ -57,7 +61,7 @@ public class ReplicationTuple : IAsyncEnumerable<ReplicationValue>
         {
         case RowState.NotRead:
             State = RowState.Reading;
-            _tupleEnumerator.Reset(NumColumns, _rowDescription, cancellationToken);
+            _tupleEnumerator.Reset(NumColumns, _rowDescription, ReadBuffer, cancellationToken);
             while (await _tupleEnumerator.MoveNextAsync().ConfigureAwait(false)) { }
             break;
         case RowState.Reading:

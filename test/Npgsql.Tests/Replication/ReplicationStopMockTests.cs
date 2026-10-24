@@ -8,10 +8,13 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Replication;
 using Npgsql.Replication.Internal;
+using Npgsql.Replication.PgOutput;
+using Npgsql.Replication.PgOutput.Messages;
 using Npgsql.Replication.TestDecoding;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.Support.PgOutputMessageBuilder;
 
 namespace Npgsql.Tests.Replication;
 
@@ -218,6 +221,79 @@ public class ReplicationStopMockTests : TestBase
             .FlushAsync();
         Assert.That(async () => await moveNext, Throws.InstanceOf<OperationCanceledException>());
         await enumerator.DisposeAsync();
+    }
+
+    [Test, Description("pgoutput reads from the bigger buffer the connector switches to after an oversize message mid-stream")]
+    public async Task Oversize_message_during_pgoutput_streaming()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<LogicalReplicationConnection>();
+        await using var _ = rc;
+        using var timeoutCts = new CancellationTokenSource(ReplicationMock.Timeout);
+        using var streamingCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
+        var commitLsn = new NpgsqlLogSequenceNumber(0x1000100);
+
+        var enumerator = rc.StartReplication(
+                new PgOutputReplicationSlot(new ReplicationSlotOptions("s", StartLsn)),
+                new PgOutputReplicationOptions(["pub"], PgOutputProtocolVersion.V1),
+                streamingCts.Token)
+            .GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        server.WriteCopyBothResponse();
+        await server.WriteXLogDataWithFlush(StartLsn, StartLsn,
+            Relation(1, "public", "t", ("id", ReplicationMock.Int4Oid), ("name", ReplicationMock.TextOid)));
+        await server.WriteBuffer.WriteBytesRaw(OversizeNotice(), async: true);
+        await server.WriteXLogDataWithFlush(StartLsn, StartLsn, Insert(1, "1", "abc"));
+        // An update with the old row ('O') before the new one ('N')
+        var fullUpdate = new PgOutputMessageBuilder('U').UInt32(1)
+            .Byte((byte)'O').Int16(2).Byte((byte)'t').Int32(1).Bytes("1"u8).Byte((byte)'t').Int32(3).Bytes("abc"u8)
+            .Byte((byte)'N').Int16(2).Byte((byte)'t').Int32(1).Bytes("1"u8).Byte((byte)'t').Int32(3).Bytes("def"u8)
+            .ToArray();
+        await server.WriteXLogDataWithFlush(StartLsn, StartLsn, fullUpdate);
+        // The same update again, which the consumer doesn't read
+        await server.WriteXLogDataWithFlush(StartLsn, StartLsn, fullUpdate);
+        // A value bigger than the buffer the connector switched to, so that a read from the old buffer gets bytes from its middle. Without
+        // data left on the socket, that read would hang: cancellation only reaches the current buffer, and the mock has no read timeout
+        await server.WriteXLogDataWithFlush(StartLsn, StartLsn, Insert(1, "2", new string('x', 40000)));
+        await server.WriteXLogDataWithFlush(StartLsn, StartLsn, Commit(commitLsn, commitLsn, DateTime.UtcNow));
+        await server.FlushAsync();
+
+        Assert.That(await moveNext, Is.True);
+        Assert.That(enumerator.Current, Is.InstanceOf<RelationMessage>());
+
+        Assert.That(await enumerator.MoveNextAsync(), Is.True);
+        Assert.That(await ReadValues(((InsertMessage)enumerator.Current).NewRow), Is.EqualTo(new[] { "1", "abc" }));
+
+        Assert.That(await enumerator.MoveNextAsync(), Is.True);
+        var update = (FullUpdateMessage)enumerator.Current;
+        Assert.That(await ReadValues(update.OldRow), Is.EqualTo(new[] { "1", "abc" }));
+        Assert.That(await ReadValues(update.NewRow), Is.EqualTo(new[] { "1", "def" }));
+
+        Assert.That(await enumerator.MoveNextAsync(), Is.True);
+        Assert.That(enumerator.Current, Is.InstanceOf<FullUpdateMessage>());
+        Assert.That(await enumerator.MoveNextAsync(), Is.True);
+        Assert.That(enumerator.Current, Is.InstanceOf<InsertMessage>());
+        Assert.That(await enumerator.MoveNextAsync(), Is.True);
+        Assert.That(((CommitMessage)enumerator.Current).CommitLsn, Is.EqualTo(commitLsn));
+
+        moveNext = enumerator.MoveNextAsync().AsTask();
+        streamingCts.Cancel();
+        await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+            .WriteReadyForQuery()
+            .FlushAsync();
+        Assert.That(async () => await moveNext, Throws.InstanceOf<OperationCanceledException>());
+        await enumerator.DisposeAsync();
+
+        static async Task<List<string>> ReadValues(ReplicationTuple row)
+        {
+            var values = new List<string>();
+            await foreach (var value in row)
+                values.Add(await value.Get<string>());
+            return values;
+        }
     }
 
     // A NoticeResponse with a message longer than the client's read buffer
