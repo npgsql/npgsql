@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
@@ -240,6 +241,40 @@ public class ReplicationStopMockTests : TestBase
             stream.Write(Encoding.UTF8.GetBytes(value));
             stream.WriteByte(0);
         }
+    }
+
+    [Test, Description("A message the consumer holds when the connection breaks keeps its data, also when the buffer came from ArrayPool")]
+    public async Task Held_message_keeps_its_data_after_a_break([Values] bool afterOversizeMessage)
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        await using var _ = rc;
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        await using var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        server.WriteCopyBothResponse();
+        // A message bigger than the read buffer makes the connector switch to a bigger one, whose array comes from ArrayPool
+        if (afterOversizeMessage)
+            await server.WriteBuffer.WriteBytesRaw(OversizeNotice(), async: true);
+        await server
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+        var bufferSize = rc.Connector.ReadBuffer.Size;
+
+        // The connection breaks while the consumer holds the message (e.g. because a status update failed), and someone else rents
+        // an array of the buffer's size and writes to it. ArrayPool<byte>.Shared hands the array a thread returned last to that
+        // thread's next rent of the same size, so we do both on this thread: the rent gets the buffer's array if the break returned it.
+        rc.Connector.Break(new Exception("Simulated failure"));
+        var array = ArrayPool<byte>.Shared.Rent(bufferSize);
+        array.AsSpan().Fill(0xEE);
+
+        var data = new byte[3];
+        await enumerator.Current.Data.ReadExactlyAsync(data, cts.Token);
+        ArrayPool<byte>.Shared.Return(array);
+        Assert.That(data, Is.EqualTo("abc"u8.ToArray()));
     }
 
     static async Task AssertConnectionIsUsable(ReplicationConnection rc, PgServerMock server)
