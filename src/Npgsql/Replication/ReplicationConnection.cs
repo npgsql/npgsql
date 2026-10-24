@@ -594,6 +594,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     yield return _cachedXLogDataMessage;
                     stopOnDispose = false;
 
+                    // The connection may have broken while our consumer held the message, e.g. because a status update of a timer
+                    // failed. Its buffers are gone then, so we report why it broke.
+                    if (connector.IsBroken)
+                        ThrowHelper.ThrowNpgsqlException(
+                            "The connection was previously broken because of the following exception", connector.BreakReason);
+
                     // In physical replication, the WAL end is the server's own WAL position, not the end of the WAL we got, so we
                     // report the end of the data as received once our consumer is done with it, like walreceiver reports what it
                     // wrote
