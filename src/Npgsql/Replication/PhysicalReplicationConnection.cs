@@ -135,6 +135,8 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
             LogMessages.StartingPhysicalReplication(ReplicationLogger, slot?.Name, command, Connector.Id);
 
             var enumerator = StartReplicationInternalWrapper(command, walLocation, bypassingStream: false, cancellationToken);
+            // Disposing the enumerator stops streaming when the consumer stops early
+            await using var _ = enumerator.ConfigureAwait(false);
             while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 yield return enumerator.Current;
         }
