@@ -187,6 +187,274 @@ public class ReplicationStopMockTests : TestBase
         await dispose.WaitAsync(ReplicationMock.Timeout);
     }
 
+    [Test, Description("Disposing the connection while the consumer waits for the next message ends that call, also if the server doesn't answer the cancellation")]
+    public async Task Dispose_while_MoveNextAsync_is_pending([Values] bool serverAnswersCancellation)
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        moveNext = enumerator.MoveNextAsync().AsTask();
+        var dispose = rc.DisposeAsync().AsTask();
+        await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+        if (serverAnswersCancellation)
+        {
+            await server
+                .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+                .WriteReadyForQuery()
+                .FlushAsync();
+        }
+
+        // Without an answer, the read that waits for one is cancelled after Cancellation Timeout
+        Assert.That(async () => await moveNext.WaitAsync(ReplicationMock.Timeout), Throws.InstanceOf<OperationCanceledException>());
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        if (serverAnswersCancellation)
+            await server.ExpectTerminate().WaitAsync(ReplicationMock.Timeout);
+        await enumerator.DisposeAsync();
+    }
+
+    [Test, Description("Disposing the connection while the consumer holds a message stops the stream, and the consumer's next MoveNextAsync returns false")]
+    public async Task Dispose_while_consumer_holds_a_message([Values] bool serverAnswersCancellation)
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        var dispose = rc.DisposeAsync().AsTask();
+        await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+        if (serverAnswersCancellation)
+        {
+            await server
+                .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+                .WriteReadyForQuery()
+                .FlushAsync();
+        }
+
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        if (serverAnswersCancellation)
+            await server.ExpectTerminate().WaitAsync(ReplicationMock.Timeout);
+        Assert.That(await enumerator.MoveNextAsync(), Is.False);
+        await enumerator.DisposeAsync();
+    }
+
+    [Test, Description("A MoveNextAsync while DisposeAsync stops the stream waits until the connection is disposed and returns false")]
+    public async Task MoveNextAsync_while_Dispose_stops_the_stream()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        // DisposeAsync returns to us once it waits for the server to end the command
+        var dispose = rc.DisposeAsync().AsTask();
+        await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+        moveNext = enumerator.MoveNextAsync().AsTask();
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        Assert.That(await moveNext.WaitAsync(ReplicationMock.Timeout), Is.False);
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        await server.ExpectTerminate().WaitAsync(ReplicationMock.Timeout);
+        await enumerator.DisposeAsync();
+    }
+
+    [Test, Description("Breaking out of the loop while DisposeAsync stops the stream waits until the connection is disposed")]
+    public async Task Break_while_Dispose_stops_the_stream()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        // DisposeAsync returns to us once it waits for the server to end the command. Breaking out of the loop disposes the
+        // enumerator.
+        var dispose = rc.DisposeAsync().AsTask();
+        await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+        var consumerDispose = enumerator.DisposeAsync().AsTask();
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        await consumerDispose.WaitAsync(ReplicationMock.Timeout);
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        await server.ExpectTerminate().WaitAsync(ReplicationMock.Timeout);
+    }
+
+    [Test, Description("A MoveNextAsync that waits for DisposeAsync returns false once that is done, also if DisposeAsync gets called again meanwhile")]
+    public async Task Second_Dispose_while_MoveNextAsync_waits_for_the_first()
+    {
+        // The second DisposeAsync can't take over from the first one and waits out its bound twice, which -1 keeps at a second
+        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { CancellationTimeout = -1 }.ConnectionString;
+        await using var postmaster = PgPostmasterMock.Start(connectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        // The consumer holds a message, so DisposeAsync stops the stream itself, and its read waits until we let it fail
+        var stream = new FailingReadStream();
+        rc.Connector.ReadBuffer.Underlying = stream;
+        var dispose = rc.DisposeAsync().AsTask();
+        await stream.ReadStarted.WaitAsync(ReplicationMock.Timeout);
+        await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+        moveNext = enumerator.MoveNextAsync().AsTask();
+        var secondDispose = rc.DisposeAsync().AsTask();
+        stream.Fail();
+
+        Assert.That(await moveNext.WaitAsync(ReplicationMock.Timeout), Is.False);
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        await secondDispose.WaitAsync(ReplicationMock.Timeout);
+        await enumerator.DisposeAsync();
+    }
+
+    [Test, Description("Disposing the connection while the consumer's stream stops (e.g. after a break) lets that stop end")]
+    public async Task Dispose_while_the_stream_stops()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var consumer = Task.Run(async () =>
+        {
+            await foreach (var _ in rc.StartReplication(StartLsn, cts.Token))
+                break;
+        });
+
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        // The stop sends a final status update and ends copy mode, but the server doesn't answer
+        await server.ExpectStandbyStatusUpdate().WaitAsync(ReplicationMock.Timeout);
+        await server.ExpectCopyDone().WaitAsync(ReplicationMock.Timeout);
+
+        await rc.DisposeAsync().AsTask().WaitAsync(ReplicationMock.Timeout);
+        await consumer.WaitAsync(ReplicationMock.Timeout);
+    }
+
+    [Test, Description("Disposing the connection while the consumer waits for the next message breaks the connection if the server doesn't end the stream in time")]
+    public async Task Dispose_while_MoveNextAsync_is_pending_and_server_keeps_streaming()
+    {
+        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { CancellationTimeout = 1000 }.ConnectionString;
+        await using var postmaster = PgPostmasterMock.Start(connectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        moveNext = enumerator.MoveNextAsync().AsTask();
+        var dispose = rc.DisposeAsync().AsTask();
+        await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+
+        // The server keeps the stream going without ending the command, so the read that waits for the end is never cancelled. It
+        // sends one long message byte by byte, so that the call still reads it when the connection breaks (a break while the call
+        // handles a message can make it fail with another exception).
+        server.WriteBuffer.WriteByte((byte)BackendMessageCode.CopyData);
+        server.WriteBuffer.WriteInt32(4 + 8000);
+        while (!moveNext.IsCompleted && !cts.IsCancellationRequested)
+        {
+            try
+            {
+                server.WriteBuffer.WriteByte(0);
+                await server.FlushAsync();
+            }
+            catch
+            {
+                break; // The client closed the connection (without a connector, the mock's buffer doesn't throw IOException)
+            }
+
+            await Task.WhenAny(moveNext, Task.Delay(100));
+        }
+
+        Assert.That(async () => await moveNext.WaitAsync(ReplicationMock.Timeout), Throws.InstanceOf<NpgsqlException>());
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        await enumerator.DisposeAsync();
+    }
+
+    [Test, Description("Disposing a broken connection while the consumer's MoveNextAsync still runs lets that call end with the failure")]
+    public async Task Dispose_broken_connection_while_MoveNextAsync_is_pending()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        // The next read only fails when we let it, so that the call is still in flight after the connection broke (e.g. because a
+        // status update failed)
+        var stream = new FailingReadStream();
+        rc.Connector.ReadBuffer.Underlying = stream;
+        moveNext = enumerator.MoveNextAsync().AsTask();
+        await stream.ReadStarted.WaitAsync(ReplicationMock.Timeout);
+        rc.Connector.Break(new NpgsqlException("Simulated failure"));
+
+        var dispose = rc.DisposeAsync().AsTask();
+        stream.Fail();
+        Assert.That(async () => await moveNext.WaitAsync(ReplicationMock.Timeout),
+            Throws.InstanceOf<NpgsqlException>().With.InnerException.TypeOf<IOException>());
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        await enumerator.DisposeAsync();
+    }
+
     [Test, Description("A message bigger than the read buffer (e.g. a notice) makes the connector switch buffers mid-stream")]
     public async Task Oversize_message_during_streaming()
     {
@@ -286,4 +554,39 @@ public class ReplicationStopMockTests : TestBase
     }
 
     sealed class ConsumerException : Exception;
+
+    /// <summary>
+    /// A stream whose reads wait until <see cref="Fail"/> gets called, and then fail.
+    /// </summary>
+    sealed class FailingReadStream : Stream
+    {
+        readonly TaskCompletionSource _readStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        readonly TaskCompletionSource _failure = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal Task ReadStarted => _readStarted.Task;
+
+        internal void Fail() => _failure.TrySetResult();
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            _readStarted.TrySetResult();
+            await _failure.Task.ConfigureAwait(false);
+            throw new IOException("Simulated read failure");
+        }
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+    }
 }

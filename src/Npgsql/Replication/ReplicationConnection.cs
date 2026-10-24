@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,6 +38,14 @@ public abstract class ReplicationConnection : IAsyncDisposable
     TimeSpan _requestFeedbackInterval;
 
     IAsyncEnumerator<XLogDataMessage>? _currentEnumerator;
+    // Calling into an async iterator while it runs corrupts it, so the calls of the consumer (see ConsumerEnumerator) and DisposeAsync
+    // take turns in using _currentEnumerator
+    int _enumeratorUser;
+    const int NoEnumeratorUser = 0;
+    const int ConsumerUsesEnumerator = 1;
+    const int DisposeUsesEnumerator = 2;
+    TaskCompletionSource? _consumerCallEnded;
+    TaskCompletionSource? _disposeEnded;
     CancellationTokenSource? _replicationCancellationTokenSource;
     // Protected by _feedbackSemaphore. The protocol doesn't allow us to send status updates (CopyData) after our CopyDone, and
     // once the stream ended, they could interleave with the next command.
@@ -258,12 +267,13 @@ public abstract class ReplicationConnection : IAsyncDisposable
             Debug.Assert(_replicationCancellationTokenSource is not null);
 
             // Replication is in progress; cancel it (soft or hard) and iterate the enumerator until we get the cancellation
-            // exception. Note: this isn't thread-safe: a user calling DisposeAsync and enumerating at the same time is violating
-            // our contract.
+            // exception. A call of the consumer that iterates it at the same time gets the exception itself. Note: reading the data
+            // of a message at the same time (e.g. in a logical decoding plugin) still isn't thread-safe.
             _replicationCancellationTokenSource.Cancel();
+            var enumerator = await TakeOverEnumerator().ConfigureAwait(false);
             try
             {
-                while (await _currentEnumerator.MoveNextAsync().ConfigureAwait(false))
+                while (enumerator is not null && await enumerator.MoveNextAsync().ConfigureAwait(false))
                 {
                     // Do nothing with messages - simply enumerate until cancellation/termination
                 }
@@ -276,10 +286,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
         else if (_currentEnumerator is not null)
         {
             // The connection broke while the replication enumerator was suspended (e.g. because a plugin found malformed data),
-            // so the enumerator didn't get to clean up after itself
+            // so the enumerator didn't get to clean up after itself. A call of the consumer that still uses it does that itself.
+            var enumerator = await TakeOverEnumerator().ConfigureAwait(false);
             try
             {
-                await _currentEnumerator.DisposeAsync().ConfigureAwait(false);
+                if (enumerator is not null)
+                    await enumerator.DisposeAsync().ConfigureAwait(false);
             }
             catch
             {
@@ -301,6 +313,68 @@ public abstract class ReplicationConnection : IAsyncDisposable
         }
 
         _isDisposed = true;
+        // Calls of the consumer that waited for us find the stream ended
+        _disposeEnded?.TrySetResult();
+    }
+
+    /// <summary>
+    /// Waits until no call of the consumer uses the current stream's enumerator, and makes later ones wait until we are disposed, so
+    /// that <see cref="DisposeAsync"/> can use the enumerator.
+    /// </summary>
+    /// <returns>
+    /// The enumerator, or <see langword="null"/> if the stream ended or if a call of the consumer didn't end even after we broke the
+    /// connection.
+    /// </returns>
+    async Task<IAsyncEnumerator<XLogDataMessage>?> TakeOverEnumerator()
+    {
+        // Another DisposeAsync at the same time mustn't replace the completion that calls of the consumer may already wait for
+        Interlocked.CompareExchange(ref _disposeEnded, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously), null);
+
+        // A stop ends once the server answers our cancellation, or when the read that waits for that gets hard-cancelled after
+        // CancellationTimeout (right away with -1) or, with 0, times out after WalReceiverTimeout (we use 30 seconds if that's
+        // infinite, like ReadStartReplicationEnd). We wait a second longer, so that the stop's own timeouts come first.
+        var cancellationTimeout = _npgsqlConnection.Settings.CancellationTimeout;
+        var timeout = TimeSpan.FromSeconds(1) + (cancellationTimeout > 0
+            ? TimeSpan.FromMilliseconds(cancellationTimeout)
+            : cancellationTimeout < 0
+                ? TimeSpan.Zero
+                : _walReceiverTimeout > TimeSpan.Zero && _walReceiverTimeout.TotalMilliseconds <= int.MaxValue
+                    ? _walReceiverTimeout
+                    : TimeSpan.FromSeconds(30));
+
+        // The consumer may start another call after the one we waited for (e.g. if that one got a last message), so the wait has a
+        // deadline
+        var deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+        var broken = false;
+        while (true)
+        {
+            // A call of the consumer completes this when it ends after our attempt to take over
+            var consumerCallEnded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Volatile.Write(ref _consumerCallEnded, consumerCallEnded);
+            if (Interlocked.CompareExchange(ref _enumeratorUser, DisposeUsesEnumerator, NoEnumeratorUser) == NoEnumeratorUser)
+                return _currentEnumerator;
+
+            try
+            {
+                await consumerCallEnded.Task.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(deadline - Environment.TickCount64, 0)))
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                if (broken)
+                    return null;
+
+                // The call's I/O fails once the connection is broken, so it ends
+                broken = true;
+                deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+                if (_npgsqlConnection.Connector is { IsBroken: false } connector)
+                {
+                    var exception = new NpgsqlException("The replication stream didn't stop in time when the connection was disposed.");
+                    LogMessages.StoppingReplicationFailed(ReplicationLogger, connector.Id, exception);
+                    connector.Break(exception);
+                }
+            }
+        }
     }
 
     #endregion Open / Dispose
@@ -439,7 +513,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             ThrowHelper.ThrowNpgsqlOperationInProgressException(ConnectorState.Replication);
 
         _currentEnumerator = StartReplicationInternal(command, walLocation, bypassingStream, cancellationToken);
-        return _currentEnumerator;
+        return new ConsumerEnumerator(this, _currentEnumerator);
     }
 
     internal async IAsyncEnumerator<XLogDataMessage> StartReplicationInternal(
@@ -1105,5 +1179,63 @@ public abstract class ReplicationConnection : IAsyncDisposable
     {
         if (_isDisposed)
             throw new ObjectDisposedException(GetType().Name);
+    }
+
+    /// <summary>
+    /// The enumerator of a stream that <see cref="StartReplicationInternalWrapper"/> hands out. Its calls take turns with
+    /// <see cref="DisposeAsync"/> in using the stream's enumerator, and once that took over, they wait until it is done.
+    /// </summary>
+    sealed class ConsumerEnumerator(ReplicationConnection connection, IAsyncEnumerator<XLogDataMessage> enumerator)
+        : IAsyncEnumerator<XLogDataMessage>
+    {
+        public XLogDataMessage Current => enumerator.Current;
+
+        public ValueTask<bool> MoveNextAsync() => Enter() ? MoveNext() : WaitForDispose();
+
+        public ValueTask DisposeAsync() => Enter() ? DisposeEnumerator() : new(connection._disposeEnded!.Task);
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+        async ValueTask<bool> MoveNext()
+        {
+            try
+            {
+                return await enumerator.MoveNextAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                Exit();
+            }
+        }
+
+        async ValueTask DisposeEnumerator()
+        {
+            try
+            {
+                await enumerator.DisposeAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                Exit();
+            }
+        }
+
+        // DisposeAsync ends the stream
+        async ValueTask<bool> WaitForDispose()
+        {
+            await connection._disposeEnded!.Task.ConfigureAwait(false);
+            return false;
+        }
+
+        bool Enter()
+            => Interlocked.CompareExchange(ref connection._enumeratorUser, ConsumerUsesEnumerator, NoEnumeratorUser)
+               != DisposeUsesEnumerator;
+
+        void Exit()
+        {
+            Interlocked.CompareExchange(ref connection._enumeratorUser, NoEnumeratorUser, ConsumerUsesEnumerator);
+            // DisposeAsync may be waiting for us; it publishes the completion before it checks whether we use the enumerator
+            if (Volatile.Read(ref connection._consumerCallEnded) is not null)
+                Interlocked.Exchange(ref connection._consumerCallEnded, null)?.TrySetResult();
+        }
     }
 }
