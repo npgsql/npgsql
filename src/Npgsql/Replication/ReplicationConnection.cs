@@ -38,8 +38,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
     IAsyncEnumerator<XLogDataMessage>? _currentEnumerator;
     CancellationTokenSource? _replicationCancellationTokenSource;
-    // Protected by _feedbackSemaphore. The protocol doesn't allow us to send status updates (CopyData) after our CopyDone.
-    bool _copyDoneSent;
+    // Protected by _feedbackSemaphore. The protocol doesn't allow us to send status updates (CopyData) after our CopyDone, and
+    // once the stream ended, they could interleave with the next command.
+    bool _statusUpdatesStopped;
     bool _pgCancellationSupported;
     bool _isDisposed;
 
@@ -418,6 +419,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
         bool bypassingStream,
         CancellationToken cancellationToken)
     {
+        CheckDisposed();
+
+        // Another stream would overwrite the state of the one in progress, which may still be enumerated
+        if (_currentEnumerator is not null)
+            ThrowHelper.ThrowNpgsqlOperationInProgressException(ConnectorState.Replication);
+
         _currentEnumerator = StartReplicationInternal(command, walLocation, bypassingStream, cancellationToken);
         return _currentEnumerator;
     }
@@ -428,23 +435,39 @@ public abstract class ReplicationConnection : IAsyncDisposable
         bool bypassingStream,
         CancellationToken cancellationToken)
     {
-        CheckDisposed();
-
         var connector = _npgsqlConnection.Connector!;
 
-        _replicationCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        NpgsqlConnector.UserAction userAction;
+        try
+        {
+            userAction = connector.StartUserAction(
+                ConnectorState.Replication, cancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
+        }
+        catch
+        {
+            // E.g. because another command is in progress; nothing got started, so nothing may look like it
+            cancellationTokenSource.Dispose();
+            _currentEnumerator = null;
+            throw;
+        }
 
-        using var _ = connector.StartUserAction(
-            ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
+        using var _ = userAction;
+        _replicationCancellationTokenSource = cancellationTokenSource;
         // StartUserAction resets the timeouts to the connection string's command timeout
         SetTimeouts(CommandTimeout, CommandTimeout);
 
         // What we received on a previous stream doesn't count for this one, which may e.g. continue on another timeline at a
         // lower position
         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)(ulong)walLocation));
-        _copyDoneSent = false;
+        _statusUpdatesStopped = false;
 
         NpgsqlReadBuffer.ColumnStream? columnStream = null;
+        // Whether we are suspended in copy mode, with the consumer holding a message, which is when the consumer can dispose us
+        // before the stream ended. Then we have to stop streaming.
+        var stopOnDispose = false;
+        // Where the data of the message the consumer holds ends, in terms of the read buffer's cumulative position
+        long payloadEnd = 0;
 
         try
         {
@@ -481,6 +504,14 @@ public abstract class ReplicationConnection : IAsyncDisposable
             while (true)
             {
                 msg = await connector.ReadMessage(async: true).ConfigureAwait(false);
+
+                // An oversize message (e.g. a big notice) makes the connector switch to a bigger buffer
+                if (!ReferenceEquals(buf, connector.ReadBuffer))
+                {
+                    buf = connector.ReadBuffer;
+                    columnStream = new NpgsqlReadBuffer.ColumnStream(connector);
+                }
+
                 switch (msg.Code)
                 {
                 case BackendMessageCode.CopyData:
@@ -499,11 +530,18 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     throw connector.Break(new NpgsqlException($"Received backend message {msg.Code} while expecting CopyData. Please file a bug."));
                 }
 
+                var messageLength = ((CopyDataMessage)msg).Length;
+
+                // Once cancellation was requested, we don't hand out more messages but wait for the server to end the command
+                if (cancellationTokenSource.IsCancellationRequested)
+                {
+                    await buf.Skip(async: true, messageLength).ConfigureAwait(false);
+                    continue;
+                }
+
                 // We received some message so there's no need to forcibly request feedback
                 // Reset the timer to request feedback.
                 _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
-
-                var messageLength = ((CopyDataMessage)msg).Length;
                 await buf.EnsureAsync(1).ConfigureAwait(false);
                 var code = (char)buf.ReadByte();
                 switch (code)
@@ -527,7 +565,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
                     _cachedXLogDataMessage.Populate(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn),
                         sendTime, columnStream);
+                    payloadEnd = buf.CumulativeReadPosition + dataLen;
+                    stopOnDispose = true;
                     yield return _cachedXLogDataMessage;
+                    stopOnDispose = false;
 
                     // In physical replication, the WAL end is the server's own WAL position, not the end of the WAL we got, so we
                     // report the end of the data as received once our consumer is done with it, like walreceiver reports what it
@@ -540,7 +581,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     // ourselves bypassing the stream and reading directly from the buffer in StartReplication().
                     // Disposing the stream now skips the rest of the data and keeps it from skipping anything later, when its
                     // position no longer relates to the buffer's.
-                    if (!bypassingStream)
+                    if (bypassingStream)
+                        await SkipToPayloadEnd(connector, payloadEnd).ConfigureAwait(false);
+                    else
                         await columnStream.DisposeAsync().ConfigureAwait(false);
 
                     continue;
@@ -592,8 +635,18 @@ public abstract class ReplicationConnection : IAsyncDisposable
         }
         finally
         {
-            if (columnStream != null && !bypassingStream && !_replicationCancellationTokenSource.Token.IsCancellationRequested)
+            if (stopOnDispose)
+            {
+                // The consumer stopped before the stream ended (e.g. with break or because of an exception) and disposed us
+                await StopReplication(connector, columnStream!, bypassingStream, payloadEnd).ConfigureAwait(false);
+            }
+            else if (columnStream != null && !bypassingStream && !_replicationCancellationTokenSource.Token.IsCancellationRequested)
                 await columnStream.DisposeAsync().ConfigureAwait(false);
+
+            // Status updates that are still on their way (e.g. from a timer or another thread) mustn't be sent after the stream
+            await _feedbackSemaphore.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+            _statusUpdatesStopped = true;
+            _feedbackSemaphore.Release();
 
             if (_sendFeedbackTimer != null)
                 await _sendFeedbackTimer.DisposeAsync().ConfigureAwait(false);
@@ -611,13 +664,88 @@ public abstract class ReplicationConnection : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Stops streaming before the server ended the stream, leaving the connection ready for the next command, or broken if
+    /// that isn't possible. Never throws, since it runs when the consumer of the stream disposes it, possibly because of an
+    /// exception that we mustn't replace.
+    /// </summary>
+    async Task StopReplication(
+        NpgsqlConnector connector, NpgsqlReadBuffer.ColumnStream columnStream, bool bypassingStream, long payloadEnd)
+    {
+        if (connector.IsBroken)
+            return;
+
+        try
+        {
+            // Skip whatever the consumer didn't read of the message it held
+            if (bypassingStream)
+                await SkipToPayloadEnd(connector, payloadEnd).ConfigureAwait(false);
+            else
+                await columnStream.DisposeAsync().ConfigureAwait(false);
+
+            LogMessages.StoppingReplication(ReplicationLogger, connector.Id);
+
+            // Report what was processed before we stop, e.g. so that the server can advance the slot
+            await SendFeedback(waitOnSemaphore: true).ConfigureAwait(false);
+
+            try
+            {
+                if (ReplicationMode == ReplicationMode.Physical)
+                {
+                    // Ending copy mode leaves the walsender ready for the next command (including another START_REPLICATION),
+                    // and unlike an error it doesn't drop the temporary slots of the session
+                    await SendCopyDone(connector).ConfigureAwait(false);
+                    await ReadStartReplicationEnd(connector, message: null).ConfigureAwait(false);
+                }
+                else
+                {
+                    // A logical walsender can't stream again after the client ended copy mode, so we cancel the command instead,
+                    // which requests a PostgreSQL cancellation, and wait for the server's error. Like any error, this drops the
+                    // temporary slots of the session. The walsender may also handle the cancellation before it reads the status
+                    // update we just sent.
+                    _replicationCancellationTokenSource!.Cancel();
+                    while (true)
+                    {
+                        var message = await connector.ReadMessage(async: true).ConfigureAwait(false);
+                        if (message is not CopyDataMessage copyData)
+                            throw connector.UnexpectedMessageReceived(message.Code);
+                        await connector.ReadBuffer.Skip(async: true, copyData.Length).ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (Exception e) when ((e is OperationCanceledException or PostgresException) && !connector.IsBroken)
+            {
+                // The server ended the command with an error (e.g. because of a cancellation) and is ready for the next one
+            }
+        }
+        catch (Exception e)
+        {
+            // A connection we couldn't stop streaming is unusable
+            LogMessages.StoppingReplicationFailed(ReplicationLogger, connector.Id, e);
+            connector.Break(e);
+        }
+    }
+
+    /// <summary>
+    /// Skips the rest of the data of the current XLogData message when a plugin read it directly from the buffer.
+    /// </summary>
+    static async Task SkipToPayloadEnd(NpgsqlConnector connector, long payloadEnd)
+    {
+        var buf = connector.ReadBuffer;
+        var remaining = payloadEnd - buf.CumulativeReadPosition;
+        if (remaining < 0)
+            throw connector.Break(new NpgsqlException("A replication message was read beyond its end."));
+        if (remaining > 0)
+            await buf.Skip(async: true, checked((int)remaining)).ConfigureAwait(false);
+    }
+
     async Task SendCopyDone(NpgsqlConnector connector)
     {
         // Wait for a status update that is being sent, and keep later ones from being sent at all
         await _feedbackSemaphore.WaitAsync().ConfigureAwait(false);
         try
         {
-            _copyDoneSent = true;
+            _statusUpdatesStopped = true;
             await connector.WriteCopyDone(async: true).ConfigureAwait(false);
             await connector.Flush(async: true).ConfigureAwait(false);
         }
@@ -647,6 +775,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 // E.g. a keepalive the server sent before it got our CopyDone
                 await connector.ReadBuffer.Skip(async: true, ((CopyDataMessage)message).Length).ConfigureAwait(false);
                 break;
+            case BackendMessageCode.CopyDone:
+                // The server's answer when we ended copy mode first
             case BackendMessageCode.RowDescription:
             case BackendMessageCode.CommandComplete:
                 break;
@@ -733,7 +863,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         try
         {
-            if (_copyDoneSent)
+            if (_statusUpdatesStopped)
                 return;
 
             var connector = _npgsqlConnection.Connector!;

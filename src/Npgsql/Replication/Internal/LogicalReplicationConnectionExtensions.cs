@@ -120,6 +120,11 @@ public static class LogicalReplicationConnectionExtensions
     /// <paramref name="walLocation"/> or at the slot's consistent point if <paramref name="walLocation"/> isn't specified.
     /// The server can reply with an error, for example if the requested section of the WAL has already been recycled.
     /// </summary>
+    /// <remarks>
+    /// Ending the enumeration early (e.g. with <see langword="break"/>) stops replication by cancelling the command, after which
+    /// the connection can be used for other commands. Like any error, the cancellation drops the temporary replication slots of
+    /// the session. Npgsql sends a last status update before it, but the server may handle the cancellation first.
+    /// </remarks>
     /// <param name="connection">The <see cref="LogicalReplicationConnection"/> to use for starting replication</param>
     /// <param name="slot">The replication slot that will be updated as replication progresses so that the server
     /// knows which WAL segments are still needed by the standby.
@@ -176,6 +181,8 @@ public static class LogicalReplicationConnectionExtensions
 
             var enumerator = connection.StartReplicationInternalWrapper(
                 command, walLocation ?? slot.ConsistentPoint, bypassingStream, cancellationToken);
+            // Disposing the enumerator stops streaming when the consumer stops early
+            await using var _ = enumerator.ConfigureAwait(false);
             while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 yield return enumerator.Current;
         }
