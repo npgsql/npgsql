@@ -139,6 +139,11 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// </summary>
     /// <remarks>
     /// This works in PostgreSQL versions 15+
+    /// <para>
+    /// Enabling this changes the replication slot: once replication starts with it, the server enables two-phase decoding for the
+    /// slot, and later replication on the slot receives prepared transactions even without this option. Before PostgreSQL 18,
+    /// which can change it with ALTER_REPLICATION_SLOT, this can't be undone.
+    /// </para>
     /// </remarks>
     // See: https://github.com/postgres/postgres/commit/a8fd13cab0ba815e9925dc9676e6309f699b5f72
     // and https://github.com/postgres/postgres/commit/63cf61cdeb7b0450dcf3b2f719c553177bac85a2

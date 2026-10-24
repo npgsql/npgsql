@@ -16,6 +16,11 @@ public enum LogicalSlotSnapshotInitMode
     /// This option must be used in a transaction, and CREATE_REPLICATION_SLOT must be the first command run
     /// in that transaction.
     /// </summary>
+    /// <remarks>
+    /// The transaction has to be started with <c>BEGIN READ ONLY ISOLATION LEVEL REPEATABLE READ</c> (READ ONLY is required
+    /// since PostgreSQL 16) and can't be a subtransaction. Npgsql currently has no way to start a transaction on a
+    /// replication connection, so this option can't be used yet.
+    /// </remarks>
     Use = 1,
 
     /// <summary>

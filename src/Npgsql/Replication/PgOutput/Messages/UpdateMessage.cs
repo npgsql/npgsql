@@ -9,12 +9,12 @@ using Npgsql.Internal;
 namespace Npgsql.Replication.PgOutput.Messages;
 
 /// <summary>
-/// Abstract base class for Logical Replication Protocol delete message types.
+/// Abstract base class for Logical Replication Protocol update message types.
 /// </summary>
 public abstract class UpdateMessage : TransactionalMessage
 {
     /// <summary>
-    /// The relation for this <see cref="InsertMessage" />.
+    /// The relation for this <see cref="UpdateMessage" />.
     /// </summary>
     public RelationMessage Relation { get; private set; } = null!;
 

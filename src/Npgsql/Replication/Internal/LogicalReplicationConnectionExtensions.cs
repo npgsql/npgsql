@@ -38,7 +38,7 @@ public static class LogicalReplicationConnectionExtensions
     /// snapshot created during logical slot initialization. <see cref="LogicalSlotSnapshotInitMode.Export"/>, which is
     /// also the default, will export the snapshot for use in other sessions. This option can't be used inside a
     /// transaction. <see cref="LogicalSlotSnapshotInitMode.Use"/> will use the snapshot for the current transaction
-    /// executing the command. This option must be used in a transaction, and <see cref="LogicalSlotSnapshotInitMode.Use"/>
+    /// executing the command. This option must be used in a transaction, and CREATE_REPLICATION_SLOT
     /// must be the first command run in that transaction. Finally, <see cref="LogicalSlotSnapshotInitMode.NoExport"/> will
     /// just use the snapshot for logical decoding as normal but won't do anything else with it.</param>
     /// <param name="twoPhase">
@@ -130,8 +130,8 @@ public static class LogicalReplicationConnectionExtensions
     /// <param name="bypassingStream">
     /// Whether the plugin will be bypassing <see cref="XLogDataMessage.Data" /> and reading directly from the buffer.
     /// </param>
-    /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
-    /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
+    /// <returns>An <see cref="IAsyncEnumerable{T}"/> that can be used to stream WAL entries in form of
+    /// <see cref="XLogDataMessage"/> instances.</returns>
     public static IAsyncEnumerable<XLogDataMessage> StartLogicalReplication(
         this LogicalReplicationConnection connection,
         LogicalReplicationSlot slot,

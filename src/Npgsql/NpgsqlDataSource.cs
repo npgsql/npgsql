@@ -22,8 +22,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     public override string ConnectionString { get; }
 
     /// <summary>
-    /// Contains the connection string returned to the user from <see cref="NpgsqlConnection.ConnectionString"/>
-    /// after the connection has been opened. Does not contain the password unless Persist Security Info=true.
+    /// The settings of this data source. Unlike <see cref="ConnectionString"/>, which <see cref="NpgsqlConnection.ConnectionString"/>
+    /// returns to the user, they contain the password even if Persist Security Info is false.
     /// </summary>
     internal NpgsqlConnectionStringBuilder Settings { get; }
 

@@ -7,7 +7,9 @@ using NpgsqlTypes;
 namespace Npgsql.Replication.PgOutput.Messages;
 
 /// <summary>
-/// Logical Replication Protocol update message for tables with REPLICA IDENTITY set to USING INDEX.
+/// Logical Replication Protocol update message that contains the old key along with the new row. PostgreSQL sends it for
+/// tables with REPLICA IDENTITY set to DEFAULT or USING INDEX if the update changed any of the replica identity columns
+/// or any of them is stored externally (TOASTed).
 /// </summary>
 public sealed class IndexUpdateMessage : UpdateMessage
 {

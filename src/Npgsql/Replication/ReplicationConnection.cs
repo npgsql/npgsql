@@ -134,6 +134,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// Send replies at least this often.
     /// Timeout.<see cref="Timeout.InfiniteTimeSpan"/> disables automated replies.
     /// </summary>
+    /// <remarks>
+    /// If your application can pause between messages, keep this below the server's <c>wal_sender_timeout</c>, since these
+    /// status updates keep the connection alive while no messages are read.
+    /// </remarks>
     public TimeSpan WalReceiverStatusInterval { get; set; } = TimeSpan.FromSeconds(10d);
 
     /// <summary>
@@ -695,8 +699,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
     /// <summary>
     /// Drops a replication slot, freeing any reserved server-side resources.
-    /// If the slot is a logical slot that was created in a database other than
-    /// the database the walsender is connected to, this command fails.
     /// </summary>
     /// <param name="slotName">The name of the slot to drop.</param>
     /// <param name="wait">
