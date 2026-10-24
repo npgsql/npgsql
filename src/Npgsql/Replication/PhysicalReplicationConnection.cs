@@ -184,6 +184,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <see cref="XLogDataMessage"/> instances.</returns>
     public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot slot, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(slot);
         if (!slot.RestartLsn.HasValue)
             throw new ArgumentException($"For this overload of {nameof(StartReplication)} the {nameof(slot)} argument must contain a " +
                                         $"valid {nameof(slot.RestartLsn)}. Please use an overload with the walLocation argument otherwise.",
