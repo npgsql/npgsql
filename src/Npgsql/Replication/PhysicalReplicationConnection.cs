@@ -96,7 +96,10 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <remarks>
     /// If the client requests a timeline that's not the latest but is part of the history of the server, the server
     /// will stream all the WAL on that timeline starting from the requested start point up to the point where the
-    /// server switched to another timeline.
+    /// server switched to another timeline. The enumeration then ends. To continue streaming, get the current timeline with
+    /// <see cref="ReplicationConnection.IdentifySystem"/> and the position where it branched off the previous one from its
+    /// history file (<see cref="ReplicationConnection.TimelineHistory"/>); that position can be before the end of the WAL
+    /// received on the previous timeline.
     /// </remarks>
     /// <param name="slot">
     /// The replication slot that will be updated as replication progresses so that the server
@@ -131,7 +134,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
 
             LogMessages.StartingPhysicalReplication(ReplicationLogger, slot?.Name, command, Connector.Id);
 
-            var enumerator = StartReplicationInternalWrapper(command, bypassingStream: false, cancellationToken);
+            var enumerator = StartReplicationInternalWrapper(command, walLocation, bypassingStream: false, cancellationToken);
             while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 yield return enumerator.Current;
         }
@@ -145,7 +148,10 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <remarks>
     /// If the client requests a timeline that's not the latest but is part of the history of the server, the server
     /// will stream all the WAL on that timeline starting from the requested start point up to the point where the
-    /// server switched to another timeline.
+    /// server switched to another timeline. The enumeration then ends. To continue streaming, get the current timeline with
+    /// <see cref="ReplicationConnection.IdentifySystem"/> and the position where it branched off the previous one from its
+    /// history file (<see cref="ReplicationConnection.TimelineHistory"/>); that position can be before the end of the WAL
+    /// received on the previous timeline.
     /// </remarks>
     /// <param name="walLocation">The WAL location to begin streaming at.</param>
     /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
@@ -164,7 +170,10 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <remarks>
     /// If the client requests a timeline that's not the latest but is part of the history of the server, the server
     /// will stream all the WAL on that timeline starting from the requested start point up to the point where the
-    /// server switched to another timeline.
+    /// server switched to another timeline. The enumeration then ends. To continue streaming, get the current timeline with
+    /// <see cref="ReplicationConnection.IdentifySystem"/> and the position where it branched off the previous one from its
+    /// history file (<see cref="ReplicationConnection.TimelineHistory"/>); that position can be before the end of the WAL
+    /// received on the previous timeline.
     /// </remarks>
     /// <param name="slot">
     /// The replication slot that will be updated as replication progresses so that the server
