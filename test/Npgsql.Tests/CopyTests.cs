@@ -1387,6 +1387,111 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         Assert.That(await queryTask, Is.EqualTo(1));
     }
 
+    [Test, Description("A notice longer than the read buffer makes the connector switch to a bigger buffer between two CopyData messages")]
+    public async Task Raw_binary_export_with_notice_between_CopyData_messages([Values] bool oversizeNotice)
+    {
+        // With the smallest read buffer, the mock can write a notice that doesn't fit into it
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { ReadBufferSize = NpgsqlReadBuffer.MinimumSize };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var streamTask = conn.BeginRawBinaryCopyAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        await server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData("abc"u8)
+            .WriteNoticeResponse(PostgresErrorCodes.Warning, message: new string('x', oversizeNotice ? csb.ReadBufferSize : 10))
+            .WriteCopyData("def"u8)
+            .WriteCopyDone()
+            .WriteCommandComplete("COPY 2")
+            .WriteReadyForQuery()
+            .FlushAsync();
+        // Reading beyond the end of the response fails instead of waiting
+        server.Close();
+
+        await using var stream = await streamTask;
+        var data = new MemoryStream();
+        await stream.CopyToAsync(data);
+        Assert.That(data.ToArray(), Is.EqualTo("abcdef"u8.ToArray()));
+        // Only the long notice made the connector switch to a bigger buffer
+        Assert.That(conn.Connector!.ReadBuffer.Size, oversizeNotice ? Is.GreaterThan(csb.ReadBufferSize) : Is.EqualTo(csb.ReadBufferSize));
+    }
+
+    [Test, Description("A notice longer than the read buffer makes the connector switch to a bigger buffer before the COPY response")]
+    public async Task Raw_binary_copy_timeout_with_notice_before_copy_response([Values] bool export, [Values] bool oversizeNotice)
+    {
+        // With the smallest read buffer, the mock can write a notice that doesn't fit into it
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { ReadBufferSize = NpgsqlReadBuffer.MinimumSize };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        var command = export ? "COPY SomeTable TO STDOUT (FORMAT BINARY)" : "COPY SomeTable FROM STDIN (FORMAT BINARY)";
+        var streamTask = conn.BeginRawBinaryCopyAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        server.WriteNoticeResponse(PostgresErrorCodes.Warning, message: new string('x', oversizeNotice ? csb.ReadBufferSize : 10));
+        if (export)
+            server.WriteCopyOutResponse(isBinary: true).WriteCopyDone();
+        else
+            server.WriteCopyInResponse(isBinary: true);
+        await server
+            .WriteCommandComplete("COPY 0")
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        await using var stream = await streamTask;
+        stream.ReadTimeout = 1234;
+        // The timeout reaches the buffer the connector reads from
+        Assert.That(conn.Connector!.ReadBuffer.Timeout, Is.EqualTo(TimeSpan.FromMilliseconds(1234)));
+        // Only the long notice made the connector switch to a bigger buffer
+        Assert.That(conn.Connector!.ReadBuffer.Size, oversizeNotice ? Is.GreaterThan(csb.ReadBufferSize) : Is.EqualTo(csb.ReadBufferSize));
+    }
+
+    [Test, Description("A notice longer than the read buffer makes the connector switch to a bigger buffer before the header or a row")]
+    public async Task Binary_export_with_notice_before_row([Values] bool firstRow, [Values] bool oversizeNotice)
+    {
+        // With the smallest read buffer, the mock can write a notice that doesn't fit into it
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { ReadBufferSize = NpgsqlReadBuffer.MinimumSize };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        const string command = "COPY SomeTable TO STDOUT (FORMAT BINARY)";
+        var exporterTask = conn.BeginBinaryExportAsync(command);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+        var notice = new string('x', oversizeNotice ? csb.ReadBufferSize : 10);
+        server.WriteCopyOutResponse(isBinary: true);
+        if (firstRow)
+            server.WriteNoticeResponse(PostgresErrorCodes.Warning, message: notice);
+        // The header (signature, flags, header extension length) comes with the first row (one column of 3 bytes)
+        server.WriteCopyData([.. NpgsqlRawCopyStream.BinarySignature, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, .. "abc"u8]);
+        if (!firstRow)
+            server.WriteNoticeResponse(PostgresErrorCodes.Warning, message: notice);
+        await server
+            .WriteCopyData([0, 1, 0, 0, 0, 3, .. "def"u8])
+            .WriteCopyData([0xFF, 0xFF]) // Trailer
+            .WriteCopyDone()
+            .WriteCommandComplete("COPY 2")
+            .WriteReadyForQuery()
+            .FlushAsync();
+        // Reading beyond the end of the response fails instead of waiting
+        server.Close();
+
+        await using var exporter = await exporterTask;
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("abc"u8.ToArray()));
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await exporter.ReadAsync<byte[]>(NpgsqlDbType.Bytea), Is.EqualTo("def"u8.ToArray()));
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(-1));
+        // Only the long notice made the connector switch to a bigger buffer
+        Assert.That(conn.Connector!.ReadBuffer.Size, oversizeNotice ? Is.GreaterThan(csb.ReadBufferSize) : Is.EqualTo(csb.ReadBufferSize));
+    }
+
     #endregion
 
     #region Utils
