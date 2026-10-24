@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -196,7 +195,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     $"A finite CommandTimeout can't be less than {TimeSpan.Zero}.");
 
             _commandTimeout = value;
-            if (Connector.State != ConnectorState.Replication)
+            // Before Open, the value gets applied when opening
+            if (_npgsqlConnection.Connector is { State: not ConnectorState.Replication })
                 SetTimeouts(value, value);
         }
     }
@@ -324,7 +324,13 @@ public abstract class ReplicationConnection : IAsyncDisposable
         return ShowInternal(parameterName, cancellationToken);
 
         async Task<string> ShowInternal(string parameterName, CancellationToken cancellationToken)
-            => (string)(await ReadSingleRow("SHOW " + parameterName, cancellationToken).ConfigureAwait(false))[0];
+        {
+            var row = await ReadSingleRow("SHOW " + parameterName, cancellationToken).ConfigureAwait(false);
+            // SHOW ALL returns the name, setting and description of every parameter
+            if (row.Length != 1)
+                throw new NotSupportedException($"{nameof(Show)} only supports single run-time parameters, not '{parameterName}'.");
+            return (string)row[0];
+        }
     }
 
     /// <summary>
@@ -337,7 +343,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// <returns>The timeline history file for timeline tli</returns>
     public async Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
     {
-        var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken).ConfigureAwait(false);
+        // The content column carries the raw bytes of the history file, although the server declares it as bytea before
+        // PostgreSQL 14 and as text since then
+        var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken, rawBytesColumn: 1).ConfigureAwait(false);
         return new TimelineHistoryFile((string)result[0], (byte[])result[1]);
     }
 
@@ -424,6 +432,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         using var _ = connector.StartUserAction(
             ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
+        // StartUserAction resets the timeouts to the connection string's command timeout
+        SetTimeouts(CommandTimeout, CommandTimeout);
 
         NpgsqlReadBuffer.ColumnStream? columnStream = null;
 
@@ -718,6 +728,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
         async Task DropReplicationSlotInternal(string slotName, bool wait, CancellationToken cancellationToken)
         {
             using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
+            // StartUserAction resets the timeouts to the connection string's command timeout
+            SetTimeouts(CommandTimeout, CommandTimeout);
 
             var command = "DROP_REPLICATION_SLOT " + slotName;
             if (wait)
@@ -740,11 +752,13 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
     #endregion
 
-    async Task<object[]> ReadSingleRow(string command, CancellationToken cancellationToken = default)
+    async Task<object[]> ReadSingleRow(string command, CancellationToken cancellationToken = default, int rawBytesColumn = -1)
     {
         CheckDisposed();
 
         using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
+        // StartUserAction resets the timeouts to the connection string's command timeout
+        SetTimeouts(CommandTimeout, CommandTimeout);
 
         LogMessages.ExecutingReplicationCommand(ReplicationLogger, command, Connector.Id);
 
@@ -764,6 +778,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 continue;
 
             await buf.EnsureAsync(len).ConfigureAwait(false);
+            if (i == rawBytesColumn)
+            {
+                results[i] = buf.ReadMemory(len).ToArray();
+                continue;
+            }
+
             var field = rowDescription[i];
             switch (field.PostgresType.Name)
             {
@@ -792,22 +812,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 results[i] = num;
                 continue;
             }
-            case "bytea":
-                try
-                {
-                    var bytes = buf.ReadMemory(len);
-                    // Theoretically we could just copy over the raw bytes here, since bytea
-                    // only comes from TIMELINE_HISTORY which doesn't really send bytea but raw bytes
-                    // but let's not rely on this implementation detail and stay compatible
-                    results[i] = ParseBytea(bytes.Span);
-                }
-                catch (Exception e)
-                {
-                    throw Connector.Break(
-                        new NpgsqlException($"Could not parse data as bytea in field {field.Name}", e));
-                }
-
-                continue;
             default:
 
                 throw Connector.Break(new NpgsqlException(
@@ -815,75 +819,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
             }
         }
 
-        Expect<CommandCompleteMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
+        // Skip any further rows (e.g. for SHOW ALL), so that the connection stays in sync
+        Expect<CommandCompleteMessage>(await Connector.ReadMessage(true, DataRowLoadingMode.Skip).ConfigureAwait(false), Connector);
         Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
         return results;
-
-        static byte[] ParseBytea(ReadOnlySpan<byte> bytes)
-        {
-            return bytes.Length >= 2 && bytes[0] == '\\' && bytes[1] == 'x'
-                ? ParseByteaHex(bytes.Slice(2))
-                : ParseByteaEscape(bytes);
-
-            static byte[] ParseByteaHex(ReadOnlySpan<byte> inBytes)
-            {
-                var outBytes = new byte[inBytes.Length / 2];
-                for (var i = 0; i < inBytes.Length; i++)
-                {
-                    var v1 = inBytes[i++];
-                    var v2 = inBytes[i];
-                    outBytes[i / 2] =
-                        (byte)(((v1 - (v1 < 0x3A ? 0x30 : 87)) << 4) | (v2 - (v2 < 0x3A ? 0x30 : 87)));
-                }
-
-                return outBytes;
-            }
-
-            static byte[] ParseByteaEscape(ReadOnlySpan<byte> inBytes)
-            {
-                var result = new MemoryStream(new byte[inBytes.Length]);
-                for (var tp = 0; tp < inBytes.Length;)
-                {
-                    var c1 = inBytes[tp];
-                    if (c1 != '\\')
-                    {
-                        // Don't validate whether c1 >= 0x20 && c1 <= 0x7e here
-                        // TIMELINE_HISTORY currently (2020-09-13) sends raw
-                        // bytes instead of bytea for the content value.
-                        result.WriteByte(c1);
-                        tp++;
-                        continue;
-                    }
-
-                    var c2 = inBytes[tp + 1];
-                    if (c2 == '\\')
-                    {
-                        result.WriteByte(c2);
-                        tp += 2;
-                        continue;
-                    }
-
-                    var c3 = inBytes[tp + 2];
-                    var c4 = inBytes[tp + 3];
-                    if (c2 >= '0' && c2 <= '3' &&
-                        c3 >= '0' && c3 <= '7' &&
-                        c4 >= '0' && c4 <= '7')
-                    {
-                        c2 <<= 3;
-                        c2 += c3;
-                        c2 <<= 3;
-                        result.WriteByte((byte)(c2 + c4));
-
-                        tp += 4;
-                        continue;
-                    }
-
-                    throw new FormatException("Invalid syntax for type bytea");
-                }
-
-                return result.ToArray();
-            }
-        }
     }
 
     void SetTimeouts(TimeSpan readTimeout, TimeSpan writeTimeout)
@@ -891,11 +830,16 @@ public abstract class ReplicationConnection : IAsyncDisposable
         var connector = Connector;
         var readBuffer = connector.ReadBuffer;
         if (readBuffer != null)
-            readBuffer.Timeout = readTimeout > TimeSpan.Zero ? readTimeout : Timeout.InfiniteTimeSpan;
+            readBuffer.Timeout = ToBufferTimeout(readTimeout);
 
         var writeBuffer = connector.WriteBuffer;
         if (writeBuffer != null)
-            writeBuffer.Timeout = writeTimeout;
+            writeBuffer.Timeout = ToBufferTimeout(writeTimeout);
+
+        // The buffers' timeouts have to fit into an int of milliseconds, so larger values (e.g. TimeSpan.MaxValue) mean no
+        // timeout, just like zero
+        static TimeSpan ToBufferTimeout(TimeSpan timeout)
+            => timeout > TimeSpan.Zero && timeout.TotalMilliseconds <= int.MaxValue ? timeout : Timeout.InfiniteTimeSpan;
     }
 
     internal void CheckDisposed()
