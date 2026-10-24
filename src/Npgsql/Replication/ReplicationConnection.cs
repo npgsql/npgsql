@@ -31,6 +31,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
     readonly SemaphoreSlim _feedbackSemaphore = new(1, 1);
     string? _userFacingConnectionString;
     TimeSpan? _commandTimeout;
+    TimeSpan _walReceiverStatusInterval = TimeSpan.FromSeconds(10d);
     TimeSpan _walReceiverTimeout = TimeSpan.FromSeconds(60d);
     Timer? _sendFeedbackTimer;
     Timer? _requestFeedbackTimer;
@@ -134,25 +135,47 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
     /// <summary>
     /// Send replies at least this often.
-    /// Timeout.<see cref="Timeout.InfiniteTimeSpan"/> disables automated replies.
+    /// Timeout.<see cref="Timeout.InfiniteTimeSpan"/> or <see cref="TimeSpan.Zero"/> disables automated replies.
     /// </summary>
-    public TimeSpan WalReceiverStatusInterval { get; set; } = TimeSpan.FromSeconds(10d);
+    public TimeSpan WalReceiverStatusInterval
+    {
+        get => _walReceiverStatusInterval;
+        set
+        {
+            if (value < TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    $"A finite WalReceiverStatusInterval can't be less than {TimeSpan.Zero}.");
+
+            _walReceiverStatusInterval = value;
+        }
+    }
 
     /// <summary>
     /// Time that receiver waits for communication from master.
-    /// Timeout.<see cref="Timeout.InfiniteTimeSpan"/> disables the timeout.
+    /// Timeout.<see cref="Timeout.InfiniteTimeSpan"/> or <see cref="TimeSpan.Zero"/> disables the timeout.
     /// </summary>
     public TimeSpan WalReceiverTimeout
     {
         get => _walReceiverTimeout;
         set
         {
+            if (value < TimeSpan.Zero && value != Timeout.InfiniteTimeSpan)
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    $"A finite WalReceiverTimeout can't be less than {TimeSpan.Zero}.");
+
             _walReceiverTimeout = value;
-            _requestFeedbackInterval = value == Timeout.InfiniteTimeSpan
+            _requestFeedbackInterval = ToTimerInterval(value == Timeout.InfiniteTimeSpan
                 ? value
-                : new TimeSpan(value.Ticks / 2);
+                : new TimeSpan(value.Ticks / 2));
         }
     }
+
+    // Like PostgreSQL's wal_receiver_status_interval and wal_receiver_timeout, zero disables a timer, just like infinite does, and so
+    // do intervals longer than a Timer supports (~49 days). Timers fire every millisecond at most.
+    static TimeSpan ToTimerInterval(TimeSpan interval)
+        => interval <= TimeSpan.Zero || interval.TotalMilliseconds > uint.MaxValue - 1
+            ? Timeout.InfiniteTimeSpan
+            : interval.TotalMilliseconds < 1 ? TimeSpan.FromMilliseconds(1) : interval;
 
     private protected abstract ReplicationMode ReplicationMode { get; }
 
@@ -497,7 +520,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             using (ExecutionContext.SuppressFlow()) // Don't capture the current ExecutionContext and its AsyncLocals onto the timer causing them to live forever
             {
-                _sendFeedbackTimer = new Timer(TimerSendFeedback, state: null, WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
+                _sendFeedbackTimer = new Timer(
+                    TimerSendFeedback, state: null, ToTimerInterval(WalReceiverStatusInterval), Timeout.InfiniteTimeSpan);
                 _requestFeedbackTimer = new Timer(TimerRequestFeedback, state: null, _requestFeedbackInterval, Timeout.InfiniteTimeSpan);
             }
 
@@ -617,7 +641,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     if (replyRequested)
                     {
                         LogMessages.SendingReplicationStandbyStatusUpdate(ReplicationLogger, "the server requested it", Connector.Id);
-                        await SendFeedback(waitOnSemaphore: true, cancellationToken: CancellationToken.None).ConfigureAwait(false);
+                        await SendFeedback(waitOnSemaphore: true, throwOnFailure: true, cancellationToken: CancellationToken.None)
+                            .ConfigureAwait(false);
                     }
 
                     continue;
@@ -763,7 +788,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
     {
         // The rest of the command follows promptly, so we don't wait for it forever, even if WalReceiverTimeout is infinite
         SetTimeouts(
-            _walReceiverTimeout > TimeSpan.Zero && _walReceiverTimeout != Timeout.InfiniteTimeSpan ? _walReceiverTimeout : TimeSpan.FromSeconds(30),
+            _walReceiverTimeout > TimeSpan.Zero && _walReceiverTimeout.TotalMilliseconds <= int.MaxValue
+                ? _walReceiverTimeout
+                : TimeSpan.FromSeconds(30),
             CommandTimeout);
 
         while (true)
@@ -832,6 +859,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// Sends a forced status update to PostgreSQL with the current WAL tracking information.
     /// </summary>
     /// <exception cref="InvalidOperationException">The connection currently isn't streaming</exception>
+    /// <exception cref="NpgsqlException">The status update couldn't be sent, which breaks the connection.</exception>
     /// <returns>A Task representing the sending of the status update (and not any PostgreSQL response).</returns>
     public async Task SendStatusUpdate(CancellationToken cancellationToken = default)
     {
@@ -845,11 +873,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
         if (_npgsqlConnection.Connector is not { State: ConnectorState.Replication } connector)
             throw new InvalidOperationException("Status update can only be sent during replication");
 
-        LogMessages.SendingReplicationStandbyStatusUpdate(ReplicationLogger, nameof(SendStatusUpdate) + "was called", connector.Id);
-        await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        LogMessages.SendingReplicationStandbyStatusUpdate(ReplicationLogger, nameof(SendStatusUpdate) + " was called", connector.Id);
+        await SendFeedback(waitOnSemaphore: true, throwOnFailure: true, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
-    async Task SendFeedback(bool waitOnSemaphore = false, bool requestReply = false, CancellationToken cancellationToken = default)
+    async Task SendFeedback(bool waitOnSemaphore = false, bool requestReply = false, bool throwOnFailure = false,
+        CancellationToken cancellationToken = default)
     {
         var taken = waitOnSemaphore
             ? await _feedbackSemaphore.WaitAsync(Timeout.Infinite, cancellationToken).ConfigureAwait(false)
@@ -863,16 +892,19 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         try
         {
-            if (_statusUpdatesStopped)
+            // While we waited, the stream may have ended or the connection may have broken (e.g. because another status update failed)
+            if (_statusUpdatesStopped
+                || _npgsqlConnection.Connector is not { State: ConnectorState.Replication, WriteBuffer: { } buf } connector)
+            {
+                if (throwOnFailure)
+                    throw new InvalidOperationException("Status update can only be sent during replication");
                 return;
-
-            var connector = _npgsqlConnection.Connector!;
-            var buf = connector.WriteBuffer;
+            }
 
             const int len = 39;
 
             if (buf.WriteSpaceLeft < len)
-                await connector.Flush(async: true, cancellationToken).ConfigureAwait(false);
+                await buf.Flush(async: true, cancellationToken).ConfigureAwait(false);
 
             buf.StartMessage(len);
             buf.WriteByte(FrontendMessageCode.CopyData);
@@ -889,7 +921,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             buf.WriteInt64(PgDateTime.EncodeTimestamp(timestamp));
             buf.WriteByte(requestReply ? (byte)1 : (byte)0);
 
-            await connector.Flush(async: true, cancellationToken).ConfigureAwait(false);
+            await buf.Flush(async: true, cancellationToken).ConfigureAwait(false);
 
             if (ReplicationLogger.IsEnabled(LogLevel.Trace))
             {
@@ -899,16 +931,13 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     new NpgsqlLogSequenceNumber(unchecked((ulong)lastFlushedLsn)),
                     new NpgsqlLogSequenceNumber(unchecked((ulong)lastAppliedLsn)),
                     timestamp,
-                    Connector.Id);
+                    connector.Id);
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception e) when (!throwOnFailure)
         {
-            // Surface the caller's cancellation (e.g. from SendStatusUpdate) instead of swallowing it below.
-            throw;
-        }
-        catch (Exception e)
-        {
+            // SendStatusUpdate and the replies the server requests report failures to their callers. When a status update of a timer
+            // fails, the broken connector ends the stream.
             LogMessages.ReplicationFeedbackMessageSendingFailed(ReplicationLogger, _npgsqlConnection?.Connector?.Id, e);
         }
         finally
@@ -918,7 +947,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             // teardown disposes and nulls the timers. Change on a timer disposed after the null check throws ObjectDisposedException.
             try
             {
-                _sendFeedbackTimer?.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
+                _sendFeedbackTimer?.Change(ToTimerInterval(WalReceiverStatusInterval), Timeout.InfiniteTimeSpan);
                 if (requestReply)
                     _requestFeedbackTimer?.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
             }
