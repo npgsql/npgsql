@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +25,20 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         await using var conn = await OpenConnectionAsync();
         CurrentServerVersion = conn.PostgreSqlVersion;
         _maxIdentifierLength = int.Parse((string)(await conn.ExecuteScalarAsync("SHOW max_identifier_length"))!);
+
+        // Creating a logical slot waits for every transaction in the cluster that holds an xid. So if a killed test left a
+        // prepared transaction behind, every test that creates a logical slot before the owning test would wait forever.
+        // Of the replication tests, only PgOutputReplicationTests prepares transactions, and it names them like its slots (see
+        // Cleanup below), so every logical fixture rolls those back first.
+        if (typeof(TConnection) == typeof(LogicalReplicationConnection))
+        {
+            foreach (var gid in (string[])(await conn.ExecuteScalarAsync(
+                         "SELECT coalesce(array_agg(gid), '{}') FROM pg_prepared_xacts " +
+                         "WHERE gid ~ '^s_[a-z0-9_]+_pgoutput_l$' AND database = current_database()"))!)
+            {
+                await conn.ExecuteNonQueryAsync($"ROLLBACK PREPARED '{gid}'");
+            }
+        }
     }
 
     [SetUp]
@@ -89,9 +105,12 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
 
     async Task SafeReplicationTestCore(Func<string, string[], string, Task> testAction, int tableCount, string memberName)
     {
-        // if the supplied name is too long we create on from a guid.
+        // If the supplied name is too long, we derive one from its hash, so that the cleanup of the next run still finds what a
+        // killed run left behind
         var baseName = $"{memberName}_{Postfix}";
-        var name = (baseName.Length > _maxIdentifierLength - 4 ? Guid.NewGuid().ToString("N") : baseName).ToLowerInvariant();
+        var name = (baseName.Length > _maxIdentifierLength - 4
+            ? Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(baseName)), 0, 16)
+            : baseName).ToLowerInvariant();
         var slotName = $"s_{name}".ToLowerInvariant();
         var tableNames = new string[tableCount];
         for (var i = tableNames.Length - 1; i >= 0; i--)
@@ -114,6 +133,14 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         async Task Cleanup()
         {
             await using var c = await OpenConnectionAsync();
+
+            // Tests that prepare a transaction name it like their slot. If a killed test left it behind, its locks would make
+            // dropping the tables wait forever, and new logical slots would wait for it to end.
+            if ((long)(await c.ExecuteScalarAsync(
+                    $"SELECT count(*) FROM pg_prepared_xacts WHERE gid = '{slotName}' AND database = current_database()"))! > 0)
+            {
+                await c.ExecuteNonQueryAsync($"ROLLBACK PREPARED '{slotName}'");
+            }
             try
             {
                 await DropSlot();
