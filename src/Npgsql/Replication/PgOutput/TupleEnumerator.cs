@@ -10,7 +10,7 @@ namespace Npgsql.Replication.PgOutput;
 sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
 {
     readonly ReplicationTuple _tupleEnumerable;
-    readonly NpgsqlReadBuffer _readBuffer;
+    NpgsqlReadBuffer _readBuffer = null!;
     readonly ReplicationValue _value;
 
     ushort _numColumns;
@@ -18,18 +18,19 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
     RowDescriptionMessage _rowDescription = null!;
     CancellationToken _cancellationToken;
 
-    internal TupleEnumerator(ReplicationTuple tupleEnumerable, NpgsqlConnector connector)
+    internal TupleEnumerator(ReplicationTuple tupleEnumerable)
     {
         _tupleEnumerable = tupleEnumerable;
-        _readBuffer = connector.ReadBuffer;
-        _value = new(connector);
+        _value = new();
     }
 
-    internal void Reset(ushort numColumns, RowDescriptionMessage rowDescription, CancellationToken cancellationToken)
+    internal void Reset(
+        ushort numColumns, RowDescriptionMessage rowDescription, NpgsqlReadBuffer readBuffer, CancellationToken cancellationToken)
     {
         _pos = -1;
         _numColumns = numColumns;
         _rowDescription = rowDescription;
+        _readBuffer = readBuffer;
         _cancellationToken = cancellationToken;
     }
 
@@ -69,7 +70,7 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
                 throw _readBuffer.Connector.Break(new ArgumentOutOfRangeException());
             }
 
-            _value.Reset(kind, len, _rowDescription[_pos]);
+            _value.Reset(kind, len, _rowDescription[_pos], _readBuffer);
 
             return true;
         }
