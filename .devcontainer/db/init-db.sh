@@ -14,10 +14,18 @@ sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
 echo "Setting 'max_prepared_transactions = 10' in $PGDATA/postgresql.conf"
 sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/' $PGDATA/postgresql.conf
 
+echo "Configuring replication in $PGDATA/postgresql.conf"
+sed -i 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
+sed -i 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
+sed -i 's/#logical_decoding_work_mem =/logical_decoding_work_mem = 64kB #/' $PGDATA/postgresql.conf
+sed -i 's/#wal_sender_timeout =/wal_sender_timeout = 3s #/' $PGDATA/postgresql.conf
+
 echo "Configuring md5 authentication in $PGDATA/pg_hba.conf"
 # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
 echo 'local all all trust' > $PGDATA/pg_hba.conf
 echo "host all all all md5" >> $PGDATA/pg_hba.conf
+# Physical replication connections only match 'replication' entries
+echo "host replication all all md5" >> $PGDATA/pg_hba.conf
 
 # Standard test account for Npgsql and enable extensions
 psql -U postgres <<EOF
