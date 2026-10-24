@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Replication;
+using Npgsql.Replication.Internal;
+using Npgsql.Replication.TestDecoding;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -89,6 +91,10 @@ public class ReplicationFeedbackMockTests : TestBase
         Assert.That(async () => await rc.SendStatusUpdate(cts.Token),
             Throws.InstanceOf<NpgsqlException>().With.InnerException.TypeOf<IOException>());
         Assert.That(rc.Connector.IsBroken, Is.True);
+
+        // Asking for the next message reports the failure too
+        Assert.That(async () => await enumerator.MoveNextAsync(),
+            Throws.InstanceOf<NpgsqlException>().With.InnerException.With.InnerException.TypeOf<IOException>());
     }
 
     [Test, Description("A status update that waited for one that broke the connection fails as not streaming")]
@@ -125,6 +131,37 @@ public class ReplicationFeedbackMockTests : TestBase
         Assert.That(async () => await enumerator.MoveNextAsync(),
             Throws.InstanceOf<NpgsqlException>().With.InnerException.TypeOf<IOException>());
         Assert.That(rc.Connector.IsBroken, Is.True);
+    }
+
+    [Test, Description("A timer's status update that can't be sent while the consumer holds a message ends the stream with the failure")]
+    public async Task Timer_status_update_failure_ends_the_stream([Values] bool bypassingStream)
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<LogicalReplicationConnection>();
+        await using var _ = rc;
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+        rc.WalReceiverStatusInterval = TimeSpan.FromMilliseconds(10);
+
+        // Plugins like pgoutput bypass the message's stream and read its data from the buffer directly
+        await using var enumerator = rc
+            .StartLogicalReplication(new TestDecodingReplicationSlot("s"), cts.Token, StartLsn, bypassingStream: bypassingStream)
+            .GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyBothResponse()
+            .WriteXLogData(StartLsn, StartLsn, "abc"u8)
+            .FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        // The consumer holds a message, so nothing reads from the connection while the timer's write fails and breaks it
+        rc.Connector.WriteBuffer.Underlying = new FailingStream();
+        while (!rc.Connector.IsBroken)
+            await Task.Delay(10, cts.Token);
+
+        // The write failure that broke the connection is the inner exception
+        Assert.That(async () => await enumerator.MoveNextAsync(),
+            Throws.InstanceOf<NpgsqlException>().With.InnerException.With.InnerException.TypeOf<IOException>());
     }
 
     static async Task<IAsyncEnumerator<XLogDataMessage>> StartAndHoldMessage(
