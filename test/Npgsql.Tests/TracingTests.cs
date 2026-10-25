@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -605,6 +606,56 @@ public class TracingTests(bool async) : TestBase
         Assert.That(exceptionTags["exception.type"], Is.EqualTo("Npgsql.PostgresException"));
         Assert.That(exceptionTags["exception.message"], Does.Contain("relation \"non_existing_table\" does not exist"));
         Assert.That(exceptionTags["exception.stacktrace"], Does.Contain("relation \"non_existing_table\" does not exist"));
+    }
+
+    [Test]
+    public async Task RawBinaryExport_error_after_CopyDone()
+    {
+        // The command timeout ends a wait for data that never comes
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
+        await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+        await using var dataSource = NpgsqlDataSource.Create(postmasterMock.ConnectionString);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        using var activityListener = StartListener(out var activities);
+
+        // After CopyDone, an error (e.g. from an AFTER trigger, or a deferred constraint at commit) comes instead of CommandComplete
+        await server
+            .WriteCopyOutResponse(isBinary: true)
+            .WriteCopyData("abc"u8)
+            .WriteCopyDone()
+            .WriteErrorResponse(PostgresErrorCodes.ForeignKeyViolation)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        const string copyToCommand = "COPY SomeTable TO STDOUT BINARY";
+        var buffer = new byte[1024];
+        if (async)
+        {
+            await using var stream = await connection.BeginRawBinaryCopyAsync(copyToCommand);
+            Assert.ThrowsAsync<PostgresException>(async () =>
+            {
+                while (await stream.ReadAsync(buffer, 0, buffer.Length) > 0) { }
+            });
+        }
+        else
+        {
+            using var stream = connection.BeginRawBinaryCopy(copyToCommand);
+            Assert.Throws<PostgresException>(() =>
+            {
+                while (stream.Read(buffer, 0, buffer.Length) > 0) { }
+            });
+        }
+
+        var activity = GetSingleActivity(activities, "COPY", "COPY", ActivityStatusCode.Error, PostgresErrorCodes.ForeignKeyViolation);
+
+        Assert.That(activity.Events.Count(), Is.EqualTo(1));
+        var exceptionEvent = activity.Events.First();
+        Assert.That(exceptionEvent.Name, Is.EqualTo("exception"));
+
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(t => t.Key, t => t.Value);
+        Assert.That(exceptionTags["exception.type"], Is.EqualTo("Npgsql.PostgresException"));
     }
 
     #endregion Raw binary
