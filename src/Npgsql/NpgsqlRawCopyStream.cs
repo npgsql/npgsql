@@ -30,6 +30,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
     int _leftToReadInDataMsg;
     CopyStreamState _state = CopyStreamState.Uninitialized;
+    // The error that ended the COPY operation, which later calls throw as their InnerException until the stream is disposed
+    Exception? _error;
 
     bool _canRead;
     bool _canWrite;
@@ -280,13 +282,21 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 // We've consumed the current DataMessage (or haven't yet received the first),
                 // read the next message
                 msg = await _connector.ReadMessage(async).ConfigureAwait(false);
+                if (msg.Code == BackendMessageCode.CopyDone)
+                {
+                    // After CopyDone, an error (e.g. from an AFTER trigger, or a deferred constraint at commit) can come
+                    // instead of CommandComplete
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+                    // After CommandComplete, an error from a second statement in the command can come instead of ReadyForQuery
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+                }
             }
             catch (Exception e)
             {
                 if (_state != CopyStreamState.Disposed)
                 {
                     TraceSetException(e);
-                    Cleanup();
+                    Cleanup(e);
                 }
                 throw;
             }
@@ -297,8 +307,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                 break;
             case BackendMessageCode.CopyDone:
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 _state = CopyStreamState.Consumed;
                 return 0;
             default:
@@ -387,6 +395,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
 
     async ValueTask DisposeAsync(bool disposing, bool async)
     {
+        // After the dispose, later calls throw ObjectDisposedException, also when an error ended the COPY operation
+        _error = null;
         if (_state == CopyStreamState.Disposed || !disposing)
             return;
 
@@ -446,15 +456,18 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     }
 
 #pragma warning disable CS8625
-    void Cleanup()
+    void Cleanup(Exception? error = null)
     {
         Debug.Assert(_state != CopyStreamState.Disposed);
-        LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
+        // A COPY operation that the given error ended, or that never started (e.g. for a missing table), didn't complete
+        if (error is null && _state != CopyStreamState.Uninitialized)
+            LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
         _connector.EndUserAction();
         _connector.CurrentCopyOperation = null;
         _connector = null;
         _readBuf = null;
         _writeBuf = null;
+        _error = error;
         _state = CopyStreamState.Disposed;
     }
 #pragma warning restore CS8625
@@ -462,6 +475,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     void CheckDisposed()
     {
         if (_state == CopyStreamState.Disposed) {
+            if (_error is not null)
+                throw new InvalidOperationException("The COPY operation ended with an error.", _error);
             throw new ObjectDisposedException(nameof(NpgsqlRawCopyStream), "The COPY operation has already ended.");
         }
     }
