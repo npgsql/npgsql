@@ -30,6 +30,7 @@ class PgPostmasterMock : IAsyncDisposable
     readonly bool _completeCancellationImmediately;
     readonly string? _startupErrorCode;
     readonly bool _breakOnGssEncryptionRequest;
+    readonly string _serverVersion;
 
     ChannelWriter<Task<ServerOrCancellationRequest>> _pendingRequestsWriter { get; }
     ChannelReader<Task<ServerOrCancellationRequest>> _pendingRequestsReader { get; }
@@ -51,9 +52,11 @@ class PgPostmasterMock : IAsyncDisposable
         bool completeCancellationImmediately = true,
         MockState state = MockState.MultipleHostsDisabled,
         string? startupErrorCode = null,
-        bool breakOnGssEncryptionRequest = false)
+        bool breakOnGssEncryptionRequest = false,
+        string serverVersion = PgServerMock.DefaultServerVersion)
     {
-        var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, state, startupErrorCode, breakOnGssEncryptionRequest);
+        var mock = new PgPostmasterMock(
+            connectionString, completeCancellationImmediately, state, startupErrorCode, breakOnGssEncryptionRequest, serverVersion);
         mock.AcceptClients();
         return mock;
     }
@@ -63,7 +66,8 @@ class PgPostmasterMock : IAsyncDisposable
         bool completeCancellationImmediately = true,
         MockState state = MockState.MultipleHostsDisabled,
         string? startupErrorCode = null,
-        bool breakOnGssEncryptionRequest = false)
+        bool breakOnGssEncryptionRequest = false,
+        string serverVersion = PgServerMock.DefaultServerVersion)
     {
         var pendingRequestsChannel = Channel.CreateUnbounded<Task<ServerOrCancellationRequest>>();
         _pendingRequestsReader = pendingRequestsChannel.Reader;
@@ -75,6 +79,7 @@ class PgPostmasterMock : IAsyncDisposable
         State = state;
         _startupErrorCode = startupErrorCode;
         _breakOnGssEncryptionRequest = breakOnGssEncryptionRequest;
+        _serverVersion = serverVersion;
 
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
@@ -121,7 +126,7 @@ class PgPostmasterMock : IAsyncDisposable
                         // but we enqueue a Task which represents the Startup completing.
                         await _pendingRequestsWriter.WriteAsync(Task.Run(async () =>
                         {
-                            await server.Startup(State);
+                            await server.Startup(State, _serverVersion);
                             return serverOrCancellationRequest;
                         }));
                     }
