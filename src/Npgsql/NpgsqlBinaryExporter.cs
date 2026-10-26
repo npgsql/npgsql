@@ -91,6 +91,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 }
                 break;
             case BackendMessageCode.CommandComplete:
+                // The command completed without copying through the client (e.g. COPY to or from a file on the server).
+                // Consume the ReadyForQuery that follows, so that the connection stays usable.
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 throw new InvalidOperationException(
                     "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
                     "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
@@ -116,6 +119,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     async Task ReadHeader(bool async)
     {
         var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
+        // An oversize message (e.g. a big notice) makes the connector switch to a bigger buffer
+        _buf = _connector.ReadBuffer;
         _endOfMessagePos = _buf.CumulativeReadPosition + Expect<CopyDataMessage>(msg, _connector).Length;
         var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
         await _buf.Ensure(headerLen, async).ConfigureAwait(false);
@@ -177,6 +182,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column == NumColumns)
         {
             var msg = Expect<CopyDataMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+            // An oversize message (e.g. a big notice) makes the connector switch to a bigger buffer
+            _buf = _connector.ReadBuffer;
             _endOfMessagePos = _buf.CumulativeReadPosition + msg.Length;
         }
         else if (_column != BeforeRow)

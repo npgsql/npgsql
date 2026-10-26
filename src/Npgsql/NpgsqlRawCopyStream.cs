@@ -93,6 +93,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
             var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
+            // An oversize message (e.g. a big notice) makes the connector switch to a bigger buffer
+            _readBuf = _connector.ReadBuffer;
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -111,6 +113,9 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 TraceSetExport();
                 break;
             case BackendMessageCode.CommandComplete:
+                // The command completed without copying through the client (e.g. COPY to or from a file on the server).
+                // Consume the ReadyForQuery that follows, so that the connection stays usable.
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 throw new InvalidOperationException(
                     "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
                     "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
@@ -294,6 +299,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             switch (msg.Code)
             {
             case BackendMessageCode.CopyData:
+                // An oversize message (e.g. a big notice) makes the connector switch to a bigger buffer
+                _readBuf = _connector.ReadBuffer;
                 _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                 break;
             case BackendMessageCode.CopyDone:
