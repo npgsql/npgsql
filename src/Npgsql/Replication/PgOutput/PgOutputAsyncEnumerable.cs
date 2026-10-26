@@ -13,7 +13,6 @@ namespace Npgsql.Replication.PgOutput;
 
 sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
 {
-    readonly PgOutputProtocolVersion _protocolVersion;
     readonly LogicalReplicationConnection _connection;
     readonly PgOutputReplicationSlot _slot;
     readonly PgOutputReplicationOptions _options;
@@ -39,20 +38,20 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
     readonly ReadOnlyArrayBuffer<RelationMessage> _truncateMessageRelations = new();
 
     // V2
-    readonly StreamStartMessage _streamStartMessage = null!;
-    readonly StreamStopMessage _streamStopMessage = null!;
-    readonly StreamCommitMessage _streamCommitMessage = null!;
-    readonly StreamAbortMessage _streamAbortMessage = null!;
+    readonly StreamStartMessage _streamStartMessage = new();
+    readonly StreamStopMessage _streamStopMessage = new();
+    readonly StreamCommitMessage _streamCommitMessage = new();
+    readonly StreamAbortMessage _streamAbortMessage = new();
 
     // V3
-    readonly BeginPrepareMessage _beginPrepareMessage = null!;
-    readonly PrepareMessage _prepareMessage = null!;
-    readonly CommitPreparedMessage _commitPreparedMessage = null!;
-    readonly RollbackPreparedMessage _rollbackPreparedMessage = null!;
-    readonly StreamPrepareMessage _streamPrepareMessage = null!;
+    readonly BeginPrepareMessage _beginPrepareMessage = new();
+    readonly PrepareMessage _prepareMessage = new();
+    readonly CommitPreparedMessage _commitPreparedMessage = new();
+    readonly RollbackPreparedMessage _rollbackPreparedMessage = new();
+    readonly StreamPrepareMessage _streamPrepareMessage = new();
 
     // V4
-    readonly ParallelStreamAbortMessage _parallelStreamAbortMessage = null!;
+    readonly ParallelStreamAbortMessage _parallelStreamAbortMessage = new();
 
     #endregion
 
@@ -63,37 +62,15 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
         CancellationToken cancellationToken,
         NpgsqlLogSequenceNumber? walLocation = null)
     {
-        _protocolVersion = options.ProtocolVersion;
         _connection = connection;
         _slot = slot;
         _options = options;
         _baseCancellationToken = cancellationToken;
         _walLocation = walLocation;
 
-
-        if (_protocolVersion >= PgOutputProtocolVersion.V2)
-        {
-            _streamStartMessage = new();
-            _streamStopMessage = new();
-            _streamCommitMessage = new();
-        }
-        if (_protocolVersion >= PgOutputProtocolVersion.V3)
-        {
-            _beginPrepareMessage = new();
-            _prepareMessage = new();
-            _commitPreparedMessage = new();
-            _rollbackPreparedMessage = new();
-            _streamPrepareMessage = new();
-        }
-
-        if (_protocolVersion >= PgOutputProtocolVersion.V4)
-        {
-            _parallelStreamAbortMessage = new();
-        }
-        else if (_protocolVersion >= PgOutputProtocolVersion.V2)
-        {
-            _streamAbortMessage = new();
-        }
+        // We allocate the messages of all protocol versions, since the protocol version doesn't decide which messages the
+        // server sends: a slot with two-phase decoding enabled (PostgreSQL 15+) gets prepared transaction messages with any
+        // protocol version, and PostgreSQL 18.0 - 18.6 sends stream aborts even without streaming (bug #19616).
 
         var connector = _connection.Connector;
         _insertMessage = new(connector);
@@ -105,18 +82,22 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
     }
 
     public IAsyncEnumerator<PgOutputReplicationMessage> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        => StartReplicationInternal(CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
+        => StartReplicationInternal(cancellationToken);
 
     async IAsyncEnumerator<PgOutputReplicationMessage> StartReplicationInternal(CancellationToken cancellationToken)
     {
+        using var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken);
+        cancellationToken = cancellationTokenSource.Token;
+
         var stream = _connection.StartLogicalReplication(
             _slot, cancellationToken, _walLocation, _options.GetOptionPairs(), bypassingStream: true);
-        var buf = _connection.Connector!.ReadBuffer;
         var inStreamingTransaction = false;
         var dataFormat = _options.Binary ?? false ? DataFormat.Binary : DataFormat.Text;
 
         await foreach (var xLogData in stream.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
+            // An oversize message (e.g. a big notice) between two messages makes the connector switch to a bigger buffer
+            var buf = _connection.Connector!.ReadBuffer;
             await buf.EnsureAsync(1).ConfigureAwait(false);
             var messageCode = (BackendReplicationMessageCode)buf.ReadByte();
             switch (messageCode)
@@ -258,13 +239,14 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
 
                 var relationId = buf.ReadUInt32();
                 var tupleDataType = (TupleType)buf.ReadByte();
-                Debug.Assert(tupleDataType == TupleType.NewTuple);
+                if (tupleDataType != TupleType.NewTuple)
+                    throw _connection.Connector.Break(new NotSupportedException($"The tuple type '{tupleDataType}' is not supported."));
                 var numColumns = buf.ReadUInt16();
 
                 if (!_relations.TryGetValue(relationId, out var relation))
                 {
-                    throw new InvalidOperationException(
-                        $"Could not find previous Relation message for relation ID {relationId} when processing Insert message");
+                    throw _connection.Connector.Break(new InvalidOperationException(
+                        $"Could not find previous Relation message for relation ID {relationId} when processing Insert message"));
                 }
 
                 Debug.Assert(numColumns == relation.RowDescription.Count);
@@ -295,8 +277,8 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
 
                 if (!_relations.TryGetValue(relationId, out var relation))
                 {
-                    throw new InvalidOperationException(
-                        $"Could not find previous Relation message for relation ID {relationId} when processing Update message");
+                    throw _connection.Connector.Break(new InvalidOperationException(
+                        $"Could not find previous Relation message for relation ID {relationId} when processing Update message"));
                 }
 
                 Debug.Assert(numColumns == relation.RowDescription.Count);
@@ -319,7 +301,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     await _defaultUpdateMessage.Consume(cancellationToken).ConfigureAwait(false);
                     continue;
                 default:
-                    throw new NotSupportedException($"The tuple type '{tupleType}' is not supported.");
+                    throw _connection.Connector.Break(new NotSupportedException($"The tuple type '{tupleType}' is not supported."));
                 }
             }
             case BackendReplicationMessageCode.Delete:
@@ -342,8 +324,8 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
 
                 if (!_relations.TryGetValue(relationId, out var relation))
                 {
-                    throw new InvalidOperationException(
-                        $"Could not find previous Relation message for relation ID {relationId} when processing Update message");
+                    throw _connection.Connector.Break(new InvalidOperationException(
+                        $"Could not find previous Relation message for relation ID {relationId} when processing Delete message"));
                 }
 
                 Debug.Assert(numColumns == relation.RowDescription.Count);
@@ -361,7 +343,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     await _fullDeleteMessage.Consume(cancellationToken).ConfigureAwait(false);
                     continue;
                 default:
-                    throw new NotSupportedException($"The tuple type '{tupleDataType}' is not supported.");
+                    throw _connection.Connector.Break(new NotSupportedException($"The tuple type '{tupleDataType}' is not supported."));
                 }
             }
             case BackendReplicationMessageCode.Truncate:
@@ -389,8 +371,8 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     var relationId = buf.ReadUInt32();
                     if (!_relations.TryGetValue(relationId, out var relation))
                     {
-                        throw new InvalidOperationException(
-                            $"Could not find previous Relation message for relation ID {relationId} when processing Update message");
+                        throw _connection.Connector.Break(new InvalidOperationException(
+                            $"Could not find previous Relation message for relation ID {relationId} when processing Truncate message"));
                     }
 
                     _truncateMessageRelations[i] = relation;
@@ -425,7 +407,9 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
             }
             case BackendReplicationMessageCode.StreamAbort:
             {
-                if (_protocolVersion >= PgOutputProtocolVersion.V4)
+                // The server only sends the abort LSN and timestamp with streaming = parallel, not with every protocol version 4
+                // session, so we tell the layouts apart by the message length (message code + 2 xids [+ LSN + timestamp]).
+                if (xLogData.Data.Length >= 1 + 4 + 4 + 8 + 8)
                 {
                     await buf.EnsureAsync(24).ConfigureAwait(false);
                     yield return _parallelStreamAbortMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
@@ -452,7 +436,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
-                    transactionGid: buf.ReadNullTerminatedString());
+                    transactionGid: await buf.ReadNullTerminatedString(async: true, cancellationToken).ConfigureAwait(false));
                 continue;
             }
             case BackendReplicationMessageCode.Prepare:
@@ -464,7 +448,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
-                    transactionGid: buf.ReadNullTerminatedString());
+                    transactionGid: await buf.ReadNullTerminatedString(async: true, cancellationToken).ConfigureAwait(false));
                 continue;
             }
             case BackendReplicationMessageCode.CommitPrepared:
@@ -476,7 +460,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     commitPreparedEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     transactionCommitTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
-                    transactionGid: buf.ReadNullTerminatedString());
+                    transactionGid: await buf.ReadNullTerminatedString(async: true, cancellationToken).ConfigureAwait(false));
                 continue;
             }
             case BackendReplicationMessageCode.RollbackPrepared:
@@ -489,7 +473,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionRollbackTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
-                    transactionGid: buf.ReadNullTerminatedString());
+                    transactionGid: await buf.ReadNullTerminatedString(async: true, cancellationToken).ConfigureAwait(false));
                 continue;
             }
             case BackendReplicationMessageCode.StreamPrepare:
@@ -501,12 +485,12 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
-                    transactionGid: buf.ReadNullTerminatedString());
+                    transactionGid: await buf.ReadNullTerminatedString(async: true, cancellationToken).ConfigureAwait(false));
                 continue;
             }
             default:
-                throw new NotSupportedException(
-                    $"Invalid message code {messageCode} in Logical Replication Protocol.");
+                throw _connection.Connector.Break(new NotSupportedException(
+                    $"Invalid message code {messageCode} in Logical Replication Protocol."));
             }
         }
 

@@ -73,6 +73,13 @@ public static class PgOutputConnectionExtensions
     /// isn't specified.
     /// The server can reply with an error, for example if the requested section of the WAL has already been recycled.
     /// </summary>
+    /// <remarks>
+    /// Ending the enumeration early (e.g. with <see langword="break"/>) stops replication by cancelling the command, after which
+    /// the connection can be used for other commands. Like any error, the cancellation drops the temporary replication slots of
+    /// the session. Npgsql sends a last status update before it, but the server may handle the cancellation first.
+    /// On PostgreSQL 17 and earlier, the server may not send the <see cref="RelationMessage"/>s again in the next stream on the
+    /// same connection, which then fails, so start that one on a new connection.
+    /// </remarks>
     /// <param name="connection">The <see cref="LogicalReplicationConnection"/> to use for starting replication</param>
     /// <param name="slot">The replication slot that will be updated as replication progresses so that the server
     /// knows which WAL segments are still needed by the standby.

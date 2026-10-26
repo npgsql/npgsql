@@ -13,7 +13,7 @@ namespace Npgsql.Replication.PgOutput;
 /// </summary>
 public class ReplicationValue
 {
-    readonly NpgsqlReadBuffer _readBuffer;
+    NpgsqlReadBuffer _readBuffer = null!;
 
     /// <summary>
     /// The length of the value in bytes.
@@ -31,13 +31,14 @@ public class ReplicationValue
 
     PgReader PgReader => _readBuffer.PgReader;
 
-    internal ReplicationValue(NpgsqlConnector connector) => _readBuffer = connector.ReadBuffer;
+    internal ReplicationValue() {}
 
-    internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription)
+    internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription, NpgsqlReadBuffer readBuffer)
     {
         Kind = kind;
         Length = length;
         _fieldDescription = fieldDescription;
+        _readBuffer = readBuffer;
         _lastConversionContext = default;
         _isConsumed = false;
     }
@@ -129,9 +130,6 @@ public class ReplicationValue
     {
         ThrowIfInitialized();
 
-        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
-        var conversionContext = _lastConversionContext;
-
         switch (Kind)
         {
         case TupleDataKind.Null:
@@ -141,6 +139,9 @@ public class ReplicationValue
             throw new InvalidCastException(
                 $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
+
+        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
+        var conversionContext = _lastConversionContext;
 
         var reader = PgReader;
         reader.Init(conversionContext.Binding.DataFormat, Length);
@@ -151,9 +152,6 @@ public class ReplicationValue
     {
         ThrowIfInitialized();
 
-        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
-        var conversionContext = _lastConversionContext;
-
         switch (Kind)
         {
         case TupleDataKind.Null:
@@ -163,6 +161,9 @@ public class ReplicationValue
             throw new InvalidCastException(
                 $"Column '{_fieldDescription.Name}' is an unchanged TOASTed value (actual value not sent).");
         }
+
+        _fieldDescription.GetConversionContext(typeof(T), ref _lastConversionContext);
+        var conversionContext = _lastConversionContext;
 
         using var registration = _readBuffer.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
@@ -184,7 +185,8 @@ public class ReplicationValue
 
     void ThrowIfInitialized()
     {
-        if (PgReader.Initialized)
+        // Once a value has been consumed, the buffer has moved on, so reading it now would read foreign data
+        if (_isConsumed || PgReader.Initialized)
             throw new InvalidOperationException("Column has already been consumed");
     }
 }
