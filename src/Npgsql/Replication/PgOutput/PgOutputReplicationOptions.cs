@@ -147,7 +147,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()
     {
         yield return new KeyValuePair<string, string?>("proto_version", ((ulong)ProtocolVersion).ToString(CultureInfo.InvariantCulture));
-        yield return new KeyValuePair<string, string?>("publication_names", "\"" + string.Join("\",\"", PublicationNames) + "\"");
+        yield return new KeyValuePair<string, string?>("publication_names", ReplicationCommandBuilder.PublicationNames(PublicationNames));
 
         if (Binary != null)
             yield return new KeyValuePair<string, string?>("binary", Binary.Value ? "on" : "off");
