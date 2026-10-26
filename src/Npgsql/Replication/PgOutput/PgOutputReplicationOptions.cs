@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace Npgsql.Replication.PgOutput;
 
@@ -171,7 +172,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     public bool Equals(PgOutputReplicationOptions? other)
         => other != null && (
             ReferenceEquals(this, other) ||
-            ProtocolVersion == other.ProtocolVersion && PublicationNames.Equals(other.PublicationNames) && Binary == other.Binary &&
+            ProtocolVersion == other.ProtocolVersion && PublicationNames.SequenceEqual(other.PublicationNames) && Binary == other.Binary &&
             StreamingMode == other.StreamingMode && Messages == other.Messages && TwoPhase == other.TwoPhase);
 
     /// <inheritdoc />
@@ -179,5 +180,16 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
         => obj is PgOutputReplicationOptions other && other.Equals(this);
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(ProtocolVersion, PublicationNames, Binary, StreamingMode, Messages, TwoPhase);
+    public override int GetHashCode()
+    {
+        var hashCode = new HashCode();
+        hashCode.Add(ProtocolVersion);
+        foreach (var publicationName in PublicationNames)
+            hashCode.Add(publicationName);
+        hashCode.Add(Binary);
+        hashCode.Add(StreamingMode);
+        hashCode.Add(Messages);
+        hashCode.Add(TwoPhase);
+        return hashCode.ToHashCode();
+    }
 }
