@@ -26,6 +26,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     NpgsqlConnector _connector;
     NpgsqlReadBuffer _buf;
     ExporterState _state = ExporterState.Uninitialized;
+    Exception? _error;
     long _endOfMessagePos;
 
     short _column;
@@ -91,6 +92,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 }
                 break;
             case BackendMessageCode.CommandComplete:
+                // The command completed without copying through the client (e.g. COPY to or from a file on the server).
+                // Consume the ReadyForQuery that follows, so that the connection stays usable.
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
                 throw new InvalidOperationException(
                     "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
                     "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
@@ -115,7 +119,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async Task ReadHeader(bool async)
     {
-        var msg = await _connector.ReadMessage(async).ConfigureAwait(false);
+        var msg = await ReadMessage(async).ConfigureAwait(false);
         _endOfMessagePos = _buf.CumulativeReadPosition + Expect<CopyDataMessage>(msg, _connector).Length;
         var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
         await _buf.Ensure(headerLen, async).ConfigureAwait(false);
@@ -156,6 +160,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     async ValueTask<int> StartRow(bool async, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
+        ThrowIfFailed();
         if (_state == ExporterState.Consumed)
             return -1;
 
@@ -176,7 +181,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         // message per row).
         if (_column == NumColumns)
         {
-            var msg = Expect<CopyDataMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+            var msg = Expect<CopyDataMessage>(await ReadMessage(async).ConfigureAwait(false), _connector);
             _endOfMessagePos = _buf.CumulativeReadPosition + msg.Length;
         }
         else if (_column != BeforeRow)
@@ -188,8 +193,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (numColumns == -1)
         {
             Expect<CopyDoneMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-            Expect<CommandCompleteMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
-            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
+            // After CopyDone, an error (e.g. from an AFTER trigger, or a deferred constraint at commit) comes instead of CommandComplete
+            Expect<CommandCompleteMessage>(await ReadMessage(async).ConfigureAwait(false), _connector);
+            // After CommandComplete, an error from a second statement in the command comes instead of ReadyForQuery
+            Expect<ReadyForQueryMessage>(await ReadMessage(async).ConfigureAwait(false), _connector);
             _column = BeforeRow;
             _state = ExporterState.Consumed;
             return -1;
@@ -437,11 +444,36 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         PgReader.Init(DataFormat.Binary, columnLen, resumableOp);
     }
 
+    // A failed read ends the export: after an ErrorResponse (at a row, or after CopyDone or CommandComplete) the connector
+    // has read up to the ReadyForQuery, and after an I/O error it's broken. Either way, Dispose mustn't skip the rest of
+    // the export, and later calls throw instead of reading.
+    async ValueTask<IBackendMessage> ReadMessage(bool async)
+    {
+        try
+        {
+            return await _connector.ReadMessage(async).ConfigureAwait(false);
+        }
+        catch (Exception e) when (_state == ExporterState.Ready)
+        {
+            TraceSetException(e);
+            _state = ExporterState.Failed;
+            _error = e;
+            throw;
+        }
+    }
+
     void ThrowIfNotOnRow()
     {
         ThrowIfDisposed();
+        ThrowIfFailed();
         if (_column is BeforeRow)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
+    }
+
+    void ThrowIfFailed()
+    {
+        if (_state == ExporterState.Failed)
+            ThrowHelper.ThrowInvalidOperationException("The COPY operation ended with an error.", _error);
     }
 
     void ThrowIfDisposed()
@@ -486,12 +518,15 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         try
         {
-            if (_state is ExporterState.Consumed or ExporterState.Uninitialized)
+            // If the connection breaks while we read to the end below, the connector mustn't dispose this exporter again
+            _connector.CurrentCopyOperation = null;
+
+            if (_state == ExporterState.Consumed)
             {
                 LogMessages.BinaryCopyOperationCompleted(_copyLogger, _rowsExported, _connector.Id);
                 TraceExportStop();
             }
-            else if (!_connector.IsBroken)
+            else if (_state == ExporterState.Ready && !_connector.IsBroken)
             {
                 try
                 {
@@ -576,6 +611,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         Uninitialized,
         Ready,
         Consumed,
+        Failed,
         Disposed
     }
 

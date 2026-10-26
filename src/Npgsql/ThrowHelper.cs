@@ -41,6 +41,10 @@ static class ThrowHelper
         => throw new InvalidOperationException(string.Format(message, argument));
 
     [DoesNotReturn]
+    internal static void ThrowInvalidOperationException(string message, Exception? innerException)
+        => throw new InvalidOperationException(message, innerException);
+
+    [DoesNotReturn]
     internal static void ThrowObjectDisposedException(string? objectName)
         => throw new ObjectDisposedException(objectName);
 
