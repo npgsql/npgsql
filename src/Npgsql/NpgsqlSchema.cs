@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -28,7 +29,7 @@ static class NpgsqlSchema
             "METADATACOLLECTIONS"   => Task.FromResult(GetMetaDataCollections()),
             "RESTRICTIONS"          => Task.FromResult(GetRestrictions()),
             "DATASOURCEINFORMATION" => Task.FromResult(GetDataSourceInformation(conn)),
-            "DATATYPES"             => Task.FromResult(GetDataTypes(conn)),
+            "DATATYPES"             => GetDataTypes(conn, async, cancellationToken),
             "RESERVEDWORDS"         => Task.FromResult(GetReservedWords()),
             // custom collections for npgsql
             "DATABASES"             => GetDatabases(conn, restrictions, async, cancellationToken),
@@ -756,10 +757,11 @@ FROM pg_constraint c
 
     #region DataTypes
 
-    static DataTable GetDataTypes(NpgsqlConnection conn)
+    static async Task<DataTable> GetDataTypes(NpgsqlConnection conn, bool async, CancellationToken cancellationToken)
     {
         conn.CheckReady();
         var connector = conn.Connector!;
+        var typeModifierInputs = await GetTypeModifierInputs(conn, async, cancellationToken).ConfigureAwait(false);
 
         var table = new DataTable("DataTypes");
 
@@ -809,6 +811,7 @@ FROM pg_constraint c
 
                 PopulateDefaultDataTypeInfo(row, baseType);
                 PopulateHardcodedDataTypeInfo(row, baseType);
+                PopulateTypeModifier(row, baseType, typeModifierInputs);
 
                 row["DataType"] = info.Type.FullName;
                 if (baseType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
@@ -825,6 +828,7 @@ FROM pg_constraint c
                 PopulateDefaultDataTypeInfo(row, arrayType.Element);
                 // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
                 PopulateHardcodedDataTypeInfo(row, arrayType.Element);
+                PopulateTypeModifier(row, arrayType.Element, typeModifierInputs);
 
                 row["TypeName"] = arrayType.DisplayName;
                 row["OID"] = arrayType.OID;
@@ -884,6 +888,7 @@ FROM pg_constraint c
                 PopulateDefaultDataTypeInfo(row, representationalType);
                 // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
                 PopulateHardcodedDataTypeInfo(row, representationalType);
+                PopulateTypeModifier(row, representationalType, typeModifierInputs);
                 row["TypeName"] = domainType.DisplayName;
                 row["OID"] = domainType.OID;
                 // A domain is never the best match, since its underlying base type is
@@ -948,16 +953,12 @@ FROM pg_constraint c
             row["IsBestMatch"] = false;
             goto case "text";
         case "text":
-            row["CreateFormat"] += "({0})";
-            row["CreateParameters"] = "size";
             row["IsSearchableWithLike"] = true;
             row["IsLiteralSupported"] = true;
             row["LiteralPrefix"] = "'";
             row["LiteralSuffix"] = "'";
             return;
         case "numeric":
-            row["CreateFormat"] += "({0},{1})";
-            row["CreateParameters"] = "precision, scale";
             row["MaximumScale"] = 16383;
             row["MinimumScale"] = 16383;
             row["IsUnsigned"] = false;
@@ -987,6 +988,91 @@ FROM pg_constraint c
             row["IsConcurrencyType"] = true;
             return;
         }
+    }
+
+    /// <summary>
+    /// Loads <c>pg_type.typmodin</c>, the function PostgreSQL uses to read a type's modifier (the 10 in <c>varchar(10)</c>),
+    /// for each type that takes one. A type without one rejects any modifier: <c>text(10)</c> is an error.
+    /// </summary>
+    static async Task<Dictionary<uint, string>> GetTypeModifierInputs(NpgsqlConnection conn, bool async, CancellationToken cancellationToken)
+    {
+        var inputs = new Dictionary<uint, string>();
+
+        // typmodin arrived in PostgreSQL 8.3, and Redshift (based on 8.0) has none; without type loading there may be no
+        // pg_type at all. A failed query would abort the user's transaction, so these get no modifiers.
+        if (conn.Connector!.DatabaseInfo is not PostgresDatabaseInfo { IsRedshift: false } databaseInfo ||
+            !databaseInfo.Version.IsGreaterOrEqual(8, 3))
+            return inputs;
+
+        var command = new NpgsqlCommand("SELECT oid, typmodin::text FROM pg_catalog.pg_type", conn);
+        NpgsqlDataReader? reader = null;
+        try
+        {
+            reader = async
+                ? await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false)
+                : command.ExecuteReader();
+            while (async ? await reader.ReadAsync(cancellationToken).ConfigureAwait(false) : reader.Read())
+            {
+                // "-" for a type without one; CockroachDB reports "0"
+                var input = reader.GetString(1);
+                if (input is not ("-" or "0"))
+                    inputs[Convert.ToUInt32(reader.GetValue(0), CultureInfo.InvariantCulture)] = input;
+            }
+        }
+        finally
+        {
+            if (async)
+            {
+                if (reader is not null)
+                    await reader.DisposeAsync().ConfigureAwait(false);
+                await command.DisposeAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                reader?.Dispose();
+                command.Dispose();
+            }
+        }
+
+        return inputs;
+    }
+
+    /// <summary>
+    /// Adds the modifier to CreateFormat when the type takes one, by the function that reads it: <c>VARCHAR({0})</c>,
+    /// <c>NUMERIC({0},{1})</c>, <c>TIMESTAMPTZ({0})</c>. The modifier follows the type's internal name, since PostgreSQL
+    /// rejects it after a multi-word name such as <c>timestamp with time zone</c>. An extension's modifier is left out, as
+    /// its arguments are not known.
+    /// </summary>
+    static void PopulateTypeModifier(DataRow row, PostgresType type, Dictionary<uint, string> typeModifierInputs)
+    {
+        if (!typeModifierInputs.TryGetValue(type.OID, out var input))
+            return;
+
+        (string Format, string Parameters) modifier;
+        switch (input)
+        {
+        case "numerictypmodin":
+            modifier = ("({0},{1})", "precision, scale");
+            break;
+        case "varchartypmodin":
+        case "bpchartypmodin":
+        case "bittypmodin":
+        case "varbittypmodin":
+            modifier = ("({0})", "size");
+            break;
+        case "timetypmodin":
+        case "timetztypmodin":
+        case "timestamptypmodin":
+        case "timestamptztypmodin":
+        case "intervaltypmodin":
+            modifier = ("({0})", "precision");
+            break;
+        default:
+            return;
+        }
+
+        row["CreateFormat"] = type.InternalName.ToUpperInvariant() + modifier.Format;
+        row["CreateParameters"] = modifier.Parameters;
     }
 
     #endregion DataTypes
