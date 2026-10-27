@@ -3,7 +3,7 @@ using Npgsql.Replication.Internal;
 namespace Npgsql.Replication.PgOutput;
 
 /// <summary>
-/// Acts as a proxy for a logical replication slot initialized for for the logical streaming replication protocol
+/// Acts as a proxy for a logical replication slot initialized for the logical streaming replication protocol
 /// (pgoutput logical decoding plugin).
 /// </summary>
 public class PgOutputReplicationSlot : LogicalReplicationSlot

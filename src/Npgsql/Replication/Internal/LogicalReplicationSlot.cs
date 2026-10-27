@@ -4,7 +4,7 @@ using System;
 namespace Npgsql.Replication.Internal;
 
 /// <summary>
-/// Contains information about a newly-created logical replication slot.
+/// Contains information about a logical replication slot.
 /// </summary>
 public abstract class LogicalReplicationSlot : ReplicationSlot
 {
@@ -28,7 +28,7 @@ public abstract class LogicalReplicationSlot : ReplicationSlot
     public string? SnapshotName { get; }
 
     /// <summary>
-    /// The name of the output plugin used by the newly-created logical replication slot.
+    /// The name of the output plugin used by the logical replication slot.
     /// </summary>
     public string OutputPlugin { get; }
 

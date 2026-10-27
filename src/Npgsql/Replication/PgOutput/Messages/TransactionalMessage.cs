@@ -11,6 +11,10 @@ public abstract class TransactionalMessage : PgOutputReplicationMessage
     /// <summary>
     /// Xid of the transaction (only present for streamed transactions).
     /// </summary>
+    /// <remarks>
+    /// For changes made in a subtransaction, this is the xid of the subtransaction, not the one of the streamed transaction
+    /// (see <see cref="StreamStartMessage"/>). <see cref="StreamAbortMessage.SubtransactionXid"/> refers to these xids.
+    /// </remarks>
     public uint? TransactionXid { get; private set; }
 
     private protected void Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid)

@@ -9,7 +9,7 @@ namespace Npgsql.Replication.PgOutput.Messages;
 public abstract class DeleteMessage : TransactionalMessage
 {
     /// <summary>
-    /// The relation for this <see cref="InsertMessage" />.
+    /// The relation for this <see cref="DeleteMessage" />.
     /// </summary>
     public RelationMessage Relation { get; private set; } = null!;
 

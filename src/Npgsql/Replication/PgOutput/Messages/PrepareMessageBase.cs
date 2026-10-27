@@ -4,7 +4,7 @@ using System;
 namespace Npgsql.Replication.PgOutput.Messages;
 
 /// <summary>
-/// Abstract base class for the logical replication protocol begin prepare and prepare message
+/// Abstract base class for the logical replication protocol begin prepare, prepare and stream prepare messages
 /// </summary>
 public abstract class PrepareMessageBase : PreparedTransactionControlMessage
 {
