@@ -411,7 +411,7 @@ sealed class ArrayConverterWriteState : MultiWriteState
 
 readonly struct PgArrayMetadata
 {
-    const int MaxDimensions = 8;
+    const int MaxDimensions = 6;
 
     readonly int _totalElements;
     readonly int[]? _dimensionLengths;

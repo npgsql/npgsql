@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Postgres;
@@ -75,53 +76,44 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
     {
         readonly PgConverter<TElement> _elemConverter = (PgConverter<TElement>)elementTypeInfo.GetConverter(DataFormat.Binary);
 
+        // When the effective array type's element type differs from TElement (e.g. IntEnum[] with TElement=int,
+        // or IntEnum?[] with TElement=int?), CreateCollection uses Array.CreateInstanceFromArrayType to produce
+        // the correctly-typed array. Per-element access is a ref-byte-cast over the actual array's data
+        // reference at the row-major flat index — sound for layout-equivalent blittable value-type element
+        // pairs (the resolver gates this at call site), since sizeof(TElement?) matches the actual slot
+        // stride. The cast is on the element slot, not the array instance, so we don't assume the array's
+        // MethodTable matches TElement?[]; that's the part `Unsafe.As<TElement?[]>(actualArray)` would have
+        // gotten wrong for the Nullable<>[] case (no CLR variance through Nullable).
+        readonly Type? _effectiveType =
+            effectiveType is { IsArray: true } && effectiveType.GetElementType() != typeof(TElement) ? effectiveType : null;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static TElement? GetValue(object collection, IterationIndices indices)
+        static ref TElement? GetSlot(object collection, IterationIndices indices)
         {
             Debug.Assert(indices.Rank > 0);
-            switch (indices.Rank)
-            {
-            case 1:
-                // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-                Debug.Assert(collection is TElement?[]);
-                return Unsafe.As<TElement?[]>(collection)[indices.One];
-            case 2:
-                // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-                Debug.Assert(collection is TElement?[,]);
-                return Unsafe.As<TElement?[,]>(collection)[indices.Many![0], indices.Many![1]];
-            default:
-                // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-                Debug.Assert(collection is Array);
-                return (TElement?)Unsafe.As<Array>(collection).GetValue(indices.Many!);
-            }
+            Debug.Assert(collection is Array);
+            ref var first = ref Unsafe.As<byte, TElement?>(ref MemoryMarshal.GetArrayDataReference(Unsafe.As<Array>(collection)));
+            return ref Unsafe.Add(ref first, (nint)indices.IndicesSum);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static TElement? GetValue(object collection, IterationIndices indices) => GetSlot(collection, indices);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static void SetValue(object collection, IterationIndices indices, TElement? value)
-        {
-            Debug.Assert(indices.Rank > 0);
-            switch (indices.Rank)
-            {
-                case 1:
-                    // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-                    Debug.Assert(collection is TElement?[]);
-                    Unsafe.As<TElement?[]>(collection)[indices.One] = value;
-                    break;
-                case 2:
-                    // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-                    Debug.Assert(collection is TElement?[,]);
-                    Unsafe.As<TElement?[,]>(collection)[indices.Many![0], indices.Many![1]] = value;
-                    break;
-                default:
-                    // Justification: exact type Unsafe.As used to avoid the cast overhead for per element calls.
-                    Debug.Assert(collection is Array);
-                    Unsafe.As<Array>(collection).SetValue(value, indices.Many!);
-                    break;
-            }
-        }
+            => GetSlot(collection, indices) = value;
 
         object IElementOperations.CreateCollection(ReadOnlySpan<int> lengths)
-            => lengths.Length switch
+        {
+            if (_effectiveType is { } arrayType)
+                return lengths.Length switch
+                {
+                    0 => Array.CreateInstanceFromArrayType(arrayType, 0),
+                    1 => Array.CreateInstanceFromArrayType(arrayType, lengths[0]),
+                    _ => Array.CreateInstanceFromArrayType(arrayType, lengths.ToArray())
+                };
+
+            return lengths.Length switch
             {
                 0 => Array.Empty<TElement?>(),
                 1 => new TElement?[lengths[0]],
@@ -130,10 +122,9 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : notnull
                 4 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3]],
                 5 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4]],
                 6 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
-                7 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
-                8 => new TElement?[lengths[0], lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
-                _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
+                _ => throw new InvalidOperationException("Postgres arrays can have at most 6 dimensions.")
             };
+        }
 
         int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
             => ArrayConverterCore.GetArrayLengths((Array)collection, out lengths);
