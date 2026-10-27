@@ -1,38 +1,38 @@
 <Project>
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
-    <PackageVersion Include="OpenTelemetry.API" Version="1.19.1" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="OpenTelemetry.API" Version="1.20.1" />
 
     <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
     <PackageVersion Include="NetTopologySuite.IO.PostGIS" Version="2.1.0" />
-    <PackageVersion Include="NodaTime" Version="3.3.5" />
+    <PackageVersion Include="NodaTime" Version="3.3.6" />
     <PackageVersion Include="GeoJSON.Net" Version="1.4.1" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
 
     <!-- Build -->
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.403" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
-    <PackageVersion Include="Scriban.Signed" Version="7.5.0" />
+    <PackageVersion Include="Scriban.Signed" Version="7.5.3" />
     
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="4.6.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.15.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.14" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.5" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-beta.2" />
-    <PackageVersion Include="OpenTelemetry" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.20.1" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
