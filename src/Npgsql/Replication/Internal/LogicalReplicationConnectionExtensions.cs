@@ -66,10 +66,10 @@ public static class LogicalReplicationConnectionExtensions
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
+        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").AppendName(slotName);
         if (isTemporary)
             builder.Append(" TEMPORARY");
-        builder.Append(" LOGICAL ").Append(outputPlugin);
+        builder.Append(" LOGICAL ").AppendName(outputPlugin);
         if (connection.PostgreSqlVersion.Major >= 15 && (slotSnapshotInitMode.HasValue || twoPhase))
         {
             builder.Append('(');
@@ -152,7 +152,7 @@ public static class LogicalReplicationConnectionExtensions
             bool bypassingStream)
         {
             var builder = new StringBuilder("START_REPLICATION ")
-                .Append("SLOT ").Append(slot.Name)
+                .Append("SLOT ").AppendName(slot.Name)
                 .Append(" LOGICAL ")
                 .Append(walLocation ?? slot.ConsistentPoint);
 
@@ -164,7 +164,11 @@ public static class LogicalReplicationConnectionExtensions
                 for (var i = 0; i < opts.Count; i++)
                 {
                     var kv = opts[i];
-                    stringOptions[i] = @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}";
+                    if (kv.Key is null)
+                        throw new ArgumentException("Option names can't be null.", nameof(options));
+
+                    stringOptions[i] = ReplicationCommandBuilder.QuoteIdentifier(kv.Key) +
+                                       (kv.Value is null ? "" : " " + ReplicationCommandBuilder.QuoteLiteral(kv.Value));
                 }
                 builder.Append(string.Join(", ", stringOptions));
                 builder.Append(')');
