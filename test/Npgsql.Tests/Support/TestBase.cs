@@ -25,7 +25,7 @@ public abstract class TestBase
 
     static readonly SemaphoreSlim DatabaseCreationLock = new(1);
 
-    static readonly object dataSourceLockObject = new();
+    static readonly Lock dataSourceLockObject = new();
 
     static ConcurrentDictionary<string, NpgsqlDataSource> DataSources = new(StringComparer.Ordinal);
 

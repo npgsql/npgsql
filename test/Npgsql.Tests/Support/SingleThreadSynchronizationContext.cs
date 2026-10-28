@@ -8,7 +8,7 @@ namespace Npgsql.Tests.Support;
 sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
 {
     readonly BlockingCollection<CallbackAndState> _tasks = new();
-    readonly object _lockObject = new();
+    readonly Lock _lockObject = new();
     volatile Thread? _thread;
     bool _doingWork;
 
