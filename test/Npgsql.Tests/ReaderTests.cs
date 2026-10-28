@@ -2107,9 +2107,9 @@ LANGUAGE plpgsql VOLATILE";
         // now carries the converter; pull any built-in via the data source's options as a stand-in (never invoked here).
         var converter = conn.Connector.SerializerOptions.GetDefaultTypeInfo(typeof(int))!.MakeConcreteForField(default).GetConverter(DataFormat.Binary);
         if (async)
-            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown, converter), CancellationToken.None);
+            await reader.StartReadAsync(new(DataFormat.Binary, Size.Unknown, converter, isBindingInvariant: true), CancellationToken.None);
         else
-            reader.StartRead(new(DataFormat.Binary, Size.Unknown, converter));
+            reader.StartRead(new(DataFormat.Binary, Size.Unknown, converter, isBindingInvariant: true));
 
         await using (var _ = reader.GetStream())
         {
