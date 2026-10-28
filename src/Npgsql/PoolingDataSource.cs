@@ -151,7 +151,7 @@ class PoolingDataSource : NpgsqlDataSource
                             try
                             {
                                 var awaiter = _idleConnectorReader.ReadAsync(finalToken).ConfigureAwait(false).GetAwaiter();
-                                var mres = new ManualResetEventSlim(false, 0);
+                                using var mres = new ManualResetEventSlim(false, 0);
 
                                 // Cancellation happens through the ReadAsync call, which will complete the task.
                                 awaiter.UnsafeOnCompleted(() => mres.Set());
@@ -445,4 +445,24 @@ class PoolingDataSource : NpgsqlDataSource
     static int DivideRoundingUp(int value, int divisor) => 1 + (value - 1) / divisor;
 
     #endregion
+
+    /// <inheritdoc />
+    protected override void DisposeBase()
+    {
+        base.DisposeBase();
+
+        // Mark the idle connector channel as complete, which will release all waiting attempts on it with an exception,
+        // and prevent any further attempts to return connectors to it.
+        IdleConnectorWriter.TryComplete();
+    }
+
+    /// <inheritdoc />
+    protected override async ValueTask DisposeAsyncBase()
+    {
+        await base.DisposeAsyncBase().ConfigureAwait(false);
+
+        // Mark the idle connector channel as complete, which will release all waiting attempts on it with an exception,
+        // and prevent any further attempts to return connectors to it.
+        IdleConnectorWriter.TryComplete();
+    }
 }
