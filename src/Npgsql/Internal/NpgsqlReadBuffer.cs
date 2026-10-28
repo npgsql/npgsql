@@ -781,7 +781,9 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         if (_disposed)
             return;
 
-        if (_usePool)
+        // A consumer may still read a message it holds from a broken connector's buffer (e.g. a replication message's data), so we
+        // leave the array to the GC instead of returning it to the pool, where it could be rented and overwritten
+        if (_usePool && !Connector.IsBroken)
             ArrayPool<byte>.Shared.Return(Buffer);
 
         Cts.Dispose();
