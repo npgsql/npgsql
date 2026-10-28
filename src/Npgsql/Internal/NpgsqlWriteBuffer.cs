@@ -46,6 +46,8 @@ sealed class NpgsqlWriteBuffer : IDisposable
             if (_timeoutCts.Timeout != value)
             {
                 Debug.Assert(_underlyingSocket != null);
+                // Timeout should never be between 0 and 1 milliseconds because casting it to int will make it infinite
+                Debug.Assert(value.TotalMilliseconds is <= 0 or >= 1);
 
                 if (value > TimeSpan.Zero)
                 {
