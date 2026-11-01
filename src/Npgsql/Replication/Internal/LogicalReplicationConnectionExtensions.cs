@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Replication.Internal;
 
@@ -66,10 +67,10 @@ public static class LogicalReplicationConnectionExtensions
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").AppendName(slotName);
+        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(QuoteName(slotName));
         if (isTemporary)
             builder.Append(" TEMPORARY");
-        builder.Append(" LOGICAL ").AppendName(outputPlugin);
+        builder.Append(" LOGICAL ").Append(QuoteName(outputPlugin));
         if (connection.PostgreSqlVersion.Major >= 15 && (slotSnapshotInitMode.HasValue || twoPhase))
         {
             builder.Append('(');
@@ -152,11 +153,14 @@ public static class LogicalReplicationConnectionExtensions
             bool bypassingStream)
         {
             var builder = new StringBuilder("START_REPLICATION ")
-                .Append("SLOT ").AppendName(slot.Name)
+                .Append("SLOT ").Append(QuoteName(slot.Name))
                 .Append(" LOGICAL ")
                 .Append(walLocation ?? slot.ConsistentPoint);
 
             var opts = new List<KeyValuePair<string, string?>>(options ?? Array.Empty<KeyValuePair<string, string?>>());
+            // The plugin name as the server reads it, so that every spelling of pgoutput gets the check below
+            var isPgOutput = string.Equals(
+                QuoteName(slot.OutputPlugin), "\"pgoutput\"", StringComparison.OrdinalIgnoreCase);
             if (opts.Count > 0)
             {
                 builder.Append(" (");
@@ -167,8 +171,14 @@ public static class LogicalReplicationConnectionExtensions
                     if (kv.Key is null)
                         throw new ArgumentException("Option names can't be null.", nameof(options));
 
-                    stringOptions[i] = ReplicationCommandBuilder.QuoteIdentifier(kv.Key) +
-                                       (kv.Value is null ? "" : " " + ReplicationCommandBuilder.QuoteLiteral(kv.Value));
+                    // pgoutput reads the values of these options without checking whether there is one (strVal(NULL)),
+                    // so sending one of them without a value crashes the walsender, which makes the postmaster terminate
+                    // all sessions.
+                    if (kv.Value is null && isPgOutput && kv.Key is "proto_version" or "publication_names")
+                        throw new ArgumentException($"The pgoutput option '{kv.Key}' requires a value.", nameof(options));
+
+                    stringOptions[i] = QuoteIdentifier(kv.Key) +
+                                       (kv.Value is null ? "" : " " + QuoteLiteral(kv.Value, replicationParser: true));
                 }
                 builder.Append(string.Join(", ", stringOptions));
                 builder.Append(')');

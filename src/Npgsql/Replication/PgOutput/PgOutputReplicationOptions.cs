@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Replication.PgOutput;
 
@@ -147,7 +148,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()
     {
         yield return new KeyValuePair<string, string?>("proto_version", ((ulong)ProtocolVersion).ToString(CultureInfo.InvariantCulture));
-        yield return new KeyValuePair<string, string?>("publication_names", ReplicationCommandBuilder.PublicationNames(PublicationNames));
+        yield return new KeyValuePair<string, string?>("publication_names", QuoteIdentifierList(PublicationNames));
 
         if (Binary != null)
             yield return new KeyValuePair<string, string?>("binary", Binary.Value ? "on" : "off");

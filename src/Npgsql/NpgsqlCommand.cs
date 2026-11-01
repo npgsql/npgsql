@@ -1009,9 +1009,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         seenNamedParam = true;
 
                         sqlBuilder
-                            .Append('"')
-                            .Append(parameter.TrimmedName.Replace("\"", "\"\""))
-                            .Append("\" := ");
+                            .AppendQuotedIdentifier(parameter.TrimmedName)
+                            .Append(" := ");
                     }
 
                     if (parameter.Direction == ParameterDirection.Output)

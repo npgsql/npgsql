@@ -4,6 +4,7 @@ using System.Threading;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql;
 
@@ -77,7 +78,7 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
         try
         {
             using (_connector.StartUserAction())
-                _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
+                _connector.ExecuteInternalCommand($"PREPARE TRANSACTION {QuoteLiteral(_preparedTxName, replicationParser: false)}");
 
             // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
             // asynchronously - this means that TransactionScope.Dispose() will return before all
@@ -114,7 +115,7 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
                 // pending enlisted connector list. Since there's no risk of the connector being
                 // used by anyone we can executed the 2nd phase on it directly (see below).
                 using (_connector.StartUserAction())
-                    _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                    _connector.ExecuteInternalCommand($"COMMIT PREPARED {QuoteLiteral(_preparedTxName!, replicationParser: false)}");
             }
             else
             {
@@ -134,7 +135,7 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
 
                 var connector = conn2.Connector!;
                 using (connector.StartUserAction())
-                    connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                    connector.ExecuteInternalCommand($"COMMIT PREPARED {QuoteLiteral(_preparedTxName!, replicationParser: false)}");
             }
         }
         catch (Exception e)
@@ -233,7 +234,7 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
                 // pending enlisted connector list. Since there's no risk of the connector being
                 // used by anyone we can executed the 2nd phase on it directly (see below).
                 using (_connector.StartUserAction())
-                    _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+                    _connector.ExecuteInternalCommand($"ROLLBACK PREPARED {QuoteLiteral(_preparedTxName!, replicationParser: false)}");
             }
             else
             {
@@ -249,7 +250,7 @@ sealed class VolatileResourceManager : ISinglePhaseNotification
 
                 var connector = conn2.Connector!;
                 using (connector.StartUserAction())
-                    connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+                    connector.ExecuteInternalCommand($"ROLLBACK PREPARED {QuoteLiteral(_preparedTxName!, replicationParser: false)}");
             }
         }
         catch (Exception e)

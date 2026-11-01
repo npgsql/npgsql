@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql;
 
@@ -233,7 +234,7 @@ public sealed class NpgsqlTransaction : DbTransaction
         LogMessages.CreatingSavepoint(_transactionLogger, name, _connector.Id);
 
         if (RequiresQuoting(name))
-            name = $"\"{name.Replace("\"", "\"\"")}\"";
+            name = QuoteIdentifier(name);
 
         // Note: savepoint names are PostgreSQL identifiers, and so limited by default to 63 characters.
         // Since we are prepending, we assume below that the statement will always fit in the buffer.
@@ -268,7 +269,7 @@ public sealed class NpgsqlTransaction : DbTransaction
             return;
         using (_connector.StartUserAction(cancellationToken))
         {
-            var quotedName = RequiresQuoting(name) ? $"\"{name.Replace("\"", "\"\"")}\"" : name;
+            var quotedName = RequiresQuoting(name) ? QuoteIdentifier(name) : name;
             await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {quotedName}", async, cancellationToken).ConfigureAwait(false);
             LogMessages.RolledBackToSavepoint(_transactionLogger, name, _connector.Id);
         }
@@ -300,7 +301,7 @@ public sealed class NpgsqlTransaction : DbTransaction
             return;
         using (_connector.StartUserAction(cancellationToken))
         {
-            var quotedName = RequiresQuoting(name) ? $"\"{name.Replace("\"", "\"\"")}\"" : name;
+            var quotedName = RequiresQuoting(name) ? QuoteIdentifier(name) : name;
             await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {quotedName}", async, cancellationToken).ConfigureAwait(false);
             LogMessages.ReleasedSavepoint(_transactionLogger, name, _connector.Id);
         }

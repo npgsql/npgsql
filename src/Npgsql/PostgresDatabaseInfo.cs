@@ -216,8 +216,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var typeLoading = conn.DataSource.Configuration.TypeLoading;
         var loadTableComposites = typeLoading.LoadTableComposites;
 
-        // Escape the schemas configured by the user, we need these as literals to be used in an IN() operator, and we cannot use parameters.
-        // Add an opening quote, escape any quotes in the schema, and add a closing quote.
+        // Quote the schemas configured by the user, we need these as literals to be used in an IN() operator, and we cannot use parameters.
         string? schemaListSqlFragment = null;
         if (typeLoading.TypeLoadingSchemas is not null)
         {
@@ -226,9 +225,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             {
                 builder.Append(", ");
                 var schema = typeLoading.TypeLoadingSchemas[i];
-                builder.Append('\'');
-                builder.Append(EscapeLiteral(schema));
-                builder.Append('\'');
+                builder.AppendQuotedLiteral(schema, replicationParser: false);
             }
 
             schemaListSqlFragment = builder.ToString();

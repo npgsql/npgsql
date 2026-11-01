@@ -117,6 +117,23 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
 [NonParallelizable]
 public class LogicalReplicationOptionTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
+    [Test, Description("pgoutput crashes the walsender when these options are sent without a value")]
+    public async Task Pgoutput_options_without_required_value_are_rejected(
+        [Values("proto_version", "publication_names")] string optionName,
+        [Values("pgoutput", " pgoutput ", "\"pgoutput\"")] string outputPlugin)
+    {
+        await using var rc = await OpenReplicationConnectionAsync();
+        // Each spelling creates a pgoutput slot, and a custom slot class may keep it as it was given
+        var enumerator = rc.StartLogicalReplication(
+            new CustomPluginSlot(outputPlugin), CancellationToken.None, options: [new(optionName, null)]).GetAsyncEnumerator();
+        Assert.That(async () => await enumerator.MoveNextAsync(),
+            Throws.ArgumentException.With.Property(nameof(ArgumentException.ParamName)).EqualTo("options"));
+        await enumerator.DisposeAsync();
+
+        // Nothing was sent, so the connection is still usable
+        await rc.IdentifySystem();
+    }
+
     [Test]
     public async Task Null_option_names_are_rejected()
     {
@@ -186,6 +203,8 @@ public class LogicalReplicationOptionTests : SafeReplicationTestBase<LogicalRepl
     }
 
     static string QuoteIdentifier(string identifier) => "\"" + identifier.Replace("\"", "\"\"") + "\"";
+
+    sealed class CustomPluginSlot(string outputPlugin) : LogicalReplicationSlot(outputPlugin, new ReplicationSlotOptions("unused"));
 
     protected override string Postfix => "options_l";
 }

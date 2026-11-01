@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Replication;
 
@@ -56,7 +57,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
         CheckDisposed();
         ArgumentNullException.ThrowIfNull(slotName);
 
-        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").AppendName(slotName);
+        var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(QuoteName(slotName));
         if (isTemporary)
             builder.Append(" TEMPORARY");
         builder.Append(" PHYSICAL");
@@ -127,7 +128,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
         {
             var builder = new StringBuilder("START_REPLICATION");
             if (slot != null)
-                builder.Append(" SLOT ").AppendName(slot.Name);
+                builder.Append(" SLOT ").Append(QuoteName(slot.Name));
             builder.Append(" PHYSICAL ").Append(walLocation);
             if (timeline != default)
                 builder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
