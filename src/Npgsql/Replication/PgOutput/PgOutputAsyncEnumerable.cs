@@ -406,9 +406,10 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
             }
             case BackendReplicationMessageCode.StreamAbort:
             {
-                // The server only sends the abort LSN and timestamp with streaming = parallel, not with every protocol version 4
-                // session, so we tell the layouts apart by the message length (message code + 2 xids [+ LSN + timestamp]).
-                if (xLogData.Data.Length >= 1 + 4 + 4 + 8 + 8)
+                // The server sends the abort LSN and timestamp if streaming = parallel (pgoutput.c's write_abort_info), and only
+                // then: not to every protocol version 4 session, and not with streaming = off, where PostgreSQL 18.0-18.6 sends
+                // stream aborts too (bug #19616).
+                if (_options.StreamingMode == PgOutputStreamingMode.Parallel)
                 {
                     await buf.EnsureAsync(24).ConfigureAwait(false);
                     yield return _parallelStreamAbortMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
