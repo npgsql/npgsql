@@ -443,6 +443,16 @@ public class TransactionTests : TestBase
         tx.Rollback("a;b");
     }
 
+    [Test, Description("A savepoint name that is a reserved word only works quoted")]
+    public async Task Savepoint_named_like_a_reserved_word([Values("user", "select")] string name)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var tx = conn.BeginTransaction();
+        tx.Save(name);
+        tx.Rollback(name);
+        tx.Release(name);
+    }
+
     [Test(Description = "Makes sure that creating a savepoint doesn't perform an additional roundtrip, but prepends to the next command")]
     public async Task Savepoint_prepends()
     {
@@ -467,7 +477,7 @@ public class TransactionTests : TestBase
         await conn.ExecuteScalarAsync("SELECT 1");
 
         await pgMock.ExpectSimpleQuery("BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED");
-        await pgMock.ExpectSimpleQuery("SAVEPOINT foo");
+        await pgMock.ExpectSimpleQuery("SAVEPOINT \"foo\"");
         await pgMock.ExpectExtendedQuery();
     }
 

@@ -233,8 +233,8 @@ public sealed class NpgsqlTransaction : DbTransaction
 
         LogMessages.CreatingSavepoint(_transactionLogger, name, _connector.Id);
 
-        if (RequiresQuoting(name))
-            name = QuoteIdentifier(name);
+        // Always quoted: a name that looks like an identifier may still be a reserved word (e.g. user), which only works quoted
+        name = QuoteIdentifier(name);
 
         // Note: savepoint names are PostgreSQL identifiers, and so limited by default to 63 characters.
         // Since we are prepending, we assume below that the statement will always fit in the buffer.
@@ -269,7 +269,7 @@ public sealed class NpgsqlTransaction : DbTransaction
             return;
         using (_connector.StartUserAction(cancellationToken))
         {
-            var quotedName = RequiresQuoting(name) ? QuoteIdentifier(name) : name;
+            var quotedName = QuoteIdentifier(name);
             await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {quotedName}", async, cancellationToken).ConfigureAwait(false);
             LogMessages.RolledBackToSavepoint(_transactionLogger, name, _connector.Id);
         }
@@ -301,7 +301,7 @@ public sealed class NpgsqlTransaction : DbTransaction
             return;
         using (_connector.StartUserAction(cancellationToken))
         {
-            var quotedName = RequiresQuoting(name) ? QuoteIdentifier(name) : name;
+            var quotedName = QuoteIdentifier(name);
             await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {quotedName}", async, cancellationToken).ConfigureAwait(false);
             LogMessages.ReleasedSavepoint(_transactionLogger, name, _connector.Id);
         }
@@ -420,21 +420,6 @@ public sealed class NpgsqlTransaction : DbTransaction
     {
         if (IsDisposed)
             ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlTransaction), _disposeReason);
-    }
-
-    static bool RequiresQuoting(string identifier)
-    {
-        Debug.Assert(identifier.Length > 0);
-
-        var first = identifier[0];
-        if (first != '_' && !char.IsLower(first))
-            return true;
-
-        foreach (var c in identifier.AsSpan(1))
-            if (c != '_' && c != '$' && !char.IsLower(c) && !char.IsDigit(c))
-                return true;
-
-        return false;
     }
 
     #endregion
