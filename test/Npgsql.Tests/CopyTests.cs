@@ -1348,6 +1348,45 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
+    [Test, Description("A COPY to or from a file on the server completes without copying through the client")]
+    public async Task Copy_api_with_command_that_completes_without_copying(
+        [Values("BinaryExport", "BinaryImport", "RawBinaryCopy")] string api)
+    {
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var server = await postmasterMock.WaitForServerConnection();
+
+        const string command = "COPY SomeTable TO '/some/file' (FORMAT BINARY)";
+        await server
+            .WriteCommandComplete("COPY 1")
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        Assert.That(async () =>
+        {
+            switch (api)
+            {
+            case "BinaryExport":
+                await using (await conn.BeginBinaryExportAsync(command)) { }
+                break;
+            case "BinaryImport":
+                await using (await conn.BeginBinaryImportAsync(command)) { }
+                break;
+            default:
+                await using (await conn.BeginRawBinaryCopyAsync(command)) { }
+                break;
+            }
+        }, Throws.InvalidOperationException);
+        await server.ExpectSimpleQuery(command).WaitAsync(TimeSpan.FromSeconds(10));
+
+        // The connection is still in sync
+        var queryTask = conn.ExecuteScalarAsync("SELECT 1");
+        await server.ExpectExtendedQuery().WaitAsync(TimeSpan.FromSeconds(10));
+        await server.WriteScalarResponseAndFlush(1);
+        Assert.That(await queryTask, Is.EqualTo(1));
+    }
+
     #endregion
 
     #region Utils
