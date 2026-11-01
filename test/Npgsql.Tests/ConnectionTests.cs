@@ -1913,7 +1913,7 @@ CREATE TABLE record ()");
     {
         await using var dataSource = CreateDataSource();
 
-        var factory = new QueryingDatabaseInfoFactory();
+        var factory = new QueryingDatabaseInfoFactory(dataSource);
         NpgsqlDatabaseInfo.RegisterFactory(factory);
         try
         {
@@ -1928,11 +1928,16 @@ CREATE TABLE record ()");
         }
     }
 
-    class QueryingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+    class QueryingDatabaseInfoFactory(NpgsqlDataSource dataSource) : INpgsqlDatabaseInfoFactory
     {
         public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async,
             CancellationToken cancellationToken)
         {
+            // The factory is registered globally, so leave the connectors of other data sources (e.g. of tests running
+            // in parallel) to the default factories
+            if (conn.DataSource != dataSource)
+                return null;
+
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 1";
 
