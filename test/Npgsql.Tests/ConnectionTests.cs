@@ -812,6 +812,9 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
     [Parallelizable(ParallelScope.None)]
     public async Task Set_Schemas_with_backslashes([Values("test_schema_\\", "test_schema_\\') OR true --")] string schema)
     {
+        if (IsMultiplexing)
+            return; // Multiplexing requires standard_conforming_strings to be on
+
         await using var conn1 = await OpenConnectionAsync();
         MaximumPgVersionExclusive(conn1, "19.0", "PostgreSQL 19 requires standard_conforming_strings to be on");
         try
