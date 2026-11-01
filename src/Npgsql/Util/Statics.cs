@@ -145,7 +145,9 @@ static class Statics
         }
     }
 
-    // The whitespace the replication command scanner skips between tokens (repl_scanner.l)
+    // The whitespace the replication command scanner skips between tokens (repl_scanner.l). \v only counts as whitespace
+    // since PostgreSQL 17; before, a name with a leading or trailing \v was a syntax error. Trimming it everywhere keeps such
+    // names working as on current servers and only affects names that older servers rejected anyway.
     static readonly char[] ScannerWhitespace = [' ', '\t', '\n', '\r', '\f', '\v'];
 
     /// <summary>
