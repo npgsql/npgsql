@@ -128,32 +128,34 @@ static class Statics
 
             return true;
         }
+    }
 
-        static string FoldName(string name)
+    // Lowercases A-Z, as the server does with unquoted identifiers
+    static string FoldName(string name)
+    {
+        if (name.AsSpan().IndexOfAnyInRange('A', 'Z') < 0)
+            return name;
+
+        return string.Create(name.Length, name, static (span, name) =>
         {
-            if (name.AsSpan().IndexOfAnyInRange('A', 'Z') < 0)
-                return name;
-
-            return string.Create(name.Length, name, static (span, name) =>
+            for (var i = 0; i < span.Length; i++)
             {
-                for (var i = 0; i < span.Length; i++)
-                {
-                    var c = name[i];
-                    span[i] = c is >= 'A' and <= 'Z' ? (char)(c + ('a' - 'A')) : c;
-                }
-            });
-        }
+                var c = name[i];
+                span[i] = c is >= 'A' and <= 'Z' ? (char)(c + ('a' - 'A')) : c;
+            }
+        });
     }
 
     /// <summary>
     /// Returns the name the server reads from a result of <see cref="QuoteName"/>: a quoted identifier without its quotes. An
-    /// unquoted one, an identifier with non-ASCII letters, stays as it is, since only the server knows how it folds those
-    /// (valid slot names can't contain them anyway).
+    /// unquoted one, an identifier with non-ASCII letters, gets A-Z lowercased like the server does it. The server may also
+    /// fold its non-ASCII letters, as its encoding and locale say, but slot names consist of a-z, 0-9 and _ only, so such a
+    /// name can only find a slot if its non-ASCII letters are cut off.
     /// </summary>
     internal static string UnquoteName(string quotedName)
         => quotedName.Length >= 2 && quotedName[0] == '"'
             ? quotedName.Substring(1, quotedName.Length - 2).Replace("\"\"", "\"")
-            : quotedName;
+            : FoldName(quotedName);
 
     /// <summary>
     /// Truncates an identifier to the given number of UTF-8 bytes without splitting a character, as the server truncates

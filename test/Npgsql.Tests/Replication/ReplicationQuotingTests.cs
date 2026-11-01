@@ -95,8 +95,9 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
             }, $"{nameof(ReadReplicationSlot_returns_the_slot_name)}_{spellingName}");
     }
 
-    [Test, Description("The server truncates a name longer than max_identifier_length before it looks up the slot")]
-    public Task ReadReplicationSlot_returns_the_truncated_slot_name()
+    [TestCase(false, Description = "The server truncates a name longer than max_identifier_length before it looks up the slot")]
+    [TestCase(true, Description = "Sent unquoted because of its non-ASCII letter, which the server cuts off after lowercasing A-Z")]
+    public Task ReadReplicationSlot_returns_the_truncated_slot_name(bool uppercaseWithNonAsciiTail)
     {
         if (!IsPhysical)
             Assert.Ignore("ReadReplicationSlot is only on physical replication connections");
@@ -116,7 +117,8 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
                     await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{fullLengthName}')");
                     await using var rc = await OpenReplicationConnectionAsync();
 
-                    var slot = await ((PhysicalReplicationConnection)(ReplicationConnection)rc).ReadReplicationSlot(fullLengthName + "y");
+                    var slot = await ((PhysicalReplicationConnection)(ReplicationConnection)rc).ReadReplicationSlot(
+                        uppercaseWithNonAsciiTail ? fullLengthName.ToUpperInvariant() + "é" : fullLengthName + "y");
 
                     Assert.That(slot?.Name, Is.EqualTo(fullLengthName));
                 }
@@ -124,7 +126,7 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
                 {
                     await DropSlotIfExists(c, fullLengthName);
                 }
-            }, nameof(ReadReplicationSlot_returns_the_truncated_slot_name));
+            }, $"{nameof(ReadReplicationSlot_returns_the_truncated_slot_name)}_{uppercaseWithNonAsciiTail}");
     }
 
     static IAsyncEnumerator<ReplicationMessage> StartReplication(

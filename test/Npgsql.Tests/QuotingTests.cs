@@ -26,7 +26,7 @@ class QuotingTests
 
     [TestCase(" MySlot ", ExpectedResult = "myslot")]
     [TestCase("\"a\"\"b\"", ExpectedResult = "a\"b", Description = "A pre-quoted name loses its quotes, and doubled quotes become one")]
-    [TestCase("ÄBC", ExpectedResult = "ÄBC", Description = "An identifier with non-ASCII letters is sent unquoted, so it stays as it is")]
+    [TestCase("ÄBC", ExpectedResult = "Äbc", Description = "An identifier with non-ASCII letters is sent unquoted, and the server lowercases its A-Z")]
     public string Names_as_the_server_reads_them(string name)
         => Statics.UnquoteName(Statics.QuoteName(name));
 
