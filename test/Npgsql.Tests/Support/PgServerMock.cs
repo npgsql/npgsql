@@ -499,9 +499,9 @@ class PgServerMock : IDisposable
     }
 
     // Message code + length + 'w' + WAL start + WAL end + server clock
-    const int XLogDataHeaderLength = 1 + 4 + 1 + 8 + 8 + 8;
+    internal const int XLogDataHeaderLength = 1 + 4 + 1 + 8 + 8 + 8;
 
-    void WriteXLogDataHeader(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, int dataLength, DateTime? serverClock)
+    internal void WriteXLogDataHeader(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, int dataLength, DateTime? serverClock)
     {
         CheckDisposed();
         _writeBuffer.WriteByte((byte)BackendMessageCode.CopyData);
