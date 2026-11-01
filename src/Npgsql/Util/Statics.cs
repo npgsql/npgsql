@@ -155,6 +155,25 @@ static class Statics
             ? quotedName.Substring(1, quotedName.Length - 2).Replace("\"\"", "\"")
             : quotedName;
 
+    /// <summary>
+    /// Truncates an identifier to the given number of UTF-8 bytes without splitting a character, as the server truncates
+    /// identifiers that are longer than max_identifier_length (truncate_identifier).
+    /// </summary>
+    internal static string TruncateIdentifier(string identifier, int maxBytes)
+    {
+        var bytes = 0;
+        var chars = 0;
+        foreach (var rune in identifier.EnumerateRunes())
+        {
+            if (bytes + rune.Utf8SequenceLength > maxBytes)
+                break;
+            bytes += rune.Utf8SequenceLength;
+            chars += rune.Utf16SequenceLength;
+        }
+
+        return chars == identifier.Length ? identifier : identifier[..chars];
+    }
+
     // The whitespace the replication command scanner skips between tokens (repl_scanner.l). \v only counts as whitespace
     // since PostgreSQL 17; before, a name with a leading or trailing \v was a syntax error. Trimming it everywhere keeps such
     // names working as on current servers and only affects names that older servers rejected anyway.

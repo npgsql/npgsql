@@ -95,6 +95,38 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
             }, $"{nameof(ReadReplicationSlot_returns_the_slot_name)}_{spellingName}");
     }
 
+    [Test, Description("The server truncates a name longer than max_identifier_length before it looks up the slot")]
+    public Task ReadReplicationSlot_returns_the_truncated_slot_name()
+    {
+        if (!IsPhysical)
+            Assert.Ignore("ReadReplicationSlot is only on physical replication connections");
+
+        return SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MinimumPgVersion(c, "15.0", "The READ_REPLICATION_SLOT command was introduced in PostgreSQL 15");
+                var maxLength = int.Parse((string)(await c.ExecuteScalarAsync("SHOW max_identifier_length"))!);
+                if (maxLength != 63)
+                    Assert.Ignore("Npgsql assumes the default max_identifier_length of 63 for ReadReplicationSlot's name");
+                var fullLengthName = slotName.PadRight(maxLength, 'x');
+                await DropSlotIfExists(c, fullLengthName);
+                try
+                {
+                    await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{fullLengthName}')");
+                    await using var rc = await OpenReplicationConnectionAsync();
+
+                    var slot = await ((PhysicalReplicationConnection)(ReplicationConnection)rc).ReadReplicationSlot(fullLengthName + "y");
+
+                    Assert.That(slot?.Name, Is.EqualTo(fullLengthName));
+                }
+                finally
+                {
+                    await DropSlotIfExists(c, fullLengthName);
+                }
+            }, nameof(ReadReplicationSlot_returns_the_truncated_slot_name));
+    }
+
     static IAsyncEnumerator<ReplicationMessage> StartReplication(
         TConnection connection, string slotName, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken)
         => IsPhysical

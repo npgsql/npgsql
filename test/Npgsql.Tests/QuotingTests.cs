@@ -30,6 +30,15 @@ class QuotingTests
     public string Names_as_the_server_reads_them(string name)
         => Statics.UnquoteName(Statics.QuoteName(name));
 
+    [Test, Description("The server truncates identifiers to max_identifier_length bytes without splitting a character")]
+    public void Identifiers_are_truncated_like_the_server_does()
+    {
+        var a63 = new string('a', 63);
+        Assert.That(Statics.TruncateIdentifier(a63 + "b", 63), Is.EqualTo(a63));
+        Assert.That(Statics.TruncateIdentifier(a63, 63), Is.SameAs(a63));
+        Assert.That(Statics.TruncateIdentifier(new string('a', 62) + "ÄÖ", 63), Is.EqualTo(new string('a', 62)));
+    }
+
     [TestCase("proto_version", ExpectedResult = "\"proto_version\"")]
     [TestCase("Mixed\"Case", ExpectedResult = "\"Mixed\"\"Case\"")]
     public string Option_names_are_quoted_identifiers(string name)

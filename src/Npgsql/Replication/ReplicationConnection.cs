@@ -396,9 +396,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
             case "physical":
                 var restartLsn = (string?)result[1];
                 var restartTli = (uint?)result[2];
-                // The result has no slot name, so this is the one the server read
+                // The result has no slot name, so this is the one the server read: truncated to max_identifier_length bytes,
+                // which is 63 unless PostgreSQL was built with another NAMEDATALEN. Asking the server isn't worth a round trip.
                 return new PhysicalReplicationSlot(
-                    UnquoteName(quotedName),
+                    TruncateIdentifier(UnquoteName(quotedName), 63),
                     restartLsn == null ? null : NpgsqlLogSequenceNumber.Parse(restartLsn),
                     restartTli);
             case null:
