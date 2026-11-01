@@ -48,7 +48,9 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>A <see cref="Task{T}"/> representing a <see cref="PhysicalReplicationSlot"/> that represents the
-    /// newly-created replication slot.
+    /// newly-created replication slot. The server doesn't report the restart position of physical slots on creation, so
+    /// <see cref="PhysicalReplicationSlot.RestartLsn"/> isn't set. On PostgreSQL 15 and later, <see cref="ReadReplicationSlot"/>
+    /// can read it once the slot reserves WAL.
     /// </returns>
     public async Task<PhysicalReplicationSlot> CreateReplicationSlot(
         string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
@@ -104,9 +106,11 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// </param>
     /// <param name="walLocation">The WAL location to begin streaming at.</param>
     /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
-    /// <param name="timeline">Streaming starts on timeline tli.</param>
-    /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
-    /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
+    /// <param name="timeline">
+    /// The timeline to start streaming on. The default of 0 selects the server's current timeline.
+    /// </param>
+    /// <returns>An <see cref="IAsyncEnumerable{T}"/> that can be used to stream WAL entries in form of
+    /// <see cref="XLogDataMessage"/> instances.</returns>
     public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
         NpgsqlLogSequenceNumber walLocation,
         CancellationToken cancellationToken,
@@ -138,7 +142,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     }
 
     /// <summary>
-    /// Instructs the server to start streaming the WAL for logical replication, starting at WAL location
+    /// Instructs the server to start streaming the WAL for physical replication, starting at WAL location
     /// <paramref name="walLocation"/>. The server can reply with an error, for example if the requested
     /// section of WAL has already been recycled.
     /// </summary>
@@ -149,9 +153,11 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// </remarks>
     /// <param name="walLocation">The WAL location to begin streaming at.</param>
     /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
-    /// <param name="timeline">Streaming starts on timeline tli.</param>
-    /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
-    /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
+    /// <param name="timeline">
+    /// The timeline to start streaming on. The default of 0 selects the server's current timeline.
+    /// </param>
+    /// <returns>An <see cref="IAsyncEnumerable{T}"/> that can be used to stream WAL entries in form of
+    /// <see cref="XLogDataMessage"/> instances.</returns>
     public IAsyncEnumerable<XLogDataMessage> StartReplication(
         NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, uint timeline = default)
         => StartReplication(slot: null, walLocation: walLocation, timeline: timeline, cancellationToken: cancellationToken);
@@ -174,8 +180,8 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// </remarks>
     /// </param>
     /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
-    /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
-    /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
+    /// <returns>An <see cref="IAsyncEnumerable{T}"/> that can be used to stream WAL entries in form of
+    /// <see cref="XLogDataMessage"/> instances.</returns>
     public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot slot, CancellationToken cancellationToken)
     {
         if (!slot.RestartLsn.HasValue)

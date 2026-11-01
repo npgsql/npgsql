@@ -19,7 +19,7 @@ public abstract class ReplicationMessage
     public NpgsqlLogSequenceNumber WalEnd { get; private set; }
 
     /// <summary>
-    /// The server's system clock at the time this message was transmitted, as microseconds since midnight on 2000-01-01.
+    /// The server's system clock at the time this message was transmitted.
     /// </summary>
     /// <remarks>
     /// Since the client using Npgsql and the server may be located in different time zones,

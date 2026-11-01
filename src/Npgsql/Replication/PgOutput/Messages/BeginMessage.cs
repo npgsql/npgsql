@@ -15,7 +15,6 @@ public sealed class BeginMessage : TransactionControlMessage
 
     /// <summary>
     /// Commit timestamp of the transaction.
-    /// The value is in number of microseconds since PostgreSQL epoch (2000-01-01).
     /// </summary>
     public DateTime TransactionCommitTimestamp { get; private set; }
 
