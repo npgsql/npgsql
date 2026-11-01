@@ -808,6 +808,38 @@ public class ConnectionTests(MultiplexingMode multiplexingMode) : MultiplexingTe
 
     }
 
+    [Test, Description("Schema names with backslashes also work when standard_conforming_strings is off")]
+    [Parallelizable(ParallelScope.None)]
+    public async Task Set_Schemas_with_backslashes([Values("test_schema_\\", "test_schema_\\') OR true --")] string schema)
+    {
+        await using var conn1 = await OpenConnectionAsync();
+        MaximumPgVersionExclusive(conn1, "19.0", "PostgreSQL 19 requires standard_conforming_strings to be on");
+        try
+        {
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE");
+            await conn1.ExecuteNonQueryAsync($"CREATE SCHEMA \"{schema}\"");
+            await conn1.ExecuteNonQueryAsync($"CREATE TYPE \"{schema}\".test_type_backslash AS (id int)");
+            await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_not_loaded");
+            await conn1.ExecuteNonQueryAsync("CREATE TYPE public.test_type_not_loaded AS (id int)");
+
+            await using var dataSource = CreateDataSource(builder =>
+            {
+                // With it off, a backslash in an ordinary string literal starts an escape sequence
+                builder.ConnectionStringBuilder.Options = "-c standard_conforming_strings=off";
+                builder.ConfigureTypeLoading(typeLoading => typeLoading.SetTypeLoadingSchemas(schema));
+            });
+            await using var conn = await dataSource.OpenConnectionAsync();
+            var compositeTypes = dataSource.CurrentReloadableState.DatabaseInfo.CompositeTypes;
+            Assert.That(compositeTypes.Any(x => x.Name == "test_type_backslash"));
+            Assert.That(compositeTypes.Any(x => x.Name == "test_type_not_loaded"), Is.False);
+        }
+        finally
+        {
+            await conn1.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE");
+            await conn1.ExecuteNonQueryAsync("DROP TYPE IF EXISTS public.test_type_not_loaded");
+        }
+    }
+
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
     public async Task No_database_defaults_to_username()
     {
