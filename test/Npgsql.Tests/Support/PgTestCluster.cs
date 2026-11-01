@@ -33,7 +33,8 @@ sealed class PgTestCluster : IAsyncDisposable
     internal string DataDirectory { get; }
 
     /// <summary>
-    /// The port the cluster listens on. It is chosen anew each time the cluster starts.
+    /// The port the cluster listens on. It is chosen when the cluster starts for the first time and kept when it restarts,
+    /// since its standbys connect to it.
     /// </summary>
     internal int Port { get; private set; }
 
@@ -111,19 +112,27 @@ sealed class PgTestCluster : IAsyncDisposable
     }
 
     /// <summary>
-    /// Starts the cluster on a free port.
+    /// Starts the cluster, the first time on a free port, and later on the same one.
     /// </summary>
     internal async Task Start()
     {
+        // The standbys have the port in their primary_conninfo
+        if (Port != 0)
+        {
+            await RunPgCtl("start", "-l", LogFile);
+            return;
+        }
+
         for (var attempt = 1; ; attempt++)
         {
             // We choose the port right before starting so that nothing else grabs it in between. pg_basebackup writes
             // primary_conninfo to postgresql.auto.conf, so the port goes there too; the last setting wins.
-            Port = GetFreePort();
-            await File.AppendAllTextAsync(Path.Combine(DataDirectory, "postgresql.auto.conf"), $"\nport = {Port}\n");
+            var port = GetFreePort();
+            await File.AppendAllTextAsync(Path.Combine(DataDirectory, "postgresql.auto.conf"), $"\nport = {port}\n");
             try
             {
                 await RunPgCtl("start", "-l", LogFile);
+                Port = port;
                 return;
             }
             catch (InvalidOperationException) when (attempt < 3 && ReadLog().Contains("could not bind"))
