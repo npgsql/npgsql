@@ -75,8 +75,9 @@ static class Statics
         => builder.Append('"').Append(identifier.Replace("\"", "\"\"")).Append('"');
 
     /// <summary>
-    /// Quotes a name the way the server reads it unquoted: without surrounding whitespace and with A-Z lowercased (valid slot
-    /// names are ASCII-only). A name that the caller already quoted stays as it is.
+    /// Quotes a name the way the server reads it unquoted: without surrounding whitespace and with A-Z lowercased. A name that
+    /// the caller already quoted stays as it is, and so does an identifier with non-ASCII letters, which the server folds by
+    /// its encoding and locale.
     /// </summary>
     /// <remarks>
     /// Replication commands send slot and output plugin names with it, the way PostgreSQL's own clients do since commit
@@ -88,11 +89,45 @@ static class Statics
         name = name.Trim(ScannerWhitespace);
 
         // Names that callers quoted themselves (the only way to use slot names starting with a digit as long as Npgsql
-        // didn't quote them) keep working, since the server took them as they are.
-        if (name.Length >= 2 && name[0] == '"' && name[^1] == '"' && name.AsSpan(1, name.Length - 2).IndexOf('"') < 0)
+        // didn't quote them) keep working, since the server took them as they are. Quotes inside such a name have to be
+        // doubled, so that it is a single quoted identifier.
+        if (name.Length >= 2 && name[0] == '"' && name[^1] == '"' && QuotesAreDoubled(name.AsSpan(1, name.Length - 2)))
+            return name;
+
+        // The server lowercases non-ASCII letters too, but only in single-byte database encodings and as its locale says
+        // (downcase_identifier), so a name with them is sent unquoted if the server reads it as one identifier. Keywords are
+        // ASCII-only, so it can't be one.
+        if (IsIdentifierWithNonAsciiLetters(name))
             return name;
 
         return QuoteIdentifier(FoldName(name));
+
+        // The replication command scanner's identifier: [A-Za-z\200-\377_][A-Za-z\200-\377_0-9$]* (repl_scanner.l)
+        static bool IsIdentifierWithNonAsciiLetters(string name)
+        {
+            var nonAscii = false;
+            for (var i = 0; i < name.Length; i++)
+            {
+                var c = name[i];
+                if (c > '\x7f')
+                    nonAscii = true;
+                else if (!(c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_' || i > 0 && c is >= '0' and <= '9' or '$'))
+                    return false;
+            }
+
+            return nonAscii;
+        }
+
+        static bool QuotesAreDoubled(ReadOnlySpan<char> s)
+        {
+            for (var i = 0; i < s.Length; i++)
+            {
+                if (s[i] == '"' && (++i == s.Length || s[i] != '"'))
+                    return false;
+            }
+
+            return true;
+        }
 
         static string FoldName(string name)
         {

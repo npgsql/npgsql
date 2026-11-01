@@ -13,8 +13,14 @@ class QuotingTests
     [TestCase("x\" WAIT", ExpectedResult = "\"x\"\" wait\"", Description = "A name can't end the quoted identifier")]
     [TestCase(" myslot\n", ExpectedResult = "\"myslot\"", Description = "The server skipped surrounding whitespace when names were sent unquoted")]
     [TestCase("\"1abc\"", ExpectedResult = "\"1abc\"", Description = "Names that callers quoted themselves keep working")]
-    [TestCase("\"a\" WAIT \"b\"", ExpectedResult = "\"\"\"a\"\" wait \"\"b\"\"\"", Description = "A pre-quoted name can't contain other quotes")]
-    [TestCase("ÄBC_Ü", ExpectedResult = "\"Äbc_Ü\"", Description = "Only A-Z are lowercased; valid slot names are ASCII-only anyway")]
+    [TestCase("\"a\" WAIT \"b\"", ExpectedResult = "\"\"\"a\"\" wait \"\"b\"\"\"", Description = "A pre-quoted name can't contain quotes that aren't doubled")]
+    [TestCase("\"a\"\"b\"", ExpectedResult = "\"a\"\"b\"", Description = "Doubled quotes keep a pre-quoted name one identifier")]
+    [TestCase("\"a\"\"\"b\"", ExpectedResult = "\"\"\"a\"\"\"\"\"\"b\"\"\"", Description = "Three quotes in a row aren't all doubled")]
+    [TestCase("\"a\"\"", ExpectedResult = "\"\"\"a\"\"\"\"\"", Description = "Neither is a quote right before the closing one")]
+    [TestCase("ÄBC_Ü", ExpectedResult = "ÄBC_Ü", Description = "The server folds non-ASCII letters by its encoding and locale, so an identifier with them stays unquoted")]
+    [TestCase("Ä$1", ExpectedResult = "Ä$1", Description = "Digits and $ can follow the first character of an identifier")]
+    [TestCase("1Ä", ExpectedResult = "\"1Ä\"", Description = "A name with non-ASCII letters that isn't an identifier is quoted")]
+    [TestCase("Ä WAIT", ExpectedResult = "\"Ä wait\"", Description = "So that it can't add keywords to a command either")]
     public string Slot_and_plugin_names_are_lowercased_and_quoted(string name)
         => Statics.QuoteName(name);
 
