@@ -145,6 +145,16 @@ static class Statics
         }
     }
 
+    /// <summary>
+    /// Returns the name the server reads from a result of <see cref="QuoteName"/>: a quoted identifier without its quotes. An
+    /// unquoted one, an identifier with non-ASCII letters, stays as it is, since only the server knows how it folds those
+    /// (valid slot names can't contain them anyway).
+    /// </summary>
+    internal static string UnquoteName(string quotedName)
+        => quotedName.Length >= 2 && quotedName[0] == '"'
+            ? quotedName.Substring(1, quotedName.Length - 2).Replace("\"\"", "\"")
+            : quotedName;
+
     // The whitespace the replication command scanner skips between tokens (repl_scanner.l). \v only counts as whitespace
     // since PostgreSQL 17; before, a name with a leading or trailing \v was a syntax error. Trimming it everywhere keeps such
     // names working as on current servers and only affects names that older servers rejected anyway.

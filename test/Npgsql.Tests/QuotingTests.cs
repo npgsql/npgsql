@@ -24,6 +24,12 @@ class QuotingTests
     public string Slot_and_plugin_names_are_lowercased_and_quoted(string name)
         => Statics.QuoteName(name);
 
+    [TestCase(" MySlot ", ExpectedResult = "myslot")]
+    [TestCase("\"a\"\"b\"", ExpectedResult = "a\"b", Description = "A pre-quoted name loses its quotes, and doubled quotes become one")]
+    [TestCase("ÄBC", ExpectedResult = "ÄBC", Description = "An identifier with non-ASCII letters is sent unquoted, so it stays as it is")]
+    public string Names_as_the_server_reads_them(string name)
+        => Statics.UnquoteName(Statics.QuoteName(name));
+
     [TestCase("proto_version", ExpectedResult = "\"proto_version\"")]
     [TestCase("Mixed\"Case", ExpectedResult = "\"Mixed\"\"Case\"")]
     public string Option_names_are_quoted_identifiers(string name)

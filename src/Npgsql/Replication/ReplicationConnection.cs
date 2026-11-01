@@ -384,8 +384,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
     internal async Task<PhysicalReplicationSlot?> ReadReplicationSlotInternal(string slotName, CancellationToken cancellationToken = default)
     {
+        var quotedName = QuoteName(slotName);
         var result = await ReadSingleRow(
-            $"READ_REPLICATION_SLOT {QuoteName(slotName)}", cancellationToken).ConfigureAwait(false);
+            $"READ_REPLICATION_SLOT {quotedName}", cancellationToken).ConfigureAwait(false);
         var slotType = (string?)result[0];
 
         // Currently (2021-12-30) slot_type is always 'physical' for existing slots or null for slot names that don't exist but that
@@ -395,8 +396,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
             case "physical":
                 var restartLsn = (string?)result[1];
                 var restartTli = (uint?)result[2];
+                // The result has no slot name, so this is the one the server read
                 return new PhysicalReplicationSlot(
-                    slotName.ToLowerInvariant(),
+                    UnquoteName(quotedName),
                     restartLsn == null ? null : NpgsqlLogSequenceNumber.Parse(restartLsn),
                     restartTli);
             case null:

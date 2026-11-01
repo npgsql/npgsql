@@ -72,6 +72,29 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
                 }
             });
 
+    [TestCase(" {0} ", "padded", Description = "The server skips the whitespace around the name")]
+    [TestCase("\"{0}\"", "quoted", Description = "The server reads a quoted name without its quotes")]
+    [TestCase("{0}", "plain")]
+    public Task ReadReplicationSlot_returns_the_slot_name(string spelling, string spellingName)
+    {
+        if (!IsPhysical)
+            Assert.Ignore("ReadReplicationSlot is only on physical replication connections");
+
+        return SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MinimumPgVersion(c, "15.0", "The READ_REPLICATION_SLOT command was introduced in PostgreSQL 15");
+                await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{slotName}')");
+                await using var rc = await OpenReplicationConnectionAsync();
+
+                var slot = await ((PhysicalReplicationConnection)(ReplicationConnection)rc).ReadReplicationSlot(
+                    string.Format(spelling, slotName));
+
+                Assert.That(slot?.Name, Is.EqualTo(slotName));
+            }, $"{nameof(ReadReplicationSlot_returns_the_slot_name)}_{spellingName}");
+    }
+
     static IAsyncEnumerator<ReplicationMessage> StartReplication(
         TConnection connection, string slotName, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken)
         => IsPhysical
