@@ -30,9 +30,141 @@ static class Statics
     /// <param name="literal">The identifier to be escaped.</param>
     internal static string EscapeLiteral(string literal)
     {
-        // There is no support for escape sequences in quoted values for PostgreSQL, so replacing ' is enough.
-        // (to be able to use escaped characters an alternative syntax exists, it requires E to appear directly before the opening quote)
+        // Doubling the single quotes is enough where backslashes are no escapes: in SQL with standard_conforming_strings on and
+        // in replication commands. QuoteLiteral also covers SQL with it off.
         return literal.Replace("'", "''");
+    }
+
+    /// <summary>
+    /// Quotes a string literal for the SQL parser, or for the replication command parser.
+    /// </summary>
+    /// <remarks>
+    /// In SQL, a backslash in a string literal starts an escape sequence when standard_conforming_strings is off. So a value
+    /// with backslashes becomes an escape string (<c>E'...'</c>) with its backslashes doubled, which reads the same whatever
+    /// the setting, as libpq's PQescapeLiteral does; like libpq, we prepend a space so that the E can't join a preceding
+    /// identifier. The replication command parser has neither escape strings nor backslash escapes (repl_scanner.l), so
+    /// there only the single quotes are doubled.
+    /// </remarks>
+    internal static string QuoteLiteral(string value, bool replicationParser)
+        => !replicationParser && value.Contains('\\')
+            ? " E'" + EscapeLiteral(value.Replace("\\", "\\\\")) + "'"
+            : "'" + EscapeLiteral(value) + "'";
+
+    /// <summary>
+    /// Appends a string literal quoted like <see cref="QuoteLiteral"/>, without building the quoted string first.
+    /// </summary>
+    internal static StringBuilder AppendQuotedLiteral(this StringBuilder builder, string value, bool replicationParser)
+        => !replicationParser && value.Contains('\\')
+            ? builder.Append(" E'").Append(EscapeLiteral(value.Replace("\\", "\\\\"))).Append('\'')
+            : builder.Append('\'').Append(EscapeLiteral(value)).Append('\'');
+
+    /// <summary>
+    /// Quotes an identifier, e.g. a savepoint name, doubling the double quotes in it.
+    /// </summary>
+    /// <remarks>
+    /// The replication command parser only understands doubled double quotes since PostgreSQL 14.24, 15.19, 16.15, 17.11 and
+    /// 18.6, but valid slot and plugin names can't contain double quotes anyway.
+    /// </remarks>
+    internal static string QuoteIdentifier(string identifier)
+        => "\"" + identifier.Replace("\"", "\"\"") + "\"";
+
+    /// <summary>
+    /// Appends an identifier quoted like <see cref="QuoteIdentifier"/>, without building the quoted string first.
+    /// </summary>
+    internal static StringBuilder AppendQuotedIdentifier(this StringBuilder builder, string identifier)
+        => builder.Append('"').Append(identifier.Replace("\"", "\"\"")).Append('"');
+
+    /// <summary>
+    /// Quotes a name the way the server reads it unquoted: without surrounding whitespace and with A-Z lowercased. A name that
+    /// the caller already quoted stays as it is, and so does an identifier with non-ASCII letters, which the server folds by
+    /// its encoding and locale.
+    /// </summary>
+    /// <remarks>
+    /// Replication commands send slot and output plugin names with it, the way PostgreSQL's own clients do since commit
+    /// a75bd485b5e (libpqwalreceiver.c, streamutil.c): names Npgsql used to send unquoted keep their meaning, no name can
+    /// change the command (e.g. <c>x TEMPORARY</c>), and valid names that would lex as numbers (like <c>1abc</c>) work.
+    /// </remarks>
+    internal static string QuoteName(string name)
+    {
+        name = name.Trim(ScannerWhitespace);
+
+        // Names that callers quoted themselves (the only way to use slot names starting with a digit as long as Npgsql
+        // didn't quote them) keep working, since the server took them as they are. Quotes inside such a name have to be
+        // doubled, so that it is a single quoted identifier.
+        if (name.Length >= 2 && name[0] == '"' && name[^1] == '"' && QuotesAreDoubled(name.AsSpan(1, name.Length - 2)))
+            return name;
+
+        // The server lowercases non-ASCII letters too, but only in single-byte database encodings and as its locale says
+        // (downcase_identifier), so a name with them is sent unquoted if the server reads it as one identifier. Keywords are
+        // ASCII-only, so it can't be one.
+        if (IsIdentifierWithNonAsciiLetters(name))
+            return name;
+
+        return QuoteIdentifier(FoldName(name));
+
+        // The replication command scanner's identifier: [A-Za-z\200-\377_][A-Za-z\200-\377_0-9$]* (repl_scanner.l)
+        static bool IsIdentifierWithNonAsciiLetters(string name)
+        {
+            var nonAscii = false;
+            for (var i = 0; i < name.Length; i++)
+            {
+                var c = name[i];
+                if (c > '\x7f')
+                    nonAscii = true;
+                else if (!(c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_' || i > 0 && c is >= '0' and <= '9' or '$'))
+                    return false;
+            }
+
+            return nonAscii;
+        }
+
+        static bool QuotesAreDoubled(ReadOnlySpan<char> s)
+        {
+            for (var i = 0; i < s.Length; i++)
+            {
+                if (s[i] == '"' && (++i == s.Length || s[i] != '"'))
+                    return false;
+            }
+
+            return true;
+        }
+
+        static string FoldName(string name)
+        {
+            if (name.AsSpan().IndexOfAnyInRange('A', 'Z') < 0)
+                return name;
+
+            return string.Create(name.Length, name, static (span, name) =>
+            {
+                for (var i = 0; i < span.Length; i++)
+                {
+                    var c = name[i];
+                    span[i] = c is >= 'A' and <= 'Z' ? (char)(c + ('a' - 'A')) : c;
+                }
+            });
+        }
+    }
+
+    // The whitespace the replication command scanner skips between tokens (repl_scanner.l). \v only counts as whitespace
+    // since PostgreSQL 17; before, a name with a leading or trailing \v was a syntax error. Trimming it everywhere keeps such
+    // names working as on current servers and only affects names that older servers rejected anyway.
+    static readonly char[] ScannerWhitespace = [' ', '\t', '\n', '\r', '\f', '\v'];
+
+    /// <summary>
+    /// Formats identifiers as the comma-separated list of quoted identifiers that the server's <c>SplitIdentifierString</c>
+    /// parses, e.g. for pgoutput's <c>publication_names</c> option. The identifiers are quoted, so they are case-sensitive.
+    /// </summary>
+    internal static string QuoteIdentifierList(IEnumerable<string> identifiers)
+    {
+        var builder = new StringBuilder();
+        foreach (var identifier in identifiers)
+        {
+            if (builder.Length > 0)
+                builder.Append(',');
+            builder.AppendQuotedIdentifier(identifier);
+        }
+
+        return builder.ToString();
     }
 
     internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
