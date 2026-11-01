@@ -117,8 +117,11 @@ public class ReplicationSlotNameTests<TConnection> : SafeReplicationTestBase<TCo
                     await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{fullLengthName}')");
                     await using var rc = await OpenReplicationConnectionAsync();
 
+                    // Not é: a walsender without a database lowercases each byte above 0x7F that its locale calls uppercase,
+                    // like é's first byte (Ã in Latin-1) on CI's Windows and macOS servers, and its truncation notice then isn't
+                    // valid UTF-8, which fails the command (downcase_identifier, pg_server_to_any). 中 has no such byte.
                     var slot = await ((PhysicalReplicationConnection)(ReplicationConnection)rc).ReadReplicationSlot(
-                        uppercaseWithNonAsciiTail ? fullLengthName.ToUpperInvariant() + "é" : fullLengthName + "y");
+                        uppercaseWithNonAsciiTail ? fullLengthName.ToUpperInvariant() + "中" : fullLengthName + "y");
 
                     Assert.That(slot?.Name, Is.EqualTo(fullLengthName));
                 }
