@@ -546,14 +546,19 @@ class PgServerMock : IDisposable
             1 + Encoding.GetByteCount(severity) + 1 +
             1 + Encoding.GetByteCount(message) + 1 +
             1);
-        _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Code);
-        _writeBuffer.WriteNullTerminatedString(code);
-        _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Severity);
-        _writeBuffer.WriteNullTerminatedString(severity);
-        _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Message);
-        _writeBuffer.WriteNullTerminatedString(message);
+        WriteField(ErrorOrNoticeMessage.ErrorFieldTypeCode.Code, code);
+        WriteField(ErrorOrNoticeMessage.ErrorFieldTypeCode.Severity, severity);
+        WriteField(ErrorOrNoticeMessage.ErrorFieldTypeCode.Message, message);
         _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Done);
         return this;
+
+        // UTF-8, like the lengths above (WriteNullTerminatedString only supports ASCII)
+        void WriteField(ErrorOrNoticeMessage.ErrorFieldTypeCode fieldType, string value)
+        {
+            _writeBuffer.WriteByte((byte)fieldType);
+            _writeBuffer.WriteBytes(Encoding.GetBytes(value));
+            _writeBuffer.WriteByte(0);
+        }
     }
 
     #endregion Low-level message writing

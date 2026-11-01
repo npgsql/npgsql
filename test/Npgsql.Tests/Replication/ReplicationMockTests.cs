@@ -116,4 +116,81 @@ public class ReplicationMockTests : TestBase
         Assert.That(info.XLogPos, Is.EqualTo(dataEndLsn));
         Assert.That(info.DbName, Is.Null);
     }
+
+    [Test, Description("The mock writes WAL data larger than its write buffer, also when the buffer has no room left for the header")]
+    public async Task Physical_streaming_of_data_larger_than_the_buffers()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        await using var _ = rc;
+        using var timeoutCts = new CancellationTokenSource(ReplicationMock.Timeout);
+        using var streamingCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
+
+        var startLsn = new NpgsqlLogSequenceNumber(0x1000000);
+        var enumerator = rc.StartReplication(startLsn, streamingCts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        try
+        {
+            await server.ExpectSimpleQuery("START_REPLICATION PHYSICAL 0/1000000").WaitAsync(ReplicationMock.Timeout);
+            await server.WriteCopyBothResponse().FlushAsync();
+
+            // The first message leaves less room in the write buffer than the second one's header needs (message code,
+            // length, 'w', WAL start and end, server clock), and the second one's data is larger than the client's and the
+            // mock's buffers
+            const int xLogDataHeaderLength = 1 + 4 + 1 + 8 + 8 + 8;
+            var first = Pattern(server.WriteBuffer.WriteSpaceLeft - xLogDataHeaderLength - xLogDataHeaderLength / 2, 1);
+            var second = Pattern(3 * server.WriteBuffer.Size, 2);
+            var secondLsn = startLsn + first.Length;
+            server.WriteXLogData(startLsn, secondLsn, first);
+            Assert.That(server.WriteBuffer.WriteSpaceLeft, Is.LessThan(xLogDataHeaderLength));
+            await server.WriteXLogDataWithFlush(secondLsn, secondLsn + second.Length, second);
+            await server.FlushAsync();
+
+            Assert.That(await moveNext, Is.True);
+            var data = new byte[first.Length];
+            await enumerator.Current.Data.ReadExactlyAsync(data, timeoutCts.Token);
+            Assert.That(data, Is.EqualTo(first));
+
+            Assert.That(await enumerator.MoveNextAsync(), Is.True);
+            Assert.That(enumerator.Current.WalStart, Is.EqualTo(secondLsn));
+            data = new byte[second.Length];
+            await enumerator.Current.Data.ReadExactlyAsync(data, timeoutCts.Token);
+            Assert.That(data, Is.EqualTo(second));
+
+            moveNext = enumerator.MoveNextAsync().AsTask();
+            streamingCts.Cancel();
+            await postmaster.WaitForCancellationRequest().AsTask().WaitAsync(ReplicationMock.Timeout);
+            await server
+                .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+                .WriteReadyForQuery()
+                .FlushAsync();
+            Assert.That(async () => await moveNext, Throws.InstanceOf<OperationCanceledException>());
+        }
+        finally
+        {
+            if (!moveNext.IsCompleted)
+            {
+                // A pending MoveNextAsync would make DisposeAsync throw and hide the actual failure, so end it first
+                server.Close();
+                try
+                {
+                    await moveNext;
+                }
+                catch
+                {
+                    // The test has already failed
+                }
+            }
+
+            await enumerator.DisposeAsync();
+        }
+
+        static byte[] Pattern(int length, int seed)
+        {
+            var bytes = new byte[length];
+            for (var i = 0; i < bytes.Length; i++)
+                bytes[i] = (byte)(i * 7 + seed);
+            return bytes;
+        }
+    }
 }
