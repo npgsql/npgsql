@@ -134,6 +134,20 @@ public class LogicalReplicationOptionTests : SafeReplicationTestBase<LogicalRepl
         await rc.IdentifySystem();
     }
 
+    [Test, Description("PublicationNames can be emptied after the constructor's check, and pgoutput takes an empty list as no publication")]
+    public async Task Emptied_publication_names_are_rejected()
+    {
+        await using var rc = await OpenReplicationConnectionAsync();
+        var options = new PgOutputReplicationOptions("unused", PgOutputProtocolVersion.V1);
+        options.PublicationNames.Clear();
+        var enumerator = rc.StartReplication(new PgOutputReplicationSlot("unused"), options, CancellationToken.None).GetAsyncEnumerator();
+        Assert.That(async () => await enumerator.MoveNextAsync(), Throws.InvalidOperationException);
+        await enumerator.DisposeAsync();
+
+        // Nothing was sent, so the connection is still usable
+        await rc.IdentifySystem();
+    }
+
     [Test]
     public async Task Null_option_names_are_rejected()
     {

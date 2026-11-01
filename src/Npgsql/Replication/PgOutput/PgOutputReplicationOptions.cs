@@ -147,6 +147,11 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
 
     internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()
     {
+        // PublicationNames can still be emptied after the constructor's check, and pgoutput would take an empty list as no
+        // publication at all
+        if (PublicationNames.Count == 0)
+            throw new InvalidOperationException("PublicationNames must contain at least one publication name.");
+
         yield return new KeyValuePair<string, string?>("proto_version", ((ulong)ProtocolVersion).ToString(CultureInfo.InvariantCulture));
         yield return new KeyValuePair<string, string?>("publication_names", QuoteIdentifierList(PublicationNames));
 
