@@ -26,9 +26,14 @@ class QuotingTests
 
     [TestCase(" MySlot ", ExpectedResult = "myslot")]
     [TestCase("\"a\"\"b\"", ExpectedResult = "a\"b", Description = "A pre-quoted name loses its quotes, and doubled quotes become one")]
-    [TestCase("ÄBC", ExpectedResult = "Äbc", Description = "An identifier with non-ASCII letters is sent unquoted, and the server lowercases its A-Z")]
     public string Names_as_the_server_reads_them(string name)
         => Statics.UnquoteName(Statics.QuoteName(name));
+
+    [Test, Description("A name with a non-ASCII letter is sent unquoted, and it can only find a slot if the server cuts the letter off")]
+    public void Slot_name_with_a_non_ASCII_letter_beyond_the_limit()
+        => Assert.That(
+            Statics.TruncateIdentifier(Statics.UnquoteName(Statics.QuoteName(new string('A', 63) + "é")), 63),
+            Is.EqualTo(new string('a', 63)));
 
     [Test, Description("The server truncates identifiers to max_identifier_length bytes without splitting a character")]
     public void Identifiers_are_truncated_like_the_server_does()
