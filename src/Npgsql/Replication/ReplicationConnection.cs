@@ -198,10 +198,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 throw new ArgumentOutOfRangeException(nameof(value), value,
                     $"A finite CommandTimeout can't be less than {TimeSpan.Zero}.");
 
+            // Every replication command applies it when it starts
             _commandTimeout = value;
-            // Before Open, the value gets applied when opening
-            if (_npgsqlConnection.Connector is { State: not ConnectorState.Replication })
-                SetTimeouts(value, value);
         }
     }
 
@@ -328,13 +326,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
         return ShowInternal(parameterName, cancellationToken);
 
         async Task<string> ShowInternal(string parameterName, CancellationToken cancellationToken)
-        {
-            var row = await ReadSingleRow("SHOW " + parameterName, cancellationToken).ConfigureAwait(false);
-            // SHOW ALL returns the name, setting and description of every parameter
-            if (row.Length != 1)
-                throw new NotSupportedException($"{nameof(Show)} only supports single run-time parameters, not '{parameterName}'.");
-            return (string)row[0];
-        }
+            => (string)(await ReadSingleRow("SHOW " + parameterName, cancellationToken).ConfigureAwait(false))[0];
     }
 
     /// <summary>
@@ -435,9 +427,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
         _replicationCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         using var _ = connector.StartUserAction(
-            ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
-        // StartUserAction resets the timeouts to the connection string's command timeout
-        SetTimeouts(CommandTimeout, CommandTimeout);
+            ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported,
+            timeout: ToBufferTimeout(CommandTimeout));
 
         NpgsqlReadBuffer.ColumnStream? columnStream = null;
 
@@ -745,9 +736,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         async Task DropReplicationSlotInternal(string slotName, bool wait, CancellationToken cancellationToken)
         {
-            using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
-            // StartUserAction resets the timeouts to the connection string's command timeout
-            SetTimeouts(CommandTimeout, CommandTimeout);
+            using var _ = Connector.StartUserAction(
+                cancellationToken, attemptPgCancellation: _pgCancellationSupported, timeout: ToBufferTimeout(CommandTimeout));
 
             var command = "DROP_REPLICATION_SLOT " + slotName;
             if (wait)
@@ -774,9 +764,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
     {
         CheckDisposed();
 
-        using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
-        // StartUserAction resets the timeouts to the connection string's command timeout
-        SetTimeouts(CommandTimeout, CommandTimeout);
+        using var _ = Connector.StartUserAction(
+            cancellationToken, attemptPgCancellation: _pgCancellationSupported, timeout: ToBufferTimeout(CommandTimeout));
 
         LogMessages.ExecutingReplicationCommand(ReplicationLogger, command, Connector.Id);
 
@@ -837,8 +826,18 @@ public abstract class ReplicationConnection : IAsyncDisposable
             }
         }
 
-        // Skip any further rows (e.g. for SHOW ALL), so that the connection stays in sync
-        Expect<CommandCompleteMessage>(await Connector.ReadMessage(true, DataRowLoadingMode.Skip).ConfigureAwait(false), Connector);
+        // Commands that return more than one row (e.g. SHOW ALL) aren't supported. They fail once the rest of the result has been
+        // read, so that the connection stays usable.
+        var msg = await Connector.ReadMessage(true, DataRowLoadingMode.Sequential).ConfigureAwait(false);
+        if (msg is DataRowMessage dataRow)
+        {
+            await Connector.ReadBuffer.Skip(async: true, dataRow.Length).ConfigureAwait(false);
+            Expect<CommandCompleteMessage>(await Connector.ReadMessage(true, DataRowLoadingMode.Skip).ConfigureAwait(false), Connector);
+            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
+            throw new NotSupportedException($"The replication command '{command}' returned more than one row, which isn't supported.");
+        }
+
+        Expect<CommandCompleteMessage>(msg, Connector);
         Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
         return results;
     }
@@ -853,12 +852,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
         var writeBuffer = connector.WriteBuffer;
         if (writeBuffer != null)
             writeBuffer.Timeout = ToBufferTimeout(writeTimeout);
-
-        // The buffers' timeouts have to fit into an int of milliseconds, so larger values (e.g. TimeSpan.MaxValue) mean no
-        // timeout, just like zero
-        static TimeSpan ToBufferTimeout(TimeSpan timeout)
-            => timeout > TimeSpan.Zero && timeout.TotalMilliseconds <= int.MaxValue ? timeout : Timeout.InfiniteTimeSpan;
     }
+
+    // The buffers' timeouts have to fit into an int of milliseconds, so larger values (e.g. TimeSpan.MaxValue) mean no timeout,
+    // just like zero
+    static TimeSpan ToBufferTimeout(TimeSpan timeout)
+        => timeout > TimeSpan.Zero && timeout.TotalMilliseconds <= int.MaxValue ? timeout : Timeout.InfiniteTimeSpan;
 
     internal void CheckDisposed()
     {

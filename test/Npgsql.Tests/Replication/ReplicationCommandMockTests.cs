@@ -66,6 +66,33 @@ public class ReplicationCommandMockTests : TestBase
         Assert.That((await identifyTask).Timeline, Is.EqualTo(1u));
     }
 
+    [Test, Description("Any replication command that returns more than one row fails rather than dropping rows")]
+    public async Task More_than_one_row()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        await using var _ = rc;
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var historyTask = rc.TimelineHistory(2, cts.Token);
+        await server.ExpectSimpleQuery("TIMELINE_HISTORY 2").WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteRowDescription(Column("filename", TextOid), Column("content", TextOid))
+            .WriteDataRow(Text("00000002.history"), Text("1\t0/3000000\tno recovery target specified\n"))
+            .WriteDataRow(Text("00000003.history"), Text("2\t0/4000000\tno recovery target specified\n"))
+            .WriteCommandComplete("TIMELINE_HISTORY")
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        Assert.That(async () => await historyTask, Throws.InstanceOf<NotSupportedException>());
+
+        // The connection can still be used
+        var identifyTask = rc.IdentifySystem(cts.Token);
+        await server.ExpectSimpleQuery("IDENTIFY_SYSTEM").WaitAsync(ReplicationMock.Timeout);
+        await server.WriteIdentifySystemResponse("7000000000000000001", 1, new(0x1000000), dbName: null).FlushAsync();
+        Assert.That((await identifyTask).Timeline, Is.EqualTo(1u));
+    }
+
     [Test, Description("The CommandTimeout property applies to replication commands, not just the connection string's")]
     public async Task CommandTimeout_is_honored(
         [Values] bool setBeforeOpen,
