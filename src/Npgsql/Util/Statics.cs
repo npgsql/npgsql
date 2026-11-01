@@ -158,8 +158,11 @@ static class Statics
             : FoldName(quotedName);
 
     /// <summary>
-    /// Truncates an identifier to the given number of UTF-8 bytes without splitting a character, as the server truncates
-    /// identifiers that are longer than max_identifier_length (truncate_identifier).
+    /// Truncates an identifier to the given number of UTF-8 bytes without splitting a character. A physical walsender cuts
+    /// identifiers that are longer than max_identifier_length after that many bytes, since its encoding is SQL_ASCII
+    /// (truncate_identifier, pg_mbcliplen), but if that splits a character, its notice about the truncation isn't valid in the
+    /// client encoding UTF8, and the command fails (pg_server_to_any). So when the command succeeds, the server read the name
+    /// this returns.
     /// </summary>
     internal static string TruncateIdentifier(string identifier, int maxBytes)
     {

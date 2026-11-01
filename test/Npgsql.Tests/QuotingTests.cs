@@ -35,8 +35,8 @@ class QuotingTests
             Statics.TruncateIdentifier(Statics.UnquoteName(Statics.QuoteName(new string('A', 63) + "é")), 63),
             Is.EqualTo(new string('a', 63)));
 
-    [Test, Description("The server truncates identifiers to max_identifier_length bytes without splitting a character")]
-    public void Identifiers_are_truncated_like_the_server_does()
+    [Test, Description("A physical walsender cuts after max_identifier_length bytes, but if that splits a character, the command fails")]
+    public void Identifiers_are_truncated_without_splitting_a_character()
     {
         var a63 = new string('a', 63);
         Assert.That(Statics.TruncateIdentifier(a63 + "b", 63), Is.EqualTo(a63));
