@@ -2294,6 +2294,11 @@ public sealed partial class NpgsqlConnector
             Monitor.Exit(SyncObj);
             // Wait for the break to complete before going forward.
             lock (CleanupLock) { }
+            // A nested break (e.g. a timeout while reading the startup response) skips
+            // marking the host offline because we're still connecting. If the outer Open
+            // ultimately failed, we still want the host to be marked offline.
+            if (markHostAsOfflineOnConnecting)
+                MarkHostAsOffline(reason);
             return reason;
         }
 
@@ -2323,14 +2328,8 @@ public sealed partial class NpgsqlConnector
                 // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
                 // but does not include e.g. authentication failure or timeouts with disabled cancellation.
                 // We also do not treat host as down if we're still connecting, as we might retry without GSS/TLS
-                if (reason is NpgsqlException { IsTransient: true } ne &&
-                    (state != ConnectorState.Connecting || markHostAsOfflineOnConnecting) &&
-                    (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
-                    reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
-                {
-                    DataSource.UpdateDatabaseState(DatabaseState.Offline, DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
-                    DataSource.Clear();
-                }
+                if ((state != ConnectorState.Connecting || markHostAsOfflineOnConnecting) && IsHostDown(reason))
+                    MarkHostAsOffline(reason);
 
                 var connection = Connection;
 
@@ -2364,6 +2363,20 @@ public sealed partial class NpgsqlConnector
         {
             Monitor.Exit(CleanupLock);
         }
+    }
+
+    bool IsHostDown(Exception reason)
+        => reason is NpgsqlException { IsTransient: true } ne &&
+           (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
+           reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe);
+
+    void MarkHostAsOffline(Exception reason)
+    {
+        if (!IsHostDown(reason))
+            return;
+
+        DataSource.UpdateDatabaseState(DatabaseState.Offline, DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
+        DataSource.Clear();
     }
 
     void FullCleanup()
