@@ -15,10 +15,13 @@ sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>
         var days = reader.ReadInt32();
         var months = reader.ReadInt32();
 
+        var ticks = (Int128)microseconds * TimeSpan.TicksPerMicrosecond
+            + (Int128)days * TimeSpan.TicksPerDay;
+
         return months > 0
             ? throw new InvalidCastException(
                 "Cannot read interval values with non-zero months as TimeSpan, since that type doesn't support months. Consider using NodaTime Period which better corresponds to PostgreSQL interval, or read the value as NpgsqlInterval, or transform the interval to not contain months or years in PostgreSQL before reading it.")
-            : new(microseconds * 10 + days * TimeSpan.TicksPerDay);
+            : new(checked((long)ticks));
     }
 
     public override void Write(PgWriter writer, TimeSpan value)
