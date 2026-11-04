@@ -3,12 +3,53 @@ using Npgsql.Tests;
 using NUnit.Framework;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
+using DotNet.Testcontainers.Images;
+using Testcontainers.PostgreSql;
 
 [SetUpFixture]
 public class AssemblySetUp
 {
+    PostgreSqlContainer? _postgreSqlContainer;
+
+    protected virtual DockerImage ContainerImage
+    {
+        get
+        {
+            // Form native arm64 support, use imresamu/postgis, see https://github.com/postgis/docker-postgis/issues/216#issuecomment-2936824962
+            // For example, imresamu/postgis:18-3.6.1-alpine3.23
+            var imageName = Environment.GetEnvironmentVariable("NPGSQL_TEST_DOCKER_IMAGE");
+            if (imageName != null)
+            {
+                return new DockerImage(imageName);
+            }
+
+            // Explicit linux/amd64 platform since arm64 is not yet supported, see https://github.com/postgis/docker-postgis/issues/216
+            return new DockerImage("postgis/postgis:18-3.6", new Platform("linux/amd64"));
+        }
+    }
+
+    protected virtual string? ContainerName => typeof(AssemblySetUp).Assembly.GetName().Name;
+
     [OneTimeSetUp]
-    public void Setup()
+    public async Task Setup()
+    {
+        try
+        {
+            CheckConnection();
+        }
+        catch when (Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") == null)
+        {
+            // Connection to the default connection string failed, use Docker to run PostgreSQL
+            _postgreSqlContainer = new PostgreSqlBuilder(ContainerImage).WithName(ContainerName).Build();
+            await _postgreSqlContainer.StartAsync();
+
+            TestUtil.ConnectionString = _postgreSqlContainer.GetConnectionString();
+            CheckConnection();
+        }
+    }
+
+    static void CheckConnection()
     {
         var connString = TestUtil.ConnectionString;
         using var conn = new NpgsqlConnection(connString);
@@ -40,6 +81,15 @@ public class AssemblySetUp
             }
 
             throw;
+        }
+    }
+
+    [OneTimeTearDown]
+    public async Task TearDown()
+    {
+        if (_postgreSqlContainer != null)
+        {
+            await _postgreSqlContainer.DisposeAsync();
         }
     }
 }
