@@ -44,7 +44,7 @@ public class AssemblySetUp
             // Connection to the default connection string failed, use Docker to run PostgreSQL
             _postgreSqlContainer = new PostgreSqlBuilder(ContainerImage).WithName(ContainerName).Build();
             await _postgreSqlContainer.StartAsync();
-            await _postgreSqlContainer.EnableSslAsync();
+            await _postgreSqlContainer.ConfigureAsync();
 
             TestUtil.ConnectionString = _postgreSqlContainer.GetConnectionString();
             CheckConnection();
