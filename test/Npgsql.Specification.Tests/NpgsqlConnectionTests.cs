@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Npgsql.Specification.Tests;
 
-public sealed class NpgsqlConnectionTests(NpgsqlDbFactoryFixture fixture) : ConnectionTestBase<NpgsqlDbFactoryFixture>(fixture)
+public sealed class NpgsqlConnectionTests(NpgsqlDbFactoryFixture.Connection fixture) : ConnectionTestBase<NpgsqlDbFactoryFixture.Connection>(fixture)
 {
     // Skipped tests mark places where Npgsql currently diverges from AdoNet.Specification.Tests expectations.
     // Some divergences may be by design; others may indicate compatibility gaps worth investigating.

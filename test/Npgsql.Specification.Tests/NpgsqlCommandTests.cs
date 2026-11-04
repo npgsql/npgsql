@@ -4,7 +4,7 @@ using Xunit.Sdk;
 
 namespace Npgsql.Specification.Tests;
 
-public sealed class NpgsqlCommandTests(NpgsqlDbFactoryFixture fixture) : CommandTestBase<NpgsqlDbFactoryFixture>(fixture)
+public sealed class NpgsqlCommandTests(NpgsqlDbFactoryFixture.Command fixture) : CommandTestBase<NpgsqlDbFactoryFixture.Command>(fixture)
 {
     public override void ExecuteReader_throws_when_transaction_required()
     {
