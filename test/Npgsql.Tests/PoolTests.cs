@@ -137,6 +137,45 @@ class PoolTests : TestBase
         Assert.That(await conn.ExecuteScalarAsync("SHOW search_path"), Is.EqualTo("public"));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5705")]
+    [Description("Makes sure that resetting a pooled connection keeps the sequence cache, but still resets the rest of the session state")]
+    public async Task ResetOnClose_keeps_sequence_cache([Values] bool withPreparedStatement)
+    {
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        var backendId = conn.Connector!.BackendProcessId;
+        var originalApplicationName = await conn.ExecuteScalarAsync("SHOW application_name");
+        var sequence = TestUtil.GetUniqueIdentifier("reset_sequence");
+        await conn.ExecuteNonQueryAsync($"DROP SEQUENCE IF EXISTS {sequence}; CREATE SEQUENCE {sequence} CACHE 20");
+
+        // Npgsql doesn't track statements prepared with SQL PREPARE, so this one doesn't affect which reset is sent.
+        // A statement prepared by Npgsql does: the reset then leaves prepared statements alone.
+        await conn.ExecuteNonQueryAsync("PREPARE reset_test AS SELECT 1");
+        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        if (withPreparedStatement)
+            await cmd.PrepareAsync();
+
+        var first = (long)(await conn.ExecuteScalarAsync($"SELECT nextval('{sequence}')"))!;
+        await conn.ExecuteNonQueryAsync("SET application_name = 'modified'");
+        await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE reset_temp (id int)");
+        await conn.CloseAsync();
+
+        await conn.OpenAsync();
+        Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(backendId));
+
+        // The next value comes from the session's cache, rather than from a new block of 20
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT nextval('{sequence}')"), Is.EqualTo(first + 1));
+
+        Assert.That(await conn.ExecuteScalarAsync("SHOW application_name"), Is.EqualTo(originalApplicationName));
+        Assert.That(async () => await conn.ExecuteNonQueryAsync("SELECT * FROM reset_temp"),
+            Throws.Exception.TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedTable));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT COUNT(*) FROM pg_prepared_statements"),
+            Is.EqualTo(withPreparedStatement ? 2 : 0));
+
+        await conn.ExecuteNonQueryAsync($"DROP SEQUENCE {sequence}");
+    }
+
     [Test]
     public void ConnectionPruningInterval_zero_throws()
         => Assert.ThrowsAsync<ArgumentException>(async () =>
