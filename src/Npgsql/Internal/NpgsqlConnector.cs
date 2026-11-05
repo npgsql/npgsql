@@ -280,6 +280,10 @@ public sealed partial class NpgsqlConnector
 
     #region Reusable Message Objects
 
+    byte[]? _resetMessage;
+
+    int _resetResponseCount;
+
     byte[]? _resetWithoutDeallocateMessage;
 
     int _resetWithoutDeallocateResponseCount;
@@ -2216,7 +2220,7 @@ public sealed partial class NpgsqlConnector
                 LogMessages.ClosingPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
                 try
                 {
-                    // At this point, there could be some prepended commands (like DISCARD ALL)
+                    // At this point, there could be some prepended commands (like the reset message)
                     // which make no sense to send on connection close
                     // see https://github.com/npgsql/npgsql/issues/3592
                     WriteBuffer.Clear();
@@ -2459,12 +2463,14 @@ public sealed partial class NpgsqlConnector
         _certificates = null;
     }
 
-    [MemberNotNull(nameof(_resetWithoutDeallocateMessage))]
+    [MemberNotNull(nameof(_resetMessage), nameof(_resetWithoutDeallocateMessage))]
     void GenerateResetMessage()
     {
-        // Generate a reset message that resets connection state without using DISCARD ALL.
-        // This is used in two scenarios:
-        // 1. When closing a pooled connection that has prepared statements (DISCARD ALL would deallocate them)
+        // Generate the messages that reset connection state. Instead of DISCARD ALL, we send the commands it's equivalent to,
+        // except DISCARD SEQUENCES: discarding the sequence cache makes sequences with CACHE > 1 behave like CACHE 1
+        // (see https://github.com/npgsql/npgsql/issues/5705).
+        // The message without DEALLOCATE ALL is used in two scenarios:
+        // 1. When closing a pooled connection that has prepared statements (DEALLOCATE ALL would deallocate them)
         // 2. When closing a connection within an enlisted System.Transactions transaction (DISCARD ALL cannot
         //    run inside a transaction block, but its component commands can)
         var sb = new StringBuilder("SET SESSION AUTHORIZATION DEFAULT;RESET ALL;");
@@ -2484,20 +2490,21 @@ public sealed partial class NpgsqlConnector
             sb.Append("SELECT pg_advisory_unlock_all();");
             _resetWithoutDeallocateResponseCount += 2;
         }
-        if (DatabaseInfo.SupportsDiscardSequences)
-        {
-            sb.Append("DISCARD SEQUENCES;");
-            _resetWithoutDeallocateResponseCount++;
-        }
         if (DatabaseInfo.SupportsDiscardTemp)
         {
-            sb.Append("DISCARD TEMP");
+            sb.Append("DISCARD TEMP;");
             _resetWithoutDeallocateResponseCount++;
         }
 
         _resetWithoutDeallocateResponseCount++;  // One ReadyForQuery at the end
 
         _resetWithoutDeallocateMessage = PregeneratedMessages.Generate(WriteBuffer, sb.ToString());
+
+        // DEALLOCATE ALL is available wherever DISCARD is. We leave out DISCARD PLANS: once everything is deallocated it only
+        // forces re-planning (e.g. in PL/pgSQL functions), and some PostgreSQL-compatible databases (e.g. CockroachDB) reject it.
+        sb.Append("DEALLOCATE ALL");
+        _resetResponseCount = _resetWithoutDeallocateResponseCount + 1;
+        _resetMessage = PregeneratedMessages.Generate(WriteBuffer, sb.ToString());
     }
 
     /// <summary>
@@ -2520,7 +2527,7 @@ public sealed partial class NpgsqlConnector
 
             Transaction?.UnbindIfNecessary();
 
-            // Must rollback transaction before sending DISCARD ALL
+            // Must rollback transaction before sending the reset message
             switch (TransactionStatus)
             {
             case TransactionStatus.Idle:
@@ -2545,15 +2552,14 @@ public sealed partial class NpgsqlConnector
             {
                 if (PreparedStatementManager.NumPrepared > 0)
                 {
-                    // We have prepared statements, so we can't reset the connection state with DISCARD ALL
+                    // We have prepared statements, so we reset the connection state without deallocating them
                     // Note: the send buffer has been cleared above, and we assume all this will fit in it.
                     PrependInternalMessage(_resetWithoutDeallocateMessage!, _resetWithoutDeallocateResponseCount);
                 }
                 else
                 {
-                    // There are no prepared statements.
-                    // We simply send DISCARD ALL which is more efficient than sending the above messages separately
-                    PrependInternalMessage(PregeneratedMessages.DiscardAll, 2);
+                    // There are no prepared statements, so we also deallocate any that were created with SQL PREPARE
+                    PrependInternalMessage(_resetMessage!, _resetResponseCount);
                 }
             }
 
