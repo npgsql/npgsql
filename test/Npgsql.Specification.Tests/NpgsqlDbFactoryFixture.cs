@@ -9,7 +9,7 @@ using Xunit.Sdk;
 
 namespace Npgsql.Specification.Tests;
 
-public abstract class NpgsqlDbFactoryFixture(IMessageSink messageSink)
+public class NpgsqlDbFactoryFixture(IMessageSink messageSink)
     : DbContainerFixture<PostgreSqlBuilder, PostgreSqlContainer>(messageSink), IDbFactoryFixture
 {
     readonly IMessageSink _messageSink = messageSink;
@@ -25,9 +25,7 @@ public abstract class NpgsqlDbFactoryFixture(IMessageSink messageSink)
 
     public override string ConnectionString => _connectionString;
 
-    protected override PostgreSqlBuilder Configure() => new PostgreSqlBuilder("postgres:18").WithName(ContainerName);
-
-    protected abstract string ContainerName { get; }
+    protected override PostgreSqlBuilder Configure() => new PostgreSqlBuilder("postgres:18");
 
     protected override async Task InitializeAsync()
     {
@@ -50,20 +48,5 @@ public abstract class NpgsqlDbFactoryFixture(IMessageSink messageSink)
         {
             await base.DisposeAsyncCore();
         }
-    }
-
-    public class Command(IMessageSink messageSink) : NpgsqlDbFactoryFixture(messageSink)
-    {
-        protected override string ContainerName => "Npgsql.Specification.Tests.NpgsqlCommandTests";
-    }
-
-    public class Connection(IMessageSink messageSink) : NpgsqlDbFactoryFixture(messageSink)
-    {
-        protected override string ContainerName => "Npgsql.Specification.Tests.NpgsqlConnectionTests";
-    }
-
-    public class DataReader(IMessageSink messageSink) : NpgsqlDbFactoryFixture(messageSink)
-    {
-        protected override string ContainerName => "Npgsql.Specification.Tests.NpgsqlDataReaderTests";
     }
 }

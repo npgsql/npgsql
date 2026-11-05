@@ -9,7 +9,7 @@ using Xunit.Abstractions;
 
 namespace Npgsql.Specification.Tests;
 
-public class NpgsqlSelectValueFixture(IMessageSink messageSink) : NpgsqlDbFactoryFixture.DataReader(messageSink), ISelectValueFixture, IDeleteFixture
+public class NpgsqlSelectValueFixture(IMessageSink messageSink) : NpgsqlDbFactoryFixture(messageSink), ISelectValueFixture, IDeleteFixture
 {
     protected override async Task InitializeAsync()
     {
