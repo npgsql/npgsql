@@ -17,7 +17,7 @@ public class AssemblySetUp
     {
         get
         {
-            // Form native arm64 support, use imresamu/postgis, see https://github.com/postgis/docker-postgis/issues/216#issuecomment-2936824962
+            // For native arm64 support, use imresamu/postgis, see https://github.com/postgis/docker-postgis/issues/216#issuecomment-2936824962
             // For example, imresamu/postgis:18-3.6.1-alpine3.23
             var imageName = Environment.GetEnvironmentVariable("NPGSQL_TEST_DOCKER_IMAGE");
             if (imageName != null)
