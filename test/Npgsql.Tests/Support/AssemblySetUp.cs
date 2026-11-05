@@ -30,8 +30,6 @@ public class AssemblySetUp
         }
     }
 
-    protected virtual string? ContainerName => typeof(AssemblySetUp).Assembly.GetName().Name;
-
     [OneTimeSetUp]
     public async Task Setup()
     {
@@ -42,7 +40,7 @@ public class AssemblySetUp
         catch when (Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") == null)
         {
             // Connection to the default connection string failed, use Docker to run PostgreSQL
-            _postgreSqlContainer = new PostgreSqlBuilder(ContainerImage).WithName(ContainerName).Build();
+            _postgreSqlContainer = new PostgreSqlBuilder(ContainerImage).Build();
             await _postgreSqlContainer.StartAsync();
             await _postgreSqlContainer.ConfigureAsync();
 
