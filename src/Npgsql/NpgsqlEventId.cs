@@ -17,8 +17,9 @@ public static class NpgsqlEventId
     public const int ClosingPhysicalConnection = 1112;
     public const int ClosedPhysicalConnection  = 1113;
 
-    public const int StartingWait   = 1300;
-    public const int ReceivedNotice = 1301;
+    public const int StartingWait            = 1300;
+    public const int ReceivedNotice          = 1301;
+    public const int ReceivedParameterStatus = 1302;
 
     public const int ConnectionExceededMaximumLifetime = 1500;
 
