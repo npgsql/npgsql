@@ -75,6 +75,12 @@ static partial class LogMessages
     internal static partial void ReceivedNotice(ILogger logger, string NoticeText, int ConnectorId);
 
     [LoggerMessage(
+        EventId = NpgsqlEventId.ReceivedParameterStatus,
+        Level = LogLevel.Trace,
+        Message = "PostgreSQL connection parameter change, {ParameterName}={ParameterValue}")]
+    internal static partial void ReceivedParameterStatus(ILogger logger, string ParameterName, string ParameterValue, int ConnectorId);
+
+    [LoggerMessage(
         EventId = NpgsqlEventId.ConnectionExceededMaximumLifetime,
         Level = LogLevel.Debug,
         Message = "Connection has exceeded its maximum lifetime ('{ConnectionMaximumLifeTime}') and will be closed.")]
