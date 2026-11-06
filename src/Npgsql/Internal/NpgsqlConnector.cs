@@ -2629,14 +2629,18 @@ public sealed partial class NpgsqlConnector
 
     #region Locking
 
-    internal UserAction StartUserAction(CancellationToken cancellationToken = default, bool attemptPgCancellation = true)
-        => StartUserAction(ConnectorState.Executing, command: null, cancellationToken, attemptPgCancellation);
+    internal UserAction StartUserAction(
+        CancellationToken cancellationToken = default,
+        bool attemptPgCancellation = true,
+        TimeSpan? timeout = null)
+        => StartUserAction(ConnectorState.Executing, command: null, cancellationToken, attemptPgCancellation, timeout);
 
     internal UserAction StartUserAction(
         ConnectorState newState,
         CancellationToken cancellationToken = default,
-        bool attemptPgCancellation = true)
-        => StartUserAction(newState, command: null, cancellationToken, attemptPgCancellation);
+        bool attemptPgCancellation = true,
+        TimeSpan? timeout = null)
+        => StartUserAction(newState, command: null, cancellationToken, attemptPgCancellation, timeout);
 
     /// <summary>
     /// Starts a user action. This makes sure that another action isn't already in progress, handles synchronization with keepalive,
@@ -2657,11 +2661,17 @@ public sealed partial class NpgsqlConnector
     /// elapsed. If <see langword="false" />, PostgreSQL cancellation will be skipped and client-socket cancellation will occur
     /// immediately.
     /// </param>
+    /// <param name="timeout">
+    /// The timeout of the user action's reads and writes, for user actions with a timeout setting of their own (replication
+    /// connections). It has to be positive and fit into an int of milliseconds, or be infinite. Without it, the command's
+    /// <see cref="NpgsqlCommand.CommandTimeout"/> applies, or the connection string's if there is no command.
+    /// </param>
     internal UserAction StartUserAction(
         ConnectorState newState,
         NpgsqlCommand? command,
         CancellationToken cancellationToken = default,
-        bool attemptPgCancellation = true)
+        bool attemptPgCancellation = true,
+        TimeSpan? timeout = null)
     {
         // If keepalive is enabled, we must protect state transitions with a lock.
         // This will make the keepalive abort safely if a user query is in progress, and make
@@ -2669,11 +2679,11 @@ public sealed partial class NpgsqlConnector
         // If keepalive isn't enabled, we don't use the lock and rely only on the connector's
         // state (updated via Interlocked.Exchange) to detect concurrent use, on a best-effort basis.
         return _isKeepAliveEnabled
-            ? DoStartUserActionWithKeepAlive(newState, command, cancellationToken, attemptPgCancellation)
-            : DoStartUserAction(newState, command, cancellationToken, attemptPgCancellation);
+            ? DoStartUserActionWithKeepAlive(newState, command, cancellationToken, attemptPgCancellation, timeout)
+            : DoStartUserAction(newState, command, cancellationToken, attemptPgCancellation, timeout);
 
         UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommand? command,
-            CancellationToken cancellationToken, bool attemptPgCancellation)
+            CancellationToken cancellationToken, bool attemptPgCancellation, TimeSpan? timeout)
         {
             switch (State)
             {
@@ -2714,13 +2724,14 @@ public sealed partial class NpgsqlConnector
             // For example, we might have successfully cancelled the previous query (so the connection is not broken)
             // But the next time, we call the Prepare, which doesn't set its own timeout
             var timeoutSeconds = command?.CommandTimeout ?? Settings.CommandTimeout;
-            ReadBuffer.Timeout = WriteBuffer.Timeout = timeoutSeconds > 0 ? TimeSpan.FromSeconds(timeoutSeconds) : Timeout.InfiniteTimeSpan;
+            ReadBuffer.Timeout = WriteBuffer.Timeout =
+                timeout ?? (timeoutSeconds > 0 ? TimeSpan.FromSeconds(timeoutSeconds) : Timeout.InfiniteTimeSpan);
 
             return new UserAction(this);
         }
 
         UserAction DoStartUserActionWithKeepAlive(ConnectorState newState, NpgsqlCommand? command,
-            CancellationToken cancellationToken, bool attemptPgCancellation)
+            CancellationToken cancellationToken, bool attemptPgCancellation, TimeSpan? timeout)
         {
             lock (SyncObj)
             {
@@ -2738,7 +2749,7 @@ public sealed partial class NpgsqlConnector
                 try
                 {
                     // Check that the connector is ready.
-                    return DoStartUserAction(newState, command, cancellationToken, attemptPgCancellation);
+                    return DoStartUserAction(newState, command, cancellationToken, attemptPgCancellation, timeout);
                 }
                 catch (Exception ex) when (ex is not NpgsqlOperationInProgressException)
                 {
