@@ -465,7 +465,7 @@ AND statement NOT LIKE '%pg_type%'
         Assert.That(() => conn.ExecuteNonQuery("SELECTBAD"), Throws.Exception.TypeOf<PostgresException>()
             .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
 
-        // Since PreparedStatementManager.NumPrepared is 0, Npgsql will now send DISCARD ALL, but our internal state thinks
+        // Since PreparedStatementManager.NumPrepared is 0, Npgsql will now send DEALLOCATE ALL, but our internal state thinks
         // SELECT 2 is still prepared.
         conn.Close();
         conn.Open();
