@@ -162,7 +162,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                     // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                     // TODO: As an optimization, we can still attempt to send a cancellation request, but after
                     // that immediately break the connection
-                    if (connector is { AttemptPostgresCancellation: true, PostgresCancellationPerformed: false }
+                    if (connector is { ShouldAttemptPostgresCancellation: true }
                         && connector.PerformPostgresCancellation())
                     {
                         // Note that if the cancellation timeout is negative, we flow down and break the
@@ -220,7 +220,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                     // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                     // TODO: As an optimization, we can still attempt to send a cancellation request, but after
                     // that immediately break the connection
-                    if (connector is { AttemptPostgresCancellation: true, PostgresCancellationPerformed: false } &&
+                    if (connector is { ShouldAttemptPostgresCancellation: true } &&
                         connector.PerformPostgresCancellation())
                     {
                         // Note that if the cancellation timeout is negative, we flow down and break the
@@ -346,7 +346,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
                         // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                         // TODO: As an optimization, we can still attempt to send a cancellation request, but after
                         // that immediately break the connection
-                        if (connector is { AttemptPostgresCancellation: true, PostgresCancellationPerformed: false } &&
+                        if (connector is { ShouldAttemptPostgresCancellation: true } &&
                             connector.PerformPostgresCancellation())
                         {
                             // Note that if the cancellation timeout is negative, we flow down and break the
