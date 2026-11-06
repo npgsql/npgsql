@@ -190,7 +190,7 @@ public sealed partial class NpgsqlConnector
     /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
     /// command will accidentally cancel a later one, see #615.
     /// </summary>
-    object CancelLock { get; } = new();
+    Lock CancelLock { get; } = new();
 
     /// <summary>
     /// A lock that's taken to make sure no other concurrent operation is running.
@@ -198,12 +198,12 @@ public sealed partial class NpgsqlConnector
     /// Anyone else should immediately check the state and exit
     /// if the connector is closed.
     /// </summary>
-    object SyncObj { get; } = new();
+    Lock SyncObj { get; } = new();
 
     /// <summary>
     /// A lock that's used to wait for the Cleanup to complete while breaking the connection.
     /// </summary>
-    object CleanupLock { get; } = new();
+    Lock CleanupLock { get; } = new();
 
     readonly bool _isKeepAliveEnabled;
     readonly Timer? _keepAliveTimer;
@@ -1918,7 +1918,7 @@ public sealed partial class NpgsqlConnector
                 return;
             // The connector is still alive, take the CancelLock before exiting SingleUseLock.
             // If a break will happen after, it's going to wait for the cancellation to complete.
-            Monitor.Enter(CancelLock);
+            CancelLock.Enter();
         }
 
         try
@@ -1939,7 +1939,7 @@ public sealed partial class NpgsqlConnector
         }
         finally
         {
-            Monitor.Exit(CancelLock);
+            CancelLock.Exit();
         }
     }
 
@@ -1954,7 +1954,7 @@ public sealed partial class NpgsqlConnector
                 return;
             // The connector is still alive, take the CancelLock before exiting SingleUseLock.
             // If a break will happen after, it's going to wait for the cancellation to complete.
-            Monitor.Enter(CancelLock);
+            CancelLock.Enter();
         }
 
         try
@@ -1963,7 +1963,7 @@ public sealed partial class NpgsqlConnector
         }
         finally
         {
-            Monitor.Exit(CancelLock);
+            CancelLock.Exit();
         }
     }
 
@@ -2265,14 +2265,14 @@ public sealed partial class NpgsqlConnector
     {
         Debug.Assert(!IsClosed);
 
-        Monitor.Enter(SyncObj);
+        SyncObj.Enter();
 
         var state = State;
         if (state == ConnectorState.Broken)
         {
             // We're already broken.
             // Exit SingleUseLock to unblock other threads (like cancellation).
-            Monitor.Exit(SyncObj);
+            SyncObj.Exit();
             // Wait for the break to complete before going forward.
             lock (CleanupLock) { }
             return reason;
@@ -2287,12 +2287,12 @@ public sealed partial class NpgsqlConnector
             Interlocked.CompareExchange(ref _breakReason, reason, null);
             State = ConnectorState.Broken;
             // Take the CleanupLock while in SingleUseLock to make sure concurrent Break doesn't take it first.
-            Monitor.Enter(CleanupLock);
+            CleanupLock.Enter();
         }
         finally
         {
             // Unblock other threads (like cancellation) to proceed and exit gracefully.
-            Monitor.Exit(SyncObj);
+            SyncObj.Exit();
         }
 
         try
@@ -2343,7 +2343,7 @@ public sealed partial class NpgsqlConnector
         }
         finally
         {
-            Monitor.Exit(CleanupLock);
+            CleanupLock.Exit();
         }
     }
 
@@ -2801,7 +2801,7 @@ public sealed partial class NpgsqlConnector
     void PerformKeepAlive(object? state)
     {
         Debug.Assert(_isKeepAliveEnabled);
-        if (!Monitor.TryEnter(SyncObj))
+        if (!SyncObj.TryEnter())
             return;
 
         try
@@ -2833,7 +2833,7 @@ public sealed partial class NpgsqlConnector
         }
         finally
         {
-            Monitor.Exit(SyncObj);
+            SyncObj.Exit();
         }
     }
 
