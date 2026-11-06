@@ -55,7 +55,7 @@ public class PgReader
     /// (text encoding today; future ParameterStatus-driven values). Converters needing encoding-aware
     /// or session-relative state read it here at runtime rather than capturing at construction.
     /// </summary>
-    public PgConversionContext ConversionContext => _buffer.Connector?.SerializerOptions.ConversionContext ?? PgConversionContext.Empty;
+    public PgConversionContext ConversionContext => _buffer.Connector?.ConversionContext ?? _buffer.FallbackConversionContext;
 
     internal bool Initialized => _fieldStartPos is not UninitializedSentinel;
     int FieldOffset => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
