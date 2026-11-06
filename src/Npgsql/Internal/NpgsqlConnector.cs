@@ -556,8 +556,8 @@ public sealed partial class NpgsqlConnector
                 //
                 // Any error after trying with GSS encryption
                 (gssEncMode == GssEncryptionMode.Prefer ||
-                // Auth error with/without SSL
-                (sslMode == SslMode.Prefer && conn.IsSslEncrypted || sslMode == SslMode.Allow && !conn.IsSslEncrypted))
+                // Any error after trying with/without SSL but we're allowed to retry
+                sslMode == SslMode.Prefer || sslMode == SslMode.Allow)
             {
                 if (gssEncMode == GssEncryptionMode.Prefer)
                 {
@@ -970,6 +970,10 @@ public sealed partial class NpgsqlConnector
             var response = (char)ReadBuffer.ReadByte();
             timeout.CheckAndApply(this);
 
+            // TODO: Server can respond with an error here
+            // but according to documentation we shouldn't display this error to the user/application
+            // since the server has not been authenticated (CVE-2024-10977)
+            // See https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-SSL
             switch (response)
             {
             default:
