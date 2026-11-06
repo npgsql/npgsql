@@ -25,7 +25,7 @@ public static class TestUtil
     /// The connection string that will be used when opening the connection to the tests database.
     /// May be overridden in fixtures, e.g. to set special connection parameters
     /// </summary>
-    public static string ConnectionString { get; }
+    public static string ConnectionString { get; set; }
         = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
 
     public static bool IsOnBuildServer =>
