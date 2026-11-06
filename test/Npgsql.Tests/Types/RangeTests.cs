@@ -285,6 +285,58 @@ class RangeTests : TestBase
         Assert.That(result, Is.EqualTo(input));
     }
 
+    [Test]
+    public void ToString_and_Parse_use_invariant_culture_for_decimal_bounds()
+    {
+        using var _ = SetCurrentCulture(new CultureInfo("de-DE"));
+        var range = new NpgsqlRange<decimal>(1.5m, true, 2.25m, false);
+
+        Assert.That(range.ToString(), Is.EqualTo("[1.5,2.25)"));
+        Assert.That(NpgsqlRange<decimal>.Parse("[1.5,2.25)"), Is.EqualTo(range));
+    }
+
+    [Test]
+    public void ToString_and_Parse_use_ISO8601_for_DateTime_bounds()
+    {
+        using var _ = SetCurrentCulture(new CultureInfo("de-DE"));
+        var range = new NpgsqlRange<DateTime>(new DateTime(2018, 5, 1), true, new DateTime(2018, 12, 3, 4, 5, 6), false);
+
+        Assert.That(range.ToString(), Is.EqualTo("[2018-05-01T00:00:00.0000000,2018-12-03T04:05:06.0000000)"));
+        Assert.That(NpgsqlRange<DateTime>.Parse(range.ToString()), Is.EqualTo(range));
+    }
+
+    [Test]
+    public void ToString_and_Parse_use_ISO8601_for_DateTimeOffset_bounds()
+    {
+        using var _ = SetCurrentCulture(new CultureInfo("de-DE"));
+        var range = new NpgsqlRange<DateTimeOffset>(
+            new DateTimeOffset(2018, 5, 1, 10, 30, 0, TimeSpan.FromHours(2)), true,
+            new DateTimeOffset(2018, 12, 3, 4, 5, 6, TimeSpan.Zero), false);
+
+        Assert.That(range.ToString(), Is.EqualTo("[2018-05-01T10:30:00.0000000+02:00,2018-12-03T04:05:06.0000000+00:00)"));
+        Assert.That(NpgsqlRange<DateTimeOffset>.Parse(range.ToString()), Is.EqualTo(range));
+    }
+
+    [Test]
+    public void ToString_and_Parse_use_ISO8601_for_DateOnly_bounds()
+    {
+        using var _ = SetCurrentCulture(new CultureInfo("de-DE"));
+        var range = new NpgsqlRange<DateOnly>(new DateOnly(2018, 5, 1), true, new DateOnly(2018, 12, 3), false);
+
+        Assert.That(range.ToString(), Is.EqualTo("[2018-05-01,2018-12-03)"));
+        Assert.That(NpgsqlRange<DateOnly>.Parse(range.ToString()), Is.EqualTo(range));
+    }
+
+    [Test]
+    public void ToString_and_Parse_use_ISO8601_for_TimeOnly_bounds()
+    {
+        using var _ = SetCurrentCulture(new CultureInfo("de-DE"));
+        var range = new NpgsqlRange<TimeOnly>(new TimeOnly(1, 2, 3), true, new TimeOnly(13, 14, 15, 160), false);
+
+        Assert.That(range.ToString(), Is.EqualTo("[01:02:03.0000000,13:14:15.1600000)"));
+        Assert.That(NpgsqlRange<TimeOnly>.Parse(range.ToString()), Is.EqualTo(range));
+    }
+
     [Theory]
     [TestCase("empty")]
     [TestCase("EMPTY")]
