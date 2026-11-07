@@ -23,6 +23,7 @@ namespace Npgsql.Tests.Replication;
 [TestFixture(PgOutputProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 [TestFixture(PgOutputProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 [TestFixture(PgOutputProtocolVersion.V4, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+[TestFixture(PgOutputProtocolVersion.V4, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 [TestFixture(PgOutputProtocolVersion.V4, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.ParallelStreamingTransactionMode)]
 [NonParallelizable] // These tests aren't designed to be parallelizable
 public class PgOutputReplicationTests(
@@ -1119,16 +1120,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
     [Test]
     public Task TwoPhase([Values]bool commit)
     {
-        // Streaming of prepared transaction is only supported for
-        // logical streaming replication protocol >= 3
-        if (protocolVersion < PgOutputProtocolVersion.V3)
-            return Task.CompletedTask;
-
+        // The two_phase option requires logical streaming replication protocol >= 3, but a slot created with two-phase
+        // decoding sends prepared transactions with any protocol version
         return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 var gid = Guid.NewGuid().ToString();
                 await using var c = await OpenConnectionAsync();
+                TestUtil.MinimumPgVersion(c, "15.0", "Logical decoding of prepared transactions via replication slots was introduced in PostgreSQL 15");
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (a int primary key, b varchar);
                                                 CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
                 await using var rc = await OpenReplicationConnectionAsync();

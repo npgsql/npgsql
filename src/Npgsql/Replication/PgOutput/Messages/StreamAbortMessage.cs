@@ -4,7 +4,8 @@ using System;
 namespace Npgsql.Replication.PgOutput.Messages;
 
 /// <summary>
-/// Logical Replication Protocol stream abort message for Logical Streaming Replication Protocol versions 2-3
+/// Logical Replication Protocol stream abort message. With <see cref="PgOutputStreamingMode.Parallel"/> streaming, it is a
+/// <see cref="ParallelStreamAbortMessage"/>, which also has the abort LSN and timestamp.
 /// </summary>
 public class StreamAbortMessage : TransactionControlMessage
 {
@@ -25,7 +26,8 @@ public class StreamAbortMessage : TransactionControlMessage
 }
 
 /// <summary>
-/// Logical Replication Protocol stream abort message for Logical Streaming Replication Protocol versions 4+
+/// Logical Replication Protocol stream abort message with the abort LSN and timestamp, which the server sends when streaming is
+/// <see cref="PgOutputStreamingMode.Parallel"/>.
 /// </summary>
 public sealed class ParallelStreamAbortMessage : StreamAbortMessage
 {
