@@ -223,18 +223,27 @@ public class PgOutputMockTests : TestBase
             });
 
     [Test]
-    public async Task Unknown_column_kind_breaks_the_connection()
+    public async Task Unknown_column_kind_breaks_the_connection([Values] bool moreColumns)
         => await RunReplication(
             new PgOutputReplicationOptions(["pub"], PgOutputProtocolVersion.V1),
             [
-                Relation(1, "public", "t", ("id", ReplicationMock.Int4Oid)),
-                new PgOutputMessageBuilder('I').UInt32(1).Byte((byte)'N').Int16(1).Byte((byte)'?').ToArray()
+                moreColumns
+                    ? Relation(1, "public", "t", ("a", ReplicationMock.Int4Oid), ("b", ReplicationMock.Int4Oid), ("c", ReplicationMock.Int4Oid))
+                    : Relation(1, "public", "t", ("id", ReplicationMock.Int4Oid)),
+                // With more columns: a NULL, the unknown kind, and nothing for the third column
+                moreColumns
+                    ? new PgOutputMessageBuilder('I').UInt32(1).Byte((byte)'N').Int16(3).Byte((byte)'n').Byte((byte)'?').ToArray()
+                    : new PgOutputMessageBuilder('I').UInt32(1).Byte((byte)'N').Int16(1).Byte((byte)'?').ToArray()
             ],
             async (messages, connection) =>
             {
                 await Next<RelationMessage>(messages);
-                var columns = (await Next<InsertMessage>(messages)).NewRow.GetAsyncEnumerator();
-                Assert.That(async () => await columns.MoveNextAsync(), Throws.InstanceOf<ArgumentOutOfRangeException>());
+                var row = (await Next<InsertMessage>(messages)).NewRow;
+                // await foreach disposes the row after the error, which must neither read on nor replace the error
+                Assert.That(async () =>
+                {
+                    await foreach (var _ in row) { }
+                }, Throws.InstanceOf<ArgumentOutOfRangeException>());
                 Assert.That(connection.Connector.IsBroken, Is.True);
             });
 

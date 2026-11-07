@@ -66,6 +66,8 @@ sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
                 len = _readBuffer.ReadInt32();
                 break;
             default:
+                // The row ends here, so that disposing it (e.g. at the end of await foreach) doesn't read on
+                _tupleEnumerable.State = RowState.Consumed;
                 throw _readBuffer.Connector.Break(new ArgumentOutOfRangeException());
             }
 
