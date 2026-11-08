@@ -521,12 +521,13 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             // If the connection breaks while we read to the end below, the connector mustn't dispose this exporter again
             _connector.CurrentCopyOperation = null;
 
-            if (_state == ExporterState.Consumed)
+            // Also after an error, like the COPY TO activity, which ends on every path
+            if (_state is ExporterState.Consumed or ExporterState.Uninitialized or ExporterState.Failed)
             {
                 LogMessages.BinaryCopyOperationCompleted(_copyLogger, _rowsExported, _connector.Id);
                 TraceExportStop();
             }
-            else if (_state == ExporterState.Ready && !_connector.IsBroken)
+            else if (!_connector.IsBroken)
             {
                 try
                 {
