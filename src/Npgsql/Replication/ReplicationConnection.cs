@@ -479,6 +479,23 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             columnStream = new NpgsqlReadBuffer.ColumnStream(connector);
 
+            // In physical replication, the WAL end of an XLogData message is the server's own WAL position, not the end of the
+            // WAL we got, so we count the data of a message as received as it arrives: what of it is in the buffer when the
+            // consumer gets the message, then what arrives while the consumer reads it, like walreceiver reports the WAL it
+            // wrote as it receives it
+            ulong payloadStartLsn = 0;
+            long payloadStart = 0;
+            var payloadLength = 0;
+            Action? countArrivedPayload = ReplicationMode == ReplicationMode.Physical
+                ? () =>
+                {
+                    var arrivedLsn = payloadStartLsn
+                        + (ulong)Math.Min(payloadLength, buf.CumulativeReadPosition + buf.ReadBytesLeft - payloadStart);
+                    if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < arrivedLsn)
+                        Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)arrivedLsn));
+                }
+                : null;
+
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
 
             using (ExecutionContext.SuppressFlow()) // Don't capture the current ExecutionContext and its AsyncLocals onto the timer causing them to live forever
@@ -533,17 +550,15 @@ public abstract class ReplicationConnection : IAsyncDisposable
                         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)logicalReceivedLsn));
 
                     columnStream.Init(dataLen, canSeek: false, commandScoped: false);
+                    columnStream.AfterRead = countArrivedPayload;
 
                     _cachedXLogDataMessage.Populate(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn),
                         sendTime, columnStream);
+                    payloadStartLsn = startLsn;
+                    payloadStart = buf.CumulativeReadPosition;
+                    payloadLength = dataLen;
+                    countArrivedPayload?.Invoke();
                     yield return _cachedXLogDataMessage;
-
-                    // In physical replication, the WAL end is the server's own WAL position, not the end of the WAL we got, so we
-                    // report the end of the data as received once our consumer is done with it, like walreceiver reports what it
-                    // wrote
-                    var physicalReceivedLsn = startLsn + (ulong)dataLen;
-                    if (ReplicationMode == ReplicationMode.Physical && unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < physicalReceivedLsn)
-                        Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)physicalReceivedLsn));
 
                     // Our consumer may not have read the stream to the end, but it might as well have been us
                     // ourselves bypassing the stream and reading directly from the buffer in StartReplication().
@@ -551,6 +566,11 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     // position no longer relates to the buffer's.
                     if (!bypassingStream)
                         await columnStream.DisposeAsync().ConfigureAwait(false);
+
+                    // Skipping the rest of the data received it, so all of it counts as received now, and not before
+                    var physicalReceivedLsn = startLsn + (ulong)dataLen;
+                    if (ReplicationMode == ReplicationMode.Physical && unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < physicalReceivedLsn)
+                        Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)physicalReceivedLsn));
 
                     continue;
                 }
@@ -576,7 +596,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                         await buf.Skip(async: true, messageLength - (1 + 17)).ConfigureAwait(false);
 
                     // In physical replication, the WAL end is the end of the WAL the server sent, i.e. WAL we already got, which we
-                    // report as received once our consumer is done with it
+                    // count as received as it arrives
                     if (ReplicationMode != ReplicationMode.Physical && unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < end)
                         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)end));
 
