@@ -38,9 +38,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
     IAsyncEnumerator<XLogDataMessage>? _currentEnumerator;
     CancellationTokenSource? _replicationCancellationTokenSource;
-    // Protected by _feedbackSemaphore. The protocol doesn't allow us to send status updates (CopyData) after our CopyDone, and
-    // once the stream ended, they could interleave with the next command.
-    bool _statusUpdatesStopped;
+    // Protected by _feedbackSemaphore. Status updates (CopyData) may only go out while the stream is in copy mode: before the
+    // server's CopyBothResponse they could interleave with START_REPLICATION, the protocol doesn't allow them after our CopyDone,
+    // and once the stream ended, they could interleave with the next command.
+    bool _statusUpdatesStopped = true;
     bool _pgCancellationSupported;
     bool _isDisposed;
 
@@ -469,7 +470,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
         // What we received on a previous stream doesn't count for this one, which may e.g. continue on another timeline at a
         // lower position
         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)(ulong)walLocation));
-        _statusUpdatesStopped = false;
 
         NpgsqlReadBuffer.ColumnStream? columnStream = null;
         // Whether we are suspended in copy mode, with the consumer holding a message, which is when the consumer can dispose us
@@ -497,6 +497,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
             default:
                 throw connector.UnexpectedMessageReceived(msg.Code);
             }
+
+            // The server is in copy mode now, so status updates may go out, including one that waited while a previous stream
+            // ended
+            await _feedbackSemaphore.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+            _statusUpdatesStopped = false;
+            _feedbackSemaphore.Release();
 
             var buf = connector.ReadBuffer;
 
@@ -686,7 +692,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         try
         {
-            // Skip whatever the consumer didn't read of the message it held
+            // Skip whatever the consumer didn't read of the message it held. The server sent it promptly, so we don't wait for it
+            // forever, even if WalReceiverTimeout is infinite.
+            SetTimeouts(PromptReadTimeout, CommandTimeout);
             if (bypassingStream)
                 await SkipToPayloadEnd(connector, payloadEnd).ConfigureAwait(false);
             else
@@ -771,9 +779,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
     async Task ReadStartReplicationEnd(NpgsqlConnector connector, IBackendMessage? message)
     {
         // The rest of the command follows promptly, so we don't wait for it forever, even if WalReceiverTimeout is infinite
-        SetTimeouts(
-            _walReceiverTimeout > TimeSpan.Zero && _walReceiverTimeout != Timeout.InfiniteTimeSpan ? _walReceiverTimeout : TimeSpan.FromSeconds(30),
-            CommandTimeout);
+        SetTimeouts(PromptReadTimeout, CommandTimeout);
 
         while (true)
         {
@@ -1101,6 +1107,11 @@ public abstract class ReplicationConnection : IAsyncDisposable
         Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true).ConfigureAwait(false), Connector);
         return results;
     }
+
+    // How long we wait for what the server sends promptly, e.g. the rest of a message or of the command when we stop streaming:
+    // WalReceiverTimeout, but not forever even if that's infinite
+    TimeSpan PromptReadTimeout
+        => _walReceiverTimeout > TimeSpan.Zero && _walReceiverTimeout != Timeout.InfiniteTimeSpan ? _walReceiverTimeout : TimeSpan.FromSeconds(30);
 
     void SetTimeouts(TimeSpan readTimeout, TimeSpan writeTimeout)
     {

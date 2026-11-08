@@ -242,6 +242,108 @@ public class ReplicationStopMockTests : TestBase
         }
     }
 
+    [Test, Description("A status update while a stream starts, e.g. one that waited while the previous stream ended, waits for copy mode")]
+    public async Task Status_update_while_a_stream_starts([Values] bool afterAnotherStream)
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        await using var _ = rc;
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        if (afterAnotherStream)
+        {
+            // A stream that the consumer stops early, which ends copy mode
+            var consumer = Task.Run(async () =>
+            {
+                await foreach (var _ in rc.StartReplication(StartLsn, cts.Token))
+                    break;
+            });
+            await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+            await server.WriteCopyBothResponse().WriteXLogData(StartLsn, StartLsn, "abc"u8).FlushAsync();
+            await server.ExpectStandbyStatusUpdate().WaitAsync(ReplicationMock.Timeout);
+            await server.ExpectCopyDone().WaitAsync(ReplicationMock.Timeout);
+            await server
+                .WriteCopyDone()
+                .WriteCommandComplete("START_STREAMING")
+                .WriteCommandComplete("START_REPLICATION")
+                .WriteReadyForQuery()
+                .FlushAsync();
+            await consumer.WaitAsync(ReplicationMock.Timeout);
+        }
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        // The server isn't in copy mode yet, so this mustn't write anything, which could also interleave with START_REPLICATION
+        rc.LastAppliedLsn = new NpgsqlLogSequenceNumber(0x1000001);
+        await rc.SendStatusUpdate(cts.Token);
+
+        await server.WriteCopyBothResponse().WriteXLogData(StartLsn, StartLsn, "abc"u8).FlushAsync();
+        Assert.That(await moveNext, Is.True);
+        rc.LastAppliedLsn = new NpgsqlLogSequenceNumber(0x1000003);
+        await rc.SendStatusUpdate(cts.Token);
+        // The first status update the server gets is the one sent in copy mode
+        var statusUpdate = await server.ExpectStandbyStatusUpdate().WaitAsync(ReplicationMock.Timeout);
+        Assert.That(statusUpdate.ApplyLsn, Is.EqualTo(new NpgsqlLogSequenceNumber(0x1000003)));
+
+        var dispose = enumerator.DisposeAsync().AsTask();
+        await server.ExpectStandbyStatusUpdate().WaitAsync(ReplicationMock.Timeout);
+        await server.ExpectCopyDone().WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyDone()
+            .WriteCommandComplete("START_STREAMING")
+            .WriteCommandComplete("START_REPLICATION")
+            .WriteReadyForQuery()
+            .FlushAsync();
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        await AssertConnectionIsUsable(rc, server);
+    }
+
+    [Test, Description("Stopping while the consumer holds a message whose data hasn't all arrived waits for the rest with a bound, also when WalReceiverTimeout is infinite")]
+    public async Task Stopping_waits_for_the_rest_of_a_held_message_with_a_bound()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        await using var _ = rc;
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+        Assert.That(rc.WalReceiverTimeout, Is.EqualTo(Timeout.InfiniteTimeSpan));
+
+        var consumer = Task.Run(async () =>
+        {
+            await foreach (var _ in rc.StartReplication(StartLsn, cts.Token))
+                break;
+        });
+        await server.ExpectMessage(FrontendMessageCode.Query).WaitAsync(ReplicationMock.Timeout);
+        // Only the first part of the message's data arrives before the consumer stops
+        server.WriteCopyBothResponse();
+        server.WriteXLogDataHeader(StartLsn, StartLsn, 20000, null);
+        server.WriteBuffer.WriteBytes(new byte[1000]);
+        await server.FlushAsync();
+
+        // Stopping skips the rest of the data, and waits for it with the timeout the rest of stopping has, not forever
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (rc.Connector.ReadBuffer.Timeout == Timeout.InfiniteTimeSpan && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+        Assert.That(rc.Connector.ReadBuffer.Timeout, Is.EqualTo(TimeSpan.FromSeconds(30)));
+
+        // The rest arrives, and stopping goes on as usual
+        for (var written = 1000; written < 20000; written += 4000)
+        {
+            server.WriteBuffer.WriteBytes(new byte[Math.Min(4000, 20000 - written)]);
+            await server.FlushAsync();
+        }
+        await server.ExpectStandbyStatusUpdate().WaitAsync(ReplicationMock.Timeout);
+        await server.ExpectCopyDone().WaitAsync(ReplicationMock.Timeout);
+        await server
+            .WriteCopyDone()
+            .WriteCommandComplete("START_STREAMING")
+            .WriteCommandComplete("START_REPLICATION")
+            .WriteReadyForQuery()
+            .FlushAsync();
+        await consumer.WaitAsync(ReplicationMock.Timeout);
+        await AssertConnectionIsUsable(rc, server);
+    }
+
     static async Task AssertConnectionIsUsable(ReplicationConnection rc, PgServerMock server)
     {
         var identifyTask = rc.IdentifySystem();
