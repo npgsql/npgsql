@@ -262,6 +262,8 @@ public class ReplicationStopMockTests : TestBase
             .WriteXLogData(StartLsn, StartLsn, "abc"u8)
             .FlushAsync();
         Assert.That(await moveNext, Is.True);
+        // The data has to be in the buffer when the connection breaks, but handing out the message only made sure of its header
+        await rc.Connector.ReadBuffer.EnsureAsync(3);
         var bufferSize = rc.Connector.ReadBuffer.Size;
 
         // The connection breaks while the consumer holds the message (e.g. because a status update failed), and someone else rents
