@@ -462,9 +462,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     void Cleanup(Exception? error = null)
     {
         Debug.Assert(_state != CopyStreamState.Disposed);
-        // A COPY operation that the given error ended, or that never started (e.g. for a missing table), didn't complete
-        if (error is null && _state != CopyStreamState.Uninitialized)
-            LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
+        LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
         _connector.EndUserAction();
         _connector.CurrentCopyOperation = null;
         _connector = null;

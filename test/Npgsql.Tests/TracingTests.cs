@@ -611,7 +611,7 @@ public class TracingTests(bool async) : TestBase
     [Test]
     public async Task RawBinaryExport_error_after_CopyDone()
     {
-        // The command timeout ends a wait for data that never comes
+        // A dispose that waits for a ReadyForQuery that never comes (#6704) fails after the command timeout instead of hanging
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
         await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
         await using var dataSource = NpgsqlDataSource.Create(postmasterMock.ConnectionString);
