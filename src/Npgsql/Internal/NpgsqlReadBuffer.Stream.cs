@@ -21,7 +21,8 @@ sealed partial class NpgsqlReadBuffer
         /// Does not throw ODE.
         internal int CurrentLength { get; private set; }
         internal bool IsDisposed { get; private set; }
-        // Called after each read, e.g. for physical replication to count WAL as received as it arrives
+        // Called after each read, and after the dispose skipped the rest, e.g. for physical replication to count WAL as received
+        // as it arrives
         internal Action? AfterRead { get; set; }
 
         internal ColumnStream(NpgsqlConnector connector)
@@ -214,7 +215,10 @@ sealed partial class NpgsqlReadBuffer
                 var pos = _buf.CumulativeReadPosition - _startPos;
                 var remaining = checked((int)(CurrentLength - pos));
                 if (remaining > 0)
+                {
                     await _buf.Skip(async, remaining).ConfigureAwait(false);
+                    AfterRead?.Invoke();
+                }
             }
 
             IsDisposed = true;

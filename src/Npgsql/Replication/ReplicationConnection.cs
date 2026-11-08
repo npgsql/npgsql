@@ -481,8 +481,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             // In physical replication, the WAL end of an XLogData message is the server's own WAL position, not the end of the
             // WAL we got, so we count the data of a message as received as it arrives: what of it is in the buffer when the
-            // consumer gets the message, then what arrives while the consumer reads it, like walreceiver reports the WAL it
-            // wrote as it receives it
+            // consumer gets the message, then what arrives while the consumer reads it or the stream skips the rest of it, like
+            // walreceiver reports the WAL it wrote as it receives it. If the connection breaks first, the rest doesn't count.
             ulong payloadStartLsn = 0;
             long payloadStart = 0;
             var payloadLength = 0;
@@ -566,11 +566,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     // position no longer relates to the buffer's.
                     if (!bypassingStream)
                         await columnStream.DisposeAsync().ConfigureAwait(false);
-
-                    // Skipping the rest of the data received it, so all of it counts as received now, and not before
-                    var physicalReceivedLsn = startLsn + (ulong)dataLen;
-                    if (ReplicationMode == ReplicationMode.Physical && unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < physicalReceivedLsn)
-                        Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)physicalReceivedLsn));
 
                     continue;
                 }

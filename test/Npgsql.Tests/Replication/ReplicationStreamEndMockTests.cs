@@ -300,6 +300,57 @@ public class ReplicationStreamEndMockTests : TestBase
         await StopWithCancellation(enumerator, postmaster, server, cts, moveNext);
     }
 
+    [Test, Description("Data that the consumer skips by disposing the message's stream counts as received once skipping it received it")]
+    public async Task Physical_received_position_after_the_consumer_disposes_the_data()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        await using var _ = rc;
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectSimpleQuery("START_REPLICATION PHYSICAL 0/1000000").WaitAsync(ReplicationMock.Timeout);
+        server.WriteCopyBothResponse();
+        server.WriteXLogDataHeader(StartLsn, new NpgsqlLogSequenceNumber(0x2000000), 20000, null);
+        server.WriteBuffer.WriteBytes(new byte[1000]);
+        await server.FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        // Disposing the data skips the rest of it, which waits for it to arrive
+        var dispose = enumerator.Current.Data.DisposeAsync().AsTask();
+        await WriteBytesWithFlush(server, 19000);
+        await dispose.WaitAsync(ReplicationMock.Timeout);
+        await rc.SendStatusUpdate(cts.Token);
+        var statusUpdate = await server.ExpectStandbyStatusUpdate().WaitAsync(ReplicationMock.Timeout);
+        Assert.That(statusUpdate.WriteLsn, Is.EqualTo(new NpgsqlLogSequenceNumber(0x1000000 + 20000)));
+
+        await StopWithCancellation(enumerator, postmaster, server, cts);
+    }
+
+    [Test, Description("The data of a message that didn't all arrive before the connection broke doesn't count as received")]
+    public async Task Physical_received_position_after_a_break()
+    {
+        await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+        var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
+        await using var _ = rc;
+        using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
+
+        var enumerator = rc.StartReplication(StartLsn, cts.Token).GetAsyncEnumerator();
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        await server.ExpectSimpleQuery("START_REPLICATION PHYSICAL 0/1000000").WaitAsync(ReplicationMock.Timeout);
+        server.WriteCopyBothResponse();
+        server.WriteXLogDataHeader(StartLsn, new NpgsqlLogSequenceNumber(0x2000000), 20000, null);
+        server.WriteBuffer.WriteBytes(new byte[1000]);
+        await server.FlushAsync();
+        Assert.That(await moveNext, Is.True);
+
+        // The connection breaks while the consumer holds the message, e.g. because a status update failed
+        rc.Connector.Break(new Exception("Simulated failure"));
+        Assert.That(async () => await enumerator.MoveNextAsync(), Throws.Exception);
+        Assert.That(rc.LastReceivedLsn, Is.LessThanOrEqualTo(new NpgsqlLogSequenceNumber(0x1000000 + 1000)));
+    }
+
     // The rest of a message's data, in pieces that fit into the mock's write buffer
     static async Task WriteBytesWithFlush(PgServerMock server, int count)
     {
