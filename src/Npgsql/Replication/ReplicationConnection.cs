@@ -1109,9 +1109,11 @@ public abstract class ReplicationConnection : IAsyncDisposable
     }
 
     // How long we wait for what the server sends promptly, e.g. the rest of a message or of the command when we stop streaming:
-    // WalReceiverTimeout, but not forever even if that's infinite
+    // WalReceiverTimeout, but not forever even if that's infinite or too large for the buffers (see ToBufferTimeout)
     TimeSpan PromptReadTimeout
-        => _walReceiverTimeout > TimeSpan.Zero && _walReceiverTimeout != Timeout.InfiniteTimeSpan ? _walReceiverTimeout : TimeSpan.FromSeconds(30);
+        => _walReceiverTimeout > TimeSpan.Zero && _walReceiverTimeout.TotalMilliseconds <= int.MaxValue
+            ? _walReceiverTimeout
+            : TimeSpan.FromSeconds(30);
 
     void SetTimeouts(TimeSpan readTimeout, TimeSpan writeTimeout)
     {

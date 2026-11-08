@@ -299,14 +299,18 @@ public class ReplicationStopMockTests : TestBase
         await AssertConnectionIsUsable(rc, server);
     }
 
-    [Test, Description("Stopping while the consumer holds a message whose data hasn't all arrived waits for the rest with a bound, also when WalReceiverTimeout is infinite")]
-    public async Task Stopping_waits_for_the_rest_of_a_held_message_with_a_bound()
+    [Test, Description("Stopping while the consumer holds a message whose data hasn't all arrived waits for the rest with a bound, also when WalReceiverTimeout is infinite or too large for a socket")]
+    public async Task Stopping_waits_for_the_rest_of_a_held_message_with_a_bound([Values] bool tooLargeForASocket)
     {
         await using var postmaster = PgPostmasterMock.Start(ConnectionString);
         var (rc, server) = await postmaster.OpenReplicationConnection<PhysicalReplicationConnection>();
         await using var _ = rc;
         using var cts = new CancellationTokenSource(ReplicationMock.Timeout);
-        Assert.That(rc.WalReceiverTimeout, Is.EqualTo(Timeout.InfiniteTimeSpan));
+        // Either way, the stream's reads have no timeout
+        if (tooLargeForASocket)
+            rc.WalReceiverTimeout = TimeSpan.FromDays(30);
+        else
+            Assert.That(rc.WalReceiverTimeout, Is.EqualTo(Timeout.InfiniteTimeSpan));
 
         var consumer = Task.Run(async () =>
         {
