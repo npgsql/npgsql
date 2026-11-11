@@ -647,7 +647,7 @@ public abstract class TestBase
         if (dataTypeName is not null)
             cmd.Parameters[0].DataTypeName = dataTypeName;
 
-        return Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync())!;
+        return (await Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync()))!;
     }
 
     // For array quoting rules, see array_out in https://github.com/postgres/postgres/blob/master/src/backend/utils/adt/arrayfuncs.c

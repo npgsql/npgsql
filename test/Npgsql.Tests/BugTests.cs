@@ -122,7 +122,7 @@ public class BugTests : TestBase
         await serverMock
             .WriteCopyInResponse()
             .FlushAsync();
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () =>
+        var ex = await Assert.ThrowsAsync<NpgsqlException>(async () =>
         {
             await using var importer = await conn.BeginTextImportAsync($"COPY SomeTable (field_text, field_int4) FROM STDIN");
         });
@@ -384,7 +384,7 @@ CREATE TYPE {compositeType} AS (value {domainType})");
         cmd.CommandText = "SELECT * FROM public.dummy_table_name";
         for (var i = 0; i < 3; ++i)
         {
-            Assert.ThrowsAsync<PostgresException>(async () => await cmd.ExecuteScalarAsync());
+            await Assert.ThrowsAsync<PostgresException>(async () => await cmd.ExecuteScalarAsync());
         }
 
         cmd.CommandText = "SELECT 1";
@@ -1190,7 +1190,7 @@ BEGIN
 END;
 $$;");
 
-        Assert.ThrowsAsync<NotSupportedException>(async () => await connection.ExecuteScalarAsync($"SELECT {func}(0)"));
+        await Assert.ThrowsAsync<NotSupportedException>(async () => await connection.ExecuteScalarAsync($"SELECT {func}(0)"));
     }
 
     [Test]
@@ -1239,7 +1239,7 @@ $$;");
         cmd.CommandTimeout = 0;
 
         await using var reader = await cmd.ExecuteReaderAsync();
-        Assert.DoesNotThrowAsync(async () => await reader.NextResultAsync());
+        await Assert.DoesNotThrowAsync(async () => await reader.NextResultAsync());
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3649")]
@@ -1329,7 +1329,7 @@ $$;");
             var queryTask = cmd.ExecuteNonQueryAsync();
             await serverMock.ExpectExtendedQuery();
             _ = serverMock.WriteScalarResponseAndFlush(1);
-            Assert.DoesNotThrowAsync(async () => await queryTask);
+            await Assert.DoesNotThrowAsync(async () => await queryTask);
         }
     }
 
@@ -1344,7 +1344,7 @@ $$;");
         await rdr.ReadAsync();
         await using var stream = await rdr.GetStreamAsync(0);
 
-        Assert.DoesNotThrowAsync(stream.FlushAsync);
+        await Assert.DoesNotThrowAsync(stream.FlushAsync);
         Assert.DoesNotThrow(stream.Flush);
     }
 
@@ -1365,7 +1365,7 @@ $$;");
         await using var reader = await cmd.ExecuteReaderAsync(behavior);
         while (await reader.ReadAsync())
         {
-            Assert.DoesNotThrowAsync(async () => await reader.GetFieldValueAsync<Composite_with_BigInteger_Composite>(0));
+            await Assert.DoesNotThrowAsync(async () => await reader.GetFieldValueAsync<Composite_with_BigInteger_Composite>(0));
         }
     }
 

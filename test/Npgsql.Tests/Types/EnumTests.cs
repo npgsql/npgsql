@@ -44,7 +44,7 @@ public class EnumTests : TestBase
         await using var dataSource = dataSourceBuilder.Build();
 
         Assert.That(isUnmapSuccessful);
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
+        await Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
     }
 
     [Test]
@@ -74,7 +74,7 @@ public class EnumTests : TestBase
         await using var dataSource = dataSourceBuilder.Build();
 
         Assert.That(isUnmapSuccessful);
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
+        await Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
     }
 
     [Test]

@@ -34,8 +34,8 @@ public class TypeMapperTests : TestBase
 
         // The data source type mapper has been replaced and connection1 should have the new mapper, but connection2 should retain the older
         // type mapper - where there's no mapping - as long as it's still open
-        Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
-        Assert.DoesNotThrowAsync(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.DoesNotThrowAsync(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
 
         // Close connection2 and reopen to make sure it picks up the new type and mapping from the data source
         var connId = connection2.ProcessID;
@@ -43,7 +43,7 @@ public class TypeMapperTests : TestBase
         await connection2.OpenAsync();
         Assert.That(connection2.ProcessID, Is.EqualTo(connId), "Didn't get the same connector back");
 
-        Assert.DoesNotThrowAsync(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.DoesNotThrowAsync(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
     }
 
     [Test]

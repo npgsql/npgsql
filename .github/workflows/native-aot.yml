@@ -92,7 +92,7 @@ jobs:
       matrix:
         os: [ ubuntu-26.04 ]
         pg_major: [ 18 ]
-        tfm: [ net10.0 ]
+        tfm: [ net11.0 ]
 
     steps:
       - name: Checkout
@@ -110,7 +110,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v6.0.0
+        uses: actions/setup-dotnet@v6.1.0
 
       - name: Write script
         run: echo "$AOT_Compat" > test-aot-compatibility.ps1
@@ -126,7 +126,7 @@ jobs:
       matrix:
         os: [ubuntu-26.04]
         pg_major: [ 18 ]
-        tfm: [ net10.0 ]
+        tfm: [ net11.0 ]
 
     steps:
       - name: Checkout
@@ -144,7 +144,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v6.0.0
+        uses: actions/setup-dotnet@v6.1.0
 
       - name: Start PostgreSQL
         run: |

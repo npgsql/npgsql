@@ -152,7 +152,7 @@ END$$");
             }
         };
 
-        Assert.ThrowsAsync<PostgresException>(() => batch.ExecuteNonQueryAsync());
+        await Assert.ThrowsAsync<PostgresException>(() => batch.ExecuteNonQueryAsync());
     }
 
     [Test]
@@ -269,7 +269,7 @@ $$ LANGUAGE plpgsql");
         Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Input));
         cmd.Parameters[0].Value = 5;
         cmd.Parameters[1].Value = 4;
-        Assert.DoesNotThrowAsync(() => cmd.ExecuteNonQueryAsync());
+        await Assert.DoesNotThrowAsync(() => cmd.ExecuteNonQueryAsync());
     }
 
     [Test, Description("Tests function parameter derivation with no parameters")]

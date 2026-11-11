@@ -104,7 +104,7 @@ public class ConnectionTests : TestBase
         await using (var killingConn = await OpenConnectionAsync())
             killingConn.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
 
-        Assert.ThrowsAsync<PostgresException>(() => sleep);
+        await Assert.ThrowsAsync<PostgresException>(() => sleep);
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
@@ -121,10 +121,10 @@ public class ConnectionTests : TestBase
             Assert.That(eventClosed, Is.True);
         }
 
-        Assert.DoesNotThrowAsync(conn.OpenAsync);
+        await Assert.DoesNotThrowAsync(conn.OpenAsync);
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
-        Assert.DoesNotThrowAsync(conn.CloseAsync);
+        await Assert.DoesNotThrowAsync(conn.CloseAsync);
     }
 
     [Test]
@@ -229,14 +229,14 @@ public class ConnectionTests : TestBase
             });
 
             await using var conn2 = dataSource.CreateConnection();
-            var pgEx = Assert.ThrowsAsync<PostgresException>(conn2.OpenAsync)!;
+            var pgEx = (await Assert.ThrowsAsync<PostgresException>(conn2.OpenAsync))!;
             Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.InvalidCatalogName)); // database doesn't exist
             Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
 
             await conn1.ExecuteNonQueryAsync($"CREATE DATABASE \"{dbName}\" TEMPLATE template0");
 
-            Assert.DoesNotThrowAsync(conn2.OpenAsync);
-            Assert.DoesNotThrowAsync(conn2.CloseAsync);
+            await Assert.DoesNotThrowAsync(conn2.OpenAsync);
+            await Assert.DoesNotThrowAsync(conn2.CloseAsync);
         }
         finally
         {
@@ -1202,7 +1202,7 @@ LANGUAGE 'plpgsql'");
         await using var clonedConnection = (NpgsqlConnection)((ICloneable)connection).Clone();
 
         Assert.That(clonedConnection.NpgsqlDataSource, Is.SameAs(DataSource));
-        Assert.DoesNotThrowAsync(() => clonedConnection.OpenAsync());
+        await Assert.DoesNotThrowAsync(() => clonedConnection.OpenAsync());
     }
 
     [Test]
@@ -1465,7 +1465,7 @@ CREATE TABLE record ()");
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
-        Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync("SELECT non_existent_table"));
+        await Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync("SELECT non_existent_table"));
         // Connection is now in a failed transaction state. Wait a bit to allow for the keepalive to execute.
         Thread.Sleep(3000);
 
@@ -1730,12 +1730,12 @@ CREATE TABLE record ()");
         await using var dataSource = dataSourceBuilder.Build();
 
         await using var conn1 = dataSource.CreateConnection();
-        Assert.DoesNotThrowAsync(async () => await conn1.OpenAsync());
+        await Assert.DoesNotThrowAsync(async () => await conn1.OpenAsync());
 
         await using var tx = await conn1.BeginTransactionAsync();
 
         await using var conn2 = dataSource.CreateConnection();
-        var exception = Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync())!;
+        var exception = (await Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync()))!;
         Assert.That(exception.Message, Is.EqualTo("INTENTIONAL FAILURE"));
     }
 
@@ -1810,7 +1810,7 @@ CREATE TABLE record ()");
         {
             csb.RequireAuth = $"{RequireAuthMode.None}";
         });
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync()))!;
         Assert.That(ex.Message, Does.Contain("authentication method is not allowed"));
     }
 
@@ -1820,7 +1820,7 @@ CREATE TABLE record ()");
     {
         using var _ = SetEnvironmentVariable("PGREQUIREAUTH", $"{RequireAuthMode.None}");
         await using var dataSource = CreateDataSource();
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync())!;
+        var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await dataSource.OpenConnectionAsync()))!;
         Assert.That(ex.Message, Does.Contain("authentication method is not allowed"));
     }
 
@@ -1908,7 +1908,7 @@ CREATE TABLE record ()");
         try
         {
             // Test the first time we load the database info
-            Assert.ThrowsAsync<IOException>(firstConn.OpenAsync);
+            await Assert.ThrowsAsync<IOException>(firstConn.OpenAsync);
         }
         finally
         {
@@ -1924,7 +1924,7 @@ CREATE TABLE record ()");
         try
         {
             // Make sure that the database info is now cached and won't be reloaded
-            Assert.DoesNotThrowAsync(secondConn.OpenAsync);
+            await Assert.DoesNotThrowAsync(secondConn.OpenAsync);
         }
         finally
         {

@@ -295,7 +295,7 @@ public class DataSourceTests : TestBase
         await using (var _ = await dataSource.OpenConnectionAsync()) {}
         await dataSource.DisposeAsync();
         await using var command = dataSource.CreateCommand("SELECT 1");
-        Assert.ThrowsAsync<ObjectDisposedException>(command.ExecuteNonQueryAsync);
+        await Assert.ThrowsAsync<ObjectDisposedException>(command.ExecuteNonQueryAsync);
     }
 
     [Test]
@@ -376,13 +376,13 @@ public class DataSourceTests : TestBase
         else
             dataSource.ReloadTypes();
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.ThrowsAsync<InvalidCastException>(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
 
         // Close connection and reopen to make sure it picks up the new type and mapping from the data source
         await connection.CloseAsync();
         await connection.OpenAsync();
 
-        Assert.DoesNotThrowAsync(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.DoesNotThrowAsync(async () => await connection.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
     }
 
     [Test]
@@ -406,14 +406,14 @@ public class DataSourceTests : TestBase
         else
             dataSource1.ReloadTypes();
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
-        Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.ThrowsAsync<InvalidCastException>(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
 
         // Close connection and reopen to check that the new type and mapping is not available in dataSource2
         await connection2.CloseAsync();
         await connection2.OpenAsync();
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.ThrowsAsync<InvalidCastException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
 
         await dataSource2.ReloadTypesAsync();
 
@@ -421,7 +421,7 @@ public class DataSourceTests : TestBase
         await connection2.CloseAsync();
         await connection2.OpenAsync();
 
-        Assert.DoesNotThrowAsync(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        await Assert.DoesNotThrowAsync(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
     }
 
     enum Mood { Sad, Ok, Happy }
