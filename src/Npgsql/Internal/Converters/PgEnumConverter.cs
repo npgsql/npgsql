@@ -6,13 +6,13 @@ using System.Text;
 namespace Npgsql.Internal.Converters;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : struct, Enum
+sealed class PgEnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : struct, Enum
 {
     readonly Dictionary<TEnum, string> _enumToLabel;
     readonly Dictionary<string, TEnum> _labelToEnum;
 
     // Unmapped enums
-    public EnumConverter(Dictionary<Enum, string> enumToLabel, Dictionary<string, Enum> labelToEnum)
+    public PgEnumConverter(Dictionary<Enum, string> enumToLabel, Dictionary<string, Enum> labelToEnum)
     {
         _enumToLabel = new(enumToLabel.Count);
         foreach (var kv in enumToLabel)
@@ -23,7 +23,7 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
             _labelToEnum.Add(kv.Key, (TEnum)kv.Value);
     }
 
-    public EnumConverter(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+    public PgEnumConverter(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
     {
         _enumToLabel = enumToLabel;
         _labelToEnum = labelToEnum;
