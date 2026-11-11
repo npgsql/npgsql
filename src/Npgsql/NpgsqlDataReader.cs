@@ -284,11 +284,41 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 throw Connector.UnexpectedMessageReceived(msg.Code);
             }
         }
-        catch
+        catch (Exception e)
         {
             // Break may have progressed the reader already.
             if (State is not ReaderState.Closed)
                 State = ReaderState.Consumed;
+
+            // Reference the triggering statement from the exception
+            if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
+            {
+                // Reference the triggering statement from the exception
+                if (Connector.Settings.IncludeFailedBatchedCommand)
+                    postgresException.BatchCommand = _statements[StatementIndex];
+
+                // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
+                // the exception is very likely to escape the using statement of the command, and by that time some other user may
+                // already be using the recycled instance.
+                Command.IsCacheable = false;
+            }
+
+            // An error means all subsequent statements were skipped by PostgreSQL.
+            // If any of them were being prepared, we need to update our bookkeeping to put
+            // them back in unprepared state.
+            for (; StatementIndex < _statements.Count; StatementIndex++)
+            {
+                var statement = _statements[StatementIndex];
+                if (statement.IsPreparing)
+                {
+                    statement.IsPreparing = false;
+                    statement.PreparedStatement!.AbortPrepare();
+                }
+
+                // TODO: we do not handle AppendErrorBarrier here unlike NextResult, which is probably a bug.
+                // This should be investigated.
+            }
+
             throw;
         }
     }
