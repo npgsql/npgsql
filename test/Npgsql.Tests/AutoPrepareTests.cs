@@ -647,6 +647,40 @@ LANGUAGE 'plpgsql';
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6755")]
+    public async Task Unprepare_batch_queries_on_read_postgres_error()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 1";
+
+        // 1 to make it just below auto prepare threshold
+        await cmd.ExecuteNonQueryAsync();
+
+        {
+            await using var batch = conn.CreateBatch();
+            batch.BatchCommands.Add(new("SELECT 1 / (x - 3) FROM generate_series(1, 5) x"));
+            // That's the second time this query is sent, we'll attempt to auto prepare it (and fail due to previous query throwing)
+            batch.BatchCommands.Add(new("SELECT 1"));
+            await using var reader = await batch.ExecuteReaderAsync();
+
+            Assert.ThrowsAsync<PostgresException>(async () =>
+            {
+                // Explicitly go through ReadAsync to assert that it marks the second query as unprepared
+                while (await reader.ReadAsync()) { }
+            });
+        }
+
+        // Make sure the query isn't considered prepared by us and actually works
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     void DumpPreparedStatements(NpgsqlConnection conn)
     {
         using var cmd = new NpgsqlCommand("SELECT name,statement FROM pg_prepared_statements", conn);
