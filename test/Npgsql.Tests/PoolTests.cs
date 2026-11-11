@@ -69,6 +69,37 @@ class PoolTests : TestBase
     }
 
     [Test]
+    public async Task Dispose_releases_waiter_from_exhausted_pool([Values(true, false)] bool async)
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MaxPoolSize = 1;
+            csb.Timeout = 5;
+        });
+
+        await using var conn1 = await dataSource.OpenConnectionAsync();
+
+        // Pool is exhausted
+        await using var conn2 = dataSource.CreateConnection();
+        var openTask = async
+            ? conn2.OpenAsync()
+            : Task.Run(() => conn2.Open());
+
+        // Make sure that the openTask is blocked
+        Assert.That(await Task.WhenAny(openTask, Task.Delay(100)), Is.Not.SameAs(openTask));
+
+        // Dispose the pool while the openTask is waiting for a connection. This should cause the openTask to complete with an exception.
+        if (async)
+            await dataSource.DisposeAsync();
+        else
+            dataSource.Dispose();
+
+        // Now openTask should complete with an exception
+        Assert.That(await Task.WhenAny(openTask, Task.Delay(TimeSpan.FromSeconds(1))), Is.SameAs(openTask));
+        Assert.That(async () => await openTask, Throws.Exception.TypeOf<NpgsqlException>().With.Message.EqualTo("The connection pool has been shut down."));
+    }
+
+    [Test]
     public async Task Timeout_getting_connector_from_exhausted_pool([Values(true, false)] bool async)
     {
         await using var dataSource = CreateDataSource(csb =>
