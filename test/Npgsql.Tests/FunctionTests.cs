@@ -199,8 +199,8 @@ $$ LANGUAGE plpgsql");
         {
             Direction = ParameterDirection.Output
         });
-        Assert.ThrowsAsync<InvalidCastException>(cmd.ExecuteNonQueryAsync);
-        Assert.DoesNotThrowAsync(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
+        await Assert.ThrowsAsync<InvalidCastException>(cmd.ExecuteNonQueryAsync);
+        await Assert.DoesNotThrowAsync(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
     }
 
     #region DeriveParameters

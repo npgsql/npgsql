@@ -21,8 +21,8 @@ class PoolTests : TestBase
     }
 
     [Test]
-    public void MinPoolSize_bigger_than_MaxPoolSize_throws()
-        => Assert.ThrowsAsync<ArgumentException>(async () =>
+    public async Task MinPoolSize_bigger_than_MaxPoolSize_throws()
+        => await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
             await using var dataSource = CreateDataSource(csb =>
             {
@@ -84,7 +84,7 @@ class PoolTests : TestBase
 
             await using var conn2 = dataSource.CreateConnection();
             var e = async
-                ? Assert.ThrowsAsync<NpgsqlException>(async () => await conn2.OpenAsync())!
+                ? (await Assert.ThrowsAsync<NpgsqlException>(async () => await conn2.OpenAsync()))!
                 : Assert.Throws<NpgsqlException>(() => conn2.Open())!;
 
             Assert.That(e.InnerException, Is.TypeOf<TimeoutException>());
@@ -138,15 +138,15 @@ class PoolTests : TestBase
     }
 
     [Test]
-    public void ConnectionPruningInterval_zero_throws()
-        => Assert.ThrowsAsync<ArgumentException>(async () =>
+    public async Task ConnectionPruningInterval_zero_throws()
+        => await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
             await using var dataSource = CreateDataSource(csb => csb.ConnectionPruningInterval = 0);
         });
 
     [Test]
-    public void ConnectionPruningInterval_bigger_than_ConnectionIdleLifetime_throws()
-        => Assert.ThrowsAsync<ArgumentException>(async () =>
+    public async Task ConnectionPruningInterval_bigger_than_ConnectionIdleLifetime_throws()
+        => await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
             await using var dataSource = CreateDataSource(csb =>
             {

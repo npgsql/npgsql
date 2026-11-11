@@ -397,7 +397,7 @@ public class BatchTests : TestBase, IDisposable
             EnableErrorBarriers = withErrorBarriers
         };
 
-        var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+        var exception = (await Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior)))!;
         Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[0]));
 
         Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), withErrorBarriers
@@ -421,7 +421,7 @@ public class BatchTests : TestBase, IDisposable
             EnableErrorBarriers = withErrorBarriers
         };
 
-        var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+        var exception = (await Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior)))!;
         Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
 
         Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), withErrorBarriers
@@ -451,7 +451,7 @@ public class BatchTests : TestBase, IDisposable
         if (withErrorBarriers)
         {
             // A Sync is inserted after each command, so all commands are executed and all exceptions are thrown as an AggregateException
-            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+            var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () => await batch.ExecuteReaderAsync(Behavior)))!;
             var aggregateException = (AggregateException)exception.InnerException!;
             Assert.That(((PostgresException)aggregateException.InnerExceptions[0]).BatchCommand, Is.SameAs(batch.BatchCommands[1]));
             Assert.That(((PostgresException)aggregateException.InnerExceptions[1]).BatchCommand, Is.SameAs(batch.BatchCommands[3]));
@@ -462,7 +462,7 @@ public class BatchTests : TestBase, IDisposable
         {
             // PG skips all commands after the first error; an exception is only raised for the first one, and the entire batch is
             // rolled back (implicit transaction).
-            var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+            var exception = (await Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior)))!;
             Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
 
             Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), Is.EqualTo(0));
@@ -498,13 +498,13 @@ public class BatchTests : TestBase, IDisposable
             if (withErrorBarriers)
             {
                 // A Sync is inserted after each command, so all commands are executed and all exceptions are thrown as an AggregateException
-                var exception = Assert.ThrowsAsync<NpgsqlException>(async () =>
+                var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () =>
                 {
                     if (dispose)
                         await reader.DisposeAsync();
                     else
                         await reader.CloseAsync();
-                })!;
+                }))!;
                 var aggregateException = (AggregateException)exception.InnerException!;
                 Assert.That(((PostgresException)aggregateException.InnerExceptions[0]).BatchCommand, Is.SameAs(batch.BatchCommands[2]));
                 Assert.That(((PostgresException)aggregateException.InnerExceptions[1]).BatchCommand, Is.SameAs(batch.BatchCommands[4]));
@@ -513,13 +513,13 @@ public class BatchTests : TestBase, IDisposable
             {
                 // PG skips all commands after the first error; an exception is only raised for the first one, and the entire batch is
                 // rolled back (implicit transaction).
-                var exception = Assert.ThrowsAsync<PostgresException>(async () =>
+                var exception = (await Assert.ThrowsAsync<PostgresException>(async () =>
                 {
                     if (dispose)
                         await reader.DisposeAsync();
                     else
                         await reader.CloseAsync();
-                })!;
+                }))!;
 
                 Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[2]));
             }
@@ -584,7 +584,7 @@ public class BatchTests : TestBase, IDisposable
         };
 
         // A Sync is placed after the 2nd command (INVALID SQL), so the 1st command is rolled back but not the 3rd.
-        var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+        var exception = (await Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior)))!;
         Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
 
         Assert.That(await conn.ExecuteScalarAsync($"SELECT id FROM {table} ORDER BY id"), Is.EqualTo(9));
@@ -711,7 +711,7 @@ LANGUAGE 'plpgsql'");
         var batch = conn.CreateBatch();
         batch.BatchCommands.Add(new($"SELECT {function}()"));
 
-        var e = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+        var e = (await Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior)))!;
         Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[0]));
 
         // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
@@ -739,7 +739,7 @@ LANGUAGE 'plpgsql'");
 
         await using (var reader = await batch.ExecuteReaderAsync(Behavior))
         {
-            var e = Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())!;
+            var e = (await Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync()))!;
             Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
         }
 

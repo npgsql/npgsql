@@ -394,7 +394,7 @@ public class WriteStateTests : TestBase
             DataTypeName = type
         });
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        await Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
 
         var states = tracker.Snapshot();
         Assert.That(states, Has.Count.GreaterThanOrEqualTo(1), "provider should have produced writeState for the composite field");
@@ -429,7 +429,7 @@ public class WriteStateTests : TestBase
             DataTypeName = type
         });
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
+        await Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteNonQueryAsync());
 
         var states = tracker.Snapshot();
         Assert.That(states, Has.Count.GreaterThanOrEqualTo(1), "provider should have produced writeState for the composite field");

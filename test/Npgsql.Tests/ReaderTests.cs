@@ -626,7 +626,7 @@ LANGUAGE 'plpgsql'");
         var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT {function}()";
 
-        var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync(Behavior))!;
+        var exception = (await Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync(Behavior)))!;
         if (includeFailedBatchedCommand)
             Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
         else
@@ -657,7 +657,7 @@ LANGUAGE 'plpgsql'");
 
         await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
-            var exception = Assert.ThrowsAsync<PostgresException>(() => reader.NextResultAsync())!;
+            var exception = (await Assert.ThrowsAsync<PostgresException>(() => reader.NextResultAsync()))!;
             if (includeFailedBatchedCommand)
                 Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
             else
@@ -1125,7 +1125,7 @@ LANGUAGE plpgsql VOLATILE";
                 // After waiting, reader is free to reset prepared statements, which also increments StatementIndex
             };
 
-            Assert.ThrowsAsync<PostgresException>(firstReader.NextResultAsync);
+            await Assert.ThrowsAsync<PostgresException>(firstReader.NextResultAsync);
 
             secondMrs.Set();
         }
@@ -1296,7 +1296,7 @@ LANGUAGE plpgsql VOLATILE";
 
         await reader.GetFieldValueAsync<byte[]>(1);
 
-        Assert.DoesNotThrowAsync(reader.ReadAsync);
+        await Assert.DoesNotThrowAsync(reader.ReadAsync);
     }
 
     [Test] // #4377
@@ -1324,7 +1324,7 @@ LANGUAGE plpgsql VOLATILE";
         if (async)
             Assert.Throws<NpgsqlException>(() => reader.Dispose());
         else
-            Assert.ThrowsAsync<NpgsqlException>(async () => await reader.DisposeAsync());
+            await Assert.ThrowsAsync<NpgsqlException>(async () => await reader.DisposeAsync());
     }
 
     [Test]
@@ -2114,7 +2114,7 @@ LANGUAGE plpgsql VOLATILE";
         await using (var _ = reader.GetStream())
         {
             if (async)
-                Assert.DoesNotThrowAsync(async () => await reader.EndReadAsync());
+                await Assert.DoesNotThrowAsync(async () => await reader.EndReadAsync());
             else
                 Assert.DoesNotThrow(() => reader.EndRead());
         }
@@ -2214,7 +2214,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteReadyForQuery()
                 .FlushAsync();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+            var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
 
@@ -2261,7 +2261,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteReadyForQuery()
                 .FlushAsync();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+            var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -2310,7 +2310,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteReadyForQuery()
                 .FlushAsync();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+            var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -2356,7 +2356,7 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
         // Send no response from server, wait for the cancellation attempt to time out
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -2398,7 +2398,7 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
         // Send no response from server, wait for the cancellation attempt to time out
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
         Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -2434,7 +2434,7 @@ LANGUAGE plpgsql VOLATILE";
         var task = reader.GetFieldValueAsync<byte[]>(0, cts.Token);
         cts.Cancel();
 
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.Null);
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2469,7 +2469,7 @@ LANGUAGE plpgsql VOLATILE";
         var task = reader.IsDBNullAsync(1, cts.Token);
         cts.Cancel();
 
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<OperationCanceledException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.Null);
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2510,7 +2510,7 @@ LANGUAGE plpgsql VOLATILE";
 
         var task = reader.GetFieldValueAsync<byte[]>(0);
 
-        var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2547,7 +2547,7 @@ LANGUAGE plpgsql VOLATILE";
 
         var task = reader.GetFieldValueAsync<byte[]>(0);
 
-        var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task)!;
+        var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () => await task))!;
         Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
 
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2611,7 +2611,7 @@ LANGUAGE plpgsql VOLATILE";
             await reader.ReadAsync();
             // The second read will try to consume the whole resultset due to CommandBehavior.SingleRow
             // Which will fail with timeout (and immediate connection break) since we didn't send anything else beside the first row
-            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await reader.ReadAsync())!;
+            var ex = (await Assert.ThrowsAsync<NpgsqlException>(async () => await reader.ReadAsync()))!;
             Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
 
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));

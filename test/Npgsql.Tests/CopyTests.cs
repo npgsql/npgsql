@@ -960,7 +960,7 @@ INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'000000
             var buffer = new byte[32];
             await stream.ReadExactlyAsync(buffer, 0, buffer.Length);
             stream.Cancel();
-            Assert.DoesNotThrowAsync(async () => await stream.DisposeAsync());
+            await Assert.DoesNotThrowAsync(async () => await stream.DisposeAsync());
         }
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
     }
@@ -976,7 +976,7 @@ INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'000000
             await exporter.StartRowAsync();
             await exporter.ReadAsync<string>();
             exporter.Cancel();
-            Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
+            await Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
         }
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
     }
@@ -1342,7 +1342,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         server.Close();
         var value = Encoding.UTF8.GetBytes(new string('a', conn.Settings.WriteBufferSize * 2));
         if (async)
-            Assert.ThrowsAsync<NpgsqlException>(async () => await stream.WriteAsync(value));
+            await Assert.ThrowsAsync<NpgsqlException>(async () => await stream.WriteAsync(value));
         else
             Assert.Throws<NpgsqlException>(() => stream.Write(value));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));

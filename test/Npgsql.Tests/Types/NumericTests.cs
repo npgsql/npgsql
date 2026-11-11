@@ -228,7 +228,7 @@ public class NumericTests : TestBase
         await using var reader = await cmd.ExecuteReaderAsync(behavior);
         while (await reader.ReadAsync())
         {
-            Assert.DoesNotThrowAsync(async () => await reader.GetFieldValueAsync<BigInteger>(0));
+            await Assert.DoesNotThrowAsync(async () => await reader.GetFieldValueAsync<BigInteger>(0));
         }
     }
 }

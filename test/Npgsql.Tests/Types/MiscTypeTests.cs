@@ -65,14 +65,14 @@ class MiscTypeTests : TestBase
         await using (var cmd = new NpgsqlCommand("SELECT @p4::TEXT", conn))
         {
             cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null!);
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await cmd.ExecuteReaderAsync());
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await cmd.ExecuteReaderAsync());
         }
 
         // Setting generic NpgsqlParameter<object>.Value to null is not allowed, only DBNull.Value
         await using (var cmd = new NpgsqlCommand("SELECT @p4::TEXT", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter<object>("p4", NpgsqlDbType.Text) { Value = null! });
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await cmd.ExecuteReaderAsync());
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await cmd.ExecuteReaderAsync());
         }
     }
 
@@ -178,7 +178,7 @@ class MiscTypeTests : TestBase
         await AssertTypeWrite(dataSource, new object?[] { DateTime.UnixEpoch, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1) },
             "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}",
             "timestamp with time zone[]", dataTypeInference: DataTypeInference.Nothing);
-        var ex = Assert.ThrowsAsync<InvalidCastException>(() => AssertTypeWrite(dataSource, new object?[]
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(() => AssertTypeWrite(dataSource, new object?[]
             {
                 DateTime.Now, null, DBNull.Value, DateTime.UnixEpoch.AddDays(1)
             }, "{\"1970-01-01 01:00:00+01\",NULL,NULL,\"1970-01-02 01:00:00+01\"}", "timestamp with time zone[]",
@@ -202,6 +202,6 @@ class MiscTypeTests : TestBase
     public async Task Void()
     {
         await using var conn = await OpenConnectionAsync();
-        Assert.That(await conn.ExecuteScalarAsync("SELECT pg_sleep(0)"), Is.SameAs(null));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT pg_sleep(0)"), Is.Null);
     }
 }

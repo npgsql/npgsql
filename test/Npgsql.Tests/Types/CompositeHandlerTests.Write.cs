@@ -76,15 +76,15 @@ public partial class CompositeHandlerTests
         });
 
     [Test]
-    public void Write_type_with_private_property_throws()
-        => Assert.ThrowsAsync(
+    public async Task Write_type_with_private_property_throws()
+        => await Assert.ThrowsAsync(
             Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
             async () => await Write(new TypeWithPrivateProperty()));
 
     [Test]
-    public void Write_type_with_private_getter_throws()
+    public async Task Write_type_with_private_getter_throws()
     {
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await Write(new TypeWithPrivateGetter()));
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await Write(new TypeWithPrivateGetter()));
         Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
     }
 
@@ -93,9 +93,9 @@ public partial class CompositeHandlerTests
         => Write(new TypeWithPrivateSetter());
 
     [Test]
-    public void Write_type_without_getter_throws()
+    public async Task Write_type_without_getter_throws()
     {
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await Write(new TypeWithoutGetter()));
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await Write(new TypeWithoutGetter()));
         Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
     }
 
@@ -116,20 +116,20 @@ public partial class CompositeHandlerTests
         => Write(new TypeWithMorePropertiesThanAttributes());
 
     [Test]
-    public void Write_type_with_less_properties_than_attributes_throws()
-        => Assert.ThrowsAsync(
+    public async Task Write_type_with_less_properties_than_attributes_throws()
+        => await Assert.ThrowsAsync(
             Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
             async () => await Write(new TypeWithLessPropertiesThanAttributes()));
 
     [Test]
-    public void Write_type_with_less_parameters_than_attributes_throws()
-        => Assert.ThrowsAsync(
+    public async Task Write_type_with_less_parameters_than_attributes_throws()
+        => await Assert.ThrowsAsync(
             Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
             async () => await Write(new TypeWithMoreParametersThanAttributes(TheAnswer, HelloSlonik)));
 
     [Test]
-    public void Write_type_with_more_parameters_than_attributes_throws()
-        => Assert.ThrowsAsync(
+    public async Task Write_type_with_more_parameters_than_attributes_throws()
+        => await Assert.ThrowsAsync(
             Is.TypeOf<InvalidCastException>().With.Property("InnerException").TypeOf<InvalidOperationException>(),
             async () => await Write(new TypeWithLessParametersThanAttributes(TheAnswer)));
 }

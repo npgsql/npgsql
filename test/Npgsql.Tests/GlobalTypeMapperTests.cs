@@ -40,7 +40,7 @@ public class GlobalTypeMapperTests : TestBase
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy",
+        await Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy",
             type, dataTypeInference: DataTypeInference.Nothing));
         await AssertType(dataSource2, "happy", "happy", "text", dbType: DbType.String);
     }
@@ -74,7 +74,7 @@ public class GlobalTypeMapperTests : TestBase
 
             // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
-            Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
+            await Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
             await AssertType(dataSource2, "happy", "happy", "text", dbType: DbType.String);
         }
         finally
@@ -111,7 +111,7 @@ public class GlobalTypeMapperTests : TestBase
 
         // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
-        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
+        await Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, dataTypeInference: DataTypeInference.Nothing));
         await AssertType(dataSource2, "happy", "happy",
             type, dataTypeInference: DataTypeInference.Mismatch,
             dbType: new(DbType.Object, DbType.String));

@@ -51,12 +51,12 @@ public class TracingTests(bool async) : TestBase
     {
         using var activityListener = StartListener(out var activities);
         await using var dataSource = CreateDataSource(x => x.Host = "not-existing-host");
-        var exception = Assert.ThrowsAsync<NpgsqlException>(async () =>
+        var exception = (await Assert.ThrowsAsync<NpgsqlException>(async () =>
         {
             await using var connection = async
                 ? await dataSource.OpenConnectionAsync()
                 : dataSource.OpenConnection();
-        })!;
+        }))!;
 
         var activity = GetSingleActivity(activities, "CONNECT " + dataSource.Settings.Database, "CONNECT " + dataSource.Settings.Database, ActivityStatusCode.Error, exception.Message);
 
@@ -135,7 +135,7 @@ public class TracingTests(bool async) : TestBase
 
         using var activityListener = StartListener(out var activities);
 
-        Assert.ThrowsAsync<PostgresException>(async () => await ExecuteScalar(connection, async, batch, "SELECT * FROM non_existing_table"));
+        await Assert.ThrowsAsync<PostgresException>(async () => await ExecuteScalar(connection, async, batch, "SELECT * FROM non_existing_table"));
 
         var activity = GetSingleActivity(activities, "postgresql", "postgresql", ActivityStatusCode.Error, PostgresErrorCodes.UndefinedTable);
 
@@ -339,7 +339,7 @@ public class TracingTests(bool async) : TestBase
 
         var copyFromCommand = $"COPY non_existing_table (field_text, field_int2) FROM STDIN BINARY";
 
-        var ex = Assert.ThrowsAsync<PostgresException>(async () =>
+        var ex = await Assert.ThrowsAsync<PostgresException>(async () =>
         {
             await using var writer = async
                 ? await connection.BeginBinaryImportAsync(copyFromCommand)
@@ -450,7 +450,7 @@ public class TracingTests(bool async) : TestBase
         using var activityListener = StartListener(out var activities);
 
         var copyToCommand = $"COPY non_existing_table (field_text, field_int2) TO STDOUT BINARY";
-        var ex = Assert.ThrowsAsync<PostgresException>(async () =>
+        var ex = await Assert.ThrowsAsync<PostgresException>(async () =>
         {
             await using var reader = async
                 ? await connection.BeginBinaryExportAsync(copyToCommand)
@@ -586,7 +586,7 @@ public class TracingTests(bool async) : TestBase
         using var activityListener = StartListener(out var activities);
 
         var copyFromCommand = $"COPY non_existing_table (field_text, field_int2) FROM STDIN BINARY";
-        var ex = Assert.ThrowsAsync<PostgresException>(async () =>
+        var ex = await Assert.ThrowsAsync<PostgresException>(async () =>
         {
             await using var stream = async
                 ? await connection.BeginRawBinaryCopyAsync(copyFromCommand)

@@ -68,7 +68,7 @@ public class ArrayTests : TestBase
         await conn.OpenAsync();
         await using var cmd = new NpgsqlCommand("SELECT 1", conn);
         cmd.Parameters.AddWithValue("p", new int[1, 1, 1, 1, 1, 1, 1, 1, 1]); // 9 dimensions
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteScalarAsync());
+        var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await cmd.ExecuteScalarAsync());
         Assert.That(ex!.InnerException, Is.TypeOf<ArgumentException>()
             .And.Message.EqualTo("Postgres arrays can have at most 8 dimensions. (Parameter 'dimensionLengths')"));
     }
@@ -270,8 +270,8 @@ SELECT onedim, twodim FROM (VALUES
             ImmutableArray.Create(1, 2, 3), "{1,2,3}", "integer[]");
 
     [Test]
-    public void Read_IList_implementation_throws()
-        => Assert.ThrowsAsync<InvalidCastException>(() =>
+    public async Task Read_IList_implementation_throws()
+        => await Assert.ThrowsAsync<InvalidCastException>(() =>
             AssertTypeRead("{1,2,3}", "integer[]", ImmutableArray.Create(1, 2, 3), valueTypeEqualsFieldType: false));
 
     [Test]
