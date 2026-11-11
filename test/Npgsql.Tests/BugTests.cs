@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.Internal.Postgres;
+using Npgsql.Util;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -1372,5 +1373,13 @@ $$;");
     class Composite_with_BigInteger_Composite
     {
         public BigInteger Value { get; set; }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/6655")]
+    public void Sub_millisecond_timeout_is_expired()
+    {
+        var timeout = new NpgsqlTimeout(TimeSpan.FromMilliseconds(0.99999));
+        Assert.That(timeout.HasExpired);
+        Assert.Throws<NpgsqlException>(() => timeout.CheckAndGetTimeLeft());
     }
 }
