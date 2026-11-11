@@ -286,6 +286,31 @@ public class SystemTransactionTests : TestBase
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/5705")]
+    public void Reuse_connection_keeps_sequence_cache()
+    {
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
+        using (new TransactionScope())
+        using (var conn = dataSource.CreateConnection())
+        {
+            conn.Open();
+            var processId = conn.ProcessID;
+
+            // Created inside the transaction, so it's gone once the transaction rolls back
+            var sequence = GetUniqueIdentifier("reset_sequence");
+            conn.ExecuteNonQuery($"CREATE SEQUENCE {sequence} CACHE 20");
+            var first = (long)conn.ExecuteScalar($"SELECT nextval('{sequence}')")!;
+
+            conn.Close();
+
+            conn.Open();
+            Assert.That(conn.ProcessID, Is.EqualTo(processId), "Should reuse the same physical connection");
+
+            // The next value comes from the session's cache, rather than from a new block of 20
+            Assert.That(conn.ExecuteScalar($"SELECT nextval('{sequence}')"), Is.EqualTo(first + 1));
+        }
+    }
+
     [Test, Ignore("Timeout doesn't seem to fire on .NET Core / Linux")]
     public void Timeout_triggers_rollback_while_busy()
     {

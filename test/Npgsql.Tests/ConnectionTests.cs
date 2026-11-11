@@ -1613,11 +1613,9 @@ CREATE TABLE record ()");
             var queryTask = conn.ExecuteNonQueryAsync("SELECT 1");
 
             // We do not set NoResetOnClose=true on connection string to test query behavior after connection retry
-            await server.ExpectSimpleQuery("DISCARD ALL");
+            await server.ExpectSimpleQuery(PgServerMock.ResetQuery);
             await server.ExpectExtendedQuery();
-            server
-                .WriteCommandComplete()
-                .WriteReadyForQuery();
+            server.WriteResetResponse();
             await server.WriteScalarResponseAndFlush(1);
             await queryTask;
         }
